@@ -1,0 +1,271 @@
+openapi: 3.1.0
+info:
+  title: HostFlow Invoicing API
+  version: "1.0.0"
+  description: >
+    API для работы со счетами и платежами в системе HostFlow.
+    Поддерживает компании (B2B) и кандидатов (B2C).
+servers:
+  - url: https://api.hostflow.app/v1
+
+paths:
+  /invoices:
+    get:
+      summary: Получить список счетов
+      operationId: listInvoices
+      responses:
+        "200":
+          description: Список счетов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+    post:
+      summary: Создать новый счёт
+      operationId: createInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceCreate"
+      responses:
+        "201":
+          description: Счёт успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /invoices/{id}:
+    get:
+      summary: Получить данные счёта
+      operationId: getInvoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Объект счёта
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+    patch:
+      summary: Обновить статус счёта
+      operationId: updateInvoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [draft, issued, sent, paid, overdue, cancelled]
+      responses:
+        "200":
+          description: Обновлённый счёт
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /invoices/{id}/payments:
+    post:
+      summary: Добавить платёж к счёту
+      operationId: addPayment
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentCreate"
+      responses:
+        "201":
+          description: Платёж успешно добавлен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /invoices/{id}/pdf:
+    get:
+      summary: Скачать PDF-файл счёта
+      operationId: getInvoicePdf
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PDF-файл
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /invoices/{id}/send:
+    post:
+      summary: Отправить счёт клиенту
+      operationId: sendInvoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Счёт отправлен успешно
+
+  /payments:
+    get:
+      summary: Получить список платежей
+      operationId: listPayments
+      responses:
+        "200":
+          description: Список платежей
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+
+components:
+  schemas:
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoice_number:
+          type: string
+        company_id:
+          type: string
+          nullable: true
+        candidate_id:
+          type: string
+          nullable: true
+        issue_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+        currency:
+          type: string
+        subtotal:
+          type: number
+        vat_total:
+          type: number
+        total_amount:
+          type: number
+        status:
+          type: string
+          enum: [draft, issued, sent, paid, overdue, cancelled]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+
+    InvoiceItem:
+      type: object
+      properties:
+        description:
+          type: string
+        qty:
+          type: number
+        unit_price:
+          type: number
+        vat_rate:
+          type: number
+        total:
+          type: number
+
+    InvoiceCreate:
+      type: object
+      properties:
+        company_id:
+          type: string
+          nullable: true
+        candidate_id:
+          type: string
+          nullable: true
+        contract_id:
+          type: string
+          nullable: true
+        issue_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+        currency:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        invoice_id:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        payment_date:
+          type: string
+          format: date
+        method:
+          type: string
+          enum: [bank_transfer, card, cash, other]
+        reference_number:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed, failed]
+
+    PaymentCreate:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        payment_date:
+          type: string
+          format: date
+        method:
+          type: string
+          enum: [bank_transfer, card, cash, other]
+        reference_number:
+          type: string

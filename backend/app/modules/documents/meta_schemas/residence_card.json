@@ -1,0 +1,9 @@
+{
+  "fields": {
+    "card_number": { "type": "string", "required": true, "regex": "^[A-Z0-9]{8,12}$" },
+    "type": { "type": "string", "required": true, "enum": ["temporary","permanent","eu_long_term"] },
+    "issued_at": { "type": "date", "required": true },
+    "expires_at": { "type": "date", "required": true }
+  },
+  "ocr": { "langs": ["eng","pol"], "hints": ["residence_card"] }
+}

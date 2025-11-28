@@ -1,0 +1,107 @@
+common:
+  - key: HF
+    value: HostFlow (основная система)
+  - key: RBAC
+    value: Role-Based Access Control (модель ролей и прав)
+  - key: RLS
+    value: Row-Level Security (изоляция по tenant)
+  - key: API
+    value: Application Programming Interface
+  - key: DB
+    value: Database
+  - key: CI
+    value: Continuous Integration
+  - key: MVP
+    value: Minimum Viable Product
+
+modules:
+  - key: INV
+    value: Invoicing (счета и оплаты)
+  - key: PAY
+    value: Payments (оплаты)
+  - key: REF
+    value: Refunds (возвраты)
+  - key: DOC
+    value: Documents (документы кандидатов)
+  - key: TMP
+    value: Document Templates
+  - key: CPL
+    value: Candidate Portal
+  - key: CLP
+    value: Client Portal
+  - key: TRN
+    value: Training (обучение)
+  - key: LGT
+    value: Logistics (логистика)
+  - key: TCH
+    value: Tachograph (тахограф)
+  - key: CMP
+    value: Compliance (проверки и соответствие)
+  - key: FIN
+    value: Fin Checks (финансовые проверки)
+  - key: PRV
+    value: Providers (внешние поставщики)
+  - key: SCH
+    value: Scheduler (планировщик)
+  - key: MCH
+    value: Matching Engine
+  - key: ONB
+    value: Onboarding (ввод кандидата)
+  - key: ESI
+    value: E-Signature (электронная подпись)
+  - key: BOP
+    value: Bulk Operations
+  - key: EXP
+    value: Import/Export
+  - key: REP
+    value: Reporting (отчётность)
+  - key: COM
+    value: Communication / Notifications
+  - key: RUL
+    value: Ruleset (набор бизнес-правил)
+
+portals:
+  - key: CND
+    value: Candidate (водитель / кандидат)
+  - key: CLI
+    value: Client (транспортная компания)
+  - key: ADM
+    value: Admin (панель управления)
+  - key: AGT
+    value: Agency (агентство / посредник)
+
+tech:
+  - key: JWT
+    value: JSON Web Token
+  - key: ORM
+    value: Object-Relational Mapping
+  - key: DDL
+    value: Data Definition Language (SQL)
+  - key: DML
+    value: Data Manipulation Language (SQL)
+  - key: REST
+    value: Representational State Transfer (HTTP API)
+  - key: CRUD
+    value: Create, Read, Update, Delete
+  - key: UX
+    value: User Experience
+  - key: UI
+    value: User Interface
+  - key: QA
+    value: Quality Assurance
+
+integration:
+  - key: WH
+    value: Webhooks
+  - key: APIK
+    value: API Keys
+  - key: EXT
+    value: External Providers
+  - key: IDV
+    value: Identity Verification
+  - key: OCR
+    value: Optical Character Recognition
+  - key: AI
+    value: Artificial Intelligence
+  - key: ML
+    value: Machine Learning

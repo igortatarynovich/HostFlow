@@ -1,0 +1,12 @@
+{
+  "fields": {
+    "decision_number": { "type": "string", "required": true },
+    "employer_name": { "type": "string", "required": true },
+    "work_address": { "type": "string", "required": false },
+    "voivodeship": { "type": "string", "required": false },
+    "issued_at": { "type": "date", "required": true },
+    "valid_from": { "type": "date", "required": true },
+    "valid_to": { "type": "date", "required": true }
+  },
+  "ocr": { "langs": ["pol"], "hints": ["zezwolenie_A", "work_permit"] }
+}

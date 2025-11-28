@@ -1,0 +1,54 @@
+{
+  "version": "1.1.0",
+  "expiring_soon_default_days": 30,
+  "candidate": {
+    "defaults": {
+      "requiredTypes": ["driver_license", "code95", "tacho_card", "passport"],
+      "optionalTypes": [
+        "driver_license_code95",
+        "national_id",
+        "visa",
+        "residence_permit",
+        "medical_certificate",
+        "psych_tests",
+        "adr",
+        "decision",
+        "additional_document"
+      ]
+    },
+    "overrides": [
+      {
+        "when": { "residency_status": ["eu_citizen"] },
+        "require": ["national_id"],
+        "remove": ["passport", "visa", "residence_permit", "decision"]
+      },
+      {
+        "when": { "residency_status": ["visa", "none", "no_residence_card"] },
+        "require": ["passport", "visa"],
+        "remove": ["national_id"]
+      },
+      {
+        "when": { "residency_status": ["card"] },
+        "require": ["passport", "residence_permit"],
+        "remove": ["national_id"]
+      }
+    ]
+  },
+  "vacancy": {
+    "additions": [
+      { "when": { "requires_driver_attestation": true }, "require": ["driver_certificate"] }
+    ]
+  },
+  "validity": {
+    "national_id": { "expiring_soon_days": 180 },
+    "code95": { "expiring_soon_days": 45 },
+    "driver_license": { "expiring_soon_days": 60 },
+    "passport": { "expiring_soon_days": 180 },
+    "visa": { "expiring_soon_days": 90 },
+    "residence_permit": { "expiring_soon_days": 90 },
+    "tacho_card": { "expiring_soon_days": 60 },
+    "medical_certificate": { "expiring_soon_days": 30 },
+    "psych_tests": { "expiring_soon_days": 30 },
+    "adr": { "expiring_soon_days": 60 }
+  }
+}

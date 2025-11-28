@@ -1,0 +1,9 @@
+{
+  "fields": {
+    "training_type": { "type": "string", "required": false },
+    "provider": { "type": "string", "required": false },
+    "training_date": { "type": "date", "required": true },
+    "expires_at": { "type": "date", "required": false }
+  },
+  "ocr": { "langs": ["pol"], "hints": ["szkolenia_BHP", "training"] }
+}

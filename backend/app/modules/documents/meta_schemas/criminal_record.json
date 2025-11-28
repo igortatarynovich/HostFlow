@@ -1,0 +1,9 @@
+{
+  "fields": {
+    "issued_at": { "type": "date", "required": true },
+    "issuer": { "type": "string", "required": false },
+    "country": { "type": "string", "required": false, "enum": "ISO3166-1-alpha2" },
+    "valid_until": { "type": "date", "required": false }
+  },
+  "ocr": { "langs": ["eng","pol"], "hints": ["criminal_record"] }
+}

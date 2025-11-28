@@ -1,0 +1,19 @@
+**Document Expiry Notifications — Summary**
+
+1. **Trigger Logic**  
+   Each document (`documents.expiry_date`) has a timer set.  
+   A daily scheduler runs at 03:00 to check expiry dates.  
+   Notifications are generated when `expiry_date - now() ≤ 30, 14, 7 days`.
+
+2. **Notification Channels**  
+   Notifications are sent via Email, web push, and WhatsApp (through the notifications service).  
+   Message format:  
+   _"Документ {name} истекает {expiry_date}. Свяжитесь с менеджером или обновите документ."_
+
+3. **Targets**  
+   Notifications are delivered to Candidates (Candidate Portal) and Recruiters/Managers (Admin/Client Portal).
+
+4. **Integration**  
+   All events are logged in `notifications_log` and `audit_log`.  
+   External systems receive a webhook `document.expiry_alert`.  
+   Notifications are automatically canceled upon document updates.

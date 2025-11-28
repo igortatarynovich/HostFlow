@@ -1,0 +1,15 @@
+{
+  "visa": {
+    "requires_any_of": ["assignment","work_permit"]
+  },
+  "swiadectwo_kierowcy": {
+    "requires_all_of": ["contract"],
+    "notes": "Перевозчик PL, трудовой договор действующий"
+  },
+  "tachograph_card": {
+    "requires_all_of": ["driver_license","photo_id","identity_document"]
+  },
+  "residence_card": {
+    "optional_inputs": ["contract","assignment","work_permit"]
+  }
+}

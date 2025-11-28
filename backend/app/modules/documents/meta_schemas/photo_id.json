@@ -1,0 +1,8 @@
+{
+  "fields": {
+    "title": { "type": "string", "required": false },
+    "taken_at": { "type": "date", "required": false },
+    "photographer": { "type": "string", "required": false },
+    "notes": { "type": "string", "required": false }
+  }
+}

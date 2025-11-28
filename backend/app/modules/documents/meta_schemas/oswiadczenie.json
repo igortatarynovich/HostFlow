@@ -1,0 +1,13 @@
+{
+  "fields": {
+    "permit_number": { "type": "string", "required": false },
+    "employer_name": { "type": "string", "required": true },
+    "job_title": { "type": "string", "required": false },
+    "voivodeship": { "type": "string", "required": false },
+    "submitted_at": { "type": "date", "required": false },
+    "issued_at": { "type": "date", "required": true },
+    "valid_from": { "type": "date", "required": true },
+    "valid_to": { "type": "date", "required": true }
+  },
+  "ocr": { "langs": ["pol"], "hints": ["oswiadczenie", "work_permit"] }
+}

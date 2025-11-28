@@ -1,0 +1,23 @@
+**Approval Flow — Summary**
+
+1. **Stages**  
+   - `requested` → `in_review` → `approved` / `rejected`  
+   - Дополнительные статусы: `auto_approved`, `needs_revision`.
+
+2. **Entities**  
+   - Применимо к: `contracts`, `orders`, `documents`, `onboarding`, `compliance`.  
+   - Каждое действие логируется в `audit_log`.
+
+3. **Rules**  
+   - Только пользователь с ролью `OWNER` или `APPROVER` может утверждать.  
+   - При `approved` → триггер e-signature или генерации документа.  
+   - При `rejected` → уведомление инициатору и комментарий обязательный.
+
+4. **Automation**  
+   - Использует `scheduler` для напоминаний (48h и 24h).  
+   - `notifications` → email, web, WhatsApp.  
+   - Может вызывать `webhook event`: `approval.completed`.
+
+5. **Linked Data**  
+   - ID связи (`related_model`, `related_id`) фиксируется в `approvals` таблице.  
+   - Версии правил согласований управляются через `ruleset_versioning`.

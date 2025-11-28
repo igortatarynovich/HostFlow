@@ -1,0 +1,8 @@
+{
+  "expiring_notice_days": [60,30,14,7,1],
+  "blocking_docs_for_trip": [
+    "assignment","work_permit","visa","swiadectwo_kierowcy",
+    "driver_license","tachograph_card","contract","identity_document","medical_certificate"
+  ],
+  "blocking_logic": "ETA_trip = max(ready_dates_of_blocking_docs)"
+}

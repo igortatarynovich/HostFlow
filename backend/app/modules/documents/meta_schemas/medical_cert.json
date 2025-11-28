@@ -1,0 +1,9 @@
+{
+  "fields": {
+    "certificate_number": { "type": "string", "required": false },
+    "clinic_name": { "type": "string", "required": false },
+    "issued_at": { "type": "date", "required": true },
+    "expires_at": { "type": "date", "required": true }
+  },
+  "ocr": { "langs": ["eng","pol"], "hints": ["medical_certificate"] }
+}

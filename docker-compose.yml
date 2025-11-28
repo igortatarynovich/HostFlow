@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hostflow
+      POSTGRES_PASSWORD: hostflow
+      POSTGRES_DB: hostflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hostflow -d hostflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: ./backend/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://hostflow:hostflow@db:5432/hostflow
+      - ASYNC_DATABASE_URL=postgresql+asyncpg://hostflow:hostflow@db:5432/hostflow
+      - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://hostflow:hostflow@db:5432/hostflow
+      - SYNC_DATABASE_URL=postgresql+psycopg://hostflow:hostflow@db:5432/hostflow
+      - UVICORN_WORKERS=1
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports: ["8000:8000"]
+    volumes:
+      - ./backend:/app
+      # раздача собранного фронта Vite через FastAPI StaticFiles
+      - ./hostflow-frontend/dist:/app/public:ro
+      # Mount samples for template extraction
+      - ./samples:/opt/HostFlow/samples:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8000'"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+  caddy:
+    image: caddy:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

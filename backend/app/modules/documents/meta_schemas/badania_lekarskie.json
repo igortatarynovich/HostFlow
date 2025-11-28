@@ -1,0 +1,10 @@
+{
+  "fields": {
+    "certificate_number": { "type": "string", "required": false },
+    "clinic": { "type": "string", "required": true },
+    "doctor": { "type": "string", "required": false },
+    "exam_date": { "type": "date", "required": true },
+    "expires_at": { "type": "date", "required": true }
+  },
+  "ocr": { "langs": ["pol"], "hints": ["medical_certificate", "badania"] }
+}

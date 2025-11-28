@@ -1,0 +1,109 @@
+core:
+  - path: docs/specs/core.md
+    anchors:
+      - id: core-architecture
+        desc: Основная архитектура и принципы многоарендности
+      - id: core-rbac
+        desc: RBAC, роли и ограничения доступа
+      - id: core-data
+        desc: Базовые сущности: candidates, companies, documents, vacancies
+
+rules:
+  - path: docs/specs/rules.md
+    anchors:
+      - id: rules-docs
+        desc: Правила зависимостей документов
+      - id: rules-invoicing
+        desc: Правила финансовых модулей и подписей
+      - id: rules-logistics
+        desc: Логика этапов логистики и автоматические статусы
+
+modules:
+  - path: docs/specs/modules/invoicing.md
+    anchors:
+      - id: invoicing-core
+        desc: Основная логика инвойсов и оплат
+      - id: invoicing-db
+        desc: Структура таблиц invoicing, payments, refunds
+      - id: invoicing-api
+        desc: REST API для создания и обновления счетов
+  - path: docs/specs/modules/candidate_portal.md
+    anchors:
+      - id: portal-candidate-core
+        desc: Карточка и функции кандидата
+      - id: portal-candidate-access
+        desc: Авторизация, сессии и доступ
+  - path: docs/specs/modules/company_profile.md
+    anchors:
+      - id: company-profile-cdm
+        desc: Canonical Data Model (legal, billing, banking, operations)
+      - id: company-profile-api
+        desc: API и проверка валидности Company Profile
+  - path: docs/specs/modules/client_portal.md
+    anchors:
+      - id: portal-client-core
+        desc: Доступ компаний к своим данным
+      - id: portal-client-finance
+        desc: Счета, контракты и заказы клиентов
+  - path: docs/specs/modules/training.md
+    anchors:
+      - id: training-core
+        desc: Учёт и автоматизация обучения водителей
+      - id: training-certs
+        desc: Сертификаты и напоминания
+  - path: docs/specs/modules/additional_services.md
+    anchors:
+      - id: services-domain
+        desc: Каталог дополнительных услуг и заказы
+      - id: services-api
+        desc: API и бизнес-правила Additional Services
+
+db:
+  - path: docs/specs/db/schema_invoicing.sql
+    anchors:
+      - id: db-invoices
+        desc: SQL-схема таблицы invoices
+      - id: db-payments
+        desc: SQL-схема таблицы payments
+      - id: db-refunds
+        desc: SQL-схема таблицы refunds
+  - path: docs/specs/db/schema_candidate_portal.sql
+    anchors:
+      - id: db-candidate-access
+        desc: Сессии и токены портала кандидатов
+      - id: db-candidate-consents
+        desc: GDPR согласия кандидатов
+
+api:
+  - path: docs/specs/api/invoicing.http
+    anchors:
+      - id: api-invoices
+        desc: Примеры HTTP-запросов для счетов
+  - path: docs/specs/api/templates.http
+    anchors:
+      - id: api-templates
+        desc: Примеры HTTP-запросов для шаблонов документов
+
+glossary:
+  - path: docs/specs/glossary.md
+    anchors:
+      - id: glossary-main
+        desc: Термины, алиасы и определения по всем модулям
+
+meta:
+  - path: docs/specs/roadmap.md
+    anchors:
+      - id: roadmap-2025
+        desc: Основные фазы и приоритеты разработки
+  - path: docs/specs/spec-documents.md
+    anchors:
+      - id: spec-docs-dependencies
+        desc: Зависимости документов и интеграции с другими модулями
+  - path: docs/_llm/abbreviations.yml
+    anchors:
+      - id: llm-abbreviations
+        desc: Список сокращений и алиасов
+  - path: docs/_llm/snippets/
+    anchors:
+      - id: snippets
+        desc: Часто используемые фрагменты (RLS, expiry, approvals)

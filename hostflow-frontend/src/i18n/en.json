@@ -1,0 +1,4041 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "access_denied": "You don't have access to this section.",
+    "saving": "Saving…",
+    "labels": {
+      "not_available": "—",
+      "unnamed": "Unnamed",
+      "id": "ID",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "actions": {
+      "back": "Back",
+      "next": "Next",
+      "update": "Update",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Create",
+      "close": "Close",
+      "copy_link": "Copy link",
+      "show_more": "Show more",
+      "more": "More actions",
+      "clear": "Clear",
+      "reset": "Reset",
+      "retry": "Retry",
+      "add": "Add",
+      "apply": "Apply",
+      "refresh": "Refresh",
+      "collapse": "Collapse",
+      "expand": "Expand"
+    },
+    "errors": {
+      "unknown": "Unknown error"
+    },
+    "candidate_card": {
+      "contacts": {
+        "options": {
+          "none": "Not selected",
+          "phone": "Phone",
+          "viber": "Viber",
+          "whatsapp": "WhatsApp",
+          "telegram": "Telegram"
+        }
+      },
+      "status": {
+        "poland_basis": {
+          "none": "Not specified",
+          "visa_d": "Visa D",
+          "visa_c": "Visa C",
+          "karta_pobytu": "Residence card",
+          "eu_citizen": "EU citizenship",
+          "other": "Other"
+        }
+      },
+      "intake": {
+        "trailers": {
+          "mega": "Mega",
+          "standard": "Standard",
+          "platform": "Platform",
+          "frigo": "Refrigerated",
+          "tent": "Curtain / tent",
+          "container": "Container chassis",
+          "tandem": "Tandem",
+          "car_transporter": "Car transporter"
+        },
+        "routes": {
+          "eu": "EU",
+          "cis": "CIS",
+          "uk": "United Kingdom",
+          "scandi": "Scandinavia",
+          "local": "Local"
+        }
+      },
+      "select": {
+        "empty": "— select —",
+        "search": "Search…",
+        "search_country": "Search country/code…",
+        "no_results": "No matches",
+        "multi_none": "No values selected",
+        "multi_selected": "{count} selected"
+      },
+      "errors": {
+        "employment": {
+          "missing_employer": "Specify an employer for each employment record.",
+          "missing_start": "Specify a start date for each employment record.",
+          "end_before_start": "End date cannot be earlier than the start date.",
+          "load_failed": "Could not load employment history."
+        }
+      },
+      "labels": {
+        "current_vacancy": "Current vacancy"
+      }
+    },
+    "leads": {
+      "title": "Leads",
+      "subtitle": "New requests from Meta Ads and other sources",
+      "filters": {
+        "status": "Status",
+        "status_all": "All statuses"
+      },
+      "statuses": {
+        "new": "New",
+        "processed": "Candidate created",
+        "duplicated": "Duplicate",
+        "needs_routing": "Needs routing",
+        "failed": "Error"
+      },
+      "table": {
+        "created": "Created",
+        "status": "Status",
+        "company": "Company",
+        "vacancy": "Vacancy",
+        "contact": "Contact",
+        "source": "Source",
+        "candidate": "Candidate",
+        "error": "Error"
+      },
+      "states": {
+        "empty": "No leads found."
+      },
+      "messages": {
+        "load_failed": "Failed to load leads."
+      },
+      "pagination": {
+        "shown": "Showing {count} of {total}",
+        "prev": "Previous",
+        "next": "Next"
+      }
+    },
+    "words": {
+      "yes": "Yes",
+      "no": "No"
+    }
+  },
+  "scanner": {
+    "place_in_frame": "Place the document inside the frame",
+    "sequence_required": "Capture sides in order",
+    "sides_order": "Sides: {order}",
+    "min_pages": "Minimum pages: {count}",
+    "min_files": "Minimum files: {count}",
+    "max_files": "Maximum files: {count}",
+    "accept_formats": "Formats: {formats}",
+    "max_total": "Total size ≤ {mb} MB",
+    "max_per_page": "Up to {mb} MB per page",
+    "preset_hint": "Preset: {preset}",
+    "upload_any": "File upload",
+    "upload_sides": "Scan both sides",
+    "upload_paged": "Scan page by page"
+  },
+  "documents": {
+    "required_tag": "Required document",
+    "optional_tag": "Optional",
+    "requirements": "Document requirements",
+    "metadata_required": "Please fill these fields first",
+    "actions": {
+      "upload": "Upload document",
+      "scan_mobile": "Scan with phone",
+      "scan_mobile_hint": "Open the scanner on your phone via QR or link.",
+      "scanner_stub": "Scan with preset (coming soon)",
+      "order": "Request document"
+    },
+    "labels": {
+      "requested_from": "Provided by",
+      "requested_from_driver": "Candidate",
+      "requested_from_employer": "Employer",
+      "requested_from_agency": "Agency",
+      "preset": "Preset: {preset}"
+    },
+    "status": {
+      "missing": "no file",
+      "requested": "waiting",
+      "in_progress": "in progress",
+      "submitted": "submitted",
+      "received": "uploaded",
+      "delivered": "delivered",
+      "completed": "completed",
+      "approved": "approved",
+      "expired": "expired",
+      "overdue": "overdue",
+      "rejected": "needs reupload",
+      "default": "waiting"
+    },
+    "questions": {
+      "have_document": "Do you have this document?"
+    },
+    "work_permit": {
+      "ordered": "This document will be ordered by the agency after we review your files."
+    },
+    "meta_fields": {
+      "number": "Document number",
+      "categories": "Categories",
+      "issued_by": "Issued by",
+      "issued_at": "Issue date",
+      "expires_at": "Expiry date",
+      "country": "Country",
+      "nationality": "Citizenship",
+      "type": "Type",
+      "valid_from": "Valid from",
+      "valid_to": "Valid to",
+      "voivodeship": "Voivodeship",
+      "title": "Title",
+      "description": "Description",
+      "issued_for": "Issued for"
+    },
+    "form": {
+      "type_label": "Document type",
+      "file_label": "File"
+    }
+  },
+  "app": {
+    "layout": {
+      "toggle_sidebar": "Toggle menu",
+      "nav": {
+        "dashboard": "Dashboard",
+        "companies": "Companies",
+        "leads": "Leads",
+        "notifications": "Notifications",
+        "vacancies": "Vacancies",
+        "services": "Additional services",
+        "candidates": "Candidates",
+        "pipeline": "Pipeline",
+        "users": "Users",
+        "company_access": "Company access",
+        "meta_leads": "Meta leads",
+        "deletion_requests": "Deletion requests",
+        "ruleset": "Ruleset"
+      },
+      "section": {
+        "settings": "Settings"
+      },
+      "actions": {
+        "logout": "Sign out"
+      }
+    },
+    "nav": {
+      "groups": {
+        "overview": "Overview",
+        "people": "People",
+        "workflows": "Workflows",
+        "leads": "Leads",
+        "admin": "Admin",
+        "account": "Account"
+      },
+      "items": {
+        "overview": "Overview",
+        "candidates": "Candidates",
+        "clients": "Companies",
+        "vacancies": "Vacancies",
+        "documents": "Documents",
+        "services": "Services & orders",
+        "invoices": "Invoices",
+        "reminders": "Reminders",
+        "leads": "Leads",
+        "settings": "Settings",
+        "settings_users": "Users & roles",
+        "settings_billing": "Billing & Team",
+        "settings_tenants": "Platform tenants",
+        "settings_docs": "Document catalog",
+        "settings_integrations": "Integrations / Meta Leads",
+        "settings_ruleset": "Ruleset versions",
+        "settings_audit": "Audit log",
+        "profile": "Profile",
+        "logout": "Sign out"
+      }
+    },
+    "shell": {
+      "sidebar": {
+        "workspace": "Workspace",
+        "close_menu": "Close menu"
+      },
+      "actions": {
+        "logout": "Sign out",
+        "profile": "Profile"
+      }
+    },
+    "topbar": {
+      "actions": {
+        "open_menu": "Open menu",
+        "reminders": "Reminders",
+        "return_to_platform": "Return to platform admin"
+      },
+      "search": {
+        "open": "Search",
+        "placeholder": "Search candidates, companies, documents…",
+        "hint": "Enter at least 2 characters to search.",
+        "loading": "Searching…",
+        "empty": "No results found.",
+        "error": "Search failed",
+        "quick_section": "Section",
+        "results": {
+          "candidate": "Candidate",
+          "company": "Company",
+          "document": "Document"
+        }
+      }
+    },
+    "profile": {
+      "title": "My profile",
+      "subtitle": "Manage your personal data, UI preferences, and security.",
+      "sections": {
+        "profile": {
+          "title": "Profile",
+          "description": "Update personal details, contacts, and avatar."
+        },
+        "preferences": {
+          "title": "UI preferences & quick actions",
+          "description": "Configure language, timezone, formats, and saved list views."
+        },
+        "notifications": {
+          "title": "Email notifications",
+          "description": "Choose events and frequency. Email delivery only for now."
+        },
+        "security": {
+          "title": "Access & role",
+          "description": "Information about your role, access scope, and password."
+        },
+        "sessions": {
+          "title": "Active sessions",
+          "description": "Review signed-in devices and revoke sessions if needed."
+        }
+      },
+      "avatar": {
+        "label": "Avatar",
+        "description": "Drag a file or click to choose an image (PNG/JPEG/WebP).",
+        "upload": "Upload"
+      },
+      "fields": {
+        "first_name": "First name",
+        "last_name": "Last name",
+        "position": "Position",
+        "phone": "Phone",
+        "email": "Email",
+        "birth_date": "Date of birth",
+        "country": "Country",
+        "city": "City"
+      },
+      "preferences": {
+        "labels": {
+          "locale": "Interface language",
+          "timezone": "Timezone",
+          "date_format": "Date format",
+          "phone_format": "Phone format",
+          "theme": "Theme",
+          "default_company": "Default company"
+        },
+        "company_placeholder": "— Not selected —"
+      },
+      "theme": {
+        "system": "Follow system",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "saved_views": {
+        "title": "Saved views",
+        "description": "Create filter presets for candidate and vacancy lists. You can rename, edit, and set defaults.",
+        "modules": {
+          "candidates": "Candidates",
+          "vacancies": "Vacancies"
+        },
+        "add": "Add view",
+        "empty": "No views yet.",
+        "badge_default": "Default",
+        "actions": {
+          "set_default": "Set as default",
+          "rename": "Rename",
+          "filters": "Filters"
+        },
+        "prompts": {
+          "add": "Name for {module} view",
+          "filters": "Edit filters (JSON)",
+          "filters_invalid": "Invalid JSON. Changes were not applied.",
+          "rename": "New name for the view"
+        }
+      },
+      "notifications": {
+        "frequency": {
+          "immediate": "Immediately",
+          "daily_digest": "Daily digest"
+        },
+        "items": {
+          "candidate_new_assignment": {
+            "title": "New candidate assigned",
+            "description": "Notify me when a candidate is assigned to my vacancies."
+          },
+          "candidate_stage_changed": {
+            "title": "Candidate stage changed",
+            "description": "Alerts when a candidate moves to another pipeline stage."
+          },
+          "documents_deadline": {
+            "title": "Document deadlines",
+            "description": "Reminders about document due dates for my candidates."
+          },
+          "mentions_direct": {
+            "title": "@mentions",
+            "description": "Messages where I'm mentioned directly."
+          }
+        }
+      },
+      "messages": {
+        "profile_saved": "Profile updated",
+        "profile_error": "Failed to save profile",
+        "preferences_saved": "Preferences saved",
+        "preferences_error": "Failed to save preferences",
+        "notifications_saved": "Notification settings saved",
+        "notifications_error": "Failed to save notification settings",
+        "password_saved": "Password updated",
+        "password_error": "Failed to update password",
+        "password_mismatch": "Password confirmation does not match",
+        "avatar_error": "Could not upload avatar. Try another file.",
+        "sessions_revoke_error": "Could not end sessions. Try again."
+      },
+      "security": {
+        "role": "Role",
+        "supervisor": "Supervisor",
+        "companies": "Companies assigned to me",
+        "companies_empty": "No explicit assignments.",
+        "company_edit_badge": "Editing",
+        "last_login": "Last login",
+        "password": {
+          "title": "Change password",
+          "hint": "New password must be at least 12 characters and include upper/lowercase letters, digits, and symbols.",
+          "fields": {
+            "current": "Current password",
+            "new": "New password",
+            "confirm": "Confirmation"
+          },
+          "submit": "Change password",
+          "submitting": "Updating…"
+        }
+      },
+      "sessions": {
+        "refresh": "Refresh list",
+        "refreshing": "Refreshing…",
+        "revoke": "Sign out on all devices",
+        "empty": "No active sessions.",
+        "unknown_device": "Unknown device",
+        "ip": "IP: {value}",
+        "created": "Created: {value}",
+        "last_seen": "Last activity: {value}",
+        "revoked_at": "Ended: {value}",
+        "current_badge": "Current"
+      }
+    },
+    "login": {
+      "title": "Sign in to HostFlow",
+      "fields": {
+        "email": "Email",
+        "password": "Password"
+      },
+      "hero": {
+        "title": "Welcome back to HostFlow",
+        "subtitle": "Track candidates, documents, and hiring tasks in one workspace.",
+        "points": {
+          "pipeline": "Unified candidate pipeline",
+          "documents": "Automated document control",
+          "analytics": "Hiring analytics and alerts"
+        }
+      },
+      "actions": {
+        "submit": "Sign in",
+        "submitting": "Signing in…"
+      },
+      "errors": {
+        "invalid": "Incorrect email or password. Check the data and try again.",
+        "generic": "Sign-in failed. Please try again later.",
+        "expired": "Your session has expired. Please sign in again to continue."
+      },
+      "value_props": {
+        "title": "One workspace for every hiring team",
+        "subtitle": "Docs, statuses, reminders, and analytics — with secure access for managers and clients.",
+        "items": {
+          "pipeline": {
+            "title": "Full hiring pipeline",
+            "body": "Monitor every stage, SLA, and recruiter load without spreadsheets."
+          },
+          "documents": {
+            "title": "Document control",
+            "body": "Automatically collect, verify, and remind candidates about expiring files."
+          },
+          "support": {
+            "title": "Shared access & support",
+            "body": "Give managers and clients a branded portal with updates in real time."
+          }
+        }
+      }
+    },
+    "platform": {
+      "tenants": {
+        "title": "Platform tenants",
+        "subtitle": "Provision tenants, adjust seat limits, and impersonate customers from the control center.",
+        "filters": {
+          "search": "Search tenants…",
+          "status": {
+            "all": "All statuses",
+            "active": "Active",
+            "trial": "Trial",
+            "suspended": "Suspended"
+          },
+          "type": {
+            "all": "All types",
+            "agency": "Agency",
+            "company": "Company",
+            "platform": "Platform"
+          }
+        },
+        "table": {
+          "title": "Tenants",
+          "count": "{count} tenants",
+          "name": "Tenant",
+          "plan": "Plan",
+          "seats": "Seats",
+          "status": "Status",
+          "companies_limit": "Companies limit: {count}",
+          "seat_summary": "{recruiters} recruiters · {supervisors} supervisors",
+          "empty": "No tenants match the filters."
+        },
+        "usage": {
+          "title": "Seat usage",
+          "limit": "{used}/{limit} seats used",
+          "unlimited": "{used} seats used",
+          "recruiters": "Recruiters",
+          "supervisors": "Supervisors",
+          "client_managers": "Client managers",
+          "viewers": "Viewers"
+        },
+        "license": {
+          "title": "License & limits",
+          "plan": "Plan",
+          "expires_at": "Expires at",
+          "max_recruiters": "Max recruiters",
+          "max_supervisors": "Max supervisors",
+          "max_client_managers": "Max client managers",
+          "max_viewers": "Max viewers",
+          "max_storage_gb": "Max storage (GB)",
+          "max_companies": "Max companies",
+          "auto_renew": "Auto-renew",
+          "notes": "Notes"
+        },
+        "branding": {
+          "title": "Workspace branding",
+          "workspace_label": "Display name",
+          "upload": "Upload logo",
+          "uploading": "Uploading…",
+          "logo_hint": "PNG/JPEG/WebP, max height 32px."
+        },
+        "modules": {
+          "title": "Tenant modules",
+          "description": "Toggle modules for this tenant without impersonation.",
+          "items": {
+            "candidates": "Candidates",
+            "companies": "Companies",
+            "vacancies": "Vacancies",
+            "documents": "Documents",
+            "leads": "Leads",
+            "services": "Services",
+            "client_portal": "Client portal"
+          },
+          "empty": "Module settings are unavailable for this tenant.",
+          "errors": {
+            "load_failed": "Failed to load module settings.",
+            "update_failed": "Failed to update module settings."
+          }
+        },
+        "access": {
+          "title": "Shared vacancies",
+          "subtitle": "Grant this tenant access to specific vacancies and their candidates.",
+          "counter": "{count} shared",
+          "empty": "No shared vacancies yet.",
+          "search_placeholder": "Search vacancies…",
+          "search_hint": "Enter at least 2 characters to search across all tenants.",
+          "search_min": "Enter at least 2 characters to search.",
+          "search_empty": "No vacancies matched that query.",
+          "messages": {
+            "updated": "Shared vacancies updated ({count}).",
+            "cleared": "All shared vacancies removed."
+          },
+          "actions": {
+            "refresh": "Refresh",
+            "remove": "Remove",
+            "search": "Search",
+            "searching": "Searching…",
+            "share": "Share",
+            "shared": "Already shared",
+            "clear_results": "Clear results"
+          },
+          "errors": {
+            "load_failed": "Failed to load shared vacancies.",
+            "update_failed": "Failed to update shared vacancies.",
+            "options_failed": "Failed to load vacancy suggestions."
+          },
+          "status": {
+            "draft": "Draft",
+            "open": "Open",
+            "hold": "On hold",
+            "closed": "Closed",
+            "archived": "Archived"
+          }
+        },
+        "detail": {
+          "subtitle": "Slug: {slug}",
+          "workspace_label": "Workspace label: {label}",
+          "nav": {
+            "overview": "Overview",
+            "branding": "Branding",
+            "license": "License",
+            "modules": "Modules",
+            "admins": "Administrators",
+            "seats": "Seats & usage"
+          },
+          "tabs": {
+            "overview": "Overview",
+            "billing": "Billing & seat requests",
+            "access": "Access & admins"
+          },
+          "type_label": "Tenant type",
+          "created_at": "Created at",
+          "client_portal": "Client portal",
+          "portal_enabled": "Enabled",
+          "portal_disabled": "Disabled",
+          "empty": "Select a tenant to view details."
+        },
+        "type": {
+          "agency": "Agency",
+          "company": "Company",
+          "platform": "Platform"
+        },
+        "status": {
+          "active": "Active",
+          "trial": "Trial",
+          "suspended": "Suspended"
+        },
+        "actions": {
+          "title": "Actions",
+          "refresh": "Refresh",
+          "refreshing": "Refreshing…",
+          "create": "New tenant",
+          "saving": "Saving…",
+          "save_license": "Save license",
+          "reset": "Reset",
+          "impersonate": "Impersonate",
+          "impersonating": "Switching…",
+          "impersonate_confirm": "Switch to tenant “{name}”? Your current session will be replaced.",
+          "manage_team": "Manage team",
+          "suspend": "Suspend",
+          "activate": "Reactivate",
+          "mark_trial": "Mark as trial",
+          "updating": "Applying…",
+          "cancel": "Cancel",
+          "creating": "Creating…"
+        },
+        "create": {
+          "title": "Create tenant",
+          "name": "Name",
+          "workspace_label": "Workspace label (optional)",
+          "slug": "Slug",
+          "initial_admin_email": "Initial admin email",
+          "initial_admin_name": "Initial admin full name",
+          "initial_admin_password": "Initial admin password",
+          "type": "Type",
+          "status": "Status",
+          "portal": "Client portal enabled"
+        },
+        "admins": {
+          "title": "Tenant admins",
+          "subtitle": "Create an administrator account for this tenant.",
+          "form": {
+            "email": "Email",
+            "full_name": "Full name (optional)",
+            "password": "Password",
+            "submit": "Create admin",
+            "required": "Email and password are required."
+          },
+          "success": "Administrator created. Share the credentials securely.",
+          "error": "Failed to create administrator."
+        },
+        "errors": {
+          "load_failed": "Failed to load tenants.",
+          "license_save_failed": "Could not save license settings.",
+          "branding_save_failed": "Could not update workspace label.",
+          "logo_upload_failed": "Logo upload failed.",
+          "status_change_failed": "Failed to update tenant status.",
+          "impersonate_failed": "Impersonation failed.",
+          "required_fields": "Name and slug are required.",
+          "initial_admin_password_required": "Initial admin password is required.",
+          "create_failed": "Failed to create tenant.",
+          "superadmin_only": "Platform tenants are available to superadmins only."
+        },
+        "seat_requests": {
+          "title": "Seat requests",
+          "subtitle": "Requests submitted by tenant administrators.",
+          "empty": "No seat requests yet.",
+          "summary": "{count} seats for {role}",
+          "status": {
+            "pending": "Pending",
+            "approved": "Approved",
+            "rejected": "Rejected"
+          },
+          "resolution": "Reply: {notes}",
+          "actions": {
+            "approve": "Approve",
+            "reject": "Reject",
+            "refresh": "Refresh list",
+            "confirm": "{status}: approve {count} seats?",
+            "notes_prompt": "Optional note for tenant (leave blank to skip)"
+          },
+          "errors": {
+            "load_failed": "Failed to load seat requests.",
+            "action_failed": "Failed to update seat request."
+          }
+        }
+      }
+    },
+    "settings": {
+      "team": {
+        "title": "Billing & Team",
+        "subtitle": "Track how many seats are used, toggle modules, and request additional capacity.",
+        "usage": {
+          "title": "Seat usage",
+          "recruiters": "Recruiters",
+          "supervisors": "Supervisors",
+          "client_managers": "Client managers",
+          "viewers": "Viewers"
+        },
+        "modules": {
+          "title": "Modules",
+          "description": "Enable or hide modules for everyone in this tenant. Users without permissions will still see only the allowed sections.",
+          "items": {
+            "candidates": "Candidates",
+            "companies": "Companies",
+            "vacancies": "Vacancies",
+            "documents": "Documents",
+            "leads": "Leads",
+            "services": "Services",
+            "client_portal": "Client portal"
+          }
+        },
+        "form": {
+          "title": "Request more seats",
+          "description": "Tell us which role needs more slots. We will notify platform admins and get back to you.",
+          "role": "Role",
+          "count": "How many seats?",
+          "message": "Message",
+          "submit": "Send request",
+          "roles": {
+            "administrator": "Administrators",
+            "supervisor": "Supervisors",
+            "recruiter": "Recruiters",
+            "client_manager": "Client managers",
+            "viewer": "Viewers"
+          }
+        },
+        "history": {
+          "title": "Seat request history",
+          "subtitle": "Latest self-service requests.",
+          "empty": "No seat requests yet.",
+          "status": {
+            "pending": "Pending",
+            "approved": "Approved",
+            "rejected": "Rejected"
+          },
+          "request_summary": "{count} seats for {role}",
+          "resolution": "Reply: {notes}"
+        },
+        "errors": {
+          "load_failed": "Failed to load billing overview.",
+          "modules_save_failed": "Could not update modules.",
+          "seat_request_failed": "Seat request failed. Try again later."
+        }
+      }
+    },
+    "admin": {
+      "users": {
+        "roles": {
+          "administrator": "Administrator",
+          "supervisor": "Supervisor",
+          "recruiter": "Recruiter",
+          "viewer": "Viewer"
+        },
+        "form": {
+          "email_label": "Email",
+          "email_placeholder": "user@hostflow.dev",
+          "full_name_label": "Full name",
+          "full_name_placeholder": "John Doe",
+          "short_id_label": "Short ID",
+          "short_id_placeholder": "USER001",
+          "role_label": "Role",
+          "supervisor_label": "Supervisor",
+          "supervisor_placeholder_required": "Select a supervisor",
+          "supervisor_placeholder_optional": "Not assigned",
+          "companies_label": "Companies (multi-select)",
+          "password_label": "Password (optional)",
+          "password_placeholder": "Leave blank — we will generate it",
+          "submit": "Create user",
+          "submitting": "Creating…"
+        },
+        "errors": {
+          "list_missing_endpoint": "Endpoint /api/v1/admin/users not found. Restart backend after updates.",
+          "list_failed": "Failed to load users",
+          "detail_load": "Could not load user card",
+          "audit_load": "Failed to load audit trail",
+          "tenant_override_load": "Could not load tenant info. Actions will still target this tenant.",
+          "tenant_lookup_failed": "Unable to load tenant suggestions. Try again.",
+          "change_role": "Failed to change user role",
+          "toggle_status": "Failed to update user status",
+          "revoke_refresh": "Failed to revoke refresh tokens",
+          "invite": "Failed to create invite",
+          "create": "Failed to create user",
+          "supervisor_update": "Failed to update supervisor",
+          "company_update_failed": "Failed to update company access"
+        },
+        "invite": {
+          "expiry_label": "Expiration (hours)",
+          "submit": "Send invite",
+          "submitting": "Sending…"
+        },
+        "table": {
+          "title": "Users",
+          "count": "{count} users",
+          "columns": {
+            "role": "Role",
+            "status": "Status",
+            "invited_at": "Invited at",
+            "actions": "Actions",
+            "email": "Email"
+          },
+          "status": {
+            "active": "Active",
+            "inactive": "Inactive",
+            "invited": "Invited"
+          },
+          "invite_expires_prefix": "until {date}",
+          "pending_registration": "Awaiting registration",
+          "actions": {
+            "activate": "Activate",
+            "deactivate": "Deactivate",
+            "revoke_refresh": "Revoke refresh token",
+            "audit": "Audit"
+          },
+          "empty": "No users found"
+        },
+        "list": {
+          "meta": {
+            "companies": "{count} companies",
+            "recruiters": "{count} recruiters",
+            "invited": "Invited {date}",
+            "created": "Joined {date}"
+          }
+        },
+        "detail": {
+          "title": "User card",
+          "empty": "Select a user to see details.",
+          "status_prefix": "Status:",
+          "refresh": {
+            "loading": "Refreshing…",
+            "action": "Refresh"
+          },
+          "tabs": {
+            "overview": "Profile",
+            "audit": "Audit",
+            "tenants": "Tenants",
+            "companies": "Companies"
+          },
+          "tenant_override": {
+            "heading": "Tenant override",
+            "description": "Send all actions to a specific tenant (advanced)",
+            "placeholder": "tenant-id",
+            "apply": "Apply override",
+            "clear": "Clear override",
+            "inactive": "Override inactive",
+            "search_hint": "Search by tenant ID",
+            "refresh_action": "Refresh"
+          },
+          "actions": {
+            "title": "User actions",
+            "tabs": {
+              "create": "Create",
+              "invite": "Invite"
+            }
+          },
+          "form": {
+            "email_label": "Email",
+            "email_placeholder": "user@hostflow.dev",
+            "full_name_label": "Full name",
+            "full_name_placeholder": "John Doe",
+            "short_id_label": "Short ID",
+            "short_id_placeholder": "USER001",
+            "role_label": "Role",
+            "supervisor_label": "Supervisor",
+            "supervisor_placeholder_required": "Select a supervisor",
+            "supervisor_placeholder_optional": "Not assigned",
+            "companies_label": "Companies (multi-select)",
+            "password_label": "Password (optional)",
+            "password_placeholder": "Leave blank — we will generate it"
+          },
+          "fields": {
+            "role": "Role",
+            "created_at": "Created",
+            "name": "Name",
+            "code": "Code"
+          },
+          "companies": {
+            "empty": "No companies assigned.",
+            "permissions": "Permissions: {permission}",
+            "permission_edit": "Read & edit",
+            "permission_read": "Read only",
+            "configure_acl": "Configure ACL"
+          },
+          "company_access": {
+            "title": "Company access",
+            "subtitle": "Select which companies this user can access. They will only see candidates and vacancies linked to them.",
+            "empty": "No companies available yet. Create a company first."
+          },
+          "audit": {
+            "refresh_loading": "Loading…",
+            "refresh": "Refresh audit",
+            "no_entries": "No audit entries yet.",
+            "system_actor": "system"
+          }
+        },
+        "page": {
+          "title": "Users & roles",
+          "subtitle": "Invite teammates, change roles, and manage access.",
+          "refresh": {
+            "action": "Refresh",
+            "loading": "Refreshing…"
+          },
+          "tenant_override": {
+            "heading": "Tenant override",
+            "description": "Send all admin actions to a specific tenant. Use with caution.",
+            "placeholder": "tenant-id",
+            "apply": "Apply override",
+            "clear": "Clear override",
+            "inactive": "Override inactive",
+            "search_hint": "Search by tenant ID"
+          },
+          "actions": {
+            "title": "User actions",
+            "tabs": {
+              "create": "Create",
+              "invite": "Invite",
+              "team": "Team"
+            }
+          }
+        }
+      },
+      "ruleset": {
+        "header": {
+          "title": "Ruleset versioning",
+          "subtitle": "Manage document ruleset revisions. Only administrators can publish new versions.",
+          "refresh": {
+            "loading": "Refreshing…",
+            "action": "Refresh"
+          },
+          "usage_refresh": {
+            "loading": "Usage…",
+            "action": "Refresh usage"
+          }
+        },
+        "create": {
+          "title": "Create a new version",
+          "description": "Edit the rules JSON and leave a comment. You can keep it as draft or activate immediately.",
+          "json_label": "Rules JSON",
+          "comment_label": "Comment",
+          "comment_placeholder": "Short description of changes",
+          "activate_toggle": "Activate right away",
+          "save": "Save version",
+          "copy_active": "Copy active version to editor"
+        },
+        "history": {
+          "title": "Version history",
+          "columns": {
+            "version": "Version",
+            "status": "Status",
+            "comment": "Comment",
+            "signature": "Signature",
+            "author": "Author",
+            "created": "Created",
+            "actions": "Actions"
+          },
+          "status": {
+            "active": "Active",
+            "draft": "Draft"
+          },
+          "actions": {
+            "use_as_draft": "Use in editor",
+            "diff": "Diff",
+            "activate": "Activate",
+            "rollback": "Rollback"
+          },
+          "empty": "No ruleset versions yet."
+        },
+        "diff": {
+          "title": "Diff for version {version}",
+          "subtitle_engine": "Engine: {engine}",
+          "subtitle_previous": "Comparison with previous version",
+          "loading": "Loading diff…",
+          "summary": {
+            "added": "Added: {count}",
+            "removed": "Removed: {count}",
+            "changed": "Changed: {count}"
+          },
+          "lists": {
+            "added": "Added",
+            "removed": "Removed",
+            "changed": "Changed"
+          },
+          "list_empty": "—"
+        },
+        "usage": {
+          "title": "Usage log",
+          "refresh": {
+            "loading": "Loading…",
+            "action": "Refresh"
+          },
+          "summary_title": "Summary",
+          "summary_empty": "No entries yet.",
+          "events_title": "Recent events",
+          "events_empty": "No usage records yet.",
+          "event_ref": "ref: {ref}"
+        },
+        "actions": {
+          "confirm_activate": "Make version {version} active?",
+          "rollback_prompt": "Rollback to version {version}. Provide a comment:",
+          "rollback_default_comment": "Rollback via UI"
+        },
+        "errors": {
+          "unknown": "Unknown error",
+          "request_failed": "Request failed",
+          "comment_short": "Comment must be at least 3 characters long"
+        }
+      },
+      "deletion_requests": {
+        "title": "Candidate deletion requests",
+        "subtitle": "Approve or reject recruiters' requests to delete profiles.",
+        "filters": {
+          "pending": "Awaiting decision",
+          "approved": "Approved",
+          "rejected": "Rejected",
+          "all": "All"
+        },
+        "status": {
+          "pending": "Pending",
+          "approved": "Approved",
+          "rejected": "Rejected"
+        },
+        "labels": {
+          "candidate": "Candidate",
+          "recruiter": "Recruiter",
+          "supervisor": "Supervisor",
+          "reason": "Reason",
+          "resolution": "Resolution"
+        },
+        "actions": {
+          "approve": "Approve",
+          "reject": "Reject"
+        },
+        "errors": {
+          "load": "Could not load deletion requests",
+          "reject": "Could not reject the request",
+          "approve": "Could not approve the request"
+        },
+        "prompts": {
+          "reject_reason": "Add a rejection reason (optional)"
+        },
+        "messages": {
+          "no_access": "You don't have access to the deletion queue.",
+          "empty": "No requests.",
+          "pending_hint": "Awaiting decision: {count}"
+        }
+      },
+      "meta_leads": {
+        "title": "Meta Leads admin",
+        "subtitle": "Manage Meta Ads webhook, ad mapping, and manual routing of leads.",
+        "tabs": {
+          "settings": "Settings",
+          "credentials": "Credentials",
+          "mapping": "Ad mapping",
+          "logs": "Lead logs"
+        },
+        "notices": {
+          "settings_saved": "Meta Leads settings updated",
+          "credential_created": "Credential saved",
+          "secret_rotated": "New secret: {secret}",
+          "mapping_saved": "Mapping saved",
+          "lead_rerouted": "Lead sent for processing"
+        },
+        "errors": {
+          "load": "Could not load Meta Leads data",
+          "settings_update": "Could not update settings",
+          "credential_label": "Enter a credential name",
+          "credential_create": "Could not create credential",
+          "secret_rotate": "Could not rotate secret",
+          "credential_delete": "Could not delete credential",
+          "mapping_required": "Specify ad_id and vacancy_id",
+          "mapping_ad_id": "ad_id must contain digits only",
+          "mapping_create": "Could not save mapping",
+          "mapping_update": "Could not update mapping",
+          "mapping_delete": "Could not delete mapping",
+          "reroute": "Could not reroute lead"
+        },
+        "prompts": {
+          "delete_credential": "Delete this Meta credential?",
+          "delete_mapping": "Delete mapping for ad {adId}?",
+          "reroute_vacancy": "Enter vacancy_id",
+          "edit_note": "New note",
+          "edit_vacancy": "New vacancy_id"
+        },
+        "placeholders": {
+          "company_none": "— none —",
+          "selected_company": "Current: {name}",
+          "recruiter_none": "— not assigned —",
+          "recruiter_fallback": "Recruiter",
+          "selected_recruiter": "Current: {name}"
+        },
+        "settings": {
+          "title": "Meta connection",
+          "subtitle": "Control webhook status and auto-create behavior.",
+          "auto_create": "Enable auto-create candidates",
+          "mask_pii": "Mask PII in UI",
+          "default_company": "Default company",
+          "default_recruiter": "Default recruiter",
+          "current_company": "Current: {name}",
+          "current_recruiter": "Current: {name}",
+          "sla_label": "SLA (hours to signal)",
+          "webhook_url": "Webhook URL",
+          "webhook_token": "Verify token",
+          "last_signature_check": "Last signature check: {date}",
+          "signature_status": "Status: {status}",
+          "save": "Save settings"
+        },
+        "credentials": {
+          "title": "Add credential",
+          "label": "Name",
+          "status": "Status",
+          "webhook_secret": "Webhook secret",
+          "access_token": "Access token",
+          "table": {
+            "label": "Name",
+            "status": "Status",
+            "signature": "Signature"
+          },
+          "actions": {
+            "rotate": "Rotate secret"
+          },
+          "empty": "No saved credentials"
+        },
+        "mapping": {
+          "title": "Ad → vacancy mapping",
+          "note": "Note",
+          "save": "Save mapping",
+          "search_placeholder": "Search by ad_id or note",
+          "created": "Created",
+          "empty": "No mappings"
+        },
+        "logs": {
+          "title": "Leads waiting for routing",
+          "subtitle": "Use manual routing for problematic leads.",
+          "table": {
+            "created": "Created",
+            "status": "Status",
+            "company": "Company",
+            "vacancy": "Vacancy",
+            "contacts": "Contacts",
+            "error": "Error"
+          },
+          "empty": "No leads in status needs_routing",
+          "actions": {
+            "reroute": "Reroute"
+          }
+        }
+      },
+      "docs": {
+        "mock": {
+          "passport": "Passport",
+          "license": "Driver license",
+          "insurance": "Insurance"
+        }
+      }
+    },
+    "ruleset": {
+      "header": {
+        "title": "Ruleset versioning",
+        "subtitle": "Manage document ruleset revisions. Only administrators can publish new versions.",
+        "refresh": {
+          "loading": "Refreshing…",
+          "action": "Refresh"
+        },
+        "usage_refresh": {
+          "loading": "Usage…",
+          "action": "Refresh usage"
+        }
+      },
+      "create": {
+        "title": "Create a new version",
+        "description": "Edit the rules JSON and leave a comment. You can keep it as draft or activate immediately.",
+        "json_label": "Rules JSON",
+        "comment_label": "Comment",
+        "comment_placeholder": "Short description of changes",
+        "activate_toggle": "Activate right away",
+        "save": "Save version",
+        "copy_active": "Copy active version to editor"
+      },
+      "history": {
+        "title": "Version history",
+        "columns": {
+          "version": "Version",
+          "status": "Status",
+          "comment": "Comment",
+          "signature": "Signature",
+          "author": "Author",
+          "created": "Created",
+          "actions": "Actions"
+        },
+        "status": {
+          "active": "Active",
+          "draft": "Draft"
+        },
+        "actions": {
+          "use_as_draft": "Use in editor",
+          "diff": "Diff",
+          "activate": "Activate",
+          "rollback": "Rollback"
+        },
+        "empty": "No ruleset versions yet."
+      },
+      "diff": {
+        "title": "Diff for version {version}",
+        "subtitle_engine": "Engine: {engine}",
+        "subtitle_previous": "Comparison with previous version",
+        "loading": "Loading diff…",
+        "summary": {
+          "added": "Added: {count}",
+          "removed": "Removed: {count}",
+          "changed": "Changed: {count}"
+        },
+        "lists": {
+          "added": "Added",
+          "removed": "Removed",
+          "changed": "Changed"
+        },
+        "list_empty": "—"
+      },
+      "usage": {
+        "title": "Usage log",
+        "refresh": {
+          "loading": "Loading…",
+          "action": "Refresh"
+        },
+        "summary_title": "Summary",
+        "summary_empty": "No entries yet.",
+        "events_title": "Recent events",
+        "events_empty": "No usage records yet.",
+        "event_ref": "ref: {ref}"
+      },
+      "actions": {
+        "confirm_activate": "Make version {version} active?",
+        "rollback_prompt": "Rollback to version {version}. Provide a comment:",
+        "rollback_default_comment": "Rollback via UI"
+      },
+      "errors": {
+        "unknown": "Unknown error",
+        "request_failed": "Request failed",
+        "comment_short": "Comment must be at least 3 characters long"
+      }
+    },
+    "docs": {
+      "mock": {
+        "passport": "Passport",
+        "license": "Driver license",
+        "insurance": "Insurance"
+      }
+    },
+    "companies": {
+      "actions": {
+        "new": "New company",
+        "back_to_list": "← Companies"
+      },
+      "messages": {
+        "save_success": "Changes saved",
+        "save_error": "Failed to save changes",
+        "archive_error": "Failed to update archive status"
+      },
+      "readiness": {
+        "title": "Profile readiness",
+        "description": "Required CRM blocks: legal profile, contacts, billing, compliance, and client portal.",
+        "unavailable": "Readiness scoring is not available for this company yet.",
+        "error": "Could not load readiness status.",
+        "loading": "Refreshing status…",
+        "score": "Readiness {score}",
+        "fin_status": {
+          "label": "Financial check: {status}",
+          "pending": "Pending review",
+          "pass": "Passed",
+          "fail": "Failed",
+          "manual_review": "Requires manual review"
+        },
+        "states": {
+          "ready": "Profile ready",
+          "legal_missing": "Legal block missing",
+          "contact_missing": "Primary contact missing",
+          "bank_missing": "Primary bank account missing",
+          "billing_invalid": "Billing details incomplete",
+          "compliance_expired": "Compliance documents expired",
+          "unknown": "Status unknown"
+        },
+        "checks": {
+          "legal": "Legal profile",
+          "contact": "Contacts",
+          "billing": "Billing & accounts",
+          "compliance": "Compliance documents up to date",
+          "portal": "Client portal enabled"
+        }
+      },
+      "list": {
+        "title": "Companies",
+        "search_label": "Search",
+        "search_placeholder": "Name, legal name, city…",
+        "sort_label": "Sort",
+        "sort_options": {
+          "name_asc": "Name ↑",
+          "name_desc": "Name ↓",
+          "city_asc": "City ↑",
+          "city_desc": "City ↓"
+        },
+        "show_archived": "Show archived",
+        "reset": "Reset",
+        "insights": {
+          "subtitle": "Filter the CRM once and use the cards below to understand coverage across countries and archives.",
+          "visible": "Visible companies",
+          "visible_hint": "{count} match current filters",
+          "active": "Active profiles",
+          "active_hint": "{count} archived",
+          "countries": "Countries",
+          "countries_hint": "Based on company locations",
+          "missing_location": "Missing location",
+          "missing_location_hint": "No city or country specified"
+        },
+        "table": {
+          "headers": {
+            "name": "Name",
+            "legal_name": "Legal name",
+            "country": "Country",
+            "city": "City",
+            "archived": "Archived",
+            "actions": "Actions"
+          },
+          "loading": "Loading…",
+          "empty": "No companies found.",
+          "actions": {
+            "edit": "Edit",
+            "archive": "Archive",
+            "restore": "Restore"
+          }
+        }
+      },
+      "detail": {
+        "defaults": {
+          "untitled": "Untitled company"
+        },
+        "header": {
+          "fallback_name": "Company"
+        },
+        "actions": {
+          "reset": "Reset changes",
+          "add_representative": "Add representative",
+          "add_bank_account": "Add bank account",
+          "add_contact": "Add contact",
+          "add_portal_user": "Add portal user",
+          "add_webhook": "Add webhook",
+          "add_contract": "Add contract",
+          "add_order": "Add order"
+        },
+        "kpis": {
+          "candidates_total": "All candidates",
+          "candidates_total_hint": "Linked to this company",
+          "candidates_pipeline": "In pipeline",
+          "candidates_pipeline_hint": "Active stages",
+          "candidates_docs": "Documents",
+          "candidates_docs_hint": "Awaiting documents or review",
+          "vacancies_active": "Active vacancies",
+          "vacancies_active_hint": "Open positions for this client",
+          "services_blocking": "Blocking services",
+          "services_blocking_hint": "Orders without schedule or documents"
+        },
+        "widgets": {
+          "vacancies": {
+            "title": "Active vacancies",
+            "subtitle": "Recent briefs pulled from the client profile.",
+            "total": "Linked vacancies",
+            "latest_title": "Latest updates",
+            "status_label": "Status: {status}",
+            "status_unknown": "Status unknown",
+            "empty": "Vacancies will appear here after you link them with this company."
+          },
+          "blockers": {
+            "title": "Blocking services",
+            "subtitle": "Orders that need attention before onboarding.",
+            "empty": "No blocking services right now.",
+            "reason": {
+              "schedule": "Missing schedule",
+              "documents": "Documents required",
+              "capacity": "Drivers missing",
+              "status": "Awaiting approval"
+            }
+          }
+        },
+        "overview": {
+          "title": "Relationship overview",
+          "subtitle": "Key contacts, renewals, and open staffing needs.",
+          "primary_contact": {
+            "title": "Primary contact",
+            "empty": "Assign a primary contact to highlight it here."
+          },
+          "finance_contact": {
+            "title": "Finance & billing",
+            "empty": "Add a finance contact or invoice email.",
+            "invoice_label": "Invoice email: {email}",
+            "invoice_only": "Using invoice email only"
+          },
+          "contracts": {
+            "title": "Next contract",
+            "empty": "No contracts on file.",
+            "due": "Renews {date}"
+          },
+          "driver_slots": {
+            "title": "Driver demand",
+            "subtitle": "Open slots",
+            "assigned": "Assigned {hired} / {required}",
+            "empty": "No active driver requests."
+          }
+        },
+        "sections": {
+          "base": {
+            "title": "Basic details"
+          },
+          "legal": {
+            "title": "Legal block"
+          },
+          "billing": {
+            "title": "Billing & accounts"
+          },
+          "contacts": {
+            "title": "Contacts"
+          },
+          "operations": {
+            "title": "Operations profile"
+          },
+          "compliance": {
+            "title": "Compliance & checks"
+          },
+          "portal": {
+            "title": "Client portal"
+          },
+          "integrations": {
+            "title": "Integrations"
+          },
+          "contracts": {
+            "title": "Contracts"
+          },
+          "orders": {
+            "title": "Orders"
+          },
+          "system": {
+            "title": "System info"
+          },
+          "raw_extra": {
+            "title": "Raw payload",
+            "description": "Shows the JSON payload that will be sent to the backend."
+          }
+        },
+        "groups": {
+          "registered_address": "Registered address",
+          "operational_address": "Operational address",
+          "representatives": "Authorized representatives",
+          "trailer_types": "Trailer types",
+          "lanes": "Routes"
+        },
+        "fields": {
+          "name": "Display name",
+          "legal_name": "Legal name",
+          "tax_id": "Tax ID / NIP",
+          "phone": "Phone",
+          "email": "Email",
+          "website": "Website",
+          "country_code": "Country (code)",
+          "city": "City",
+          "address": "Address",
+          "archived": "Archived",
+          "notes": "Notes",
+          "reg_no": "Registration number",
+          "vat_eu": "VAT EU",
+          "established_at": "Date of incorporation",
+          "transport_license": "Transport license",
+          "insurance_policy": "Insurance policy",
+          "country": "Country",
+          "street": "Street",
+          "zip": "ZIP / Postal code",
+          "full_name": "Full name",
+          "role": "Role",
+          "default_currency": "Default currency",
+          "payment_terms": "Payment terms (days)",
+          "invoice_email": "Invoicing email",
+          "peppol_participant": "PEPPOL participant ID",
+          "peppol_scheme": "PEPPOL scheme",
+          "bank_name": "Bank",
+          "iban": "IBAN",
+          "swift": "SWIFT / BIC",
+          "label": "Label",
+          "primary": "Primary",
+          "primary_contact": "Primary contact",
+          "portal_user": "Portal user",
+          "fleet_tractors": "Tractors",
+          "fleet_intl": "International hauls (%)",
+          "fleet_local": "Local hauls (%)",
+          "drivers_total": "Drivers",
+          "adr_operations": "ADR operations",
+          "work_modes": "Work modes",
+          "lanes_origins": "Origins",
+          "lanes_destinations": "Destinations",
+          "cargo_types": "Cargo types",
+          "languages": "Working languages",
+          "preferred_nationalities": "Preferred nationalities",
+          "fin_check_status": "Financial check",
+          "aml_required": "AML required",
+          "iso9001": "ISO 9001",
+          "docs_valid_until": "Documents valid until",
+          "last_check": "Last compliance check",
+          "portal_enabled": "Portal enabled",
+          "url": "URL",
+          "last_sync": "Last sync at",
+          "permissions": "Permissions (JSON)",
+          "provider_ids": "Provider IDs",
+          "logo": "Logo URL",
+          "primary_color": "Primary color",
+          "event": "Event",
+          "target_url": "Target URL",
+          "status": "Status",
+          "date_start": "Start",
+          "date_end": "End",
+          "reference": "Reference",
+          "required_drivers": "Drivers required",
+          "hired_drivers": "Drivers hired",
+          "id": "ID",
+          "created_at": "Created at",
+          "updated_at": "Updated at"
+        }
+      }
+    },
+    "services": {
+      "title": "Additional services",
+      "hero": {
+        "subtitle": "Manage catalog items, track orders, and keep revenue in one workspace.",
+        "orders_visible": "Orders in view",
+        "orders_visible_hint": "{count} match current filters",
+        "orders_active": "In progress",
+        "orders_active_hint": "Draft/quoted/approved/scheduled",
+        "orders_delivered": "Delivered",
+        "orders_delivered_hint": "Completed orders",
+        "orders_revenue": "Pipeline value",
+        "orders_revenue_hint": "Active orders still in progress",
+        "catalog_active": "Active services",
+        "catalog_hint": "{total} total in catalog",
+        "orders_avg_check": "Average check",
+        "orders_avg_check_hint": "Delivered order average"
+      },
+      "tabs": {
+        "orders": "Orders",
+        "catalog": "Catalog",
+        "analytics": "Analytics"
+      },
+      "analytics": {
+        "last30": {
+          "title": "Last 30 days",
+          "subtitle": "Orders created in the last 30 days",
+          "delivered": "Delivered",
+          "cancelled": "Cancelled/refunded",
+          "rate": "Cancellation rate"
+        },
+        "status_breakdown": {
+          "title": "Orders by status",
+          "subtitle": "Across all orders",
+          "status": "Status",
+          "count": "Orders",
+          "empty": "No order data yet."
+        },
+        "top_services": {
+          "title": "Top services",
+          "subtitle": "Most requested services",
+          "pending": "{count} open",
+          "empty": "No services yet.",
+          "unknown": "Unnamed service"
+        },
+        "hot_services": {
+          "title": "Needs attention",
+          "subtitle": "Orders without schedule or documents",
+          "reason": {
+            "schedule": "Schedule missing",
+            "documents": "Documents missing",
+            "status": "Awaiting completion"
+          },
+          "empty": "No blocking services right now.",
+          "unknown": "Service"
+        },
+        "owner": {
+          "candidate": "Candidate",
+          "vacancy": "Vacancy",
+          "company": "Company",
+          "unknown": "Unassigned"
+        }
+      },
+      "words": {
+        "yes": "Yes",
+        "no": "No"
+      },
+      "catalog": {
+        "show_archived": "Include archived services",
+        "new_service": {
+          "title": "New service",
+          "labels": {
+            "code": "Code",
+            "name": "Name",
+            "category": "Category",
+            "price": "Price",
+            "vat": "VAT %",
+            "document": "Resulting document",
+            "requires_schedule": "Requires schedule",
+            "requires_candidate": "Requires candidate"
+          },
+          "placeholders": {
+            "code": "unique_code",
+            "name": "Medical exam",
+            "category": "medical",
+            "price": "350",
+            "vat": "23",
+            "document": "medical"
+          },
+          "hint": "Only code and name are required. You can fill other fields later.",
+          "submit": "Add service"
+        },
+        "table": {
+          "code": "Code",
+          "name": "Name",
+          "category": "Category",
+          "price": "Price",
+          "schedule": "Schedule",
+          "candidate": "Candidate",
+          "status": "Status",
+          "loading": "Loading catalog…",
+          "empty": "No services added yet.",
+          "badges": {
+            "active": "Active",
+            "archived": "Archived"
+          },
+          "actions": {
+            "archive": "Archive",
+            "activate": "Activate"
+          }
+        },
+        "messages": {
+          "missing_fields": "Service code and name are required",
+          "create_success": "Service added",
+          "create_error": "Failed to create service",
+          "status_error": "Failed to update service status"
+        }
+      },
+      "orders": {
+        "new": {
+          "title": "New order",
+          "hint": "Search for a candidate and link the service order below.",
+          "fields": {
+            "candidate": "Candidate",
+            "vacancy": "Vacancy",
+            "company": "Company"
+          },
+          "owner": {
+            "title": "Order owner",
+            "hint": "Select exactly one entity to attach the service to.",
+            "options": {
+              "candidate": "Candidate",
+              "vacancy": "Vacancy",
+              "company": "Company"
+            },
+            "descriptions": {
+              "candidate": "Attach the service to a specific person.",
+              "vacancy": "Link it with an open requisition.",
+              "company": "Bill the company directly."
+            }
+          },
+          "placeholders": {
+            "candidate_search": "Name, email, phone…",
+            "vacancy_search": "Vacancy title, company, location…",
+            "company_search": "Company name, city, country…",
+            "service_id": "Select service…",
+            "service_code": "or enter service code",
+            "qty": "Qty",
+            "unit_price": "Unit price",
+            "vat": "VAT %",
+            "notes": "Internal notes"
+          },
+          "states": {
+            "searching": "Searching…",
+            "no_results": "No matches found",
+            "no_contacts": "No contacts provided"
+          },
+          "selected": {
+            "company": "Company: {name}",
+            "vacancy": "Vacancy: {name}"
+          },
+          "current_candidate": "Linked candidate: {id}",
+          "current_candidate_empty": "Candidate not linked yet.",
+          "current_vacancy": "Linked vacancy: {id}",
+          "current_vacancy_empty": "Vacancy not selected yet.",
+          "current_company": "Linked company: {id}",
+          "current_company_empty": "Company not selected yet.",
+          "submit": "Create order"
+        },
+        "filters": {
+          "status_all": "All statuses"
+        },
+        "list": {
+          "title": "Orders",
+          "loading": "Loading orders…",
+          "empty": "No orders yet.",
+          "owner": {
+            "candidate": "Candidate #{id}",
+            "vacancy": "Vacancy #{id}",
+            "company": "Company #{id}",
+            "none": "No owner selected"
+          },
+          "meta": "{count} items · {amount}"
+        },
+        "messages": {
+          "owner_required": "Select exactly one order owner (candidate, vacancy, or company).",
+          "service_required": "Specify a service ID or code for the order item.",
+          "created": "Order created",
+          "missing_docs": "Documents missing: {list}",
+          "create_error": "Failed to create order",
+          "status_updated": "Order status updated",
+          "status_error": "Failed to update order status",
+          "schedule_updated": "Schedule updated",
+          "schedule_error": "Failed to update schedule",
+          "delivered": "Service marked as delivered",
+          "deliver_error": "Failed to complete service"
+        },
+        "detail": {
+          "placeholder": "Select an order on the left to view details.",
+          "order_label": "Order",
+          "status_label": "Status",
+          "owner_label": "Owner",
+          "owner": {
+            "candidate": "Candidate #{id}",
+            "vacancy": "Vacancy #{id}",
+            "company": "Company #{id}",
+            "none": "Not linked"
+          },
+          "amount_label": "Total amount",
+          "vat_label": "VAT: {vat}",
+          "items_label": "Items",
+          "item": {
+            "service_label": "Service",
+            "status_label": "Status",
+            "amount_label": "Amount: {amount}",
+            "blocking_hint": "Completing this service is required to move the candidate to the next stage.",
+            "missing_docs": "Documents missing: {list}"
+          },
+          "schedule": {
+            "title": "Schedule",
+            "no_date": "No date",
+            "empty": "Schedule not set",
+            "form": {
+              "provider_placeholder": "Provider",
+              "location_placeholder": "Location",
+              "submit": "Update schedule"
+            }
+          },
+          "complete": {
+            "title": "Complete service",
+            "issued_placeholder": "Issue date",
+            "expires_placeholder": "Valid until",
+            "submit": "Mark as completed"
+          }
+        }
+      },
+      "status": {
+        "order": {
+          "draft": "Draft",
+          "quoted": "Quoted",
+          "approved": "Approved",
+          "scheduled": "Scheduled",
+          "in_progress": "In progress",
+          "delivered": "Delivered",
+          "cancelled": "Cancelled",
+          "refunded": "Refunded"
+        },
+        "schedule": {
+          "reserved": "Reserved",
+          "confirmed": "Confirmed",
+          "completed": "Completed",
+          "no_show": "No show",
+          "cancelled": "Cancelled"
+        },
+        "item": {
+          "pending": "Pending",
+          "scheduled": "Scheduled",
+          "in_progress": "In progress",
+          "delivered": "Delivered",
+          "cancelled": "Cancelled"
+        },
+        "document": {
+          "approved": "Approved",
+          "verified": "Verified",
+          "pending_validation": "Pending validation"
+        }
+      }
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "refresh": {
+        "action": "Refresh",
+        "loading": "Refreshing…"
+      },
+      "ranges": {
+        "7d": "7 days",
+        "30d": "30 days",
+        "90d": "90 days",
+        "ytd": "Year to date",
+        "all": "All time"
+      },
+      "dimensions": {
+        "stage": "Stage",
+        "company": "Company",
+        "vacancy": "Vacancy",
+        "source": "Source",
+        "citizenship": "Citizenship",
+        "country": "Country of residence",
+        "reason": "Rejection / withdrawal reason"
+      },
+      "stage_labels": {
+        "new": "New",
+        "no_answer": "No answer",
+        "contacted": "Contact established",
+        "questionnaire_submitted": "Questionnaire submitted",
+        "docs_wait": "Waiting for documents",
+        "docs_got": "Documents received",
+        "permit_ordered": "Work permit ordered",
+        "permit_received": "Work permit received",
+        "visa": "Visa in progress",
+        "red_paper": "Red paper ordered",
+        "trip_plan": "Trip planned",
+        "at_client": "At client base",
+        "employed": "Employed",
+        "on_trip": "On trip",
+        "probation_ok": "Probation passed",
+        "rejected": "Rejected",
+        "declined": "Candidate declined",
+        "probation": "Probation",
+        "red_paper_ordered": "Red paper ordered",
+        "hiring": "Hiring",
+        "interview": "Interview"
+      },
+      "reason_codes": {
+        "schedule": "Schedule mismatch",
+        "salary": "Salary expectations",
+        "location": "Base location not suitable",
+        "trailer_type": "Trailer type mismatch",
+        "night_driving": "No night driving",
+        "bonus_scheme": "Bonus scheme mismatch",
+        "cab_overnight": "Does not want to sleep in the cab",
+        "company_reviews": "Negative company reviews",
+        "eu_exp_lt_1y": "EU experience less than 1 year",
+        "eu_exp_lt_6m": "EU experience less than 6 months",
+        "awaiting_residence": "Awaiting residence permit",
+        "language": "Language barrier",
+        "no_visa": "No visa / residence permit",
+        "no_ce_experience": "No CE experience",
+        "no_code95": "No Code 95",
+        "no_chip": "No tachograph card",
+        "age": "Age restrictions",
+        "blacklist": "Blacklisted",
+        "wrong_phone": "Incorrect phone number",
+        "double_crew": "Double crew",
+        "no_response": "No response"
+      },
+      "labels": {
+        "no_reason": "No reason",
+        "no_title": "Untitled",
+        "no_subgroup": "No subgroup"
+      },
+      "filters": {
+        "from": "From",
+        "to": "To",
+        "date_field": "Date field",
+        "field_created": "Created date",
+        "field_updated": "Updated date",
+        "vacancy": "Vacancy",
+        "all_vacancies": "All vacancies",
+        "sample": "Sample: {count} candidates",
+        "selected_vacancy": "· Vacancy: {label}",
+        "custom_range": "Custom range"
+      },
+      "hero": {
+        "title": "Central hiring overview",
+        "subtitle": "Monitor funnel, documents, and vacancies in a single workspace.",
+        "stats": {
+          "total": "Candidates in view",
+          "vacancies": "Active vacancies",
+          "stages": "Pipeline stages"
+        }
+      },
+      "errors": {
+        "range_invalid": "Start date must be before end date.",
+        "load_failed": "Failed to load dashboard data"
+      },
+      "stats": {
+        "candidates_total": "Candidates (total)",
+        "companies": "Companies",
+        "vacancies": "Vacancies",
+        "period": "Candidates in range",
+        "period_suffix_created": "by creation date",
+        "period_suffix_updated": "by update date"
+      },
+      "stages": {
+        "title": "Candidate stages",
+        "subtitle": "Current period snapshot",
+        "stack_title": "Stage distribution",
+        "stack_subtitle": "Share of candidates per stage",
+        "table": {
+          "status": "Status",
+          "count": "Count"
+        },
+        "empty": "No data for the selected period."
+      },
+      "reasons": {
+        "rejected_title": "Rejection reasons",
+        "rejected_empty": "No rejections.",
+        "declined_title": "Candidate decline reasons",
+        "declined_empty": "No declines."
+      },
+      "companies": {
+        "title": "Companies",
+        "subtitle": "Top pipelines",
+        "table": {
+          "company": "Company",
+          "total": "Total",
+          "in_pipeline": "In pipeline",
+          "hired": "Hired",
+          "rejected": "Rejections"
+        },
+        "empty": "No company data."
+      },
+      "vacancies": {
+        "title": "Vacancies",
+        "subtitle": "Top by candidates",
+        "table": {
+          "vacancy": "Vacancy",
+          "total": "Total",
+          "in_pipeline": "In pipeline",
+          "hired": "Hired",
+          "rejected": "Rejections"
+        },
+        "empty": "No vacancy data."
+      },
+      "sources": {
+        "title": "Candidate sources",
+        "detail_title": "Sources performance",
+        "detail_subtitle": "Top channels vs. pipeline outcomes",
+        "table": {
+          "source": "Source",
+          "pipeline": "In pipeline",
+          "hired": "Hired",
+          "rejected": "Rejected / declined",
+          "total": "Total"
+        },
+        "empty": "No source data."
+      },
+      "citizenship": {
+        "title": "Citizenship"
+      },
+      "country": {
+        "title": "Country of residence"
+      },
+      "docs_risk": {
+        "title": "Document readiness",
+        "subtitle": "Candidates tied to document-driven stages",
+        "waiting": "Waiting for docs / permits",
+        "attention": "Needs attention",
+        "ready": "Cleared to proceed",
+        "count": "{count} candidates",
+        "empty": "No document-driven stages in this sample."
+      },
+      "velocity": {
+        "title": "Stage velocity",
+        "subtitle": "Average age of candidates per stage",
+        "avg": "Avg {value}d",
+        "p90": "P90 {value}d",
+        "count": "{value} candidates",
+        "empty": "Not enough data to calculate stage velocity."
+      },
+      "manager_load": {
+        "title": "Manager workload",
+        "subtitle": "Top managers by active candidates",
+        "manager": "Manager",
+        "pipeline": "Pipeline",
+        "total": "Total",
+        "empty": "No manager data yet.",
+        "unknown": "Unassigned"
+      },
+      "country_heatmap": {
+        "title": "Candidate countries",
+        "subtitle": "Top countries in the current sample",
+        "count_label": "{count} candidates",
+        "empty": "No country data."
+      },
+      "top_cards": {
+        "companies": {
+          "title": "Top companies",
+          "subtitle": "Most active client pipelines"
+        },
+        "vacancies": {
+          "title": "Top vacancies",
+          "subtitle": "Highest candidate load"
+        },
+        "docs": {
+          "title": "Candidates on documents",
+          "subtitle": "Monitor document stages"
+        },
+        "total": "Total {count}",
+        "hired": "Hired",
+        "empty": "No data available."
+      },
+      "messages": {
+        "no_data": "No data."
+      },
+      "pivot": {
+        "title": "Flexible analytic slice",
+        "group_by": "Group by",
+        "subgroup": "Subgroups",
+        "total": "Total",
+        "empty": "Not enough data to build this slice."
+      }
+    },
+    "candidate_card": {
+      "actions": {
+        "delete_request": "Request deletion",
+        "delete_request_loading": "Sending request…",
+        "generate_short_id": "Generate ID",
+        "history": "Change log",
+        "history_loading": "Loading history…",
+        "refresh": "Refresh",
+        "refreshing": "Refreshing…",
+        "saving_note": "Saving…"
+      },
+      "confirm": {
+        "delete": "Delete this candidate?"
+      },
+      "contacts": {
+        "options": {
+          "none": "Not selected",
+          "phone": "Phone",
+          "telegram": "Telegram",
+          "viber": "Viber",
+          "whatsapp": "WhatsApp"
+        }
+      },
+      "docs": {
+        "disabled": "Save the candidate to enable documents.",
+        "helper": "Documents, scans, and readiness live here for your whole team."
+      },
+      "employment": {
+        "title": "Employment history",
+        "add": "Add employer",
+        "limit": "Up to {count} entries allowed.",
+        "loading": "Loading employment history…",
+        "empty": "No employment records yet.",
+        "columns": {
+          "employer": "Employer",
+          "country": "Country",
+          "position": "Position",
+          "start": "Start date",
+          "end": "End date"
+        },
+        "placeholders": {
+          "employer": "Company name",
+          "country": "Country code (e.g. PL)",
+          "position": "Position or duties"
+        }
+      },
+      "errors": {
+        "employment": {
+          "missing_employer": "Specify an employer for each record.",
+          "missing_start": "Specify a start date for each record.",
+          "end_before_start": "End date cannot be before the start date.",
+          "load_failed": "Could not load employment history."
+        }
+      },
+      "fields": {
+        "address": {
+          "apt": "Apartment / unit",
+          "city": "City",
+          "country": "Country",
+          "diff": "Registration address differs",
+          "house": "House / building",
+          "street": "Street",
+          "zip": "Postal code"
+        },
+        "birth_date": "Birth date",
+        "citizenship": "Citizenship",
+        "company": "Company",
+        "company_hint": "Filled automatically from the vacancy.",
+        "country_code": "Residence country",
+        "created_at": "Created",
+        "created_at_hint": "Set automatically when the candidate is created.",
+        "email": "Email",
+        "eu_routes": "Drives EU routes",
+        "experience_eu": "EU experience (years)",
+        "experience_non_eu": "Non-EU experience (years)",
+        "experience_total": "Total CE experience (years)",
+        "experience_total_hint": "Auto-sums EU and non-EU values.",
+        "first_contact": "First contact",
+        "first_contact_done": "Contact made",
+        "first_contact_hint": "Mark when the recruiter first spoke with the candidate.",
+        "first_name": "First name",
+        "in_poland": "Currently in Poland",
+        "intl_experience": "International experience",
+        "languages": "Languages",
+        "last_name": "Last name",
+        "manager": "Manager (recruiter)",
+        "phone": "Phone number",
+        "poland_basis": "Basis for stay in Poland",
+        "preferred_contact": "Preferred contact channel",
+        "short_id": "Short ID",
+        "short_id_hint": "Generate to reference the candidate in docs or services.",
+        "stage": "Stage",
+        "status_reasons": "Reasons",
+        "unset": "Not set",
+        "vacancy": "Vacancy"
+      },
+      "header": {
+        "back": "Back to candidates",
+        "new_label": "New candidate"
+      },
+      "history": {
+        "empty": "No activity yet.",
+        "unavailable": "History is unavailable. Try again later.",
+        "modal": {
+          "title": "Stage history",
+          "columns": {
+            "when": "When",
+            "change": "Change",
+            "actor": "Changed by",
+            "comment": "Comment"
+          },
+          "previous": "Previous",
+          "next": "Next"
+        }
+      },
+      "intake": {
+        "empty": "No intake responses yet.",
+        "loading": "Loading intake data…",
+        "status": {
+          "draft": "Draft",
+          "submitted": "Submitted",
+          "submitted_at": "Submitted on {datetime}"
+        },
+        "fields": {
+          "citizenship": "Citizenship",
+          "email": "Email",
+          "phone": "Phone",
+          "preferred_contact": "Preferred channel",
+          "intl_experience": "International experience",
+          "residency_status": "Residency status",
+          "trailer_types": "Trailer types",
+          "route_types": "Routes",
+          "years_ce": "Experience (years)"
+        },
+        "trailers": {
+          "mega": "Mega",
+          "standard": "Standard",
+          "platform": "Platform",
+          "frigo": "Refrigerated",
+          "tent": "Curtain / tent",
+          "container": "Container chassis",
+          "tandem": "Tandem",
+          "car_transporter": "Car transporter"
+        },
+        "routes": {
+          "eu": "EU",
+          "cis": "CIS",
+          "uk": "United Kingdom",
+          "scandi": "Scandinavia",
+          "local": "Local"
+        }
+      },
+      "labels": {
+        "current_vacancy": "Current vacancy",
+        "short_id_badge": "ID: {id}"
+      },
+      "messages": {
+        "delete_request_failed": "Couldn't send deletion request.",
+        "delete_request_sent": "Deletion request sent.",
+        "meta_lead": "Imported from Meta leads — some fields may be locked.",
+        "note_add_failed": "Could not add note: {detail}",
+        "save_failed": "Failed to save candidate: {detail}",
+        "saved": "Changes saved",
+        "stage_reason_required": "Select at least one reason.",
+        "vacancy_hint": "Vacancy defines the company and readiness summary."
+      },
+      "nav": {
+        "intake": "Intake",
+        "basic": "Basic info",
+        "personal": "Personal data",
+        "status": "Status",
+        "experience": "Experience",
+        "employer": "Employer",
+        "notes": "Notes"
+      },
+      "notes": {
+        "placeholder": "Add an internal note…",
+        "empty": "No notes yet.",
+        "visibility": {
+          "internal": "Internal",
+          "client": "Client",
+          "candidate": "Candidate"
+        }
+      },
+      "placeholders": {
+        "phone_number": "Phone number"
+      },
+      "prompts": {
+        "delete_reason": "Enter a reason (optional):"
+      },
+      "sections": {
+        "basic": {
+          "title": "Basic data",
+          "description": "Primary identifiers, stage, and recruiter."
+        },
+        "employer": {
+          "title": "Employer & vacancy",
+          "description": "Link the candidate to the client's current vacancy."
+        },
+        "experience": {
+          "title": "Experience",
+          "description": "Driving experience, equipment, and employers."
+        },
+        "intake": {
+          "title": "Intake summary",
+          "description": "Responses from the application form."
+        },
+        "notes": {
+          "title": "Notes",
+          "description": "Internal notes shared with the team."
+        },
+        "personal": {
+          "title": "Personal data",
+          "description": "Addresses, citizenship, contacts.",
+          "address_current": "Current address",
+          "address_registered": "Registered address"
+        },
+        "status": {
+          "title": "Status & compliance",
+          "description": "Residence info, availability, and legal basis."
+        }
+      },
+      "status": {
+        "poland_basis": {
+          "none": "Not specified",
+          "visa_d": "Visa D",
+          "visa_c": "Visa C",
+          "karta_pobytu": "Residence card",
+          "eu_citizen": "EU citizenship",
+          "other": "Other"
+        },
+        "residency": {
+          "eu_citizen": "EU/EEA/CH citizen",
+          "visa": "Visa",
+          "card": "Residence permit",
+          "none": "Other"
+        }
+      },
+      "select": {
+        "empty": "— select —",
+        "search": "Search…",
+        "search_country": "Search country/code…",
+        "no_results": "No matches",
+        "multi_none": "No values selected",
+        "multi_selected": "{count} selected"
+      },
+      "services": {
+        "title": "Additional services",
+        "disabled": "Save the candidate to view services.",
+        "loading": "Loading services…",
+        "empty": "No services yet.",
+        "open_module": "Open services module",
+        "columns": {
+          "order": "Order",
+          "status": "Status",
+          "items": "Items",
+          "total": "Total"
+        }
+      },
+      "tabs": {
+        "personal": "Profile",
+        "docs": "Documents",
+        "services": "Services"
+      }
+    },
+    "candidates": {
+      "labels": {
+        "untitled": "Untitled"
+      },
+      "header": {
+        "title": "Candidates",
+        "subtitle": "Visual pipeline by vacancies"
+      },
+      "views": {
+        "table": "Table",
+        "kanban": "Pipeline",
+        "save_action": "Save as view",
+        "manage_title": "Apply or manage saved views",
+        "toggle": "Views",
+        "apply_title": "Apply: {name}",
+        "delete_title": "Delete view",
+        "empty": "No saved views yet.",
+        "save_modal": {
+          "title": "Save as view",
+          "name_label": "View name",
+          "placeholder": "e.g. In progress / No vacancy",
+          "hint": "Current filters will be stored: search, stages, vacancies, managers, reasons, document statuses, and orders."
+        }
+      },
+      "insights": {
+        "subtitle": "Live view of every candidate that matches your current filters.",
+        "total": "Visible candidates",
+        "total_hint": "{count} match the filter set",
+        "new": "Marked as new",
+        "new_hint": "{count} waiting for first touch",
+        "docs_ready": "Documents ready",
+        "docs_ready_hint": "{count} verified and ready for the next step",
+        "docs_attention": "Need attention",
+        "docs_attention_hint": "{count} awaiting review or corrections",
+        "save_view": "Save filters as view"
+      },
+      "search": {
+        "label": "Search",
+        "placeholder": "name, email, phone, short_id… (⌘/Ctrl+K)",
+        "hint": "Use Cmd/Ctrl+K to focus the search."
+      },
+      "actions": {
+        "refresh_title": "Refresh list (Ctrl/Cmd+R)",
+        "refreshing": "Refreshing…",
+        "refresh": "Refresh",
+        "export_title": "Export current view to CSV",
+        "export": "Export CSV",
+        "reset_filters": "Reset filters",
+        "more": "More actions",
+        "new_candidate_title": "Create a new candidate",
+        "new_candidate": "New candidate"
+      },
+      "docs": {
+        "readiness": {
+          "pending": "Not started",
+          "requested": "Requested",
+          "ordered": "Ordered",
+          "in_progress": "In progress",
+          "awaiting_review": "Awaiting review",
+          "ready": "Ready",
+          "problem": "Issue"
+        },
+        "order_filter": {
+          "ordered": "Order placed",
+          "not_ordered": "No orders"
+        }
+      },
+      "filters": {
+        "search": "Search: {value}",
+        "stage": "Stage: {value}",
+        "vacancy": "Vacancy: {value}",
+        "manager": "Manager: {value}",
+        "reason": "Reason: {value}",
+        "reason_stage": "({stage})",
+        "docs_status": "Documents: {value}",
+        "docs_order": "Documents: {value}",
+        "preferred_channel": "Channel: {value}",
+        "in_poland": "In Poland: {value}",
+        "poland_basis": "Basis: {value}",
+        "trailer_types": "Trailers: {value}",
+        "created_range": "Created: {from} — {to}",
+        "first_contact_range": "First contact: {from} — {to}",
+        "menu_label": "Filter",
+        "empty": "No options available",
+        "reset": "Reset",
+        "vacancy_menu": "Vacancies",
+        "manager_menu": "Managers",
+        "stage_menu": "Stages",
+        "reason_menu": "Reasons",
+        "quick_docs_ready": "Docs ready",
+        "quick_docs_attention": "Docs need attention",
+        "quick_docs_pending": "Docs not started",
+        "docs_status_menu": "Document status",
+        "docs_order_menu": "Document orders",
+        "preferred_channel_menu": "Preferred channel",
+        "in_poland_menu": "Currently in Poland",
+        "poland_basis_menu": "Residence basis",
+        "trailer_types_menu": "Trailer types",
+        "created_menu": "Created at",
+        "first_contact_menu": "First contact",
+        "date_from": "From",
+        "date_to": "To",
+        "name_menu": "Name filter",
+        "name_placeholder": "Type part of the name",
+        "name_badge": "Name: {value}",
+        "email_menu": "Email filter",
+        "email_placeholder": "Type part of the email",
+        "email_badge": "Email: {value}",
+        "phone_menu": "Phone filter",
+        "phone_placeholder": "Type phone digits",
+        "phone_badge": "Phone: {value}",
+        "citizenship_menu": "Citizenship filter",
+        "citizenship_placeholder": "Country or code",
+        "citizenship_badge": "Citizenship: {value}",
+        "short_menu": "Short ID filter",
+        "short_placeholder": "Type short ID",
+        "short_badge": "Short ID: {value}",
+        "docs_valid_menu": "Documents valid from",
+        "docs_valid_range": "Valid from: {from} — {to}",
+        "docs_files_menu": "Files uploaded",
+        "docs_files_with": "Files uploaded",
+        "docs_files_without": "No files",
+        "docs_files_badge": "Files: {value}"
+      },
+      "table": {
+        "columns": {
+          "title": "Columns",
+          "name": "Name",
+          "phone": "Phone",
+          "citizenship": "Citizenship",
+          "vacancy": "Vacancy",
+          "manager": "Manager",
+          "stage": "Stage",
+          "created": "Created",
+          "first_contact": "First contact",
+          "preferred_channel": "Preferred channel",
+          "in_poland": "Currently in Poland",
+          "poland_basis": "Residence basis in Poland",
+          "trailer_types": "Trailer types",
+          "reasons": "Reasons",
+          "docs_status": "Documents",
+          "docs_ordered": "Order date",
+          "docs_valid": "Valid from",
+          "docs_files": "Files"
+        },
+        "empty": "No candidates found.",
+        "show_more": "Show more",
+        "total": "Total: {count}"
+      },
+      "bulk": {
+        "selected": "Selected: {count}",
+        "stage": {
+          "title": "Change stage for selected candidates",
+          "action": "Change stage (selected)"
+        },
+        "manager": {
+          "title": "Assign manager to selected candidates",
+          "action": "Assign manager (selected)"
+        },
+        "vacancy": {
+          "title": "Assign vacancy to selected candidates",
+          "action": "Assign vacancy (selected)"
+        },
+        "archive": {
+          "title": "Archive selected candidates",
+          "action": "Archive (selected)"
+        },
+        "clear_title": "Clear current selection",
+        "clear_action": "Clear selection"
+      },
+      "row_actions": {
+        "change_stage": "Change stage…",
+        "assign_manager": "Assign manager…",
+        "assign_vacancy": "Assign vacancy…"
+      },
+      "messages": {
+        "load_failed": "Failed to load candidates.",
+        "reason_required": "Select at least one reason.",
+        "bulk_stage_failed": "Failed to change stage.",
+        "bulk_manager_failed": "Failed to assign manager.",
+        "bulk_manager_partial": "{count} candidates were not updated.",
+        "bulk_vacancy_failed": "Failed to assign vacancy.",
+        "bulk_archive_failed": "Failed to archive candidates."
+      },
+      "modals": {
+        "manager": {
+          "title": "Assign manager",
+          "label": "Manager"
+        },
+        "vacancy": {
+          "title": "Assign vacancy",
+          "label": "Vacancy"
+        },
+        "archive": {
+          "title": "Archive selected candidates",
+          "body": "Are you sure you want to archive the selected candidates? You can restore them later from individual profiles.",
+          "confirm": "Archive candidates"
+        },
+        "stage": {
+          "title": "Change stage",
+          "new_stage": "New stage",
+          "reasons_label": "Rejection reasons"
+        }
+      },
+      "select": {
+        "placeholder": "— select —"
+      },
+      "stage_labels": {
+        "probation": "Probation",
+        "probation_ok": "Probation passed",
+        "red_paper_ordered": "Red paper ordered",
+        "hiring": "Hiring",
+        "interview": "Interview"
+      }
+    },
+    "reminders": {
+      "title": "Reminders",
+      "subtitle": "Showing {scope}: {total}, unread: {unread}",
+      "scopes": {
+        "direct": "Only mine",
+        "all": "All"
+      },
+      "scope_labels": {
+        "direct": "for you",
+        "all": "all events"
+      },
+      "filters": {
+        "unread": "Unread",
+        "all": "All events"
+      },
+      "actions": {
+        "refresh": "Refresh",
+        "mark_all": "Clear",
+        "mark_one": "Mark as read"
+      },
+      "states": {
+        "loading": "Loading…",
+        "empty": "No reminders",
+        "badge_direct": "for you",
+        "badge_new": "new"
+      },
+      "errors": {
+        "load": "Failed to load reminders",
+        "mark_one": "Failed to mark reminder as read",
+        "mark_all": "Failed to clear reminders"
+      },
+      "events": {
+        "lead_processed": "New candidate from lead",
+        "lead_needs_routing": "Lead needs routing",
+        "lead_failed": "Lead processing failed",
+        "candidate_created": "Candidate created",
+        "candidate_updated": "Candidate updated",
+        "candidate_stage_changed": "Candidate stage changed",
+        "candidate_intake_submitted": "Intake submitted",
+        "document_updated": "Document updated",
+        "document_requested": "Document requested",
+        "service_order_created": "Service order created",
+        "unknown": "{event}"
+      },
+      "payload": {
+        "candidate": "Candidate",
+        "vacancy": "Vacancy",
+        "company": "Company",
+        "manager": "Manager",
+        "recruiter": "Recruiter",
+        "stage": "Stage"
+      }
+    }
+  },
+  "public": {
+    "cookies": {
+      "banner": {
+        "message": "This page uses essential and functional cookies. Details are available in the",
+        "link": "Cookie policy",
+        "more": "More information",
+        "accept": "I accept"
+      }
+    },
+    "portal": {
+      "errors": {
+        "redeem_failed": "The link is invalid or has expired.",
+        "redeem_action": "Could not sign you in with the link",
+        "access_code_required": "Enter the access code from the email link."
+      },
+      "notifications": {
+        "magic_sent": "Link sent. Check your inbox or messenger.",
+        "magic_send_failed": "Could not send the link. Try again later.",
+        "magic_missing_contacts": "Add an email or phone number to request a new link."
+      },
+      "loaders": {
+        "verifying": "Verifying link…"
+      },
+      "hero": {
+        "title": "Candidate registration — CE truck driver",
+        "subtitle": "Fill out a short form and receive your personal link to continue.",
+        "note": "You will upload documents later — during the process.",
+        "cta": "Start registration",
+        "secondary": "Fill out",
+        "image_alt": "Modern CE truck driving on a highway",
+        "card_title": "CE truck driver portal",
+        "card_caption": "Secure candidate workspace",
+        "bullets": {
+          "presign": "Presigned upload to secure storage",
+          "hints": "Hints for documents and statuses",
+          "return": "Come back later via the same link"
+        }
+      },
+      "cards": {
+        "new": {
+          "badge": "New candidate",
+          "title": "Fill out the form and get your link",
+          "body": "Share your contact details — we will create a draft and issue a personal link. You can scan documents later or submit everything at once.",
+          "highlight": "Most candidates start here",
+          "focus": "Already responded to an ad? Fill out the form and we’ll attach it to your vacancy.",
+          "bullets": {
+            "autosave": "Autosave enabled",
+            "checklist": "Document checklist and scanner hints",
+            "reminders": "Reminders about pending files"
+          },
+          "cta": "Start form"
+        },
+        "resume": {
+          "badge": "Resume",
+          "title": "I already have a link",
+          "body_prefix": "Enter the code from the email or copy the part of the URL after",
+          "body_suffix": "We will remember the last token in this browser.",
+          "last_email": "Last used email",
+          "cta": "Open workspace",
+          "hint": "Can't find the link? Request a new one — previous uploads stay safe.",
+          "placeholder": "e.g. aBcdEf123…"
+        },
+        "resend": {
+          "badge": "Link lost",
+          "title": "Send the link again",
+          "body": "Enter the email or phone you used earlier. We'll verify and send a fresh link within a few seconds.",
+          "cta": "Send link",
+          "submitting": "Sending…"
+        }
+      },
+      "landing": {
+        "steps": {
+          "title": "How it works",
+          "items": "Fill out a short form\nReceive your personal link\nUpload documents anytime\nTrack your status in the candidate portal"
+        },
+        "audience": {
+          "title": "Who is this for?",
+          "items": "CE truck drivers\nCandidates inside and outside the EU\nWith or without previous experience"
+        },
+        "why": {
+          "title": "Why HostFlow",
+          "items": "Easy access without passwords\nSecure document upload\nPersonal access link\nReal-time progress tracking"
+        },
+        "docs": {
+          "title": "Documents you will upload later during the process:",
+          "items": "Passport / ID\nCE driving licence\nCode 95 (if applicable)\nAny additional job-related documents"
+        },
+        "footer": {
+          "title": "Documents",
+          "links": {
+            "privacy": "Polityka prywatności",
+            "terms": "Regulamin",
+            "cookies": "Polityka cookies",
+            "rodo": "Przetwarzanie danych (RODO)"
+          },
+          "address_title": "Company details",
+          "company": "Host Flow Viktoriia Tatarynovich\nNIP: 7872153072 · REGON: 542991376\nwoj. WIELKOPOLSKIE, pow. szamotulski,\ngm. Szamotuły, miejsc. Przecław,\nul. Leśna 1A/2, 64-514\ninfo@hostflow.cc"
+        }
+      },
+      "form": {
+        "access_code": "Access code",
+        "email": "Email",
+        "country_code": "Country code",
+        "phone": "Phone"
+      }
+    },
+    "start": {
+      "errors": {
+        "contacts_required": "Provide a phone or email to continue",
+        "create_failed": "Could not create the application"
+      },
+      "header": {
+        "back": "← Back to portal",
+        "title": "Submit documents and fill out the form",
+        "subtitle": "Share your contacts and we will generate a link for document upload and the application. You can return later."
+      },
+      "form": {
+        "email": "Email",
+        "country_code": "Country code",
+        "phone": "Phone",
+        "messenger": "Preferred messenger",
+        "submit": "Get the application link",
+        "submitting": "Creating link…",
+        "link_ready": "Link is ready",
+        "open": "Continue to the application",
+        "messenger_options": {
+          "whatsapp": "WhatsApp",
+          "telegram": "Telegram",
+          "phone": "Phone call",
+          "none": "Not specified"
+        }
+      }
+    },
+    "intake": {
+      "title": "Application & documents",
+      "autosave_hint": "Draft saves automatically",
+      "steps": {
+        "overview": "Overview",
+        "contacts": "Contacts",
+        "personal": "Personal data",
+        "experience": "Experience",
+        "employment": "Employment",
+        "documents": "Documents",
+        "agreements": "Agreements"
+      },
+      "hints": {
+        "steady": "Hold the phone steady for 2 seconds.",
+        "frame": "Keep the entire document inside the frame.",
+        "front_light": "Avoid glare on the front side.",
+        "front_text": "Ensure text is readable.",
+        "back_stamp": "Capture stamps and QR codes entirely.",
+        "spread": "Lay the passport flat and capture both pages."
+      },
+      "checklist": {
+        "contacts": {
+          "label": "Contacts",
+          "ready": "Email and phone added",
+          "missing": "Add email and phone number with country code"
+        },
+        "personal": {
+          "label": "Personal data",
+          "ready": "Full name, citizenship, and residency selected",
+          "missing": "Enter full name, citizenship, and residency status"
+        },
+        "experience": {
+          "label": "Experience & employment",
+          "ready": "Experience, trailers/routes, and employers added",
+          "missing": "Add CE experience, trailer/routes, and at least one employer"
+        },
+        "agreements": {
+          "label": "Consents",
+          "ready": "Ready to submit",
+          "missing": "Accept the consents"
+        },
+        "title": "Profile checklist",
+        "hint": "Steps required to unlock the document checklist"
+      },
+      "cards": {
+        "status_title": "Application status",
+        "profile_title": "Profile"
+      },
+      "status": {
+        "submitted": "Application submitted",
+        "draft": "Draft",
+        "submitted_hint_with_date": "Sent on {datetime}",
+        "submitted_hint": "Sent for review",
+        "draft_hint": "Fill in the data and upload documents to submit"
+      },
+      "stage": {
+        "new": "New",
+        "contacted": "Contact established",
+        "questionnaire_submitted": "Questionnaire submitted",
+        "docs_wait": "Awaiting documents",
+        "docs_got": "Documents received",
+        "permit_ordered": "Work permit ordered",
+        "permit_received": "Work permit received",
+        "visa": "Visa process",
+        "red_paper": "Świadectwo driver certificate",
+        "trip_plan": "Trip planning",
+        "at_client": "At client base",
+        "on_trip": "On the road"
+      },
+      "documents": {
+        "card_title": "Documents",
+        "progress": "Files uploaded for {ready} of {total} required documents",
+        "optional": "Documents are uploaded when needed",
+        "checklist_pending": "The checklist appears after you fill in the basics",
+        "checklist_upload_hint": "You can already pick a document type below and upload files — the checklist will appear once we process your profile.",
+        "next_steps_title": "Next steps",
+        "next_steps_missing": "Attach the missing documents",
+        "next_steps_all_done": "All required documents uploaded",
+        "next_steps_locked": "Fill in the basics to see the document checklist",
+        "cta": "Go to documents",
+        "upload_cta": "Upload",
+        "ready_alert": "All document requirements are met. You can submit the application.",
+        "empty_state": "The checklist will appear after you enter the primary data.",
+        "summary": {
+          "title": "Checklist status",
+          "subtitle": "Required documents: {total}",
+          "ready": "Ready",
+          "in_progress": "In review",
+          "missing": "Missing"
+        },
+        "optional_short": "Optional",
+        "card_body": "Below is the document checklist. You can upload files later from the same link.",
+        "upload_hint": "Upload files from this device — recruiters review every file before approval.",
+        "order_notice": "The recruiter will request this document after verifying your files.",
+        "optional_hint": "Optional document — upload only if it applies to you.",
+        "no_file": "No file selected",
+        "responses": {
+          "waiting": "Do you already have this document prepared?",
+          "yes": "Yes, I can upload it",
+          "no": "No, I still need help",
+          "no_body": "Let your recruiter know when the document will be ready.",
+          "no_hint": "You can return to this section at any time and upload the file once it is available."
+        },
+        "questions": {
+          "license_combo": "Do you have an EU driver license with Code 95 on one card?",
+          "license_split": "If not, upload the license and Code 95 separately.",
+          "tachograph": "Do you have a tachograph card?",
+          "passport": "Upload all pages of your valid passport.",
+          "stay": "Upload your national ID, visa, or residence permit (any one).",
+          "voivodeship": "Do you have a Voivodeship decision?",
+          "psych": "Do you have psychological tests?"
+        },
+        "stay_hint": "Any valid ID / visa / residence permit works here.",
+        "process": {
+          "default": "Ordered",
+          "work_permit": {
+            "label": "Work permit ordered by employer"
+          },
+          "red_paper": {
+            "label": "Świadectwo driver certificate ordered by employer"
+          },
+          "ordered_at": "Ordered on {date}",
+          "employer_orderer": "Employer",
+          "ordered_at_short": "Ordered {date}",
+          "activity": {
+            "default": "Ordered by employer",
+            "work_permit": "Work permit ordered by employer",
+            "red_paper": "Świadectwo driver certificate ordered by employer"
+          }
+        }
+      },
+      "status_cards": {
+        "subtitle": "Track your progress across the main steps.",
+        "completed": "Completed",
+        "current": "In progress",
+        "next": "Next up",
+        "progress_label": "Overall progress",
+        "step_hint": "Step {index} of {total}"
+      },
+      "scan": {
+        "modal_label": "Mobile scanner",
+        "modal_subtitle": "Open the link on your phone to scan and upload this document.",
+        "session_id": "Session token",
+        "status_title": "Status",
+        "status": {
+          "pending": "Waiting for upload",
+          "completed": "Uploaded",
+          "expired": "Expired",
+          "cancelled": "Cancelled"
+        },
+        "expires_at": "Expires at {time}",
+        "share_link": "Link for phone",
+        "copy_link": "Copy link",
+        "copied": "Copied!",
+        "open_mobile": "Open on this device",
+        "instructions": "Scan the QR code or copy the link to continue on your phone. The session lasts 15 minutes.",
+        "qr_label": "Scan from desktop",
+        "qr_hint": "Point your phone camera at the code to open the scanner.",
+        "error_generic": "Could not start the scanner. Please try again.",
+        "untitled_doc": "Document"
+      },
+      "timeline": {
+        "title": "Review status",
+        "subtitle": "Updates automatically when the application changes"
+      },
+      "share": {
+        "title": "Link for employer",
+        "description": "Share this link so colleagues can track progress without accessing the full application.",
+        "copy": "Copy link",
+        "copied": "Copied!",
+        "rotate": "Create new link",
+        "rotating": "Refreshing…",
+        "send_to_self": "Send link to myself",
+        "sending": "Sending…",
+        "sent": "Link sent",
+        "missing_contacts": "Add email or phone",
+        "error": "Could not send the link, please try again later.",
+        "rate_limit": "You can request once every {cooldown} seconds, up to {limit} times per day.",
+        "notifications": {
+          "copied": "Link copied",
+          "copy_failed": "Failed to copy link",
+          "rotated": "New link created",
+          "rotate_failed": "Could not refresh the link",
+          "magic_sent": "Link sent",
+          "magic_failed": "Could not send the link"
+        }
+      },
+      "contacts_card": {
+        "title": "Contacts",
+        "hint_ready": "Recruiter can reach you as soon as you submit the application.",
+        "hint_missing": "Add email and phone number so we can reach you.",
+        "cta": "Update contacts"
+      },
+      "validations": {
+        "blocked_title": "Complete these items to submit the application",
+        "contacts": "Add an email or phone number with the correct country code.",
+        "personal": "Enter your full name, citizenship, and residency status.",
+        "experience_years": "Provide total CE driving experience in years.",
+        "trailer_types": "Select the trailer types you have worked with.",
+        "route_types": "Select the routes you have covered.",
+        "employment": "Add at least one employer with employment dates.",
+        "documents": {
+          "license": "Upload your EU driver license (with Code 95 if available).",
+          "passport": "Upload a passport scan.",
+          "stay": "Upload a visa or residence permit/card.",
+          "code95": "Upload the Code 95 certificate if it is not part of your license.",
+          "warning_title": "Documents missing now (can be added later)",
+          "missing": "Missing file: {doc}"
+        },
+        "consents": "Accept all required consents.",
+        "cookies": "Accept the cookie banner to enable the submit button.",
+        "experience_intl": "Pick whether you drove internationally.",
+        "employment_required": "Add at least one employer for international experience."
+      },
+      "forms": {
+        "contacts": {
+          "email": "Email",
+          "country_code": "Country code",
+          "phone": "Phone",
+          "messenger": "Messenger",
+          "messenger_options": {
+            "whatsapp": "WhatsApp",
+            "telegram": "Telegram",
+            "phone": "Phone",
+            "none": "Not specified"
+          },
+          "resend_missing": "Add email or phone in the contacts section.",
+          "help": "Add phone or email so we can send you the link and updates.",
+          "required_hint": "Phone or email is required to continue."
+        },
+        "personal": {
+          "full_name": "Full name",
+          "citizenship": "Citizenship (ISO-2)",
+          "citizenship_placeholder": "Select citizenship…",
+          "residency": "Residency status in Poland",
+          "in_poland": "Currently in Poland",
+          "in_poland_options": {
+            "default": "Not selected",
+            "yes": "Yes",
+            "no": "No"
+          },
+          "residency_options": {
+            "default": "Not selected",
+            "eu_citizen": "EU / EEA / CH",
+            "visa": "Visa",
+            "card": "Residence card",
+            "none": "Other"
+          },
+          "ce_experience": "CE experience (years)",
+          "intl_experience": "International experience",
+          "intl_experience_options": {
+            "yes": "Yes",
+            "no": "No / unsure",
+            "default": "Select an option"
+          },
+          "ce_experience_placeholder": "Years of CE experience",
+          "intl_experience_hint": "If you have international routes, we will ask for at least one employer.",
+          "help": "Basic identity and residency are required.",
+          "ce_experience_hint": "Enter total CE driving experience in years.",
+          "ce_experience_eu": "CE experience in EU (years)",
+          "ce_experience_eu_hint": "Enter total CE driving experience in EU in years."
+        },
+        "experience": {
+          "trailer_types": "Trailer types",
+          "route_types": "Route types"
+        },
+        "employment": {
+          "list_hint": "Add at least one employer for the last 3 years.",
+          "card_meta": "{position} · {country} · {start} → {end}",
+          "edit": "Edit",
+          "delete": "Delete",
+          "form_title_add": "Add experience",
+          "form_title_edit": "Editing entry #{index}",
+          "company": "Company *",
+          "country": "Country (ISO-2)",
+          "country_placeholder": "Select country…",
+          "position": "Position",
+          "eu_routes": "EU routes?",
+          "eu_routes_yes": "Yes",
+          "eu_routes_no": "No / not applicable",
+          "start": "Start *",
+          "end": "End",
+          "trailers": "Trailers",
+          "trailer_labels": {
+            "mega": "Mega",
+            "standard": "Standard",
+            "platform": "Platform",
+            "frigo": "Refrigerated",
+            "tent": "Curtain / tent",
+            "container": "Container chassis",
+            "tandem": "Tandem",
+            "car_transporter": "Car transporter"
+          },
+          "routes": "Routes",
+          "route_labels": {
+            "eu": "EU",
+            "cis": "CIS",
+            "uk": "United Kingdom",
+            "scandi": "Scandinavia",
+            "local": "Local"
+          },
+          "add": "Add",
+          "save": "Save",
+          "cancel": "Cancel",
+          "current": "now",
+          "auto_save_hint": "We save the employer automatically once fields are filled. Use “Add” only for additional employers."
+        },
+        "agreements": {
+          "general": "I agree to the processing of my personal data and to communication by phone/email/WhatsApp in matters related to the recruitment process run by HostFlow.",
+          "employer_share": "I allow HostFlow to forward my personal data and documents to potential employers to present my candidacy.",
+          "terms": "I confirm that I have read the Terms of Service and the Privacy Policy.",
+          "privacy_link": "Privacy Policy",
+          "terms_link": "Terms of Service",
+          "cookies_hint": "Technical and functional cookies are required to keep the form session active.",
+          "validation": "Please accept all required consents before submitting.",
+          "submitted": "Application submitted {datetime}.",
+          "submit": "Submit application",
+          "submitting": "Submitting…",
+          "locked": "Accept all consents to submit"
+        },
+        "required": "Required",
+        "required_one": "One required"
+      },
+      "notifications": {
+        "upload_missing": "Select document type and file",
+        "upload_failed": "Could not upload document",
+        "rotate_warning": "The old link will stop working. Create a new one?",
+        "share_created": "New link created",
+        "share_failed": "Could not refresh the link"
+      },
+      "api": {
+        "load_error": "Could not load the application",
+        "save_error": "Could not save changes",
+        "submit_error": "Could not submit the application"
+      },
+      "errors": {
+        "invalid_link": "Link is invalid or has expired.",
+        "resend_error": "Could not send the link. Try again later.",
+        "general": "Something went wrong"
+      },
+      "cta": {
+        "prev": "Back",
+        "next": "Next"
+      },
+      "placeholder": {
+        "resume_hint": "Request a new link"
+      },
+      "guided": {
+        "next_step": "Next step",
+        "next_step_hint": "We highlight what to do first so you don't miss it.",
+        "start_step": "Go to step"
+      }
+    },
+    "status_page": {
+      "title": "Candidate application status",
+      "description": "Track the document progress and review stage. Share this link with a client or coordinator instead of forwarding scans.",
+      "current_status": "Current status: {status}",
+      "expires_at": "Link is active until {date}",
+      "temporary_notice": {
+        "title": "Temporary link",
+        "body": "Token deactivates on {datetime}. Store the link in a private channel to protect candidate data."
+      },
+      "timeline": {
+        "title": "Timeline",
+        "subtitle": "Updates when documents are uploaded or the application is submitted"
+      },
+      "contacts": "Candidate contacts",
+      "documents": {
+        "title": "Documents",
+        "required_badge": "Required: {ready}/{total}",
+        "summary": {
+          "completed": "Ready: {count}",
+          "pending": "Pending: {count}",
+          "missing": "Missing: {count}"
+        },
+        "required": "Required document",
+        "optional": "Optional / on request",
+        "open_file": "Open file"
+      },
+      "errors": {
+        "load": "Could not load status",
+        "invalid_link": "Link is invalid or expired."
+      },
+      "cta": {
+        "refresh": "Refresh",
+        "get_new": "Get a new link"
+      }
+    },
+    "timeline": {
+      "empty": "Statuses will appear after you start the application.",
+      "created": {
+        "title": "Application created",
+        "description": "Draft saved"
+      },
+      "profile": {
+        "title": "Data filled in",
+        "description": "Contacts and experience"
+      },
+      "documents": {
+        "title": "Documents uploaded",
+        "description": "Required files per checklist",
+        "progress": "Ready {ready}/{total}"
+      },
+      "submitted": {
+        "title": "Application submitted",
+        "description": "Under recruiter review"
+      },
+      "intake_created": {
+        "title": "Application created",
+        "description": "Draft saved"
+      },
+      "profile_data": {
+        "title": "Data filled in",
+        "description": "Contacts and experience"
+      },
+      "documents_upload": {
+        "title": "Documents uploaded",
+        "description": "Required files per checklist",
+        "progress": "Ready {ready}/{total}"
+      }
+    },
+    "scan": {
+      "breadcrumb": "Mobile scanner",
+      "title": "Scan documents with your phone",
+      "subtitle": "Capture crisp copies with your camera and upload them directly to HostFlow.",
+      "heading": "Document scanner",
+      "instructions": "Place the document inside the frame and avoid glare or blur.",
+      "page_label": "Page: {page}",
+      "session_id": "Session token",
+      "doc_fallback": "Document",
+      "doc_type_label": "Document: {type}",
+      "doc_preset": "Preset: {preset}",
+      "pages": {
+        "front": "Front side",
+        "back": "Back side",
+        "spread": "Passport spread",
+        "registration": "Registration stamp",
+        "page_1": "Page 1",
+        "page_2": "Page 2",
+        "page_3": "Page 3",
+        "page_4": "Page 4",
+        "full": "Full page"
+      },
+      "camera": {
+        "title": "Use camera",
+        "subtitle": "Open the rear camera to capture pages without leaving this page.",
+        "unsupported": "Camera access is not available in this browser.",
+        "permission": "Could not access the camera. Allow camera permissions and try again.",
+        "frame_hint": "Align document within the frame",
+        "stop": "Stop camera"
+      },
+      "overlay": {
+        "title": "Fullscreen scanner",
+        "actions": {
+          "open": "Open scanner",
+          "close": "Close scanner",
+          "fullscreen": "Scan in fullscreen",
+          "keep": "Use this scan",
+          "retake": "Retake"
+        },
+        "status": {
+          "preparing": "Starting camera…",
+          "capturing": "Processing scan…",
+          "auto_ready": "Perfect — auto capture will fire now",
+          "auto_wait": "Hold steady, aligning frame…"
+        },
+        "step_label": "Step {current} / {total}",
+        "current_step": "Current step",
+        "mobile_hint": "Use the fullscreen scanner for guided capture and quality checks.",
+        "inline_busy": "Fullscreen scanner is active.",
+        "force_hint": "Finish the guided capture or enable manual upload to close the scanner.",
+        "force_confirm": "You haven’t finished all sides yet. Close the scanner anyway?",
+        "preview_title": "Preview",
+        "preview_hint": "Review the scan before confirming — retake if any detail is missing.",
+        "guide": {
+          "align": "Align the document so all edges touch the frame.",
+          "light": "Keep the phone parallel to avoid glare and shadows.",
+          "hold": "Hold steady — we capture automatically when the frame is filled."
+        },
+        "side_status": {
+          "done": "Captured",
+          "current": "In progress",
+          "todo": "Pending"
+        },
+        "hints": {
+          "default": "Follow the prompts inside the scanner to capture every corner.",
+          "align": "Center the document in the frame",
+          "distance": "Move closer so the document fills the frame",
+          "lighting": "Adjust the light to reduce glare",
+          "lighting_dark": "Increase light — the document is too dark",
+          "lighting_bright": "Reduce glare — the frame is overexposed",
+          "sharpness": "Hold steady — the frame is still blurry",
+          "hold": "Hold steady — capturing automatically…"
+        },
+        "manual_hint": "Auto capture stuck? Tap “Take page” to shoot manually.",
+        "filters": {
+          "title": "Filters",
+          "auto": "Auto",
+          "mono": "B/W",
+          "contrast": "High contrast",
+          "clean": "Clean background",
+          "boost": "Color boost",
+          "loading": "Rendering…",
+          "applying": "Applying filter…"
+        },
+        "quality": {
+          "ready": "Looks good",
+          "issues": "Needs attention",
+          "retake_hint": "Quality below the bar — retake recommended before continuing."
+        }
+      },
+      "status": {
+        "title": "Session status",
+        "pending": "Waiting for upload",
+        "uploaded": "Uploaded",
+        "processing": "Processing",
+        "ok": "Ready",
+        "needs_review": "Needs review",
+        "rejected": "Rejected",
+        "error": "Error",
+        "completed": "Uploaded",
+        "expired": "Expired",
+        "unknown": "Unknown",
+        "expires_at": "Expires at {time}"
+      },
+      "errors": {
+        "title": "Something went wrong",
+        "unexpected": "Unable to start scanner, please reopen the link.",
+        "invalid_session": "Session link is invalid or expired.",
+        "expired": "This scan session has expired. Request a new QR code from the recruiter.",
+        "no_pages": "Add at least one page before uploading.",
+        "pages_missing": "Add at least {count} page(s) before uploading.",
+        "upload_failed": "Upload failed. Try again.",
+        "capture_failed": "Could not capture the frame. Try again.",
+        "step_missing": "Capture the pending side ({step}) before uploading.",
+        "quality_pending": "Wait until the quality check finishes.",
+        "quality_failed": "At least one page does not meet the quality bar. Retake the highlighted page.",
+        "steps_completed": "All sides are already captured. Use “Retake” to replace a side.",
+        "manual_disabled": "Finish the guided scan or enable manual upload to add files.",
+        "unsupported_file": "Only image files (JPEG/PNG/HEIC) are supported.",
+        "presets_failed": "Unable to load scanner presets.",
+        "missing_token": "Link is missing required token.",
+        "missing_doc": "Document type is required.",
+        "start_failed": "Failed to start scanner.",
+        "process_failed": "Processing failed, please retry."
+      },
+      "notifications": {
+        "page_uploaded": "Page sent for processing",
+        "processed": "Processing complete"
+      },
+      "messages": {
+        "upload_success": "Files uploaded successfully.",
+        "completed_note": "Upload completed. You can close this page.",
+        "expired_note": "Session expired - request a new link on the desktop portal."
+      },
+      "actions": {
+        "back_home": "Back to portal",
+        "upload": "Send files",
+        "use_camera": "Start camera",
+        "capture": "Capture page",
+        "clear_draft": "Clear draft"
+      },
+      "storage": {
+        "saved": "Draft saved locally. Files stay in this browser until you upload or clear them.",
+        "restored": "Draft restored from this device."
+      },
+      "capture": {
+        "title": "Capture or add files",
+        "subtitle": "Use the camera or choose scans from Files.",
+        "instructions": "Tips for a clear shot",
+        "add_page": "Add photos or scans",
+        "hint": "Use daylight, keep the document flat, avoid glare.",
+        "permission": "Camera blocked. Upload a photo instead.",
+        "permission_help": "If camera access is blocked, you can upload a photo instead.",
+        "use_camera": "Use camera",
+        "use_upload": "Upload from device",
+        "switch_camera_front": "Use front camera",
+        "switch_camera_back": "Use back camera",
+        "step_label": "Step for {page}",
+        "preview_title": "Preview your photo",
+        "preview_subtitle": "Make sure the document is sharp and fully visible.",
+        "remove": "Remove",
+        "comment": "Comment for recruiter",
+        "comment_placeholder": "Notes about this scan (optional)",
+        "steps_title": "Document sides",
+        "side": {
+          "front": "Front side",
+          "back": "Back side"
+        },
+        "side_instruction": {
+          "front": "Capture the front side first.",
+          "back": "Now capture the back side.",
+          "generic": "Capture each side in order."
+        },
+        "page_instruction": "Capture page {number}",
+        "page_label": "Page {number}",
+        "free_instruction": "Capture the document page by page.",
+        "sides_completed": "All sides captured. Use “Retake” if needed.",
+        "steps_ready": "Captured",
+        "steps_missing": "Waiting for capture",
+        "waiting_step": "Next in queue",
+        "retake": "Retake",
+        "retake_pending": "Retake in progress",
+        "preview_use": "Use this photo",
+        "preview_retake": "Retake",
+        "uploading": "Uploading…",
+        "issue_hint": "Quality below threshold—retake recommended.",
+        "quality_block": {
+          "title": "Fix highlighted pages before sending",
+          "body": "At least one page fails the quality bar. Retake the marked page or remove it to continue."
+        },
+        "progress_title": "Capture progress",
+        "progress_paged": "Pages captured: {current}/{target}",
+        "existing_scan": {
+          "title": "Already have scans?",
+          "body": "Enable manual upload to attach ready-made scans instead of using the camera.",
+          "cta": "Upload existing scan",
+          "enabled": "Manual upload enabled. Use the button below to pick files."
+        }
+      },
+      "steps": {
+        "title": "How it works",
+        "prepare": "Prepare the document on a contrasting background.",
+        "align": "Align the frame, keep the phone parallel, avoid glare.",
+        "review": "Review every page before sending and retake if needed.",
+        "submit": "Tap \"Send files\" to upload - the desktop view updates automatically.",
+        "pages_title": "Pages to capture",
+        "pages_progress": "Step {current} of {total}",
+        "optional": "Optional"
+      },
+      "quality": {
+        "title": "Quality tips",
+        "light": "Use daylight or a lamp with no harsh shadows.",
+        "contrast": "Remove covers and keep only the document in frame.",
+        "edges": "Capture the full document, including all corners.",
+        "status": {
+          "ok": "Quality OK",
+          "warn": "Needs attention",
+          "pending": "Analyzing…"
+        },
+        "warnings": "Issues",
+        "metrics": {
+          "sharpness": "Sharpness",
+          "glare": "Glare",
+          "fill": "Fill",
+          "contrast": "Contrast"
+        },
+        "flags": {
+          "sharpness": "Retake: too blurry",
+          "glare": "Reduce glare",
+          "fill": "Move closer to fill the frame",
+          "contrast": "Increase contrast / lighting"
+        }
+      },
+      "review": {
+        "title": "Review & process",
+        "subtitle": "Check each page and start processing when ready.",
+        "step": "Step {current} of {total}",
+        "placeholder": "Waiting for upload",
+        "hint": "Make sure the entire page is visible without glare.",
+        "reshoot": "Reshoot",
+        "process": "Submit document",
+        "processing": "Processing…",
+        "processing_hint": "Processing photos…",
+        "processing_subtitle": "This may take a few seconds. Please keep the tab open.",
+        "ready": "Processing finished",
+        "ready_hint": "You can close this window and continue in the application."
+      },
+      "summary": {
+        "title": "Summary",
+        "subtitle": "All pages are captured. HR will review them shortly."
+      },
+      "loading": "Connecting to scanner...",
+      "footer_hint": "Need a new session? Ask the recruiter to show the QR again."
+    },
+    "api": {
+      "status_load_failed": "Could not load status"
+    }
+  },
+  "admin": {
+    "docs": {
+      "mock": {
+        "passport": "Passport",
+        "license": "Driver license",
+        "insurance": "Insurance"
+      }
+    },
+    "documents": {
+      "status_labels": {
+        "missing": "Missing",
+        "requested": "Requested",
+        "in_progress": "In progress",
+        "received": "Received",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "expired": "Expired",
+        "ready": "Ready"
+      },
+      "readiness_labels": {
+        "pending": "Not started",
+        "requested": "Requested",
+        "ordered": "Ordered",
+        "in_progress": "In progress",
+        "awaiting_review": "Awaiting review",
+        "ready": "Ready",
+        "problem": "Issue"
+      },
+      "kinds": {
+        "driver": "Driver",
+        "employer": "Employer",
+        "process": "Processes"
+      },
+      "mock": {
+        "passport": "Passport",
+        "license": "Driver license",
+        "insurance": "Insurance"
+      },
+      "requested_from": {
+        "driver": "Candidate",
+        "employer": "Employer",
+        "agency": "Agency"
+      },
+      "process_types": {
+        "none": "No process",
+        "work_permit": "Work permit",
+        "visa": "Visa",
+        "residence_card": "Residence card",
+        "tachograph_card": "Tachograph card",
+        "driver_license_exchange": "License exchange",
+        "swiadectwo_kierowcy": "Driver certificate",
+        "other": "Other"
+      },
+      "types": {
+        "title": "Document type catalog",
+        "description": "Live configuration of document types and requirements appears here soon. Demo entries shown for now.",
+        "table": {
+          "code": "Code",
+          "name": "Name",
+          "required": "Upload required"
+        },
+        "badge": {
+          "required": "Required",
+          "optional": "Optional"
+        }
+      },
+      "notifications": {
+        "upload_success": "Document uploaded",
+        "upload_failed": "Could not upload documents",
+        "create_failed": "Could not create document",
+        "order_success": "Document {name} ordered",
+        "order_failed": "Could not order the document",
+        "delete_success": "Document deleted",
+        "delete_failed": "Could not delete the document",
+        "status_updated": "Status updated",
+        "status_failed": "Could not change document status",
+        "approve_failed": "Could not approve the document",
+        "reject_failed": "Could not reject the document",
+        "permission_error": "You do not have permissions for this action",
+        "approve_success": "Document approved",
+        "core_failed": "Could not save document metadata",
+        "core_saved": "Metadata saved",
+        "create_success": "Document created",
+        "created_from_checklist": "Document created from checklist",
+        "order_created": "Document queued for ordering",
+        "reject_success": "Document rejected",
+        "replace_failed": "Could not replace the file",
+        "replace_success": "File updated",
+        "workflow_failed": "Could not update workflow",
+        "workflow_started": "Workflow started",
+        "workflow_step_marked": "Step marked as done"
+      },
+      "errors": {
+        "type_missing": "Select a document type",
+        "custom_name_missing": "Enter the custom document name",
+        "description_missing": "Add a description",
+        "comment_missing": "Add a comment for the recruiter",
+        "file_missing": "Choose a file",
+        "file_too_large": "File is too large (> {limit} MB)",
+        "fields_missing": "Fill in the required fields",
+        "order_date_required": "Provide the order date",
+        "order_valid_from_required": "Provide the date when the permit is required",
+        "metadata_missing": "Fill the field {field}",
+        "file_fetch_failed": "Could not load the file",
+        "file_missing_remote": "File not found in storage",
+        "file_open_failed": "Could not open the file",
+        "load_failed": "Could not load documents",
+        "permission_approve": "No permission to approve documents",
+        "permission_create": "No permission to create documents",
+        "permission_delete": "No permission to delete documents",
+        "permission_edit": "No permission to edit documents",
+        "permission_reject": "No permission to reject documents",
+        "permission_status": "No permission to change status",
+        "permission_upload": "No permission to upload files",
+        "permission_workflow": "No permission to manage workflow"
+      },
+      "actions": {
+        "upload": "Upload",
+        "replace": "Replace",
+        "clear": "Clear",
+        "create_document": "Create document",
+        "add_document": "Add document",
+        "order_document": "Order",
+        "approve": "Approve",
+        "reject": "Reject",
+        "save": "Save",
+        "reset": "Reset",
+        "refresh": "Refresh",
+        "filters": "Filters",
+        "add_custom": "Create without file",
+        "choose_file": "Choose…",
+        "collapse": "Collapse",
+        "expand": "Expand",
+        "mark_done": "Mark done",
+        "open": "Open",
+        "order": "Order",
+        "ordering": "Ordering…",
+        "upload_file": "Upload file"
+      },
+      "filters": {
+        "group": "Group",
+        "status": "Status",
+        "ordered": "Ordered",
+        "search": "Search",
+        "search_placeholder": "Name, type or code",
+        "expiring_badge": "Expiring ≤{days} days",
+        "no_results": "No documents for the selected filters",
+        "empty": "No documents yet",
+        "all": "All",
+        "all_groups": "All groups",
+        "any": "Any",
+        "not_ordered": "Not ordered",
+        "ordered_only": "Ordered only"
+      },
+      "summary": {
+        "required_ready": "Ready {ready} of {total}",
+        "expiring": "Expiring soon: {list}",
+        "stats": "Ready {ready}/{total} · in progress {attention} · issues {negative}",
+        "required_for_vacancy": "Required for vacancy",
+        "required_counts": "Total {total} · Ready {ready} · In progress {in_progress} · Issues {problems} · Missing {missing}",
+        "required_empty": "Checklist entry has no required documents",
+        "required_none": "No required documents"
+      },
+      "workflow": {
+        "title": "Process",
+        "cta": "Order",
+        "ordered_at": "Ordered on",
+        "required_from": "From",
+        "status_badge": "status",
+        "no_record": "Entry missing",
+        "no_data": "No data — ready to order",
+        "completed_at": "Completed",
+        "due_at": "Due",
+        "due_in_hours": "Due in {hours}h"
+      },
+      "forms": {
+        "type": "Document type",
+        "custom_title": "Title *",
+        "custom_title_placeholder": "e.g. Employment contract",
+        "category": "Category *",
+        "requested_from": "Provided by *",
+        "process_type": "Process type",
+        "custom_optional": "Title {flag}",
+        "description": "Description *",
+        "description_placeholder": "What is being uploaded, in what format, for which period",
+        "comment": "Recruiter comment *",
+        "comment_placeholder": "Purpose, special notes",
+        "status": "Status",
+        "ordered_at": "Ordered at",
+        "valid_from": "Valid from",
+        "remind_in_days": "Remind in (days)",
+        "file": "File",
+        "file_placeholder": "Drop or choose a file (⌘/Ctrl+V from clipboard)",
+        "owner": "Owner",
+        "number": "Number / series",
+        "requested_from_date": "Requested on",
+        "issued_at": "Issue date",
+        "expires_at": "Expiry date",
+        "comment_field": "Comment",
+        "submit": "Create",
+        "submit_without_file": "Create without file",
+        "upload_file": "Upload file",
+        "core": {
+          "number": "Document number",
+          "owner": "Owner ID",
+          "requested_from": "Requested from",
+          "title": "Core data"
+        },
+        "expire_date": "Expires on",
+        "issue_date": "Issued on",
+        "replace_file_placeholder": "Drop or choose a replacement file",
+        "requested_from_label": "Requested from date",
+        "title_placeholder": "e.g. National passport",
+        "reminder_placeholder": "Default",
+        "optional_hint": "(optional)",
+        "metadata_section": "Metadata",
+        "select_placeholder": "Select an option"
+      },
+      "table": {
+        "title": "Documents",
+        "showing": "Showing {visible}{total}",
+        "refresh": "Refresh",
+        "status": "Status",
+        "required_none": "No required documents",
+        "required_checklist_empty": "Checklist has no required documents",
+        "expiring_badge": "Expiring soon",
+        "draft_badge": "draft",
+        "order_date": "Order date",
+        "valid_from": "Valid from",
+        "ready_badge": "Ready",
+        "items_count": "{count} items"
+      },
+      "modals": {
+        "close": "Close"
+      },
+      "registry": {
+        "title": "Documents registry",
+        "hero": "Monitor uploads, orders, and expirations across every candidate. Filters update results instantly.",
+        "note": "Use quick status filters and owner selectors to focus on what matters right now.",
+        "search_label": "Search",
+        "placeholder": "Candidate, company, document type…",
+        "loading": "Loading documents…",
+        "error": "Failed to load documents.",
+        "filter_type": "Document type",
+        "filter_kind": "Owner type",
+        "view": {
+          "label": "View",
+          "table": "Table",
+          "cards": "Cards"
+        },
+        "stats": {
+          "ready": "Ready",
+          "pending": "In progress",
+          "overdue": "Expired"
+        },
+        "table": {
+          "title": "Documents",
+          "subtitle": "Live records from every candidate and company",
+          "doc": "Document",
+          "owner": "Owner",
+          "status": "Status",
+          "updated": "Updated",
+          "all": "All statuses",
+          "empty": "No documents match the filters."
+        },
+        "pagination": "Showing {from}–{to} of {total} documents",
+        "automation": {
+          "title": "Automate reminders",
+          "description": "Route expiring files, issue portal requests, and notify managers without spreadsheets.",
+          "action": "Open automations"
+        }
+      },
+      "settings": {
+        "title": "Admin control center",
+        "subtitle": "Pick a section in the sidebar or from the list below.",
+        "actions": {
+          "open": "Open →"
+        },
+        "cards": {
+          "users": {
+            "label": "Users & roles",
+            "description": "Invite users, change roles, and manage access status."
+          },
+          "billing": {
+            "label": "Billing & team",
+            "description": "Seat usage, module toggles, and seat requests."
+          },
+          "tenants": {
+            "label": "Company / tenant access",
+            "description": "Company ACLs and third-party account permissions."
+          },
+          "documents": {
+            "label": "Document catalog",
+            "description": "Document types and upload requirements."
+          },
+          "ruleset": {
+            "label": "Ruleset",
+            "description": "Compliance rules and automation versions."
+          },
+          "integrations": {
+            "label": "Integrations",
+            "description": "Meta Leads and webhook connections."
+          },
+          "audit": {
+            "label": "Audit log",
+            "description": "Deletion queue and audit events."
+          }
+        }
+      },
+      "aria": {
+        "collapse_document": "Collapse document",
+        "expand_document": "Expand document"
+      },
+      "badges": {
+        "approved": "Approved",
+        "draft": "Draft",
+        "expiring": "Expiring soon",
+        "files_missing": "No files",
+        "files_present": "Files uploaded",
+        "overdue": "Overdue",
+        "passport_incomplete": "Passport incomplete",
+        "rejected": "Rejected"
+      },
+      "labels": {
+        "created_at": "Created",
+        "entry_missing": "Entry missing",
+        "expire_date": "Expires on",
+        "issue_date": "Issued on",
+        "number": "Number",
+        "ordered_at": "Ordered on",
+        "requested_from_date": "Requested from",
+        "required_sources": "Requested from: {sources}",
+        "reviewer": "Reviewer: {reviewer}",
+        "valid_from": "Valid from"
+      },
+      "messages": {
+        "checklist_placeholder": "Document is defined in the checklist."
+      },
+      "order_panel": {
+        "no_data": "No order data yet — fill the form below"
+      },
+      "prompts": {
+        "reject_reason": "Enter the rejection reason"
+      },
+      "scanner": {
+        "accept_formats": "Formats: {formats}",
+        "frame": "Frame preset: {preset}",
+        "max_files": "Maximum files: {count}",
+        "max_per_page": "Up to {mb} MB per page",
+        "max_total": "Total size ≤ {mb} MB",
+        "min_files": "Minimum files: {count}",
+        "min_pages": "Minimum pages: {count}",
+        "paged_title": "Paged scanning",
+        "section_title": "Upload requirements",
+        "sequence_required": "Follow the sequence",
+        "sides_order": "Sides order: {order}",
+        "sides_title": "Both sides",
+        "upload_title": "File upload"
+      },
+      "status": {
+        "refreshing": "Refreshing…",
+        "saving": "Saving…",
+        "uploading": "Uploading…",
+        "uploading_with_progress": "Uploading: {progress}%"
+      }
+    },
+    "ruleset": {
+      "header": {
+        "title": "Document ruleset",
+        "subtitle": "Publish and maintain document ruleset revisions.",
+        "refresh": {
+          "action": "Refresh",
+          "loading": "Refreshing…"
+        },
+        "usage_refresh": {
+          "action": "Refresh usage",
+          "loading": "Refreshing…"
+        }
+      },
+      "create": {
+        "title": "Create draft",
+        "description": "Edit JSON and publish a new ruleset version.",
+        "json_label": "Ruleset JSON",
+        "comment_label": "Comment",
+        "comment_placeholder": "What changed? (optional)",
+        "activate_toggle": "Activate after saving",
+        "save": "Save draft",
+        "copy_active": "Copy active ruleset"
+      },
+      "history": {
+        "title": "Version history",
+        "columns": {
+          "version": "Version",
+          "status": "Status",
+          "comment": "Comment",
+          "signature": "Signature",
+          "author": "Author",
+          "created": "Created",
+          "actions": "Actions"
+        },
+        "status": {
+          "active": "Active",
+          "draft": "Draft"
+        },
+        "actions": {
+          "use_as_draft": "Use as draft",
+          "diff": "Diff",
+          "activate": "Activate",
+          "rollback": "Rollback"
+        },
+        "empty": "No versions yet."
+      },
+      "diff": {
+        "title": "Diff for v{version}",
+        "subtitle_previous": "Changes vs. previous active version.",
+        "subtitle_engine": "Computed with engine {engine}.",
+        "loading": "Loading diff…",
+        "summary": {
+          "added": "Added: {count}",
+          "removed": "Removed: {count}",
+          "changed": "Changed: {count}"
+        },
+        "lists": {
+          "added": "Added",
+          "removed": "Removed",
+          "changed": "Changed"
+        },
+        "list_empty": "No changes"
+      },
+      "usage": {
+        "title": "Usage",
+        "refresh": {
+          "action": "Refresh usage",
+          "loading": "Refreshing…"
+        },
+        "summary_title": "Trigger summary",
+        "summary_empty": "No triggers yet.",
+        "events_title": "Usage events",
+        "event_ref": "Request #{ref}",
+        "events_empty": "No events found."
+      },
+      "actions": {
+        "confirm_activate": "Activate version {version}?",
+        "rollback_prompt": "Use version {version} as draft? Add a comment",
+        "rollback_default_comment": "Rollback"
+      },
+      "errors": {
+        "unknown": "Unknown error",
+        "request_failed": "Request failed",
+        "comment_short": "Comment is too short"
+      }
+    },
+    "deletion_requests": {
+      "title": "Candidate deletion requests",
+      "subtitle": "Approve or reject recruiters' requests to delete profiles.",
+      "filters": {
+        "pending": "Awaiting decision",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "all": "All"
+      },
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
+      "labels": {
+        "candidate": "Candidate",
+        "recruiter": "Recruiter",
+        "supervisor": "Supervisor",
+        "reason": "Reason",
+        "resolution": "Resolution"
+      },
+      "actions": {
+        "approve": "Approve",
+        "reject": "Reject"
+      },
+      "errors": {
+        "load": "Could not load deletion requests",
+        "reject": "Could not reject the request",
+        "approve": "Could not approve the request"
+      },
+      "prompts": {
+        "reject_reason": "Add a rejection reason (optional)"
+      },
+      "messages": {
+        "no_access": "You don't have access to the deletion queue.",
+        "empty": "No requests.",
+        "pending_hint": "Awaiting decision: {count}"
+      }
+    },
+    "meta_leads": {
+      "title": "Meta Leads admin",
+      "subtitle": "Manage Meta Ads webhook, ad mapping, and manual routing of leads.",
+      "tabs": {
+        "settings": "Settings",
+        "credentials": "Credentials",
+        "mapping": "Ad mapping",
+        "logs": "Lead logs"
+      },
+      "notices": {
+        "settings_saved": "Meta Leads settings updated",
+        "credential_created": "Credential saved",
+        "secret_rotated": "New secret: {secret}",
+        "mapping_saved": "Mapping saved",
+        "lead_rerouted": "Lead sent for processing"
+      },
+      "errors": {
+        "load": "Could not load Meta Leads data",
+        "settings_update": "Could not update settings",
+        "credential_label": "Enter a credential name",
+        "credential_create": "Could not create credential",
+        "secret_rotate": "Could not rotate secret",
+        "credential_delete": "Could not delete credential",
+        "mapping_required": "Specify ad_id and vacancy_id",
+        "mapping_ad_id": "ad_id must contain digits only",
+        "mapping_create": "Could not save mapping",
+        "mapping_update": "Could not update mapping",
+        "mapping_delete": "Could not delete mapping",
+        "reroute": "Could not reroute lead"
+      },
+      "prompts": {
+        "delete_credential": "Delete this Meta credential?",
+        "delete_mapping": "Delete mapping for ad {adId}?",
+        "reroute_vacancy": "Enter vacancy_id",
+        "edit_note": "New note",
+        "edit_vacancy": "New vacancy_id"
+      },
+      "placeholders": {
+        "company_none": "— none —",
+        "selected_company": "Current: {name}",
+        "recruiter_none": "— not assigned —",
+        "recruiter_fallback": "Recruiter",
+        "selected_recruiter": "Current: {name}"
+      },
+      "settings": {
+        "title": "Meta connection",
+        "subtitle": "Control webhook status and auto-create behavior.",
+        "auto_create": "Enable auto-create candidates",
+        "mask_pii": "Mask PII in UI",
+        "default_company": "Default company",
+        "default_recruiter": "Default recruiter",
+        "current_company": "Current: {name}",
+        "current_recruiter": "Current: {name}",
+        "sla_label": "SLA (hours to signal)",
+        "webhook_url": "Webhook URL",
+        "webhook_token": "Verify token",
+        "last_signature_check": "Last signature check: {date}",
+        "signature_status": "Status: {status}",
+        "save": "Save settings"
+      },
+      "credentials": {
+        "title": "Add credential",
+        "label": "Name",
+        "status": "Status",
+        "webhook_secret": "Webhook secret",
+        "access_token": "Access token",
+        "table": {
+          "label": "Name",
+          "status": "Status",
+          "signature": "Signature"
+        },
+        "actions": {
+          "rotate": "Rotate secret"
+        },
+        "empty": "No saved credentials"
+      },
+      "mapping": {
+        "title": "Ad → vacancy mapping",
+        "note": "Note",
+        "save": "Save mapping",
+        "search_placeholder": "Search by ad_id or note",
+        "created": "Created",
+        "empty": "No mappings"
+      },
+      "logs": {
+        "title": "Leads waiting for routing",
+        "subtitle": "Use manual routing for problematic leads.",
+        "table": {
+          "created": "Created",
+          "status": "Status",
+          "company": "Company",
+          "vacancy": "Vacancy",
+          "contacts": "Contacts",
+          "error": "Error"
+        },
+        "empty": "No leads in status needs_routing",
+        "actions": {
+          "reroute": "Reroute"
+        }
+      }
+    },
+    "settings": {
+      "title": "Workspace control center",
+      "subtitle": "Manage your team, permissions, documents, integrations, and audit tools.",
+      "actions": {
+        "open": "Open"
+      },
+      "cards": {
+        "users": {
+          "label": "Users & roles",
+          "description": "Invite teammates, assign roles, toggle modules, and review seat usage."
+        },
+        "billing": {
+          "label": "Billing & team",
+          "description": "Review license limits, module toggles, and seat requests."
+        },
+        "tenants": {
+          "label": "Platform tenants",
+          "description": "Provision client workspaces and manage licensing."
+        },
+        "documents": {
+          "label": "Document types",
+          "description": "Configure document templates and compliance presets."
+        },
+        "ruleset": {
+          "label": "Ruleset versions",
+          "description": "Publish and maintain document ruleset revisions."
+        },
+        "integrations": {
+          "label": "Integrations",
+          "description": "Connect Meta Leads, portals, and third-party services."
+        },
+        "audit": {
+          "label": "Audit log",
+          "description": "Review admin actions and sensitive activity."
+        }
+      }
+    },
+    "invoices": {
+      "title": "Invoices",
+      "create": "Create Invoice",
+      "filter_status": "Status",
+      "all_statuses": "All statuses",
+      "status": {
+        "draft": "Draft",
+        "issued": "Issued",
+        "sent": "Sent",
+        "paid": "Paid",
+        "overdue": "Overdue",
+        "cancelled": "Cancelled"
+      },
+      "number": "Number",
+      "issue_date": "Issue Date",
+      "due_date": "Due Date",
+      "total": "Total",
+      "paid": "Paid",
+      "empty": "No invoices found"
+    }
+  }
+}

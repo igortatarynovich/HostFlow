@@ -1,0 +1,7 @@
+{
+  "fields": {
+    "iban": { "type": "string", "required": true, "regex": "^[A-Z]{2}[0-9A-Z]{13,30}$" },
+    "bank_name": { "type": "string", "required": false }
+  },
+  "ocr": { "langs": ["eng","pol"], "hints": ["bank_account"] }
+}

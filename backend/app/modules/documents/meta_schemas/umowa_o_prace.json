@@ -1,0 +1,11 @@
+{
+  "fields": {
+    "contract_number": { "type": "string", "required": false },
+    "employer_name": { "type": "string", "required": true },
+    "position": { "type": "string", "required": false },
+    "signed_at": { "type": "date", "required": true },
+    "start_at": { "type": "date", "required": true },
+    "end_at": { "type": "date", "required": false }
+  },
+  "ocr": { "langs": ["pol"], "hints": ["employment_contract"] }
+}

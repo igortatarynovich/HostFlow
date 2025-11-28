@@ -1,0 +1,72 @@
+
+
+# Document Templates API examples
+
+### 1. Получение списка шаблонов
+# Получить все шаблоны документов
+GET {{baseUrl}}/templates
+Authorization: Bearer {{token}}
+
+### 2. Создание нового шаблона
+# Создать новый шаблон документа
+POST {{baseUrl}}/templates
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "invoice_template_pl",
+  "name": "Invoice Template (PL)",
+  "type": "pdf",
+  "locale": "pl",
+  "is_system": false
+}
+
+### 3. Добавление новой версии шаблона
+# Добавить новую версию к существующему шаблону
+POST {{baseUrl}}/templates/{{template_id}}/versions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "version": "1.1",
+  "body_markdown": "# Faktura VAT\nNumer: {{ invoice.number }}\nKwota: {{ invoice.total_amount }} PLN",
+  "variables": {
+    "invoice.number": "string",
+    "invoice.total_amount": "number"
+  }
+}
+
+### 4. Просмотр шаблона и версий
+# Получить информацию о шаблоне и его версиях
+GET {{baseUrl}}/templates/{{template_id}}
+Authorization: Bearer {{token}}
+
+### 5. Рендер превью (PDF/HTML)
+# Сгенерировать превью документа по шаблону (PDF или HTML)
+POST {{baseUrl}}/templates/{{template_id}}/render
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "version": "1.1",
+  "format": "pdf",
+  "context": {
+    "invoice": {
+      "number": "INV/2025/001",
+      "total_amount": 2700
+    },
+    "company": {
+      "legal_name": "Work Host International Sp. z o.o."
+    }
+  }
+}
+
+### 6. Получение списка переменных
+# Получить список переменных, используемых в шаблоне
+GET {{baseUrl}}/templates/{{template_id}}/variables
+Authorization: Bearer {{token}}
+
+### 7. Удаление шаблона (только ADMIN)
+# Удалить шаблон (требуются права администратора)
+DELETE {{baseUrl}}/templates/{{template_id}}
+Authorization: Bearer {{token}}

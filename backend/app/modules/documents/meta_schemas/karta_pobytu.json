@@ -1,0 +1,10 @@
+{
+  "fields": {
+    "card_number": { "type": "string", "required": true, "regex": "^[A-Z0-9]{8,15}$" },
+    "issuing_country": { "type": "string", "required": true, "enum": "ISO3166-1-alpha2" },
+    "issued_at": { "type": "date", "required": true },
+    "expires_at": { "type": "date", "required": true },
+    "issuing_authority": { "type": "string", "required": false }
+  },
+  "ocr": { "langs": ["pol", "eng"], "hints": ["karta_pobytu", "residence_permit"] }
+}

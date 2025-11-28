@@ -1,0 +1,68 @@
+### 1. Получение списка счетов
+GET {{baseUrl}}/invoices
+Authorization: Bearer {{token}}
+
+### 2. Получение конкретного счёта
+GET {{baseUrl}}/invoices/{{invoice_id}}
+Authorization: Bearer {{token}}
+
+### 3. Создание нового счёта
+POST {{baseUrl}}/invoices
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "company_id": "uuid-company-1",
+  "contract_id": "uuid-contract-1",
+  "currency": "PLN",
+  "issue_date": "2025-10-15",
+  "due_date": "2025-10-30",
+  "items": [
+    {
+      "description": "Подбор водителя категории CE",
+      "qty": 1,
+      "unit_price": 2500,
+      "vat_rate": 23
+    },
+    {
+      "description": "Медкомиссия",
+      "qty": 1,
+      "unit_price": 200,
+      "vat_rate": 23
+    }
+  ]
+}
+
+### 4. Обновление статуса счёта
+PATCH {{baseUrl}}/invoices/{{invoice_id}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "paid"
+}
+
+### 5. Добавление платежа к счёту
+POST {{baseUrl}}/invoices/{{invoice_id}}/payments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "amount": 3321,
+  "currency": "PLN",
+  "payment_date": "2025-10-18",
+  "method": "bank_transfer",
+  "reference_number": "TRX-98452"
+}
+
+### 6. Получение PDF-файла счёта
+GET {{baseUrl}}/invoices/{{invoice_id}}/pdf
+Authorization: Bearer {{token}}
+
+### 7. Отправка счёта клиенту по email
+POST {{baseUrl}}/invoices/{{invoice_id}}/send
+Authorization: Bearer {{token}}
+
+### 8. Список всех платежей
+GET {{baseUrl}}/payments
+Authorization: Bearer {{token}}

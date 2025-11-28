@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="640" height="480" viewBox="0 0 640 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="480" rx="40" fill="url(#paint0_linear)"/>
+  <path d="M480 280H160L210 220H430L480 280Z" fill="#042C3C" opacity="0.2"/>
+  <path d="M460 140H240C233.373 140 228 145.373 228 152V268H460C466.627 268 472 262.627 472 256V152C472 145.373 466.627 140 460 140Z" fill="#0F6C83"/>
+  <path d="M472 200H520V256C520 262.627 514.627 268 508 268H472V200Z" fill="#0A4A57"/>
+  <path d="M520 200L560 240V256C560 262.627 554.627 268 548 268H520V200Z" fill="#052C3C"/>
+  <rect x="252" y="156" width="124" height="72" rx="8" fill="#84D5E3"/>
+  <path d="M252 232H376V256H252V232Z" fill="#063847"/>
+  <circle cx="256" cy="300" r="32" fill="#0A4A57"/>
+  <circle cx="256" cy="300" r="18" fill="#84D5E3"/>
+  <circle cx="456" cy="300" r="32" fill="#0A4A57"/>
+  <circle cx="456" cy="300" r="18" fill="#84D5E3"/>
+  <rect x="180" y="252" width="40" height="16" rx="8" fill="#0A4A57"/>
+  <rect x="176" y="200" width="32" height="32" rx="6" fill="#84D5E3" opacity="0.5"/>
+  <defs>
+    <linearGradient id="paint0_linear" x1="0" y1="0" x2="640" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E0F6FF"/>
+      <stop offset="1" stop-color="#A7DEED"/>
+    </linearGradient>
+  </defs>
+</svg>

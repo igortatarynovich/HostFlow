@@ -1,0 +1,282 @@
+from __future__ import annotations
+
+import datetime as dt
+import os
+import uuid
+from typing import Optional, Set
+
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.db.session import async_session_maker
+
+# Пароль хешируем через passlib[bcrypt]
+try:
+    from passlib.context import CryptContext
+
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+except Exception:
+    pwd_context = None
+
+
+ADMIN_EMAIL = "admin@hostflow.dev"
+ADMIN_PASSWORD = "Admin@025"
+DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111"
+
+_ASYNC_URL = os.getenv("ASYNC_DATABASE_URL") or ""
+_SYNC_URL = os.getenv("DATABASE_URL") or os.getenv("SQLALCHEMY_DATABASE_URI") or ""
+IS_SQLITE = _ASYNC_URL.startswith("sqlite:") or _SYNC_URL.startswith("sqlite:")
+
+
+async def _table_exists(db: AsyncSession, name: str) -> bool:
+    # SQLite
+    if IS_SQLITE:
+        try:
+            res = await db.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name=:n"),
+                {"n": name},
+            )
+            if res.scalar_one_or_none():
+                return True
+        except Exception:
+            pass
+    # PostgreSQL
+    try:
+        res = await db.execute(text("SELECT to_regclass(:n)"), {"n": name})
+        tbl = res.scalar_one_or_none()
+        # в PG для отсутствующей таблицы вернётся None
+        if tbl:
+            return True
+    except Exception:
+        pass
+    return False
+
+
+async def _columns(db: AsyncSession, table: str) -> Set[str]:
+    cols: Set[str] = set()
+    # SQLite
+    if IS_SQLITE:
+        try:
+            res = await db.execute(text(f"PRAGMA table_info({table})"))
+            for row in res:
+                # row: cid, name, type, notnull, dflt_value, pk
+                cols.add(row[1])
+            if cols:
+                return cols
+        except Exception:
+            pass
+    # PG
+    try:
+        res = await db.execute(
+            text("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = :t
+            """),
+            {"t": table},
+        )
+        cols = {r[0] for r in res}
+    except Exception:
+        cols = set()
+    return cols
+
+
+async def _user_exists(db: AsyncSession, email: str) -> bool:
+    try:
+        res = await db.execute(
+            text("SELECT 1 FROM users WHERE email = :email LIMIT 1"), {"email": email}
+        )
+        return res.first() is not None
+    except Exception:
+        # Если нет индекса/колонки — считаем, что нет
+        return False
+
+
+async def ensure_auth_seed() -> None:
+    """
+    Создаёт дефолтного администратора, если пользователей с этим email ещё нет.
+    Работает на SQLite и PostgreSQL. Явно задаёт id (uuid4), если колонка существует.
+    """
+    if pwd_context is None:
+        print("[seed] passlib не установлен — пропускаю сидинг")
+        return
+
+    async with async_session_maker() as db:
+        # -1) ensure tenants table has the default tenant
+        if await _table_exists(db, "tenants"):
+            cols_tenants = await _columns(db, "tenants")
+            params = {
+                "id": DEFAULT_TENANT_ID,
+                "name": "Default Tenant",
+                "slug": "default",
+                "api_key": str(uuid.uuid4()).replace("-", ""),
+                "is_active": True,
+                "settings": "{}",
+            }
+            columns = []
+            values = []
+            for key, value in params.items():
+                if key in cols_tenants:
+                    columns.append(key)
+                    values.append(value)
+            if columns:
+                insert_cols = ", ".join(columns)
+                placeholder = ", ".join(f":t{i}" for i in range(len(values)))
+                stmt = text(
+                    f"INSERT INTO tenants ({insert_cols}) VALUES ({placeholder}) "
+                    "ON CONFLICT(id) DO UPDATE SET name = excluded.name"
+                )
+                await db.execute(
+                    stmt, {f"t{i}": values[i] for i in range(len(values))}
+                )
+                await db.commit()
+
+        # 0) таблица users должна существовать (миграции уже прогоняются на старте)
+        if not await _table_exists(db, "users"):
+            print("[seed] таблица users не найдена — пропускаю сидинг")
+            return
+
+        cols = await _columns(db, "users")
+
+        async def ensure_membership(user_id: Optional[str], now: dt.datetime) -> None:
+            if not user_id:
+                return
+            if not await _table_exists(db, "user_memberships"):
+                return
+            try:
+                await db.execute(
+                    text(
+                        """
+                        INSERT INTO user_memberships (id, user_id, tenant_id, role, created_at, updated_at)
+                        VALUES (:id, :user_id, :tenant_id, :role, :created_at, :updated_at)
+                        ON CONFLICT(user_id, tenant_id) DO UPDATE SET role=excluded.role
+                        """
+                    ),
+                    {
+                        "id": str(uuid.uuid4()),
+                        "user_id": user_id,
+                        "tenant_id": DEFAULT_TENANT_ID,
+                        "role": "owner",
+                        "created_at": now,
+                        "updated_at": now,
+                    },
+                )
+                await db.commit()
+            except Exception as membership_err:
+                await db.rollback()
+                print(f"[seed] user_membership insert skipped: {membership_err}")
+
+        now = dt.datetime.utcnow()
+
+        # 1) если такой email уже есть — обновляем пароль и связанные поля
+        existing_user_id: Optional[str] = None
+        if await _user_exists(db, ADMIN_EMAIL):
+            try:
+                res = await db.execute(
+                    text("SELECT id FROM users WHERE email = :email LIMIT 1"),
+                    {"email": ADMIN_EMAIL},
+                )
+                row = res.first()
+                if row:
+                    existing_user_id = row[0]
+            except Exception:
+                existing_user_id = None
+
+            assignments = []
+            params: dict[str, object] = {"email": ADMIN_EMAIL}
+
+            if "password_hash" in cols:
+                params["password_hash"] = pwd_context.hash(ADMIN_PASSWORD)
+                assignments.append("password_hash = :password_hash")
+            if "updated_at" in cols:
+                params["updated_at"] = now
+                assignments.append("updated_at = :updated_at")
+            if "is_active" in cols:
+                params["is_active"] = True
+                assignments.append("is_active = :is_active")
+            if "tenant_id" in cols:
+                params["tenant_id"] = DEFAULT_TENANT_ID
+                assignments.append("tenant_id = :tenant_id")
+            if "role" in cols:
+                params["role"] = "superadmin"
+                assignments.append("role = :role")
+
+            if assignments:
+                update_sql = ", ".join(assignments)
+                try:
+                    await db.execute(
+                        text(f"UPDATE users SET {update_sql} WHERE email = :email"),
+                        params,
+                    )
+                    await db.commit()
+                    print(f"[seed] admin существовал: пароль и статус обновлены для {ADMIN_EMAIL}")
+                except Exception as update_err:
+                    await db.rollback()
+                    print(f"[seed] обновление admin не удалось: {update_err}")
+                    return
+            else:
+                print("[seed] admin существует, подходящих колонок для обновления не найдено — пропускаю")
+
+            await ensure_membership(existing_user_id, now)
+            return
+
+        # 2) готовим поля для создания
+        new_id = str(uuid.uuid4())
+
+        # Базовый набор: email, password_hash обязателен почти везде
+        insert_cols = []
+        insert_vals = []
+
+        def add(col: str, val: Optional[object]):
+            if col in cols and val is not None:
+                insert_cols.append(col)
+                insert_vals.append(val)
+
+        # Первичный ключ id — задаём явно, если колонка есть
+        add("id", new_id)
+
+        # Жизненно необходимые поля
+        add("email", ADMIN_EMAIL)
+        add("password_hash", pwd_context.hash(ADMIN_PASSWORD))
+
+        # Частые поля
+        add("role", "superadmin")  # платформенный админ по умолчанию
+        add("is_active", True)
+        add("tenant_id", DEFAULT_TENANT_ID)
+        add("created_at", now)
+        add("updated_at", now)
+
+        # Иногда встречаются альтернативные/алиасные поля
+        # add("is_admin", True)  # раскомментируй, если в схеме есть is_admin вместо role
+
+        if not insert_cols:
+            print("[seed] не удалось подобрать подходящие колонки — пропускаю")
+            return
+
+        placeholders = ", ".join([f":v{i}" for i in range(len(insert_vals))])
+        columns_ddl = ", ".join(insert_cols)
+        sql = f"INSERT INTO users ({columns_ddl}) VALUES ({placeholders})"
+        params = {f"v{i}": insert_vals[i] for i in range(len(insert_vals))}
+
+        try:
+            await db.execute(text(sql), params)
+            await db.commit()
+            print(f"[seed] admin пользователь создан: {ADMIN_EMAIL} / {ADMIN_PASSWORD}")
+        except Exception as e:
+            # Если что-то не так (например, в схеме другие имена колонок) — печатаем и не валим стартап
+            print(f"[seed] вставка admin не удалась: {e} — проверь схему users")
+            await db.rollback()
+        else:
+            user_id_value = new_id if "id" in insert_cols else None
+            if user_id_value is None:
+                try:
+                    res = await db.execute(
+                        text("SELECT id FROM users WHERE email=:email LIMIT 1"),
+                        {"email": ADMIN_EMAIL},
+                    )
+                    row = res.first()
+                    if row:
+                        user_id_value = row[0]
+                except Exception:
+                    user_id_value = None
+            await ensure_membership(user_id_value, now)

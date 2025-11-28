@@ -1,0 +1,10 @@
+{
+  "fields": {
+    "certificate_number": { "type": "string", "required": true },
+    "company_name": { "type": "string", "required": true },
+    "issuing_authority": { "type": "string", "required": false },
+    "issued_at": { "type": "date", "required": true },
+    "expires_at": { "type": "date", "required": true }
+  },
+  "ocr": { "langs": ["pol"], "hints": ["swiadectwo_kierowcy", "driver_attestation"] }
+}

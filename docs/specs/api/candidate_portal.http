@@ -1,0 +1,43 @@
+### 1. Создание сессии (magic link)
+POST {{baseUrl}}/portal/candidate/session
+Content-Type: application/json
+
+{
+  "email": "driver@example.com"
+}
+
+### 2. Получение данных профиля кандидата
+GET {{baseUrl}}/portal/candidate/me
+Authorization: Bearer {{token}}
+
+### 3. Список документов кандидата
+GET {{baseUrl}}/portal/candidate/documents
+Authorization: Bearer {{token}}
+
+### 4. Загрузка нового документа
+POST {{baseUrl}}/portal/candidate/documents
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data
+
+{
+  "document_type": "driver_license",
+  "file": "@/path/to/license.pdf"
+}
+
+### 5. Получение списка счетов кандидата
+GET {{baseUrl}}/portal/candidate/invoices
+Authorization: Bearer {{token}}
+
+### 6. Подтверждение согласия (RODO)
+POST {{baseUrl}}/portal/candidate/consents
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "consent_code": "privacy_policy",
+  "text_version": "1.0"
+}
+
+### 7. Проверка токена доступа
+GET {{baseUrl}}/portal/candidate/session/verify
+Authorization: Bearer {{token}}

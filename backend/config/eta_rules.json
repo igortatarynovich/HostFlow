@@ -1,0 +1,25 @@
+{
+  "eta_trip": {
+    "blocking_docs_ref": "backend/config/reminders.json#blocking_docs_for_trip",
+    "formula": "max(predicted_ready_or_actual_ready_of(blocking_docs))",
+    "predicted_ready_rules": {
+      "oswiadczenie":"created_at + sla_work_permit.oswiadczenie.default_issue_days",
+      "zezwolenie_A":"submitted_at + voivodeship_days_or_default",
+      "visa_D":"permit_ready_date + visa_submission_mode_avg_days",
+      "swiadectwo_kierowcy":"submitted_at + sla_driver_attestation.default_issue_days",
+      "prawo_jazdy":"provided_by_candidate",
+      "karta_tachografu":"submitted_at + 14",
+      "umowa_o_prace":"sign_date",
+      "passport":"provided_by_candidate",
+      "badania_lekarskie":"exam_date + 1"
+    }
+  },
+  "eta_invoice": {
+    "mode": "per_business_model",
+    "business_models": {
+      "pay_on_trip":"eta_trip",
+      "pay_on_hire":"employment_contract.sign_date",
+      "pay_on_docs_package":"max(ready_dates_of(['oswiadczenie','zezwolenie_A','visa_D']))"
+    }
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "version": "1.1.0",
+  "metadata": {
+    "schema_version": "2025-01",
+    "description": "Baseline комплектность для водителей и общего пула",
+    "tags": ["driver", "documents", "compliance"]
+  },
+  "priority_order": ["vacancy", "company", "tenant", "global"],
+  "expiring_soon_default_days": 30,
+
+  "document_aliases": {
+    "identity_document": ["passport", "id_card", "national_id"],
+    "medical_cert": ["medical", "medical_certificate"],
+    "psycho_test": ["psychotest"],
+    "driver_attestation": ["swiadectwo_kierowcy", "attestation"],
+    "uk_entry_doc": ["uk_visa", "uk_permit"]
+  },
+
+  "document_types": {
+    "identity_document": { "requires_verification": true, "default_validity_days": 3650 },
+    "driver_license": { "requires_verification": true, "default_validity_days": 3650 },
+    "qualification_code95": { "requires_verification": true, "default_validity_days": 1825 },
+    "tachograph_card": { "requires_verification": true, "default_validity_days": 1825 },
+    "medical_certificate": { "requires_verification": true, "default_validity_days": 365 },
+    "psychotest": { "requires_verification": true, "default_validity_days": 365 },
+    "work_permit": { "requires_verification": true, "default_validity_days": 365 },
+    "visa": { "requires_verification": true, "default_validity_days": 730 },
+    "residence_card": { "requires_verification": true, "default_validity_days": 730 },
+    "swiadectwo_kierowcy": { "requires_verification": true, "default_validity_days": 365 },
+    "adr_certificate": { "requires_verification": true, "default_validity_days": 1825 },
+    "uk_entry_doc": { "requires_verification": true, "default_validity_days": 365 },
+    "ch_permit": { "requires_verification": true, "default_validity_days": 365 },
+    "firm_docs": { "requires_verification": false },
+    "cv": { "requires_verification": false }
+  },
+
+  "candidate": {
+    "types": ["driver", "general"],
+
+    "defaults": {
+      "general": {
+        "requiredTypes": ["identity_document", "cv"],
+        "optionalTypes": []
+      },
+      "driver": {
+        "requiredTypes": ["identity_document", "driver_license", "qualification_code95", "tachograph_card", "medical_certificate", "psychotest"],
+        "optionalTypes": []
+      }
+    },
+
+    "overrides": [
+      {
+        "when": { "type": ["driver"], "citizenship_group": ["non_eu"] },
+        "require": ["work_permit", "visa", "swiadectwo_kierowcy", "residence_card"]
+      },
+      {
+        "when": { "type": ["driver"], "citizenship_group": ["eu"] },
+        "forbid": ["work_permit", "swiadectwo_kierowcy"]
+      },
+      {
+        "when": { "citizenship": ["UA", "BY", "IN", "ZW"], "residency_status": ["no_residence_card"] },
+        "require": ["visa"]
+      },
+      {
+        "when": { "citizenship": ["PL", "EU"], "residency_status": ["eu_citizen"] },
+        "remove": ["visa", "work_permit"]
+      }
+    ]
+  },
+
+  "vacancy": {
+    "additions": [
+      { "when": { "requires_driver_attestation": true }, "require": ["swiadectwo_kierowcy"] },
+      { "when": { "requires_adr": true }, "require": ["adr_certificate"] },
+      { "when": { "routes_includes": ["UK"] }, "require": ["uk_entry_doc"] },
+      { "when": { "routes_includes": ["CH"] }, "require": ["ch_permit"] }
+    ],
+    "employment_mode": [
+      { "when": { "mode": ["b2b"] }, "require": ["firm_docs"] }
+    ]
+  },
+
+  "company": {
+    "policies": [
+      { "when": { "require_med_psych": true }, "require": ["medical", "psychotest"] }
+    ]
+  },
+
+  "rules_scopes_examples": [
+    {
+      "scope": "global",
+      "rules": [
+      { "when": { "candidate.type": ["driver"] }, "require": ["qualification_code95", "tachograph_card"] }
+      ]
+    },
+    {
+      "scope": "company",
+      "company_id": "00000000-0000-0000-0000-000000000000",
+      "rules": [
+        { "when": { "vacancy.requires_adr": true }, "require": ["adr_certificate"] }
+      ]
+    },
+    {
+      "scope": "vacancy",
+      "vacancy_id": "11111111-1111-1111-1111-111111111111",
+      "rules": [
+        { "when": { "routes_includes": ["UK"] }, "require": ["uk_entry_doc"] }
+      ]
+    }
+  ],
+
+  "stage_gates": [
+    {
+      "to_stage": "work_permit_received",
+      "block_if_missing": ["work_permit"],
+      "override_allowed": false
+    },
+    {
+      "to_stage": "attestation_ordered",
+      "block_if_missing": ["swiadectwo_kierowcy"],
+      "override_allowed": true
+    },
+    {
+      "to_stage": "to_client_base",
+      "block_if_missing": ["qualification_code95", "tachograph_card", "medical_certificate", "psychotest"],
+      "override_allowed": true
+    },
+    {
+      "to_stage": "departure",
+      "block_if_missing": ["qualification_code95", "tachograph_card"],
+      "block_if_expired": ["qualification_code95", "tachograph_card", "medical_certificate", "psychotest"],
+      "override_allowed": false
+    }
+  ],
+
+  "validity": {
+    "expiring_soon_days": {
+      "default": 30,
+      "qualification_code95": 45,
+      "identity_document": 180,
+      "tachograph_card": 60,
+      "medical_certificate": 30,
+      "psychotest": 30
+    }
+  },
+
+  "notifications": {
+    "expiring_soon_schedule_days": [30, 14, 7],
+    "notify_roles": ["OWNER", "RECRUITER"],
+    "notify_candidate": true
+  }
+}

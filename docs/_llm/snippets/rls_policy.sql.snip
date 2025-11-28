@@ -1,0 +1,20 @@
+-- rls_policy.sql.snip
+-- Standard RLS policy pattern for tenant isolation
+
+ALTER TABLE {{table_name}} ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY IF NOT EXISTS rls_{{table_name}}_tenant
+ON {{table_name}}
+USING (tenant_id = current_setting('app.tenant_id')::uuid);
+
+-- Optional candidate-level restriction
+CREATE POLICY IF NOT EXISTS rls_{{table_name}}_candidate
+ON {{table_name}}
+FOR SELECT
+USING (
+  tenant_id = current_setting('app.tenant_id')::uuid
+  AND (
+    current_setting('app.role', true) = 'CANDIDATE'
+    AND candidate_id = current_setting('app.candidate_id')::uuid
+  )
+);

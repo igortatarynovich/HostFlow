@@ -1,0 +1,10 @@
+{
+  "fields": {
+    "attestation_number": { "type": "string", "required": true },
+    "company_name": { "type": "string", "required": true },
+    "issuing_authority": { "type": "string", "required": false },
+    "issued_at": { "type": "date", "required": true },
+    "expires_at": { "type": "date", "required": true }
+  },
+  "ocr": { "langs": ["eng","pol"], "hints": ["attestation","template_form"] }
+}

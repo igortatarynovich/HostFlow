@@ -1,0 +1,26 @@
+openapi: 3.0.3
+info: { title: HostFlow Documents (Sandbox), version: 0.1.0 }
+paths:
+  /api/documents:
+    get: { summary: List documents }
+    post: { summary: Create document }
+  /api/documents/{id}:
+    get: { summary: Get document }
+    patch: { summary: Update document }
+    delete: { summary: Delete document }
+  /api/documents/{id}/upload:
+    post: { summary: Upload file }
+  /api/{ownerType}/{ownerId}/documents:
+    get: { summary: List by owner }
+    post: { summary: Create and attach }
+  /api/{ownerType}/{ownerId}/documents/summary:
+    get: { summary: Owner summary }
+  /api/document-types:
+    get: { summary: List types }
+    post: { summary: Create type }
+  /api/document-types/{id}:
+    patch: { summary: Update type }
+    delete: { summary: Delete type }
+  /api/ruleset:
+    get: { summary: Get ruleset }
+    patch: { summary: Update ruleset }

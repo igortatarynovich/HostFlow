@@ -1,0 +1,1729 @@
+import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
+
+import {
+  addServiceSchedule,
+  createAdditionalService,
+  createServiceOrder,
+  deliverServiceItem,
+  updateAdditionalService,
+  updateServiceOrder,
+} from '../api/additionalServices'
+import type {
+  AdditionalService,
+  AdditionalServiceItem,
+  AdditionalServiceOrder,
+  AdditionalServiceOrderSummary,
+  Candidate,
+  Company,
+  ServiceItemStatus,
+  ServiceOrderStatus,
+  ServiceScheduleStatus,
+  Vacancy,
+} from '../api/types'
+import { useAdditionalServiceCatalog, useServiceOrder, useServiceOrderSummary, useServiceOrders } from '../hooks/useAdditionalServices'
+import { usePermissions } from '../hooks/usePermissions'
+import { searchCandidates } from '../api/candidates'
+import { listCompanies } from '../api/client'
+import { listVacancies } from '../api/vacancies'
+import { useI18n } from '../i18n'
+
+const ORDER_STATUSES: ServiceOrderStatus[] = [
+  'draft',
+  'quoted',
+  'approved',
+  'scheduled',
+  'in_progress',
+  'delivered',
+  'cancelled',
+  'refunded',
+]
+
+const SCHEDULE_STATUSES: ServiceScheduleStatus[] = [
+  'reserved',
+  'confirmed',
+  'completed',
+  'no_show',
+  'cancelled',
+]
+
+const ITEM_STATUSES: ServiceItemStatus[] = ['pending', 'scheduled', 'in_progress', 'delivered', 'cancelled']
+
+const DOCUMENT_STATUSES = ['approved', 'verified', 'pending_validation'] as const
+
+const currency = new Intl.NumberFormat('pl-PL', {
+  style: 'currency',
+  currency: 'PLN',
+})
+
+function formatAmount(value: number | null | undefined, fallback = '-') {
+  if (value == null || Number.isNaN(value)) {
+    return fallback
+  }
+  try {
+    return currency.format(value)
+  } catch (err) {
+    return value.toFixed(2)
+  }
+}
+
+type NewServiceFormState = {
+  code: string
+  name: string
+  category: string
+  basePrice: string
+  vatRate: string
+  resultDocumentType: string
+  requiresSchedule: boolean
+  requiresCandidate: boolean
+}
+
+type NewOrderFormState = {
+  candidateId: string
+  vacancyId: string
+  companyId: string
+  notes: string
+  serviceId: string
+  serviceCode: string
+  qty: string
+  unitPrice: string
+  vatRate: string
+  currency: string
+}
+
+const initialServiceState: NewServiceFormState = {
+  code: '',
+  name: '',
+  category: '',
+  basePrice: '0',
+  vatRate: '23',
+  resultDocumentType: '',
+  requiresSchedule: false,
+  requiresCandidate: true,
+}
+
+const initialOrderState: NewOrderFormState = {
+  candidateId: '',
+  vacancyId: '',
+  companyId: '',
+  notes: '',
+  serviceId: '',
+  serviceCode: '',
+  qty: '1',
+  unitPrice: '',
+  vatRate: '',
+  currency: 'PLN',
+}
+
+export function ServicesPage() {
+  const { t } = useI18n()
+  const { can } = usePermissions()
+  const [tab, setTab] = useState<'analytics' | 'orders' | 'catalog'>('orders')
+  const [includeInactive, setIncludeInactive] = useState(false)
+  const [catalogForm, setCatalogForm] = useState<NewServiceFormState>(initialServiceState)
+  const [catalogMessage, setCatalogMessage] = useState<string | null>(null)
+  const [ordersMessage, setOrdersMessage] = useState<string | null>(null)
+  const [orderForm, setOrderForm] = useState<NewOrderFormState>(initialOrderState)
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+
+  const catalogHook = useAdditionalServiceCatalog(includeInactive)
+
+  const orderQuery = useMemo(() => {
+    if (statusFilter === 'all') return {}
+    return { status: statusFilter as ServiceOrderStatus }
+  }, [statusFilter])
+
+  const ordersHook = useServiceOrders(orderQuery)
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+  const orderDetailHook = useServiceOrder(selectedOrderId)
+  const orderSummaryHook = useServiceOrderSummary(selectedOrderId)
+
+  useEffect(() => {
+    if (!selectedOrderId && ordersHook.orders.length > 0) {
+      setSelectedOrderId(ordersHook.orders[0].id)
+    }
+  }, [ordersHook.orders, selectedOrderId])
+
+  const handleCreateService = async (event: FormEvent) => {
+    event.preventDefault()
+    setCatalogMessage(null)
+    if (!catalogForm.code.trim() || !catalogForm.name.trim()) {
+      setCatalogMessage(t('app.services.catalog.messages.missing_fields'))
+      return
+    }
+    try {
+      await createAdditionalService({
+        code: catalogForm.code.trim(),
+        name: catalogForm.name.trim(),
+        category: catalogForm.category.trim() || undefined,
+        base_price: Number.parseFloat(catalogForm.basePrice) || 0,
+        vat_rate: Number.parseFloat(catalogForm.vatRate) || 0,
+        result_document_type: catalogForm.resultDocumentType.trim() || undefined,
+        requires_schedule: catalogForm.requiresSchedule,
+        requires_candidate: catalogForm.requiresCandidate,
+      })
+      setCatalogForm(initialServiceState)
+      setCatalogMessage(t('app.services.catalog.messages.create_success'))
+      await catalogHook.reload()
+    } catch (err: any) {
+      setCatalogMessage(err?.response?.data?.detail || t('app.services.catalog.messages.create_error'))
+    }
+  }
+
+  const handleToggleServiceActive = async (service: AdditionalService) => {
+    try {
+      await updateAdditionalService(service.id, { is_active: !service.is_active })
+      await catalogHook.reload()
+    } catch (err) {
+      setCatalogMessage(t('app.services.catalog.messages.status_error'))
+    }
+  }
+
+  const handleCreateOrder = async (event: FormEvent) => {
+    event.preventDefault()
+    setOrdersMessage(null)
+
+    const owners = [orderForm.candidateId, orderForm.vacancyId, orderForm.companyId].filter((v) => v.trim())
+    if (owners.length !== 1) {
+      setOrdersMessage(t('app.services.orders.messages.owner_required'))
+      return
+    }
+
+    if (!orderForm.serviceId.trim() && !orderForm.serviceCode.trim()) {
+      setOrdersMessage(t('app.services.orders.messages.service_required'))
+      return
+    }
+
+    try {
+      await createServiceOrder({
+        candidate_id: orderForm.candidateId.trim() || undefined,
+        vacancy_id: orderForm.vacancyId.trim() || undefined,
+        company_id: orderForm.companyId.trim() || undefined,
+        currency: orderForm.currency.trim() || 'PLN',
+        notes: orderForm.notes.trim() || undefined,
+        items: [
+          {
+            service_id: orderForm.serviceId.trim() || undefined,
+            service_code: orderForm.serviceCode.trim() || undefined,
+            qty: Number.parseFloat(orderForm.qty) || 1,
+            unit_price: orderForm.unitPrice ? Number.parseFloat(orderForm.unitPrice) : undefined,
+            vat_rate: orderForm.vatRate ? Number.parseFloat(orderForm.vatRate) : undefined,
+          },
+        ],
+      })
+      setOrderForm(initialOrderState)
+      setOrdersMessage(t('app.services.orders.messages.created'))
+      await ordersHook.reload()
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail
+      if (typeof detail === 'string') {
+        setOrdersMessage(detail)
+      } else if (detail?.reason === 'documents_missing') {
+        setOrdersMessage(
+          t('app.services.orders.messages.missing_docs', { values: { list: (detail.missing || []).join(', ') } }),
+        )
+      } else {
+        setOrdersMessage(t('app.services.orders.messages.create_error'))
+      }
+    }
+  }
+
+  const handleUpdateOrderStatus = async (orderId: string, status: ServiceOrderStatus) => {
+    try {
+      await updateServiceOrder(orderId, { status })
+      await Promise.all([ordersHook.reload(), orderDetailHook.reload(), orderSummaryHook.reload()])
+      setOrdersMessage(t('app.services.orders.messages.status_updated'))
+    } catch (err) {
+      setOrdersMessage(t('app.services.orders.messages.status_error'))
+    }
+  }
+
+  const handleScheduleSubmit = async (itemId: string, event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+    try {
+      await addServiceSchedule(itemId, {
+        provider: String(data.get('provider') || ''),
+        slot_start: String(data.get('slot_start') || ''),
+        slot_end: String(data.get('slot_end') || ''),
+        location: String(data.get('location') || ''),
+        status: String(data.get('status') || 'reserved') as ServiceScheduleStatus,
+      })
+      form.reset()
+      await Promise.all([ordersHook.reload(), orderDetailHook.reload(), orderSummaryHook.reload()])
+      setOrdersMessage(t('app.services.orders.messages.schedule_updated'))
+    } catch (err) {
+      setOrdersMessage(t('app.services.orders.messages.schedule_error'))
+    }
+  }
+
+  const handleDeliverItem = async (item: AdditionalServiceItem, event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+    try {
+      await deliverServiceItem(item.id, {
+        status: 'delivered',
+        result_document: item.result_document_type
+          ? {
+              document_type: item.result_document_type,
+              status: String(data.get('doc_status') || 'approved'),
+              issued_at: String(data.get('issued_at') || ''),
+              expires_at: String(data.get('expires_at') || ''),
+            }
+          : undefined,
+      })
+      form.reset()
+      await Promise.all([ordersHook.reload(), orderDetailHook.reload(), orderSummaryHook.reload()])
+      setOrdersMessage(t('app.services.orders.messages.delivered'))
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail
+      if (detail?.reason === 'documents_missing') {
+        setOrdersMessage(
+          t('app.services.orders.messages.missing_docs', { values: { list: (detail.missing || []).join(', ') } }),
+        )
+      } else {
+        setOrdersMessage(t('app.services.orders.messages.deliver_error'))
+      }
+    }
+  }
+
+  const serviceInsights = useMemo(() => {
+    const visibleOrders = ordersHook.orders.length
+    let activeOrders = 0
+    let deliveredOrders = 0
+    let totalRevenue = 0
+    let deliveredRevenue = 0
+    ordersHook.orders.forEach((order: AdditionalServiceOrder) => {
+      const status = order.status
+      const amount = Number(order.total_amount ?? 0)
+      if (status === 'delivered') {
+        deliveredOrders += 1
+        deliveredRevenue += amount
+      }
+      const terminal = status === 'delivered' || status === 'cancelled' || status === 'refunded'
+      if (!terminal) activeOrders += 1
+      totalRevenue += amount
+    })
+    const catalogActive = catalogHook.services.filter((svc) => svc.is_active).length
+    const pipelineValue = totalRevenue - deliveredRevenue
+    const averageCheck = deliveredOrders ? deliveredRevenue / deliveredOrders : 0
+    return {
+      visibleOrders,
+      activeOrders,
+      deliveredOrders,
+      totalRevenue,
+      averageCheck,
+      pipelineValue,
+      catalogActive,
+    }
+  }, [ordersHook.orders, catalogHook.services])
+
+  const serviceHeroCards = [
+    {
+      key: 'visible',
+      label: t('app.services.hero.orders_visible'),
+      value: serviceInsights.visibleOrders,
+      hint: t('app.services.hero.orders_visible_hint', { values: { count: serviceInsights.visibleOrders } }),
+    },
+    {
+      key: 'active',
+      label: t('app.services.hero.orders_active'),
+      value: serviceInsights.activeOrders,
+      hint: t('app.services.hero.orders_active_hint'),
+    },
+    {
+      key: 'delivered',
+      label: t('app.services.hero.orders_delivered'),
+      value: serviceInsights.deliveredOrders,
+      hint: t('app.services.hero.orders_delivered_hint'),
+    },
+    {
+      key: 'revenue',
+      label: t('app.services.hero.orders_revenue'),
+      value: formatAmount(serviceInsights.pipelineValue),
+      hint: t('app.services.hero.orders_revenue_hint'),
+    },
+    {
+      key: 'catalog',
+      label: t('app.services.hero.catalog_active'),
+      value: serviceInsights.catalogActive,
+      hint: t('app.services.hero.catalog_hint', { values: { total: catalogHook.services.length } }),
+    },
+    {
+      key: 'avg',
+      label: t('app.services.hero.orders_avg_check'),
+      value: serviceInsights.averageCheck ? formatAmount(serviceInsights.averageCheck) : formatAmount(0),
+      hint: t('app.services.hero.orders_avg_check_hint'),
+    },
+  ]
+
+  const tabs = (
+    <div className="flex flex-wrap gap-2">
+      {(['orders', 'catalog', 'analytics'] as const).map((key) => (
+        <button
+          key={key}
+          type="button"
+          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+            tab === key ? 'bg-white text-brand-700 shadow-sm' : 'bg-white/20 text-white/90 hover:bg-white/30'
+          }`}
+          onClick={() => setTab(key)}
+        >
+          {t(`app.services.tabs.${key}`)}
+        </button>
+      ))}
+    </div>
+  )
+
+  const heroSection = (
+    <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1">
+          <p className="text-2xl font-semibold">{t('app.services.title')}</p>
+          <p className="text-sm text-white/80">{t('app.services.hero.subtitle')}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {tabs}
+        </div>
+      </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {serviceHeroCards.map((card) => (
+          <div key={card.key} className="rounded-2xl border border-white/30 bg-white/10 p-4">
+            <div className="text-sm text-white/80">{card.label}</div>
+            <div className="text-2xl font-semibold">{card.value}</div>
+            <div className="text-xs text-white/70">{card.hint}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+
+  return (
+    <div className="space-y-6">
+      {heroSection}
+
+      {tab === 'catalog' && (
+        <CatalogTab
+          services={catalogHook.services}
+          loading={catalogHook.loading}
+          includeInactive={includeInactive}
+          onToggleInclude={() => setIncludeInactive((prev) => !prev)}
+          canManage={can('services.catalog.manage')}
+          formState={catalogForm}
+          onFormChange={setCatalogForm}
+          onSubmit={handleCreateService}
+          onToggleActive={handleToggleServiceActive}
+          message={catalogMessage}
+        />
+      )}
+      {tab === 'orders' && (
+        <OrdersTab
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          orders={ordersHook.orders}
+          loading={ordersHook.loading}
+          message={ordersMessage}
+          selectedOrderId={selectedOrderId}
+          onSelectOrder={setSelectedOrderId}
+          order={orderDetailHook.order}
+          summary={orderSummaryHook.summary}
+          canManage={can('services.orders.manage')}
+          onStatusUpdate={handleUpdateOrderStatus}
+          onScheduleSubmit={handleScheduleSubmit}
+          onDeliverItem={handleDeliverItem}
+          orderForm={orderForm}
+          onOrderFormChange={setOrderForm}
+          onCreateOrder={handleCreateOrder}
+          services={catalogHook.services}
+        />
+      )}
+      {tab === 'analytics' && (
+        <ServicesAnalyticsTab
+          orders={ordersHook.orders}
+          services={catalogHook.services}
+          formatStatus={(status) => t(`app.services.status.order.${status}`)}
+        />
+      )}
+    </div>
+  )
+}
+
+type CatalogTabProps = {
+  services: AdditionalService[]
+  loading: boolean
+  includeInactive: boolean
+  onToggleInclude: () => void
+  canManage: boolean
+  formState: NewServiceFormState
+  onFormChange: (next: NewServiceFormState) => void
+  onSubmit: (ev: FormEvent) => void
+  onToggleActive: (service: AdditionalService) => void
+  message: string | null
+}
+
+function CatalogTab({
+  services,
+  loading,
+  includeInactive,
+  onToggleInclude,
+  canManage,
+  formState,
+  onFormChange,
+  onSubmit,
+  onToggleActive,
+  message,
+}: CatalogTabProps) {
+  const { t } = useI18n()
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input type="checkbox" checked={includeInactive} onChange={onToggleInclude} />
+            {t('app.services.catalog.show_archived')}
+          </label>
+        </div>
+      </div>
+
+      {canManage && (
+        <form className="app-surface space-y-3 p-4" onSubmit={onSubmit}>
+          <h2 className="text-lg font-semibold">{t('app.services.catalog.new_service.title')}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.code')}</label>
+              <input
+                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                value={formState.code}
+                onChange={(e) => onFormChange({ ...formState, code: e.target.value })}
+                placeholder={t('app.services.catalog.new_service.placeholders.code')}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.name')}</label>
+              <input
+                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                value={formState.name}
+                onChange={(e) => onFormChange({ ...formState, name: e.target.value })}
+                placeholder={t('app.services.catalog.new_service.placeholders.name')}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.category')}</label>
+              <input
+                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                value={formState.category}
+                onChange={(e) => onFormChange({ ...formState, category: e.target.value })}
+                placeholder={t('app.services.catalog.new_service.placeholders.category')}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.price')}</label>
+                <input
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                  value={formState.basePrice}
+                  onChange={(e) => onFormChange({ ...formState, basePrice: e.target.value })}
+                  placeholder={t('app.services.catalog.new_service.placeholders.price')}
+                  type="number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.vat')}</label>
+                <input
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                  value={formState.vatRate}
+                  onChange={(e) => onFormChange({ ...formState, vatRate: e.target.value })}
+                  placeholder={t('app.services.catalog.new_service.placeholders.vat')}
+                  type="number"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.document')}</label>
+                <input
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                  value={formState.resultDocumentType}
+                  onChange={(e) => onFormChange({ ...formState, resultDocumentType: e.target.value })}
+                  placeholder={t('app.services.catalog.new_service.placeholders.document')}
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={formState.requiresSchedule}
+                onChange={(e) => onFormChange({ ...formState, requiresSchedule: e.target.checked })}
+              />
+              {t('app.services.catalog.new_service.labels.requires_schedule')}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={formState.requiresCandidate}
+                onChange={(e) => onFormChange({ ...formState, requiresCandidate: e.target.checked })}
+              />
+              {t('app.services.catalog.new_service.labels.requires_candidate')}
+            </label>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">{t('app.services.catalog.new_service.hint')}</span>
+            <button
+              type="submit"
+              className="px-4 py-2 bg-brand-600 text-white rounded hover:bg-brand-700"
+            >
+              {t('app.services.catalog.new_service.submit')}
+            </button>
+          </div>
+          {message && <div className="text-sm text-brand-700">{message}</div>}
+        </form>
+      )}
+
+      <div className="overflow-auto rounded-lg border border-gray-200">
+        <table className="min-w-full text-sm">
+          <thead className="bg-white/70 text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <th className="px-4 py-2">{t('app.services.catalog.table.code')}</th>
+              <th className="px-4 py-2">{t('app.services.catalog.table.name')}</th>
+              <th className="px-4 py-2">{t('app.services.catalog.table.category')}</th>
+              <th className="px-4 py-2">{t('app.services.catalog.table.price')}</th>
+              <th className="px-4 py-2">{t('app.services.catalog.table.schedule')}</th>
+              <th className="px-4 py-2">{t('app.services.catalog.table.candidate')}</th>
+              <th className="px-4 py-2">{t('app.services.catalog.table.status')}</th>
+              {canManage && <th className="px-4 py-2" />}
+            </tr>
+          </thead>
+          <tbody className="bg-white">
+            {loading ? (
+              <tr>
+                <td colSpan={canManage ? 7 : 6} className="px-4 py-4 text-center text-gray-500">
+                  {t('app.services.catalog.table.loading')}
+                </td>
+              </tr>
+            ) : services.length === 0 ? (
+              <tr>
+                <td colSpan={canManage ? 7 : 6} className="px-4 py-4 text-center text-gray-500">
+                  {t('app.services.catalog.table.empty')}
+                </td>
+              </tr>
+            ) : (
+              services.map((svc) => (
+                <tr
+                  key={svc.id}
+                  className={[
+                    'border-t border-gray-100 transition',
+                    svc.is_active ? 'hover:bg-brand-50/40' : 'bg-gray-50',
+                  ].join(' ')}
+                >
+                  <td className="px-4 py-2 font-mono text-sm">{svc.code}</td>
+                  <td className="px-4 py-2">{svc.name}</td>
+                  <td className="px-4 py-2 text-gray-600">{svc.category || '—'}</td>
+                  <td className="px-4 py-2">{formatAmount(svc.base_price)}</td>
+                  <td className="px-4 py-2">{svc.requires_schedule ? t('app.services.words.yes') : t('app.services.words.no')}</td>
+                  <td className="px-4 py-2">{svc.requires_candidate ? t('app.services.words.yes') : t('app.services.words.no')}</td>
+                  <td className="px-4 py-2">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${svc.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-300 text-gray-700'}`}>
+                      {svc.is_active ? t('app.services.catalog.table.badges.active') : t('app.services.catalog.table.badges.archived')}
+                    </span>
+                  </td>
+                  {canManage && (
+                    <td className="px-4 py-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => onToggleActive(svc)}
+                        className="text-sm text-brand-600 hover:underline"
+                      >
+                        {svc.is_active ? t('app.services.catalog.table.actions.archive') : t('app.services.catalog.table.actions.activate')}
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      {message && !canManage && <div className="text-sm text-brand-700">{message}</div>}
+    </div>
+  )
+}
+
+type OrdersTabProps = {
+  statusFilter: string
+  onStatusFilterChange: (value: string) => void
+  orders: AdditionalServiceOrder[]
+  loading: boolean
+  message: string | null
+  selectedOrderId: string | null
+  onSelectOrder: (value: string | null) => void
+  order: AdditionalServiceOrder | null
+  summary: AdditionalServiceOrderSummary | null
+  canManage: boolean
+  onStatusUpdate: (orderId: string, status: ServiceOrderStatus) => void
+  onScheduleSubmit: (itemId: string, event: FormEvent<HTMLFormElement>) => void
+  onDeliverItem: (item: AdditionalServiceItem, event: FormEvent<HTMLFormElement>) => void
+  orderForm: NewOrderFormState
+  onOrderFormChange: (value: NewOrderFormState) => void
+  onCreateOrder: (event: FormEvent) => void
+  services: AdditionalService[]
+}
+
+type OrderOwnerChoice = 'candidate' | 'vacancy' | 'company'
+
+function OrdersTab({
+  statusFilter,
+  onStatusFilterChange,
+  orders,
+  loading,
+  message,
+  selectedOrderId,
+  onSelectOrder,
+  order,
+  summary,
+  canManage,
+  onStatusUpdate,
+  onScheduleSubmit,
+  onDeliverItem,
+  orderForm,
+  onOrderFormChange,
+  onCreateOrder,
+  services,
+}: OrdersTabProps) {
+  const { t } = useI18n()
+  const orderStatusLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    ORDER_STATUSES.forEach((status) => {
+      map[status] = t(`app.services.status.order.${status}`)
+    })
+    return map
+  }, [t])
+  const availableServices = useMemo(() => services.map((svc) => ({ id: svc.id, label: `${svc.name} (${svc.code})` })), [services])
+  const [ownerChoice, setOwnerChoice] = useState<OrderOwnerChoice>('candidate')
+  const [candidateQuery, setCandidateQuery] = useState('')
+  const [candidateResults, setCandidateResults] = useState<Candidate[]>([])
+  const [candidateLoading, setCandidateLoading] = useState(false)
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [vacancyQuery, setVacancyQuery] = useState('')
+  const [vacancyResults, setVacancyResults] = useState<Vacancy[]>([])
+  const [vacancyLoading, setVacancyLoading] = useState(false)
+  const [selectedVacancy, setSelectedVacancy] = useState<Vacancy | null>(null)
+  const [companyQuery, setCompanyQuery] = useState('')
+  const [companyResults, setCompanyResults] = useState<Company[]>([])
+  const [companyLoading, setCompanyLoading] = useState(false)
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const ownerOptions = useMemo(
+    () => [
+      {
+        key: 'candidate' as OrderOwnerChoice,
+        label: t('app.services.orders.new.owner.options.candidate'),
+        description: t('app.services.orders.new.owner.descriptions.candidate'),
+      },
+      {
+        key: 'vacancy' as OrderOwnerChoice,
+        label: t('app.services.orders.new.owner.options.vacancy'),
+        description: t('app.services.orders.new.owner.descriptions.vacancy'),
+      },
+      {
+        key: 'company' as OrderOwnerChoice,
+        label: t('app.services.orders.new.owner.options.company'),
+        description: t('app.services.orders.new.owner.descriptions.company'),
+      },
+    ],
+    [t],
+  )
+
+  useEffect(() => {
+    if (ownerChoice !== 'candidate' || !candidateQuery.trim()) {
+      setCandidateResults([])
+      setCandidateLoading(false)
+      return
+    }
+
+    let active = true
+    setCandidateLoading(true)
+    const handle = window.setTimeout(async () => {
+      try {
+        const results = await searchCandidates({ q: candidateQuery, limit: 10 })
+        if (active) {
+          setCandidateResults(results)
+        }
+      } catch (err) {
+        if (active) {
+          console.warn('[services] candidate search failed', err)
+          setCandidateResults([])
+        }
+      } finally {
+        if (active) {
+          setCandidateLoading(false)
+        }
+      }
+    }, 250)
+
+    return () => {
+      active = false
+      window.clearTimeout(handle)
+    }
+  }, [candidateQuery, ownerChoice])
+
+  useEffect(() => {
+    if (!orderForm.candidateId) {
+      setSelectedCandidate(null)
+    }
+  }, [orderForm.candidateId])
+
+  const handleOwnerChoiceChange = (choice: OrderOwnerChoice) => {
+    if (choice === ownerChoice) return
+    setOwnerChoice(choice)
+    onOrderFormChange({
+      ...orderForm,
+      candidateId: choice === 'candidate' ? orderForm.candidateId : '',
+      vacancyId: choice === 'vacancy' ? orderForm.vacancyId : '',
+      companyId: choice === 'company' ? orderForm.companyId : '',
+    })
+    if (choice !== 'candidate') {
+      setSelectedCandidate(null)
+      setCandidateQuery('')
+      setCandidateResults([])
+    }
+    if (choice !== 'vacancy') {
+      setSelectedVacancy(null)
+      setVacancyQuery('')
+      setVacancyResults([])
+    }
+    if (choice !== 'company') {
+      setSelectedCompany(null)
+      setCompanyQuery('')
+      setCompanyResults([])
+    }
+  }
+
+  const handleCandidateSelect = (candidate: Candidate) => {
+    setSelectedCandidate(candidate)
+    setCandidateQuery('')
+    setCandidateResults([])
+    onOrderFormChange({
+      ...orderForm,
+      candidateId: candidate.id,
+      vacancyId: '',
+      companyId: '',
+    })
+    setOwnerChoice('candidate')
+    setSelectedVacancy(null)
+    setSelectedCompany(null)
+  }
+
+  const clearCandidateSelection = () => {
+    setSelectedCandidate(null)
+    setCandidateQuery('')
+    setCandidateResults([])
+    onOrderFormChange({ ...orderForm, candidateId: '' })
+  }
+
+  const showCandidateResults = ownerChoice === 'candidate' && candidateQuery.trim().length >= 2
+
+  useEffect(() => {
+    if (ownerChoice !== 'vacancy' || !vacancyQuery.trim()) {
+      setVacancyResults([])
+      setVacancyLoading(false)
+      return
+    }
+    let active = true
+    setVacancyLoading(true)
+    const handle = window.setTimeout(async () => {
+      try {
+        const results = await listVacancies({ q: vacancyQuery.trim(), limit: 10 })
+        if (active) {
+          setVacancyResults(Array.isArray(results) ? results : [])
+        }
+      } catch (err) {
+        if (active) {
+          console.warn('[services] vacancy search failed', err)
+          setVacancyResults([])
+        }
+      } finally {
+        if (active) {
+          setVacancyLoading(false)
+        }
+      }
+    }, 250)
+    return () => {
+      active = false
+      window.clearTimeout(handle)
+    }
+  }, [vacancyQuery, ownerChoice])
+
+  useEffect(() => {
+    if (!orderForm.vacancyId) {
+      setSelectedVacancy(null)
+    }
+  }, [orderForm.vacancyId])
+
+  const handleVacancySelect = (vacancy: Vacancy) => {
+    setSelectedVacancy(vacancy)
+    setVacancyQuery('')
+    setVacancyResults([])
+    onOrderFormChange({
+      ...orderForm,
+      vacancyId: vacancy.id,
+      candidateId: '',
+      companyId: '',
+    })
+    setOwnerChoice('vacancy')
+    setSelectedCandidate(null)
+    setSelectedCompany(null)
+  }
+
+  const clearVacancySelection = () => {
+    setSelectedVacancy(null)
+    setVacancyQuery('')
+    setVacancyResults([])
+    onOrderFormChange({ ...orderForm, vacancyId: '' })
+  }
+
+  const showVacancyResults = ownerChoice === 'vacancy' && vacancyQuery.trim().length >= 2
+
+  useEffect(() => {
+    if (ownerChoice !== 'company' || !companyQuery.trim()) {
+      setCompanyResults([])
+      setCompanyLoading(false)
+      return
+    }
+    let active = true
+    setCompanyLoading(true)
+    const handle = window.setTimeout(async () => {
+      try {
+        const results = await listCompanies({ limit: 10, search: companyQuery.trim() })
+        if (active) {
+          setCompanyResults(Array.isArray(results) ? results : [])
+        }
+      } catch (err) {
+        if (active) {
+          console.warn('[services] company search failed', err)
+          setCompanyResults([])
+        }
+      } finally {
+        if (active) {
+          setCompanyLoading(false)
+        }
+      }
+    }, 250)
+    return () => {
+      active = false
+      window.clearTimeout(handle)
+    }
+  }, [companyQuery, ownerChoice])
+
+  useEffect(() => {
+    if (!orderForm.companyId) {
+      setSelectedCompany(null)
+    }
+  }, [orderForm.companyId])
+
+  const handleCompanySelect = (company: Company) => {
+    setSelectedCompany(company)
+    setCompanyQuery('')
+    setCompanyResults([])
+    onOrderFormChange({
+      ...orderForm,
+      companyId: company.id,
+      candidateId: '',
+      vacancyId: '',
+    })
+    setOwnerChoice('company')
+    setSelectedCandidate(null)
+    setSelectedVacancy(null)
+  }
+
+  const clearCompanySelection = () => {
+    setSelectedCompany(null)
+    setCompanyQuery('')
+    setCompanyResults([])
+    onOrderFormChange({ ...orderForm, companyId: '' })
+  }
+
+  const showCompanyResults = ownerChoice === 'company' && companyQuery.trim().length >= 2
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+      <div className="space-y-4">
+        {canManage && (
+          <form className="app-surface space-y-3 p-4" onSubmit={onCreateOrder}>
+            <h2 className="text-lg font-semibold">{t('app.services.orders.new.title')}</h2>
+            <p className="text-sm text-gray-500">{t('app.services.orders.new.hint')}</p>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('app.services.orders.new.owner.title')}
+                </p>
+                <p className="text-xs text-gray-500">{t('app.services.orders.new.owner.hint')}</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                  {ownerOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      className={[
+                        'rounded-2xl border px-3 py-3 text-left transition',
+                        ownerChoice === option.key
+                          ? 'border-brand-300 bg-brand-50 text-brand-900 shadow-sm'
+                          : 'border-gray-200 text-slate-600 hover:border-brand-200',
+                      ].join(' ')}
+                      onClick={() => handleOwnerChoiceChange(option.key)}
+                    >
+                      <div className="text-sm font-semibold">{option.label}</div>
+                      <div className="text-xs text-gray-500">{option.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {ownerChoice === 'candidate' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{t('app.services.orders.new.fields.candidate')}</label>
+                  <input
+                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    placeholder={t('app.services.orders.new.placeholders.candidate_search')}
+                    value={candidateQuery}
+                    onChange={(e) => setCandidateQuery(e.target.value)}
+                  />
+                  {candidateLoading && showCandidateResults && (
+                    <div className="mt-1 text-xs text-gray-500">{t('app.services.orders.new.states.searching')}</div>
+                  )}
+                  {showCandidateResults && !candidateLoading && (
+                    <div className="mt-2 max-h-48 overflow-auto rounded border border-gray-200 bg-white shadow-sm">
+                      {candidateResults.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-500">{t('app.services.orders.new.states.no_results')}</div>
+                      ) : (
+                        <ul className="divide-y divide-gray-100 text-sm">
+                          {candidateResults.map((cand) => (
+                            <li key={cand.id}>
+                              <button
+                                type="button"
+                                className="flex w-full flex-col items-start px-3 py-2 hover:bg-brand-50"
+                                onClick={() => handleCandidateSelect(cand)}
+                              >
+                                <span className="font-medium text-gray-800">
+                                  {cand.first_name} {cand.last_name} ({cand.short_id || cand.id.slice(0, 8)})
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {cand.phone || cand.email || t('app.services.orders.new.states.no_contacts')}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                  {selectedCandidate && (
+                    <div className="mt-3 flex items-start justify-between rounded border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
+                      <div>
+                        <div className="font-semibold">
+                          {selectedCandidate.first_name} {selectedCandidate.last_name}
+                        </div>
+                        <div className="text-xs text-brand-700">
+                          ID: <span className="font-mono">{selectedCandidate.id}</span>
+                        </div>
+                        {selectedCandidate.company_name && (
+                          <div className="text-xs text-brand-700">
+                            {t('app.services.orders.new.selected.company', {
+                              values: { name: selectedCandidate.company_name },
+                            })}
+                          </div>
+                        )}
+                        {selectedCandidate.vacancy_name && (
+                          <div className="text-xs text-brand-700">
+                            {t('app.services.orders.new.selected.vacancy', {
+                              values: { name: selectedCandidate.vacancy_name },
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <button type="button" className="text-xs text-brand-600 hover:underline" onClick={clearCandidateSelection}>
+                        {t('common.actions.clear')}
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs text-gray-500">
+                    {orderForm.candidateId
+                      ? t('app.services.orders.new.current_candidate', {
+                          values: { id: orderForm.candidateId },
+                        })
+                      : t('app.services.orders.new.current_candidate_empty')}
+                  </div>
+                </div>
+              )}
+
+              {ownerChoice === 'vacancy' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{t('app.services.orders.new.fields.vacancy')}</label>
+                  <input
+                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    placeholder={t('app.services.orders.new.placeholders.vacancy_search')}
+                    value={vacancyQuery}
+                    onChange={(e) => setVacancyQuery(e.target.value)}
+                  />
+                  {vacancyLoading && showVacancyResults && (
+                    <div className="mt-1 text-xs text-gray-500">{t('app.services.orders.new.states.searching')}</div>
+                  )}
+                  {showVacancyResults && !vacancyLoading && (
+                    <div className="mt-2 max-h-48 overflow-auto rounded border border-gray-200 bg-white shadow-sm">
+                      {vacancyResults.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-500">{t('app.services.orders.new.states.no_results')}</div>
+                      ) : (
+                        <ul className="divide-y divide-gray-100 text-sm">
+                          {vacancyResults.map((vac) => (
+                            <li key={vac.id}>
+                              <button
+                                type="button"
+                                className="flex w-full flex-col items-start px-3 py-2 hover:bg-brand-50"
+                                onClick={() => handleVacancySelect(vac)}
+                              >
+                                <span className="font-medium text-gray-800">{vac.title}</span>
+                                <span className="text-xs text-gray-500">
+                                  {vac.company_name || t('common.labels.unnamed')}
+                                  {vac.location ? ` • ${vac.location}` : ''}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                  {selectedVacancy && (
+                    <div className="mt-3 flex items-start justify-between rounded border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
+                      <div>
+                        <div className="font-semibold">{selectedVacancy.title}</div>
+                        {selectedVacancy.company_name && (
+                          <div className="text-xs text-brand-700">
+                            {t('app.services.orders.new.selected.company', {
+                              values: { name: selectedVacancy.company_name },
+                            })}
+                          </div>
+                        )}
+                        {selectedVacancy.location && (
+                          <div className="text-xs text-brand-700">{selectedVacancy.location}</div>
+                        )}
+                      </div>
+                      <button type="button" className="text-xs text-brand-600 hover:underline" onClick={clearVacancySelection}>
+                        {t('common.actions.clear')}
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs text-gray-500">
+                    {orderForm.vacancyId
+                      ? t('app.services.orders.new.current_vacancy', { values: { id: orderForm.vacancyId } })
+                      : t('app.services.orders.new.current_vacancy_empty')}
+                  </div>
+                </div>
+              )}
+
+              {ownerChoice === 'company' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">{t('app.services.orders.new.fields.company')}</label>
+                  <input
+                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    placeholder={t('app.services.orders.new.placeholders.company_search')}
+                    value={companyQuery}
+                    onChange={(e) => setCompanyQuery(e.target.value)}
+                  />
+                  {companyLoading && showCompanyResults && (
+                    <div className="mt-1 text-xs text-gray-500">{t('app.services.orders.new.states.searching')}</div>
+                  )}
+                  {showCompanyResults && !companyLoading && (
+                    <div className="mt-2 max-h-48 overflow-auto rounded border border-gray-200 bg-white shadow-sm">
+                      {companyResults.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-gray-500">{t('app.services.orders.new.states.no_results')}</div>
+                      ) : (
+                        <ul className="divide-y divide-gray-100 text-sm">
+                          {companyResults.map((company) => (
+                            <li key={company.id}>
+                              <button
+                                type="button"
+                                className="flex w-full flex-col items-start px-3 py-2 hover:bg-brand-50"
+                                onClick={() => handleCompanySelect(company)}
+                              >
+                                <span className="font-medium text-gray-800">{company.name || company.legal_name || t('common.labels.unnamed')}</span>
+                                {(company.city || company.country_code) && (
+                                  <span className="text-xs text-gray-500">
+                                    {[company.city, company.country_code].filter(Boolean).join(', ')}
+                                  </span>
+                                )}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                  {selectedCompany && (
+                    <div className="mt-3 flex items-start justify-between rounded border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
+                      <div>
+                        <div className="font-semibold">{selectedCompany.name || selectedCompany.legal_name || t('common.labels.unnamed')}</div>
+                        {(selectedCompany.city || selectedCompany.country_code) && (
+                          <div className="text-xs text-brand-700">
+                            {[selectedCompany.city, selectedCompany.country_code].filter(Boolean).join(', ')}
+                          </div>
+                        )}
+                        {selectedCompany.email && <div className="text-xs text-brand-700">{selectedCompany.email}</div>}
+                      </div>
+                      <button type="button" className="text-xs text-brand-600 hover:underline" onClick={clearCompanySelection}>
+                        {t('common.actions.clear')}
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-1 text-xs text-gray-500">
+                    {orderForm.companyId
+                      ? t('app.services.orders.new.current_company', { values: { id: orderForm.companyId } })
+                      : t('app.services.orders.new.current_company_empty')}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <select
+                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                value={orderForm.serviceId}
+                onChange={(e) => onOrderFormChange({ ...orderForm, serviceId: e.target.value, serviceCode: '' })}
+              >
+                <option value="">{t('app.services.orders.new.placeholders.service_id')}</option>
+                {availableServices.map((svc) => (
+                  <option key={svc.id} value={svc.id}>{svc.label}</option>
+                ))}
+              </select>
+              <input
+                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                placeholder={t('app.services.orders.new.placeholders.service_code')}
+                value={orderForm.serviceCode}
+                onChange={(e) => onOrderFormChange({ ...orderForm, serviceCode: e.target.value, serviceId: '' })}
+              />
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  placeholder={t('app.services.orders.new.placeholders.qty')}
+                  type="number"
+                  value={orderForm.qty}
+                  onChange={(e) => onOrderFormChange({ ...orderForm, qty: e.target.value })}
+                />
+                <input
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  placeholder={t('app.services.orders.new.placeholders.unit_price')}
+                  type="number"
+                  value={orderForm.unitPrice}
+                  onChange={(e) => onOrderFormChange({ ...orderForm, unitPrice: e.target.value })}
+                />
+                <input
+                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  placeholder={t('app.services.orders.new.placeholders.vat')}
+                  type="number"
+                  value={orderForm.vatRate}
+                  onChange={(e) => onOrderFormChange({ ...orderForm, vatRate: e.target.value })}
+                />
+              </div>
+            </div>
+            <textarea
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+              placeholder={t('app.services.orders.new.placeholders.notes')}
+              rows={3}
+              value={orderForm.notes}
+              onChange={(e) => onOrderFormChange({ ...orderForm, notes: e.target.value })}
+            />
+            <button type="submit" className="w-full rounded bg-brand-600 py-2 text-white hover:bg-brand-700">
+              {t('app.services.orders.new.submit')}
+            </button>
+            {message && <div className="text-sm text-brand-700">{message}</div>}
+          </form>
+        )}
+
+        <div className="app-surface p-0 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+            <h2 className="text-lg font-semibold">{t('app.services.orders.list.title')}</h2>
+            <select
+              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              value={statusFilter}
+              onChange={(e) => onStatusFilterChange(e.target.value)}
+            >
+              <option value="all">{t('app.services.orders.filters.status_all')}</option>
+              {ORDER_STATUSES.map((status) => (
+                <option key={status} value={status}>{orderStatusLabels[status] ?? status}</option>
+              ))}
+            </select>
+          </div>
+          <div className="max-h-[420px] overflow-auto px-4 py-3">
+            {loading ? (
+              <div className="px-4 py-6 text-center text-sm text-gray-500">{t('app.services.orders.list.loading')}</div>
+            ) : orders.length === 0 ? (
+              <div className="px-4 py-6 text-center text-sm text-gray-500">{t('app.services.orders.list.empty')}</div>
+            ) : (
+              <ul className="space-y-3">
+                {orders.map((ord) => (
+                  <li key={ord.id}>
+                    <button
+                      type="button"
+                      onClick={() => onSelectOrder(ord.id)}
+                      className={[
+                        'w-full rounded-2xl border px-4 py-3 text-left transition',
+                        selectedOrderId === ord.id
+                          ? 'border-brand-200 bg-brand-50'
+                          : 'border-gray-100 bg-white hover:bg-brand-50/40',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-baseline justify-between">
+                       <span className="text-sm font-medium text-brand-700">{ord.id.slice(0, 8)}…</span>
+                        <span className="text-xs uppercase tracking-wide text-gray-500">
+                          {orderStatusLabels[ord.status] ?? ord.status}
+                        </span>
+                     </div>
+                     <div className="mt-1 text-sm text-gray-600">
+                        {ord.candidate_id
+                          ? t('app.services.orders.list.owner.candidate', { values: { id: ord.candidate_id.slice(0, 8) } })
+                          : ord.company_id
+                          ? t('app.services.orders.list.owner.company', { values: { id: ord.company_id.slice(0, 8) } })
+                          : ord.vacancy_id
+                          ? t('app.services.orders.list.owner.vacancy', { values: { id: ord.vacancy_id.slice(0, 8) } })
+                          : t('app.services.orders.list.owner.none')}
+                     </div>
+                      <div className="mt-1 text-xs text-gray-400">
+                        {t('app.services.orders.list.meta', {
+                          values: { count: ord.items.length, amount: formatAmount(ord.total_amount) },
+                        })}
+                      </div>
+                   </button>
+                 </li>
+               ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="app-surface p-4 space-y-4">
+        {!selectedOrderId || !order ? (
+          <div className="text-sm text-gray-500">{t('app.services.orders.detail.placeholder')}</div>
+        ) : (
+          <OrderDetail
+            order={order}
+            summary={summary}
+            canManage={canManage}
+            onStatusUpdate={onStatusUpdate}
+            onScheduleSubmit={onScheduleSubmit}
+            onDeliverItem={onDeliverItem}
+          />
+        )}
+        {message && <div className="text-sm text-brand-700">{message}</div>}
+      </div>
+    </div>
+  )
+}
+
+type ServicesAnalyticsTabProps = {
+  orders: AdditionalServiceOrder[]
+  services: AdditionalService[]
+  formatStatus: (status: ServiceOrderStatus) => string
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function ServicesAnalyticsTab({ orders, services, formatStatus }: ServicesAnalyticsTabProps) {
+  const { t } = useI18n()
+  const [nowTs, setNowTs] = useState(() => Date.now())
+
+  useEffect(() => {
+    setNowTs(Date.now())
+  }, [orders])
+  const statusRows = useMemo(() => {
+    const counts = new Map<ServiceOrderStatus, number>()
+    orders.forEach((order) => {
+      counts.set(order.status, (counts.get(order.status) ?? 0) + 1)
+    })
+    return Array.from(counts.entries())
+      .map(([status, count]) => ({ status, count }))
+      .sort((a, b) => b.count - a.count)
+  }, [orders])
+
+  const topServices = useMemo(() => {
+    const stats = new Map<string, { label: string; total: number; pending: number }>()
+    orders.forEach((order) => {
+      order.items.forEach((item) => {
+        const label = item.service?.name || item.service?.code || t('app.services.analytics.top_services.unknown')
+        const entry = stats.get(label) ?? { label, total: 0, pending: 0 }
+        entry.total += 1
+        if (item.status !== 'delivered') entry.pending += 1
+        stats.set(label, entry)
+      })
+    })
+    if (stats.size === 0 && services.length) {
+      services.slice(0, 5).forEach((svc) => {
+        stats.set(svc.name, { label: svc.name, total: 0, pending: 0 })
+      })
+    }
+    return Array.from(stats.values())
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5)
+  }, [orders, services, t])
+
+  const hotOrders = useMemo(() => {
+    const flagged = orders
+      .filter((order) => order.status !== 'delivered' && order.status !== 'refunded')
+      .map((order) => {
+        const hasScheduleIssue = order.items.some((item) => (item.schedules?.length ?? 0) === 0)
+        const hasDocsIssue = order.items.some(
+          (item) => (item.required_documents?.length ?? 0) > 0 && (item.attachments?.length ?? 0) === 0,
+        )
+        const reason = hasDocsIssue ? 'documents' : hasScheduleIssue ? 'schedule' : 'status'
+        const firstItem = order.items[0]
+        return {
+          order,
+          reason,
+          label: firstItem?.service?.name || firstItem?.service?.code || t('app.services.analytics.hot_services.unknown'),
+        }
+      })
+      .filter((entry) => entry.order.items.length > 0)
+      .sort((a, b) => {
+        const aTime = Date.parse(a.order.updated_at)
+        const bTime = Date.parse(b.order.updated_at)
+        return bTime - aTime
+      })
+      .slice(0, 5)
+    return flagged
+  }, [orders, t])
+
+  const last30Days = useMemo(() => {
+    const cutoff = nowTs - 30 * DAY_MS
+    const slice = orders.filter((order) => Date.parse(order.created_at) >= cutoff)
+    const total = slice.length
+    const delivered = slice.filter((order) => order.status === 'delivered').length
+    const cancelled = slice.filter((order) => order.status === 'cancelled' || order.status === 'refunded').length
+    const cancellationRate = total ? Math.round((cancelled / total) * 100) : 0
+    return { total, delivered, cancelled, cancellationRate }
+  }, [orders, nowTs])
+
+  const describeOwner = (order: AdditionalServiceOrder) => {
+    if (order.candidate_id) return t('app.services.analytics.owner.candidate')
+    if (order.vacancy_id) return t('app.services.analytics.owner.vacancy')
+    if (order.company_id) return t('app.services.analytics.owner.company')
+    return t('app.services.analytics.owner.unknown')
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="card p-4">
+          <div className="text-sm font-semibold">{t('app.services.analytics.last30.title')}</div>
+          <div className="mt-2 text-3xl font-semibold">{last30Days.total}</div>
+          <p className="text-xs text-gray-500">{t('app.services.analytics.last30.subtitle')}</p>
+          <dl className="mt-4 space-y-1 text-sm text-gray-600">
+            <div className="flex justify-between">
+              <dt>{t('app.services.analytics.last30.delivered')}</dt>
+              <dd className="font-medium">{last30Days.delivered}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>{t('app.services.analytics.last30.cancelled')}</dt>
+              <dd className="font-medium">{last30Days.cancelled}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>{t('app.services.analytics.last30.rate')}</dt>
+              <dd className="font-medium">{last30Days.cancellationRate}%</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-semibold">{t('app.services.analytics.status_breakdown.title')}</div>
+            <div className="text-xs text-gray-500">{t('app.services.analytics.status_breakdown.subtitle')}</div>
+          </div>
+          {statusRows.length ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase text-gray-500">
+                  <th className="py-2">{t('app.services.analytics.status_breakdown.status')}</th>
+                  <th className="py-2 text-right">{t('app.services.analytics.status_breakdown.count')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {statusRows.map((row) => (
+                  <tr key={row.status} className="border-t border-gray-100">
+                    <td className="py-2">{formatStatus(row.status)}</td>
+                    <td className="py-2 text-right font-medium">{row.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="text-sm text-gray-500">{t('app.services.analytics.status_breakdown.empty')}</div>
+          )}
+        </div>
+        <div className="card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-semibold">{t('app.services.analytics.top_services.title')}</div>
+            <div className="text-xs text-gray-500">{t('app.services.analytics.top_services.subtitle')}</div>
+          </div>
+          {topServices.length ? (
+            <ul className="space-y-2 text-sm">
+              {topServices.map((service) => (
+                <li key={service.label} className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{service.label}</p>
+                    <p className="text-xs text-gray-500">
+                      {t('app.services.analytics.top_services.pending', { values: { count: service.pending } })}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold">{service.total}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-sm text-gray-500">{t('app.services.analytics.top_services.empty')}</div>
+          )}
+        </div>
+      </div>
+
+      <div className="card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-sm font-semibold">{t('app.services.analytics.hot_services.title')}</div>
+          <div className="text-xs text-gray-500">{t('app.services.analytics.hot_services.subtitle')}</div>
+        </div>
+        {hotOrders.length ? (
+          <ul className="divide-y divide-gray-100 text-sm">
+            {hotOrders.map((entry) => (
+              <li key={entry.order.id} className="flex flex-col gap-1 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{entry.label}</span>
+                  <span className="text-xs text-gray-500">{formatStatus(entry.order.status)}</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  {t(`app.services.analytics.hot_services.reason.${entry.reason}`)} · {describeOwner(entry.order)}
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-sm text-gray-500">{t('app.services.analytics.hot_services.empty')}</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+type OrderDetailProps = {
+  order: AdditionalServiceOrder
+  summary: AdditionalServiceOrderSummary | null
+  canManage: boolean
+  onStatusUpdate: (orderId: string, status: ServiceOrderStatus) => void
+  onScheduleSubmit: (itemId: string, event: FormEvent<HTMLFormElement>) => void
+  onDeliverItem: (item: AdditionalServiceItem, event: FormEvent<HTMLFormElement>) => void
+}
+
+function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubmit, onDeliverItem }: OrderDetailProps) {
+  const { t } = useI18n()
+  const blockingIds = new Set(summary?.blocking_items.map((item) => item.id) ?? [])
+  const missingDocs = summary?.missing_documents ?? {}
+  const orderStatusLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    ORDER_STATUSES.forEach((status) => {
+      map[status] = t(`app.services.status.order.${status}`)
+    })
+    return map
+  }, [t])
+  const scheduleStatusLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    SCHEDULE_STATUSES.forEach((status) => {
+      map[status] = t(`app.services.status.schedule.${status}`)
+    })
+    return map
+  }, [t])
+  const itemStatusLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    ITEM_STATUSES.forEach((status) => {
+      map[status] = t(`app.services.status.item.${status}`)
+    })
+    return map
+  }, [t])
+  const documentStatusLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    DOCUMENT_STATUSES.forEach((status) => {
+      map[status] = t(`app.services.status.document.${status}`)
+    })
+    return map
+  }, [t])
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center.justify-between">
+        <div>
+          <div className="text-sm text-gray-500">{t('app.services.orders.detail.order_label')}</div>
+          <div className="text-lg font-semibold tracking-tight">{order.id}</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-500">{t('app.services.orders.detail.status_label')}</span>
+          {canManage ? (
+            <select
+              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              value={order.status}
+              onChange={(e) => onStatusUpdate(order.id, e.target.value as ServiceOrderStatus)}
+            >
+              {ORDER_STATUSES.map((status) => (
+                <option key={status} value={status}>{orderStatusLabels[status] ?? status}</option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-sm font-medium uppercase">{orderStatusLabels[order.status] ?? order.status}</span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div className="rounded border border-gray-100 bg-gray-50 p-3">
+          <div className="text-gray-500">{t('app.services.orders.detail.owner_label')}</div>
+          <div className="font-medium">
+            {order.candidate_id
+              ? t('app.services.orders.detail.owner.candidate', { values: { id: order.candidate_id } })
+              : order.vacancy_id
+              ? t('app.services.orders.detail.owner.vacancy', { values: { id: order.vacancy_id } })
+              : order.company_id
+              ? t('app.services.orders.detail.owner.company', { values: { id: order.company_id } })
+              : t('app.services.orders.detail.owner.none')}
+          </div>
+        </div>
+        <div className="rounded border border-gray-100 bg-gray-50 p-3">
+          <div className="text-gray-500">{t('app.services.orders.detail.amount_label')}</div>
+          <div className="font-medium">
+            {formatAmount(order.total_amount)}
+            {typeof order.vat_total === 'number' && (
+              <span className="ml-1 text-xs text-gray-500">
+                {t('app.services.orders.detail.vat_label', { values: { vat: order.vat_total.toFixed(2) } })}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="rounded border border-gray-100 bg-gray-50 p-3">
+          <div className="text-gray-500">{t('app.services.orders.detail.items_label')}</div>
+          <div className="font-medium">{order.items.length}</div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {order.items.map((item) => {
+          const isBlocking = blockingIds.has(item.id)
+          const missing = missingDocs[item.id] || []
+          return (
+            <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm text-gray-500">{t('app.services.orders.detail.item.service_label')}</div>
+                  <div className="text-base font-semibold">{item.service?.name || item.service_id}</div>
+                  <div className="text-xs text-gray-400">{item.service?.code}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">{t('app.services.orders.detail.item.status_label')}</div>
+                  <div className="text-sm font-medium uppercase">{itemStatusLabels[item.status] ?? item.status}</div>
+                  <div className="text-xs text-gray-500">
+                    {t('app.services.orders.detail.item.amount_label', { values: { amount: formatAmount(item.amount) } })}
+                  </div>
+                </div>
+              </div>
+
+              {isBlocking && (
+                <div className="mt-3 rounded bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
+                  {t('app.services.orders.detail.item.blocking_hint')}
+                </div>
+              )}
+
+              {missing.length > 0 && (
+                <div className="mt-3 rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                  {t('app.services.orders.detail.item.missing_docs', { values: { list: missing.join(', ') } })}
+                </div>
+              )}
+
+              <div className="mt-4 space-y-3">
+                <div>
+                  <div className="text-sm font-medium text-gray-700">{t('app.services.orders.detail.schedule.title')}</div>
+                  {item.schedules && item.schedules.length > 0 ? (
+                    <ul className="mt-2 space-y-2 text-sm text-gray-600">
+                      {item.schedules.map((sched) => (
+                        <li key={sched.id}>
+                          <div className="flex items-center justify-between">
+                            <span>
+                              {sched.slot_start
+                                ? new Date(sched.slot_start).toLocaleString()
+                                : t('app.services.orders.detail.schedule.no_date')}
+                            </span>
+                            <span className="text-xs uppercase">{scheduleStatusLabels[sched.status] ?? sched.status}</span>
+                          </div>
+                          {sched.location && <div className="text-xs text-gray-400">{sched.location}</div>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-1 text-xs text-gray-400">
+                      {t('app.services.orders.detail.schedule.empty')}
+                    </div>
+                  )}
+
+                  {canManage && (
+                    <form className="mt-3 grid grid-cols-1 md:grid-cols-5 gap-2" onSubmit={(e) => onScheduleSubmit(item.id, e)}>
+                      <input
+                        name="provider"
+                        className="rounded border border-gray-300 px-2 py-1 text-xs"
+                        placeholder={t('app.services.orders.detail.schedule.form.provider_placeholder')}
+                      />
+                      <input name="slot_start" type="datetime-local" className="rounded border border-gray-300 px-2 py-1 text-xs" />
+                      <input name="slot_end" type="datetime-local" className="rounded border border-gray-300 px-2 py-1 text-xs" />
+                      <input
+                        name="location"
+                        className="rounded border border-gray-300 px-2 py-1 text-xs"
+                        placeholder={t('app.services.orders.detail.schedule.form.location_placeholder')}
+                      />
+                      <select name="status" className="rounded border border-gray-300 px-2 py-1 text-xs">
+                        {SCHEDULE_STATUSES.map((status) => (
+                          <option key={status} value={status}>{scheduleStatusLabels[status] ?? status}</option>
+                        ))}
+                      </select>
+                      <button type="submit" className="md:col-span-5 rounded bg-brand-100 px-2 py-1 text-xs text-brand-700 hover:bg-brand-200">
+                        {t('app.services.orders.detail.schedule.form.submit')}
+                      </button>
+                    </form>
+                  )}
+                </div>
+
+                {canManage && item.status !== 'delivered' && (
+                  <form className="space-y-2" onSubmit={(e) => onDeliverItem(item, e)}>
+                    <div className="text-sm font-medium text-gray-700">{t('app.services.orders.detail.complete.title')}</div>
+                    {item.result_document_type && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                        <input
+                          name="issued_at"
+                          type="date"
+                          className="rounded border border-gray-300 px-2 py-1"
+                          placeholder={t('app.services.orders.detail.complete.issued_placeholder')}
+                        />
+                        <input
+                          name="expires_at"
+                          type="date"
+                          className="rounded border border-gray-300 px-2 py-1"
+                          placeholder={t('app.services.orders.detail.complete.expires_placeholder')}
+                        />
+                        <select name="doc_status" className="rounded border border-gray-300 px-2 py-1">
+                          {DOCUMENT_STATUSES.map((status) => (
+                            <option key={status} value={status}>{documentStatusLabels[status] ?? status}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <button type="submit" className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700">
+                      {t('app.services.orders.detail.complete.submit')}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

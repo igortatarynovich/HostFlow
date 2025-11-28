@@ -1,0 +1,140 @@
+/* hostflow-frontend/src/styles/components.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========= Base ========= */
+@layer base {
+  html { @apply antialiased; }
+  body { @apply min-h-screen bg-gradient-to-br from-brand-50 via-white to-slate-100 text-slate-900; }
+  a { @apply text-brand-600 hover:text-brand-700; }
+
+  /* БРЕНДОВЫЕ чекбоксы/радио по всему проекту */
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: theme('colors.brand.500');
+  }
+}
+
+/* ========= Components ========= */
+@layer components {
+  /* Карточка / контейнер */
+  .card {
+    @apply bg-white/95 rounded-2xl border border-brand-50 shadow-card ring-1 ring-black/5;
+  }
+
+  /* Заголовок поля */
+  .label {
+    @apply mb-1.5 text-sm font-medium text-slate-700;
+  }
+
+  /* Текстовое поле */
+  .input {
+    @apply w-full rounded-xl border border-brand-100 bg-white/90
+           px-3 py-2 text-slate-900 placeholder:text-slate-400
+           outline-none transition
+           focus:border-brand-400 focus:ring-4 focus:ring-brand-100;
+  }
+
+  /* Текстовая область */
+  .textarea {
+    @apply input min-h-[96px];
+  }
+
+  /* Кнопки */
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-xl
+           px-3.5 py-2 text-sm font-medium
+           outline-none transition select-none;
+  }
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-brand-500 to-brand-600 text-white
+           hover:from-brand-600 hover:to-brand-700 active:from-brand-700 active:to-brand-800
+           focus:ring-4 focus:ring-brand-200 shadow;
+  }
+  .btn-secondary {
+    @apply btn border border-brand-100 bg-white/90 text-slate-700
+           hover:bg-brand-50 active:bg-brand-100/70
+           focus:ring-4 focus:ring-brand-100;
+  }
+  .btn-ghost {
+    @apply btn bg-transparent text-slate-700
+           hover:bg-brand-50/60 active:bg-brand-50
+           focus:ring-4 focus:ring-brand-100;
+  }
+  .btn-danger {
+    @apply btn bg-rose-50 text-rose-700 border border-rose-200
+           hover:bg-rose-100 active:bg-rose-200
+           focus:ring-4 focus:ring-rose-100;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+  .btn-xs {
+    @apply px-2.5 py-1 text-xs;
+  }
+  .btn-icon {
+    @apply inline-flex items-center justify-center rounded-lg
+           p-2 text-slate-600 hover:bg-gray-100 active:bg-gray-200
+           focus:ring-4 focus:ring-brand-100;
+  }
+
+  /* Бейдж */
+  .badge {
+    @apply inline-flex items-center rounded-full bg-gray-100
+           px-2 py-0.5 text-xs font-medium text-slate-700;
+  }
+
+  /* Табы */
+  .tabs { @apply flex gap-2 border-b border-gray-200; }
+  .tab { @apply -mb-px px-3 py-2 text-slate-500 border-b-2 border-transparent; }
+  .tab-active { @apply text-brand-700 border-brand-500; }
+
+  .app-surface {
+    @apply bg-white/95 border border-white/60 rounded-3xl shadow-card;
+  }
+
+  /* Dropdown */
+  .dropdown { @apply absolute z-20 mt-2 w-full rounded-xl border border-gray-200 bg-white shadow-lg; }
+  .dropdown-item { @apply w-full px-3 py-2 text-left hover:bg-gray-50; }
+
+  /* Alerts */
+  .alert-success { @apply rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-800; }
+  .alert-error   { @apply rounded-lg border border-rose-200    bg-rose-50    px-3 py-2 text-rose-800; }
+
+  /* ===== Служебные хелперы для страниц ===== */
+  .page { @apply p-4; }
+  .page-content { @apply max-w-6xl mx-auto space-y-4; }
+
+  /* ===== Унифицированная таблица списков ===== */
+  .table {
+    @apply w-full text-sm;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .table thead {
+    @apply bg-gray-50;
+  }
+  .table thead th {
+    @apply text-left font-medium text-slate-600;
+    padding: 12px; /* плотность как у «Кандидатов» */
+  }
+  /* Скругление верхних углов шапки внутри .card */
+  .table thead th:first-child {
+    border-top-left-radius: 0.75rem; /* rounded-xl */
+  }
+  .table thead th:last-child {
+    border-top-right-radius: 0.75rem;
+  }
+
+  .table tbody td {
+    padding: 12px;
+    @apply align-middle;
+  }
+  .table tbody tr {
+    @apply border-t;
+  }
+  .table tbody tr:hover {
+    @apply bg-gray-50;
+  }
+}

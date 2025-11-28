@@ -1,0 +1,8 @@
+{
+  "fields": {
+    "source_document": { "type": "string", "required": true },
+    "language": { "type": "string", "required": true, "enum": "ISO639-1" },
+    "translator": { "type": "string", "required": false },
+    "completed_at": { "type": "date", "required": true }
+  }
+}

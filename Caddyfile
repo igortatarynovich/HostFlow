@@ -1,0 +1,11 @@
+hostflow.cc, www.hostflow.cc {
+    encode gzip
+    header {
+        Cross-Origin-Opener-Policy "same-origin"
+        Cross-Origin-Embedder-Policy "require-corp"
+        Cross-Origin-Resource-Policy "same-origin"
+        Content-Security-Policy "child-src 'self' blob:; frame-src 'self' blob:"
+    }
+    # Proxy to nginx on port 80 (nginx handles routing to backend and frontend)
+    reverse_proxy 127.0.0.1:80
+}

@@ -1,0 +1,80 @@
+import { api, settings } from "../../api/client"
+
+// Все запросы — через основной axios-клиент `api` (baseURL = http://127.0.0.1:8000/api/v1)
+const TENANT = settings.getTenant?.() || import.meta.env.VITE_TENANT_ID
+
+// ====== TYPES ======
+export type DocumentType = {
+  code: string
+  name: string
+  description?: string | null
+  required?: boolean
+}
+
+export type DocumentLastCheck = {
+  status: "ok" | "fail" | "pending"
+  at?: string | null
+  note?: string | null
+}
+
+export type CandidateDocument = {
+  id: string
+  type: string
+  title?: string | null
+  url?: string | null
+  uploaded_at?: string
+  last_check?: DocumentLastCheck | null
+}
+
+// ====== API ======
+// NOTE: эндпоинты ТОЛЬКО на основной бэкенд: /api/v1/documents/...
+// Если у тебя другой префикс — поправь ниже пути, но принцип остаётся.
+
+export async function getDocumentTypes(): Promise<DocumentType[]> {
+  const { data } = await api.get("/documents/types", {
+    headers: { "X-Tenant-Id": TENANT },
+  })
+  return data
+}
+
+export async function listOwnerDocuments(
+  ownerId: string,
+  opts?: boolean | { include_last_check?: boolean }
+): Promise<CandidateDocument[]> {
+  const params =
+    typeof opts === "boolean" ? { include_last_check: opts } : (opts || {})
+  const { data } = await api.get(`/documents/candidate/${ownerId}`, {
+    params,
+    headers: { "X-Tenant-Id": TENANT },
+  })
+  return data
+}
+
+export async function uploadCandidateDocument(
+  ownerId: string,
+  payload: { file: File; type: string; title?: string }
+): Promise<CandidateDocument> {
+  const form = new FormData()
+  form.append("file", payload.file)
+  form.append("type", payload.type)
+  if (payload.title) form.append("title", payload.title)
+
+  const { data } = await api.post(`/documents/candidate/${ownerId}`, form, {
+    headers: {
+      "X-Tenant-Id": TENANT,
+      "Content-Type": "multipart/form-data",
+    },
+  })
+  return data
+}
+
+export async function deleteCandidateDocument(
+  ownerId: string,
+  documentId: string
+): Promise<{ ok: true }> {
+  const { data } = await api.delete(
+    `/documents/candidate/${ownerId}/${documentId}`,
+    { headers: { "X-Tenant-Id": TENANT } }
+  )
+  return data
+}

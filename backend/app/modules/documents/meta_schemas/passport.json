@@ -1,0 +1,14 @@
+{
+  "fields": {
+    "number": { "type": "string", "required": true, "regex": "^[A-Z0-9]{6,10}$" },
+    "surname": { "type": "string", "required": true },
+    "given_names": { "type": "string", "required": true },
+    "nationality": { "type": "string", "required": true, "enum": "ISO3166-1-alpha2" },
+    "date_of_birth": { "type": "date", "required": true },
+    "sex": { "type": "string", "required": false, "enum": ["M","F","X"] },
+    "issuing_country": { "type": "string", "required": true, "enum": "ISO3166-1-alpha2" },
+    "issued_at": { "type": "date", "required": true },
+    "expires_at": { "type": "date", "required": true }
+  },
+  "ocr": { "mrz": true, "langs": ["eng","pol","rus","ukr"], "hints": ["passport","mrz","icao_td3"] }
+}

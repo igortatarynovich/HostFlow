@@ -1,0 +1,9 @@
+{
+  "fields": {
+    "card_number": { "type": "string", "required": true, "regex": "^[0-9]{16}$" },
+    "issuing_authority": { "type": "string", "required": false },
+    "issued_at": { "type": "date", "required": true },
+    "expires_at": { "type": "date", "required": true }
+  },
+  "ocr": { "langs": ["pol", "eng"], "hints": ["tachograph_card", "chip_card"] }
+}

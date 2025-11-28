@@ -1,0 +1,26 @@
+{
+  "id_card": {
+    "average_dimensions": {
+      "width": 903,
+      "height": 1252
+    },
+    "aspect_ratio": 0.7216442328977999,
+    "dimension_range": {
+      "width": {
+        "min": 901,
+        "max": 906
+      },
+      "height": {
+        "min": 1251,
+        "max": 1253
+      }
+    },
+    "tolerance": {
+      "width": 0.005534034311012728,
+      "height": 0.001597444089456869
+    },
+    "sample_count": 2,
+    "pages": 1,
+    "shape": "rectangular"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "fields": {
+    "pesel": { "type": "string", "required": true, "regex": "^[0-9]{11}$" },
+    "issued_at": { "type": "date", "required": false }
+  },
+  "ocr": { "langs": ["eng","pol"], "hints": ["pesel"] }
+}

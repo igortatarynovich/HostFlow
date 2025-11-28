@@ -1,0 +1,11 @@
+{
+  "fields": {
+    "number": { "type": "string", "required": true, "regex": "^[A-Z0-9-]{5,15}$" },
+    "surname": { "type": "string", "required": true },
+    "given_names": { "type": "string", "required": true },
+    "date_of_birth": { "type": "date", "required": true },
+    "issuing_country": { "type": "string", "required": true, "enum": "ISO3166-1-alpha2" },
+    "expires_at": { "type": "date", "required": false }
+  },
+  "ocr": { "mrz": false, "langs": ["eng","pol"], "hints": ["national_id"] }
+}

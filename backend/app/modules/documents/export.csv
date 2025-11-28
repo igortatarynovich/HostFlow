@@ -1,0 +1,10 @@
+id,type_code,status,title,issued_at,expires_at
+25b64b2e-c930-487d-82c9-73eb2b027c75,code95,uploaded,OCR Code95,,
+ad3c6431-239c-4f33-806a-4a9a788c6811,passport,approved,OCR Passport,2022-09-08,2027-09-07
+4ebc69ad-93b7-46db-a05f-7e6e68945600,passport,uploaded,Temp Passport,2024-01-01,2025-09-17
+a6a90e00-597c-47c6-928b-4f6369840c42,code95,uploaded,Code 95 John Doe,2024-01-01,2026-01-01
+ea022b14-d81b-4063-b099-d63ec8aac381,passport,rejected,Updated title,2022-09-08,2027-09-07
+a54699b0-fe30-45d4-818f-636ed46274a5,passport,uploaded,Second Passport,2023-01-01,2028-01-01
+ff3e1993-f959-442b-8b3c-9e9c9287c101,code95,expired,Code 95 John Doe,2024-01-01,2025-01-01
+c3130261-c4dd-4546-b2b3-6a13a5ef30cf,code95,approved,Code 95 John Doe,2024-01-01,2026-01-01
+097c91a2-dc10-4a09-b748-03720016ff24,passport,rejected,Passport John Doe,2022-09-08,2027-09-07

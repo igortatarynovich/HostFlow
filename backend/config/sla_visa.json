@@ -1,0 +1,10 @@
+{
+  "visa_D": {
+    "submission_modes": {
+      "ekonsulat": {"avg_days": 21},
+      "in_person": {"avg_days": 28},
+      "via_agency": {"avg_days": 35}
+    },
+    "default_avg_days": 28
+  }
+}

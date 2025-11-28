@@ -1,0 +1,10 @@
+[
+  {"code":"tpl_wzor_oswiadczenie","name":"Заявление на Oświadczenie","format":"docx"},
+  {"code":"tpl_wzor_zezwolenie_A","name":"Заявление на Zezwolenie A","format":"docx"},
+  {"code":"tpl_wzor_visa_D","name":"Анкета на визу D","format":"docx"},
+  {"code":"tpl_wzor_swiadectwo_kierowcy","name":"Wniosek o świadectwo kierowcy (GITD)","format":"docx"},
+  {"code":"tpl_wzor_karta_tacho","name":"Заявление на карту тахографа","format":"docx"},
+  {"code":"tpl_wzor_pesel","name":"Заявление PESEL","format":"docx"},
+  {"code":"tpl_wzor_umowa","name":"Шаблон трудового договора","format":"docx"},
+  {"code":"tpl_wzor_zamena_prav","name":"Заявление на замену прав","format":"docx"}
+]

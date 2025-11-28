@@ -1,0 +1,10 @@
+{
+  "fields": {
+    "type": { "type": "string", "required": true, "enum": ["visa","pobyt","work_permit","osw"] },
+    "number": { "type": "string", "required": false },
+    "issuing_country": { "type": "string", "required": true, "enum": "ISO3166-1-alpha2" },
+    "issued_at": { "type": "date", "required": false },
+    "expires_at": { "type": "date", "required": true }
+  },
+  "ocr": { "langs": ["eng","pol","rus","ukr"], "hints": ["visa","sticker","permit"] }
+}

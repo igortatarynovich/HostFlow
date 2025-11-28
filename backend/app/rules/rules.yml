@@ -1,0 +1,33 @@
+# Версия схемы правил
+version: 1
+
+# Автодобавление документов в зависимости от входных данных кандидата
+auto_add:
+  # Пример: если гражданство PL — ничего; если не PL — требуем код 95 и карту тахографа
+  - when:
+      any_of:
+        - extra.citizenship not_in: ["PL"]
+    add:
+      - { doc_type: "kod_95", code: "K95", status: "required" }
+      - { doc_type: "tachograph", code: "TACHO", status: "required" }
+
+  # Пример: если выбран этап "Заказ разрешения" — планируем oswiadczenie
+  - when:
+      all_of:
+        - stage == "PERMIT_ORDERED"
+    add:
+      - { doc_type: "oswiadczenie", code: "OSW", status: "planned" }
+
+# Простейшие зависимости и пересчёт ETA
+eta:
+  # Считаем условный ETA "выезда" (trip) — активируется, когда ready/active: oswiadczenie или zezwolenie
+  trip:
+    requires_any:
+      - { doc_type: "oswiadczenie", status_in: ["ready", "active"] }
+      - { doc_type: "zezwolenie", status_in: ["ready", "active"] }
+    days_after_ready: 7
+
+  invoice:
+    requires_all:
+      - { doc_type: "work_contract", status_in: ["ready", "active"] }
+    days_after_ready: 3

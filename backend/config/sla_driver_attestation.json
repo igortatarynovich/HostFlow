@@ -1,0 +1,6 @@
+{
+  "swiadectwo_kierowcy": {
+    "default_issue_days": 21,
+    "validity_model": "conditions_based"
+  }
+}

@@ -1,0 +1,164 @@
+### 1. Создание карточки компании
+POST {{baseUrl}}/api/v1/companies
+Authorization: Bearer {{token}}
+X-HostFlow-Tenant: {{tenantId}}
+Content-Type: application/json
+
+{
+  "slug": "logistra-sp-z-o-o",
+  "legal_name": "Logistra Sp. z o.o.",
+  "country": "PL",
+  "registered_address": {
+    "country": "PL",
+    "city": "Łódź",
+    "street": "ul. Transportowa 12",
+    "zip": "90-001"
+  },
+  "tax_id": "PL7280001234",
+  "vat_eu": "PL7280001234",
+  "established_at": "2012-04-17",
+  "default_currency": "PLN",
+  "payment_terms_days": 30
+}
+
+### 2. Обновление юридического блока
+PATCH {{baseUrl}}/api/v1/companies/{{companyId}}/legal
+Authorization: Bearer {{token}}
+X-HostFlow-Tenant: {{tenantId}}
+Content-Type: application/json
+
+{
+  "legal_name": "Logistra Transport Group Sp. z o.o.",
+  "reg_no": "0000456789",
+  "tax_id": "PL7280009876",
+  "vat_eu": "PL7280009876",
+  "registered_address": {
+    "country": "PL",
+    "city": "Łódź",
+    "street": "ul. Busowa 7",
+    "zip": "90-002"
+  },
+  "operational_address": {
+    "country": "PL",
+    "city": "Stryków",
+    "street": "Centrum 4",
+    "zip": "95-010"
+  }
+}
+
+### 3. Настройка биллинга
+PUT {{baseUrl}}/api/v1/companies/{{companyId}}/billing
+Authorization: Bearer {{token}}
+X-HostFlow-Tenant: {{tenantId}}
+Content-Type: application/json
+
+{
+  "default_currency": "EUR",
+  "payment_terms_days": 45,
+  "billing_address": {
+    "country": "PL",
+    "city": "Łódź",
+    "street": "ul. Busowa 7",
+    "zip": "90-002"
+  },
+  "invoice_email": "ap@logistra.pl",
+  "einvoice_peppol": {
+    "participant_id": "0192:1111111111",
+    "scheme": "PEPPOL BIS 3"
+  }
+}
+
+### 4. Добавление банковского счёта
+POST {{baseUrl}}/api/v1/companies/{{companyId}}/bank-accounts
+Authorization: Bearer {{token}}
+X-HostFlow-Tenant: {{tenantId}}
+Content-Type: application/json
+
+{
+  "iban": "PL10105000997603123456789012",
+  "swift_bic": "INGBPLPW",
+  "bank_name": "ING Bank Śląski",
+  "country": "PL",
+  "label": "Основной расчётный",
+  "is_primary": true
+}
+
+### 5. Добавление контактного лица
+POST {{baseUrl}}/api/v1/companies/{{companyId}}/contacts
+Authorization: Bearer {{token}}
+X-HostFlow-Tenant: {{tenantId}}
+Content-Type: application/json
+
+{
+  "role": "ACC",
+  "full_name": "Anna Nowak",
+  "email": "anna.nowak@logistra.pl",
+  "phone": "+48 501 000 123",
+  "is_primary": true,
+  "is_portal_user": true
+}
+
+### 6. Обновление операционного профиля
+PUT {{baseUrl}}/api/v1/companies/{{companyId}}/operations
+Authorization: Bearer {{token}}
+X-HostFlow-Tenant: {{tenantId}}
+Content-Type: application/json
+
+{
+  "fleet_tractors": 120,
+  "fleet_intl_perc": 80,
+  "fleet_local_perc": 20,
+  "trailers": {
+    "mega": 40,
+    "standard": 60,
+    "frigo": 10,
+    "container": 5
+  },
+  "lanes": {
+    "origins": ["PL", "SK"],
+    "destinations": ["FR", "ES", "PT"]
+  },
+  "cargo_types": ["ADR", "Pharma"],
+  "languages": ["pl", "en", "es"],
+  "preferred_nationalities": ["PL", "ES", "UA"],
+  "has_adr_operations": true,
+  "work_modes": ["UOP", "B2B"],
+  "fin_check_status": "pass",
+  "aml_required": false,
+  "iso9001": true,
+  "insurance_policy_no": "HDI/PL/2024/0098",
+  "doc_valid_until": "2025-12-31",
+  "provider_ids": ["11111111-2222-3333-4444-555555555555"],
+  "webhooks": [
+    {
+      "event": "company.updated",
+      "target": "https://api.logistra.pl/hooks/company"
+    }
+  ],
+  "branding": {
+    "logo_url": "https://cdn.hostflow.eu/tenants/logistra/logo.png",
+    "primary_color": "#004b8d"
+  }
+}
+
+### 7. Проверка готовности профиля
+GET {{baseUrl}}/api/v1/companies/{{companyId}}/readiness
+Authorization: Bearer {{token}}
+X-HostFlow-Tenant: {{tenantId}}
+
+###
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "company_id": "{{companyId}}",
+  "has_legal": true,
+  "has_primary_contact": true,
+  "has_primary_bank": true,
+  "fin_check_status": "pass",
+  "billing_ready": true,
+  "compliance_valid": true,
+  "client_portal_enabled": true,
+  "readiness_score": 92.5,
+  "readiness_state": "ready"
+}

@@ -1,0 +1,49 @@
+{
+  "version": "1.1.0",
+  "metadata": {
+    "schema_version": "2025-01",
+    "description": "Стандартные правила для документов кандидатов (v1.1)",
+    "tags": ["baseline", "documents"]
+  },
+  "expiring_soon_default_days": 30,
+
+  "candidate": {
+    "defaults": {
+      "requiredTypes": ["identity_document", "qualification_code95"],
+      "optionalTypes": ["tachograph_card", "medical_certificate"]
+    },
+    "overrides": [
+      {
+        "when": { "citizenship": ["UA", "BY", "IN", "ZW"], "residency_status": ["no_residence_card"] },
+        "require": ["visa"]
+      },
+      {
+        "when": { "citizenship": ["PL", "EU"], "residency_status": ["eu_citizen"] },
+        "remove": ["visa"]
+      }
+    ]
+  },
+
+  "vacancy": {
+    "category_sets": {
+      "driver": {
+        "requiredTypes": ["identity_document", "qualification_code95"],
+        "optionalTypes": ["tachograph_card", "driver_license", "swiadectwo_kierowcy", "medical_certificate"]
+      },
+      "non_driver": {
+        "requiredTypes": ["identity_document"],
+        "optionalTypes": ["identity_document", "residence_card", "visa", "bank_account_confirmation", "pesel", "criminal_record"]
+      }
+    },
+    "additions": [
+      { "when": { "requires_driver_attestation": true }, "require": ["swiadectwo_kierowcy"] }
+    ]
+  },
+
+  "validity": {
+    "identity_document": { "expiring_soon_days": 180 },
+    "qualification_code95": { "expiring_soon_days": 45 },
+    "driver_license": { "expiring_soon_days": 60 },
+    "tachograph_card": { "expiring_soon_days": 60 }
+  }
+}

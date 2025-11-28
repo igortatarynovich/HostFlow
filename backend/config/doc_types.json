@@ -1,0 +1,18 @@
+[
+  {"code":"oswiadczenie","name":"Oświadczenie o powierzeniu pracy","blocking":true,"entity":"assignment"},
+  {"code":"zezwolenie_A","name":"Zezwolenie na pracę typ A","blocking":true,"entity":"work_permit"},
+  {"code":"visa_D","name":"Wiza krajowa D (работа)","blocking":true,"entity":"visa"},
+  {"code":"swiadectwo_kierowcy","name":"Świadectwo kierowcy (GITD)","blocking":true,"entity":"swiadectwo_kierowcy"},
+
+  {"code":"prawo_jazdy","name":"Водительские права","blocking":true,"entity":"driver_license"},
+  {"code":"karta_tachografu","name":"Карта тахографа","blocking":true,"entity":"tachograph_card"},
+  {"code":"badania_lekarskie","name":"Медкомиссия","blocking":true,"entity":"medical_certificate"},
+  {"code":"szkolenia_BHP","name":"Инструктаж/БХП","blocking":false,"entity":"bhp"},
+  {"code":"pesel","name":"PESEL","blocking":false,"entity":"pesel"},
+  {"code":"umowa_o_prace","name":"Трудовой договор","blocking":true,"entity":"contract"},
+  {"code":"karta_pobytu","name":"Karta pobytu (ВНЖ)","blocking":false,"entity":"residence_card"},
+
+  {"code":"passport","name":"Паспорт","blocking":true,"entity":"identity_document"},
+  {"code":"photo_id","name":"Фото","blocking":false,"entity":"photo"},
+  {"code":"translation","name":"Перевод документа","blocking":false,"entity":"other"}
+]

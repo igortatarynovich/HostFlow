@@ -1,0 +1,9 @@
+{
+  "fields": {
+    "card_number": { "type": "string", "required": true, "regex": "^[0-9]{8,12}$" },
+    "issued_at": { "type": "date", "required": false },
+    "expires_at": { "type": "date", "required": true },
+    "issuing_country": { "type": "string", "required": false, "enum": "ISO3166-1-alpha2" }
+  },
+  "ocr": { "langs": ["eng", "pol"], "hints": ["code95", "qualification_card"] }
+}

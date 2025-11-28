@@ -1,0 +1,20 @@
+**Invoice Numbering — Summary**
+
+1. **Format**
+   - По умолчанию: `INV/{TENANT}/{YYYY}/{SEQ}`
+   - Пример: `INV/11111111/2025/000123`
+   - `{TENANT}` — ID арендатора, `{SEQ}` — автоинкремент по году.
+
+2. **Sequence Rules**
+   - Счётчик сбрасывается ежегодно (`YYYY`).
+   - Поддерживается независимая нумерация по tenant.
+   - Формат настраиваемый через `invoicing_settings` (`prefix`, `padding`, `separator`).
+
+3. **Validation**
+   - Проверка уникальности в пределах `(tenant_id, year)`.
+   - Номер нельзя изменить после статуса `issued`.
+
+4. **Integration**
+   - Автоматическая генерация при переходе `draft → issued`.
+   - Возможна ручная переинициализация последовательности через CLI или админку.
+   - Логика реализована в `fn_generate_invoice_number()` (PostgreSQL function).
