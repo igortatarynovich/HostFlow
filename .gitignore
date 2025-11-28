@@ -9,3 +9,6 @@ postgres_data/
 .vscode/
 .DS_Store
 **/__pycache__/
+emsdk/
+opencv/
+opencv_contrib/
