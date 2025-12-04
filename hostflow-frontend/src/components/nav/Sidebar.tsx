@@ -19,9 +19,28 @@ const GROUP_STORAGE_KEY = 'hf:ui:sidebar-groups'
 export function Sidebar({ items, tenant, open, onClose, onLogout }: SidebarProps) {
   const { t } = useI18n()
 
+  // Основные элементы, которые выносим наверх
+  const mainItems = useMemo(() => {
+    const order = ['overview', 'candidates', 'clients', 'vacancies']
+    const filtered = items.filter(
+      (item) =>
+        item.path &&
+        (item.key === 'overview' ||
+          item.key === 'candidates' ||
+          item.key === 'clients' ||
+          item.key === 'vacancies')
+    )
+    // Сортируем в нужном порядке
+    return filtered.sort((a, b) => {
+      const indexA = order.indexOf(a.key)
+      const indexB = order.indexOf(b.key)
+      return indexA - indexB
+    })
+  }, [items])
+
   const sections = useMemo(
     () =>
-      NAV_GROUPS.filter((section) => section.key !== 'account')
+      NAV_GROUPS.filter((section) => section.key !== 'account' && section.key !== 'overview' && section.key !== 'people')
         .map((section) => ({
           ...section,
           label: t(section.labelKey),
@@ -94,6 +113,34 @@ export function Sidebar({ items, tenant, open, onClose, onLogout }: SidebarProps
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 pb-6">
+            {/* Основные элементы - всегда видны, выделены */}
+            <div className="mb-4 space-y-1">
+              {mainItems.map((item) => (
+                <NavLink
+                  key={item.key}
+                  to={item.path!}
+                  title={t(item.labelKey)}
+                  onClick={handleNavigate}
+                  className={({ isActive }) =>
+                    clsx(
+                      'block rounded-md px-3 py-2.5 text-sm font-medium transition',
+                      isActive
+                        ? 'bg-white text-brand-900 shadow-sm'
+                        : 'text-white hover:bg-white/15 hover:text-white'
+                    )
+                  }
+                >
+                  {t(item.labelKey)}
+                </NavLink>
+              ))}
+            </div>
+
+            {/* Разделитель перед остальными секциями */}
+            {sections.length > 0 && mainItems.length > 0 && (
+              <div className="mx-4 my-4 border-t border-white/15" />
+            )}
+
+            {/* Остальные секции - раздвижные */}
             {sections.map((section, index) => {
               const expanded = expandedGroups[section.key] ?? true
               return (

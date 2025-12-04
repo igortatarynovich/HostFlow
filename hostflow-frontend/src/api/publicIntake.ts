@@ -12,6 +12,10 @@ export type IntakePersonal = {
   citizenship?: string | null
   residency_status?: string | null
   in_poland?: boolean | null
+  birth_date?: string | null  // ISO date string 'YYYY-MM-DD'
+  current_location?: string | null  // 'in_poland' | 'not_in_poland' | 'other'
+  frigo_experience?: boolean | null
+  has_adr?: boolean | null
 }
 
 export type IntakeExperience = {

@@ -493,6 +493,7 @@ export interface CandidateEmploymentEntry {
   position?: string | null;
   date_from?: string | null;
   date_to?: string | null;
+  currently_employed?: boolean | null; // работает ли сейчас
 }
 
 export interface CandidateEmploymentRecord {
@@ -504,6 +505,7 @@ export interface CandidateEmploymentRecord {
   position?: string | null;
   start_date: string;
   end_date?: string | null;
+  currently_employed?: boolean | null; // работает ли сейчас
   trailer_types?: string[] | null;
   route_types?: string[] | null;
   truck_brands?: string[] | null;
@@ -547,6 +549,11 @@ export interface CandidateExtra {
   // пребывание в Польше
   in_poland?: boolean | null;
   poland_stay_basis?: string | null; // visa_d / visa_c / karta_pobytu / eu_citizen / other
+  current_location?: string | null; // где находится сейчас (в Польше / не в Польше / другое)
+
+  // дополнительный опыт
+  frigo_experience?: boolean | null; // опыт работы с холодильниками
+  has_adr?: boolean | null; // есть ли ADR
 
   // документы (чек-лист)
   documents?: {

@@ -20,6 +20,7 @@ import { createDeleteRequest } from '../api/deletionRequests'
 import StageTag from '../components/StageTag'
 import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
+import { exportCandidateBundle } from '../api/documents'
 import { usePermissions } from '../hooks/usePermissions'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
 import { useI18n } from '../i18n'
@@ -226,6 +227,9 @@ const sanitizeExtra = (extra?: Partial<CandidateExtra> | null, fallback?: Candid
     experience_ce_total: null,
     in_poland: null,
     poland_stay_basis: '',
+    current_location: null,
+    frigo_experience: null,
+    has_adr: null,
     preferred_contact: '',
     first_contact_at: '',
     employment_history: [],
@@ -296,6 +300,17 @@ const sanitizeExtra = (extra?: Partial<CandidateExtra> | null, fallback?: Candid
   } else {
     result.eu_routes = null
   }
+  result.current_location = merged.current_location ? String(merged.current_location) : null
+  if (merged.frigo_experience === true || merged.frigo_experience === false) {
+    result.frigo_experience = merged.frigo_experience
+  } else {
+    result.frigo_experience = null
+  }
+  if (merged.has_adr === true || merged.has_adr === false) {
+    result.has_adr = merged.has_adr
+  } else {
+    result.has_adr = null
+  }
   delete (result as any).documents
   return result as CandidateExtra
 }
@@ -349,7 +364,7 @@ const formatAmount = (value: number | null | undefined) => {
 const isUuidLike = (value: unknown): value is string =>
   typeof value === 'string' && UUID_RE.test(value)
 
-const POLAND_BASIS_VALUES = ['', 'visa_d', 'visa_c', 'karta_pobytu', 'eu_citizen', 'other']
+const POLAND_BASIS_VALUES = ['', 'visa_d', 'visa_c', 'karta_pobytu', 'eu_citizen', 'waiting_for_trc', 'other']
 
 const mapResidencyStatusToPolandBasis = (value?: string): string => {
   if (!value) return ''
@@ -840,6 +855,7 @@ export default function CandidateCard(){
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedOk, setSavedOk] = useState(false)
+  const [downloadingBundle, setDownloadingBundle] = useState(false)
   const [tab, setTab] = useState<Tab>('personal')
   const [model, setModel] = useState<Candidate | null>(null)
   const [deleteRequestLoading, setDeleteRequestLoading] = useState(false)
@@ -1521,6 +1537,25 @@ export default function CandidateCard(){
     }
   }, [model, isNew, nav, fetchCandidate, syncEmploymentRows, t, unknownErrorLabel])
 
+  const downloadBundle = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      setDownloadingBundle(true)
+      const blob = await exportCandidateBundle(String(model.id))
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `candidate_${model.id}_bundle.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err: any) {
+      const detail = err?.message || t('app.candidate_card.messages.export_failed')
+      alert(detail)
+    } finally {
+      setDownloadingBundle(false)
+    }
+  }, [model?.id, t])
+
   const extra = useMemo<CandidateExtra>(
     () => sanitizeExtra(model?.extra as CandidateExtra | undefined),
     [model?.extra]
@@ -1886,7 +1921,7 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
 
         {/* PERSONAL */}
         {tab==='personal' && (
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] lg:items-start lg:justify-between">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] lg:items-start lg:justify-between">
             <div className="space-y-8 lg:pr-6">
                   <div className="flex flex-wrap items-center gap-2 overflow-x-auto rounded-full bg-white/60 p-2">
                     {sectionNavItems.map(item => (
@@ -2254,6 +2289,19 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                     ))}
                   </select>
                 </label>
+                <label className="block">
+                  <div className="label">{t('app.candidate_card.fields.current_location')}</div>
+                  <select
+                    className="input"
+                    value={extra.current_location || ''}
+                    onChange={e=>setExtra({ current_location: e.target.value || null })}
+                  >
+                    <option value="">{selectTexts.multiNone}</option>
+                    <option value="in_poland">{t('public.intake.new.questions.location.options.in_poland')}</option>
+                    <option value="not_in_poland">{t('public.intake.new.questions.location.options.not_in_poland')}</option>
+                    <option value="other">{t('public.intake.new.questions.location.options.other')}</option>
+                  </select>
+                </label>
               </div>
             </section>
 
@@ -2323,6 +2371,36 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                     onChange={(e) => {
                       const value = e.target.value
                       setExtra({ eu_routes: value === 'yes' ? true : value === 'no' ? false : null })
+                    }}
+                  >
+                    <option value="">{t('app.candidate_card.fields.unset')}</option>
+                    <option value="yes">{t('common.words.yes')}</option>
+                    <option value="no">{t('common.words.no')}</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <div className="label">{t('app.candidate_card.fields.frigo_experience')}</div>
+                  <select
+                    className="input"
+                    value={extra.frigo_experience === true ? 'yes' : extra.frigo_experience === false ? 'no' : ''}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      setExtra({ frigo_experience: value === 'yes' ? true : value === 'no' ? false : null })
+                    }}
+                  >
+                    <option value="">{t('app.candidate_card.fields.unset')}</option>
+                    <option value="yes">{t('common.words.yes')}</option>
+                    <option value="no">{t('common.words.no')}</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <div className="label">{t('app.candidate_card.fields.has_adr')}</div>
+                  <select
+                    className="input"
+                    value={extra.has_adr === true ? 'yes' : extra.has_adr === false ? 'no' : ''}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      setExtra({ has_adr: value === 'yes' ? true : value === 'no' ? false : null })
                     }}
                   >
                     <option value="">{t('app.candidate_card.fields.unset')}</option>
@@ -2523,7 +2601,7 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
               <aside
                 ref={notesRef}
                 id="section-notes"
-                className="app-surface sticky top-20 h-fit w-full max-w-sm space-y-3 self-start rounded-2xl p-5 shadow-lg lg:w-80 lg:justify-self-end lg:ml-auto"
+                className="app-surface sticky top-20 h-fit w-full max-w-sm space-y-3 self-start rounded-2xl p-5 shadow-lg lg:w-80 lg:max-w-[320px] lg:justify-self-end lg:ml-auto"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -2540,18 +2618,18 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                     disabled={notesLoading}
                   >{notesLoading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}</button>
                 </div>
-                <div className="flex items-start gap-2">
+                <div className="space-y-2">
                   <textarea
-                    className="input min-h-[72px] flex-1"
+                    className="input min-h-[72px] w-full"
                     placeholder={t('app.candidate_card.notes.placeholder')}
                     value={newNote}
                     onChange={e=>setNewNote(e.target.value)}
                   />
-                  <button type="button" className="btn-primary" onClick={addNote} disabled={noteSending || !newNote.trim()}>
+                  <button type="button" className="btn-primary w-full" onClick={addNote} disabled={noteSending || !newNote.trim()}>
                     {noteSending ? t('app.candidate_card.actions.saving_note') : t('common.actions.add')}
                   </button>
                 </div>
-                <div className="divide-y rounded-lg border bg-white">
+                <div className="divide-y rounded-lg border bg-white overflow-hidden max-h-[400px] overflow-y-auto">
                   {notes.length === 0 && (
                     <div className="p-3 text-gray-500">{t('app.candidate_card.notes.empty')}</div>
                   )}
@@ -2563,7 +2641,7 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                           {t(`app.candidate_card.notes.visibility.${n.visibility}`, { defaultValue: n.visibility })}
                         </span>
                       </div>
-                      <div className="whitespace-pre-wrap break-words">{n.text}</div>
+                      <div className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{n.text}</div>
                     </div>
                   ))}
                 </div>
@@ -2580,11 +2658,24 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                   <p className="text-lg font-semibold text-gray-900">{t('app.candidate_card.tabs.docs')}</p>
                   <p className="text-sm text-gray-500">{t('app.candidate_card.docs.helper')}</p>
                 </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary text-sm"
+                    onClick={downloadBundle}
+                    disabled={!model?.id || downloadingBundle}
+                  >
+                    {downloadingBundle
+                      ? t('app.candidate_card.actions.exporting_bundle')
+                      : t('app.candidate_card.actions.export_bundle')}
+                  </button>
+                </div>
               </div>
               {!isNew && model.id ? (
                 <CandidateDocuments
                   key={String(model.id)}
                   candidateId={String(model.id)}
+                  hideHeader
                   {...({
                     ownerContext: { citizenship: (extra as any)?.citizenship || '' },
                     onFieldsApplied: (doc: any, fields: Record<string, any>) =>

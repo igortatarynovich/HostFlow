@@ -113,7 +113,10 @@ class IntakePersonal(BaseModel):
     citizenship: Optional[str] = Field(default=None, min_length=2, max_length=2)
     residency_status: Optional[str] = None
     in_poland: Optional[bool] = None
-    in_poland: Optional[bool] = None
+    birth_date: Optional[str] = None  # ISO date string 'YYYY-MM-DD'
+    current_location: Optional[str] = None  # 'in_poland' | 'not_in_poland' | 'other'
+    frigo_experience: Optional[bool] = None
+    has_adr: Optional[bool] = None
 
 
 class IntakeExperience(BaseModel):
@@ -509,10 +512,50 @@ async def _find_candidate_by_contact(
     phone_country_code: Optional[str],
     phone: Optional[str],
 ) -> Optional[Candidate]:
+    """
+    Находит существующего кандидата по контактам.
+    Проверяет email ИЛИ телефон, но если указаны оба - проверяет оба одновременно для более точного поиска.
+    """
     normalized_email = _normalize_email(email)
     contacts_email_column = _json_text(Candidate.contacts, "email")
     contacts_phone_column = _json_text(Candidate.contacts, "phone")
     contacts_phone_code_column = _json_text(Candidate.contacts, "phone_country_code")
+    
+    phone_parts = _normalize_phone_parts(phone_country_code, phone)
+    
+    # Если указаны и email, и телефон - проверяем оба одновременно для более точного поиска
+    if normalized_email and phone_parts:
+        normalized_code, normalized_phone = phone_parts
+        email_conditions = [
+            func.lower(Candidate.email) == normalized_email,
+        ]
+        if contacts_email_column is not None:
+            email_conditions.append(func.lower(contacts_email_column) == normalized_email)
+        
+        phone_conditions = [Candidate.phone == normalized_phone]
+        if contacts_phone_column is not None:
+            phone_conditions.append(contacts_phone_column == normalized_phone)
+        
+        # Сначала проверяем точное совпадение: email И телефон
+        combined_conditions = [
+            Candidate.tenant_id == str(tenant_id),
+            Candidate.deleted_at.is_(None),
+            or_(*email_conditions),
+            or_(*phone_conditions),
+        ]
+        
+        if normalized_code:
+            code_conditions = [Candidate.phone_country_code == normalized_code]
+            if contacts_phone_code_column is not None:
+                code_conditions.append(contacts_phone_code_column == normalized_code)
+            combined_conditions.append(or_(*code_conditions))
+        
+        stmt = select(Candidate).where(*combined_conditions).limit(1)
+        candidate = await session.scalar(stmt)
+        if candidate:
+            return candidate
+    
+    # Если указан email - проверяем по email
     if normalized_email:
         email_conditions = [
             func.lower(Candidate.email) == normalized_email,
@@ -532,7 +575,7 @@ async def _find_candidate_by_contact(
         if candidate:
             return candidate
 
-    phone_parts = _normalize_phone_parts(phone_country_code, phone)
+    # Если указан телефон - проверяем по телефону
     if phone_parts:
         normalized_code, normalized_phone = phone_parts
         phone_conditions = [Candidate.phone == normalized_phone]
@@ -973,11 +1016,17 @@ def _serialize_personal(candidate: Candidate, state: Dict[str, Any]) -> IntakePe
     full_name = personal_data.get("full_name")
     if not full_name:
         full_name = f"{candidate.first_name} {candidate.last_name}".strip()
+    # Также проверяем extra для обратной совместимости
+    extra = candidate._get_extra()
     return IntakePersonal(
         full_name=full_name.strip(),
-        citizenship=personal_data.get("citizenship"),
+        citizenship=personal_data.get("citizenship") or extra.get("citizenship"),
         residency_status=personal_data.get("residency_status"),
-        in_poland=personal_data.get("in_poland"),
+        in_poland=personal_data.get("in_poland") if personal_data.get("in_poland") is not None else extra.get("in_poland"),
+        birth_date=personal_data.get("birth_date") or extra.get("birth_date"),
+        current_location=personal_data.get("current_location") or extra.get("current_location"),
+        frigo_experience=personal_data.get("frigo_experience") if personal_data.get("frigo_experience") is not None else extra.get("frigo_experience"),
+        has_adr=personal_data.get("has_adr") if personal_data.get("has_adr") is not None else extra.get("has_adr"),
     )
 
 
@@ -1497,6 +1546,15 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
         personal_dict["citizenship"] = personal.citizenship.upper()
     if personal.in_poland is not None:
         personal_dict["in_poland"] = personal.in_poland
+    if personal.birth_date:
+        personal_dict["birth_date"] = personal.birth_date
+    # Сохраняем current_location, frigo_experience, has_adr даже если они пустые строки или False
+    if personal.current_location is not None:
+        personal_dict["current_location"] = personal.current_location
+    if personal.frigo_experience is not None:
+        personal_dict["frigo_experience"] = personal.frigo_experience
+    if personal.has_adr is not None:
+        personal_dict["has_adr"] = personal.has_adr
     residency = _auto_residency_status(personal_dict.get("citizenship"), personal.residency_status)
     if residency:
         personal_dict["residency_status"] = residency
@@ -1550,6 +1608,15 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
         extra["citizenship"] = personal.citizenship.upper()
     if personal.in_poland is not None:
         extra["in_poland"] = personal.in_poland
+    if personal.birth_date:
+        extra["birth_date"] = personal.birth_date
+    # Сохраняем current_location, frigo_experience, has_adr в extra даже если они пустые строки или False
+    if personal.current_location is not None:
+        extra["current_location"] = personal.current_location
+    if personal.frigo_experience is not None:
+        extra["frigo_experience"] = personal.frigo_experience
+    if personal.has_adr is not None:
+        extra["has_adr"] = personal.has_adr
     basis = _map_residency_status_to_poland_basis(residency)
     if basis:
         extra["poland_stay_basis"] = basis

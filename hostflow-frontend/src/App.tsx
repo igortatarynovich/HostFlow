@@ -8,9 +8,11 @@ import { RoutePermissionGuard } from './app/RoutePermissionGuard'
 import { usePermissions } from './hooks/usePermissions'
 import PublicIntakeStart from './pages/public/PublicIntakeStart'
 import PublicApplyPage from './pages/public/PublicApplyPage'
+import PublicIntakeNew from './pages/public/PublicIntakeNew'
 import PublicPortalLanding from './pages/public/PublicPortalLanding'
 import PublicStatusPage from './pages/public/PublicStatusPage'
 import PublicScanPage from './pages/public/PublicScanPage'
+import PublicLanding from './pages/public/PublicLanding'
 import { useI18n } from './i18n'
 
 export default function App(){
@@ -34,10 +36,11 @@ export default function App(){
 
   return (
     <Routes>
-      <Route path="/public" element={<PublicPortalLanding />} />
+      <Route path="/public" element={<PublicLanding />} />
       <Route path="/public/portal" element={<PublicPortalLanding />} />
       <Route path="/public/intake" element={<PublicIntakeStart />} />
-      <Route path="/public/apply/:token" element={<PublicApplyPage />} />
+      <Route path="/public/apply/:token" element={<PublicIntakeNew />} />
+      <Route path="/public/apply-old/:token" element={<PublicApplyPage />} />
       <Route path="/public/scan" element={<PublicScanPage />} />
       <Route path="/public/scan-sessions" element={<Navigate to="/public/scan" replace />} />
       <Route path="/public/status/:token" element={<PublicStatusPage />} />

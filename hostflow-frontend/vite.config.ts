@@ -26,7 +26,7 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1024,
-    minify: 'esbuild',
+    minify: false, // Отключено для ускорения сборки (завершается за ~12 сек вместо зависания)
     target: 'esnext',
     sourcemap: false,
     reportCompressedSize: false,
