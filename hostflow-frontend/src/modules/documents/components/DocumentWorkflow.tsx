@@ -103,7 +103,7 @@ export const DocumentWorkflow = memo(function DocumentWorkflow({
                   </span>
                 )}
                 {canModify && !isDone && (
-                  <button className="btn-ghost btn-xs" onClick={() => onCompleteStep(doc, step.code)}>
+                  <button className="btn-secondary btn-xs" onClick={() => onCompleteStep(doc, step.code)}>
                     {t("admin.documents.actions.mark_done")}
                   </button>
                 )}

@@ -337,6 +337,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F8.57 | Унифицировать secondary/destructive controls в candidate sections | `DONE` | `CandidateNotesSection`, `CandidateRemindersSection`, `CandidateContactAttemptsSection`, `CandidateBasicSection`, `CandidateExperienceSection`, `CandidateHandoffSection` очищены от `btn-ghost`; secondary-actions переведены на `btn-secondary`, row-delete в experience — на `btn-danger` |
 | F8.58 | Унифицировать secondary controls в Candidates page | `DONE` | `CandidatesPage` очищен от остаточных `btn-ghost` в filter reset, bulk clear, context/actions menu, save-view и saved-views apply action; применен системный `btn-secondary` (`btn-xs` где уместно) |
 | F8.59 | Унифицировать secondary controls в Reminders page | `DONE` | `RemindersPage` очищен от `btn-ghost` в quick composer, filters, task/event actions и edit modal cancel; применен системный `btn-secondary` (`btn-sm/btn-xs` где уместно) |
+| F8.60 | Унифицировать secondary/destructive controls в shared workspace views | `DONE` | `PipelinePage`, `DashboardPage`, `Topbar`, `UserTable`, `ColumnFilterMenu`, `DocumentWorkflow`, `DocumentCard` очищены от `btn-ghost`; secondary actions переведены на `btn-secondary`, document reject/delete actions — на `btn-danger` |
 
 ## 5.5 Фаза E — Multi-tenant и Auth детализация (из source docs)
 
@@ -518,5 +519,6 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `F8.57 = DONE`: пакетная унификация controls в candidate секциях (`Notes/Reminders/ContactAttempts/Basic/Experience/Handoff`) — `btn-ghost` заменены на `btn-secondary`, удаление строки опыта переведено на `btn-danger`.
 - `2026-03-12` — `F8.58 = DONE`: `CandidatesPage` очищен от остаточных `btn-ghost` в фильтрах/menus/save-view/saved-views; применен единый `btn-secondary` паттерн для вторичных действий.
 - `2026-03-12` — `F8.59 = DONE`: `RemindersPage` очищен от `btn-ghost` в quick compose/filters/task-event actions/edit modal; применен единый `btn-secondary` паттерн.
+- `2026-03-12` — `F8.60 = DONE`: крупный пакет по shared workspace views — `Pipeline`, `Dashboard`, `Topbar`, `UserTable`, `ColumnFilterMenu`, `DocumentWorkflow`, `DocumentCard` переведены с `btn-ghost` на системные `btn-secondary`; reject/delete в документах выровнены на `btn-danger`.
 - `2026-03-12` — обновлен рабочий git-регламент для `F8`: пакетные изменения/commit/build, единый логический трек задачи и обязательный cleanup промежуточных веток после завершения `F8`.
 - `2026-03-12` — в SSOT добавлены отдельные обязательные направления: `SEO technical`, `SEO content rollout` и `Mobile adaptation pass` (критерии `36–38`, задачи `F9/F10/F11`).

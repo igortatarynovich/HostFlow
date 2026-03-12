@@ -206,7 +206,7 @@ export const DocumentCard = memo(function DocumentCard({
             {t("admin.documents.actions.approve")}
           </button>
           <button
-            className="btn-ghost btn-xs border border-rose-200 text-rose-600 hover:bg-rose-50"
+            className="btn-danger btn-xs"
             onClick={() => rejectDocument(doc)}
             disabled={!canManageDocuments || statusUpdating[doc.id]}
           >
@@ -263,7 +263,7 @@ export const DocumentCard = memo(function DocumentCard({
             </button>
             {hasFiles && (
               <button
-                className="btn-ghost btn-xs border border-rose-200 text-rose-600 hover:bg-rose-50"
+                className="btn-danger btn-xs"
                 onClick={() => deleteDocumentFile(doc)}
                 disabled={!canManageDocuments || statusUpdating[doc.id] || coreSaving[doc.id]}
               >
@@ -272,7 +272,7 @@ export const DocumentCard = memo(function DocumentCard({
             )}
             {deleteDocument && !doc.id.startsWith("synthetic::") && (
               <button
-                className="btn-ghost btn-xs border border-red-300 text-red-700 hover:bg-red-50"
+                className="btn-danger btn-xs"
                 onClick={() => {
                   if (confirm(t("admin.documents.actions.confirm_delete_document", { defaultValue: "Вы уверены, что хотите удалить этот документ?" }))) {
                     deleteDocument(doc.id);

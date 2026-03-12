@@ -528,7 +528,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
-                          className="btn-ghost btn-xs"
+                          className="btn-secondary btn-xs"
                           onClick={() => void reconcileAndReloadNotifications()}
                           disabled={notifLoading}
                         >
@@ -536,13 +536,13 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                         </button>
                         <button
                           type="button"
-                          className="btn-ghost btn-xs"
+                          className="btn-secondary btn-xs"
                           onClick={() => void loadNotifications()}
                           disabled={notifLoading}
                         >
                           {t('app.reminders.actions.refresh')}
                         </button>
-                        <button type="button" className="btn-ghost btn-xs" onClick={markAllRead}>
+                        <button type="button" className="btn-secondary btn-xs" onClick={markAllRead}>
                           {t('app.reminders.actions.mark_all')}
                         </button>
                       </div>

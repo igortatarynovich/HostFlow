@@ -210,7 +210,7 @@ export function UserTable({
                       </button>
                       <button
                         type="button"
-                        className="btn-ghost"
+                        className="btn-secondary"
                         disabled={!!pending}
                         onClick={(event) => {
                           event.stopPropagation()
@@ -223,7 +223,7 @@ export function UserTable({
                       </button>
                       <button
                         type="button"
-                        className="btn-ghost"
+                        className="btn-secondary"
                         onClick={(event) => {
                           event.stopPropagation()
                           onShowAudit(user.user_id!, user.email)

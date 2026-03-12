@@ -186,7 +186,7 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
             <div className="mt-3 flex gap-2 justify-end border-t pt-2">
               <button
                 type="button"
-                className="btn-ghost btn-xs"
+                className="btn-secondary btn-xs"
                 onClick={handleReset}
                 disabled={localSelected.length === 0}
               >

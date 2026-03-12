@@ -1187,7 +1187,7 @@ export default function Pipeline(){
             </select>
           </div>
           <div className="flex-1" />
-          <button className="btn-ghost" onClick={clearSelection}>{t('app.candidates.pipeline.bulk_clear_selection')}</button>
+          <button className="btn-secondary" onClick={clearSelection}>{t('app.candidates.pipeline.bulk_clear_selection')}</button>
           <button className="btn" onClick={bulkArchive}>{t('app.candidates.pipeline.bulk_archive')}</button>
         </div>
       )}
@@ -1328,7 +1328,7 @@ export default function Pipeline(){
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                className="btn-ghost text-sm p-1"
+                className="btn-secondary text-sm p-1"
                 onClick={() => setSidebarOpen(false)}
                 title={t('app.candidates.pipeline.hide_filters')}
               >
@@ -1336,7 +1336,7 @@ export default function Pipeline(){
               </button>
               <button
                 type="button"
-                className="btn-ghost text-sm"
+                className="btn-secondary text-sm"
                 onClick={switchToTable}
               >
                 {t('app.candidates.pipeline.switch_to_table')}
@@ -1382,7 +1382,7 @@ export default function Pipeline(){
               </div>
               <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200">
                 <button
-                  className="btn-ghost text-xs py-1.5 px-2"
+                  className="btn-secondary text-xs py-1.5 px-2"
                   onClick={()=>load()}
                   disabled={loading || !vacancyId}
                   title={t('app.candidates.actions.refresh_title')}
@@ -1445,7 +1445,7 @@ export default function Pipeline(){
               </div>
               
               <button 
-                className="btn-ghost w-full text-xs py-1.5" 
+                className="btn-secondary w-full text-xs py-1.5" 
                 onClick={()=>setFilters({ search:'', manager:'', citizenship:'', docs:'', from:'', to:'' })}
               >
                 {t('app.candidates.pipeline.reset_filters')}
@@ -1480,7 +1480,7 @@ export default function Pipeline(){
               return (
                 <div className="space-y-1">
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
                     onClick={() => {
                       navigate(`/app/candidates/${candidateId}`)
                       setContextMenu(null)
@@ -1489,7 +1489,7 @@ export default function Pipeline(){
                     {t('app.candidates.context.open_card')}
                   </button>
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
                     onClick={() => {
                       toggleSelected(candidateId)
                       setContextMenu(null)
@@ -1502,7 +1502,7 @@ export default function Pipeline(){
                   </button>
                   <div className="border-t border-slate-200 my-1" />
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
                     onClick={() => {
                       setSelectedIds([candidateId])
                       setBulkStage(stageOptions[0] || 'new')
@@ -1514,7 +1514,7 @@ export default function Pipeline(){
                     {t('app.candidates.context.change_stage')}
                   </button>
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
                     onClick={() => {
                       setSelectedIds([candidateId])
                       const c = item?.candidate || item || {}
@@ -1527,7 +1527,7 @@ export default function Pipeline(){
                     {t('app.candidates.context.assign_manager')}
                   </button>
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
                     onClick={() => {
                       setSelectedIds([candidateId])
                       setBulkVacancyId(vacancyId || vacancies[0]?.id || '')

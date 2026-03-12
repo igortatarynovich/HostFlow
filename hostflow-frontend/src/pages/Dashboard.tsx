@@ -1262,7 +1262,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-xl font-semibold">{t('app.dashboard.title')}</h1>
           <div className="flex items-center gap-2">
-            <button className="btn-ghost" onClick={() => load()} disabled={loading || rangeInvalid}>
+            <button className="btn-secondary" onClick={() => load()} disabled={loading || rangeInvalid}>
               {loading ? t('app.dashboard.refresh.loading') : t('app.dashboard.refresh.action')}
             </button>
           </div>
@@ -1401,7 +1401,7 @@ export default function Dashboard() {
             )}
             {isFilterVisible('presets') && (
               <div className="flex items-center gap-1 ml-2">
-                <button type="button" className="btn-ghost btn-sm text-xs" onClick={handleResetFilters}>
+                <button type="button" className="btn-secondary btn-sm text-xs" onClick={handleResetFilters}>
                   {t('app.dashboard.filters.reset')}
                 </button>
                 <button type="button" className="btn-secondary btn-sm text-xs" onClick={handleSavePreset}>
@@ -1409,7 +1409,7 @@ export default function Dashboard() {
                 </button>
                 <button
                   type="button"
-                  className="btn-ghost btn-sm text-xs"
+                  className="btn-secondary btn-sm text-xs"
                   onClick={handleLoadPreset}
                   disabled={!savedPreset}
                   title={savedPreset ? '' : t('app.dashboard.filters.no_preset')}
@@ -1420,7 +1420,7 @@ export default function Dashboard() {
             )}
             {isFilterVisible('widgets') && (
               <details className="relative group ml-auto">
-                <summary className="btn-ghost btn-sm cursor-pointer list-none text-xs">
+                <summary className="btn-secondary btn-sm cursor-pointer list-none text-xs">
                   {t('app.dashboard.filters.widgets')}
                 </summary>
                 <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg py-2 min-w-[180px] max-h-[280px] overflow-y-auto">
@@ -1441,7 +1441,7 @@ export default function Dashboard() {
               </details>
             )}
             <details className="relative group">
-              <summary className="btn-ghost btn-sm cursor-pointer list-none text-xs text-slate-500">
+              <summary className="btn-secondary btn-sm cursor-pointer list-none text-xs text-slate-500">
                 {t('app.dashboard.filters.configure')}
               </summary>
               <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg py-2 min-w-[180px] max-h-[280px] overflow-y-auto">
