@@ -77,7 +77,7 @@ export function BulkTagsModal({
               t('common.actions.apply')
             )}
           </button>
-          <button className="btn-ghost" onClick={onClose} disabled={loading}>
+          <button className="btn-secondary" onClick={onClose} disabled={loading}>
             {t('common.actions.cancel')}
           </button>
         </div>

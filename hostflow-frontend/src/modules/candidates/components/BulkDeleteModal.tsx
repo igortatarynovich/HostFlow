@@ -51,7 +51,7 @@ export function BulkDeleteModal({
             )}
           </button>
           <button
-            className="btn-ghost"
+            className="btn-secondary"
             onClick={() => onClose()}
             disabled={loading}
           >

@@ -333,6 +333,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F8.53 | Унифицировать secondary actions в admin profile/access/forms пакете | `DONE` | `CandidateProfilesPage`, `CompanyAccessPage`, `DeletionRequestsPage`, `CustomFieldsPage`, `TenantLinksSettingsPage` очищены от `btn-ghost`/link-style secondary actions и переведены на системные `btn-secondary` (`btn-sm/btn-xs` где уместно) |
 | F8.54 | Унифицировать secondary actions в processing/documents/agency flows | `DONE` | `DoProcesowaniaPage`, `DocumentsRegistryPage`, `AgencyClientsPage` очищены от `btn-ghost` и приведены к системным `btn-secondary` (`btn-sm/btn-xs`, pagination/filter/reset/advanced actions) |
 | F8.55 | Унифицировать secondary actions в vacancy/candidate/invoices модалках | `DONE` | `VacancyForm`, `VacancyDetail`, `CandidateCard`, `ClientInvoicesBlock` очищены от `btn-ghost`; secondary controls приведены к системным `btn-secondary` (`btn-sm` где уместно) |
+| F8.56 | Унифицировать secondary actions в candidate bulk modals | `DONE` | `BulkManagerModal`, `BulkHandoffModal`, `BulkTagsModal`, `BulkVacancyModal`, `BulkDeleteModal`, `BulkStageModal` очищены от `btn-ghost`; cancel/secondary actions приведены к `btn-secondary` |
 
 ## 5.5 Фаза E — Multi-tenant и Auth детализация (из source docs)
 
@@ -510,5 +511,6 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `F8.53 = DONE`: пакетная унификация secondary actions в admin-экранах (`CandidateProfiles`, `CompanyAccess`, `DeletionRequests`, `CustomFields`, `TenantLinksSettings`) — `btn-ghost`/link-style кнопки переведены на `btn-secondary` (`btn-sm/btn-xs`).
 - `2026-03-12` — `F8.54 = DONE`: пакетная унификация secondary actions в `DoProcesowaniaPage`, `DocumentsRegistryPage`, `AgencyClientsPage` — остаточные `btn-ghost` (CSV/filter reset/modals/pagination/advanced toggle) переведены на `btn-secondary`.
 - `2026-03-12` — `F8.55 = DONE`: пакетная унификация secondary actions в `VacancyForm`, `VacancyDetail`, `CandidateCard`, `ClientInvoicesBlock` — модальные/карточные `btn-ghost` действия переведены на `btn-secondary`.
+- `2026-03-12` — `F8.56 = DONE`: пакетная унификация secondary actions в candidate bulk-модалках (`BulkManager/Handoff/Tags/Vacancy/Delete/Stage`) — `btn-ghost` cancel/actions переведены на `btn-secondary`.
 - `2026-03-12` — обновлен рабочий git-регламент для `F8`: пакетные изменения/commit/build, единый логический трек задачи и обязательный cleanup промежуточных веток после завершения `F8`.
 - `2026-03-12` — в SSOT добавлены отдельные обязательные направления: `SEO technical`, `SEO content rollout` и `Mobile adaptation pass` (критерии `36–38`, задачи `F9/F10/F11`).

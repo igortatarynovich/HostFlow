@@ -113,7 +113,7 @@ export function BulkStageModal({
             )}
           </button>
           <button
-            className="btn-ghost"
+            className="btn-secondary"
             onClick={() => {
               onClose()
               onReasonsChange([])
