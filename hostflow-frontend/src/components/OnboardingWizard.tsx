@@ -11,7 +11,7 @@ type Props = {
 
 export function OnboardingWizard({ tenantId: _tenantId }: Props) {
   const { t } = useI18n()
-  const { entitySingular, openEntityLabel } = useBusinessTerminology()
+  const { openEntityLabel } = useBusinessTerminology()
   const [status, setStatus] = useState<OnboardingStatus | null>(null)
 
   useEffect(() => {
@@ -58,10 +58,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
           id: 'company',
           done: Boolean(status?.steps?.company_created),
           href: '/app/clients',
-          label: t('app.onboarding.first_value.step_company_dynamic', {
-            defaultValue: 'Create first {entity}',
-            values: { entity: entitySingular.toLowerCase() },
-          }),
+          label: t('app.onboarding.first_value.step_company', { defaultValue: 'Company created' }),
         },
         typeStep,
         {
@@ -72,7 +69,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
         },
       ]
     },
-    [status, t, entitySingular],
+    [status, t],
   )
 
   const doneCount = steps.filter((step) => step.done).length
