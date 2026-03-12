@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { IconAlertTriangle, IconCheck, IconCreditCard, IconRefresh } from '@tabler/icons-react'
+import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
@@ -26,6 +27,8 @@ type PlanDef = {
   seatsLabel: string
   featureLabel: string
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 function getPlanCode(value: string | null | undefined): PlanCode {
   const plan = (value || '').trim().toLowerCase()
@@ -90,6 +93,19 @@ export default function BillingWorkspacePage() {
   }, [])
 
   const activePlan = getPlanCode(subscription?.plan_code)
+  const isTrial = (subscription?.status || '').trim().toLowerCase() === 'trial'
+  const trialDaysLeft = useMemo(() => {
+    if (!subscription?.trial_ends_at) return null
+    const dt = new Date(subscription.trial_ends_at)
+    if (Number.isNaN(dt.getTime())) return null
+    return Math.max(0, Math.ceil((dt.getTime() - Date.now()) / DAY_MS))
+  }, [subscription?.trial_ends_at])
+  const trialTone = useMemo<'normal' | 'warning' | 'critical'>(() => {
+    if (trialDaysLeft == null) return 'normal'
+    if (trialDaysLeft <= 2) return 'critical'
+    if (trialDaysLeft <= 7) return 'warning'
+    return 'normal'
+  }, [trialDaysLeft])
 
   const startCheckout = async (plan: PlanCode) => {
     setIsCheckoutLoading(true)
@@ -277,6 +293,99 @@ export default function BillingWorkspacePage() {
           })}
         </p>
       </header>
+
+      {isTrial && (
+        <section
+          className={`rounded-xl border p-4 shadow-sm ${
+            trialTone === 'critical'
+              ? 'border-rose-300 bg-rose-50'
+              : trialTone === 'warning'
+                ? 'border-amber-300 bg-amber-50'
+                : 'border-emerald-300 bg-emerald-50'
+          }`}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p
+                className={`text-xs font-semibold uppercase tracking-wide ${
+                  trialTone === 'critical'
+                    ? 'text-rose-800'
+                    : trialTone === 'warning'
+                      ? 'text-amber-800'
+                      : 'text-emerald-800'
+                }`}
+              >
+                {t('app.settings.billing.trial.badge', { defaultValue: 'Trial status' })}
+              </p>
+              <h2
+                className={`text-sm font-semibold ${
+                  trialTone === 'critical'
+                    ? 'text-rose-950'
+                    : trialTone === 'warning'
+                      ? 'text-amber-950'
+                      : 'text-emerald-950'
+                }`}
+              >
+                {trialDaysLeft != null
+                  ? t('app.settings.billing.trial.title_with_days', {
+                      defaultValue: 'Trial active: {days} day(s) left',
+                      values: { days: trialDaysLeft },
+                    })
+                  : t('app.settings.billing.trial.title', { defaultValue: 'Trial active' })}
+              </h2>
+              <p
+                className={`text-xs ${
+                  trialTone === 'critical'
+                    ? 'text-rose-900/90'
+                    : trialTone === 'warning'
+                      ? 'text-amber-900/90'
+                      : 'text-emerald-900/90'
+                }`}
+              >
+                {t('app.settings.billing.trial.subtitle', {
+                  defaultValue: 'Choose a paid plan before trial ends to keep uninterrupted access.',
+                })}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => startCheckout(activePlan)}
+                disabled={isCheckoutLoading}
+              >
+                {t('app.settings.billing.trial.cta', { defaultValue: 'Upgrade now' })}
+              </button>
+              <Link to="/app/overview" className="btn-secondary">
+                {t('app.settings.billing.trial.secondary_cta', { defaultValue: 'Continue setup' })}
+              </Link>
+            </div>
+          </div>
+          <p
+            className={`mt-2 text-xs ${
+              trialTone === 'critical'
+                ? 'text-rose-900/90'
+                : trialTone === 'warning'
+                  ? 'text-amber-900/90'
+                  : 'text-emerald-900/90'
+            }`}
+          >
+            {t('app.settings.billing.trial.legal_prefix', { defaultValue: 'Legal:' })}{' '}
+            <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+              {t('app.settings.billing.trial.legal_terms', { defaultValue: 'Terms' })}
+            </a>
+            {', '}
+            <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+              {t('app.settings.billing.trial.legal_privacy', { defaultValue: 'Privacy' })}
+            </a>
+            {', '}
+            <a href="/legal/cookies.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+              {t('app.settings.billing.trial.legal_cookies', { defaultValue: 'Cookies' })}
+            </a>
+            .
+          </p>
+        </section>
+      )}
 
       {error && (
         <ErrorRecoveryBanner
