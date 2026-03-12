@@ -1149,6 +1149,20 @@
           "modules_save_failed": "Nie udało się zaktualizować modułów.",
           "seat_request_failed": "Nie udało się wysłać prośby. Spróbuj później."
         }
+      },
+      "billing": {
+        "trial": {
+          "badge": "Status trial",
+          "title": "Okres próbny aktywny",
+          "title_with_days": "Okres próbny aktywny: pozostało {days} dni",
+          "subtitle": "Wybierz płatny plan przed końcem trial, aby zachować ciągłość dostępu.",
+          "cta": "Przejdź na płatny plan",
+          "secondary_cta": "Kontynuuj konfigurację",
+          "legal_prefix": "Dokumenty prawne:",
+          "legal_terms": "Regulamin",
+          "legal_privacy": "Polityka prywatności",
+          "legal_cookies": "Cookies"
+        }
       }
     },
     "admin": {
