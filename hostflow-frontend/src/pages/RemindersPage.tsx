@@ -739,7 +739,7 @@ export default function RemindersPage() {
               </h2>
               <button
                 type="button"
-                className="btn-ghost btn-xs"
+                className="btn-secondary btn-xs"
                 onClick={() => setComposerOpen((v) => !v)}
               >
                 {composerOpen
@@ -852,7 +852,7 @@ export default function RemindersPage() {
               </button>
               <button
                 type="button"
-                className="btn-ghost btn-sm"
+                className="btn-secondary btn-sm"
                 onClick={() => setTaskFilters(DEFAULT_TASK_FILTERS)}
               >
                 {t('common.actions.reset', { defaultValue: 'Reset' })}
@@ -964,13 +964,13 @@ export default function RemindersPage() {
                                   </div>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <button type="button" className="btn-ghost btn-xs" onClick={() => openEdit(item)} disabled={busy || editBusy}>
+                                  <button type="button" className="btn-secondary btn-xs" onClick={() => openEdit(item)} disabled={busy || editBusy}>
                                     {t('common.actions.edit', { defaultValue: 'Edit' })}
                                   </button>
                                   <button type="button" className="btn-secondary btn-xs" onClick={() => handleSnooze(item.id, 15)} disabled={busy || isClosedReminderStatus(item.status)}>
                                     +15m
                                   </button>
-                                  <button type="button" className="btn-ghost btn-xs" onClick={() => handleSnooze(item.id, 60)} disabled={busy || isClosedReminderStatus(item.status)}>
+                                  <button type="button" className="btn-secondary btn-xs" onClick={() => handleSnooze(item.id, 60)} disabled={busy || isClosedReminderStatus(item.status)}>
                                     +1h
                                   </button>
                                   {!isClosedReminderStatus(item.status) && (
@@ -1018,7 +1018,7 @@ export default function RemindersPage() {
             <button type="button" className="btn-secondary btn-sm" onClick={() => void reconcileAndReloadNotificationsFeed()}>
               {t('app.reminders.actions.sync', { defaultValue: 'Sync' })}
             </button>
-            <button type="button" className="btn-ghost btn-sm" onClick={markAllRead} disabled={markAllBusy || notificationCounts.unread === 0}>
+            <button type="button" className="btn-secondary btn-sm" onClick={markAllRead} disabled={markAllBusy || notificationCounts.unread === 0}>
               {markAllBusy ? t('common.loading') : t('app.reminders.actions.mark_all', { defaultValue: 'Mark all read' })}
             </button>
           </div>
@@ -1080,7 +1080,7 @@ export default function RemindersPage() {
                         {href && (
                           <button
                             type="button"
-                            className="btn-ghost btn-xs"
+                            className="btn-secondary btn-xs"
                             onClick={() => navigate(href)}
                           >
                             {t('app.reminders.actions.open_page', { defaultValue: 'Open' })}
@@ -1140,7 +1140,7 @@ export default function RemindersPage() {
                 </select>
               </div>
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" className="btn-ghost" onClick={() => setEditState(null)} disabled={editBusy}>
+                <button type="button" className="btn-secondary" onClick={() => setEditState(null)} disabled={editBusy}>
                   {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                 </button>
                 <button type="submit" className="btn-primary" disabled={editBusy}>
