@@ -249,10 +249,11 @@ function main() {
     const boardStatusByScenario = {}
     const boardScenarioCount = {}
     const allowedBoardStatuses = new Set(['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'])
+    const invalidBlockerValues = new Set(['', '-', 'n/a', 'na', 'none', 'null'])
     for (const rowLine of boardDataRows) {
       const row = parseBoardTableLine(rowLine)
       if (!row || row.length !== 4) continue
-      const [scenarioCell, statusCell] = row
+      const [scenarioCell, statusCell, blockerCell] = row
       const match = scenarioCell.match(/([ABC])\s*[—-]/)
       if (!match) continue
       const scenarioCode = match[1]
@@ -261,6 +262,12 @@ function main() {
       boardScenarioCount[scenarioCode] = (boardScenarioCount[scenarioCode] || 0) + 1
       if (!allowedBoardStatuses.has(boardStatus)) {
         errors.push(`Invalid board status "${statusCell}" for scenario ${scenarioCode}`)
+      }
+      if (boardStatus === 'BLOCKED') {
+        const blockerNorm = normalizeSoft(blockerCell)
+        if (invalidBlockerValues.has(blockerNorm)) {
+          errors.push(`Board BLOCKED status requires explicit blocker text for scenario ${scenarioCode}`)
+        }
       }
     }
     for (const scenarioCode of ['A', 'B', 'C']) {
@@ -279,6 +286,11 @@ function main() {
           `Board status mismatch for scenario ${scenarioCode}: board=PASS but latest run-log result=${latestResult}`,
         )
       }
+      if (boardStatus === 'FAIL' && latestResult !== 'FAIL') {
+        errors.push(
+          `Board status mismatch for scenario ${scenarioCode}: board=FAIL but latest run-log result=${latestResult}`,
+        )
+      }
       if (latestResult === 'PASS' && boardStatus !== 'PASS') {
         errors.push(
           `Board status mismatch for scenario ${scenarioCode}: latest run-log result=PASS but board=${boardStatus}`,
@@ -287,6 +299,11 @@ function main() {
       if (boardStatus === 'BLOCKED' && latestResult === 'PASS') {
         errors.push(
           `Board status mismatch for scenario ${scenarioCode}: board=BLOCKED but latest run-log result=PASS`,
+        )
+      }
+      if (boardStatus === 'BLOCKED' && latestResult === 'FAIL') {
+        errors.push(
+          `Board status mismatch for scenario ${scenarioCode}: board=BLOCKED but latest run-log result=FAIL`,
         )
       }
     }
