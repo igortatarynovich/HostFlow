@@ -854,3 +854,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F6` secondary-screen copy-pass расширен на `ClientLinkDetailPage`: ссылка «back to list» для `/app/clients` теперь business-aware (`Back to clients` / `Back to companies`) по типу бизнеса.
 - `2026-03-12` — `F6` secondary-screen copy-pass расширен на `AgencyClientsPage`: secondary empty-state CTA на `/app/clients` переведен на `useBusinessTerminology.openEntityLabel` (`Open clients` / `Open companies`).
 - `2026-03-12` — `F6` расширен в `AgencyClientsPage` на heading/empty-state primary CTA: title/subtitle и `Add ...` action теперь используют business-aware entity terms (`Client/Company`) через `useBusinessTerminology`.
+- `2026-03-12` — `F6` расширен в `AgencyClientsPage` на add-link modal: modal title и `display name` label переведены на dynamic entity-term (`client/company`) через `useBusinessTerminology`.

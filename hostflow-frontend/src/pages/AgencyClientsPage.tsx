@@ -378,6 +378,8 @@ function AddClientModal({
   onError: (msg: string) => void
 }) {
   const { t } = useI18n()
+  const { entitySingular } = useBusinessTerminology()
+  const entitySingularLower = entitySingular.toLowerCase()
   const [displayName, setDisplayName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<CompanySearchHit[]>([])
@@ -448,12 +450,18 @@ function AddClientModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold text-slate-900">
-          {t('app.clients.add_client', { defaultValue: 'Добавить клиента' })}
+          {t('app.clients.add_entity_dynamic', {
+            defaultValue: 'Add {entity}',
+            values: { entity: entitySingularLower },
+          })}
         </h2>
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700">
-              {t('app.clients.display_name', { defaultValue: 'Название клиента' })}
+              {t('app.clients.display_name_dynamic', {
+                defaultValue: '{entity} name',
+                values: { entity: entitySingular },
+              })}
             </label>
             <input
               type="text"
