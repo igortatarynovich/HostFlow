@@ -734,7 +734,7 @@ Residual risks до финального `PASS`:
 
 1. Провести ручной E2E прогон сценария `B` по run-sheet: [f7-scenario-b-agency.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-b-agency.md), затем записать `PASS/FAIL` + evidence в `10.1`.
 2. Провести ручной E2E прогон сценария `C` по run-sheet: [f7-scenario-c-employer.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-c-employer.md), затем записать `PASS/FAIL` + evidence в `10.1`.
-3. После подключения production Stripe/webhooks снять блокер `A` и выполнить полный прогон сценария `A`.
+3. После подключения production Stripe/webhooks снять блокер `A` и выполнить полный прогон сценария `A` по run-sheet: [f7-scenario-a-solo-services.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-a-solo-services.md).
 
 ## 11. Changelog
 
@@ -876,3 +876,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F7` execution board обновлен: добавлен формальный протокол прогона (`docs/manual-checklist/f7-scenario-protocol.md`), зафиксирован текущий state (`A=BLOCKED` по Stripe, `B/C=IN_PROGRESS` с `PASS_STATIC` как промежуточный code/UI результат до ручного sign-off).
 - `2026-03-12` — `F7` execution board переведен в операционный формат: добавлен run-log `10.1` (дата/окружение/tenant/result/evidence/owner) и зафиксированы next actions `10.2` для последовательного закрытия `B/C` и снятия блокера `A`.
 - `2026-03-12` — для `F7` добавлены отдельные run-sheets сценариев `B/C` (`docs/manual-checklist/f7-scenario-b-agency.md`, `docs/manual-checklist/f7-scenario-c-employer.md`) и привязаны к шагам `10.2`.
+- `2026-03-12` — для `F7` добавлен run-sheet сценария `A` (`docs/manual-checklist/f7-scenario-a-solo-services.md`), шаг `10.2.3` привязан к явному шаблону прогона после снятия Stripe-блокера.
