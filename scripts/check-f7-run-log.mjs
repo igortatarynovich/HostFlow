@@ -133,6 +133,7 @@ function main() {
   const seenRunKeys = new Set()
   const allowedResults = new Set(['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'])
   const invalidFinalCellValues = new Set(['', 'n/a', 'na', '-', 'none', 'null'])
+  const expectedBusinessTypeByScenario = { A: 'services', B: 'agency', C: 'employer' }
   const latestResultByScenario = {}
   const latestRankByScenario = {}
   let rowOrder = 0
@@ -151,11 +152,22 @@ function main() {
       errors.push(`Invalid date cell: "${date}"`)
     }
     const scenarioMatch = scenario.match(/([ABC])\s*\(/)
+    const businessTypeMatch = scenario.match(/\(\s*`?([a-z_]+)`?\s*\)/i)
     if (!scenarioMatch) {
       errors.push(`Invalid scenario cell: "${scenario}"`)
     } else {
-      seenScenarios.add(scenarioMatch[1])
       const scenarioCode = scenarioMatch[1]
+      seenScenarios.add(scenarioCode)
+      const expectedBusinessType = expectedBusinessTypeByScenario[scenarioCode]
+      const actualBusinessType = businessTypeMatch ? normalizeSoft(businessTypeMatch[1]) : ''
+      if (expectedBusinessType && actualBusinessType && actualBusinessType !== expectedBusinessType) {
+        errors.push(
+          `Scenario/business-type mismatch in 10.1: scenario ${scenarioCode} expects ${expectedBusinessType} but got ${actualBusinessType}`,
+        )
+      }
+      if (expectedBusinessType && !actualBusinessType) {
+        errors.push(`Scenario cell is missing business type for ${scenarioCode}: "${scenario}"`)
+      }
       const rank = parseDateKey(date) * 10000 + rowOrder
       const prevRank = latestRankByScenario[scenarioCode] ?? -1
       if (rank >= prevRank) {
