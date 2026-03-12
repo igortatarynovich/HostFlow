@@ -43,15 +43,15 @@ export function Breadcrumbs({ navItems }: BreadcrumbsProps) {
   }, [location.pathname, navItems])
 
   return (
-    <div className="border-b border-gray-200 pb-4">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+    <div className="border-b border-slate-200 pb-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
         {t(data.groupLabelKey ?? 'app.nav.groups.overview')}
       </div>
-      <div className="mt-1 text-2xl font-semibold text-gray-900">
+      <div className="mt-1 text-2xl font-semibold text-slate-900">
         {data.titleKey ? t(data.titleKey) : data.titleLabel ?? t('app.nav.items.overview')}
       </div>
       {data.crumbs.length > 1 && (
-        <nav className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+        <nav className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
           {data.crumbs.map((crumb, index) => {
             const isLast = index === data.crumbs.length - 1
             const crumbKey = crumb.label ?? crumb.labelKey ?? String(index)
@@ -64,7 +64,7 @@ export function Breadcrumbs({ navItems }: BreadcrumbsProps) {
                 ) : (
                   <span>{crumb.labelKey ? t(crumb.labelKey) : crumb.label}</span>
                 )}
-                {!isLast && <span className="text-gray-300">/</span>}
+                {!isLast && <span className="text-slate-300">/</span>}
               </span>
             )
           })}

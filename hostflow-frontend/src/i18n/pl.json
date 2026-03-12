@@ -3,6 +3,8 @@
     "loading": "Loading…",
     "access_denied": "Brak dostępu do tej sekcji.",
     "saving": "Saving…",
+    "yes": "Tak",
+    "no": "Nie",
     "labels": {
       "not_available": "—",
       "unnamed": "Bez nazwy",
@@ -17,7 +19,7 @@
       "edit": "Edit",
       "delete": "Delete",
       "cancel": "Cancel",
-      "save": "Save",
+      "save": "Zapisz",
       "create": "Create",
       "close": "Close",
       "copy_link": "Copy link",
@@ -52,6 +54,7 @@
           "visa_c": "Wiza C",
           "karta_pobytu": "Karta pobytu",
           "eu_citizen": "Obywatelstwo UE",
+          "waiting_for_trc": "Oczekiwanie na kartę pobytu",
           "other": "Inne"
         }
       },
@@ -99,7 +102,9 @@
       "subtitle": "Nowe zgłoszenia z Meta Ads i innych źródeł",
       "filters": {
         "status": "Status",
-        "status_all": "Wszystkie statusy"
+        "status_all": "Wszystkie statusy",
+        "stage": "Etap",
+        "stage_all": "Wszystkie etapy"
       },
       "statuses": {
         "new": "Nowy",
@@ -108,9 +113,17 @@
         "needs_routing": "Wymaga przekierowania",
         "failed": "Błąd"
       },
+      "stages": {
+        "new": "Nowy",
+        "contacted": "Skontaktowano",
+        "qualified": "Kwalifikowany",
+        "converted": "Przekonwertowano",
+        "lost": "Utracono"
+      },
       "table": {
         "created": "Utworzono",
         "status": "Status",
+        "stage": "Etap",
         "company": "Firma",
         "vacancy": "Oferta",
         "contact": "Kontakt",
@@ -248,22 +261,365 @@
         "overview": "Przegląd",
         "candidates": "Kandydaci",
         "clients": "Firmy",
+        "do_procesowania": "Procesowani",
         "vacancies": "Oferty pracy",
         "documents": "Dokumenty",
         "services": "Usługi i zamówienia",
         "invoices": "Faktury",
+        "communications": "Komunikacja",
+        "communications_setup": "Konfiguracja komunikacji",
+        "messages_inbox": "Wiadomości",
+        "email_inbox": "E-mail",
+        "calendar": "Kalendarz",
+        "planner": "Planer",
+        "sla_incidents": "Incydenty SLA",
+        "command_audit": "Audyt komend",
+        "team_availability": "Dostępność zespołu",
+        "my_availability": "Moja dostępność",
+        "time_off": "Urlopy i nieobecności",
         "reminders": "Przypomnienia",
         "leads": "Leady",
         "settings": "Ustawienia",
         "settings_users": "Użytkownicy i role",
         "settings_billing": "Billing i zespół",
         "settings_tenants": "Tenanci platformy",
+        "settings_funnels": "Lejki i etapy",
         "settings_docs": "Katalog dokumentów",
+        "settings_legal": "Dokumenty prawne",
+        "settings_company_access": "Dostęp do firm",
+        "settings_email": "Ustawienia e-mail",
+        "settings_tenant_links": "Połączenia tenantów",
         "settings_integrations": "Integracje / Meta Leads",
         "settings_ruleset": "Wersje Ruleset",
         "settings_audit": "Dziennik audytu",
+        "settings_communications": "Ustawienia komunikacji",
         "profile": "Profil",
         "logout": "Wyloguj"
+      }
+    },
+    "clients": {
+      "title": "Klienci",
+      "subtitle": "Klienci agencji i ustawienia dostępu.",
+      "add_client": "Dodaj klienta",
+      "empty": "Brak klientów. Dodaj pierwszego.",
+      "created": "Klient został dodany",
+      "portal_created": "Link został utworzony",
+      "portal_revoked": "Link został cofnięty",
+      "copy_failed": "Nie udało się skopiować",
+      "open_profile": "Profil",
+      "linked_tenant": "Powiązany z organizacją",
+      "handoff": "Przekazanie",
+      "see_vacancies": "Wakaty",
+      "see_reduced": "Profile skrócone",
+      "portal_access": "Dostęp przez link",
+      "revoke_link": "Cofnij",
+      "create_portal_link": "Utwórz link",
+      "handoff_label": "Przekazanie kandydatów",
+      "see_vacancies_label": "Widzieć wakaty",
+      "see_reduced_label": "Profile skrócone",
+      "search_placeholder": "Szukaj po nazwie lub domenie...",
+      "display_name": "Nazwa klienta",
+      "display_name_placeholder": "np. Citronex",
+      "link_existing": "Lub powiąż z istniejącą firmą",
+      "linked_to": "Powiąż z",
+      "settings": "Ustawienia dostępu",
+      "back_to_list": "← Do listy klientów",
+      "not_found": "Nie znaleziono klienta",
+      "errors": {
+        "name_or_link": "Wpisz nazwę lub powiąż z firmą."
+      }
+    },
+    "vacancies": {
+      "list": {
+        "subtitle": "Lista i zarządzanie wakatami",
+        "new_vacancy": "Nowy wakat",
+        "search_placeholder": "Szukaj… (⌘K)",
+        "company_placeholder": "Firma…",
+        "reset_filters_title": "Wyczyść pola filtrów",
+        "refresh_title": "Odśwież listę wakatów",
+        "export_csv_title": "Eksportuj tabelę do CSV",
+        "export_csv": "Eksport CSV",
+        "columns": "Kolumny",
+        "col_title": "Nazwa",
+        "col_company": "Firma",
+        "col_status": "Status",
+        "col_updated": "Zaktualizowano",
+        "col_created": "Utworzono",
+        "save_view": "Zapisz jako widok",
+        "view_name_prompt": "Nazwa widoku:",
+        "loading": "Ładowanie listy wakatów…",
+        "not_found": "Nie znaleziono wakatów",
+        "untitled": "(bez nazwy)",
+        "open": "Otwórz",
+        "actions": "Akcje",
+        "delete_view": "Usuń",
+        "total": "Razem: {total}",
+        "page": "Str. {page} / {total}",
+        "bulk_selected": "Wybrano: {count}",
+        "bulk_set_status": "Zmień status na:",
+        "bulk_archive": "Do archiwum",
+        "bulk_clear_selection": "Wyczyść zaznaczenie",
+        "status": {
+          "all": "Wszystkie",
+          "open": "Otwarte",
+          "on_hold": "Wstrzymane",
+          "closed": "Zamknięte",
+          "archived": "W archiwum"
+        },
+        "insights": {
+          "total": "Razem",
+          "open": "Otwarte",
+          "closed": "Zamknięte",
+          "archived": "W archiwum"
+        },
+        "errors": {
+          "unauthorized": "Brak autoryzacji: zaloguj się i spróbuj ponownie.",
+          "load_failed": "Nie udało się załadować wakatów"
+        }
+      }
+    },
+    "handoff": {
+      "do_procesowania": "Procesowani",
+      "do_procesowania_subtitle": "Kandydaci po przekazaniu do procesu po stronie pracodawcy",
+      "company": "Firma",
+      "filter_by_company": "Pokaż według firmy",
+      "your_org": "Kandydaci przekazani do Twojej organizacji",
+      "no_pending": "Brak kandydatów dla wybranych filtrów",
+      "accept_btn": "Przyjmij",
+      "reject_btn": "Odrzuć",
+      "return_btn": "Zwróć",
+      "accepted": "Przyjęto",
+      "rejected": "Odrzucono",
+      "returned": "Zwrócono do agencji",
+      "reject_title": "Odrzuć przekazanie",
+      "return_title": "Zwróć do agencji",
+      "rejection_reason": "Powód (wymagane)",
+      "return_reason": "Powód (wymagane)",
+      "return_reason_placeholder": "Np. potrzebujemy dodatkowych dokumentów...",
+      "client_type_firm": "Zespół klienta w naszym systemie",
+      "client_type_org": "Klient z własnym portalem (np. Firma transportowa)",
+      "client_hint": "«W naszym systemie» — HR/zespół klienta loguje się do Twojego workspace z dostępem do swojej firmy. «Własny portal» — klient ma osobny HostFlow, loguje się do swojej organizacji.",
+      "badge_new": "{count} nowych",
+      "tabs": {
+        "pending": "Oczekujące",
+        "history": "Historia decyzji",
+        "all": "Wszyscy",
+        "to_process": "Do procesowania",
+        "in_process": "W procesie"
+      },
+      "range": {
+        "30d": "Ostatnie 30 dni",
+        "all": "Cały okres"
+      },
+      "status": {
+        "pending": "Oczekuje",
+        "accepted": "Przyjęto",
+        "rejected": "Odrzucono",
+        "returned": "Zwrócono"
+      },
+      "table": {
+        "columns": {
+          "candidate": "Kandydat",
+          "short_id": "Short ID",
+          "requested": "Przekazano",
+          "created": "Utworzono",
+          "status": "Status",
+          "decision": "Decyzja",
+          "decision_at": "Decyzja",
+          "decision_by": "Kto",
+          "reason": "Powód",
+          "actions": "Akcje",
+          "phone": "Telefon",
+          "citizenship": "Obywatelstwo",
+          "stage": "Etap"
+        },
+        "columns_toggle": "Kolumny",
+        "summary": "Pokazujemy {count} z {total}"
+      },
+      "columns": {
+        "position": "Stanowisko"
+      },
+      "filters": {
+        "stage": "Etap procesu",
+        "stage_all": "Wszystkie etapy",
+        "date_from": "Data od",
+        "date_to": "Data do",
+        "employer_side_only": "W procesie (Employer side)",
+        "any": "Dowolne",
+        "open": "Filtry",
+        "clear": "Wyczyść filtry",
+        "close": "Zamknij"
+      },
+      "decisions": {
+        "employed": "Zatrudniony",
+        "rejected": "Odrzucony",
+        "declined": "Rezygnacja",
+        "returned": "Zwrócony"
+      },
+      "sort": {
+        "requested": "Data przekazania",
+        "decision": "Data decyzji",
+        "candidate": "Imię kandydata",
+        "status": "Status",
+        "stage": "Etap",
+        "created": "Data utworzenia"
+      },
+      "export_csv": "Eksport CSV",
+      "page": "Strona {page}",
+      "select_all": "Zaznacz wszystkie",
+      "bulk_done": "Gotowe: {ok} z {total}",
+      "return_bulk_title": "Zwróć {count} przekazań",
+      "reject_bulk_title": "Odrzuć {count} przekazań",
+      "search_placeholder": "Szukaj po imieniu, nazwisku, email, telefonie...",
+      "search_min": "Wpisz co najmniej 3 znaki, aby uruchomić wyszukiwanie."
+    },
+    "notifications": {
+      "handoff_requested_title": "Nowy kandydat do przetworzenia",
+      "handoff_accepted_title": "Kandydat przekazany",
+      "communications_sla_overdue_title": "SLA przekroczone: wymagana odpowiedź w dialogu",
+      "view_handoffs": "Przejdź do Procesowani",
+      "open_sla_incidents": "Otwórz incydenty SLA"
+    },
+    "sla_incidents": {
+      "title": "Incydenty SLA",
+      "subtitle": "Przeterminowane dialogi komunikacji wymagające odpowiedzi menedżera.",
+      "unread": "Nieprzeczytane",
+      "total": "Łącznie",
+      "search": "Szukaj incydentów…",
+      "include_read": "Pokaż przeczytane",
+      "empty": "Brak incydentów SLA.",
+      "empty_group": "Brak incydentów w grupie \"{group}\".",
+      "open_dialog": "Otwórz dialog",
+      "mark_read": "Oznacz jako przeczytane",
+      "actions": {
+        "in_work": "W toku",
+        "later": "Później",
+        "escalated": "Eskalowane",
+        "no_reply_needed": "Brak potrzeby odpowiedzi"
+      },
+      "groups": {
+        "open": "Otwarte",
+        "in_work": "W toku",
+        "later": "Później",
+        "escalated": "Eskalowane",
+        "no_reply_needed": "Brak potrzeby odpowiedzi",
+        "closed": "Zamknięte"
+      },
+      "trust": {
+        "title": "Raport zaufania (sygnały SLA)",
+        "window": "Na podstawie załadowanych incydentów",
+        "closed": "Zamknięte",
+        "open": "Otwarte",
+        "false_sla": "Potencjalnie fałszywe SLA",
+        "duplicates": "Potencjalne duplikaty",
+        "summary": "Wskaźnik zamknięcia: {rate}% · Łącznie: {total} · Grupy duplikatów: {groups}. Metryki są heurystyczne i oparte na sygnałach payload."
+      }
+    },
+    "communications_messages": {
+      "reply_required": "Wymagana odpowiedź",
+      "actions": {
+        "search": "Szukaj",
+        "send": "Wyślij"
+      },
+      "search": {
+        "placeholder": "Szukaj dialogu..."
+      },
+      "candidate_filter": "Filtr kandydata",
+      "action_groups": {
+        "context": "Kontekst",
+        "workflow": "Praca",
+        "sla": "SLA",
+        "more": "Więcej"
+      },
+      "dialogs": {
+        "title": "Dialogi",
+        "reorder_hint": "Przeciągnij i upuść, aby zmienić priorytet.",
+        "select_prompt": "Wybierz dialog, aby rozpocząć rozmowę."
+      },
+      "manager": {
+        "label": "Menedżer",
+        "unassigned": "Nieprzypisany",
+        "save": "Zapisz menedżera"
+      },
+      "candidate": {
+        "label": "Kandydat",
+        "not_linked": "Niepowiązany",
+        "card": "Karta kandydata",
+        "search_placeholder": "Szukaj po imieniu / emailu / telefonie / short ID",
+        "searching": "Wyszukiwanie...",
+        "unlink": "Odłącz",
+        "link": "Powiąż kandydata"
+      },
+      "timeline": {
+        "empty": "Brak wiadomości."
+      },
+      "compose": {
+        "recipient_placeholder": "Odbiorca (opcjonalne nadpisanie)",
+        "message_placeholder": "Napisz wiadomość"
+      },
+      "task": {
+        "button": "Zadanie",
+        "modal_title": "Utwórz zadanie z dialogu",
+        "title_placeholder": "Tytuł zadania"
+      },
+      "tags": {
+        "label": "Tagi",
+        "manager": "Menedżer tagów",
+        "manager_hint": "Twórz, zmieniaj kolor, archiwizuj i zmieniaj nazwy osobistych tagów wiadomości.",
+        "select": "Wybierz tag",
+        "review_later": "Sprawdź później",
+        "ad_hoc": "Tag ad hoc",
+        "quick_add": "Szybkie dodanie",
+        "manage": "Zarządzaj tagami",
+        "empty": "Brak osobistych tagów.",
+        "create_new": "Utwórz nowy",
+        "name_placeholder": "Nazwa tagu",
+        "create": "Utwórz tag",
+        "active": "Aktywny",
+        "archived": "Zarchiwizowany",
+        "columns": {
+          "name": "Nazwa",
+          "color": "Kolor",
+          "state": "Stan"
+        }
+      },
+      "ops": {
+        "all_modes": "Wszystkie tryby",
+        "menu_label": "Status",
+        "none": "Bez trybu",
+        "in_work": "W toku",
+        "later": "Pauza",
+        "escalated": "Eskalowane",
+        "no_reply_needed": "Brak potrzeby odpowiedzi",
+        "pause_hours_prompt": "Na ile godzin wstrzymać dialog?",
+        "pause_hours_invalid": "Podaj poprawną liczbę godzin (> 0).",
+        "escalation_reason_prompt": "Powód eskalacji",
+        "escalation_reason_required": "Powód eskalacji jest wymagany.",
+        "escalation_target_prompt": "Cel eskalacji (role/queue/user_id). Przykład: role:supervisor lub queue:urgent",
+        "escalation_target_required": "Cel eskalacji jest wymagany.",
+        "pause_modal_title": "Wstrzymaj dialog",
+        "pause_hours_label": "Czas pauzy (godziny)",
+        "escalation_modal_title": "Eskaluj dialog",
+        "escalated_hint": "Eskalacja kieruje ten dialog do uwagi przełożonego i wymaga podania powodu.",
+        "escalation_target_type_label": "Typ celu",
+        "escalation_target_value_label": "Wartość celu",
+        "target_type_role": "Rola",
+        "target_type_queue": "Kolejka",
+        "target_type_user": "Użytkownik",
+        "escalation_error_unknown_queue": "Wybrana kolejka jest niedozwolona. Dozwolone kolejki: {allowed}.",
+        "escalation_error_invalid_role": "Nieprawidłowy format roli docelowej.",
+        "escalation_error_unknown_role": "Wybrana rola jest niedozwolona. Dozwolone role: {allowed}.",
+        "escalation_error_invalid_user": "Nieprawidłowy identyfikator użytkownika.",
+        "escalation_error_unknown_user": "Użytkownik jest nieaktywny lub należy do innego tenantu."
+      },
+      "sla": {
+        "menu_label": "Akcje SLA",
+        "sla_muted": "SLA wyciszone",
+        "mute_sla": "Wycisz SLA",
+        "mute_hint": "Wycisz SLA, aby zatrzymać alerty o przekroczeniu i przypomnienia dla tego dialogu.",
+        "unmute_hint": "Włącz ponownie SLA, aby wznowić kontrole przekroczeń i przypomnienia dla tego dialogu.",
+        "snooze_1h": "Odłóż +1h",
+        "snooze_4h": "Odłóż +4h"
       }
     },
     "shell": {
@@ -335,7 +691,8 @@
         "email": "E-mail",
         "birth_date": "Data urodzenia",
         "country": "Kraj",
-        "city": "Miasto"
+        "city": "Miasto",
+        "preferred_contact": "Preferowany kanał kontaktu"
       },
       "preferences": {
         "labels": {
@@ -626,6 +983,16 @@
         "modules": {
           "title": "Moduły tenanta",
           "description": "Zarządzaj modułami bez przełączania na konto klienta.",
+          "matrix_title": "Macierz widoczności ról",
+          "matrix_description": "Skonfiguruj widoczność i edycję modułów dla każdej roli.",
+          "matrix_module": "Moduł",
+          "matrix_hint": "V = widoczne, E = edytowalne. Edytowalne zawsze wymaga widoczności.",
+          "user_overrides_title": "Nadpisania per użytkownik",
+          "user_overrides_description": "Nadpisz ustawienia roli dla wybranego użytkownika.",
+          "user_overrides_reset": "Reset do roli",
+          "user_overrides_mode": "Dostęp użytkownika",
+          "user_overrides_custom": "Nadpisanie użytkownika",
+          "user_overrides_from_role": "Z roli: {visible}{editable}",
           "items": {
             "candidates": "Kandydaci",
             "companies": "Firmy",
@@ -777,6 +1144,8 @@
           "administrator": "Administrator",
           "supervisor": "Supervisor",
           "recruiter": "Rekruter",
+          "client_manager": "Menedżer klienta",
+          "client_processor": "Procesor kandydatów",
           "viewer": "Podgląd"
         },
         "form": {
@@ -1085,7 +1454,8 @@
           "credential_created": "Połączenie zapisane",
           "secret_rotated": "Nowy sekret: {secret}",
           "mapping_saved": "Mapowanie zapisane",
-          "lead_rerouted": "Lead wysłany do obsługi"
+          "lead_rerouted": "Lead wysłany do obsługi",
+          "lead_retried": "Lead przetworzony pomyślnie"
         },
         "errors": {
           "load": "Nie udało się wczytać danych Meta Leads",
@@ -1099,7 +1469,8 @@
           "mapping_create": "Nie udało się zapisać mapowania",
           "mapping_update": "Nie udało się zaktualizować wpisu",
           "mapping_delete": "Nie udało się usunąć mapowania",
-          "reroute": "Nie udało się przekierować leada"
+          "reroute": "Nie udało się przekierować leada",
+          "retry": "Ponowienie nie powiodło się"
         },
         "prompts": {
           "delete_credential": "Usunąć to połączenie Meta?",
@@ -1168,7 +1539,8 @@
           },
           "empty": "Brak leadów w statusie needs_routing",
           "actions": {
-            "reroute": "Przekieruj"
+            "reroute": "Przekieruj",
+            "retry": "Ponów"
           }
         }
       },
@@ -1558,6 +1930,7 @@
         "company": "Firma",
         "vacancy": "Oferta pracy",
         "source": "Źródło",
+        "manager": "Menadżer",
         "citizenship": "Obywatelstwo",
         "country": "Kraj zamieszkania",
         "reason": "Powód odrzucenia/anulowania"
@@ -1583,7 +1956,11 @@
         "probation": "Okres próbny",
         "red_paper_ordered": "Czerwony papier zamówiony",
         "hiring": "Rekrutacja",
-        "interview": "Kontakt nawiązany"
+        "interview": "Kontakt nawiązany",
+        "ready_for_handoff": "Gotowy do przekazania",
+        "processing_by_client": "Procesowany przez zleceniodawcę",
+        "docs_submitted_permit": "Złożono dokumenty na zezwolenie",
+        "handoff_returned": "Zwrócono"
       },
       "reason_codes": {
         "schedule": "Niedopasowany grafik",
@@ -1614,16 +1991,89 @@
         "no_subgroup": "Bez podgrupy"
       },
       "filters": {
+        "title": "Filtry",
         "from": "Od",
         "to": "Do",
+        "period": "Okres",
         "date_field": "Pole daty",
         "field_created": "Data utworzenia",
         "field_updated": "Data aktualizacji",
         "vacancy": "Oferta",
         "all_vacancies": "Wszystkie oferty",
+        "company": "Firma",
+        "all_companies": "Wszystkie firmy",
+        "manager": "Menedżer",
+        "all_managers": "Wszyscy menedżerowie",
+        "stages": "Etapy",
+        "stage_view": "Widok etapów",
+        "stage_view_all": "Pełny",
+        "stage_view_agency": "Agencja",
+        "stage_view_client": "Klient",
+        "stages_hint": "Ctrl+klik dla wielokrotnego wyboru",
+        "reset": "Resetuj",
+        "compare_previous": "Porównaj z poprzednim okresem",
+        "save_preset": "Zapisz wycinek",
+        "load_preset": "Załaduj wycinek",
+        "no_preset": "Brak zapisanego wycinka",
         "sample": "Próbka: {count} kandydatów",
         "selected_vacancy": "· Oferta: {label}",
-        "custom_range": "Własny zakres"
+        "custom_range": "Własny zakres",
+        "widgets": "Widżety",
+        "configure": "Konfiguruj filtry",
+        "labels": {
+          "period": "Okres",
+          "dateRange": "Zakres dat",
+          "dateField": "Pole daty",
+          "vacancy": "Oferta",
+          "company": "Firma",
+          "manager": "Menadżer",
+          "stages": "Etapy",
+          "compare": "Porównanie",
+          "presets": "Presety",
+          "widgets": "Widżety"
+        }
+      },
+      "widgets": {
+        "labels": {
+          "handoff": "Przekazania",
+          "contact": "Kontakt",
+          "documents": "Dokumenty",
+          "managerLoad": "Obciążenie menedżerów",
+          "countries": "Kraje",
+          "stageStack": "Stos etapów",
+          "globalStats": "Statystyki globalne",
+          "stages": "Etapy",
+          "reasons": "Powody",
+          "companies": "Firmy",
+          "vacancies": "Oferty",
+          "sources": "Źródła",
+          "docsRisk": "Ryzyko dokumentów",
+          "velocity": "Tempo",
+          "pivot": "Przekrój",
+          "pivotChart": "Wykres przekroju"
+        },
+        "handoff": {
+          "title": "Przekazania",
+          "subtitle": "Wg zapytań w okresie",
+          "requested": "Zapytania",
+          "accepted": "Przyjęto",
+          "rejected": "Odrzucono",
+          "returned": "Zwrócono"
+        },
+        "contact_attempts": {
+          "title": "Próby kontaktu",
+          "subtitle": "Wg kandydatów w okresie",
+          "total": "Łącznie prób",
+          "avg": "Śr. na kandydata",
+          "limit_reached": "Osiągnięto limit 3+"
+        },
+        "documents": {
+          "title": "Dokumenty",
+          "subtitle": "Rzeczywiste dane z bazy",
+          "total": "Łącznie dokumentów",
+          "complete": "Kandydatów z gotowymi",
+          "by_status": "Wg statusu"
+        }
       },
       "hero": {
         "title": "Centrum kontroli rekrutacji",
@@ -1631,7 +2081,8 @@
         "stats": {
           "total": "Kandydatów w widoku",
           "vacancies": "Aktywne oferty",
-          "stages": "Etapy pipeline'u"
+          "stages": "Etapy pipeline'u",
+          "vs_previous": "do poprz. okresu:"
         }
       },
       "errors": {
@@ -1760,10 +2211,12 @@
       },
       "pivot": {
         "title": "Elastyczny przekrój analityczny",
+        "chart_title": "Wykres według przekroju",
         "group_by": "Grupowanie",
         "subgroup": "Podgrupy",
         "total": "Razem",
-        "empty": "Za mało danych, aby zbudować przekrój."
+        "empty": "Za mało danych, aby zbudować przekrój.",
+        "export": "Eksport CSV"
       }
     },
     "candidate_card": {
@@ -1773,12 +2226,46 @@
         "generate_short_id": "Generuj ID",
         "history": "Historia zmian",
         "history_loading": "Ładujemy historię…",
+        "export_bundle": "Pobrać profil kandydata",
+        "exporting_bundle": "Pakujemy profil…",
+        "upload_link": "Link do uploadu",
+        "upload_link_creating": "Tworzymy link…",
+        "upload_link_ready": "Link gotowy",
+        "upload_link_copied": "Link skopiowany",
         "refresh": "Odśwież",
         "refreshing": "Odświeżamy…",
-        "saving_note": "Zapisujemy…"
+        "saving_note": "Zapisujemy…",
+        "add_tag": "Dodaj",
+        "remove_tag": "Usuń tag {tag}"
       },
       "confirm": {
         "delete": "Usunąć tego kandydata?"
+      },
+      "handoff": {
+        "title": "Przekazanie",
+        "transfer_btn": "Przekaż do klienta",
+        "client": "Klient",
+        "pending": "Oczekuje na decyzję klienta",
+        "accepted": "Przekazano klientowi",
+        "processor": "Processor",
+        "no_clients": "Brak klientów z włączoną przekazywaniem",
+        "created": "Przekazano do klienta"
+      },
+      "rodo": {
+        "title": "RODO",
+        "badge_sent": "Wysłano",
+        "send_btn": "Wyślij informację RODO",
+        "sent_at": "Wysłano",
+        "to": "Do",
+        "no_email": "Kandydat nie ma adresu email lub brak aktywnej klauzuli RODO."
+      },
+      "contact_attempts": {
+        "title": "Próby kontaktu",
+        "register_btn": "Zarejestruj próbę kontaktu",
+        "no_attempts": "Brak prób",
+        "max_reached": "Osiągnięto maksymalną liczbę prób ({max})",
+        "registered": "Próba kontaktu zarejestrowana",
+        "rodo_required": "Wyślij informację RODO kandydatowi przed rejestracją prób kontaktu."
       },
       "contacts": {
         "options": {
@@ -1791,7 +2278,47 @@
       },
       "docs": {
         "disabled": "Zapisz kandydata, aby odblokować dokumenty.",
-        "helper": "Dokumenty, skany i status gotowości są tu dla całego zespołu."
+        "helper": "Dokumenty, skany i status gotowości są tu dla całego zespołu.",
+        "upload_link_label": "Wyślij ten link kandydatowi, aby dodał dokumenty.",
+        "upload_link_expires": "Link ważny do {date}",
+        "actions": {
+          "menu": "Akcje"
+        }
+      },
+      "operations": {
+        "title": "Operacje",
+        "description": "Szybkie działania i kontrola procesu.",
+        "handoff": "Przekazanie",
+        "reminders": "Przypomnienia"
+      },
+      "reminders": {
+        "title": "Przypomnienia kandydata",
+        "subtitle": "Szybkie przypomnienie: tytuł, termin, przesunięcie (min).",
+        "placeholder": "Oddzwoń, wyślij e-mail…",
+        "create": "Utwórz",
+        "upcoming": "Najbliższe",
+        "empty": "Brak aktywnych przypomnień.",
+        "untitled": "Bez tytułu",
+        "due": "Termin",
+        "date_placeholder": "—",
+        "status_label": "Status",
+        "statuses": {
+          "pending": "Oczekuje",
+          "new": "Nowe",
+          "overdue": "Zaległe",
+          "done": "Zakończone",
+          "completed": "Zakończone",
+          "cancelled": "Anulowane"
+        },
+        "offsets": {
+          "min5": "za 5 min",
+          "min15": "za 15 min",
+          "min30": "za 30 min",
+          "hour1": "za 1 godz."
+        },
+        "complete": "Zakończ",
+        "snooze_15": "+15m",
+        "snooze_60": "+1h"
       },
       "employment": {
         "title": "Historia zatrudnienia",
@@ -1830,11 +2357,14 @@
           "street": "Ulica",
           "zip": "Kod pocztowy"
         },
+        "age_hint": "Wiek: {age} lat",
         "birth_date": "Data urodzenia",
         "citizenship": "Obywatelstwo",
+        "fill_from_phone": "Wypełnij z kraju telefonu",
         "company": "Firma",
         "company_hint": "Wypełniane automatycznie na podstawie wakatu.",
         "country_code": "Kraj zamieszkania",
+        "country_code_hint": "Kraj zamieszkania",
         "created_at": "Utworzono",
         "created_at_hint": "Ustawiane automatycznie przy tworzeniu kandydata.",
         "email": "E-mail",
@@ -1842,7 +2372,7 @@
         "experience_eu": "Doświadczenie w UE (lata)",
         "experience_non_eu": "Doświadczenie poza UE (lata)",
         "experience_total": "Łączne doświadczenie CE (lata)",
-        "experience_total_hint": "Suma wyliczana automatycznie z doświadczenia w UE i poza UE.",
+        "experience_total_hint": "Łącznie: {total} lat",
         "first_contact": "Pierwszy kontakt",
         "first_contact_done": "Kontakt odbył się",
         "first_contact_hint": "Zaznacz, kiedy rekruter pierwszy raz skontaktował się z kandydatem.",
@@ -1854,18 +2384,34 @@
         "manager": "Menedżer (rekruter)",
         "phone": "Numer telefonu",
         "poland_basis": "Podstawa pobytu w Polsce",
+        "ops_mode": "Tryb operacyjny",
         "residency_status": "Status pobytu w Polsce",
+        "current_location": "Aktualna lokalizacja",
+        "frigo_experience": "Doświadczenie z naczepą chłodniczą",
+        "has_adr": "Posiada ADR",
         "preferred_contact": "Preferowany kanał kontaktu",
         "short_id": "Krótki ID",
         "short_id_hint": "Wygeneruj, aby odwoływać się do kandydata w dokumentach lub usługach.",
         "stage": "Status",
         "status_reasons": "Powody",
         "unset": "Nie ustawiono",
-        "vacancy": "Wakat"
+        "vacancy": "Wakat",
+        "tags": "Tagi"
+      },
+      "ops_mode": {
+        "none": "Bez trybu",
+        "in_work": "W pracy",
+        "later": "Później",
+        "no_reply_needed": "Bez odpowiedzi",
+        "escalated": "Eskalowane",
+        "hint": "Znacznik operacyjny dla pracy menedżera. Nie zmienia etapu kandydata."
       },
       "header": {
         "back": "Wróć do kandydatów",
-        "new_label": "Nowy kandydat"
+        "back_to_procesowani": "Wróć do Procesowani",
+        "new_label": "Nowy kandydat",
+        "masked_label": "Kandydat #{id}",
+        "masked_label_short_id": "Kandydat {short_id}"
       },
       "history": {
         "empty": "Brak aktywności.",
@@ -1923,15 +2469,52 @@
         "current_vacancy": "Aktualny wakat",
         "short_id_badge": "ID kandydata: {id}"
       },
+      "hint": {
+        "cyrillic_translit": "Cyrylica będzie transliterowana dla widoku klienta."
+      },
       "messages": {
         "delete_request_failed": "Nie udało się wysłać prośby o usunięcie.",
         "delete_request_sent": "Prośba o usunięcie została wysłana.",
         "meta_lead": "Zaimportowano z Meta Leads — część pól może być zablokowana.",
         "note_add_failed": "Nie udało się dodać notatki: {detail}",
+        "export_failed": "Nie udało się pobrać profilu kandydata.",
+        "upload_link_failed": "Nie udało się utworzyć linku do uploadu.",
         "save_failed": "Nie udało się zapisać kandydata: {detail}",
         "saved": "Zmiany zapisane",
+        "rodo_stage_blocked": "Przed przejściem do etapu kontaktu należy wysłać RODO.",
+        "rodo_stage_blocked_confirm": "Przed przejściem do etapu kontaktu należy wysłać RODO. Wysłać teraz i ponowić zmianę etapu?",
+        "rodo_sent_retry_success": "RODO wysłano, etap został zaktualizowany.",
+        "rodo_send_or_retry_failed": "Nie udało się wysłać RODO lub ponowić zmiany etapu.",
+        "handoff_docs_incomplete": "Nie można przejść do etapu „Gotowy do przekazania”: lista wymaganych dokumentów jest niekompletna.",
         "stage_reason_required": "Wybierz co najmniej jeden powód.",
-        "vacancy_hint": "Wakat określa firmę i podsumowanie gotowości."
+        "required_fields_missing": "Uzupełnij wymagane pola: {fields}",
+        "override_mode_required": "Włącz tryb override, aby edytować dane podane przez kandydata.",
+        "override_reason_missing": "Aby zmienić dane kandydata, podaj powód override.",
+        "profile_inactive": "Profil jest nieaktywny: {name}",
+        "profile_fallback_default": "Nie znaleziono profilu; użyto profilu domyślnego.",
+        "profile_not_found": "Nie znaleziono profilu.",
+        "vacancy_hint": "Wakat określa firmę i podsumowanie gotowości.",
+        "favorite_toggle_failed": "Nie udało się zmienić statusu ulubionego: {detail}"
+      },
+      "override": {
+        "title": "Ochrona danych podanych przez kandydata",
+        "description": "Pola danych osobowych, kontaktów i doświadczenia są domyślnie tylko do odczytu. Włączaj override tylko wtedy, gdy świadomie poprawiasz dane kandydata.",
+        "edit": "Edytuj",
+        "done": "Gotowe",
+        "enable": "Włącz override",
+        "disable": "Wyłącz override",
+        "reason_label": "Powód override",
+        "reason_placeholder": "Dlaczego nadpisujesz dane podane przez kandydata?",
+        "protected_fields_label": "Chronione pola kandydata",
+        "protected_fields_loading": "Ładowanie kontraktu pól…"
+      },
+      "validation": {
+        "poland_basis_required": "Podaj podstawę pobytu przy pobycie w Polsce",
+        "email_invalid_format": "Nieprawidłowy format adresu e-mail.",
+        "phone_only_digits": "Numer telefonu powinien zawierać tylko cyfry.",
+        "phone_too_short": "Numer telefonu jest zbyt krótki.",
+        "phone_too_long": "Numer telefonu jest zbyt długi.",
+        "stage_not_in_profile": "Aktualny etap \"{stage}\" nie należy do profilu \"{profile}\". Wybierz etap z profilu lub zmień profil wakatu."
       },
       "nav": {
         "intake": "Formularz",
@@ -1952,7 +2535,8 @@
         }
       },
       "placeholders": {
-        "phone_number": "Numer telefonu"
+        "phone_number": "Numer telefonu",
+        "tag": "Wprowadź nazwę tagu"
       },
       "prompts": {
         "delete_reason": "Podaj powód (opcjonalnie):"
@@ -1986,7 +2570,20 @@
         },
         "status": {
           "title": "Status i zgodność",
-          "description": "Informacje o pobycie, dostępności i podstawach prawnych."
+          "description": "Informacje o pobycie, dostępności i podstawach prawnych.",
+          "qualifications": "Kwalifikacje"
+        },
+        "custom_fields": {
+          "title": "Pola dodatkowe",
+          "description": "Dodatkowe pola zdefiniowane w profilu kandydata."
+        },
+        "communication": {
+          "title": "Komunikacja",
+          "description": "RODO i próby kontaktu"
+        },
+        "operations": {
+          "title": "Operacyjnie",
+          "description": "Tryb pracy menedżera, niezależny od etapu kandydata."
         }
       },
       "status": {
@@ -1996,6 +2593,7 @@
           "visa_c": "Wiza C",
           "karta_pobytu": "Karta pobytu",
           "eu_citizen": "Obywatelstwo UE",
+          "waiting_for_trc": "Oczekiwanie na kartę pobytu",
           "other": "Inne"
         },
         "residency": {
@@ -2045,6 +2643,7 @@
           "add_representative": "Dodaj przedstawiciela",
           "add_bank_account": "Dodaj konto bankowe",
           "add_contact": "Dodaj kontakt",
+          "add_vacancy": "+ Oferta",
           "add_portal_user": "Dodaj użytkownika portalu",
           "add_webhook": "Dodaj webhook",
           "add_contract": "Dodaj kontrakt",
@@ -2069,6 +2668,7 @@
             "total": "Powiązane wakaty",
             "latest_title": "Najnowsze aktualizacje",
             "status_label": "Status: {status}",
+            "pipeline_link": "Pipeline",
             "status_unknown": "Status nieznany",
             "empty": "Wakaty pojawią się tutaj po powiązaniu ich z firmą."
           },
@@ -2102,6 +2702,7 @@
             "empty": "Brak kontraktów.",
             "due": "Odnowienie {date}"
           },
+          "vacancies_link": "Przejdź do wakatów",
           "driver_slots": {
             "title": "Zapotrzebowanie na kierowców",
             "subtitle": "Otwarte wakaty",
@@ -2125,6 +2726,25 @@
           "operations": {
             "title": "Profil operacyjny"
           },
+          "operations_profile": {
+            "transport": "Transport (flota, trasy, kierowcy)",
+            "none": "Ukryj",
+            "office": "Biuro / IT",
+            "custom": "Niestandardowy",
+            "office_coming": "Profil biurowy — w przygotowaniu. Na razie wybierz «Transport» lub «Ukryj».",
+            "custom_coming": "Profil niestandardowy — w przygotowaniu.",
+            "office_fields": {
+              "team_size": "Liczebność zespołu",
+              "roles": "Role / stanowiska",
+              "tech_stack": "Stos technologiczny"
+            },
+            "custom_fields": {
+              "capacity": "Moc",
+              "equipment": "Wyposażenie",
+              "certifications": "Certyfikaty",
+              "regions": "Regiony"
+            }
+          },
           "compliance": {
             "title": "Zgodność i kontrole"
           },
@@ -2140,6 +2760,7 @@
           "orders": {
             "title": "Zlecenia"
           },
+          "order_type": "Typ zlecenia",
           "system": {
             "title": "Informacje systemowe"
           },
@@ -2193,6 +2814,7 @@
           "fleet_intl": "Trasy międzynarodowe (%)",
           "fleet_local": "Trasy lokalne (%)",
           "drivers_total": "Kierowcy",
+          "operations_profile_type": "Typ profilu",
           "adr_operations": "Przewozy ADR",
           "work_modes": "Formy współpracy",
           "lanes_origins": "Kraje startowe",
@@ -2233,6 +2855,29 @@
         "save_success": "Changes saved",
         "save_error": "Failed to save changes",
         "archive_error": "Failed to update archive status"
+      },
+      "invoices": {
+        "title": "Faktury",
+        "subtitle": "Wystawianie i wysyłanie faktur do klienta",
+        "create": "Wystaw fakturę",
+        "empty": "Brak faktur",
+        "download_pdf": "PDF",
+        "send_email": "Wyślij",
+        "create_modal_title": "Wystaw fakturę",
+        "create_submit": "Utwórz fakturę"
+      },
+      "order_types": {
+        "transport": "Transport (kierowcy)",
+        "office": "Biuro / IT",
+        "production": "Produkcja",
+        "fields": {
+          "headcount": "Liczba etatów",
+          "hired_count": "Zatrudniono",
+          "position_type": "Typ stanowiska",
+          "quantity": "Ilość",
+          "delivered": "Wykonano",
+          "unit": "Jedn. miary"
+        }
       },
       "readiness": {
         "title": "Profile readiness",
@@ -2333,6 +2978,7 @@
         }
       },
       "insights": {
+        "title": "Podgląd",
         "subtitle": "Podgląd kandydatów spełniających bieżące filtry.",
         "total": "W widoku",
         "total_hint": "{count} spełnia kryteria",
@@ -2386,6 +3032,7 @@
         "docs_order": "Dokumenty: {value}",
         "preferred_channel": "Kanał: {value}",
         "in_poland": "W Polsce: {value}",
+        "ops_mode": "Tryb: {value}",
         "poland_basis": "Podstawa: {value}",
         "trailer_types": "Naczepy: {value}",
         "created_range": "Utworzono: {from} — {to}",
@@ -2397,6 +3044,7 @@
         "manager_menu": "Opiekunowie",
         "stage_menu": "Etapy",
         "reason_menu": "Powody",
+        "quick_title": "Szybkie filtry",
         "quick_docs_ready": "Dokumenty gotowe",
         "quick_docs_attention": "Wymagają uwagi",
         "quick_docs_pending": "Nie rozpoczęto",
@@ -2404,6 +3052,7 @@
         "docs_order_menu": "Zamówienia dokumentów",
         "preferred_channel_menu": "Preferowany kanał",
         "in_poland_menu": "Aktualnie w Polsce",
+        "ops_mode_menu": "Tryb operacyjny",
         "poland_basis_menu": "Podstawa pobytu",
         "trailer_types_menu": "Typy naczep",
         "created_menu": "Data utworzenia",
@@ -2430,14 +3079,37 @@
         "docs_files_menu": "Pliki",
         "docs_files_with": "Są pliki",
         "docs_files_without": "Brak plików",
-        "docs_files_badge": "Pliki: {value}"
+        "docs_files_badge": "Pliki: {value}",
+        "quick_more": "Więcej filtrów",
+        "quick_less": "Mniej filtrów",
+        "tags": "Tag: {value}",
+        "tags_menu": "Tagi",
+        "tags_placeholder": "Wprowadź tagi oddzielone przecinkami",
+        "tags_hint": "Wprowadź tagi oddzielone przecinkami, aby filtrować",
+        "only_favorites": "Tylko ulubione",
+        "any": "— dowolne —",
+        "handoff_status_menu": "Przekazanie",
+        "handoff_none": "Bez przekazania",
+        "handoff_pending": "Oczekuje",
+        "handoff_accepted": "Przekazano",
+        "handoff_returned": "Zwrócono",
+        "handoff_badge": "Przekazanie: {value}",
+        "contact_attempts_menu": "Próby kontaktu",
+        "contact_none": "Bez prób",
+        "contact_some": "1–2 próby",
+        "contact_limit": "3+ (limit)",
+        "contact_attempts_badge": "Próby: {value}"
       },
       "table": {
         "columns": {
           "title": "Kolumny",
           "name": "Imię",
+          "short": "Short ID",
+          "email": "Email",
           "phone": "Telefon",
           "citizenship": "Obywatelstwo",
+          "experience": "Doświadczenie",
+          "documents": "Dokumenty",
           "vacancy": "Oferta",
           "manager": "Opiekun",
           "stage": "Etap",
@@ -2448,14 +3120,27 @@
           "poland_basis": "Podstawa pobytu w Polsce",
           "trailer_types": "Typy naczep",
           "reasons": "Powody",
+          "tags": "Tagi",
+          "is_favorite": "Ulubione",
           "docs_status": "Dokumenty",
           "docs_ordered": "Data zamówienia",
           "docs_valid": "Ważne od",
           "docs_files": "Pliki"
         },
+        "experience_years": "lat",
+        "documents_count": "dok.",
+        "documents": {
+          "passport": "Paszport",
+          "driver_license": "Prawo jazdy",
+          "medical": "Med.",
+          "work_permit": "Zezwolenie",
+          "photo": "Zdjęcie",
+          "contract": "Umowa"
+        },
         "empty": "Brak kandydatów.",
         "show_more": "Pokaż więcej",
-        "total": "Razem: {count}"
+        "total": "Razem: {count}",
+        "total_filtered": "Pokazano: {shown} z {total}"
       },
       "bulk": {
         "selected": "Wybrano: {count}",
@@ -2471,26 +3156,106 @@
           "title": "Przypisz ofertę do wybranych kandydatów",
           "action": "Przypisz ofertę (wybrani)"
         },
+        "handoff": {
+          "title": "Przekaż wybranych do klienta",
+          "action": "Przekaż do klienta (wybrani)"
+        },
         "archive": {
           "title": "Archiwizuj wybranych kandydatów",
           "action": "Archiwizuj (wybrani)"
         },
         "clear_title": "Wyczyść zaznaczenie",
-        "clear_action": "Usuń zaznaczenie"
+        "clear_action": "Usuń zaznaczenie",
+        "tags": {
+          "title": "Zarządzaj tagami dla wybranych kandydatów",
+          "action": "Tagi (wybrano)"
+        },
+        "delete": {
+          "title": "Usuń wybranych kandydatów",
+          "action": "Usuń (wybrano)"
+        }
       },
       "row_actions": {
         "change_stage": "Zmień etap…",
         "assign_manager": "Przypisz opiekuna…",
         "assign_vacancy": "Przypisz ofertę…"
       },
+      "context": {
+        "open_card": "Otwórz kartę",
+        "select": "Zaznacz",
+        "deselect": "Odznacz",
+        "change_stage": "Zmień etap",
+        "assign_manager": "Przypisz opiekuna",
+        "assign_vacancy": "Przypisz ofertę",
+        "archive": "Archiwizuj"
+      },
+      "pipeline": {
+        "access_denied": "Brak dostępu do lejka kandydatów. Skontaktuj się z administratorem lub przełożonym w celu uzyskania uprawnień.",
+        "vacancy_label": "Oferta",
+        "vacancy_untitled": "Bez nazwy",
+        "refresh": "Odśwież",
+        "refreshing": "Odświeżanie…",
+        "search_label": "Szukaj",
+        "search_placeholder": "Imię, email, telefon…",
+        "manager_label": "Opiekun",
+        "manager_any": "Dowolny",
+        "citizenship_label": "Obywatelstwo (ISO)",
+        "citizenship_placeholder": "RU/UA/PL…",
+        "docs_label": "Dokumenty",
+        "docs_any": "Dowolne",
+        "docs_ready": "Gotowe",
+        "docs_partial": "Częściowe",
+        "docs_none": "Brak",
+        "date_from_label": "Od daty",
+        "date_to_label": "Do daty",
+        "reset_filters": "Resetuj",
+        "empty": "Brak kandydatów pasujących do aktualnych filtrów/oferty. Zmień filtry lub dodaj kandydata do oferty.",
+        "bulk_selected": "Wybrano: {count}",
+        "bulk_move_stage_label": "Przenieś do etapu",
+        "bulk_move_stage_select": "— wybierz etap —",
+        "bulk_assign_manager_label": "Przypisz opiekuna",
+        "bulk_assign_manager_select": "— wybierz opiekuna —",
+        "bulk_clear_selection": "Wyczyść zaznaczenie",
+        "bulk_archive": "Archiwizuj",
+        "column_select_all": "Wszystkie",
+        "candidate_no_name": "Bez imienia",
+        "column_empty": "Puste",
+        "switch_to_table": "Przejdź do tabeli",
+        "show_filters": "Pokaż filtry",
+        "hide_filters": "Ukryj filtry",
+        "card_saving": "zapisuję…",
+        "error_load": "Nie udało się wczytać lejka",
+        "error_update_stage": "Nie udało się zaktualizować etapu kandydata",
+        "error_update_stages": "Nie udało się zaktualizować etapów dla części kandydatów"
+      },
+      "menu": {
+        "open": "Otwórz menu",
+        "close": "Zamknij menu"
+      },
       "messages": {
         "load_failed": "Nie udało się wczytać kandydatów.",
         "reason_required": "Wybierz co najmniej jeden powód.",
         "bulk_stage_failed": "Nie udało się zmienić etapu.",
+        "bulk_stage_partial": "Nie udało się zaktualizować {failed} z {total} kandydatów.",
+        "bulk_stage_rodo_blocked": "Dla {rodo} kandydatów z {total} nie wysłano RODO. Otwórz karty kandydatów, wyślij RODO i ponów zmianę etapu.",
+        "bulk_stage_handoff_docs_blocked": "Dla {docs} kandydatów z {total} lista dokumentów jest niekompletna. Przykładowo brakuje: {missing}.",
+        "bulk_stage_loading": "Zmiana etapu…",
         "bulk_manager_failed": "Nie udało się przypisać opiekuna.",
         "bulk_manager_partial": "Nie zaktualizowano {count} kandydatów.",
+        "bulk_manager_loading": "Przypisywanie opiekuna…",
         "bulk_vacancy_failed": "Nie udało się przypisać oferty.",
-        "bulk_archive_failed": "Nie udało się zarchiwizować kandydatów."
+        "bulk_vacancy_partial": "Nie zaktualizowano {count} z {total} kandydatów.",
+        "bulk_vacancy_loading": "Przypisywanie oferty…",
+        "bulk_handoff_loading": "Ładowanie klientów…",
+        "bulk_archive_failed": "Nie udało się zarchiwizować kandydatów.",
+        "bulk_archive_partial": "Nie zarchiwizowano {count} z {total} kandydatów.",
+        "bulk_archive_loading": "Archiwizowanie kandydatów…",
+        "bulk_tags_failed": "Nie udało się zaktualizować tagów.",
+        "bulk_tags_partial": "Nie udało się zaktualizować tagów dla {count} z {total} kandydatów.",
+        "bulk_tags_loading": "Aktualizowanie tagów...",
+        "bulk_delete_failed": "Nie udało się usunąć kandydatów.",
+        "bulk_delete_partial": "Nie udało się usunąć {count} z {total} kandydatów.",
+        "bulk_delete_loading": "Usuwanie kandydatów..."
       },
       "modals": {
         "manager": {
@@ -2501,6 +3266,21 @@
           "title": "Przypisz ofertę",
           "label": "Oferta"
         },
+        "handoff": {
+          "title": "Przekaż do klienta (zbiorczo)",
+          "hint": "Przekaż {count} wybranych kandydatów do klienta.",
+          "client_label": "Klient",
+          "apply": "Przekaż",
+          "no_clients": "Brak klientów z włączoną przekazywaniem.",
+          "partial": "Przekazano {created} z {total}. Nie udało się: {failed}.",
+          "failed": "Nie udało się przekazać do klienta"
+        },
+        "delete": {
+          "title": "Usuń wybranych kandydatów",
+          "message": "Czy na pewno chcesz usunąć {count} kandydatów? Ta operacja jest nieodwracalna.",
+          "warning": "Uwaga: Usuwanie kandydatów jest nieodwracalne. Wszystkie powiązane dane zostaną usunięte.",
+          "confirm": "Usuń"
+        },
         "archive": {
           "title": "Archiwizuj wybranych kandydatów",
           "body": "Czy na pewno chcesz zarchiwizować wybranych kandydatów? Możesz ich później przywrócić z kart kandydatów.",
@@ -2510,22 +3290,90 @@
           "title": "Zmień etap",
           "new_stage": "Nowy etap",
           "reasons_label": "Powody odrzucenia"
+        },
+        "tags": {
+          "title": "Zarządzaj tagami",
+          "operation_label": "Operacja",
+          "operation_add": "Dodaj tagi",
+          "operation_remove": "Usuń tagi",
+          "tags_label": "Tagi",
+          "tags_placeholder": "Wprowadź tagi oddzielone przecinkami",
+          "tags_hint": "Wprowadź tagi oddzielone przecinkami. Zostaną dodane do wybranych kandydatów lub usunięte z nich."
         }
       },
       "select": {
         "placeholder": "— wybierz —"
       },
       "stage_labels": {
-        "probation": "Okres próbny",
+        "new": "Nowy",
+        "no_answer": "Brak kontaktu",
+        "contacted": "Kontakt nawiązany",
+        "questionnaire_submitted": "Kwestionariusz wysłany",
+        "docs_wait": "Czekamy na dokumenty",
+        "docs_got": "Dokumenty otrzymane",
+        "permit_ordered": "Zamówiono zezwolenie",
+        "permit_received": "Zezwolenie odebrane",
+        "visa": "Procedura wizowa",
+        "red_paper": "Czerwona karta zamówiona",
+        "trip_plan": "Planowany przyjazd",
+        "at_client": "Na bazie klienta",
+        "employed": "Zatrudniony",
+        "on_trip": "W trasie",
         "probation_ok": "Okres próbny",
+        "rejected": "Odrzucony",
+        "declined": "Kandydat zrezygnował",
+        "probation": "Okres próbny",
         "red_paper_ordered": "Czerwony papier zamówiony",
         "hiring": "Rekrutacja",
-        "interview": "Kontakt nawiązany"
+        "interview": "Kontakt nawiązany",
+        "ready_for_handoff": "Gotowy do przekazania",
+        "processing_by_client": "Przetwarzany przez zleceniodawcę",
+        "docs_submitted_permit": "Dokumenty złożone na zezwolenie",
+        "handoff_returned": "Zwrócony"
       }
     },
     "reminders": {
       "title": "Przypomnienia",
+      "inbox_title": "Skrzynka: przypomnienia i powiadomienia",
       "subtitle": "Pokazujemy {scope}: {total}, nieprzeczytane: {unread}",
+      "quick_create": "Szybkie przypomnienie",
+      "create": "Utwórz",
+      "relative": "Relatywnie",
+      "tab": {
+        "tasks": "Zadania",
+        "events": "Zdarzenia"
+      },
+      "group": {
+        "today": "Dzisiaj",
+        "tomorrow": "Jutro",
+        "week": "W tym tygodniu",
+        "later": "Później",
+        "unscheduled": "Bez terminu",
+        "done": "Zakończone / anulowane"
+      },
+      "filter": {
+        "active": "Aktywne",
+        "all": "Wszystkie",
+        "done": "Zakończone"
+      },
+      "priority": {
+        "low": "Niski",
+        "normal": "Normalny",
+        "high": "Wysoki"
+      },
+      "form": {
+        "title": "Co zrobić",
+        "title_placeholder": "Zadzwoń do kandydata, wyślij e-mail...",
+        "description": "Opis",
+        "description_placeholder": "Opcjonalne szczegóły...",
+        "due": "Termin",
+        "remind_before": "Przypomnij przed",
+        "remind_at": "Przypomnij o",
+        "priority": "Priorytet"
+      },
+      "edit": {
+        "title": "Edytuj przypomnienie"
+      },
       "scopes": {
         "direct": "Tylko moje",
         "all": "Wszystkie"
@@ -2535,13 +3383,19 @@
         "all": "wszystkie zdarzenia"
       },
       "filters": {
+        "search": "Szukaj",
+        "entity_all": "Wszystkie źródła",
+        "priority_all": "Wszystkie priorytety",
         "unread": "Nieprzeczytane",
         "all": "Wszystkie zdarzenia"
       },
       "actions": {
         "refresh": "Odśwież",
+        "sync": "Synchronizuj",
         "mark_all": "Wyczyść",
-        "mark_one": "Oznacz jako przeczytane"
+        "mark_one": "Oznacz jako przeczytane",
+        "open_page": "Otwórz stronę przypomnień",
+        "open_entity": "Otwórz"
       },
       "states": {
         "loading": "Ładujemy…",
@@ -2565,6 +3419,7 @@
         "document_updated": "Zaktualizowano dokument",
         "document_requested": "Zażądano dokumentu",
         "service_order_created": "Utworzono zlecenie usługi",
+        "communications_sla_overdue": "SLA przekroczone: wymagana odpowiedź w dialogu",
         "unknown": "{event}"
       },
       "payload": {
@@ -2574,6 +3429,52 @@
         "manager": "Menadżer",
         "recruiter": "Rekruter",
         "stage": "Etap"
+      }
+    },
+    "leads": {
+      "title": "Leady",
+      "subtitle": "Nowe zgłoszenia z Meta Ads i innych źródeł",
+      "filters": {
+        "status": "Status",
+        "status_all": "Wszystkie statusy",
+        "stage": "Etap",
+        "stage_all": "Wszystkie etapy"
+      },
+      "statuses": {
+        "new": "Nowy",
+        "processed": "Kandydat utworzony",
+        "duplicated": "Duplikat",
+        "needs_routing": "Wymaga przekierowania",
+        "failed": "Błąd"
+      },
+      "stages": {
+        "new": "Nowy",
+        "contacted": "Skontaktowano",
+        "qualified": "Kwalifikowany",
+        "converted": "Przekonwertowano",
+        "lost": "Utracono"
+      },
+      "table": {
+        "created": "Utworzono",
+        "status": "Status",
+        "stage": "Etap",
+        "company": "Firma",
+        "vacancy": "Oferta pracy",
+        "contact": "Kontakt",
+        "source": "Źródło",
+        "candidate": "Kandydat",
+        "error": "Błąd"
+      },
+      "states": {
+        "empty": "Brak leadów."
+      },
+      "messages": {
+        "load_failed": "Nie udało się załadować leadów."
+      },
+      "pagination": {
+        "shown": "Wyświetlono {count} z {total}",
+        "prev": "Poprzednia",
+        "next": "Następna"
       }
     }
   },
@@ -3050,17 +3951,235 @@
         "resume_hint": "Poproś o nowy link"
       },
       "hints": {
-        "steady": "Hold the phone steady for 2 seconds.",
-        "frame": "Keep the entire document inside the frame.",
-        "front_light": "Avoid glare on the front side.",
-        "front_text": "Ensure text is readable.",
-        "back_stamp": "Capture stamps and QR codes entirely.",
-        "spread": "Lay the passport flat and capture both pages."
+        "steady": "Trzymaj telefon stabilnie przez 2 sekundy.",
+        "frame": "Umieść cały dokument w ramce.",
+        "front_light": "Unikaj odblasków na przedniej stronie.",
+        "front_text": "Upewnij się, że tekst jest czytelny.",
+        "back_stamp": "Zrób zdjęcie pieczątek i kodów QR w całości.",
+        "spread": "Połóż paszport płasko i zrób zdjęcie obu stron."
       },
       "guided": {
         "next_step": "Następny krok",
         "next_step_hint": "Podpowiadamy, od czego zacząć.",
         "start_step": "Przejdź do kroku"
+      },
+      "new": {
+        "language": {
+          "title": "Wybierz język",
+          "subtitle": "Wybierz wygodny dla Ciebie język wypełniania ankiety"
+        },
+        "step1": {
+          "title": "Dane osobowe",
+          "first_name": "Imię",
+          "last_name": "Nazwisko",
+          "phone": "Telefon (WhatsApp)",
+          "country_code": "Kod kraju",
+          "email": "Email",
+          "phone_hint": "Skontaktujemy się z Tobą przez WhatsApp, aby potwierdzić dane i wysłać instrukcje."
+        },
+        "autosave": {
+          "saving": "Zapisywanie…",
+          "saved": "Szkic zapisany"
+        },
+        "progress": {
+          "time_estimate": "~15–20 min",
+          "step": "Krok {current} z {total}",
+          "question": "Pytanie {current} z {total}",
+          "document": "Dokument {current} z {total}",
+          "checkpoint": {
+            "personal_data": "Dane osobowe",
+            "questions": "Odpowiedzi na pytania",
+            "employment": "Doświadczenie zawodowe",
+            "documents": "Dokumenty"
+          }
+        },
+        "questions": {
+          "location": {
+            "title": "Gdzie obecnie się znajdujesz?",
+            "options": {
+              "in_poland": "W Polsce",
+              "not_in_poland": "Nie w Polsce",
+              "other": "Inne"
+            }
+          },
+          "citizenship": {
+            "title": "Jakie jest Twoje obywatelstwo?",
+            "placeholder": "Wybierz kraj"
+          },
+          "stay_basis": {
+            "title": "Jakim dokumentem potwierdzasz pobyt w Polsce?",
+            "options": {
+              "visa": "Wiza",
+              "karta_pobytu": "Karta pobytu",
+              "in_process": "W trakcie",
+              "none": "Brak dokumentu",
+              "eu_citizen": "Jestem obywatelem UE"
+            }
+          },
+          "ce_experience": {
+            "title": "Doświadczenie w prowadzeniu CE w UE",
+            "options": {
+              "0": "0 lat",
+              "1-2": "1-2 lata",
+              "3-5": "3-5 lat",
+              "5-10": "5-10 lat",
+              "10+": "10+ lat"
+            },
+            "custom_placeholder": "Lub podaj liczbę lat"
+          },
+          "trailer_types": {
+            "title": "Jakie typy naczep?",
+            "options": {
+              "mega": "Mega",
+              "standard": "Standard",
+              "platform": "Platforma",
+              "frigo": "Frigo (chłodnia)",
+              "tent": "Tent",
+              "container": "Kontener",
+              "tandem": "Tandem",
+              "car_transporter": "Autotransporter"
+            }
+          },
+          "frigo_experience": {
+            "title": "Czy masz doświadczenie z chłodniami?"
+          },
+          "intl_experience": {
+            "title": "Czy masz doświadczenie międzynarodowe?"
+          },
+          "has_adr": {
+            "title": "Czy masz ADR?"
+          },
+          "birth_date": {
+            "title": "Data urodzenia"
+          }
+        },
+        "employment": {
+          "title": "Doświadczenie zawodowe",
+          "subtitle": "Dodaj proszę swoje ostatnie miejsca pracy (minimum 1). Obecnie przyjmujemy tylko kierowców z doświadczeniem.",
+          "add_title": "Dodaj miejsce pracy",
+          "company": "Nazwa firmy",
+          "country": "Kraj",
+          "country_placeholder": "Wybierz kraj",
+          "position": "Stanowisko",
+          "position_placeholder": "Kierowca",
+          "start_date": "Data rozpoczęcia",
+          "end_date": "Data zakończenia",
+          "currently_employed": "Obecnie pracuję",
+          "current": "Obecne miejsce pracy",
+          "driver": "Kierowca",
+          "add": "Dodaj",
+          "skip_warning": "Przyjmujemy tylko kierowców z doświadczeniem. Musisz dodać co najmniej jednego pracodawcę.",
+          "errors": {
+            "required_fields": "Wypełnij wymagane pola: nazwa firmy, kraj, data rozpoczęcia",
+            "end_date_required": "Podaj datę zakończenia lub zaznacz 'Obecnie pracuję'"
+          }
+        },
+        "documents": {
+          "license_question": "Czy masz prawo jazdy UE z kodem 95?",
+          "adr_question": "Czy masz ADR?",
+          "required": "Wymagany dokument",
+          "upload_hint": "Prześlij plik(i) dokumentu",
+          "status": {
+            "upload": "Prześlij plik(i)",
+            "in_progress": "Dokument w trakcie",
+            "missing": "Brak dokumentu"
+          },
+          "errors": {
+            "required_missing": "Wymagany dokument nie może być oznaczony jako brakujący",
+            "upload_failed": "Nie udało się przesłać dokumentu"
+          },
+          "uploading": "Przesyłanie...",
+          "driver_license_code95": {
+            "title": "Prawo jazdy UE z kodem 95"
+          },
+          "driver_license": {
+            "title": "Prawo jazdy międzynarodowe"
+          },
+          "code95": {
+            "title": "Code 95"
+          },
+          "tachograph_card": {
+            "title": "Karta tachografu"
+          },
+          "residence_permit": {
+            "title": "Karta pobytu"
+          },
+          "voivodeship_decision": {
+            "title": "Decyzja wojewody (decyzja)"
+          },
+          "passport": {
+            "title": "Paszport — wszystkie strony"
+          },
+          "psych_tests": {
+            "title": "Wyniki testów psychologicznych"
+          },
+          "medical_certificate": {
+            "title": "Orzeczenie lekarskie"
+          },
+          "adr": {
+            "title": "ADR"
+          }
+        },
+        "review": {
+          "title": "Sprawdź informacje",
+          "subtitle": "Upewnij się, że wszystkie dane są poprawne. Możesz edytować dowolną sekcję.",
+          "subscribe_notifications": "Chcę otrzymywać powiadomienia o zmianie statusu zgłoszenia",
+          "contacts": "Dane osobowe",
+          "answers": "Odpowiedzi na pytania",
+          "employment": "Doświadczenie zawodowe",
+          "documents": "Dokumenty",
+          "agreements": "Zgody",
+          "edit": "Edytuj",
+          "agreement_rodo": "Zgoda na przetwarzanie danych osobowych (RODO)",
+          "agreement_employer": "Zgoda na przekazanie danych pracodawcy",
+          "agreement_terms": "Akceptacja regulaminu",
+          "submit": "Wyślij ankietę",
+          "submitting": "Wysyłanie...",
+          "errors": {
+            "consents_required": "Wszystkie zgody muszą być zaakceptowane"
+          }
+        },
+        "thank_you": {
+          "title": "Dziękujemy!",
+          "message": "Ankieta wysłana. Sprawdzimy Twoje dane i skontaktujemy się przez WhatsApp. Jeśli masz pytania, napisz do swojego menedżera.",
+          "go_to_overview": "Przejdź do przeglądu",
+          "track_status": "Śledź status swojej zgłoszenia",
+          "open_status": "Otwórz stronę statusu",
+          "copy_link": "Skopiuj link",
+          "link_copied": "Link skopiowany",
+          "qr_hint": "Zeskanuj, aby dodać link na telefon"
+        },
+        "overview": {
+          "title": "Przegląd",
+          "stage1": "Weryfikacja ankiety i dokumentów",
+          "stage1_status": "Wszystko potwierdzone",
+          "stage2": "Zezwolenie na pracę — zamówione",
+          "stage3": "Zezwolenie na pracę — otrzymane",
+          "stage4": "Podpisanie umowy",
+          "stage5": "Czerwona karta — zamówione",
+          "stage6": "Czerwona karta — otrzymane",
+          "pending": "Oczekuje",
+          "contact_hint": "Jeśli masz pytania, napisz do swojego menedżera na WhatsApp",
+          "contact_manager": "Skontaktuj się z menedżerem"
+        },
+        "cta": {
+          "continue": "Kontynuuj",
+          "next": "Dalej",
+          "back": "Wstecz"
+        },
+        "errors": {
+          "name_required": "Podaj imię i nazwisko",
+          "contact_required": "Podaj telefon lub email",
+          "no_token": "Token nie znaleziony",
+          "submit_failed": "Nie udało się wysłać ankiety",
+          "token_expired": "Link wygasł lub jest nieprawidłowy",
+          "token_expired_hint": "Poproś o nowy link, aby kontynuować zgłoszenie.",
+          "request_new_link": "Utwórz nowy link",
+          "upload_failed": "Nie udało się przesłać dokumentu"
+        },
+        "in_progress": "W trakcie rozwoju",
+        "loading": "Ładowanie danych...",
+        "saving": "Zapisywanie..."
       }
     },
     "status_page": {
@@ -3437,6 +4556,29 @@
         "swiadectwo_kierowcy": "Świadectwo kierowcy",
         "other": "Inny proces"
       },
+      "type_codes": {
+        "driver_license": "Prawo jazdy",
+        "driver_license_code95": "Prawo jazdy UE z kodem 95",
+        "code95": "Kod 95",
+        "tacho_card": "Karta tachografu",
+        "tachograph_card": "Karta tachografu",
+        "national_id": "Dowód tożsamości",
+        "identity_document": "Dokument tożsamości",
+        "passport": "Paszport",
+        "residence_permit": "Karta pobytu",
+        "residence_card": "Karta pobytu",
+        "visa": "Wiza",
+        "decision": "Decyzja",
+        "medical_certificate": "Orzeczenie lekarskie",
+        "psych_tests": "Badania psychologiczne",
+        "adr": "ADR",
+        "work_permit": "Zezwolenie na pracę",
+        "driver_certificate": "Świadectwo kierowcy",
+        "swiadectwo_kierowcy": "Świadectwo kierowcy",
+        "additional_document": "Dodatkowy dokument",
+        "accommodation": "Zakwaterowanie",
+        "other": "Inny dokument"
+      },
       "mock": {
         "passport": "Paszport",
         "license": "Prawo jazdy",
@@ -3479,7 +4621,12 @@
         "replace_success": "Plik zaktualizowany",
         "workflow_failed": "Nie udało się zaktualizować procesu",
         "workflow_started": "Proces uruchomiony",
-        "workflow_step_marked": "Etap oznaczony jako wykonany"
+        "workflow_step_marked": "Etap oznaczony jako wykonany",
+        "profile_downloaded": "Profil pobrany",
+        "template_applied": "Szablon zastosowany: {created} utworzono, {updated} zaktualizowano",
+        "notify_candidate_sent": "E-mail wysłany do kandydata",
+        "notify_candidate_no_email": "Kandydat nie ma adresu e-mail",
+        "notify_candidate_failed": "Nie udało się wysłać e-maila"
       },
       "errors": {
         "type_missing": "Wybierz typ dokumentu",
@@ -3503,7 +4650,11 @@
         "permission_reject": "Brak uprawnień do odrzucania dokumentów",
         "permission_status": "Brak uprawnień do zmiany statusu",
         "permission_upload": "Brak uprawnień do przesyłania plików",
-        "permission_workflow": "Brak uprawnień do zarządzania procesem"
+        "permission_workflow": "Brak uprawnień do zarządzania procesem",
+        "template_not_found": "Nie znaleziono szablonu",
+        "template_apply_failed": "Nie udało się zastosować szablonu",
+        "download_failed": "Nie udało się pobrać profilu",
+        "notify_failed": "Nie udało się powiadomić kandydata"
       },
       "actions": {
         "upload": "Prześlij",
@@ -3526,7 +4677,26 @@
         "open": "Otwórz",
         "order": "Zamów",
         "ordering": "Zamawiamy…",
-        "upload_file": "Prześlij plik"
+        "upload_file": "Prześlij plik",
+        "notify_candidate": "Powiadom kandydata",
+        "download_profile": "Pobierz profil",
+        "apply_template": "Zastosuj szablon",
+        "delete_file": "Usuń plik",
+        "delete_document": "Usuń dokument",
+        "confirm_delete_document": "Czy na pewno chcesz usunąć ten dokument?"
+      },
+      "status": {
+        "refreshing": "Odświeżamy…",
+        "saving": "Zapisujemy…",
+        "uploading": "Przesyłamy…",
+        "uploading_with_progress": "Przesyłanie: {progress}%"
+      },
+      "simple": {
+        "upload_title": "Przesyłanie dokumentów",
+        "upload_hint": "Wybierz wymagany dokument i prześlij plik. Prośby i weryfikacje są w sekcji Zaawansowane.",
+        "upload_action": "Prześlij",
+        "advanced": "Zaawansowane",
+        "has_file": "Plik dodany"
       },
       "filters": {
         "group": "Grupa",
@@ -3542,6 +4712,13 @@
         "any": "Dowolne",
         "not_ordered": "Nie zamówiono",
         "ordered_only": "Tylko zamówione"
+      },
+      "upcoming_deadlines": {
+        "title": "Najbliższe terminy",
+        "empty": "Brak nadchodzących terminów",
+        "expires_in_days": "wygasa za {days} dni",
+        "expired": "wygasł",
+        "step_due": "Etap „{step}” do"
       },
       "summary": {
         "required_ready": "Gotowe {ready} z {total}",
@@ -3605,7 +4782,30 @@
         "reminder_placeholder": "Domyślnie",
         "optional_hint": "(opcjonalnie)",
         "metadata_section": "Metadane",
-        "select_placeholder": "Wybierz opcję"
+        "select_placeholder": "Wybierz opcję",
+        "fields": {
+          "number": "Numer dokumentu",
+          "ordered_at": "Data zamówienia",
+          "issue_date": "Data wydania",
+          "valid_from": "Ważny od",
+          "expire_date": "Ważny do",
+          "country": "Kraj",
+          "work_permit_type": "Typ zezwolenia na pracę",
+          "adr_classes": "Klasy ADR",
+          "voivodeship": "Województwo",
+          "residence_permit_type": "Rodzaj zezwolenia na pobyt",
+          "visa_type": "Rodzaj wizy"
+        },
+        "options": {
+          "work_permit_type": {
+            "type_a": "Zezwolenie typu A",
+            "declaration": "Oświadczenie"
+          },
+          "residence_permit_type": {
+            "permanent": "Stały",
+            "temporary": "Czasowy"
+          }
+        }
       },
       "table": {
         "title": "Dokumenty",
@@ -3688,14 +4888,47 @@
             "label": "Zestaw reguł",
             "description": "Zasady zgodności i wersje automatyzacji."
           },
+          "email": {
+            "label": "Poczta (SMTP)",
+            "description": "Konfiguracja wysyłki maili do kandydatów (RODO, powiadomienia)."
+          },
           "integrations": {
             "label": "Integracje",
             "description": "Meta Leads i połączenia webhook."
           },
           "audit": {
-            "label": "Dzienник audytu",
+            "label": "Dziennik audytu",
             "description": "Kolejka usunięć i zdarzenia audytowe."
           }
+        },
+        "audit": {
+          "tabs": {
+            "audit": "Dziennik audytu",
+            "deletion": "Kolejka usunięć"
+          },
+          "refresh": "Odśwież",
+          "refreshing": "Ładowanie…",
+          "errors": {
+            "load": "Nie udało się wczytać audytu"
+          },
+          "filters": {
+            "user_id": "Użytkownik (ID)",
+            "action": "Akcja",
+            "from": "Od",
+            "to": "Do"
+          },
+          "apply": "Zastosuj",
+          "table": {
+            "when": "Kiedy",
+            "actor": "Kto",
+            "action": "Akcja",
+            "subject": "Obiekt",
+            "details": "Szczegóły"
+          },
+          "loading": "Ładowanie…",
+          "empty": "Brak wpisów audytu",
+          "details": "Więcej",
+          "pagination": "Wyświetlono {from}–{to} z {total}"
         }
       },
       "aria": {
@@ -3709,6 +4942,7 @@
         "files_missing": "Brak plików",
         "files_present": "Pliki przesłane",
         "overdue": "Po terminie",
+        "missing_only": "Tylko brakujące",
         "passport_incomplete": "Paszport niepełny",
         "rejected": "Odrzucony"
       },
@@ -3747,12 +4981,6 @@
         "sides_order": "Kolejność stron: {order}",
         "sides_title": "Obie strony",
         "upload_title": "Przesyłanie plików"
-      },
-      "status": {
-        "refreshing": "Odświeżamy…",
-        "saving": "Zapisujemy…",
-        "uploading": "Przesyłamy…",
-        "uploading_with_progress": "Przesyłanie: {progress}%"
       }
     },
     "ruleset": {
@@ -3894,7 +5122,8 @@
         "credential_created": "Połączenie zapisane",
         "secret_rotated": "Nowy sekret: {secret}",
         "mapping_saved": "Mapowanie zapisane",
-        "lead_rerouted": "Lead wysłany do obsługi"
+        "lead_rerouted": "Lead wysłany do obsługi",
+        "lead_retried": "Lead przetworzony pomyślnie"
       },
       "errors": {
         "load": "Nie udało się wczytać danych Meta Leads",
@@ -3908,7 +5137,8 @@
         "mapping_create": "Nie udało się zapisać mapowania",
         "mapping_update": "Nie udało się zaktualizować wpisu",
         "mapping_delete": "Nie udało się usunąć mapowania",
-        "reroute": "Nie udało się przekierować leada"
+        "reroute": "Nie udało się przekierować leada",
+        "retry": "Ponowienie nie powiodło się"
       },
       "prompts": {
         "delete_credential": "Usunąć to połączenie Meta?",
@@ -3977,9 +5207,29 @@
         },
         "empty": "Brak leadów w statusie needs_routing",
         "actions": {
-          "reroute": "Przekieruj"
+          "reroute": "Przekieruj",
+          "retry": "Ponów"
         }
       }
+    },
+    "funnels": {
+      "title": "Lejki kandydatów",
+      "subtitle": "Zarządzaj etapami lejka kandydatów. Pipeline i Dashboard korzystają z tych etapów.",
+      "custom_stages": "Etapy niestandardowe",
+      "add_stage": "Dodaj etap",
+      "no_custom_stages": "Brak etapów niestandardowych. Dodaj pierwszy etap lub użyj domyślnych.",
+      "system_stages": "Etapy systemowe (tylko odczyt)",
+      "system_stages_help": "Domyślne etapy systemowe. Etapy niestandardowe są łączone z nimi w Pipeline i Dashboard.",
+      "edit_stage": "Edytuj etap",
+      "create_stage": "Utwórz etap",
+      "label_field": "Etykieta",
+      "code_field": "Kod",
+      "order_field": "Kolejność",
+      "active_field": "Aktywny",
+      "code_readonly": "Kodu nie można zmienić",
+      "create": "Utwórz",
+      "validation_required": "Kod i etykieta są wymagane",
+      "confirm_delete": "Usunąć etap \"{label}\"?"
     },
     "settings": {
       "title": "Panel zarządzania workspace'em",
@@ -4000,6 +5250,10 @@
           "label": "Tenanty platformy",
           "description": "Tworzenie i obsługa przestrzeni klientów."
         },
+        "funnels": {
+          "label": "Lejki i etapy",
+          "description": "Zarządzaj etapami wоронки kandydatów i leadów."
+        },
         "documents": {
           "label": "Typy dokumentów",
           "description": "Konfiguruj wymagane dokumenty i instrukcje."
@@ -4008,15 +5262,221 @@
           "label": "Wersje Ruleset",
           "description": "Publikuj i utrzymuj wersje zasad."
         },
+        "candidate_profiles": {
+          "label": "Profil kandydata",
+          "description": "Zarządzanie profilami kandydatów dla wakansji."
+        },
+        "custom_fields": {
+          "label": "Pola niestandardowe",
+          "description": "Zarządzanie dodatkowymi polami dla kandydatów i dokumentów."
+        },
+        "email": {
+          "label": "Poczta (SMTP)",
+          "description": "Konfiguracja wysyłania maili (RODO, powiadomienia)."
+        },
+        "tenant_links": {
+          "label": "Przekazanie i próby kontaktu",
+          "description": "Włącz przekazanie do klientów i ustaw politykę prób kontaktu."
+        },
+        "legal": {
+          "label": "RODO i polityka prywatności",
+          "description": "Klauzula RODO i polityka prywatności dla wysyłki do kandydatów."
+        },
         "integrations": {
           "label": "Integracje",
           "description": "Meta Leads oraz zewnętrzne serwisy."
+        },
+        "communications": {
+          "label": "Ustawienia komunikacji",
+          "description": "Główne menu ustawień komunikacji z podziałem na domeny."
+        },
+        "communications_messengers": {
+          "label": "Ustawienia komunikatorów",
+          "description": "Kanały Telegram/WhatsApp, szablony i presety komend."
+        },
+        "communications_queue": {
+          "label": "Ustawienia kolejki",
+          "description": "Strategia routingu i zarządzanie kolejką managerów."
+        },
+        "communications_sla": {
+          "label": "Ustawienia SLA",
+          "description": "Polityka eskalacji dla przeterminowanych dialogów."
         },
         "audit": {
           "label": "Dziennik audytu",
           "description": "Przeglądaj działania administratorów."
         }
       }
+    },
+    "communications_settings": {
+      "subtitle": "Ustawienia są podzielone na domeny: poczta, komunikatory, kolejka i SLA są zarządzane osobno.",
+      "open_messengers": "Otwórz ustawienia komunikatorów",
+      "open_email": "Otwórz ustawienia poczty",
+      "open_queue": "Otwórz ustawienia kolejki",
+      "open_sla": "Otwórz ustawienia SLA"
+    },
+    "communications_messengers": {
+      "title": "Ustawienia komunikatorów",
+      "subtitle": "Kompaktowa konfiguracja kanałów: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.",
+      "actions": {
+        "all_settings": "Wszystkie ustawienia komunikacji",
+        "open_messages": "Otwórz wiadomości"
+      },
+      "channel_summary": "{total} kont(a) · {active} aktywnych · {connected} połączonych",
+      "channel_state": "kanał: {state}",
+      "states": {
+        "enabled": "włączony",
+        "disabled": "wyłączony"
+      },
+      "toggles": {
+        "enabled": "Włączony",
+        "inbound": "Przychodzące",
+        "outbound": "Wychodzące"
+      },
+      "fields": {
+        "account_label": "Nazwa konta",
+        "bot_token": "Token bota",
+        "external_ref": "Zewnętrzny ref",
+        "phone_number_id": "Phone number ID",
+        "access_token": "Access token",
+        "business_account_id": "Business account ID",
+        "page_id": "Page ID",
+        "page_access_token": "Token strony",
+        "app_secret": "App secret",
+        "instagram_account_id": "Instagram account ID"
+      },
+      "channels": {
+        "telegram": {
+          "title": "Telegram",
+          "subtitle": "Token bota i webhook",
+          "connect": "Połącz Telegram"
+        },
+        "whatsapp": {
+          "title": "WhatsApp",
+          "subtitle": "Meta Cloud API (phone number id + token)",
+          "connect": "Połącz WhatsApp"
+        },
+        "viber": {
+          "title": "Viber",
+          "subtitle": "Token bota",
+          "connect": "Połącz Viber"
+        },
+        "messenger": {
+          "title": "Facebook Messenger",
+          "subtitle": "Integracja tokenu strony",
+          "connect": "Połącz Messenger"
+        },
+        "instagram": {
+          "title": "Instagram",
+          "subtitle": "Instagram Graph API",
+          "connect": "Połącz Instagram"
+        }
+      },
+      "account": {
+        "id": "id",
+        "active": "Aktywne",
+        "test": "Test",
+        "set_webhook": "Ustaw webhook",
+        "delete_webhook": "Usuń webhook",
+        "webhook": "Webhook",
+        "verify_token": "Verify token",
+        "copy_webhook": "Kopiuj webhook URL",
+        "copy_verify_token": "Kopiuj verify token",
+        "last_error": "Ostatni błąd",
+        "empty": "Brak podłączonych kont dla tego kanału."
+      },
+      "checklist": {
+        "meta": {
+          "title": "Checklist konfiguracji dostawcy",
+          "step_1": "Utwórz konto z danymi dostępowymi i zapisz.",
+          "step_2": "Uruchom Test, aby pobrać webhook URL/token i zweryfikować dostęp.",
+          "step_3": "Skopiuj Webhook URL i Verify token do ustawień webhook w Meta.",
+          "step_4": "Zasubskrybuj wymagane webhook fields w panelu dostawcy i wyślij zdarzenie testowe.",
+          "step_5": "Wróć tutaj i uruchom Test ponownie, aby potwierdzić status connected."
+        },
+        "telegram": {
+          "title": "Checklist konfiguracji Telegram",
+          "step_1": "Utwórz konto Telegram z tokenem bota.",
+          "step_2": "Użyj Ustaw webhook, aby zarejestrować publiczny endpoint CRM w Bot API.",
+          "step_3": "Uruchom Test, aby sprawdzić dostęp bota i diagnostykę webhook.",
+          "step_4": "Użyj Usuń webhook przy rotacji lub wyłączaniu integracji."
+        }
+      },
+      "whatsapp_flow_hint": "Przepływ WhatsApp: utwórz konto, kliknij Test, a następnie skopiuj webhook URL i verify token do ustawień Meta Webhook.",
+      "notices": {
+        "channel_switches_updated": "{channel}: przełączniki zaktualizowane",
+        "telegram_created": "Utworzono konto Telegram",
+        "whatsapp_created": "Utworzono konto WhatsApp",
+        "viber_created": "Utworzono konto Viber",
+        "messenger_created": "Utworzono konto Messenger",
+        "instagram_created": "Utworzono konto Instagram",
+        "account_state_updated": "Stan konta zaktualizowany",
+        "connection_test_completed": "Test połączenia zakończony",
+        "telegram_webhook_set": "Webhook Telegram ustawiony",
+        "telegram_webhook_deleted": "Webhook Telegram usunięty",
+        "webhook_copied": "Webhook URL skopiowany",
+        "verify_token_copied": "Verify token skopiowany"
+      }
+    },
+    "communications_sla": {
+      "title": "Ustawienia SLA",
+      "subtitle": "Polityka eskalacji dla przeterminowanych wątków komunikacji.",
+      "policy_title": "Polityka eskalacji SLA",
+      "recipient_mode": "Tryb odbiorcy",
+      "recipient_mode_help": "Określa, kto otrzymuje zdarzenia `communications_sla_overdue`.",
+      "muted_channels": "Wyciszone kanały dla SLA",
+      "actions": {
+        "all": "Wszystkie ustawienia komunikacji"
+      },
+      "toggles": {
+        "enabled": "Włącz eskalacje SLA",
+        "notifications": "Twórz powiadomienia in-app",
+        "reminders": "Twórz zadania-przypomnienia"
+      },
+      "errors": {
+        "load": "Nie udało się załadować ustawień SLA",
+        "save": "Nie udało się zapisać ustawień SLA"
+      }
+    },
+    "legal": {
+      "title": "Dokumenty prawne (RODO, polityka prywatności)",
+      "subtitle": "Skonfiguruj aktywną klauzulę RODO i politykę prywatności. Bez aktywnej klauzuli RODO nie można wysyłać informacji do kandydatów.",
+      "rodo": "Klauzula RODO",
+      "privacy": "Polityka prywatności",
+      "active": "Aktywny",
+      "no_rodo": "Brak aktywnej klauzuli RODO — nie można wysyłać informacji do kandydatów.",
+      "no_privacy": "Brak aktywnej polityki prywatności.",
+      "link": "Link",
+      "set_active": "Ustaw jako aktywny",
+      "version_id": "Wersja (np. 2025-01-01)",
+      "content_url": "URL dokumentu (PDF lub strona)",
+      "add_version": "Dodaj wersję",
+      "created": "Utworzono",
+      "activated": "Ustawiono jako aktywny"
+    },
+    "tenant_links": {
+      "title": "Przekazanie i próby kontaktu",
+      "subtitle": "Włącz przekazanie kandydatów i politykę prób kontaktu dla każdego powiązanego klienta.",
+      "no_links": "Brak powiązań z klientami. Skontaktuj się z administratorem platformy.",
+      "handoff_label": "Przekazanie włączone",
+      "handoff_updated": "Zapisano",
+      "add_org_link": "Dodaj organizację (portal klienta)",
+      "add_org_hint": "Podaj UUID tenanta organizacji (np. Firma XYZ). Po dodaniu pojawi się w modale przekazania i jej użytkownicy zobaczą przekazanych kandydatów w Procesowani.",
+      "tenant_uuid": "UUID tenanta",
+      "cancel_add": "Anuluj",
+      "link_created": "Powiązanie dodane",
+      "invalid_uuid": "Nieprawidłowy UUID tenanta",
+      "edit_policy": "Próby kontaktu",
+      "hide_policy": "Ukryj próby kontaktu",
+      "policy_updated": "Zapisano",
+      "policy_enabled": "Śledzenie prób kontaktu",
+      "max_attempts": "Maks. prób",
+      "post_action": "Po przekroczeniu",
+      "auto_reject": "Odrzuć kandydata",
+      "stage_change": "Zmień etap",
+      "stage_code": "Etap",
+      "type_company": "Zespół w naszym systemie",
+      "type_org": "Własny portal klienta"
     },
     "invoices": {
       "title": "Faktury",

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import secrets
 import string
+from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -138,6 +139,66 @@ _MODULE_DEFAULTS: Dict[str, bool] = {
     "client_portal": True,
 }
 
+_ROLE_MATRIX_ROLES: tuple[str, ...] = (
+    UserRole.administrator.value,
+    UserRole.supervisor.value,
+    UserRole.recruiter.value,
+    UserRole.client_manager.value,
+    UserRole.client_processor.value,
+    UserRole.viewer.value,
+)
+
+_ROLE_MODULE_DEFAULTS: Dict[str, Dict[str, Dict[str, bool]]] = {
+    UserRole.administrator.value: {
+        module: {"visible": True, "editable": True} for module in _MODULE_DEFAULTS
+    },
+    UserRole.supervisor.value: {
+        "candidates": {"visible": True, "editable": True},
+        "companies": {"visible": True, "editable": True},
+        "vacancies": {"visible": True, "editable": True},
+        "documents": {"visible": True, "editable": True},
+        "leads": {"visible": True, "editable": True},
+        "services": {"visible": True, "editable": True},
+        "client_portal": {"visible": True, "editable": False},
+    },
+    UserRole.recruiter.value: {
+        "candidates": {"visible": True, "editable": True},
+        "companies": {"visible": True, "editable": False},
+        "vacancies": {"visible": True, "editable": False},
+        "documents": {"visible": True, "editable": True},
+        "leads": {"visible": True, "editable": False},
+        "services": {"visible": True, "editable": True},
+        "client_portal": {"visible": False, "editable": False},
+    },
+    UserRole.client_manager.value: {
+        "candidates": {"visible": True, "editable": True},
+        "companies": {"visible": True, "editable": False},
+        "vacancies": {"visible": True, "editable": False},
+        "documents": {"visible": True, "editable": True},
+        "leads": {"visible": False, "editable": False},
+        "services": {"visible": False, "editable": False},
+        "client_portal": {"visible": True, "editable": False},
+    },
+    UserRole.client_processor.value: {
+        "candidates": {"visible": True, "editable": True},
+        "companies": {"visible": True, "editable": False},
+        "vacancies": {"visible": True, "editable": False},
+        "documents": {"visible": True, "editable": True},
+        "leads": {"visible": False, "editable": False},
+        "services": {"visible": False, "editable": False},
+        "client_portal": {"visible": True, "editable": False},
+    },
+    UserRole.viewer.value: {
+        "candidates": {"visible": True, "editable": False},
+        "companies": {"visible": True, "editable": False},
+        "vacancies": {"visible": True, "editable": False},
+        "documents": {"visible": False, "editable": False},
+        "leads": {"visible": False, "editable": False},
+        "services": {"visible": False, "editable": False},
+        "client_portal": {"visible": False, "editable": False},
+    },
+}
+
 _ALLOWED_SEAT_ROLES = {
     UserRole.administrator.value,
     UserRole.supervisor.value,
@@ -145,6 +206,93 @@ _ALLOWED_SEAT_ROLES = {
     UserRole.client_manager.value,
     UserRole.viewer.value,
 }
+
+
+def _business_type_for_tenant(tenant: Tenant) -> str:
+    settings_payload = tenant.settings if isinstance(tenant.settings, dict) else {}
+    raw_business_type = settings_payload.get("business_type")
+    normalized = str(raw_business_type or "").strip().lower()
+    if normalized in {"agency", "employer", "services"}:
+        return normalized
+    tenant_type = str(getattr(getattr(tenant, "type", None), "value", getattr(tenant, "type", ""))).strip().lower()
+    if tenant_type == TenantType.company.value:
+        return "employer"
+    return "agency"
+
+
+def _role_defaults_for_tenant(tenant: Tenant) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    business_type = _business_type_for_tenant(tenant)
+    defaults = deepcopy(_ROLE_MODULE_DEFAULTS)
+
+    if business_type == "employer":
+        # Employer teams usually run vacancy+candidate loop directly.
+        # Recruiter should be able to operate vacancies, not only view them.
+        defaults[UserRole.recruiter.value]["vacancies"] = {"visible": True, "editable": True}
+    elif business_type == "services":
+        # Services mode shifts recruiter-like role to leads/services operations.
+        defaults[UserRole.recruiter.value]["companies"] = {"visible": True, "editable": True}
+        defaults[UserRole.recruiter.value]["leads"] = {"visible": True, "editable": True}
+        defaults[UserRole.recruiter.value]["services"] = {"visible": True, "editable": True}
+        defaults[UserRole.recruiter.value]["candidates"] = {"visible": False, "editable": False}
+        defaults[UserRole.recruiter.value]["vacancies"] = {"visible": False, "editable": False}
+        defaults[UserRole.client_manager.value]["leads"] = {"visible": True, "editable": True}
+        defaults[UserRole.client_manager.value]["services"] = {"visible": True, "editable": True}
+        defaults[UserRole.client_processor.value]["leads"] = {"visible": True, "editable": True}
+        defaults[UserRole.client_processor.value]["services"] = {"visible": True, "editable": True}
+
+    return defaults
+
+
+def _normalize_permissions_cell(
+    *,
+    visible: bool,
+    editable: bool,
+    module_enabled: bool,
+) -> Dict[str, bool]:
+    next_visible = bool(visible)
+    next_editable = bool(editable)
+    if not module_enabled:
+        next_visible = False
+        next_editable = False
+    if not next_visible:
+        next_editable = False
+    return {"visible": next_visible, "editable": next_editable}
+
+
+def get_user_module_overrides_snapshot(
+    tenant: Tenant,
+    *,
+    allowed_user_ids: set[str] | None = None,
+) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    modules = get_module_settings_snapshot(tenant)
+    settings_payload = dict(tenant.settings or {})
+    raw_modules = settings_payload.get("modules") if isinstance(settings_payload, dict) else None
+    raw_overrides = raw_modules.get("user_overrides") if isinstance(raw_modules, dict) else None
+    if not isinstance(raw_overrides, dict):
+        return {}
+
+    snapshot: Dict[str, Dict[str, Dict[str, bool]]] = {}
+    for user_key, user_payload in raw_overrides.items():
+        user_id = str(user_key or "").strip()
+        if not user_id:
+            continue
+        if allowed_user_ids is not None and user_id not in allowed_user_ids:
+            continue
+        if not isinstance(user_payload, dict):
+            continue
+        user_matrix: Dict[str, Dict[str, bool]] = {}
+        for module_key, cell_payload in user_payload.items():
+            module = str(module_key or "").strip()
+            if module not in _MODULE_DEFAULTS or not isinstance(cell_payload, dict):
+                continue
+            user_matrix[module] = _normalize_permissions_cell(
+                visible=bool(cell_payload.get("visible")),
+                editable=bool(cell_payload.get("editable")),
+                module_enabled=bool(modules.get(module, True)),
+            )
+        if user_matrix:
+            snapshot[user_id] = user_matrix
+    return snapshot
 
 
 async def get_tenant(db: AsyncSession, tenant_id: str) -> Optional[Tenant]:
@@ -432,6 +580,65 @@ def get_module_settings_snapshot(tenant: Tenant) -> Dict[str, bool]:
     return modules
 
 
+def get_role_module_matrix_snapshot(tenant: Tenant) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    """Return normalized role->module->(visible, editable) matrix from tenant settings."""
+    modules = get_module_settings_snapshot(tenant)
+    role_defaults_map = _role_defaults_for_tenant(tenant)
+    settings_payload = dict(tenant.settings or {})
+    raw_modules = settings_payload.get("modules") if isinstance(settings_payload, dict) else None
+    raw_matrix = raw_modules.get("role_matrix") if isinstance(raw_modules, dict) else None
+
+    snapshot: Dict[str, Dict[str, Dict[str, bool]]] = {}
+    for role in _ROLE_MATRIX_ROLES:
+        role_defaults = role_defaults_map.get(role, {})
+        role_raw = raw_matrix.get(role) if isinstance(raw_matrix, dict) else None
+        role_matrix: Dict[str, Dict[str, bool]] = {}
+        for module, module_enabled in modules.items():
+            cell_default = role_defaults.get(module, {"visible": bool(module_enabled), "editable": False})
+            raw_cell = role_raw.get(module) if isinstance(role_raw, dict) else None
+            visible = cell_default["visible"]
+            editable = cell_default["editable"]
+            if isinstance(raw_cell, dict):
+                if "visible" in raw_cell:
+                    visible = bool(raw_cell["visible"])
+                if "editable" in raw_cell:
+                    editable = bool(raw_cell["editable"])
+            role_matrix[module] = _normalize_permissions_cell(
+                visible=visible,
+                editable=editable,
+                module_enabled=bool(module_enabled),
+            )
+        snapshot[role] = role_matrix
+    return snapshot
+
+
+def get_effective_role_module_permissions(
+    tenant: Tenant,
+    *,
+    role: str,
+    user_id: str | None = None,
+) -> Dict[str, Dict[str, bool]]:
+    normalized_role = str(role or UserRole.viewer.value).strip().lower()
+    matrix = get_role_module_matrix_snapshot(tenant)
+    role_matrix = matrix.get(normalized_role) or matrix.get(UserRole.viewer.value) or {}
+    effective = {
+        key: {"visible": bool(val.get("visible")), "editable": bool(val.get("editable"))}
+        for key, val in role_matrix.items()
+    }
+    normalized_user_id = str(user_id or "").strip()
+    if not normalized_user_id:
+        return effective
+    overrides = get_user_module_overrides_snapshot(tenant)
+    user_override = overrides.get(normalized_user_id) or {}
+    for module, cell in user_override.items():
+        if module in effective:
+            effective[module] = {
+                "visible": bool(cell.get("visible")),
+                "editable": bool(cell.get("editable")),
+            }
+    return effective
+
+
 async def update_module_settings(
     db: AsyncSession,
     tenant: Tenant,
@@ -458,7 +665,10 @@ async def update_module_settings(
         return modules
 
     settings_payload = dict(tenant.settings or {})
-    settings_payload["modules"] = modules
+    modules_payload = dict(settings_payload.get("modules") or {})
+    for key, value in modules.items():
+        modules_payload[key] = value
+    settings_payload["modules"] = modules_payload
     tenant.settings = settings_payload
     tenant.updated_at = _now_utc()
     await db.commit()
@@ -473,6 +683,149 @@ async def update_module_settings(
         payload={"modules": modules},
     )
     return modules
+
+
+async def update_role_module_matrix(
+    db: AsyncSession,
+    tenant: Tenant,
+    updates: Dict[str, Dict[str, Dict[str, bool]]],
+    *,
+    actor_id: str | None = None,
+) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    if not updates:
+        return get_role_module_matrix_snapshot(tenant)
+
+    modules = get_module_settings_snapshot(tenant)
+    current = get_role_module_matrix_snapshot(tenant)
+    changed = False
+
+    for role_key, role_payload in updates.items():
+        role = str(role_key or "").strip().lower()
+        if role not in _ROLE_MATRIX_ROLES:
+            raise ValueError(f"unknown_role:{role}")
+        if not isinstance(role_payload, dict):
+            raise ValueError(f"invalid_role_payload:{role}")
+        for module_key, cell_payload in role_payload.items():
+            module = str(module_key or "").strip()
+            if module not in _MODULE_DEFAULTS:
+                raise ValueError(f"unknown_module:{module}")
+            if not isinstance(cell_payload, dict):
+                raise ValueError(f"invalid_module_payload:{role}:{module}")
+            next_visible = current[role][module]["visible"]
+            next_editable = current[role][module]["editable"]
+            if "visible" in cell_payload:
+                next_visible = bool(cell_payload["visible"])
+            if "editable" in cell_payload:
+                next_editable = bool(cell_payload["editable"])
+            if not modules.get(module, True):
+                next_visible = False
+                next_editable = False
+            if not next_visible:
+                next_editable = False
+            if (
+                current[role][module]["visible"] != next_visible
+                or current[role][module]["editable"] != next_editable
+            ):
+                current[role][module] = {"visible": next_visible, "editable": next_editable}
+                changed = True
+
+    if not changed:
+        return current
+
+    settings_payload = dict(tenant.settings or {})
+    modules_payload = dict(settings_payload.get("modules") or {})
+    modules_payload["role_matrix"] = current
+    settings_payload["modules"] = modules_payload
+    tenant.settings = settings_payload
+    tenant.updated_at = _now_utc()
+    await db.commit()
+    await db.refresh(tenant)
+    await log_activity(
+        db,
+        tenant_id=tenant.id,
+        actor_id=actor_id,
+        action="tenant.role_modules_update",
+        target_type="tenant",
+        target_id=tenant.id,
+        payload={"role_matrix": current},
+    )
+    return current
+
+
+async def update_user_module_overrides(
+    db: AsyncSession,
+    tenant: Tenant,
+    updates: Dict[str, Dict[str, Dict[str, bool]] | None],
+    *,
+    actor_id: str | None = None,
+    allowed_user_ids: set[str] | None = None,
+) -> Dict[str, Dict[str, Dict[str, bool]]]:
+    if not updates:
+        return get_user_module_overrides_snapshot(tenant, allowed_user_ids=allowed_user_ids)
+
+    modules = get_module_settings_snapshot(tenant)
+    current = get_user_module_overrides_snapshot(tenant, allowed_user_ids=allowed_user_ids)
+    changed = False
+
+    for user_key, user_payload in updates.items():
+        user_id = str(user_key or "").strip()
+        if not user_id:
+            raise ValueError("invalid_user_id")
+        if allowed_user_ids is not None and user_id not in allowed_user_ids:
+            raise ValueError(f"unknown_user:{user_id}")
+        if user_payload is None:
+            if user_id in current:
+                current.pop(user_id, None)
+                changed = True
+            continue
+        if not isinstance(user_payload, dict):
+            raise ValueError(f"invalid_user_payload:{user_id}")
+
+        user_matrix = dict(current.get(user_id) or {})
+        for module_key, cell_payload in user_payload.items():
+            module = str(module_key or "").strip()
+            if module not in _MODULE_DEFAULTS:
+                raise ValueError(f"unknown_module:{module}")
+            if not isinstance(cell_payload, dict):
+                raise ValueError(f"invalid_module_payload:{user_id}:{module}")
+            if "visible" not in cell_payload or "editable" not in cell_payload:
+                raise ValueError(f"invalid_module_payload:{user_id}:{module}")
+            normalized_cell = _normalize_permissions_cell(
+                visible=bool(cell_payload["visible"]),
+                editable=bool(cell_payload["editable"]),
+                module_enabled=bool(modules.get(module, True)),
+            )
+            prev_cell = user_matrix.get(module)
+            if prev_cell != normalized_cell:
+                user_matrix[module] = normalized_cell
+                changed = True
+        if user_matrix:
+            current[user_id] = user_matrix
+        elif user_id in current:
+            current.pop(user_id, None)
+            changed = True
+
+    if not changed:
+        return current
+
+    settings_payload = dict(tenant.settings or {})
+    modules_payload = dict(settings_payload.get("modules") or {})
+    modules_payload["user_overrides"] = current
+    settings_payload["modules"] = modules_payload
+    tenant.settings = settings_payload
+    tenant.updated_at = _now_utc()
+    await db.commit()
+    await db.refresh(tenant)
+    await log_activity(
+        db,
+        tenant_id=tenant.id,
+        actor_id=actor_id,
+        action="tenant.user_modules_update",
+        target_type="tenant",
+        target_id=tenant.id,
+        payload={"user_overrides": updates},
+    )
+    return current
 
 
 async def list_seat_requests(

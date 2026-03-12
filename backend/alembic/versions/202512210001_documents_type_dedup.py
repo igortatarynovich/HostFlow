@@ -19,16 +19,71 @@ branch_labels: tuple[str, ...] | None = None
 depends_on: tuple[str, ...] | None = None
 
 
+# Complete type mapping based on document_catalog.py DOCUMENT_TYPE_ALIASES
+# This ensures all aliases are normalized to canonical types
 _TYPE_MAPPING: Dict[str, str] = {
-    "code95": "qualification_code95",
-    "code_95": "qualification_code95",
+    # Identity documents
+    "identity_document": "national_id",
+    "id_card": "national_id",
+    "dowod_osobisty": "national_id",
+    "passport": "passport",
+    "travel_document": "passport",
+    "passport_non_eu": "passport",
+    # Driver licenses
+    "prawo_jazdy": "driver_license",
+    "drivers_license": "driver_license",
+    "driver_licence": "driver_license",
+    "drivers_license_ce": "driver_license",
+    "driver_license_with_code95": "driver_license_code95",
+    "eu_license_code95": "driver_license_code95",
+    # Code 95 / Qualification
+    "code95": "code95",
+    "code_95": "code95",
+    "qualification_code95": "code95",
+    "qualification_card": "code95",
+    # Tachograph
+    "tachograph_card": "tacho_card",
+    "karta_tachografu": "tacho_card",
+    "tachograph": "tacho_card",
+    "tachograph_exchange": "tacho_card",
+    # Medical
+    "badania_lekarskie": "medical_certificate",
+    "medical_cert": "medical_certificate",
+    # Visa
+    "visa_d": "visa",
+    "visa_c": "visa",
+    "entry_permit": "visa",
+    "entry_permit_or_visa": "visa",
+    # Residence
+    "residence_card": "residence_permit",
+    "karta_pobytu": "residence_permit",
+    # Work permit
+    "oswiadczenie": "work_permit",
+    "zezwolenie_a": "work_permit",
+    "work_permit_support": "work_permit",
+    # Driver certificate
+    "swiadectwo_kierowcy": "driver_certificate",
+    "driver_attestation": "driver_certificate",
+    # Decision
+    "decyzja": "decision",
+    "voivodeship_decision": "decision",
+    # ADR
+    "adr_card": "adr",
+    "adr_certificate": "adr",
+    # Psychological tests
+    "psychotest": "psych_tests",
+    "psychotests": "psych_tests",
+    "psychological_certificate": "psych_tests",
+    # Employer documents (if needed)
     "insurance_a1": "insurance",
     "employer_insurance": "insurance",
     "work_assignment": "assignment",
     "employment_contract": "contract",
     "bhp_instruction": "bhp",
     "accommodation_declaration": "accommodation",
-    "tachograph_exchange": "tachograph_card",
+    # Additional/Other
+    "other": "additional_document",
+    "translation": "additional_document",
 }
 
 

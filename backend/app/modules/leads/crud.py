@@ -58,9 +58,12 @@ async def update_lead(
     normalized: Optional[Dict[str, Any]] = None,
     error: Optional[str] = None,
     last_routed_at: Optional[datetime] = None,
+    stage: Optional[str] = None,
 ) -> Lead:
     lead.status = status
     lead.candidate_id = candidate_id
+    if stage is not None:
+        lead.stage = stage
     if vacancy_id is not None:
         lead.vacancy_id = vacancy_id
     if normalized is not None:
@@ -165,12 +168,48 @@ async def find_duplicate_candidate(
     email: Optional[str],
     phone: Optional[str],
 ) -> Optional[Candidate]:
+    import re
+    
     matchers = []
     if email:
         email_lower = email.lower()
         matchers.append(func.lower(Candidate.email) == email_lower)
     if phone:
-        matchers.append(Candidate.phone == phone)
+        # Normalize phone: extract only digits for comparison
+        # This handles cases where phone might be stored in different formats:
+        # - "664319903" vs "+48664319903" vs "48664319903"
+        # - With/without country code, with/without + prefix, with spaces/dashes
+        phone_digits = re.sub(r"\D", "", phone.strip())
+        
+        if phone_digits:
+            # Build phone matchers: exact match and variations
+            phone_matchers = []
+            
+            # 1. Exact match with original phone (as stored)
+            phone_matchers.append(Candidate.phone == phone.strip())
+            
+            # 2. Match by digits only (normalize both sides)
+            # Use regexp_replace to extract digits from stored phone and compare
+            stored_phone_digits = func.regexp_replace(
+                func.coalesce(Candidate.phone, ""),
+                r"[^0-9]",
+                "",
+                "g"
+            )
+            phone_matchers.append(stored_phone_digits == phone_digits)
+            
+            # 3. Handle cases where one number has country code and other doesn't
+            # For Polish numbers: "664319903" (9 digits) should match "+48664319903" (12 digits = 48 + 664319903)
+            # We compare the last 9-10 digits (typical mobile number length)
+            if len(phone_digits) >= 9:
+                # If input is short (9-10 digits), check if stored number ends with these digits
+                # If input is long (11+ digits), check if stored number ends with last 9-10 digits
+                compare_length = min(9, len(phone_digits))
+                last_digits = phone_digits[-compare_length:]
+                phone_matchers.append(stored_phone_digits.like(f"%{last_digits}"))
+            
+            if phone_matchers:
+                matchers.append(or_(*phone_matchers))
 
     if not matchers:
         return None
@@ -241,6 +280,53 @@ async def list_leads_for_retry(
         stmt = stmt.limit(limit)
     rows = await db.execute(stmt)
     return list(rows.scalars())
+
+
+async def list_leads_with_unmapped_ad_ids(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    status: str = "needs_routing",
+    limit_per_ad: int = 10,
+) -> list[tuple[int, list[Lead]]]:
+    """Return leads grouped by ad_id where ad_id is not in meta_ads_map."""
+    mapped_stmt = select(MetaAdsMap.ad_id).where(MetaAdsMap.tenant_id == tenant_id)
+    mapped_result = await db.execute(mapped_stmt)
+    mapped_ad_ids = {int(row.ad_id) for row in mapped_result.fetchall()}
+
+    stmt = (
+        select(Lead)
+        .where(
+            Lead.tenant_id == tenant_id,
+            Lead.status == status,
+            Lead.ad_id.isnot(None),
+        )
+        .order_by(Lead.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    all_leads = list(result.scalars().all())
+
+    grouped: dict[int, list[Lead]] = {}
+    for lead in all_leads:
+        if lead.ad_id is None or lead.ad_id in mapped_ad_ids:
+            continue
+        if lead.ad_id not in grouped:
+            grouped[lead.ad_id] = []
+        if len(grouped[lead.ad_id]) < limit_per_ad:
+            grouped[lead.ad_id].append(lead)
+
+    return [(ad_id, leads) for ad_id, leads in sorted(grouped.items(), key=lambda x: -len(x[1]))]
+
+
+async def update_lead_stage(
+    db: AsyncSession,
+    lead: Lead,
+    *,
+    stage: Optional[str],
+) -> Lead:
+    lead.stage = stage
+    await db.flush()
+    return lead
 
 
 async def list_meta_ads_map(
@@ -448,6 +534,7 @@ async def create_meta_settings(
     reroute_after_hours: Optional[int] = None,
     mask_pii_in_logs: bool = True,
     pull_field_data_from_graph: bool = True,
+    field_mapping: Optional[Any] = None,
     webhook_url: Optional[str] = None,
     last_webhook_check_at: Optional[datetime] = None,
     last_signature_status: Optional[str] = None,
@@ -461,6 +548,7 @@ async def create_meta_settings(
         reroute_after_hours=reroute_after_hours,
         mask_pii_in_logs=mask_pii_in_logs,
         pull_field_data_from_graph=pull_field_data_from_graph,
+        field_mapping=field_mapping or [],
         webhook_url=webhook_url,
         last_webhook_check_at=last_webhook_check_at,
         last_signature_status=last_signature_status,

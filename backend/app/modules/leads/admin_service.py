@@ -12,6 +12,7 @@ from backend.app.core.crypto import decrypt_secret, encrypt_secret, generate_sec
 from backend.app.core.settings import settings
 from backend.app.modules.leads import crud, service
 from backend.app.modules.leads.schemas import (
+    LeadOut,
     MetaAdsMapCreate,
     MetaAdsMapEntry,
     MetaAdsMapUpdate,
@@ -26,6 +27,8 @@ from backend.app.modules.leads.schemas import (
     MetaLeadRetryResponse,
     MetaLeadSettingsOut,
     MetaLeadSettingsUpdate,
+    UnmappedAdGroup,
+    UnmappedLeadsResponse,
 )
 
 
@@ -54,9 +57,22 @@ async def _ensure_settings_schema(db: AsyncSession) -> None:
                 "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS pull_field_data_from_graph BOOLEAN DEFAULT true"
             )
         )
+        await db.execute(
+            text(
+                "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS field_mapping JSONB DEFAULT '[]'::jsonb"
+            )
+        )
         await db.flush()
     except Exception:  # pragma: no cover - best effort for legacy DBs
-        pass
+        try:
+            await db.execute(
+                text(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS field_mapping JSON DEFAULT '[]'"
+                )
+            )
+            await db.flush()
+        except Exception:
+            pass
 
 
 async def _ensure_settings(db: AsyncSession, tenant_id: str) -> crud.MetaLeadSettings:
@@ -74,6 +90,17 @@ async def _ensure_settings(db: AsyncSession, tenant_id: str) -> crud.MetaLeadSet
 
 
 def _settings_to_schema(entry: crud.MetaLeadSettings) -> MetaLeadSettingsOut:
+    raw_mapping = getattr(entry, "field_mapping", None) or []
+    if isinstance(raw_mapping, dict):
+        if isinstance(raw_mapping.get("rules"), list):
+            normalized_mapping = raw_mapping.get("rules") or []
+        else:
+            normalized_mapping = []
+    elif isinstance(raw_mapping, list):
+        normalized_mapping = raw_mapping
+    else:
+        normalized_mapping = []
+
     return MetaLeadSettingsOut(
         tenant_id=_to_uuid(entry.tenant_id) or UUID(entry.tenant_id),
         default_company_id=_to_uuid(entry.default_company_id),
@@ -82,6 +109,7 @@ def _settings_to_schema(entry: crud.MetaLeadSettings) -> MetaLeadSettingsOut:
         reroute_after_hours=entry.reroute_after_hours,
         mask_pii_in_logs=bool(entry.mask_pii_in_logs),
         pull_field_data_from_graph=bool(getattr(entry, "pull_field_data_from_graph", True)),
+        field_mapping=normalized_mapping,
         webhook_url=entry.webhook_url,
         last_webhook_check_at=entry.last_webhook_check_at,
         last_signature_status=entry.last_signature_status,
@@ -109,6 +137,14 @@ async def update_settings(
     if "webhook_verify_token" in updates:
         token = updates["webhook_verify_token"]
         updates["webhook_verify_token"] = token.strip() or None if token is not None else None
+    if "field_mapping" in updates:
+        mapping_rules = updates["field_mapping"]
+        if mapping_rules is None:
+            updates["field_mapping"] = []
+        elif isinstance(mapping_rules, list):
+            updates["field_mapping"] = mapping_rules
+        else:
+            updates["field_mapping"] = []
     await crud.update_meta_settings(db, entry, **updates)
     return _settings_to_schema(entry)
 
@@ -379,6 +415,49 @@ async def upsert_mapping(
         note=entry.note,
         created_at=entry.created_at,
     )
+
+
+async def list_unmapped_leads(
+    db: AsyncSession,
+    tenant_id: str,
+    status: str = "needs_routing",
+    limit_per_ad: int = 10,
+) -> UnmappedLeadsResponse:
+    groups_raw = await crud.list_leads_with_unmapped_ad_ids(
+        db,
+        tenant_id=tenant_id,
+        status=status,
+        limit_per_ad=limit_per_ad,
+    )
+    groups: List[UnmappedAdGroup] = []
+    for ad_id, leads_list in groups_raw:
+        items: List[LeadOut] = []
+        for lead in leads_list:
+            items.append(
+                LeadOut(
+                    id=UUID(lead.id),
+                    tenant_id=UUID(lead.tenant_id),
+                    company_id=UUID(lead.company_id),
+                    company_name=None,
+                    vacancy_id=_to_uuid(lead.vacancy_id),
+                    vacancy_title=None,
+                    source=lead.source,
+                    ad_id=lead.ad_id,
+                    status=lead.status,  # type: ignore[arg-type]
+                    candidate_id=_to_uuid(lead.candidate_id),
+                    candidate_name=None,
+                    recruiter_id=None,
+                    error=lead.error,
+                    payload=lead.payload or {},
+                    normalized=lead.normalized,
+                    created_at=lead.created_at,
+                    last_routed_at=lead.last_routed_at,
+                )
+            )
+        groups.append(
+            UnmappedAdGroup(ad_id=str(ad_id), count=len(leads_list), leads=items)
+        )
+    return UnmappedLeadsResponse(groups=groups)
 
 
 async def delete_mapping(db: AsyncSession, tenant_id: str, ad_id: int) -> None:

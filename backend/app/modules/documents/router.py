@@ -4,10 +4,12 @@ import csv
 import io
 import json
 import logging
+import zipfile
 from datetime import date, datetime, timezone
 from pathlib import Path as PathLib
 from typing import Any, Dict, List, Optional, Sequence
 from uuid import UUID
+from dataclasses import dataclass
 
 from fastapi import (
     APIRouter,
@@ -27,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
 from ...models.enums import (
     DocumentKind,
@@ -66,6 +69,8 @@ from .storage import (
     sanitize_filename,
     select_file_entry,
 )
+from backend.app.services.document_files import resolve_document_file
+from backend.app.services.tenant_visibility import TenantVisibility, get_tenant_visibility
 
 from .crud import (
     create_document,
@@ -156,17 +161,57 @@ def _load_meta_schema_for(code: str) -> Dict[str, Any]:
     return {}
 
 
-def _owner_context_or_400(owner_context: Optional[str], candidate_id: UUID) -> Dict[str, Any]:
+def _owner_context_or_400(
+    owner_context: Optional[str],
+    candidate_id: UUID,
+    defaults: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    base: Dict[str, Any] = dict(defaults or {})
+    base.setdefault("candidate_id", str(candidate_id))
     if not owner_context:
-        return {"candidate_id": str(candidate_id)}
+        return base
     try:
         parsed = json.loads(owner_context)
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=400, detail=f"Invalid owner_context: {exc}")
     if not isinstance(parsed, dict):
         raise HTTPException(status_code=400, detail="owner_context must be an object")
-    parsed.setdefault("candidate_id", str(candidate_id))
-    return parsed
+    merged = dict(base)
+    for key, value in parsed.items():
+        if key == "documents" and isinstance(merged.get("documents"), dict) and isinstance(value, dict):
+            merged["documents"] = {**merged["documents"], **value}
+        else:
+            merged[key] = value
+    merged.setdefault("candidate_id", str(candidate_id))
+    return merged
+
+
+def _candidate_owner_context_defaults(candidate: Candidate, candidate_id: UUID) -> Dict[str, Any]:
+    try:
+        extra = candidate._get_extra()
+    except Exception:
+        extra = getattr(candidate, "extra", {}) or {}
+    try:
+        personal = candidate._get_personal_data()
+    except Exception:
+        personal = getattr(candidate, "personal_data", {}) or {}
+
+    extra = extra if isinstance(extra, dict) else {}
+    personal = personal if isinstance(personal, dict) else {}
+    docs_raw = extra.get("documents")
+    docs_ctx = {
+        key: bool(value)
+        for key, value in (docs_raw.items() if isinstance(docs_raw, dict) else [])
+        if isinstance(value, bool)
+    }
+    ctx: Dict[str, Any] = {
+        "candidate_id": str(candidate_id),
+        "citizenship": extra.get("citizenship") or personal.get("citizenship"),
+        "residency_status": extra.get("poland_stay_basis") or personal.get("residency_status"),
+        "has_adr": extra.get("has_adr"),
+        "documents": docs_ctx,
+    }
+    return {k: v for k, v in ctx.items() if v is not None}
 
 
 def _checklist_sources_for(doc_type: str, checklist: Dict[str, Any]) -> List[str]:
@@ -484,6 +529,244 @@ async def _document_to_out(
     )
 
 
+@dataclass
+class CandidateDocsContext:
+    candidate: Candidate
+    company_name: Optional[str]
+    manager_raw: Optional[str]
+    manager_name: Optional[str]
+    vacancy_title: Optional[str]
+    recruiter_id: Optional[str]
+    recruiter_name: Optional[str]
+    recruiter_short: Optional[str]
+    owner_tenant_id: str
+    allowed_tenant_ids: set[str]
+
+
+def _candidate_is_visible(candidate: Candidate, tenant_id: str, visibility: Optional[TenantVisibility]) -> bool:
+    if str(getattr(candidate, "tenant_id", "") or "") == str(tenant_id):
+        return True
+    if not visibility:
+        return False
+    vacancy_id = getattr(candidate, "vacancy_id", None)
+    company_id = getattr(candidate, "company_id", None)
+    if vacancy_id and str(vacancy_id) in visibility.shared_vacancy_ids:
+        return True
+    if company_id and str(company_id) in visibility.shared_company_ids:
+        return True
+    return False
+
+
+async def _load_candidate_context(
+    session: AsyncSession,
+    tenant_id: str,
+    candidate_id: UUID,
+) -> CandidateDocsContext:
+    visibility = get_tenant_visibility(session, tenant_id)
+    from backend.app.api.v1.candidates import repo as candidate_repo
+    from backend.app.services.handoff import is_client_tenant
+
+    client_tenant = await is_client_tenant(session, tenant_id)
+    row = await candidate_repo.get_candidate_with_labels(
+        session,
+        tenant_id,
+        str(candidate_id),
+        visibility=visibility,
+        is_client_tenant=client_tenant,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    (
+        candidate,
+        company_name,
+        manager_raw,
+        manager_name,
+        vacancy_title,
+        recruiter_id,
+        recruiter_name,
+        recruiter_short,
+    ) = row
+    owner_tenant_id = str(getattr(candidate, "tenant_id", None) or tenant_id)
+    allowed_tenant_ids: set[str] = {owner_tenant_id, tenant_id}
+    if _candidate_is_visible(candidate, tenant_id, visibility):
+        allowed_tenant_ids.add(owner_tenant_id)
+
+    return CandidateDocsContext(
+        candidate=candidate,
+        company_name=company_name,
+        manager_raw=manager_raw,
+        manager_name=manager_name,
+        vacancy_title=vacancy_title,
+        recruiter_id=recruiter_id,
+        recruiter_name=recruiter_name,
+        recruiter_short=recruiter_short,
+        owner_tenant_id=owner_tenant_id,
+        allowed_tenant_ids=allowed_tenant_ids,
+    )
+
+
+async def _get_document_with_access(
+    session: AsyncSession,
+    tenant_id: str,
+    document_id: str,
+) -> tuple[Optional[Document], str, Optional[Candidate]]:
+    visibility = get_tenant_visibility(session, tenant_id)
+    doc = await get_document(session, tenant_id, document_id)
+    if doc:
+        candidate_row = (
+            await session.execute(
+                select(Candidate).where(
+                    Candidate.id == doc.candidate_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        return doc, str(getattr(doc, "tenant_id", tenant_id)), candidate_row
+
+    doc = (
+        await session.execute(
+            select(Document).where(
+                Document.id == document_id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if not doc:
+        return None, tenant_id, None
+
+    candidate_row = (
+        await session.execute(
+            select(Candidate).where(
+                Candidate.id == doc.candidate_id,
+                Candidate.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if not candidate_row:
+        return None, tenant_id, None
+    if not _candidate_is_visible(candidate_row, tenant_id, visibility):
+        return None, tenant_id, None
+    return doc, str(getattr(doc, "tenant_id", tenant_id)), candidate_row
+
+
+def _safe_json(value: Any) -> str:
+    try:
+        return json.dumps(value, ensure_ascii=False, default=str)
+    except Exception:
+        return ""
+
+
+def _iso(value: Any) -> Optional[str]:
+    try:
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+    except Exception:
+        return None
+    return str(value) if value is not None else None
+
+
+def _profile_from_context(cand_ctx: CandidateDocsContext) -> Dict[str, Any]:
+    candidate = cand_ctx.candidate
+    contacts = {}
+    personal = {}
+    extra = {}
+    try:
+        contacts = candidate._get_contacts()
+    except Exception:
+        contacts = getattr(candidate, "contacts", {}) or {}
+    try:
+        personal = candidate._get_personal_data()
+    except Exception:
+        personal = getattr(candidate, "personal_data", {}) or {}
+    try:
+        extra = candidate._get_extra()
+    except Exception:
+        extra = getattr(candidate, "extra", {}) or {}
+
+    status_reason = getattr(candidate, "status_reason", None) or []
+    if isinstance(status_reason, str):
+        try:
+            parsed = json.loads(status_reason)
+            if isinstance(parsed, list):
+                status_reason = parsed
+        except Exception:
+            status_reason = [status_reason]
+    if not isinstance(status_reason, list):
+        status_reason = []
+
+    languages = getattr(candidate, "languages", None) or personal.get("languages") or extra.get("languages")
+    if isinstance(languages, (list, tuple, set)):
+        languages = ", ".join(str(x) for x in languages if str(x).strip())
+
+    return {
+        "tenant_id": cand_ctx.owner_tenant_id,
+        "candidate_id": str(candidate.id),
+        "short_id": getattr(candidate, "short_id", None),
+        "first_name": getattr(candidate, "first_name", None),
+        "last_name": getattr(candidate, "last_name", None),
+        "email": contacts.get("email") or getattr(candidate, "email", None),
+        "phone_country_code": contacts.get("phone_country_code") or getattr(candidate, "phone_country_code", None),
+        "phone": contacts.get("phone") or getattr(candidate, "phone", None),
+        "stage": getattr(candidate, "stage", None),
+        "status": getattr(candidate, "status", None) or getattr(candidate, "stage", None),
+        "status_reason": ", ".join(str(x) for x in status_reason if str(x).strip()),
+        "manager_id": cand_ctx.manager_raw or getattr(candidate, "manager", None),
+        "manager_name": cand_ctx.manager_name or cand_ctx.manager_raw or getattr(candidate, "manager", None),
+        "recruiter_id": cand_ctx.recruiter_id,
+        "recruiter_name": cand_ctx.recruiter_name or cand_ctx.recruiter_short or cand_ctx.recruiter_id,
+        "company_id": getattr(candidate, "company_id", None),
+        "company_name": cand_ctx.company_name,
+        "vacancy_id": getattr(candidate, "vacancy_id", None),
+        "vacancy_title": cand_ctx.vacancy_title,
+        "languages": languages,
+        "country_code": personal.get("country_code") or getattr(candidate, "country_code", None),
+        "city": personal.get("city") or getattr(candidate, "city", None),
+        "address": personal.get("address") or getattr(candidate, "address", None),
+        "birth_date": _iso(getattr(candidate, "birth_date", None)) or personal.get("birth_date"),
+        "note": getattr(candidate, "note", None),
+        "source": getattr(candidate, "source", None),
+        "origin": _safe_json(getattr(candidate, "origin", None)),
+        "contacts_json": _safe_json(contacts),
+        "personal_data_json": _safe_json(personal),
+        "extra_json": _safe_json(extra),
+        "docs_progress_json": _safe_json(getattr(candidate, "docs_progress", None)),
+        "created_at": _iso(getattr(candidate, "created_at", None)),
+        "updated_at": _iso(getattr(candidate, "updated_at", None)),
+        "downloaded_at": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+def _add_document_file_to_zip(
+    doc: Document,
+    archive: zipfile.ZipFile,
+    index: int,
+    used_names: set[str],
+) -> Optional[str]:
+    try:
+        path, _, original_name = resolve_document_file(doc)
+    except FileNotFoundError:
+        return None
+    base_label = sanitize_filename(
+        (getattr(doc, "custom_name", None) or getattr(doc, "title", None) or getattr(doc, "doc_type", None) or f"document_{index}")
+    ) or f"document_{index}"
+    number = getattr(doc, "number", None)
+    stem_parts = [f"{index:02d}", base_label]
+    if number:
+        stem_parts.append(str(number))
+    stem = "_".join(part for part in stem_parts if part)
+    ext = PathLib(original_name).suffix
+    candidate_name = f"{stem}{ext}" if ext else stem
+    unique_name = candidate_name
+    counter = 1
+    while unique_name in used_names:
+        counter += 1
+        unique_name = f"{stem}_{counter}{ext}" if ext else f"{stem}_{counter}"
+    used_names.add(unique_name)
+    with path.open("rb") as fh:
+        archive.writestr(unique_name, fh.read())
+    return unique_name
+
+
 async def _list_documents_for_candidate(
     session: AsyncSession,
     tenant_id: str,
@@ -494,24 +777,32 @@ async def _list_documents_for_candidate(
     include_deleted: bool,
     include_last_check: bool,
     owner_context: Optional[str],
+    owner_context_defaults: Optional[Dict[str, Any]],
     fill_missing: bool,
     limit: Optional[int],
     offset: Optional[int],
+    owner_tenant_id: Optional[str] = None,
+    allowed_tenant_ids: Optional[set[str]] = None,
 ) -> List[DocumentOut]:
+    doc_tenant_id = owner_tenant_id or tenant_id
+    tenants_scope = set(allowed_tenant_ids or {doc_tenant_id, tenant_id})
     docs = await list_candidate_documents(
         session,
-        tenant_id,
+        doc_tenant_id,
         str(candidate_id),
         status=status,
         type_filter=doc_type,
         include_deleted=include_deleted,
         limit=limit,
         offset=offset,
+        allowed_tenant_ids=tenants_scope,
     )
     last_checks: Dict[str, Any] = {}
     if include_last_check:
         last_checks = await get_last_document_checks_map(
-            session, tenant_id, [str(doc.id) for doc in docs]
+            session,
+            doc_tenant_id,
+            [str(doc.id) for doc in docs],
         )
     result: List[DocumentOut] = []
     for doc in docs:
@@ -519,10 +810,10 @@ async def _list_documents_for_candidate(
         result.append(await _document_to_out(session, doc, last_check=last_check))
 
     if fill_missing:
-        ctx = _owner_context_or_400(owner_context, candidate_id)
+        ctx = _owner_context_or_400(owner_context, candidate_id, owner_context_defaults)
         ruleset_version = await ensure_ruleset_seed(
             session,
-            tenant_id,
+            doc_tenant_id,
             load_default_ruleset(),
         )
         await session.commit()
@@ -532,13 +823,14 @@ async def _list_documents_for_candidate(
         if any([status, doc_type, limit, offset]):
             auto_docs = await list_candidate_documents(
                 session,
-                tenant_id,
+                doc_tenant_id,
                 str(candidate_id),
                 include_deleted=False,
+                allowed_tenant_ids=tenants_scope,
             )
         auto_created = await _ensure_auto_ordered_documents(
             session,
-            tenant_id,
+            doc_tenant_id,
             str(candidate_id),
             checklist,
             auto_docs,
@@ -547,17 +839,20 @@ async def _list_documents_for_candidate(
             await session.commit()
             docs = await list_candidate_documents(
                 session,
-                tenant_id,
+                doc_tenant_id,
                 str(candidate_id),
                 status=status,
                 type_filter=doc_type,
                 include_deleted=include_deleted,
                 limit=limit,
                 offset=offset,
+                allowed_tenant_ids=tenants_scope,
             )
             if include_last_check:
                 last_checks = await get_last_document_checks_map(
-                    session, tenant_id, [str(doc.id) for doc in docs]
+                    session,
+                    doc_tenant_id,
+                    [str(doc.id) for doc in docs],
                 )
             result = []
             for doc in docs:
@@ -713,6 +1008,7 @@ async def api_list_documents_legacy(
             result.append(await _document_to_out(session, doc, last_check=last_check))
         return result
 
+    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
     return await _list_documents_for_candidate(
         session,
         str(tenant_id),
@@ -722,9 +1018,12 @@ async def api_list_documents_legacy(
         include_deleted=include_deleted,
         include_last_check=include_last_check,
         owner_context=owner_context,
+        owner_context_defaults=_candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
         fill_missing=fill_missing,
         limit=limit,
         offset=offset,
+        owner_tenant_id=cand_ctx.owner_tenant_id,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
     )
 
 
@@ -756,6 +1055,7 @@ async def api_list_candidate_documents(
     db_dep=Depends(get_db_with_tenant),
 ) -> List[DocumentOut]:
     session, tenant_id = db_dep
+    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
     return await _list_documents_for_candidate(
         session,
         str(tenant_id),
@@ -765,9 +1065,12 @@ async def api_list_candidate_documents(
         include_deleted=include_deleted,
         include_last_check=include_last_check,
         owner_context=owner_context,
+        owner_context_defaults=_candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
         fill_missing=fill_missing,
         limit=limit,
         offset=offset,
+        owner_tenant_id=cand_ctx.owner_tenant_id,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
     )
 
 
@@ -782,13 +1085,24 @@ async def api_create_candidate_document(
     db_dep=Depends(get_db_with_tenant),
 ) -> DocumentOut:
     session, tenant_id = db_dep
+    logger.info(f"[create_doc] Received request for candidate {candidate_id}, parsed payload: {payload.model_dump()}")
+    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
     try:
         doc_type = payload.effective_doc_type()
     except ValueError as exc:
+        payload_dump = payload.model_dump()
+        logger.error(
+            f"[create_doc] effective_doc_type failed: {exc}, "
+            f"payload keys: {list(payload_dump.keys())}, "
+            f"doc_type: {payload_dump.get('doc_type')}, "
+            f"type: {payload_dump.get('type')}, "
+            f"key: {payload_dump.get('key')}, "
+            f"meta: {payload_dump.get('meta')}"
+        )
         raise HTTPException(status_code=422, detail=str(exc)) from None
 
     data = payload.model_dump(by_alias=True, exclude_unset=True)
-    data["tenant_id"] = str(tenant_id)
+    data["tenant_id"] = cand_ctx.owner_tenant_id
     data["candidate_id"] = str(candidate_id)
     data["doc_type"] = doc_type
     data.pop("type", None)
@@ -804,7 +1118,7 @@ async def api_create_candidate_document(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
     await reminders_service.schedule_document_expiry_reminders(
-        session, str(tenant_id), doc
+        session, cand_ctx.owner_tenant_id, doc
     )
     await session.commit()
     await session.refresh(doc)
@@ -822,17 +1136,21 @@ async def api_get_document(
     db_dep=Depends(get_db_with_tenant),
 ) -> DocumentWithChecksOut:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    doc, doc_tenant_id, _ = await _get_document_with_access(
+        session, str(tenant_id), str(document_id)
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     checks: List[Any] = []
     last_check = None
     if include_checks:
-        checks = await list_document_checks(session, str(tenant_id), str(document_id))
+        checks = await list_document_checks(
+            session, doc_tenant_id, str(document_id)
+        )
         last_check = checks[0] if checks else None
     elif include_last_check:
         last_map = await get_last_document_checks_map(
-            session, str(tenant_id), [str(document_id)]
+            session, doc_tenant_id, [str(document_id)]
         )
         last_check = last_map.get(str(document_id))
 
@@ -854,6 +1172,11 @@ async def api_patch_document(
     db_dep=Depends(get_db_with_tenant),
 ) -> DocumentOut:
     session, tenant_id = db_dep
+    doc, doc_tenant_id, _ = await _get_document_with_access(
+        session, str(tenant_id), str(document_id)
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
     update_data = payload.model_dump(by_alias=True, exclude_unset=True)
     meta_json_payload = update_data.pop("meta_json", None)
     if meta_json_payload is not None and "meta" not in update_data:
@@ -861,7 +1184,7 @@ async def api_patch_document(
     try:
         doc = await update_document(
             session,
-            str(tenant_id),
+            doc_tenant_id,
             str(document_id),
             update_data,
         )
@@ -870,7 +1193,7 @@ async def api_patch_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     await reminders_service.schedule_document_expiry_reminders(
-        session, str(tenant_id), doc
+        session, doc_tenant_id, doc
     )
     await session.commit()
     await session.refresh(doc)
@@ -883,18 +1206,23 @@ async def api_delete_document(
     db_dep=Depends(get_db_with_tenant),
 ) -> Response:
     session, tenant_id = db_dep
-    deleted = await soft_delete_document(session, str(tenant_id), str(document_id))
+    doc, doc_tenant_id, _ = await _get_document_with_access(
+        session, str(tenant_id), str(document_id)
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    deleted = await soft_delete_document(session, doc_tenant_id, str(document_id))
     if not deleted:
         raise HTTPException(status_code=404, detail="Document not found")
     await reminders_service.cancel_entity_reminders(
         session,
-        tenant_id=str(tenant_id),
+        tenant_id=doc_tenant_id,
         entity_type="document",
         entity_id=str(document_id),
     )
     await reminders_service.cancel_document_step_reminders(
         session,
-        tenant_id=str(tenant_id),
+        tenant_id=doc_tenant_id,
         document_id=str(document_id),
     )
     await session.commit()
@@ -913,7 +1241,9 @@ async def api_get_document_file_url(
     db_dep=Depends(get_db_with_tenant),
 ) -> dict[str, Any]:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    doc, _, _ = await _get_document_with_access(
+        session, str(tenant_id), str(document_id)
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     files = await ensure_document_files(session, doc)
@@ -944,7 +1274,9 @@ async def api_download_document_file(
     db_dep=Depends(get_db_with_tenant),
 ) -> FileResponse:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    doc, _, _ = await _get_document_with_access(
+        session, str(tenant_id), str(document_id)
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     files = await ensure_document_files(session, doc)
@@ -976,10 +1308,12 @@ async def api_list_document_checks(
     db_dep=Depends(get_db_with_tenant),
 ) -> List[DocumentCheckOut]:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    doc, doc_tenant_id, _ = await _get_document_with_access(
+        session, str(tenant_id), str(document_id)
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    checks = await list_document_checks(session, str(tenant_id), str(document_id))
+    checks = await list_document_checks(session, doc_tenant_id, str(document_id))
     return [_check_to_out(item) for item in checks]
 
 
@@ -991,6 +1325,11 @@ async def api_check_document(
     db_dep=Depends(get_db_with_tenant),
 ) -> DocumentOut:
     session, tenant_id = db_dep
+    doc, doc_tenant_id, _ = await _get_document_with_access(
+        session, str(tenant_id), str(document_id)
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
     decision = (body.get("decision") or "").strip().lower()
     if decision not in {"approved", "rejected"}:
         raise HTTPException(status_code=422, detail="decision must be approved|rejected")
@@ -1005,7 +1344,7 @@ async def api_check_document(
         update_payload["meta"] = meta_update
     doc = await update_document(
         session,
-        str(tenant_id),
+        doc_tenant_id,
         str(document_id),
         update_payload,
     )
@@ -1015,7 +1354,7 @@ async def api_check_document(
     payload = body.get("payload") or body.get("meta_json") or {}
     check = await create_document_check(
         session,
-        str(tenant_id),
+        doc_tenant_id,
         str(document_id),
         reviewer_id=reviewer_id,
         decision=decision,
@@ -1024,7 +1363,7 @@ async def api_check_document(
         payload=payload if isinstance(payload, dict) else {},
     )
     await reminders_service.schedule_document_expiry_reminders(
-        session, str(tenant_id), doc
+        session, doc_tenant_id, doc
     )
     await session.commit()
     await session.refresh(doc)
@@ -1043,16 +1382,25 @@ async def api_candidate_documents_summary(
     db_dep=Depends(get_db_with_tenant),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
-    ctx = _owner_context_or_400(owner_context, candidate_id)
+    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    ctx = _owner_context_or_400(
+        owner_context,
+        candidate_id,
+        _candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
+    )
     docs = await list_candidate_documents(
-        session, str(tenant_id), str(candidate_id), include_deleted=False
+        session,
+        cand_ctx.owner_tenant_id,
+        str(candidate_id),
+        include_deleted=False,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
     )
     ruleset_version = None
     ruleset_payload: Dict[str, Any]
     try:
         ruleset_version = await ensure_ruleset_seed(
             session,
-            str(tenant_id),
+            cand_ctx.owner_tenant_id,
             load_default_ruleset(),
         )
         await session.commit()
@@ -1068,7 +1416,9 @@ async def api_candidate_documents_summary(
         ruleset_version = None
         ruleset_payload = load_default_ruleset()
     doc_ids = [str(doc.id) for doc in docs]
-    last_checks = await get_last_document_checks_map(session, str(tenant_id), doc_ids)
+    last_checks = await get_last_document_checks_map(
+        session, cand_ctx.owner_tenant_id, doc_ids
+    )
     serialized_docs: List[Dict[str, Any]] = []
     for doc in docs:
         last_check = last_checks.get(str(doc.id))
@@ -1080,7 +1430,7 @@ async def api_candidate_documents_summary(
     summary["checklist"] = checklist
     auto_created = await _ensure_auto_ordered_documents(
         session,
-        str(tenant_id),
+        cand_ctx.owner_tenant_id,
         str(candidate_id),
         checklist,
         docs,
@@ -1088,10 +1438,16 @@ async def api_candidate_documents_summary(
     if auto_created:
         await session.commit()
         docs = await list_candidate_documents(
-            session, str(tenant_id), str(candidate_id), include_deleted=False
+            session,
+            cand_ctx.owner_tenant_id,
+            str(candidate_id),
+            include_deleted=False,
+            allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
         )
         last_checks = await get_last_document_checks_map(
-            session, str(tenant_id), [str(doc.id) for doc in docs]
+            session,
+            cand_ctx.owner_tenant_id,
+            [str(doc.id) for doc in docs],
         )
         serialized_docs = [
             (await _document_to_out(session, doc, last_check=last_checks.get(str(doc.id)))).model_dump()
@@ -1100,7 +1456,12 @@ async def api_candidate_documents_summary(
         summary = compute_owner_summary(ctx, ruleset_payload, serialized_docs)
         checklist = _fill_checklist_defaults(summary.get("checklist") or {}, ruleset_payload)
         summary["checklist"] = checklist
-    synthetic_docs = [doc.model_dump() for doc in _build_synthetic_documents(str(tenant_id), candidate_id, checklist, serialized_docs)]
+    synthetic_docs = [
+        doc.model_dump()
+        for doc in _build_synthetic_documents(
+            cand_ctx.owner_tenant_id, candidate_id, checklist, serialized_docs
+        )
+    ]
     response: Dict[str, Any] = {
         "candidate_id": str(candidate_id),
         "summary": summary,
@@ -1132,23 +1493,22 @@ async def api_candidate_checklist(
     db_dep=Depends(get_db_with_tenant),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
-    try:
-        ctx = json.loads(owner_context) if owner_context else {}
-        if not isinstance(ctx, dict):
-            raise ValueError("context must be a JSON object")
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"Invalid owner_context: {exc}")
-    ctx.setdefault("candidate_id", str(candidate_id))
+    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    ctx = _owner_context_or_400(
+        owner_context,
+        candidate_id,
+        _candidate_owner_context_defaults(cand_ctx.candidate, candidate_id),
+    )
     ruleset_version = await ensure_ruleset_seed(
         session,
-        str(tenant_id),
+        cand_ctx.owner_tenant_id,
         load_default_ruleset(),
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     checklist = _fill_checklist_defaults(compute_candidate_checklist(ctx, ruleset_payload), ruleset_payload)
     await log_ruleset_usage(
         session,
-        str(tenant_id),
+        cand_ctx.owner_tenant_id,
         str(ruleset_version.id),
         used_in="checklist",
         reference_id=str(candidate_id),
@@ -1169,11 +1529,18 @@ async def api_export_documents_json(
     db_dep=Depends(get_db_with_tenant),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
+    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
     docs = await list_candidate_documents(
-        session, str(tenant_id), str(candidate_id), include_deleted=False
+        session,
+        cand_ctx.owner_tenant_id,
+        str(candidate_id),
+        include_deleted=False,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
     )
     last_checks = await get_last_document_checks_map(
-        session, str(tenant_id), [str(doc.id) for doc in docs]
+        session,
+        cand_ctx.owner_tenant_id,
+        [str(doc.id) for doc in docs],
     )
     serialized = [
         (await _document_to_out(session, doc, last_check=last_checks.get(str(doc.id)))).model_dump()
@@ -1193,11 +1560,18 @@ async def api_export_documents_csv(
     db_dep=Depends(get_db_with_tenant),
 ) -> StreamingResponse:
     session, tenant_id = db_dep
+    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
     docs = await list_candidate_documents(
-        session, str(tenant_id), str(candidate_id), include_deleted=False
+        session,
+        cand_ctx.owner_tenant_id,
+        str(candidate_id),
+        include_deleted=False,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
     )
     last_checks = await get_last_document_checks_map(
-        session, str(tenant_id), [str(doc.id) for doc in docs]
+        session,
+        cand_ctx.owner_tenant_id,
+        [str(doc.id) for doc in docs],
     )
     output = io.StringIO()
     fieldnames = [
@@ -1237,6 +1611,83 @@ async def api_export_documents_csv(
     return StreamingResponse(
         output,
         media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/candidate/{candidate_id}/export.zip")
+async def api_export_candidate_bundle(
+    candidate_id: UUID,
+    db_dep=Depends(get_db_with_tenant),
+) -> StreamingResponse:
+    session, tenant_id = db_dep
+    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    docs = await list_candidate_documents(
+        session,
+        cand_ctx.owner_tenant_id,
+        str(candidate_id),
+        include_deleted=False,
+        allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+    )
+    last_checks = await get_last_document_checks_map(
+        session, cand_ctx.owner_tenant_id, [str(doc.id) for doc in docs]
+    )
+
+    buf = io.BytesIO()
+    profile = _profile_from_context(cand_ctx)
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        profile_csv = io.StringIO()
+        profile_writer = csv.DictWriter(profile_csv, fieldnames=list(profile.keys()))
+        profile_writer.writeheader()
+        profile_writer.writerow(profile)
+        zf.writestr("candidate_profile.csv", profile_csv.getvalue())
+
+        doc_fields = [
+            "id",
+            "type",
+            "number",
+            "status",
+            "issued_at",
+            "expires_at",
+            "ordered_at",
+            "verified_at",
+            "version",
+            "last_check_decision",
+            "last_check_reviewer",
+            "last_check_at",
+            "file_name",
+        ]
+        docs_csv = io.StringIO()
+        docs_writer = csv.DictWriter(docs_csv, fieldnames=doc_fields)
+        docs_writer.writeheader()
+        used_names: set[str] = set()
+        for idx, doc in enumerate(docs, start=1):
+            check = last_checks.get(str(doc.id))
+            file_name = _add_document_file_to_zip(doc, zf, idx, used_names)
+            docs_writer.writerow(
+                {
+                    "id": str(doc.id),
+                    "type": getattr(doc, "doc_type", None),
+                    "number": getattr(doc, "number", "") or "",
+                    "status": getattr(doc, "status", "") or "",
+                    "issued_at": _iso(getattr(doc, "issue_date", None)) or "",
+                    "expires_at": _iso(getattr(doc, "expire_date", None)) or "",
+                    "ordered_at": _iso(getattr(doc, "ordered_at", None)) or "",
+                    "verified_at": _iso(getattr(doc, "verified_at", None)) or "",
+                    "version": getattr(doc, "version", "") or "",
+                    "last_check_decision": getattr(check, "decision", "") if check else "",
+                    "last_check_reviewer": getattr(check, "reviewer_id", "") if check else "",
+                    "last_check_at": _iso(getattr(check, "created_at", None)) if check else "",
+                    "file_name": file_name or "",
+                }
+            )
+        zf.writestr("documents.csv", docs_csv.getvalue())
+
+    buf.seek(0)
+    filename = f"candidate_{candidate_id}_bundle.zip"
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 

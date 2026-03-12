@@ -1,5 +1,8 @@
 import http from './http'
 
+const publicOrigin = () => (typeof window !== 'undefined' && window.location ? window.location.origin : '')
+const publicUrl = (path: string) => `${publicOrigin()}${path}`
+
 export type ScanPreset = {
   code: string
   name: string
@@ -47,7 +50,7 @@ export type ScanSession = {
 }
 
 export async function fetchPublicScanPresets(): Promise<ScanPreset[]> {
-  const { data } = await http.get('/public/scan/presets')
+  const { data } = await http.get(publicUrl('/public/scan/presets'))
   return data
 }
 
@@ -59,11 +62,7 @@ export async function createPublicScanSession(payload: {
   expected_pages?: string[]
   meta?: Record<string, any>
 }): Promise<ScanSession> {
-  // Use absolute path to avoid /api/v1 prefix
-  // Get origin from window.location to construct absolute URL
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const url = `${origin}/public/scan-sessions`
-  const { data } = await http.post(url, payload)
+  const { data } = await http.post(publicUrl('/public/scan-sessions'), payload)
   return data
 }
 
@@ -71,9 +70,7 @@ export async function getPublicScanSession(id: string): Promise<ScanSession> {
   if (!id || id === 'undefined' || id === 'null') {
     throw new Error('Session ID is required')
   }
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const url = `${origin}/public/scan-sessions/${id}`
-  const { data } = await http.get(url)
+  const { data } = await http.get(publicUrl(`/public/scan-sessions/${id}`))
   return data
 }
 
@@ -97,17 +94,45 @@ export async function uploadPublicScanPage(params: {
   if (params.meta) {
     form.append('meta', JSON.stringify(params.meta))
   }
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const url = `${origin}/public/scan-sessions/${params.sessionId}/pages`
-  const { data } = await http.post(url, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
-  return data
+  const url = publicUrl(`/public/scan-sessions/${params.sessionId}/pages`)
+  try {
+    const { data } = await http.post(url, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return data
+  } catch (err: any) {
+    console.error('[scanner API] Upload error:', {
+      url,
+      sessionId: params.sessionId,
+      pageCode: params.page_code,
+      filter: params.filter,
+      hasMeta: !!params.meta,
+      error: err?.message,
+      response: err?.response?.data,
+      status: err?.response?.status,
+    })
+    throw err
+  }
 }
 
 export async function processPublicScanSession(sessionId: string): Promise<ScanSession> {
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const url = `${origin}/public/scan-sessions/${sessionId}/process`
-  const { data } = await http.post(url)
+  const { data } = await http.post(publicUrl(`/public/scan-sessions/${sessionId}/process`))
+  return data
+}
+
+export async function uploadPublicScanPdf(params: {
+  sessionId: string
+  file: Blob
+  meta?: Record<string, any>
+}): Promise<ScanSession> {
+  const form = new FormData()
+  form.append('file', params.file)
+  if (params.meta) {
+    form.append('meta', JSON.stringify(params.meta))
+  }
+  const url = publicUrl(`/public/scan-sessions/${params.sessionId}/pdf`)
+  const { data } = await http.post(url, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return data
 }

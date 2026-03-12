@@ -2,22 +2,44 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from datetime import datetime, time
+from decimal import Decimal
 from typing import Any, Dict, List, Optional, Counter as TCounter
 import json
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select, or_
+from sqlalchemy import func, select, or_, and_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 from uuid import UUID
 
+from backend.app.core.cache import cache_get, cache_set
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.models import Candidate, Company, Vacancy, User
+from backend.app.models import (
+    Candidate,
+    CandidateHandoff,
+    Company,
+    ContactAttempt,
+    Document,
+    Lead,
+    ServiceOrder,
+    Tenant,
+    User,
+    Vacancy,
+)
+from backend.app.models.tenant import TenantLink
+from backend.app.services.handoff import is_client_tenant_for_list
 from backend.app.models.enums import CandidateStage
-from backend.app.constants.stages import LABELS as STAGE_LABELS, STATUS_REASON_CHOICES, ORDER as STAGE_ORDER
+from backend.app.constants.stages import (
+    LABELS as STAGE_LABELS,
+    STATUS_REASON_CHOICES,
+    ORDER as STAGE_ORDER,
+    STAGE_META as STAGE_META_CONST,
+)
 from backend.app.services.tenant_visibility import TenantVisibility, get_tenant_visibility
 from backend.app.services.source_labels import normalize_candidate_source
+from backend.app.api.v1.candidates import repo as candidates_repo
+from backend.app.api.v1.candidates.repo import _candidate_scope_clause as repo_scope_clause
 
 router = APIRouter(tags=["analytics"])
 
@@ -25,6 +47,26 @@ router = APIRouter(tags=["analytics"])
 _REASON_LABELS = {
     stage: {item["code"]: item["label"] for item in items}
     for stage, items in STATUS_REASON_CHOICES.items()
+}
+
+
+_CLIENT_KIND_ALIASES = {
+    "client",
+    "customer",
+    "заказчик",
+    "клиент",
+}
+
+_COUNTERPARTY_KIND_ALIASES = {
+    "counterparty",
+    "vendor",
+    "supplier",
+    "contractor",
+    "subcontractor",
+    "partner",
+    "исполнитель",
+    "подрядчик",
+    "контрагент",
 }
 
 
@@ -39,6 +81,49 @@ def _safe_dict(value: Any) -> Dict[str, Any]:
         except Exception:
             return {}
     return {}
+
+
+def _tenant_business_type(tenant: Optional[Tenant]) -> str:
+    if tenant is None:
+        return "agency"
+    settings_payload = tenant.settings if isinstance(tenant.settings, dict) else {}
+    raw_business_type = settings_payload.get("business_type")
+    normalized = str(raw_business_type or "").strip().lower()
+    if normalized in {"agency", "employer", "services"}:
+        return normalized
+    tenant_type = str(getattr(getattr(tenant, "type", None), "value", getattr(tenant, "type", ""))).strip().lower()
+    if tenant_type == "company":
+        return "employer"
+    return "agency"
+
+
+def _normalize_company_kind(extra_payload: Any) -> str:
+    extra = _safe_dict(extra_payload)
+    raw_value = (
+        extra.get("company_kind")
+        or extra.get("company_type")
+        or extra.get("kind")
+        or extra.get("entity_type")
+        or extra.get("segment")
+        or extra.get("role")
+    )
+    normalized = str(raw_value or "").strip().lower()
+    if normalized in _COUNTERPARTY_KIND_ALIASES:
+        return "counterparty"
+    if normalized in _CLIENT_KIND_ALIASES:
+        return "client"
+    return "unknown"
+
+
+def _as_float(value: Any) -> float:
+    if value is None:
+        return 0.0
+    if isinstance(value, Decimal):
+        return float(value)
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _status_reason_list(value: Any) -> list[str]:
@@ -68,12 +153,42 @@ def _stage_label(code: Optional[str]) -> str:
 
 _ORDERED_STAGE_LABELS = [_stage_label(code) for code in STAGE_ORDER]
 
+# Безопасный снимок метаданных стадий (если константа недоступна, используем пустой dict)
+STAGE_META: Dict[str, Dict[str, Any]] = dict(STAGE_META_CONST or {})  # type: ignore[arg-type]
 
-def _candidate_scope_clause(tenant_id: str, visibility: TenantVisibility | None):
+
+def _stage_visible_for_view(code: Optional[str], view: str) -> bool:
+    """
+    Определяет, должен ли этап участвовать в текущем режиме отображения пайплайна.
+
+    view:
+      - "all"    — все стадии без фильтрации
+      - "agency" — только стадии, видимые агентству
+      - "client" — только стадии, видимые клиенту
+    """
+    if not code or view == "all":
+        return True
+    meta = STAGE_META.get(code) or {}
+    if view == "agency":
+        return bool(meta.get("visible_for_agency", True))
+    if view == "client":
+        return bool(meta.get("visible_for_client", False))
+    return True
+
+
+# DEPRECATED: Use repo._candidate_scope_clause instead for client tenant support
+# Keeping for backward compatibility in export endpoint
+def _candidate_scope_clause_legacy(tenant_id: str, visibility: TenantVisibility | None):
     clauses = [Candidate.tenant_id == tenant_id]
     shared_vacancies = getattr(visibility, "shared_vacancy_ids", set()) or set()
+    shared_companies = getattr(visibility, "shared_company_ids", set()) or set()
+    extra = []
     if shared_vacancies:
-        clauses.append(Candidate.vacancy_id.in_(shared_vacancies))
+        extra.append(Candidate.vacancy_id.in_(shared_vacancies))
+    if shared_companies:
+        extra.append(Candidate.company_id.in_(shared_companies))
+    if extra:
+        clauses.append(or_(*extra))
     return or_(*clauses)
 
 
@@ -120,32 +235,47 @@ def _apply_period_filters(
 
 # ------- /overview (как было, оставим без изменений) -------
 @router.get("/analytics/overview")
-async def overview(db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant)):
+async def overview(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    stage_view: Optional[str] = Query(
+        None,
+        description="all | agency | client — режим отображения пайплайна по стадиям",
+    ),
+):
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    scope_clause = _candidate_scope_clause(tenant_id_str, visibility)
+    is_client = await is_client_tenant_for_list(db, tenant_id_str)
+    effective_stage_view = stage_view or ("client" if is_client else "all")
+    scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
 
-    total_stmt = select(func.count()).select_from(Candidate).where(scope_clause)
+    total_stmt = select(func.count()).select_from(Candidate).where(
+        and_(Candidate.deleted_at.is_(None), scope_clause)
+    )
     total = (await db.execute(total_stmt)).scalar_one()
 
     # по стадиям
     rows = (
         await db.execute(
             select(Candidate.stage, func.count())
-            .where(scope_clause)
+            .where(and_(Candidate.deleted_at.is_(None), scope_clause))
             .group_by(Candidate.stage)
             .order_by(func.count().desc())
         )
     ).all()
-    by_stage = {
+    raw_by_stage = {
         (s.value if isinstance(s, CandidateStage) else str(s)): cnt for s, cnt in rows
+    }
+    by_stage = {
+        code: cnt
+        for code, cnt in raw_by_stage.items()
+        if _stage_visible_for_view(code, effective_stage_view)
     }
 
     # считаем языки без БД-специфичных функций (кросс-БД)
     lang_counter: TCounter[str] = Counter()
     # забираем только колонку languages
-    langs_rows = (await db.execute(select(Candidate.languages).where(scope_clause))).all()
+    langs_rows = (await db.execute(select(Candidate.languages).where(and_(Candidate.deleted_at.is_(None), scope_clause)))).all()
     for (langs,) in langs_rows:
         if not langs:
             continue
@@ -159,6 +289,159 @@ async def overview(db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_te
     by_language = dict(sorted(((k, int(v)) for k, v in lang_counter.items()), key=lambda x: -x[1]))
 
     return {"total": total, "by_stage": by_stage, "by_language": by_language}
+
+
+@router.get("/analytics/profile-summary")
+async def profile_summary(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+):
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+
+    tenant_row = await db.execute(select(Tenant).where(Tenant.id == tenant_id_str).limit(1))
+    tenant = tenant_row.scalar_one_or_none()
+    business_type = _tenant_business_type(tenant)
+
+    total_companies = int(
+        (await db.execute(select(func.count()).select_from(Company).where(Company.tenant_id == tenant_id_str))).scalar_one() or 0
+    )
+    active_companies = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(Company).where(Company.tenant_id == tenant_id_str, Company.is_archived.is_(False))
+            )
+        ).scalar_one()
+        or 0
+    )
+    total_candidates = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(Candidate).where(Candidate.tenant_id == tenant_id_str, Candidate.deleted_at.is_(None))
+            )
+        ).scalar_one()
+        or 0
+    )
+    total_vacancies = int(
+        (await db.execute(select(func.count()).select_from(Vacancy).where(Vacancy.tenant_id == tenant_id_str))).scalar_one() or 0
+    )
+    active_vacancies = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(Vacancy).where(
+                    Vacancy.tenant_id == tenant_id_str,
+                    Vacancy.is_archived.is_(False),
+                )
+            )
+        ).scalar_one()
+        or 0
+    )
+    total_leads = int(
+        (await db.execute(select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant_id_str))).scalar_one() or 0
+    )
+
+    service_orders_total = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(ServiceOrder).where(ServiceOrder.tenant_id == tenant_id_str)
+            )
+        ).scalar_one()
+        or 0
+    )
+    service_orders_rows = (
+        await db.execute(
+            select(ServiceOrder.status, func.count(), func.coalesce(func.sum(ServiceOrder.total_amount), 0))
+            .where(ServiceOrder.tenant_id == tenant_id_str)
+            .group_by(ServiceOrder.status)
+        )
+    ).all()
+    service_orders_by_status = {str(status): int(count or 0) for status, count, _sum in service_orders_rows}
+    service_revenue_delivered = 0.0
+    for status, _count, total_sum in service_orders_rows:
+        if str(status) == "delivered":
+            service_revenue_delivered = _as_float(total_sum)
+
+    company_rows = (
+        await db.execute(select(Company.id, Company.extra).where(Company.tenant_id == tenant_id_str))
+    ).all()
+    service_owner_company_rows = (
+        await db.execute(
+            select(ServiceOrder.company_id)
+            .where(ServiceOrder.tenant_id == tenant_id_str, ServiceOrder.company_id.is_not(None))
+            .distinct()
+        )
+    ).all()
+    client_company_ids = {str(row[0]) for row in service_owner_company_rows if row and row[0]}
+
+    clients_count = 0
+    counterparties_count = 0
+    unknown_count = 0
+    for company_id, extra_payload in company_rows:
+        if company_id and str(company_id) in client_company_ids:
+            clients_count += 1
+            continue
+        kind = _normalize_company_kind(extra_payload)
+        if kind == "counterparty":
+            counterparties_count += 1
+        elif kind == "client":
+            clients_count += 1
+        else:
+            unknown_count += 1
+            # Для services неизвестный тип считаем клиентом по умолчанию.
+            clients_count += 1
+
+    service_in_progress = sum(
+        int(service_orders_by_status.get(key, 0))
+        for key in ("approved", "scheduled", "in_progress")
+    )
+    service_delivered = int(service_orders_by_status.get("delivered", 0))
+
+    profile = {
+        "business_type": business_type,
+        "generated_at": datetime.utcnow().isoformat(),
+        "kpis": {},
+        "datasets": {},
+    }
+
+    if business_type == "services":
+        profile["kpis"] = {
+            "companies_total": total_companies,
+            "companies_active": active_companies,
+            "clients_total": clients_count,
+            "counterparties_total": counterparties_count,
+            "service_orders_total": service_orders_total,
+            "service_orders_in_progress": service_in_progress,
+            "service_orders_delivered": service_delivered,
+            "service_revenue_delivered": round(service_revenue_delivered, 2),
+            "leads_total": total_leads,
+        }
+        profile["datasets"] = {
+            "primary_entities": ["clients", "counterparties", "service_orders", "leads"],
+            "unknown_company_classification": unknown_count,
+        }
+    elif business_type == "employer":
+        profile["kpis"] = {
+            "vacancies_total": total_vacancies,
+            "vacancies_active": active_vacancies,
+            "candidates_total": total_candidates,
+            "leads_total": total_leads,
+            "companies_total": total_companies,
+        }
+        profile["datasets"] = {
+            "primary_entities": ["vacancies", "candidates", "team", "communications"],
+        }
+    else:
+        profile["kpis"] = {
+            "companies_total": total_companies,
+            "vacancies_active": active_vacancies,
+            "candidates_total": total_candidates,
+            "leads_total": total_leads,
+            "service_orders_total": service_orders_total,
+        }
+        profile["datasets"] = {
+            "primary_entities": ["clients", "candidates", "vacancies", "leads", "communications"],
+        }
+
+    return profile
 
 
 # ------- /funnel -------
@@ -176,27 +459,40 @@ async def funnel(
         pattern="^(created|updated)$",
         description="created|updated — по какому полю фильтровать",
     ),
+    stage_view: Optional[str] = Query(
+        None,
+        description="all | agency | client — режим отображения пайплайна по стадиям",
+    ),
 ):
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    scope_clause = _candidate_scope_clause(tenant_id_str, visibility)
+    is_client = await is_client_tenant_for_list(db, tenant_id_str)
+    scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
+    effective_stage_view = stage_view or ("client" if is_client else "all")
     dfrom = _parse_dt(date_from)
     dto = _parse_dt(date_to, end_of_day=True)
 
-    base = select(Candidate.stage, func.count()).select_from(Candidate).where(scope_clause)
+    base = select(Candidate.stage, func.count()).select_from(Candidate).where(and_(Candidate.deleted_at.is_(None), scope_clause))
     base = _apply_period_filters(base, dfrom, dto, by)
     base = base.group_by(Candidate.stage)
 
     res = (await db.execute(base)).all()
-    counters = {
+    raw_counters = {
         (s.value if isinstance(s, CandidateStage) else str(s)): cnt for s, cnt in res
+    }
+    counters = {
+        code: cnt
+        for code, cnt in raw_counters.items()
+        if _stage_visible_for_view(code, effective_stage_view)
     }
 
     # упорядочим по enum
     stages: List[Dict[str, Any]] = []
     for st in CandidateStage:
         name = st.value
+        if not _stage_visible_for_view(name, effective_stage_view):
+            continue
         stages.append({"name": name, "count": int(counters.get(name, 0))})
 
     return {
@@ -216,11 +512,17 @@ async def by_manager(
     date_from: Optional[str] = Query(None, alias="from"),
     date_to: Optional[str] = Query(None, alias="to"),
     by: str = Query("created", pattern="^(created|updated)$"),
+    stage_view: Optional[str] = Query(
+        None,
+        description="all | agency | client — режим отображения пайплайна по стадиям",
+    ),
 ):
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    scope_clause = _candidate_scope_clause(tenant_id_str, visibility)
+    is_client = await is_client_tenant_for_list(db, tenant_id_str)
+    scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
+    effective_stage_view = stage_view or ("client" if is_client else "all")
     dfrom = _parse_dt(date_from)
     dto = _parse_dt(date_to, end_of_day=True)
 
@@ -238,7 +540,7 @@ async def by_manager(
         )
         .select_from(Candidate)
         .join(recruiter_alias, recruiter_alias.id == Candidate.recruiter_id, isouter=True)
-        .where(scope_clause)
+        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
     )
     totals_stmt = _apply_period_filters(totals_stmt, dfrom, dto, by).group_by(
         Candidate.manager,
@@ -258,7 +560,7 @@ async def by_manager(
             func.count(),
         )
         .select_from(Candidate)
-        .where(scope_clause)
+        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
     )
     dist_stmt = _apply_period_filters(dist_stmt, dfrom, dto, by).group_by(
         Candidate.manager, Candidate.recruiter_id, Candidate.stage
@@ -297,6 +599,8 @@ async def by_manager(
             label = _resolve_label(mgr, None, None, None, recruiter_id)
             by_mgr[key] = {"manager": label, "total": 0, "by_stage": {}, "hired": 0}
         stage_name = stage.value if isinstance(stage, CandidateStage) else str(stage)
+        if not _stage_visible_for_view(stage_name, effective_stage_view):
+            continue
         by_mgr[key]["by_stage"][stage_name] = int(cnt)
         if stage_name == CandidateStage.HIRED.value:
             by_mgr[key]["hired"] = int(cnt)
@@ -304,6 +608,8 @@ async def by_manager(
     # чтобы были все стадии в словаре by_stage (с нулями)
     for v in by_mgr.values():
         for st in CandidateStage:
+            if not _stage_visible_for_view(st.value, effective_stage_view):
+                continue
             v["by_stage"].setdefault(st.value, 0)
 
     items = sorted(by_mgr.values(), key=lambda x: (-x["total"], x["manager"]))
@@ -317,21 +623,220 @@ async def by_manager(
     }
 
 
+# ------- /analytics/handoff-stats -------
+@router.get("/analytics/handoff-stats")
+async def handoff_stats(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    date_from: Optional[str] = Query(None, alias="from"),
+    date_to: Optional[str] = Query(None, alias="to"),
+):
+    """Aggregate handoff stats: for agency by agency_tenant_id, for client by client_tenant_id / client_company_id (requested_at in period)."""
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    dfrom = _parse_dt(date_from)
+    dto = _parse_dt(date_to, end_of_day=True)
+
+    is_client = await is_client_tenant_for_list(db, tenant_id_str)
+    if is_client:
+        client_company_subq = select(TenantLink.handoff_include_company_id).where(
+            TenantLink.client_tenant_id == tenant_id_str,
+            TenantLink.handoff_include_company_id.isnot(None),
+        )
+        base = select(CandidateHandoff).where(
+            or_(
+                CandidateHandoff.client_tenant_id == tenant_id_str,
+                CandidateHandoff.client_company_id.in_(client_company_subq),
+            )
+        )
+    else:
+        base = select(CandidateHandoff).where(
+            CandidateHandoff.agency_tenant_id == tenant_id_str,
+        )
+    if dfrom:
+        base = base.where(CandidateHandoff.requested_at >= dfrom)
+    if dto:
+        base = base.where(CandidateHandoff.requested_at <= dto)
+
+    rows = (await db.execute(base)).scalars().all()
+
+    total_requested = len(rows)
+    total_accepted = sum(1 for h in rows if h.status == "accepted")
+    total_rejected = sum(1 for h in rows if h.status == "rejected")
+    total_returned = sum(1 for h in rows if h.status == "returned")
+
+    by_client: Dict[str, Dict[str, int]] = {}
+    for h in rows:
+        key = h.client_tenant_id or h.client_company_id or "unknown"
+        if key not in by_client:
+            by_client[key] = {"requested": 0, "accepted": 0, "rejected": 0, "returned": 0}
+        by_client[key]["requested"] += 1
+        if h.status == "accepted":
+            by_client[key]["accepted"] += 1
+        elif h.status == "rejected":
+            by_client[key]["rejected"] += 1
+        elif h.status == "returned":
+            by_client[key]["returned"] += 1
+
+    return {
+        "total_requested": total_requested,
+        "total_accepted": total_accepted,
+        "total_rejected": total_rejected,
+        "total_returned": total_returned,
+        "by_client": [{"client_id": k, **v} for k, v in by_client.items()],
+        "period": {
+            "from": dfrom.isoformat() if dfrom else None,
+            "to": dto.isoformat() if dto else None,
+        },
+    }
+
+
+# ------- /analytics/contact-attempt-stats -------
+@router.get("/analytics/contact-attempt-stats")
+async def contact_attempt_stats(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    date_from: Optional[str] = Query(None, alias="from"),
+    date_to: Optional[str] = Query(None, alias="to"),
+):
+    """Aggregate contact attempt stats for candidates in tenant (filter by candidate created_at)."""
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    is_client = await is_client_tenant_for_list(db, tenant_id_str)
+    scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
+    dfrom = _parse_dt(date_from)
+    dto = _parse_dt(date_to, end_of_day=True)
+
+    cand_subq = (
+        select(Candidate.id)
+        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
+    )
+    if dfrom:
+        cand_subq = cand_subq.where(Candidate.created_at >= dfrom)
+    if dto:
+        cand_subq = cand_subq.where(Candidate.created_at <= dto)
+
+    attempts_stmt = (
+        select(ContactAttempt.candidate_id, ContactAttempt.result, func.count())
+        .where(ContactAttempt.candidate_id.in_(cand_subq.scalar_subquery()))
+        .group_by(ContactAttempt.candidate_id, ContactAttempt.result)
+    )
+    attempt_rows = (await db.execute(attempts_stmt)).all()
+
+    total_attempts = sum(cnt for _, _, cnt in attempt_rows)
+    by_result: Dict[str, int] = {}
+    cand_attempt_counts: Dict[str, int] = {}
+    for cand_id, result, cnt in attempt_rows:
+        by_result[result] = by_result.get(result, 0) + cnt
+        cand_attempt_counts[cand_id] = cand_attempt_counts.get(cand_id, 0) + cnt
+
+    candidates_with_attempts = len(cand_attempt_counts)
+    avg_per_candidate = (
+        total_attempts / candidates_with_attempts if candidates_with_attempts else 0
+    )
+    limit_reached_count = sum(1 for c in cand_attempt_counts.values() if c >= 3)
+
+    return {
+        "total_attempts": total_attempts,
+        "candidates_with_attempts": candidates_with_attempts,
+        "avg_per_candidate": round(avg_per_candidate, 2),
+        "limit_reached_count": limit_reached_count,
+        "by_result": by_result,
+        "period": {
+            "from": dfrom.isoformat() if dfrom else None,
+            "to": dto.isoformat() if dto else None,
+        },
+    }
+
+
+# ------- /analytics/document-stats -------
+@router.get("/analytics/document-stats")
+async def document_stats(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    date_from: Optional[str] = Query(None, alias="from"),
+    date_to: Optional[str] = Query(None, alias="to"),
+):
+    """Aggregate document stats for candidates in tenant (filter by candidate created_at)."""
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    is_client = await is_client_tenant_for_list(db, tenant_id_str)
+    scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
+    dfrom = _parse_dt(date_from)
+    dto = _parse_dt(date_to, end_of_day=True)
+
+    cand_subq = (
+        select(Candidate.id)
+        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
+    )
+    if dfrom:
+        cand_subq = cand_subq.where(Candidate.created_at >= dfrom)
+    if dto:
+        cand_subq = cand_subq.where(Candidate.created_at <= dto)
+
+    docs_stmt = (
+        select(Document.status, Document.kind, Document.candidate_id)
+        .where(Document.tenant_id == tenant_id_str)
+        .where(Document.candidate_id.in_(cand_subq.scalar_subquery()))
+        .where(Document.deleted_at.is_(None))
+    )
+    doc_rows = (await db.execute(docs_stmt)).all()
+
+    by_status: Dict[str, int] = {}
+    by_kind: Dict[str, int] = {}
+    total_docs = 0
+    ready_statuses = {"completed", "approved", "received", "delivered", "verified"}
+    candidates_with_complete: set[str] = set()
+    cand_doc_statuses: Dict[str, set[str]] = {}
+
+    for status, kind, cand_id in doc_rows:
+        s = str(status.value) if hasattr(status, "value") else str(status)
+        k = str(kind.value) if hasattr(kind, "value") else str(kind)
+        by_status[s] = by_status.get(s, 0) + 1
+        by_kind[k] = by_kind.get(k, 0) + 1
+        total_docs += 1
+        if cand_id not in cand_doc_statuses:
+            cand_doc_statuses[cand_id] = set()
+        cand_doc_statuses[cand_id].add(s)
+
+    for cand_id, statuses in cand_doc_statuses.items():
+        if any(st in ready_statuses for st in statuses):
+            candidates_with_complete.add(cand_id)
+
+    return {
+        "total_docs": total_docs,
+        "by_status": by_status,
+        "by_kind": by_kind,
+        "candidates_with_complete_docs": len(candidates_with_complete),
+        "period": {
+            "from": dfrom.isoformat() if dfrom else None,
+            "to": dto.isoformat() if dto else None,
+        },
+    }
+
+
 # ------- /analytics/export (оставим простой CSV-дашьборд) -------
 @router.get("/analytics/export")
-async def analytics_export(db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant)):
+async def analytics_export(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    stage_view: Optional[str] = Query(
+        None,
+        description="all | agency | client — режим отображения пайплайна по стадиям",
+    ),
+):
     db, tenant_id = db_tenant
     import csv
     import io
 
     tenant_id_str = str(tenant_id)
     visibility = get_tenant_visibility(db, tenant_id_str)
-    scope_clause = _candidate_scope_clause(tenant_id_str, visibility)
+    is_client = await is_client_tenant_for_list(db, tenant_id_str)
+    scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
+    effective_stage_view = stage_view or ("client" if is_client else "all")
 
-    total = (await db.execute(select(func.count()).select_from(Candidate).where(scope_clause))).scalar_one()
+    total = (await db.execute(select(func.count()).select_from(Candidate).where(and_(Candidate.deleted_at.is_(None), scope_clause)))).scalar_one()
     stage_rows = (
         await db.execute(
-            select(Candidate.stage, func.count()).where(scope_clause).group_by(Candidate.stage)
+            select(Candidate.stage, func.count()).where(and_(Candidate.deleted_at.is_(None), scope_clause)).group_by(Candidate.stage)
         )
     ).all()
 
@@ -342,6 +847,8 @@ async def analytics_export(db_tenant: tuple[AsyncSession, UUID] = Depends(get_db
     w.writerow(["stage", "count"])
     for s, cnt in stage_rows:
         name = s.value if isinstance(s, CandidateStage) else str(s)
+        if not _stage_visible_for_view(name, effective_stage_view):
+            continue
         w.writerow([name, int(cnt)])
 
     return StreamingResponse(
@@ -371,17 +878,90 @@ async def candidate_slices(
         alias="vacancy_id",
         description="ID вакансии (можно несколько: повторить параметр или передать через запятую).",
     ),
+    company_id: Optional[List[str]] = Query(
+        None,
+        alias="company_id",
+        description="ID компании (можно несколько).",
+    ),
+    manager_id: Optional[List[str]] = Query(
+        None,
+        alias="manager_id",
+        description="ID менеджера (user_id или manager field, можно несколько).",
+    ),
     limit: int = Query(
         20,
         ge=5,
         le=200,
         description="Максимальное число строк в агрегированных таблицах.",
     ),
+    scope_tenant_id: Optional[UUID] = Query(
+        None,
+        description="Scope to this tenant (same as list); uses X-Tenant-Id if not set.",
+    ),
+    stage_view: Optional[str] = Query(
+        None,
+        description="all | agency | client — режим отображения пайплайна по стадиям",
+    ),
 ):
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
-    visibility = get_tenant_visibility(db, tenant_id_str)
-    scope_clause = _candidate_scope_clause(tenant_id_str, visibility)
+    scope_tenant = str(scope_tenant_id) if scope_tenant_id else tenant_id_str
+
+    stage_filters: list[str] = []
+    if stages:
+        for value in stages:
+            if not value:
+                continue
+            parts = [p.strip() for p in value.split(",") if p and p.strip()]
+            stage_filters.extend(parts)
+    vacancy_filters: list[str] = []
+    if vacancy_id:
+        for value in vacancy_id:
+            if not value:
+                continue
+            parts = [p.strip() for p in value.split(",") if p and p.strip()]
+            vacancy_filters.extend(parts)
+    company_filters: list[str] = []
+    if company_id:
+        for value in company_id:
+            if not value:
+                continue
+            parts = [p.strip() for p in value.split(",") if p and p.strip()]
+            company_filters.extend(parts)
+    manager_filters: list[str] = []
+    if manager_id:
+        for value in manager_id:
+            if not value:
+                continue
+            parts = [p.strip() for p in value.split(",") if p and p.strip()]
+            manager_filters.extend(parts)
+
+    cache_params = {
+        "from": date_from,
+        "to": date_to,
+        "by": by,
+        "scope_tenant": scope_tenant,
+        "stages": ",".join(sorted(stage_filters)) if stage_filters else "",
+        "vacancy_id": ",".join(sorted(vacancy_filters)) if vacancy_filters else "",
+        "company_id": ",".join(sorted(company_filters)) if company_filters else "",
+        "manager_id": ",".join(sorted(manager_filters)) if manager_filters else "",
+        "limit": limit,
+    }
+    cached = await cache_get("candidate-slices", scope_tenant, cache_params)
+    if cached is not None:
+        return cached
+
+    try:
+        await db.execute(
+            text("SELECT set_config('app.tenant_id', :tid, true)"),
+            {"tid": scope_tenant},
+        )
+    except Exception:
+        pass
+    visibility = get_tenant_visibility(db, scope_tenant)
+    client_tenant = await is_client_tenant_for_list(db, scope_tenant)
+    scope_clause = repo_scope_clause(scope_tenant, visibility, is_client_tenant=client_tenant)
+    effective_stage_view = stage_view or ("client" if client_tenant else "all")
     dfrom = _parse_dt(date_from)
     dto = _parse_dt(date_to, end_of_day=True)
 
@@ -401,7 +981,9 @@ async def candidate_slices(
             Candidate.recruiter_id,
             Candidate.created_at,
             Candidate.updated_at,
+            Candidate.company_id,
             Company.name.label("company_name"),
+            Candidate.vacancy_id,
             Vacancy.title.label("vacancy_title"),
             recruiter_alias.full_name.label("recruiter_name"),
             recruiter_alias.short_id.label("recruiter_short"),
@@ -415,36 +997,45 @@ async def candidate_slices(
         .outerjoin(Vacancy, Candidate.vacancy_id == Vacancy.id)
         .outerjoin(recruiter_alias, recruiter_alias.id == Candidate.recruiter_id)
         .outerjoin(manager_alias, manager_alias.id == Candidate.manager)
-        .where(scope_clause)
-        .where(Candidate.deleted_at.is_(None))
+        .where(and_(Candidate.deleted_at.is_(None), scope_clause))
     )
+    
+    # Фильтрация тестовых данных: исключаем компании и вакансии с "test", "тест", "demo" в названии
+    test_patterns = ["test", "тест", "demo", "демо"]
+    test_filters = []
+    for pattern in test_patterns:
+        test_filters.append(func.lower(Company.name).like(f"%{pattern}%"))
+        test_filters.append(func.lower(Vacancy.title).like(f"%{pattern}%"))
+    if test_filters:
+        from sqlalchemy import not_ as sql_not
+        test_condition = sql_not(or_(*test_filters))
+        stmt = stmt.where(test_condition)
+    
     stmt = _apply_period_filters(stmt, dfrom, dto, by)
 
-    stage_filters: list[str] = []
-    if stages:
-        for value in stages:
-            if not value:
-                continue
-            parts = [p.strip() for p in value.split(",") if p and p.strip()]
-            stage_filters.extend(parts)
     if stage_filters:
         stmt = stmt.where(Candidate.stage.in_(stage_filters))
-
-    vacancy_filters: list[str] = []
-    if vacancy_id:
-        for value in vacancy_id:
-            if not value:
-                continue
-            parts = [p.strip() for p in value.split(",") if p and p.strip()]
-            vacancy_filters.extend(parts)
     if vacancy_filters:
         stmt = stmt.where(Candidate.vacancy_id.in_(vacancy_filters))
+    if company_filters:
+        stmt = stmt.where(Candidate.company_id.in_(company_filters))
+    if manager_filters:
+        stmt = stmt.where(
+            or_(
+                Candidate.manager.in_(manager_filters),
+                Candidate.recruiter_id.in_(manager_filters),
+            )
+        )
 
     rows = (await db.execute(stmt)).all()
 
+    # Счётчики стадий считаем по коду, а не по русской метке,
+    # чтобы фронтенд мог тянуть переводы из i18n (app.candidates.stage_labels).
     stage_counter: Counter[str] = Counter()
     company_counter: Counter[str] = Counter()
     vacancy_counter: Counter[str] = Counter()
+    company_labels: Dict[str, str] = {}
+    vacancy_labels: Dict[str, str] = {}
     source_counter: Counter[str] = Counter()
     citizenship_counter: Counter[str] = Counter()
     country_counter: Counter[str] = Counter()
@@ -485,7 +1076,9 @@ async def candidate_slices(
             recruiter_id,
             created_at,
             updated_at,
+            company_id,
             company_name,
+            vacancy_id,
             vacancy_title,
             recruiter_name,
             recruiter_short,
@@ -497,10 +1090,47 @@ async def candidate_slices(
 
         stage_code = stage_code or None
         stage_label = _stage_label(stage_code)
-        stage_counter[stage_label] += 1
+        if not _stage_visible_for_view(stage_code, effective_stage_view):
+            # всё равно добавляем snapshot, но не учитываем в стадийных агрегациях
+            snapshot.append(
+                {
+                    "id": str(candidate_id),
+                    "stage": stage_code,
+                    "stage_label": stage_label,
+                    "company": _maybe(company_name),
+                    "company_id": str(company_id) if company_id else None,
+                    "vacancy": _maybe(vacancy_title or company_name),
+                    "vacancy_id": str(vacancy_id) if vacancy_id else None,
+                    "source": source_label if source_label != "—" else None,
+                    "manager": final_manager_label or None,
+                    "manager_name": manager_full or None,
+                    "manager_short": manager_short or None,
+                    "manager_email": manager_email or None,
+                    "manager_id": manager_raw,
+                    "recruiter_id": recruiter_id,
+                    "recruiter_name": recruiter_name or None,
+                    "recruiter_short": recruiter_short or None,
+                    "recruiter_email": recruiter_email or None,
+                    "citizenship": _maybe(citizenship),
+                    "country": _maybe(country),
+                    "status_reason_codes": reason_codes,
+                    "status_reason_labels": reason_labels,
+                    "reason_stage": reason_stage,
+                    "reason_stage_label": _stage_label(reason_stage) if reason_stage else None,
+                    "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else created_at,
+                    "updated_at": updated_at.isoformat() if hasattr(updated_at, "isoformat") else updated_at,
+                }
+            )
+            continue
+
+        # Считаем по коду; если кода нет, используем метку как "сырой" ключ.
+        counter_key = str(stage_code) if stage_code else stage_label
+        stage_counter[counter_key] += 1
 
         company_label = _label(company_name)
+        company_key = str(company_id) if company_id else f"label::{company_label}"
         vacancy_label = _label(vacancy_title or company_name)
+        vacancy_key = str(vacancy_id) if vacancy_id else f"label::{vacancy_label}"
         origin_payload = _safe_dict(origin_raw)
         origin_hint = None
         if isinstance(origin_payload.get("source"), str):
@@ -510,12 +1140,15 @@ async def candidate_slices(
         normalized_source = normalize_candidate_source(source or origin_hint)
         source_label = normalized_source or (_label(source) if source else "—")
 
-        company_counter[company_label] += 1
-        vacancy_counter[vacancy_label] += 1
+        company_counter[company_key] += 1
+        vacancy_counter[vacancy_key] += 1
+        company_labels[company_key] = company_label
+        vacancy_labels[vacancy_key] = vacancy_label
         source_counter[source_label] += 1
 
-        company_stage_breakdown[company_label][stage_label] += 1
-        vacancy_stage_breakdown[vacancy_label][stage_label] += 1
+        # Для разбивки по компаниям/вакансиям тоже храним по коду.
+        company_stage_breakdown[company_key][counter_key] += 1
+        vacancy_stage_breakdown[vacancy_key][counter_key] += 1
 
         extra_payload = _safe_dict(extra_raw)
         personal_data = _safe_dict(personal_data_raw)
@@ -554,8 +1187,8 @@ async def candidate_slices(
                 reason_counters[reason_stage][placeholder] += 1
 
         manager_preferred = manager_full or manager_short or manager_email or manager_raw
-        recruiter_preferred = recruiter_name or recruiter_short or recruiter_email or recruiter_id
-        final_manager_label = manager_preferred or recruiter_preferred
+        # Если у кандидата нет менеджера, не подставляем рекрутера – отображаем пустое значение.
+        final_manager_label = manager_preferred or None
 
         snapshot.append(
             {
@@ -563,7 +1196,9 @@ async def candidate_slices(
                 "stage": stage_code,
                 "stage_label": stage_label,
                 "company": _maybe(company_name),
+                "company_id": str(company_id) if company_id else None,
                 "vacancy": _maybe(vacancy_title or company_name),
+                "vacancy_id": str(vacancy_id) if vacancy_id else None,
                 "source": source_label if source_label != "—" else None,
                 "manager": final_manager_label or None,
                 "manager_name": manager_full or None,
@@ -592,20 +1227,25 @@ async def candidate_slices(
             for key, count in items[:top_limit]
         ]
 
-    def _grouped(counter: Counter[str], breakdowns: Dict[str, Counter[str]], top_limit: int):
+    def _grouped(
+        counter: Counter[str],
+        breakdowns: Dict[str, Counter[str]],
+        labels: Dict[str, str],
+        top_limit: int,
+    ):
         items = sorted(counter.items(), key=lambda kv: (-kv[1], kv[0]))[:top_limit]
         result: List[Dict[str, Any]] = []
         for key, total in items:
             stage_counts = breakdowns.get(key, {})
             breakdown = {
-                stage: int(stage_counts.get(stage, 0))
-                for stage in _ORDERED_STAGE_LABELS
-                if stage_counts.get(stage)
+                _stage_label(stage_code): int(stage_counts.get(stage_code, 0))
+                for stage_code in STAGE_ORDER
+                if stage_counts.get(stage_code)
             }
             result.append(
                 {
                     "key": key,
-                    "label": key,
+                    "label": labels.get(key, key),
                     "count": int(total),
                     "by_stage": breakdown,
                 }
@@ -615,23 +1255,25 @@ async def candidate_slices(
     top_limit = max(5, min(limit, 200))
     list_limit = max(10, min(limit * 2, 200))
 
-    ordered_stage_set = set(_ORDERED_STAGE_LABELS)
+    ordered_stage_set = set(STAGE_ORDER)
     stage_rows: List[Dict[str, Any]] = []
-    for label in _ORDERED_STAGE_LABELS:
-        count = int(stage_counter.get(label, 0))
+    for code in STAGE_ORDER:
+        if not _stage_visible_for_view(code, effective_stage_view):
+            continue
+        count = int(stage_counter.get(code, 0))
         if count:
-            stage_rows.append({"key": label, "label": label, "count": count})
+            stage_rows.append({"key": code, "label": _stage_label(code), "count": count})
     extra_stages = [
-        (label, count)
-        for label, count in stage_counter.items()
-        if label not in ordered_stage_set
+        (code, count)
+        for code, count in stage_counter.items()
+        if code not in ordered_stage_set
     ]
     stage_rows.extend(
-        {"key": label, "label": label, "count": int(count)}
-        for label, count in sorted(extra_stages, key=lambda kv: (-kv[1], kv[0]))
+        {"key": code, "label": _stage_label(code), "count": int(count)}
+        for code, count in sorted(extra_stages, key=lambda kv: (-kv[1], kv[0]))
     )
 
-    return {
+    result = {
         "period": {
             "from": dfrom.isoformat() if dfrom else None,
             "to": dto.isoformat() if dto else None,
@@ -639,8 +1281,10 @@ async def candidate_slices(
         "by": by,
         "total": len(snapshot),
         "stages": stage_rows,
-        "companies": _grouped(company_counter, company_stage_breakdown, top_limit),
-        "vacancies": _grouped(vacancy_counter, vacancy_stage_breakdown, top_limit),
+        "companies_total": len(company_counter),
+        "vacancies_total": len(vacancy_counter),
+        "companies": _grouped(company_counter, company_stage_breakdown, company_labels, top_limit),
+        "vacancies": _grouped(vacancy_counter, vacancy_stage_breakdown, vacancy_labels, top_limit),
         "sources": _top(source_counter, list_limit),
         "citizenships": _top(citizenship_counter, list_limit),
         "countries": _top(country_counter, list_limit),
@@ -650,3 +1294,5 @@ async def candidate_slices(
         },
         "snapshot": snapshot,
     }
+    await cache_set("candidate-slices", scope_tenant, cache_params, result, ttl_sec=300)
+    return result

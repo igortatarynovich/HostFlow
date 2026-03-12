@@ -488,6 +488,32 @@ export async function createCompany(payload: Record<string, any>) {
   return data;
 }
 
+export type OnboardingStatus = {
+  business_type: 'agency' | 'employer' | 'services'
+  onboarding_required: boolean
+  activation_required: boolean
+  companies_count: number
+  leads_count: number
+  vacancies_count: number
+  service_orders_count: number
+  reminders_count: number
+  clients_count: number
+  counterparties_count: number
+  steps: {
+    company_created: boolean
+    first_lead_created: boolean
+    first_vacancy_created: boolean
+    first_service_order_created: boolean
+    first_client_created: boolean
+    next_action_created: boolean
+  }
+};
+
+export async function getOnboardingStatus(): Promise<OnboardingStatus> {
+  const { data } = await api.get<OnboardingStatus>('/onboarding/status');
+  return data;
+}
+
 export async function updateCompany(id: string, payload: Record<string, any>) {
   const { data } = await api.put(`/companies/${id}`, payload);
   return data;
@@ -562,12 +588,18 @@ export async function getCompanyReadiness(id: string) {
 }
 
 // Leads -----------------------------------------------------------------
-export async function listLeads(opts?: { status?: string; limit?: number; offset?: number }) {
+export async function listLeads(opts?: { status?: string; stage?: string; limit?: number; offset?: number }) {
   const params: Record<string, any> = {};
   if (opts?.status) params.status = opts.status;
+  if (opts?.stage) params.stage = opts.stage;
   if (opts?.limit != null) params.limit = opts.limit;
   if (opts?.offset != null) params.offset = opts.offset;
   const { data } = await api.get(`/leads`, { params });
+  return data;
+}
+
+export async function updateLeadStage(leadId: string, payload: { stage?: string | null }) {
+  const { data } = await api.patch(`/leads/${leadId}`, payload);
   return data;
 }
 
@@ -608,6 +640,16 @@ export async function createRefund(paymentId: string, payload: Record<string, an
   return data;
 }
 
+export async function sendInvoice(invoiceId: string) {
+  const { data } = await api.post(`/invoices/${invoiceId}/send`);
+  return data;
+}
+
+export async function getInvoicePdf(invoiceId: string): Promise<Blob> {
+  const { data } = await api.get(`/invoices/${invoiceId}/pdf`, { responseType: 'blob' });
+  return data;
+}
+
 // Notifications ---------------------------------------------------------------
 export async function listNotifications(opts?: { limit?: number; includeRead?: boolean; scope?: 'all' | 'direct' }) {
   const params: Record<string, any> = {};
@@ -626,6 +668,57 @@ export async function markNotificationsRead(payload: { ids?: string[]; markAll?:
     body.mark_all = true;
   }
   await api.post(`/notifications/read`, body);
+}
+
+export async function reconcileNotifications() {
+  const { data } = await api.post(`/notifications/reconcile`, {});
+  return data as { cleaned: number };
+}
+
+export async function reconcileTenantNotifications(maxUsers = 2000) {
+  const { data } = await api.post(`/notifications/reconcile-tenant`, null, {
+    params: { max_users: maxUsers },
+  });
+  return data as { users_processed: number; cleaned: number };
+}
+
+// Reminders v2 ---------------------------------------------------------------
+export async function listReminders(opts?: {
+  status?: string[];
+  assigneeId?: string;
+  entityType?: string;
+  entityId?: string;
+}) {
+  const params: Record<string, any> = {};
+  if (opts?.status) params.status_filter = opts.status;
+  if (opts?.assigneeId) params.assignee_id = opts.assigneeId;
+  if (opts?.entityType) params.entity_type = opts.entityType;
+  if (opts?.entityId) params.entity_id = opts.entityId;
+  const { data } = await api.get(`/reminders`, { params });
+  return data;
+}
+
+export async function createReminder(payload: Record<string, any>) {
+  const { data } = await api.post(`/reminders`, payload);
+  return data;
+}
+
+export async function updateReminder(id: string, payload: Record<string, any>) {
+  const { data } = await api.patch(`/reminders/${id}`, payload);
+  return data;
+}
+
+export async function completeReminder(id: string) {
+  const { data } = await api.post(`/reminders/${id}/complete`);
+  return data;
+}
+
+export async function snoozeReminder(id: string, payload: { minutes?: number; new_remind_at?: string | Date }) {
+  const body: Record<string, any> = {};
+  if (payload.minutes != null) body.minutes = payload.minutes;
+  if (payload.new_remind_at) body.new_remind_at = payload.new_remind_at;
+  const { data } = await api.post(`/reminders/${id}/snooze`, body);
+  return data;
 }
 
 // Vacancies ---------------------------------------------------------------

@@ -77,6 +77,42 @@ class TenantModuleSettingsPatch(BaseModel):
     client_portal: bool | None = None
 
 
+class RoleModulePermissions(BaseModel):
+    visible: bool = True
+    editable: bool = False
+
+
+class TenantRoleModuleMatrix(BaseModel):
+    administrator: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    supervisor: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    recruiter: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    client_manager: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    client_processor: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+    viewer: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+
+
+class TenantRoleModuleMatrixPatch(BaseModel):
+    administrator: Dict[str, RoleModulePermissions] | None = None
+    supervisor: Dict[str, RoleModulePermissions] | None = None
+    recruiter: Dict[str, RoleModulePermissions] | None = None
+    client_manager: Dict[str, RoleModulePermissions] | None = None
+    client_processor: Dict[str, RoleModulePermissions] | None = None
+    viewer: Dict[str, RoleModulePermissions] | None = None
+
+
+class EffectiveRoleModules(BaseModel):
+    role: str
+    modules: Dict[str, RoleModulePermissions] = Field(default_factory=dict)
+
+
+class TenantUserModuleOverrides(BaseModel):
+    users: Dict[str, Dict[str, RoleModulePermissions]] = Field(default_factory=dict)
+
+
+class TenantUserModuleOverridesPatch(BaseModel):
+    users: Dict[str, Dict[str, RoleModulePermissions] | None] = Field(default_factory=dict)
+
+
 class TenantProvisionIn(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 

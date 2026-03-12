@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import get_current_user
+from backend.app.auth.deps import Role, get_current_user, require_roles
 from backend.app.auth.deps import UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import user_notifications
@@ -65,6 +65,15 @@ class NotificationReadRequest(BaseModel):
     mark_all: bool = False
 
 
+class NotificationReconcileResponse(BaseModel):
+    cleaned: int
+
+
+class NotificationTenantReconcileResponse(BaseModel):
+    users_processed: int
+    cleaned: int
+
+
 @router.get("/templates", response_model=NotificationTemplateListResponse)
 async def list_notification_templates_endpoint() -> NotificationTemplateListResponse:
     templates = list_notification_templates()
@@ -112,16 +121,25 @@ async def list_notification_templates_endpoint() -> NotificationTemplateListResp
 async def list_notifications(
     limit: int = Query(50, ge=1, le=200),
     include_read: bool = Query(False),
+    scope: Literal["all", "direct"] = Query("direct"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> NotificationListResponse:
     db, tenant_id = db_tenant
+    cleaned = await user_notifications.cleanup_stale_sla_notifications(
+        db,
+        tenant_id=str(tenant_id),
+        user_id=str(current_user.sub),
+    )
+    if cleaned > 0:
+        await db.commit()
     notifications = await user_notifications.list_notifications(
         db,
         tenant_id=str(tenant_id),
         user_id=str(current_user.sub),
         limit=limit,
         include_read=include_read,
+        scope=scope,
     )
     return NotificationListResponse(
         items=[
@@ -162,3 +180,44 @@ async def mark_notifications_read(
     if updated > 0:
         await db.commit()
     return {"updated": updated}
+
+
+@router.post("/reconcile", response_model=NotificationReconcileResponse)
+async def reconcile_notifications(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> NotificationReconcileResponse:
+    db, tenant_id = db_tenant
+    cleaned = await user_notifications.cleanup_stale_sla_notifications(
+        db,
+        tenant_id=str(tenant_id),
+        user_id=str(current_user.sub),
+    )
+    if cleaned > 0:
+        await db.commit()
+    return NotificationReconcileResponse(cleaned=cleaned)
+
+
+@router.post(
+    "/reconcile-tenant",
+    response_model=NotificationTenantReconcileResponse,
+    dependencies=[Depends(require_roles(Role.supervisor, Role.administrator, Role.superadmin))],
+)
+async def reconcile_notifications_tenant(
+    max_users: int = Query(2000, ge=1, le=10000),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> NotificationTenantReconcileResponse:
+    _ = current_user
+    db, tenant_id = db_tenant
+    result = await user_notifications.cleanup_stale_sla_notifications_for_tenant(
+        db,
+        tenant_id=str(tenant_id),
+        max_users=max_users,
+    )
+    if int(result.get("cleaned") or 0) > 0:
+        await db.commit()
+    return NotificationTenantReconcileResponse(
+        users_processed=int(result.get("users_processed") or 0),
+        cleaned=int(result.get("cleaned") or 0),
+    )

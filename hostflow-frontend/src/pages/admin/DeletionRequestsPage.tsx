@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { approveDeleteRequest, listDeleteRequests, rejectDeleteRequest } from '../../api/deletionRequests'
 import type { DeletionRequest } from '../../api/types'
+import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useI18n } from '../../i18n'
 
@@ -81,11 +82,11 @@ export default function DeletionRequestsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{t('app.admin.deletion_requests.title')}</h1>
-          <p className="text-sm text-gray-500">{t('app.admin.deletion_requests.subtitle')}</p>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('app.admin.deletion_requests.title')}</h1>
+          <p className="text-sm text-slate-500">{t('app.admin.deletion_requests.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -104,48 +105,60 @@ export default function DeletionRequestsPage() {
         </div>
       </header>
 
-      {error && <div className="rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
+      {error && (
+        <ErrorRecoveryBanner
+          info={{
+            title: error,
+            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+          }}
+          onRetry={() => void loadRequests()}
+          retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+          secondaryTo="/app/settings/audit"
+          secondaryLabel={t('admin.settings.audit.tabs.deletion', { defaultValue: 'Очередь удаления' })}
+          compact
+        />
+      )}
 
       {loading ? (
-        <div className="text-sm text-gray-500">{t('common.loading')}</div>
+        <div className="text-sm text-slate-500">{t('common.loading')}</div>
       ) : requests.length === 0 ? (
-        <div className="text-sm text-gray-500">{t('app.admin.deletion_requests.messages.empty')}</div>
+        <div className="text-sm text-slate-500">{t('app.admin.deletion_requests.messages.empty')}</div>
       ) : (
         <ul className="space-y-3">
           {requests.map((request) => {
             const isPending = request.status === 'pending'
             const saving = savingId === request.id
             return (
-              <li key={request.id} className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700">
+              <li key={request.id} className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <div className="font-semibold text-gray-900">
+                    <div className="font-semibold text-slate-900">
                       {t('app.admin.deletion_requests.labels.candidate')}: {request.candidate?.first_name} {request.candidate?.last_name}
                     </div>
-                    <div className="text-xs text-gray-500">{t('common.labels.id')}: {request.candidate_id}</div>
+                    <div className="text-xs text-slate-500">{t('common.labels.id')}: {request.candidate_id}</div>
                   </div>
-                  <div className="text-xs text-gray-500">
-                    {t('common.labels.status')}: <span className="font-medium text-gray-900">{t(`app.admin.deletion_requests.status.${request.status}`, { defaultValue: request.status })}</span>
+                  <div className="text-xs text-slate-500">
+                    {t('common.labels.status')}: <span className="font-medium text-slate-900">{t(`app.admin.deletion_requests.status.${request.status}`, { defaultValue: request.status })}</span>
                   </div>
                 </div>
 
                 <div className="mt-2 grid gap-2 md:grid-cols-2">
                   <div>
-                    <div className="text-xs uppercase text-gray-400">{t('app.admin.deletion_requests.labels.recruiter')}</div>
+                    <div className="text-xs uppercase text-slate-400">{t('app.admin.deletion_requests.labels.recruiter')}</div>
                     <div>{request.requested_by_user?.email || request.requested_by}</div>
                   </div>
                   <div>
-                    <div className="text-xs uppercase text-gray-400">{t('app.admin.deletion_requests.labels.supervisor')}</div>
+                    <div className="text-xs uppercase text-slate-400">{t('app.admin.deletion_requests.labels.supervisor')}</div>
                     <div>{request.supervisor_user?.email || request.supervisor_id}</div>
                   </div>
                 </div>
 
                 {request.reason && (
-                  <div className="mt-2 text-xs text-gray-500">{t('app.admin.deletion_requests.labels.reason')}: {request.reason}</div>
+                  <div className="mt-2 text-xs text-slate-500">{t('app.admin.deletion_requests.labels.reason')}: {request.reason}</div>
                 )}
 
                 {request.status !== 'pending' && request.resolved_by && (
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-slate-500">
                     {t('app.admin.deletion_requests.labels.resolution')}: {t(`app.admin.deletion_requests.status.${request.status}`, { defaultValue: request.status })} ·{' '}
                     {request.resolved_at ? new Date(request.resolved_at).toLocaleString() : ''}
                   </div>

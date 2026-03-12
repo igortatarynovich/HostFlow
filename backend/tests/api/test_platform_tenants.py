@@ -84,10 +84,10 @@ async def test_platform_patch_updates_workspace_label(client: AsyncClient) -> No
     resp = await client.patch(
         f"{PLATFORM_ENDPOINT}/{tenant_id}",
         headers=headers,
-        json={"workspace_label": "Citronex Group"},
+        json={"workspace_label": "Test Client Group"},
     )
     assert resp.status_code == 200, resp.text
-    assert resp.json()["workspace_label"] == "Citronex Group"
+    assert resp.json()["workspace_label"] == "Test Client Group"
 
 
 @pytest.mark.anyio

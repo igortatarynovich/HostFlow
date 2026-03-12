@@ -217,6 +217,7 @@ def ensure_document_templates(conn):
             "code": "driver_ce",
             "name": "Driver CE Poland",
             "documents": [
+                {"doc_type": "pesel", "required": True},  # PESEL always required
                 {"doc_type": "identity_document", "required": True},
                 {"doc_type": "driver_license", "required": True},
                 {"doc_type": "qualification_code95", "required": True},
@@ -241,6 +242,7 @@ def ensure_document_templates(conn):
             "code": "warehouse",
             "name": "Warehouse Worker",
             "documents": [
+                {"doc_type": "pesel", "required": True},  # PESEL always required
                 {"doc_type": "identity_document", "required": True},
                 {"doc_type": "medical_certificate", "required": True},
                 {"doc_type": "criminal_record", "required": True},

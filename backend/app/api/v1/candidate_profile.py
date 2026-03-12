@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, require_roles
 from backend.app.db.deps import get_db_with_tenant as get_db_with_tenant
+from backend.app.services.handoff import is_client_tenant, can_agency_edit, can_client_edit
 from backend.app.models.candidate import Candidate
 
 # backend/app/api/v1/candidate_profile.py
@@ -329,7 +330,7 @@ async def get_profile(
 @router.patch(
     "/{candidate_id}",
     response_model=CandidateProfile,
-    dependencies=[Depends(require_roles(Role.manager, Role.admin))],
+    dependencies=[Depends(require_roles(Role.manager, Role.admin, Role.client_manager, Role.client_processor))],
 )
 async def patch_profile(
     candidate_id: UUID,
@@ -337,7 +338,17 @@ async def patch_profile(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
     c = await _get_candidate(db, tenant_id, candidate_id)
+
+    # Handoff permissions
+    client_tenant = await is_client_tenant(db, tenant_id_str)
+    if client_tenant:
+        if not await can_client_edit(db, str(candidate_id), tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot edit: no accepted handoff")
+    else:
+        if not await can_agency_edit(db, str(candidate_id), tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot edit: candidate has accepted handoff")
     extra = _safe_json_load(c.extra)
     prof = _get_profile(extra)
 

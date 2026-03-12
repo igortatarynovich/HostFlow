@@ -17,13 +17,16 @@ function asArray<T = any>(value: any): T[] {
   return []
 }
 
+const MIN_SEARCH_LENGTH = 2
+
 export async function searchGlobal(query: string, signal?: AbortSignal): Promise<GlobalSearchResult[]> {
-  if (!query.trim()) return []
-  const params = { q: query.trim(), limit: 5, offset: 0 }
+  const q = query.trim()
+  if (!q || q.length < MIN_SEARCH_LENGTH) return []
+  const params = { q, limit: 5, offset: 0 }
   const [candidates, companies, documents] = await Promise.allSettled([
     api.get('/candidates/', { params, signal }),
     api.get('/companies/', { params, signal }),
-    docsApi.get('/documents', { params: { q: query.trim(), limit: 5 }, signal }),
+    docsApi.get('/documents', { params: { q, limit: 5 }, signal }),
   ])
 
   const results: GlobalSearchResult[] = []

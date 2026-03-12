@@ -1,15 +1,20 @@
 """API router for invoices."""
 from __future__ import annotations
 
+import logging
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.models.invoice import InvoiceStatus
+from backend.app.models.invoice import Invoice, InvoiceStatus
+from backend.app.services.invoice_pdf import generate_invoice_pdf
+from backend.app.services.notifications import send_webhook
 
 from . import crud
 from .schemas import (
@@ -22,6 +27,7 @@ from .schemas import (
     RefundOut,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
 
@@ -153,7 +159,7 @@ async def create_payment(
     db, tenant_id = db_tenant
     
     # Verify invoice exists
-    invoice = await crud.get_invoice(db, tenant_id, invoice_id)
+    invoice = await crud.get_invoice(db, str(tenant_id), invoice_id)
     if not invoice:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -216,4 +222,154 @@ async def create_refund(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         ) from e
+
+
+@router.get("/{invoice_id}/pdf")
+async def get_invoice_pdf(
+    invoice_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> Response:
+    """Generate and download invoice PDF."""
+    db, tenant_id = db_tenant
+    
+    invoice = await crud.get_invoice(db, str(tenant_id), invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found",
+        )
+    
+    # Load items for PDF generation
+    await db.refresh(invoice, ["items"])
+    
+    try:
+        pdf_bytes = generate_invoice_pdf(invoice)
+        return StreamingResponse(
+            iter([pdf_bytes]),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="invoice_{invoice.invoice_number}.pdf"'
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate PDF for invoice {invoice_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate PDF",
+        ) from e
+
+
+@router.post("/{invoice_id}/send", response_model=InvoiceOut)
+async def send_invoice(
+    invoice_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> InvoiceOut:
+    """Send invoice to client via email/webhook."""
+    db, tenant_id = db_tenant
+    
+    # Only managers and admins can send invoices
+    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only managers and admins can send invoices",
+        )
+    
+    invoice = await crud.get_invoice(db, str(tenant_id), invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found",
+        )
+    
+    # Only send issued or sent invoices
+    if invoice.status not in (InvoiceStatus.issued.value, InvoiceStatus.sent.value):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot send invoice with status {invoice.status}",
+        )
+    
+    # Generate PDF
+    await db.refresh(invoice, ["items"])
+    try:
+        pdf_bytes = generate_invoice_pdf(invoice)
+        # In production, save PDF to storage and update pdf_file_id
+        # For now, we'll just send via webhook
+    except Exception as e:
+        logger.error(f"Failed to generate PDF for invoice {invoice_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate PDF for sending",
+        ) from e
+    
+    # Send via webhook (email service will handle actual email sending)
+    try:
+        recipient_email = None
+        if invoice.billing_details:
+            recipient_email = invoice.billing_details.get("email")
+        
+        await send_webhook(
+            "invoice.sent",
+            {
+                "invoice_id": invoice.id,
+                "invoice_number": invoice.invoice_number,
+                "tenant_id": str(tenant_id),
+                "recipient_email": recipient_email,
+                "total_amount": str(invoice.total_amount),
+                "currency": invoice.currency,
+                "pdf_base64": None,  # In production, encode PDF as base64 or provide download URL
+            }
+        )
+        
+        # Update status to 'sent'
+        invoice.status = InvoiceStatus.sent.value
+        await db.commit()
+        await db.refresh(invoice)
+        
+        return InvoiceOut.model_validate(invoice)
+    except Exception as e:
+        logger.error(f"Failed to send invoice {invoice_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send invoice",
+        ) from e
+
+
+@router.post("/{invoice_id}/cancel", response_model=InvoiceOut)
+async def cancel_invoice(
+    invoice_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> InvoiceOut:
+    """Cancel an invoice."""
+    db, tenant_id = db_tenant
+    
+    # Only managers and admins can cancel invoices
+    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only managers and admins can cancel invoices",
+        )
+    
+    invoice = await crud.get_invoice(db, str(tenant_id), invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found",
+        )
+    
+    # Cannot cancel paid invoices
+    if invoice.status == InvoiceStatus.paid.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot cancel paid invoice",
+        )
+    
+    # Update status to cancelled
+    invoice.status = InvoiceStatus.cancelled.value
+    await db.commit()
+    await db.refresh(invoice)
+    
+    return InvoiceOut.model_validate(invoice)
 

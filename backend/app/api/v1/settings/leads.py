@@ -25,6 +25,7 @@ from backend.app.modules.leads.schemas import (
     MetaLeadRerouteRequest,
     MetaLeadSettingsOut,
     MetaLeadSettingsUpdate,
+    UnmappedLeadsResponse,
 )
 from backend.app.services.imports import leads as import_service
 
@@ -248,6 +249,28 @@ async def delete_mapping_endpoint(
     await admin_service.delete_mapping(db, tenant_id, ad_id)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/unmapped-leads",
+    response_model=UnmappedLeadsResponse,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def list_unmapped_leads_endpoint(
+    status: str = Query(default="needs_routing", description="Lead status to filter"),
+    limit_per_ad: int = Query(default=10, ge=1, le=50, description="Max leads per ad_id group"),
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> UnmappedLeadsResponse:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    return await admin_service.list_unmapped_leads(
+        db,
+        tenant_id=tenant_id,
+        status=status,
+        limit_per_ad=limit_per_ad,
+    )
 
 
 @router.post(

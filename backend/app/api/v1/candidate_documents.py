@@ -11,10 +11,11 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, Response, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, root_validator
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
+from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
@@ -25,8 +26,17 @@ from backend.app.models.enums import (
     DocumentStatus,
 )
 from backend.app.services.extractors import auto_fill_from_file
+from backend.app.services import candidate_notifications
+from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
 from backend.app.services import reminders as reminders_service
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
+from backend.app.services.handoff import (
+    is_client_tenant,
+    has_pending_handoff_for_client,
+    client_has_accepted_handoff,
+    can_agency_edit,
+    can_client_edit,
+)
 from backend.app.services.document_catalog import (
     doc_type_requires_user_comment,
     get_doc_type_defaults,
@@ -54,6 +64,7 @@ except Exception:  # pragma: no cover
 
 router = APIRouter(prefix="/candidates", tags=["candidate-documents"])
 DOCUMENT_ROLES = (Role.manager, Role.admin, Role.recruiter)
+DOCUMENT_MUTATE_ROLES = (*DOCUMENT_ROLES, Role.client_manager, Role.client_processor)
 
 STATUSES = {status.value for status in DocumentStatus}
 
@@ -402,7 +413,7 @@ class CandDoc(BaseModel):
     issued_at: Optional[date] = None
     expires_at: Optional[date] = None
     note: Optional[str] = None
-     user_comment: Optional[str] = None
+    user_comment: Optional[str] = None
     files: Dict[str, Any] = Field(default_factory=dict)
     file_list: List[Dict[str, Any]] = Field(default_factory=list)
     filename: Optional[str] = None
@@ -575,25 +586,58 @@ async def list_candidate_documents(
     expiring_in_days: Optional[int] = Query(None, ge=1, le=3650),
 ):
     db, tenant_id_hint = db_tenant
-    await ensure_candidate_access(db, str(tenant_id_hint), str(candidate_id), current_user)
+    tenant_id_str = str(tenant_id_hint)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    # Client in "base" view (accepted handoffs only): hide documents
+    if await is_client_tenant(db, tenant_id_str):
+        has_pending = await has_pending_handoff_for_client(db, str(candidate_id), tenant_id_str)
+        if not has_pending and await client_has_accepted_handoff(db, str(candidate_id), tenant_id_str):
+            return []
+
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
     tenant_for_docs = cand.tenant_id
 
-    stmt = (
-        select(Document)
-        .where(
-            and_(
-                Document.tenant_id == str(tenant_for_docs),
-                Document.owner_type == "candidate",  # type: ignore[attr-defined]
-                Document.owner_id == str(candidate_id),  # type: ignore[attr-defined]
-                Document.candidate_id == str(candidate_id),
-                Document.deleted_at.is_(None),
+    # Если документы принадлежат другому тенанту, временно меняем контекст RLS
+    # чтобы получить доступ к документам кандидата через shared vacancy
+    tenant_context_changed = False
+    if str(tenant_for_docs) != str(tenant_id_hint):
+        try:
+            await db.execute(
+                text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
+                {"tenant_id": str(tenant_for_docs)},
             )
-        )
-        .order_by(Document.created_at.desc())
-    )
+            tenant_context_changed = True
+        except Exception:
+            # SQLite и другие диалекты не поддерживают set_config
+            pass
 
-    rows = (await db.execute(stmt)).scalars().all()
+    try:
+        stmt = (
+            select(Document)
+            .where(
+                and_(
+                    Document.tenant_id == str(tenant_for_docs),
+                    Document.owner_type == "candidate",  # type: ignore[attr-defined]
+                    Document.owner_id == str(candidate_id),  # type: ignore[attr-defined]
+                    Document.candidate_id == str(candidate_id),
+                    Document.deleted_at.is_(None),
+                )
+            )
+            .order_by(Document.created_at.desc())
+        )
+
+        rows = (await db.execute(stmt)).scalars().all()
+    finally:
+        # Восстанавливаем исходный контекст tenant_id
+        if tenant_context_changed:
+            try:
+                await db.execute(
+                    text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
+                    {"tenant_id": str(tenant_id_hint)},
+                )
+            except Exception:
+                pass
     items = [CandDoc.from_document(r) for r in rows]
 
     if q:
@@ -619,18 +663,29 @@ async def list_candidate_documents(
     return items
 
 
+async def _check_document_edit_permission(
+    db: AsyncSession, tenant_id_str: str, candidate_id_str: str, is_client: bool
+) -> None:
+    if is_client:
+        if not await can_client_edit(db, candidate_id_str, tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot edit documents: no accepted handoff")
+    else:
+        if not await can_agency_edit(db, candidate_id_str, tenant_id_str):
+            raise HTTPException(status_code=403, detail="Cannot edit documents: candidate has accepted handoff")
+
+
 # --------- create ---------
 @router.post(
     "/candidate/{candidate_id}/documents",
     response_model=CandDoc,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
 )
 @router.post(
     "/{candidate_id}/documents",
     response_model=CandDoc,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
 )
 async def create_candidate_document(
     candidate_id: UUID,
@@ -639,8 +694,12 @@ async def create_candidate_document(
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id_hint = db_tenant
-    await ensure_candidate_access(db, str(tenant_id_hint), str(candidate_id), current_user)
+    tenant_id_str = str(tenant_id_hint)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+
+    client_tenant = await is_client_tenant(db, tenant_id_str)
+    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
     status = payload.normalized_status()
     effective_key = (payload.key or payload.doc_type or "").strip()
     if not effective_key:
@@ -734,6 +793,20 @@ async def create_candidate_document(
         tenant_id=str(cand.tenant_id),
         document=m,
     )
+    if auto_status_value == DocumentStatus.requested:
+        from backend.app.api.public.intake import _ensure_status_share_token
+
+        _ensure_status_share_token(cand)
+        base_url = (settings.frontend_url or "").strip().rstrip("/") or "https://hostflow.cc"
+        status_token = getattr(cand, "status_share_token", None) or getattr(cand, "intake_token", None)
+        status_url = f"{base_url}/public/status/{status_token}" if status_token else None
+        await candidate_notifications.send_document_requested_email_to_candidate(
+            db,
+            tenant_id=str(cand.tenant_id),
+            candidate=cand,
+            doc_type=doc_type,
+            status_url=status_url,
+        )
     await db.commit()
     await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id))
     return CandDoc.from_document(m)
@@ -743,12 +816,12 @@ async def create_candidate_document(
 @router.patch(
     "/candidate/{candidate_id}/documents/{doc_id}",
     response_model=CandDoc,
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
 )
 @router.patch(
     "/{candidate_id}/documents/{doc_id}",
     response_model=CandDoc,
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
 )
 async def update_candidate_document(
     candidate_id: UUID,
@@ -758,8 +831,12 @@ async def update_candidate_document(
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id_hint = db_tenant
-    await ensure_candidate_access(db, str(tenant_id_hint), str(candidate_id), current_user)
+    tenant_id_str = str(tenant_id_hint)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+
+    client_tenant = await is_client_tenant(db, tenant_id_str)
+    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
 
     row = await db.execute(
         select(Document).where(
@@ -916,6 +993,9 @@ async def update_candidate_document(
         has_files=has_files,
         expire_date=_to_date(m.expire_date),
     )
+    # Store old status for notification
+    old_status = m.status
+    
     if payload.status is not None and status_value in (DocumentStatus.rejected, DocumentStatus.expired):
         auto_status_value = status_value
     m.status = auto_status_value
@@ -924,6 +1004,42 @@ async def update_candidate_document(
         m.verified_at = payload.verified_at
     elif auto_status_value == DocumentStatus.approved and getattr(m, "verified_at", None) is None:
         m.verified_at = _utc_aware()
+    
+    # Send notification to candidate if status changed
+    if old_status != auto_status_value and m.owner_id:
+        try:
+            from backend.app.api.public.notifications import send_candidate_notification
+            from sqlalchemy import select
+            cand_result = await db.execute(
+                select(Candidate).where(Candidate.id == m.owner_id, Candidate.tenant_id == str(cand.tenant_id))
+            )
+            candidate = cand_result.scalar_one_or_none()
+            if candidate:
+                # Get status label
+                status_label = (
+                    auto_status_value.value if isinstance(auto_status_value, DocumentStatus) else str(auto_status_value)
+                )
+                old_status_label = (
+                    old_status.value if isinstance(old_status, DocumentStatus) else str(old_status)
+                )
+                await send_candidate_notification(
+                    db,
+                    candidate,
+                    "document.status_changed",
+                    "Статус документа изменен",
+                    f"Статус вашего документа '{m.doc_type}' изменен на '{status_label}'",
+                    entity_type="document",
+                    entity_id=str(m.id),
+                    payload={
+                        "document_type": m.doc_type,
+                        "old_status": old_status_label,
+                        "new_status": status_label,
+                        "document_id": str(m.id),
+                    },
+                )
+        except Exception:
+            # Don't fail document update if notification fails
+            pass
 
     if payload.source is not None:
         m.source = payload.source
@@ -944,47 +1060,62 @@ async def update_candidate_document(
         document=m,
     )
     await db.commit()
+    try:
+        old_status_value = old_status.value if isinstance(old_status, DocumentStatus) else str(old_status or "")
+        new_status_value = auto_status_value.value if isinstance(auto_status_value, DocumentStatus) else str(auto_status_value or "")
+        if old_status_value != new_status_value:
+            await candidate_tg_notifications.send_candidate_document_status_changed_telegram(
+                db,
+                tenant_id=str(cand.tenant_id),
+                candidate=cand,
+                document_type=str(getattr(m, "doc_type", "") or ""),
+                old_status=old_status_value,
+                new_status=new_status_value,
+            )
+    except Exception:
+        pass
     await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id))
     return CandDoc.from_document(m)
 
 
-@router.post(
-    "/candidate/{candidate_id}/documents/apply-template",
-    response_model=AppliedTemplateResponse,
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
-)
-@router.post(
-    "/{candidate_id}/documents/apply-template",
-    response_model=AppliedTemplateResponse,
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
-)
-async def apply_document_template(
-    candidate_id: UUID,
-    payload: ApplyTemplatePayload,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(get_current_user),
-):
-    db, tenant_id_hint = db_tenant
-    await ensure_candidate_access(db, str(tenant_id_hint), str(candidate_id), current_user)
-    cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+async def apply_template_to_candidate_impl(
+    db: AsyncSession,
+    tenant_id_str: str,
+    candidate_id_str: str,
+    *,
+    template_id: Optional[str] = None,
+    template_code: Optional[str] = None,
+) -> Optional[AppliedTemplateResponse]:
+    """Apply a document template to a candidate. No permission checks. Returns None if candidate or template not found."""
+    if not template_id and not template_code:
+        return None
+    cand_row = await db.execute(
+        select(Candidate).where(
+            Candidate.id == candidate_id_str,
+            Candidate.tenant_id == tenant_id_str,
+            Candidate.deleted_at.is_(None),
+        )
+    )
+    cand = cand_row.scalar_one_or_none()
+    if not cand:
+        return None
 
-    template_query = select(DocumentTemplate).where(DocumentTemplate.tenant_id == str(cand.tenant_id))
-    if payload.template_id:
-        template_query = template_query.where(DocumentTemplate.id == str(payload.template_id))
-    elif payload.template_code:
-        template_query = template_query.where(DocumentTemplate.code == payload.template_code)
-
+    template_query = select(DocumentTemplate).where(DocumentTemplate.tenant_id == tenant_id_str)
+    if template_id:
+        template_query = template_query.where(DocumentTemplate.id == template_id)
+    if template_code:
+        template_query = template_query.where(DocumentTemplate.code == template_code)
     template_query = template_query.where(DocumentTemplate.is_active.is_(True)).limit(1)
     template = (await db.execute(template_query)).scalar_one_or_none()
     if not template:
-        raise HTTPException(status_code=404, detail="Document template not found")
+        return None
 
     template_docs = prepare_template_documents(template.documents or [])
     keep_types = {entry["doc_type"] for entry in template_docs}
 
     existing_rows = await db.execute(
         select(Document).where(
-            Document.candidate_id == str(candidate_id),
+            Document.candidate_id == candidate_id_str,
             Document.tenant_id == str(cand.tenant_id),
             Document.deleted_at.is_(None),
         )
@@ -1074,8 +1205,8 @@ async def apply_document_template(
                 id=str(uuid4()),
                 tenant_id=str(cand.tenant_id),
                 owner_type="candidate",
-                owner_id=str(candidate_id),
-                candidate_id=str(candidate_id),
+                owner_id=candidate_id_str,
+                candidate_id=candidate_id_str,
                 doc_type=doc_type,
                 custom_name=custom_name if defaults.requires_custom_name else None,
                 kind=kind,
@@ -1111,14 +1242,14 @@ async def apply_document_template(
 
     refreshed_rows = await db.execute(
         select(Document).where(
-            Document.candidate_id == str(candidate_id),
+            Document.candidate_id == candidate_id_str,
             Document.tenant_id == str(cand.tenant_id),
             Document.deleted_at.is_(None),
         )
     )
     refreshed_docs = [CandDoc.from_document(doc) for doc in refreshed_rows.scalars()]
 
-    await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id))
+    await _recalc_docs_progress(db, str(cand.tenant_id), candidate_id_str)
 
     return AppliedTemplateResponse(
         template_id=template.id,
@@ -1127,14 +1258,49 @@ async def apply_document_template(
         documents=refreshed_docs,
     )
 
+
+@router.post(
+    "/candidate/{candidate_id}/documents/apply-template",
+    response_model=AppliedTemplateResponse,
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+)
+@router.post(
+    "/{candidate_id}/documents/apply-template",
+    response_model=AppliedTemplateResponse,
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
+)
+async def apply_document_template(
+    candidate_id: UUID,
+    payload: ApplyTemplatePayload,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    db, tenant_id_hint = db_tenant
+    tenant_id_str = str(tenant_id_hint)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    client_tenant = await is_client_tenant(db, tenant_id_str)
+    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
+
+    result = await apply_template_to_candidate_impl(
+        db,
+        tenant_id_str,
+        str(candidate_id),
+        template_id=str(payload.template_id) if payload.template_id else None,
+        template_code=payload.template_code,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Document template not found")
+    return result
+
 # --------- delete ---------
 @router.delete(
     "/candidate/{candidate_id}/documents/{doc_id}",
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
 )
 @router.delete(
     "/{candidate_id}/documents/{doc_id}",
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
 )
 async def delete_candidate_document(
     candidate_id: UUID,
@@ -1143,8 +1309,12 @@ async def delete_candidate_document(
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id_hint = db_tenant
-    await ensure_candidate_access(db, str(tenant_id_hint), str(candidate_id), current_user)
+    tenant_id_str = str(tenant_id_hint)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+
+    client_tenant = await is_client_tenant(db, tenant_id_str)
+    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
 
     row = await db.execute(
         select(Document).where(
@@ -1178,12 +1348,12 @@ async def delete_candidate_document(
 @router.post(
     "/candidate/{candidate_id}/documents/upload",
     response_model=CandDoc,
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
 )
 @router.post(
     "/{candidate_id}/documents/upload",
     response_model=CandDoc,
-    dependencies=[Depends(require_roles(*DOCUMENT_ROLES))],
+    dependencies=[Depends(require_roles(*DOCUMENT_MUTATE_ROLES))],
 )
 async def upload_candidate_document(
     candidate_id: UUID,
@@ -1201,8 +1371,12 @@ async def upload_candidate_document(
     status_normalized = _normalize_status(status)
 
     db, tenant_id_hint = db_tenant
-    await ensure_candidate_access(db, str(tenant_id_hint), str(candidate_id), current_user)
+    tenant_id_str = str(tenant_id_hint)
+    await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+
+    client_tenant = await is_client_tenant(db, tenant_id_str)
+    await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
 
     # 1) файл
     _ensure_dir(_UPLOAD_ROOT)
@@ -1341,16 +1515,41 @@ async def get_candidate_document_file(
     db, tenant_id_hint = db_tenant
     await ensure_candidate_access(db, str(tenant_id_hint), str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+    tenant_for_docs = cand.tenant_id
 
-    row = await db.execute(
-        select(Document).where(
-            Document.id == str(doc_id),
-            Document.candidate_id == str(candidate_id),
-            Document.tenant_id == str(cand.tenant_id),
-            Document.deleted_at.is_(None),
+    # Если документы принадлежат другому тенанту, временно меняем контекст RLS
+    tenant_context_changed = False
+    if str(tenant_for_docs) != str(tenant_id_hint):
+        try:
+            await db.execute(
+                text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
+                {"tenant_id": str(tenant_for_docs)},
+            )
+            tenant_context_changed = True
+        except Exception:
+            pass
+
+    try:
+        row = await db.execute(
+            select(Document).where(
+                Document.id == str(doc_id),
+                Document.candidate_id == str(candidate_id),
+                Document.tenant_id == str(tenant_for_docs),
+                Document.deleted_at.is_(None),
+            )
         )
-    )
-    m = row.scalar_one_or_none()
+        m = row.scalar_one_or_none()
+    finally:
+        # Восстанавливаем исходный контекст tenant_id
+        if tenant_context_changed:
+            try:
+                await db.execute(
+                    text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
+                    {"tenant_id": str(tenant_id_hint)},
+                )
+            except Exception:
+                pass
+
     if not m or not m.path:
         raise HTTPException(status_code=404, detail="File not found")
 

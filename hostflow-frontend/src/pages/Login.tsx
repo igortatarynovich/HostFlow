@@ -5,6 +5,7 @@ import { useI18n } from '../i18n'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import { PublicCookieBanner } from '../components/public/PublicCookieBanner'
 import { PublicLegalFooter } from '../components/public/PublicLegalFooter'
+import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { LOGIN_NOTICE_STORAGE_KEY } from '../store/auth'
 
 export default function Login(){
@@ -79,7 +80,12 @@ export default function Login(){
             className="card w-full space-y-4 rounded-3xl border border-white/70 bg-white/95 p-8 shadow-card backdrop-blur-lg"
           >
             <h2 className="text-2xl font-semibold text-center text-slate-900">{t('app.login.title')}</h2>
-            {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
+            {error && (
+              <ErrorRecoveryBanner
+                info={{ title: error, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+                compact
+              />
+            )}
             <div>
               <label className="label">{t('app.login.fields.email')}</label>
               <input
@@ -105,6 +111,18 @@ export default function Login(){
             <button className="btn-primary w-full py-3 text-base" disabled={loading}>
               {loading ? t('app.login.actions.submitting') : t('app.login.actions.submit')}
             </button>
+            <Link
+              to="/forgot-password"
+              className="block text-center text-sm text-brand-600 hover:underline mt-2"
+            >
+              {t('app.login.forgot_password', { defaultValue: 'Zapomniałeś hasła?' })}
+            </Link>
+            <Link
+              to="/signup"
+              className="block text-center text-sm text-brand-700 hover:underline mt-1"
+            >
+              {t('app.login.create_account', { defaultValue: 'Create account' })}
+            </Link>
           </form>
         </div>
 
@@ -129,34 +147,55 @@ export default function Login(){
         <section className="overflow-hidden rounded-[32px] border border-brand-100 bg-white/95 shadow-card backdrop-blur">
           <div className="grid gap-8 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:p-10">
             <div className="space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">{t('public.portal.hero.title')}</p>
-              <h1 className="text-3xl font-semibold text-slate-900 lg:text-4xl">{t('public.portal.hero.subtitle')}</h1>
-              <p className="text-base text-slate-600">{t('public.portal.hero.note')}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
+                {t('app.login.signup_first.badge', { defaultValue: 'New to HostFlow CRM?' })}
+              </p>
+              <h1 className="text-3xl font-semibold text-slate-900 lg:text-4xl">
+                {t('app.login.signup_first.title', { defaultValue: 'Start with signup, not settings' })}
+              </h1>
+              <p className="text-base text-slate-600">
+                {t('app.login.signup_first.subtitle', { defaultValue: 'Create account, create company, and reach first value in minutes.' })}
+              </p>
               <div className="flex flex-wrap gap-3 text-sm text-brand-800">
-                <span className="rounded-full bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.presign')}</span>
-                <span className="rounded-full bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.hints')}</span>
-                <span className="rounded-full bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.return')}</span>
+                <span className="rounded-md bg-brand-50 px-4 py-2">
+                  {t('app.login.signup_first.bullets.0', { defaultValue: 'Choose plan and create workspace' })}
+                </span>
+                <span className="rounded-md bg-brand-50 px-4 py-2">
+                  {t('app.login.signup_first.bullets.1', { defaultValue: 'Add first client and lead' })}
+                </span>
+                <span className="rounded-md bg-brand-50 px-4 py-2">
+                  {t('app.login.signup_first.bullets.2', { defaultValue: 'Run daily operations immediately' })}
+                </span>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link
-                  to="/public/intake"
+                  to="/signup"
                   className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-brand-500/40 transition hover:bg-brand-700"
                 >
-                  {t('public.portal.hero.cta')}
+                  {t('app.login.signup_first.primary_cta', { defaultValue: 'Create account' })}
                 </Link>
                 <Link
-                  to="/public#apply"
+                  to="/pricing"
                   className="inline-flex items-center px-4 py-3 text-sm font-semibold text-brand-700 underline-offset-4 hover:text-brand-900 hover:underline"
                 >
-                  {t('public.portal.hero.secondary')}
+                  {t('app.login.signup_first.secondary_cta', { defaultValue: 'View plans' })}
                 </Link>
               </div>
             </div>
             <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white shadow-lg">
-              <img src="/assets/image_truck.png" alt={t('public.portal.hero.image_alt')} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+              <img
+                src="/assets/image_truck.png"
+                alt={t('app.login.signup_first.image_alt', { defaultValue: 'CRM onboarding workflow preview' })}
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="lazy"
+              />
               <div className="relative flex h-full flex-col justify-end bg-gradient-to-t from-slate-900/90 via-slate-900/25 to-transparent p-6">
-                <p className="text-xs uppercase tracking-wide text-brand-100">{t('public.portal.hero.card_title')}</p>
-                <p className="mt-2 text-lg font-semibold">{t('public.portal.hero.card_caption')}</p>
+                <p className="text-xs uppercase tracking-wide text-brand-100">
+                  {t('app.login.signup_first.card_title', { defaultValue: 'Signup-first journey' })}
+                </p>
+                <p className="mt-2 text-lg font-semibold">
+                  {t('app.login.signup_first.card_caption', { defaultValue: 'Landing -> Signup -> Company -> First Value' })}
+                </p>
               </div>
             </div>
           </div>

@@ -11,6 +11,7 @@ All database access must go through candidates.repo to keep separation of concer
 """
 
 import json
+import logging
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 import uuid as _uuid
@@ -23,7 +24,7 @@ from uuid import UUID
 from sqlalchemy import select, update, insert, or_
 from fastapi import HTTPException
 from backend.app.constants.stages_adapter import DEFAULT_STAGE_CODE
-from backend.app.constants.stages import LABELS as STAGE_LABELS, STATUS_REASON_CHOICES
+from backend.app.constants.stages import LABELS as STAGE_LABELS, STATUS_REASON_CHOICES, STAGE_META
 from backend.app.models import Vacancy
 from backend.app.models.user import User
 from backend.app.models.mixins import now_utc as _now_utc
@@ -46,6 +47,17 @@ from backend.app.services.audit import log_activity
 from backend.app.services import events
 from backend.app.services.events import EventAudience
 from backend.app.services.source_labels import normalize_candidate_source
+from backend.app.services.rodo import send_rodo_email as _send_rodo_email
+from backend.app.services.rodo import get_first_rodo_sent as _get_first_rodo_sent
+from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
+from backend.app.services.handoff import is_client_tenant as _is_client_tenant
+from backend.app.api.v1.candidates.repo import _candidate_scope_clause
+from backend.app.services.tenant_visibility import TenantVisibility
+from backend.app.modules.documents import crud as documents_crud
+from backend.app.modules.documents.rules_engine import compute_candidate_checklist
+from backend.app.services.document_orders import missing_base_requirements
+from backend.app.services.document_ruleset import load_default_ruleset
+from backend.app.services.ruleset_versioning import normalize_ruleset_payload
 
 _UNSET = object()
 
@@ -53,6 +65,92 @@ _UNSET = object()
 def _now_naive() -> datetime:
     """Return current UTC timestamp without tzinfo for legacy naive columns."""
     return _now_utc().replace(tzinfo=None)
+
+
+# RODO must be sent before recruiter starts direct contact/screening workflow.
+_RODO_CONTACT_START_STAGES = {"contacted", "no_answer"}
+_READY_FOR_HANDOFF_STAGE = "ready_for_handoff"
+
+
+async def _enforce_rodo_before_contact_stage(
+    db: AsyncSession,
+    *,
+    candidate_id: str,
+    target_stage_code: Optional[str],
+) -> None:
+    stage_code = str(target_stage_code or "").strip().lower()
+    if stage_code not in _RODO_CONTACT_START_STAGES:
+        return
+    first_rodo = await _get_first_rodo_sent(db, candidate_id)
+    if first_rodo is not None:
+        return
+    raise HTTPException(
+        status_code=409,
+        detail="RODO must be sent to candidate before moving to contact/screening stage",
+    )
+
+
+def _candidate_owner_context_for_docs(
+    *,
+    candidate_id: str,
+    extra: Dict[str, Any] | None,
+    personal: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    extra_data = extra if isinstance(extra, dict) else {}
+    personal_data = personal if isinstance(personal, dict) else {}
+    docs_raw = extra_data.get("documents")
+    docs_ctx = {
+        key: bool(value)
+        for key, value in (docs_raw.items() if isinstance(docs_raw, dict) else [])
+        if isinstance(value, bool)
+    }
+    ctx: Dict[str, Any] = {
+        "candidate_id": str(candidate_id),
+        "citizenship": extra_data.get("citizenship") or personal_data.get("citizenship"),
+        "residency_status": extra_data.get("poland_stay_basis") or personal_data.get("residency_status"),
+        "has_adr": extra_data.get("has_adr"),
+        "documents": docs_ctx,
+    }
+    return {k: v for k, v in ctx.items() if v is not None}
+
+
+async def _enforce_docs_ready_for_handoff_stage(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    candidate_id: str,
+    target_stage_code: Optional[str],
+    extra: Dict[str, Any] | None = None,
+    personal: Dict[str, Any] | None = None,
+) -> None:
+    stage_code = str(target_stage_code or "").strip().lower()
+    if stage_code != _READY_FOR_HANDOFF_STAGE:
+        return
+
+    owner_context = _candidate_owner_context_for_docs(
+        candidate_id=candidate_id,
+        extra=extra,
+        personal=personal,
+    )
+    ruleset_version = await documents_crud.ensure_ruleset_seed(
+        db,
+        tenant_id,
+        load_default_ruleset(),
+    )
+    ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
+    checklist = compute_candidate_checklist(owner_context, ruleset_payload)
+    existing_docs = await documents_crud.list_candidate_documents(db, tenant_id, candidate_id)
+    active_docs = [doc for doc in existing_docs if getattr(doc, "deleted_at", None) is None]
+    missing = missing_base_requirements(checklist, active_docs)
+    if missing:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "handoff_docs_incomplete",
+                "message": "Required documents checklist is incomplete for ready_for_handoff stage",
+                "missing_types": missing,
+            },
+        )
 
 
 async def _get_supervisor_id(db: AsyncSession, recruiter_id: Optional[str]) -> Optional[str]:
@@ -203,12 +301,26 @@ async def create_candidate_full(
             origin_update_value = {"value": raw_origin}
 
     languages = _ensure_langs(payload.get("languages"))
+    
+    # Нормализация тегов: убираем пустые, делаем уникальными, сортируем
+    tags_raw = payload.get("tags")
+    tags: list[str] = []
+    if tags_raw is not None:
+        if isinstance(tags_raw, (list, tuple)):
+            tags = sorted(list(set(str(x).strip() for x in tags_raw if str(x).strip())))
+        elif isinstance(tags_raw, str):
+            tags_parts = [p.strip() for p in tags_raw.replace(",", " ").split() if p.strip()]
+            tags = sorted(list(set(tags_parts)))
+    
+    is_favorite = payload.get("is_favorite", False)
 
     source_val: Optional[str] = source_update_value
 
     origin_payload = payload.pop("origin", None)
     if origin_payload is not None and not isinstance(origin_payload, dict):
         origin_payload = {"value": origin_payload}
+
+    cand_id = str(payload.get("id") or _uuid.uuid4())
 
     stage_input = payload.get("stage") or payload.get("status")
     if stage_input is None or str(stage_input).strip() == "":
@@ -219,7 +331,27 @@ async def create_candidate_full(
             raise HTTPException(status_code=422, detail=f"Unknown stage '{stage_input}'")
         stage_code = normalized
 
+    # Для клиентских тенантов запрещаем устанавливать внутренние агентские стадии
+    if await _is_client_tenant(db, tenant_id) and not _stage_visible_for_client(stage_code):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Stage '{stage_code}' is not allowed for client tenant",
+        )
+
     _validate_stage_transition(None, stage_code)
+    await _enforce_rodo_before_contact_stage(
+        db,
+        candidate_id=cand_id,
+        target_stage_code=stage_code,
+    )
+    await _enforce_docs_ready_for_handoff_stage(
+        db,
+        tenant_id=tenant_id,
+        candidate_id=cand_id,
+        target_stage_code=stage_code,
+        extra=_as_dict_safe(payload.get("extra")),
+        personal=_as_dict_safe(payload.get("personal_data")),
+    )
     status_reason_raw = payload.pop("status_reason", None)
     status_reason_codes = _normalize_status_reason_input(status_reason_raw)
     status_reason_values: list[str] = []
@@ -264,8 +396,6 @@ async def create_candidate_full(
             raise HTTPException(status_code=403, detail="Forbidden manager for recruiter")
         if company_id_val and str(company_id_val) not in acl.company_ids:
             raise HTTPException(status_code=403, detail="Forbidden company for recruiter")
-
-    cand_id = str(payload.get("id") or _uuid.uuid4())
 
     assignment: AssignmentDecision | None = None
     if vacancy_id_val or company_id_val:
@@ -327,13 +457,29 @@ async def create_candidate_full(
         else:
             contacts_payload.pop("email", None)
 
+    fn = str(payload.get("first_name") or "").strip()
+    ln = str(payload.get("last_name") or "").strip()
+    city_val = personal_data_payload.get("city") or metadata_fields.get("city")
+    addr_val = personal_data_payload.get("address") or metadata_fields.get("address")
+    from backend.app.services.normalization import ensure_latin_fields
+
+    latin = ensure_latin_fields(first_name=fn, last_name=ln, city=city_val, address=addr_val)
+    if latin.get("city_latin") is not None:
+        personal_data_payload["city_latin"] = latin["city_latin"]
+    if latin.get("address_latin") is not None:
+        personal_data_payload["address_latin"] = latin["address_latin"]
+
     values: Dict[str, Any] = {
         "id": cand_id,
         "tenant_id": tenant_id,
-        "first_name": str(payload.get("first_name") or "").strip(),
-        "last_name": str(payload.get("last_name") or "").strip(),
+        "first_name": fn,
+        "last_name": ln,
+        "first_name_latin": latin.get("first_name_latin"),
+        "last_name_latin": latin.get("last_name_latin"),
         "phone": payload.get("phone"),
         "languages": languages,
+        "tags": tags,
+        "is_favorite": is_favorite,
         "stage": stage_code,
         "email": payload.get("email"),
         "note": payload.get("note"),
@@ -376,6 +522,14 @@ async def create_candidate_full(
     )
     c = row.scalar_one()
     await _ensure_short_id(db, c)
+
+    # Auto-send RODO when candidate has email (art.14 GDPR)
+    if (c.email or "").strip():
+        try:
+            await _send_rodo_email(db, candidate_id=c.id, tenant_id=tenant_id, actor_id=actor_id)
+        except Exception:
+            pass  # Don't fail creation; user can retry manually
+
     if assignment and assignment.assigned:
         await log_activity(
             db,
@@ -435,15 +589,23 @@ async def update_candidate_full(
     status_reason_override: Any = _UNSET,
     acl: CandidateACL | None = None,
 ) -> Candidate:
+    # ВАЖНО: доступ к кандидату уже проверен на уровне API (ensure_candidate_access,
+    # can_client_edit / can_agency_edit, TenantVisibility и т.п.).
+    # Здесь не дублируем сложный scope, чтобы не получать ложные 404 для
+    # кросс-tenant кандидатов по handoff'у. Ищем только по id + soft-delete.
     row = await db.execute(
         select(Candidate).where(
             Candidate.id == candidate_id,
-            Candidate.tenant_id == tenant_id,
             Candidate.deleted_at.is_(None),
         )
     )
     c = row.scalar_one_or_none()
     if not c:
+        logger = logging.getLogger(__name__)
+        logger.warning(
+            "update_candidate_full: candidate not found candidate_id=%s (check if exists and deleted_at is null)",
+            candidate_id,
+        )
         raise HTTPException(status_code=404, detail="Candidate not found")
 
     payload = dict(payload or {})
@@ -470,6 +632,7 @@ async def update_candidate_full(
     history_entry: Optional[CandidateStageHistory] = None
     history_reason_text: Optional[str] = None
     new_stage_code: Optional[str] = None
+    old_stage_code = str(getattr(c, "stage", None) or "").strip() or None
     status_reason_raw = payload.pop("status_reason", _UNSET)
     if status_reason_raw is _UNSET:
         status_reason_raw = status_reason_override
@@ -497,6 +660,16 @@ async def update_candidate_full(
         changes["first_name"] = str(payload["first_name"]).strip()
     if "last_name" in payload and payload["last_name"] is not None:
         changes["last_name"] = str(payload["last_name"]).strip()
+
+    if "first_name" in changes or "last_name" in changes:
+        fn = changes.get("first_name") or getattr(c, "first_name", "")
+        ln = changes.get("last_name") or getattr(c, "last_name", "")
+        from backend.app.services.normalization import ensure_latin_fields
+
+        latin = ensure_latin_fields(first_name=fn, last_name=ln)
+        changes["first_name_latin"] = latin.get("first_name_latin")
+        changes["last_name_latin"] = latin.get("last_name_latin")
+
     if "phone" in payload and payload["phone"] is not None:
         changes["phone"] = str(payload["phone"]).strip() or None
     if "phone_country_code" in payload and payload["phone_country_code"] is not None:
@@ -542,6 +715,19 @@ async def update_candidate_full(
 
     if "languages" in payload and payload["languages"] is not None:
         changes["languages"] = _ensure_langs(payload["languages"])
+    
+    if "tags" in payload and payload["tags"] is not None:
+        tags_raw = payload["tags"]
+        tags: list[str] = []
+        if isinstance(tags_raw, (list, tuple)):
+            tags = sorted(list(set(str(x).strip() for x in tags_raw if str(x).strip())))
+        elif isinstance(tags_raw, str):
+            tags_parts = [p.strip() for p in tags_raw.replace(",", " ").split() if p.strip()]
+            tags = sorted(list(set(tags_parts)))
+        changes["tags"] = tags
+
+    if "is_favorite" in payload and payload["is_favorite"] is not None:
+        changes["is_favorite"] = bool(payload["is_favorite"])
 
     if "birth_date" in metadata_fields and isinstance(metadata_fields["birth_date"], date):
         metadata_fields["birth_date"] = metadata_fields["birth_date"].isoformat()
@@ -559,6 +745,15 @@ async def update_candidate_full(
                     merged_personal.pop(key, None)
                 else:
                     merged_personal[key] = val
+        city_val = merged_personal.get("city")
+        addr_val = merged_personal.get("address")
+        from backend.app.services.normalization import ensure_latin_fields
+
+        latin = ensure_latin_fields(city=city_val, address=addr_val)
+        if latin.get("city_latin") is not None:
+            merged_personal["city_latin"] = latin["city_latin"]
+        if latin.get("address_latin") is not None:
+            merged_personal["address_latin"] = latin["address_latin"]
         if merged_personal != (current_personal or {}):
             changes["personal_data"] = merged_personal
 
@@ -627,7 +822,39 @@ async def update_candidate_full(
             if not normalized:
                 raise HTTPException(status_code=422, detail=f"Unknown stage '{s_raw}'")
             new_stage_code = normalized
+
+            # Для клиентских тенантов запрещаем перевод на стадии,
+            # которые не помечены как visible_for_client.
+            if await _is_client_tenant(db, tenant_id) and not _stage_visible_for_client(new_stage_code):
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Stage '{new_stage_code}' is not allowed for client tenant",
+                )
+
             _validate_stage_transition(getattr(c, "stage", None), new_stage_code)
+            await _enforce_rodo_before_contact_stage(
+                db,
+                candidate_id=candidate_id,
+                target_stage_code=new_stage_code,
+            )
+            effective_extra = (
+                _as_dict_safe(changes.get("extra"))
+                if "extra" in changes
+                else _as_dict_safe(getattr(c, "extra", None))
+            )
+            effective_personal = (
+                _as_dict_safe(changes.get("personal_data"))
+                if "personal_data" in changes
+                else _as_dict_safe(getattr(c, "personal_data", None))
+            )
+            await _enforce_docs_ready_for_handoff_stage(
+                db,
+                tenant_id=tenant_id,
+                candidate_id=candidate_id,
+                target_stage_code=new_stage_code,
+                extra=effective_extra,
+                personal=effective_personal,
+            )
             changes["stage"] = new_stage_code
             changes["status"] = new_stage_code
             stage_changed = True
@@ -656,11 +883,10 @@ async def update_candidate_full(
             changes["vacancy_id"] = None
             changes["company_id"] = None
         else:
+            # Look up by id only: candidate access already enforced at API layer;
+            # vacancy may belong to agency (e.g. handoff) when current tenant is client.
             vrow = await db.execute(
-                select(Vacancy).where(
-                    Vacancy.id == str(payload["vacancy_id"]),
-                    Vacancy.tenant_id == tenant_id,
-                )
+                select(Vacancy).where(Vacancy.id == str(payload["vacancy_id"]))
             )
             v = vrow.scalar_one_or_none()
             if not v:
@@ -697,7 +923,7 @@ async def update_candidate_full(
             changes["updated_at"] = _now_naive()
             await db.execute(
                 update(Candidate)
-                .where(Candidate.id == candidate_id, Candidate.tenant_id == tenant_id)
+                .where(Candidate.id == candidate_id, Candidate.deleted_at.is_(None))
                 .values(**changes)
             )
 
@@ -722,6 +948,13 @@ async def update_candidate_full(
                     candidate_id=UUID(candidate_id),
                     candidate_stage=c.stage,
                 )
+                await candidate_tg_notifications.send_candidate_stage_changed_telegram(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate=c,
+                    old_stage=old_stage_code,
+                    new_stage=c.stage,
+                )
         except Exception as e:
             await db.rollback()
             raise HTTPException(status_code=400, detail=f"Update failed: {e}")
@@ -744,9 +977,24 @@ async def update_candidate_full(
                 candidate_id=UUID(candidate_id),
                 candidate_stage=c.stage,
             )
+            await candidate_tg_notifications.send_candidate_stage_changed_telegram(
+                db,
+                tenant_id=tenant_id,
+                candidate=c,
+                old_stage=old_stage_code,
+                new_stage=c.stage,
+            )
         except Exception as e:
             await db.rollback()
             raise HTTPException(status_code=400, detail=f"Update failed: {e}")
+
+    # Auto-send RODO when candidate has email (art.14 GDPR); send_rodo_email no-ops if already sent
+    if (c.email or "").strip():
+        try:
+            await _send_rodo_email(db, candidate_id=c.id, tenant_id=tenant_id, actor_id=actor_id)
+            await db.commit()
+        except Exception:
+            await db.rollback()
 
     return c
 
@@ -764,6 +1012,11 @@ class BulkManagerResult(TypedDict, total=False):
     ok: bool
     error: str
 
+class BulkDeleteResult(TypedDict, total=False):
+    candidate_id: str
+    ok: bool
+    error: str
+
 async def bulk_update_stage(
     db: AsyncSession,
     tenant_id: str,
@@ -774,7 +1027,16 @@ async def bulk_update_stage(
     status_reason: Any = _UNSET,
     acl: CandidateACL | None = None,
 ) -> list[BulkStageResult]:
+    def _bulk_error_value(detail: Any) -> str:
+        if isinstance(detail, (dict, list)):
+            try:
+                return json.dumps(detail, ensure_ascii=False)
+            except Exception:
+                return str(detail)
+        return str(detail)
+
     target_stage = _normalize_stage_to_code(stage) or stage
+    client_tenant = await _is_client_tenant(db, tenant_id)
     out: list[BulkStageResult] = []
     status_reason_explicit = status_reason is not _UNSET and status_reason is not None
     status_reason_codes_input = (
@@ -809,7 +1071,31 @@ async def bulk_update_stage(
                 out.append({"candidate_id": cid, "stage": target_stage, "ok": False, "error": "unknown stage"})
                 continue
 
+            if client_tenant and not _stage_visible_for_client(normalized):
+                out.append(
+                    {
+                        "candidate_id": cid,
+                        "stage": normalized,
+                        "ok": False,
+                        "error": "stage not allowed for client tenant",
+                    }
+                )
+                continue
+
             _validate_stage_transition(getattr(c, "stage", None), normalized)
+            await _enforce_rodo_before_contact_stage(
+                db,
+                candidate_id=cid,
+                target_stage_code=normalized,
+            )
+            await _enforce_docs_ready_for_handoff_stage(
+                db,
+                tenant_id=tenant_id,
+                candidate_id=cid,
+                target_stage_code=normalized,
+                extra=_as_dict_safe(getattr(c, "extra", None)),
+                personal=_as_dict_safe(getattr(c, "personal_data", None)),
+            )
 
             try:
                 if normalized in _REASON_REQUIRED_STAGES or status_reason_explicit:
@@ -822,7 +1108,7 @@ async def bulk_update_stage(
                         "candidate_id": cid,
                         "stage": normalized,
                         "ok": False,
-                        "error": str(exc.detail),
+                        "error": _bulk_error_value(exc.detail),
                     }
                 )
                 continue
@@ -856,8 +1142,25 @@ async def bulk_update_stage(
                 candidate_id=UUID(cid),
                 candidate_stage=normalized,
             )
+            await candidate_tg_notifications.send_candidate_stage_changed_telegram(
+                db,
+                tenant_id=tenant_id,
+                candidate=c,
+                old_stage=getattr(c, "stage", None),
+                new_stage=normalized,
+            )
 
             out.append({"candidate_id": cid, "stage": normalized, "ok": True})
+        except HTTPException as exc:
+            await db.rollback()
+            out.append(
+                {
+                    "candidate_id": cid,
+                    "stage": target_stage,
+                    "ok": False,
+                    "error": _bulk_error_value(exc.detail),
+                }
+            )
         except Exception as e:
             await db.rollback()
             out.append({"candidate_id": cid, "stage": target_stage, "ok": False, "error": str(e)})
@@ -941,6 +1244,69 @@ async def bulk_update_manager(
     return results
 
 
+async def bulk_delete_candidates(
+    db: AsyncSession,
+    tenant_id: str,
+    candidate_ids: list[str],
+    *,
+    actor_id: Optional[str] = None,  # kept for future audit trail
+    acl: CandidateACL | None = None,
+) -> list[BulkDeleteResult]:
+    """Bulk delete candidates (soft delete)."""
+    results: list[BulkDeleteResult] = []
+    allowed_indexes: list[int] = []
+
+    if not candidate_ids:
+        return results
+
+    rows = await db.execute(
+        select(Candidate).where(
+            Candidate.tenant_id == tenant_id,
+            Candidate.deleted_at.is_(None),
+            Candidate.id.in_(candidate_ids),
+        )
+    )
+    found = {str(c.id): c for c in rows.scalars().all()}
+
+    for cid in candidate_ids:
+        entry: BulkDeleteResult = {"candidate_id": cid}
+        candidate_row = found.get(cid)
+        if not candidate_row:
+            entry["ok"] = False
+            entry["error"] = "not found"
+            results.append(entry)
+            continue
+        if not _candidate_matches_acl(
+            acl,
+            manager=getattr(candidate_row, "manager", None),
+            company=getattr(candidate_row, "company_id", None),
+            vacancy=getattr(candidate_row, "vacancy_id", None),
+        ):
+            entry["ok"] = False
+            entry["error"] = "forbidden"
+            results.append(entry)
+            continue
+        allowed_indexes.append(len(results))
+        results.append(entry)
+
+    if not allowed_indexes:
+        return results
+
+    # Delete each candidate individually to ensure sync_candidate_links is called for each
+    for idx in allowed_indexes:
+        cid = results[idx]["candidate_id"]
+        try:
+            await delete_candidate_full(db, tenant_id, cid)
+            results[idx]["ok"] = True
+            results[idx].pop("error", None)
+        except Exception as exc:
+            # rollback is handled in delete_candidate_full
+            results[idx]["ok"] = False
+            results[idx]["error"] = f"delete_failed: {exc}"
+
+    return results
+
+
 async def delete_candidate_full(
     db: AsyncSession,
     tenant_id: str,
@@ -981,6 +1347,19 @@ _REASON_LABELS = {
 }
 _REASON_CODES = {stage: set(labels.keys()) for stage, labels in _REASON_LABELS.items()}
 _REASON_REQUIRED_STAGES = set(_REASON_CODES.keys())
+
+
+def _stage_visible_for_client(stage_code: Optional[str]) -> bool:
+    """
+    Return True if stage is allowed to be set explicitly by client tenants.
+
+    By умолчанию любые неизвестные/кастомные стадии считаются только агентскими
+    (visible_for_client=False), пока явно не помечены в STAGE_META.
+    """
+    if not stage_code:
+        return False
+    meta = STAGE_META.get(stage_code) or {}
+    return bool(meta.get("visible_for_client", False))
 
 
 def _normalize_status_reason_input(raw: Any) -> list[str]:

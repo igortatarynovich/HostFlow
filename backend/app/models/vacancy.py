@@ -64,6 +64,30 @@ class Vacancy(Base, TimestampMixin):
     # free-form JSON stored as string for now
     extra: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Привязка к профилю кандидата
+    candidate_profile_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("candidate_profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Профиль кандидата для этой вакансии",
+    )
+    funnel_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("funnels.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Шаблон документов для авто-применения при назначении кандидата на вакансию
+    required_documents_template_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("document_templates.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="При назначении кандидата на вакансию применяется этот шаблон документов",
+    )
+
     # state flags (optional but helpful)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default=text("1")

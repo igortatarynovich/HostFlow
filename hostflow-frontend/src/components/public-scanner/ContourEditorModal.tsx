@@ -10,6 +10,7 @@ type ContourEditorModalProps = {
   initialContour?: Contour6Points | null
   onConfirm: (contour: Contour6Points) => void
   onCancel: () => void
+  loading?: boolean
 }
 
 export function ContourEditorModal({
@@ -17,9 +18,10 @@ export function ContourEditorModal({
   initialContour,
   onConfirm,
   onCancel,
+  loading = false,
 }: ContourEditorModalProps) {
   const [contour, setContour] = useState<Contour6Points | null>(initialContour || null)
-
+  
   const validateContour = (c: Contour6Points): { valid: boolean; errors: string[] } => {
     const errors: string[] = []
     
@@ -37,29 +39,6 @@ export function ContourEditorModal({
       errors.push('Документ слишком маленький (минимум 50px)')
     }
     
-    // Check angles (simplified)
-    for (let i = 0; i < points.length; i++) {
-      const p1 = points[i]
-      const p2 = points[(i + 1) % points.length]
-      const p3 = points[(i + 2) % points.length]
-      
-      const v1 = { x: p2.x - p1.x, y: p2.y - p1.y }
-      const v2 = { x: p3.x - p2.x, y: p3.y - p2.y }
-      
-      const dot = v1.x * v2.x + v1.y * v2.y
-      const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y)
-      const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y)
-      
-      if (len1 > 0 && len2 > 0) {
-        const cosAngle = dot / (len1 * len2)
-        const angle = Math.acos(Math.max(-1, Math.min(1, cosAngle))) * (180 / Math.PI)
-        
-        if (angle < 10 || angle > 170) {
-          errors.push(`Угол ${i + 1} слишком острый или тупой (${angle.toFixed(1)}°)`)
-        }
-      }
-    }
-    
     return {
       valid: errors.length === 0,
       errors,
@@ -67,30 +46,66 @@ export function ContourEditorModal({
   }
 
   return (
-    <ContourEditor
-      imageUrl={imageUrl}
-      initialContour={initialContour}
-      onContourChange={setContour}
-      onValidate={validateContour}
-      snapToEdge={true}
-      snapDistance={10}
-      onClose={onCancel}
-      onConfirm={(c) => {
-        if (c) {
-          const validation = validateContour(c)
-          if (validation.valid) {
-            onConfirm(c)
-          } else {
-            // Still allow confirmation even with validation errors - user knows what they're doing
-            console.warn('Contour validation errors:', validation.errors)
-            onConfirm(c)
-          }
-        } else if (contour) {
-          // Use current contour if callback doesn't provide one
-          onConfirm(contour)
-        }
-      }}
-    />
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/80 backdrop-blur-sm">
+      <div className="flex items-center justify-between border-b border-white/10 bg-black/40 px-4 py-3">
+        <h3 className="text-lg font-semibold text-white">Редактирование контура (6 точек)</h3>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white hover:bg-white/20"
+          >
+            Закрыть
+          </button>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              const c = contour
+              if (!c) {
+                onCancel()
+                return
+              }
+              const validation = validateContour(c)
+              if (!validation.valid) {
+                console.warn('[ContourEditorModal] Validation errors:', validation.errors)
+              }
+              onConfirm(c)
+            }}
+            className="rounded-full bg-emerald-500 px-4 py-1 text-sm font-semibold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            {loading ? 'Поиск…' : 'Применить'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto p-2 sm:p-4">
+        <div className="mx-auto max-w-5xl rounded-xl bg-slate-900/40 p-2 shadow-xl">
+          <ContourEditor
+            imageUrl={imageUrl}
+            initialContour={initialContour}
+            onContourChange={setContour}
+            onValidate={validateContour}
+            snapToEdge={true}
+            snapDistance={10}
+            disabled={loading}
+            onClose={onCancel}
+            onConfirm={(c) => {
+              if (c) {
+                const validation = validateContour(c)
+                if (!validation.valid) {
+                  console.warn('[ContourEditorModal] Contour validation errors:', validation.errors)
+                }
+                onConfirm(c)
+              } else if (contour) {
+                onConfirm(contour)
+              } else {
+                onCancel?.()
+              }
+            }}
+          />
+        </div>
+      </div>
+    </div>
   )
 }
-

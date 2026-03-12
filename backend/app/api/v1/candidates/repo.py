@@ -32,10 +32,13 @@ from sqlalchemy.orm import aliased
 
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_stage_history import CandidateStageHistory
+from backend.app.models.candidate_handoff import CandidateHandoff
+from backend.app.models.contact_attempt import ContactAttempt
 from backend.app.models.user import User
 from backend.app.models.company import Company
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.document import Document
+from backend.app.models.tenant import TenantLink
 from backend.app.models.enums import DocumentStatus
 from backend.app.services.tenant_visibility import TenantVisibility
 
@@ -243,12 +246,13 @@ async def get_candidate(
     tenant_id: str,
     candidate_id: str,
     visibility: TenantVisibility | None = None,
+    is_client_tenant: bool = False,
 ) -> Optional[Candidate]:
     """Retrieve a single candidate by ID within tenant and not deleted."""
     q = await db.execute(
         select(Candidate).where(
             Candidate.id == candidate_id,
-            _candidate_scope_clause(tenant_id, visibility),
+            _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client_tenant),
             Candidate.deleted_at.is_(None),
         )
     )
@@ -343,28 +347,136 @@ def _to_list(value: Any) -> list[str]:
     return [x for x in (i.strip() for i in items) if x]
 
 
-def _candidate_scope_clause(tenant_id: str, visibility: TenantVisibility | None):
+def _candidate_scope_clause(
+    tenant_id: str,
+    visibility: TenantVisibility | None,
+    is_client_tenant: bool = False,
+):
+    """
+    Scope: agency sees own candidates + shared + handoffs.
+    Client (company) tenant sees:
+    1) candidates with handoff to them (pending or accepted);
+    2) candidates whose vacancy belongs to client's companies (TenantLink.handoff_include_company_id when client_tenant_id = tenant, or TenantLink.client_company_id when company.tenant_id = tenant);
+    3) candidates that belong to the client tenant (Candidate.tenant_id == tenant_id).
+    For a client with own tenant to see the full list of candidates by their vacancies, at least one
+    tenant_link row must have client_tenant_id = tenant and handoff_include_company_id = company
+    (whose vacancies are "the client's"). Otherwise include_company_subq is empty and only handoff/own-tenant candidates appear.
+    """
+    # Client path: see handoff + candidates on linked vacancies/companies + own-tenant
+    # Companies whose vacancies the client sees:
+    #   (1) handoff_include_company_id when TenantLink.client_tenant_id = tenant (explicitly linked companies),
+    #   (2) ALL companies whose Company.tenant_id == tenant_id (companies owned by this client tenant).
+    include_company_subq = select(TenantLink.handoff_include_company_id).where(
+        TenantLink.client_tenant_id == tenant_id,
+        TenantLink.handoff_include_company_id.isnot(None),
+    )
+    # Previously we relied on TenantLink.client_company_id to determine "owned" companies,
+    # which meant that companies created inside the client tenant but not wired via TenantLink
+    # were silently excluded from the client's scope (and from analytics).
+    # This led to situations like Citronex seeing only part of the candidates they should see.
+    # Now we treat *all* companies whose Company.tenant_id == tenant_id as owned by this client
+    # tenant, independent of TenantLink rows.
+    client_owned_company_subq = select(Company.id).where(Company.tenant_id == tenant_id)
+    handoff_to_client = exists().where(
+        CandidateHandoff.candidate_id == Candidate.id,
+    ).where(
+        or_(
+            CandidateHandoff.client_tenant_id == tenant_id,
+            CandidateHandoff.client_company_id.in_(include_company_subq),
+        ),
+    )
+
+    if is_client_tenant:
+        vacancies_for_client = select(Vacancy.id).where(
+            or_(
+                Vacancy.company_id.in_(include_company_subq),
+                Vacancy.company_id.in_(client_owned_company_subq),
+            ),
+        )
+        candidate_for_client_vacancy = Candidate.vacancy_id.in_(vacancies_for_client)
+        company_for_client = or_(
+            Candidate.company_id.in_(include_company_subq),
+            Candidate.company_id.in_(client_owned_company_subq),
+            Candidate.company_id.is_(None),
+        )
+        candidate_in_client_tenant = Candidate.tenant_id == tenant_id
+        vacancy_ok = or_(candidate_for_client_vacancy, Candidate.vacancy_id.is_(None))
+        candidates_on_client_vacancies = and_(vacancy_ok, company_for_client)
+        return or_(handoff_to_client, candidates_on_client_vacancies, candidate_in_client_tenant)
+
+    # Agency path: own candidates + shared + linked client tenants/companies + handoffs
     clauses = [Candidate.tenant_id == tenant_id]
+
+    # 1) Кандидаты клиентских tenant'ов, связанных через TenantLink.agency_tenant_id
+    linked_client_tenants = select(TenantLink.client_tenant_id).where(
+        TenantLink.agency_tenant_id == tenant_id,
+        TenantLink.client_tenant_id.isnot(None),
+        TenantLink.status == "active",
+    )
+    clauses.append(Candidate.tenant_id.in_(linked_client_tenants))
+
+    # 2) Кандидаты по компаниям, связанным через TenantLink.client_company_id
+    linked_client_companies = select(TenantLink.client_company_id).where(
+        TenantLink.agency_tenant_id == tenant_id,
+        TenantLink.client_company_id.isnot(None),
+        TenantLink.status == "active",
+    )
+    clauses.append(Candidate.company_id.in_(linked_client_companies))
+
+    # 3) Кандидаты, для которых есть handoff от этого агентства
+    handoff_from_agency = exists().where(
+        CandidateHandoff.candidate_id == Candidate.id,
+    ).where(
+        CandidateHandoff.agency_tenant_id == tenant_id,
+    )
+    clauses.append(handoff_from_agency)
+
+    # 4) Shared visibility (TenantVisibility): добавляем к скоупу, чтобы
+    # шэринг вакансий/компаний продолжал работать как раньше.
     if visibility:
-        shared_ids = tuple(visibility.shared_vacancy_ids)
-        if shared_ids:
-            clauses.append(Candidate.vacancy_id.in_(shared_ids))
+        shared_vacancies = tuple(visibility.shared_vacancy_ids)
+        shared_companies = tuple(visibility.shared_company_ids)
+        extra_clauses = []
+        if shared_vacancies:
+            extra_clauses.append(Candidate.vacancy_id.in_(shared_vacancies))
+        if shared_companies:
+            extra_clauses.append(Candidate.company_id.in_(shared_companies))
+        if extra_clauses:
+            clauses.append(or_(*extra_clauses))
+
     return or_(*clauses)
 
 
 def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: TenantVisibility | None = None):
-    conds = [Candidate.deleted_at.is_(None), _candidate_scope_clause(tenant_id, visibility)]
+    is_client = bool(filters.get("is_client_tenant"))
+    conds = [Candidate.deleted_at.is_(None), _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client)]
 
     q = (filters.get("q") or "").strip().lower()
-    if q:
+    if len(q) >= 2:
         like = f"%{q}%"
+        full_name = func.lower(
+            func.concat(
+                func.coalesce(Candidate.first_name, ""),
+                " ",
+                func.coalesce(Candidate.last_name, ""),
+            )
+        )
+        full_name_reverse = func.lower(
+            func.concat(
+                func.coalesce(Candidate.last_name, ""),
+                " ",
+                func.coalesce(Candidate.first_name, ""),
+            )
+        )
         conds.append(
             or_(
-                func.lower(Candidate.first_name).like(like),
-                func.lower(Candidate.last_name).like(like),
-                func.lower(Candidate.email).like(like),
-                func.lower(Candidate.phone).like(like),
-                func.lower(Candidate.short_id).like(like),
+                func.lower(func.coalesce(Candidate.first_name, "")).like(like),
+                func.lower(func.coalesce(Candidate.last_name, "")).like(like),
+                full_name.like(like),
+                full_name_reverse.like(like),
+                func.lower(func.coalesce(Candidate.email, "")).like(like),
+                func.lower(func.coalesce(Candidate.phone, "")).like(like),
+                func.lower(func.coalesce(Candidate.short_id, "")).like(like),
             )
         )
 
@@ -400,13 +512,20 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
         conds.append(Candidate.company_id == company_id)
 
     vacancy_id = filters.get("vacancy_id")
-    if vacancy_id:
+    vacancy_ids = filters.get("vacancy_ids")
+    if vacancy_ids and isinstance(vacancy_ids, list) and len(vacancy_ids) > 0:
+        conds.append(Candidate.vacancy_id.in_(vacancy_ids))
+    elif vacancy_id:
         conds.append(Candidate.vacancy_id == vacancy_id)
 
+    # For client tenant, scope clause already restricts to handoff + linked companies/vacancies.
+    # Do not apply ACL company/vacancy filter here: client's vacancies live in agency tenant so
+    # ACL would have empty vacancy_ids and would wrongly restrict by company_id only, hiding
+    # handoff candidates whose company_id may be unset or different.
     allowed_company_ids = _to_list(filters.get("allowed_company_ids"))
     allowed_vacancy_ids = _to_list(filters.get("allowed_vacancy_ids"))
     allowed_manager_ids = _to_list(filters.get("allowed_manager_ids"))
-    if allowed_company_ids or allowed_vacancy_ids or allowed_manager_ids:
+    if not is_client and (allowed_company_ids or allowed_vacancy_ids or allowed_manager_ids):
         acl_conditions = []
         if allowed_manager_ids:
             acl_conditions.append(Candidate.manager.in_(allowed_manager_ids))
@@ -438,6 +557,61 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
         else:
             conds.append(~ordered_exists)
 
+    # Handoff status filter (none | pending | accepted | returned)
+    # Map UI "pending" to DB status "pending_review"
+    # Match handoffs where current tenant is agency OR client (incl. handoff_include_company_id)
+    handoff_status = str(filters.get("handoff_status") or "").strip().lower()
+    if handoff_status in {"none", "pending", "accepted", "returned"}:
+        inc_subq = select(TenantLink.handoff_include_company_id).where(
+            TenantLink.client_tenant_id == tenant_id,
+            TenantLink.handoff_include_company_id.isnot(None),
+        )
+        handoff_for_tenant = (
+            exists()
+            .where(CandidateHandoff.candidate_id == Candidate.id)
+            .where(
+                or_(
+                    CandidateHandoff.agency_tenant_id == tenant_id,
+                    CandidateHandoff.client_tenant_id == tenant_id,
+                    CandidateHandoff.client_company_id.in_(inc_subq),
+                )
+            )
+        )
+        if handoff_status == "none":
+            conds.append(~handoff_for_tenant)
+        else:
+            db_status = "pending_review" if handoff_status == "pending" else handoff_status
+            conds.append(handoff_for_tenant.where(CandidateHandoff.status == db_status))
+
+    # Contact attempts filter (none | some | limit_reached for 3+)
+    contact_attempts = str(filters.get("contact_attempts") or "").strip().lower()
+    if contact_attempts in {"none", "some", "limit_reached"}:
+        attempt_count = (
+            select(func.count())
+            .select_from(ContactAttempt)
+            .where(ContactAttempt.candidate_id == Candidate.id)
+            .scalar_subquery()
+        )
+        if contact_attempts == "none":
+            conds.append(attempt_count == 0)
+        elif contact_attempts == "some":
+            conds.append(attempt_count > 0)
+        else:  # limit_reached
+            conds.append(attempt_count >= 3)
+
+    # Processor filter (accepted handoff assigned_to_user_id)
+    processor_id = filters.get("processor_id")
+    if processor_id:
+        proc_id_str = str(processor_id).strip()
+        if proc_id_str:
+            processor_handoff_exists = (
+                exists()
+                .where(CandidateHandoff.candidate_id == Candidate.id)
+                .where(CandidateHandoff.status == "accepted")
+                .where(CandidateHandoff.assigned_to_user_id == proc_id_str)
+            )
+            conds.append(processor_handoff_exists)
+
     status_reason_codes = _to_list(filters.get("status_reason"))
     if status_reason_codes:
         reason_clauses = []
@@ -457,6 +631,31 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
                 reason_clauses.append(Candidate.status_reason.like(f'%"{code}"%'))
         if reason_clauses:
             conds.append(or_(*reason_clauses))
+
+    # Фильтр по тегам (аналогично status_reason)
+    tags_list = _to_list(filters.get("tags"))
+    if tags_list:
+        tag_clauses = []
+        for idx, tag in enumerate(tags_list):
+            if not tag:
+                continue
+            if _HAS_JSONB:
+                bind = bindparam(
+                    f"tag_{idx}",
+                    value=[tag],
+                    type_=JSONB,
+                )
+                tag_clauses.append(
+                    cast(Candidate.tags, JSONB).op("@>")(bind)
+                )
+            else:  # fallback (e.g. SQLite dev env)
+                tag_clauses.append(Candidate.tags.like(f'%"{tag}"%'))
+        if tag_clauses:
+            conds.append(or_(*tag_clauses))
+
+    is_favorite = filters.get("is_favorite")
+    if is_favorite is not None:
+        conds.append(Candidate.is_favorite == is_favorite)
 
     return conds
 
@@ -640,6 +839,7 @@ async def get_candidate_with_labels(
     tenant_id: str,
     candidate_id: str,
     visibility: TenantVisibility | None = None,
+    is_client_tenant: bool = False,
 ) -> Optional[
     Tuple[
         Candidate,
@@ -691,7 +891,7 @@ async def get_candidate_with_labels(
         .join(recruiter_alias, recruiter_alias.id == Candidate.recruiter_id, isouter=True)
         .where(
             Candidate.id == candidate_id,
-            _candidate_scope_clause(tenant_id, visibility),
+            _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client_tenant),
             Candidate.deleted_at.is_(None),
         )
         .limit(1)

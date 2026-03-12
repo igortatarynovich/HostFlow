@@ -1,6 +1,8 @@
 // src/api/types.ts
+// This file is kept for backward compatibility
+// All types are now exported from ./types/index.ts
 
-export type UUID = string;
+export * from './types';
 
 /** Текущий пользователь */
 export interface WhoAmI {
@@ -21,7 +23,7 @@ export interface WhoAmI {
   security?: UserSecuritySummary;
 }
 
-export type UserRole = 'administrator' | 'supervisor' | 'recruiter' | 'viewer';
+export type UserRole = 'administrator' | 'supervisor' | 'recruiter' | 'client_manager' | 'client_processor' | 'viewer';
 export type TenantUserRole = UserRole;
 
 export type TenantType = 'agency' | 'company' | 'platform';
@@ -46,6 +48,30 @@ export interface TenantModuleSettings {
 }
 
 export type TenantModuleSettingsPatch = Partial<TenantModuleSettings>;
+
+export type RoleModuleMatrixRole =
+  | 'administrator'
+  | 'supervisor'
+  | 'recruiter'
+  | 'client_manager'
+  | 'client_processor'
+  | 'viewer';
+
+export interface RoleModulePermissions {
+  visible: boolean;
+  editable: boolean;
+}
+
+export type TenantRoleModuleMatrix = Record<RoleModuleMatrixRole, Record<keyof TenantModuleSettings, RoleModulePermissions>>;
+
+export type TenantRoleModuleMatrixPatch = Partial<{
+  [K in RoleModuleMatrixRole]: Partial<Record<keyof TenantModuleSettings, RoleModulePermissions>>;
+}>;
+
+export interface EffectiveRoleModules {
+  role: string;
+  modules: Partial<Record<keyof TenantModuleSettings, RoleModulePermissions>>;
+}
 
 export interface SeatRequest {
   id: string;
@@ -475,6 +501,11 @@ export interface Vacancy {
   is_open?: boolean | null;
   is_active?: boolean | null;
   is_archived?: boolean | null;
+  candidate_profile_id?: string | null;
+  candidate_profile_name?: string | null;
+  candidate_count?: number;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 /** Структурный адрес */
@@ -515,6 +546,8 @@ export interface CandidateEmploymentRecord {
   created_at: string;
   updated_at: string;
 }
+
+export type CandidateOpsMode = 'in_work' | 'later' | 'no_reply_needed' | 'escalated';
 
 /** Доп. поля кандидата (extra) */
 export interface CandidateExtra {
@@ -565,6 +598,13 @@ export interface CandidateExtra {
     contract?: boolean;
     other?: string;
   };
+
+  // операционный режим кандидата (отдельно от этапа)
+  candidate_ops?: {
+    mode?: CandidateOpsMode | null;
+    updated_at?: string | null;
+    updated_by?: string | null;
+  } | null;
 }
 
 /** Кандидат */
@@ -577,6 +617,8 @@ export interface Candidate {
   phone_country_code?: string | null;
   country_code?: string | null;
   languages?: string[] | null;
+  tags?: string[] | null
+  is_favorite?: boolean;
   stage?: string | null;
   status_reason?: string[] | null;
 
@@ -649,6 +691,27 @@ export interface LeadListResponse {
 }
 
 export type MetaCredentialStatus = 'active' | 'disabled' | 'rotation_pending';
+export type MetaFieldMappingFormat =
+  | 'string'
+  | 'email'
+  | 'phone'
+  | 'bool'
+  | 'int'
+  | 'float'
+  | 'uuid'
+  | 'country'
+  | 'contact_channel'
+  | 'list'
+  | 'csv'
+  | 'lower'
+  | 'upper';
+
+export interface MetaLeadFieldMappingRule {
+  source: string | string[];
+  target: string;
+  format?: MetaFieldMappingFormat;
+  overwrite?: boolean;
+}
 
 export interface MetaLeadSettings {
   tenant_id: UUID;
@@ -657,6 +720,8 @@ export interface MetaLeadSettings {
   auto_create_enabled: boolean;
   reroute_after_hours?: number | null;
   mask_pii_in_logs: boolean;
+  pull_field_data_from_graph?: boolean;
+  field_mapping?: MetaLeadFieldMappingRule[];
   webhook_url?: string | null;
   last_webhook_check_at?: string | null;
   last_signature_status?: string | null;
@@ -671,6 +736,8 @@ export interface MetaLeadSettingsPatch {
   auto_create_enabled?: boolean;
   reroute_after_hours?: number | null;
   mask_pii_in_logs?: boolean;
+  pull_field_data_from_graph?: boolean;
+  field_mapping?: MetaLeadFieldMappingRule[];
   webhook_url?: string | null;
   webhook_verify_token?: string | null;
 }
@@ -1085,6 +1152,34 @@ export interface NotificationListResponse {
   items: NotificationItem[];
 }
 
+export type ReminderStatus = 'new' | 'pending' | 'sent' | 'overdue' | 'done' | 'cancelled';
+
+export interface ReminderRecord {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+  type: string;
+  entity_type: string;
+  entity_id: string;
+  owner_id?: string | null;
+  assignee_id?: string | null;
+  priority?: string | null;
+  channel?: string | null;
+  status: ReminderStatus;
+  due_at: string;
+  remind_at?: string | null;
+  snoozed_until?: string | null;
+  completed_at?: string | null;
+  recurrence_json?: Record<string, any> | null;
+  payload: Record<string, any>;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ReminderListResponse {
+  items: ReminderRecord[];
+}
+
 export interface DocumentSummaryRequired {
   total: number;
   approved: number; // backward-compat alias for ready count
@@ -1183,6 +1278,21 @@ export interface MetaStages {
   column_of: Record<string, string>;    // code -> column
   order: string[];                      // ordered codes
   reason_choices?: Record<string, { code: string; label: string }[]>;
+  custom_stages?: Array<{
+    code: string;
+    label: string;
+    order: number;
+    id: number;
+  }>;
+  meta?: Record<
+    string,
+    {
+      is_system?: boolean;
+      visible_for_agency?: boolean;
+      visible_for_client?: boolean;
+      owner?: string; // 'agency' | 'client' | 'shared' | custom
+    }
+  >;
 }
 
 /** Cправочники */

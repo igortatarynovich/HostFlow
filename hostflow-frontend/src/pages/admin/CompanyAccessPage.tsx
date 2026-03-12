@@ -4,6 +4,7 @@ import { listCompanies } from '../../api/client'
 import { grantCompanyAccess, listCompanyAccess, revokeCompanyAccess } from '../../api/access'
 import { listAdminUsers } from '../../api/users'
 import type { AdminUser, Company, CompanyAccessEntry } from '../../api/types'
+import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { usePermissions } from '../../hooks/usePermissions'
 
 interface AccessFormState {
@@ -169,18 +170,18 @@ export default function CompanyAccessPage() {
   }
 
   if (companies.length === 0) {
-    return <div className="text-sm text-gray-600">Нет компаний для настройки доступа.</div>
+    return <div className="text-sm text-slate-600">Нет компаний для настройки доступа.</div>
   }
 
   const selectedCompany = companies.find((company) => company.id === selectedCompanyId)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Доступ к компаниям</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Доступ к компаниям</h1>
           {selectedCompany && (
-            <p className="text-sm text-gray-500">Компания: {selectedCompany.name}</p>
+            <p className="text-sm text-slate-500">Компания: {selectedCompany.name}</p>
           )}
         </div>
         <select
@@ -196,21 +197,33 @@ export default function CompanyAccessPage() {
         </select>
       </header>
 
-      {error && <div className="rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
+      {error && (
+        <ErrorRecoveryBanner
+          info={{
+            title: error,
+            hint: 'Повторите действие или обновите страницу.',
+          }}
+          onRetry={() => selectedCompanyId && void loadAccess(selectedCompanyId)}
+          retryLabel="Обновить"
+          secondaryTo="/app/settings/company-access"
+          secondaryLabel="Доступ к компаниям"
+          compact
+        />
+      )}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6 space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900">Текущий доступ</h2>
+      <section className="rounded-lg border border-slate-200 bg-white p-6 space-y-3">
+        <h2 className="text-lg font-semibold text-slate-900">Текущий доступ</h2>
         {loadingAccess ? (
-          <div className="text-sm text-gray-500">Загрузка…</div>
+          <div className="text-sm text-slate-500">Загрузка…</div>
         ) : accessList.length === 0 ? (
-          <div className="text-sm text-gray-500">Для этой компании пока нет назначенных пользователей.</div>
+          <div className="text-sm text-slate-500">Для этой компании пока нет назначенных пользователей.</div>
         ) : (
           <ul className="space-y-2 text-sm">
             {accessList.map((entry) => (
-              <li key={entry.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-100 px-3 py-2">
+              <li key={entry.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-100 px-3 py-2">
                 <div>
-                  <div className="font-medium text-gray-900">{entry.email}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="font-medium text-slate-900">{entry.email}</div>
+                  <div className="text-xs text-slate-500">
                     Роль: {entry.role} · Права: {entry.can_edit ? 'редактирование' : 'просмотр'}
                   </div>
                 </div>
@@ -238,8 +251,8 @@ export default function CompanyAccessPage() {
         )}
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Выдать доступ</h2>
+      <section className="rounded-lg border border-slate-200 bg-white p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-slate-900">Выдать доступ</h2>
         <form className="space-y-3" onSubmit={handleGrant}>
           <label className="block text-sm">
             <span className="label">Пользователь</span>

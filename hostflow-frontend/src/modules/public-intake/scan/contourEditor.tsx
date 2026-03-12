@@ -46,24 +46,35 @@ export function ContourEditor({
   const [draggingPoint, setDraggingPoint] = useState<number | null>(null)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const initializedRef = useRef<boolean>(false) // Track if contour was initialized
+  const [loading, setLoading] = useState<boolean>(true)
+  const [imageSize, setImageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const rafRef = useRef<number | null>(null)
+  const pendingUpdateRef = useRef<{ x: number; y: number } | null>(null)
   // Removed unused zoom and pan states
 
   const drawContour = useCallback((ctx: CanvasRenderingContext2D, c: Contour6Points) => {
     const points = [c.p1, c.p2, c.p3, c.p4, c.p5, c.p6]
 
-    // Draw filled mask (semi-transparent)
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'
+    // Overlay darkened area outside contour
+    ctx.save()
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
     ctx.beginPath()
+    ctx.rect(0, 0, imageSize.width, imageSize.height)
     ctx.moveTo(points[0].x, points[0].y)
     for (let i = 1; i < points.length; i++) {
       ctx.lineTo(points[i].x, points[i].y)
     }
     ctx.closePath()
-    ctx.fill()
+    ctx.fill('evenodd')
+    ctx.restore()
 
-    // Draw contour lines
-    ctx.strokeStyle = '#10b981'
-    ctx.lineWidth = 2
+    // Gradient contour for visibility
+    const grad = ctx.createLinearGradient(points[0].x, points[0].y, points[2].x, points[2].y)
+    grad.addColorStop(0, '#22d3ee')
+    grad.addColorStop(1, '#22c55e')
+    ctx.strokeStyle = grad
+    ctx.lineWidth = 3
     ctx.beginPath()
     ctx.moveTo(points[0].x, points[0].y)
     for (let i = 1; i < points.length; i++) {
@@ -72,58 +83,44 @@ export function ContourEditor({
     ctx.closePath()
     ctx.stroke()
 
-    // Draw points
-    points.forEach((p, idx) => {
-      ctx.fillStyle = draggingPoint === p.id ? '#ef4444' : '#10b981'
+    // Points
+    points.forEach((p) => {
+      ctx.fillStyle = draggingPoint === p.id ? '#f97316' : '#22d3ee'
       ctx.beginPath()
-      ctx.arc(p.x, p.y, 8, 0, Math.PI * 2)
+      ctx.arc(p.x, p.y, 9, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = '#fff'
+      ctx.strokeStyle = '#ffffff'
       ctx.lineWidth = 2
       ctx.stroke()
-
-      // Label
-      ctx.fillStyle = '#fff'
-      ctx.font = '12px sans-serif'
-      ctx.fillText(`P${p.id}`, p.x + 10, p.y - 10)
     })
-  }, [draggingPoint])
+  }, [draggingPoint, imageSize.height, imageSize.width])
 
   // Initialize contour and load image - combined to avoid infinite loops
   useEffect(() => {
-    if (!canvasRef.current || initializedRef.current) return
-
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
+    if (initializedRef.current) return
     const img = new Image()
     img.onload = () => {
-      // Set canvas size only once
-      canvas.width = img.width
-      canvas.height = img.height
-      
-      // Initialize contour only once - use initialContour prop directly
+      setImageSize({ width: img.naturalWidth, height: img.naturalHeight })
       if (initialContour) {
         setContour(initialContour)
       } else {
-        // Create default 6-point contour from image bounds
+        const w = img.naturalWidth
+        const h = img.naturalHeight
         const defaultContour: Contour6Points = {
-          p1: { x: img.width * 0.1, y: img.height * 0.1, id: 1 },
-          p2: { x: img.width * 0.9, y: img.height * 0.1, id: 2 },
-          p3: { x: img.width * 0.9, y: img.height * 0.5, id: 3 },
-          p4: { x: img.width * 0.9, y: img.height * 0.9, id: 4 },
-          p5: { x: img.width * 0.1, y: img.height * 0.9, id: 5 },
-          p6: { x: img.width * 0.1, y: img.height * 0.5, id: 6 },
+          p1: { x: w * 0.1, y: h * 0.1, id: 1 },
+          p2: { x: w * 0.9, y: h * 0.1, id: 2 },
+          p3: { x: w * 0.9, y: h * 0.5, id: 3 },
+          p4: { x: w * 0.9, y: h * 0.9, id: 4 },
+          p5: { x: w * 0.1, y: h * 0.9, id: 5 },
+          p6: { x: w * 0.1, y: h * 0.5, id: 6 },
         }
         setContour(defaultContour)
       }
-      
-      // Mark as initialized
       initializedRef.current = true
+      setLoading(false)
     }
     img.src = imageUrl
-  }, [imageUrl, initialContour]) // Only depend on imageUrl and initialContour
+  }, [imageUrl, initialContour])
 
   // Separate effect to draw/redraw when contour or image changes
   useEffect(() => {
@@ -145,23 +142,20 @@ export function ContourEditor({
     img.src = imageUrl
   }, [contour, imageUrl]) // Redraw when contour changes
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!canvasRef.current || !contour) return
+  const handlePointerDown = useCallback(
+    (clientX: number, clientY: number, rect: DOMRect) => {
+      if (!contour) return
+      const x = (clientX - rect.left) * (imageSize.width / rect.width)
+      const y = (clientY - rect.top) * (imageSize.height / rect.height)
 
-      const canvas = canvasRef.current
-      const rect = canvas.getBoundingClientRect()
-      const x = (e.clientX - rect.left) * (canvas.width / rect.width)
-      const y = (e.clientY - rect.top) * (canvas.height / rect.height)
-
-      // Find closest point
+      // Find closest point (tolerate 30px to make grabbing easy)
       const points = [contour.p1, contour.p2, contour.p3, contour.p4, contour.p5, contour.p6]
       let minDist = Infinity
       let closestIdx = -1
 
       for (let i = 0; i < points.length; i++) {
         const dist = Math.sqrt((x - points[i].x) ** 2 + (y - points[i].y) ** 2)
-        if (dist < minDist && dist < 20) {
+        if (dist < minDist && dist < 30) {
           minDist = dist
           closestIdx = i
         }
@@ -169,66 +163,132 @@ export function ContourEditor({
 
       if (closestIdx >= 0) {
         setDraggingPoint(points[closestIdx].id)
+        if ('vibrate' in navigator) {
+          // haptic feedback on grab
+          try {
+            navigator.vibrate?.(10)
+          } catch (_) {
+            // ignore
+          }
+        }
       }
     },
-    [contour],
+    [contour, imageSize.height, imageSize.width],
   )
+  const updatePoint = useCallback(
+    (clientX: number, clientY: number, rect: DOMRect) => {
+      if (!contour || draggingPoint === null) return
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!canvasRef.current || !contour || draggingPoint === null) return
-
-      const canvas = canvasRef.current
-      const rect = canvas.getBoundingClientRect()
-      let x = (e.clientX - rect.left) * (canvas.width / rect.width)
-      let y = (e.clientY - rect.top) * (canvas.height / rect.height)
+      let x = (clientX - rect.left) * (imageSize.width / rect.width)
+      let y = (clientY - rect.top) * (imageSize.height / rect.height)
 
       // Snap to edges if enabled
       if (snapToEdge) {
-        // Simple edge snapping (can be enhanced)
         if (Math.abs(x) < snapDistance) x = 0
-        if (Math.abs(x - canvas.width) < snapDistance) x = canvas.width
+        if (Math.abs(x - imageSize.width) < snapDistance) x = imageSize.width
         if (Math.abs(y) < snapDistance) y = 0
-        if (Math.abs(y - canvas.height) < snapDistance) y = canvas.height
+        if (Math.abs(y - imageSize.height) < snapDistance) y = imageSize.height
       }
+      // Clamp to image bounds with soft margins (5%)
+      const marginX = imageSize.width * 0.05
+      const marginY = imageSize.height * 0.05
+      x = Math.min(Math.max(x, marginX), imageSize.width - marginX)
+      y = Math.min(Math.max(y, marginY), imageSize.height - marginY)
 
-      // Update point
-      const updatedContour = { ...contour }
-      const pointKey = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'][draggingPoint - 1] as keyof Contour6Points
-      updatedContour[pointKey] = { ...updatedContour[pointKey], x, y }
+      // Defer updates to next animation frame + simple smoothing
+      pendingUpdateRef.current = { x, y }
+      if (rafRef.current) return
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null
+        const pending = pendingUpdateRef.current
+        pendingUpdateRef.current = null
+        if (!pending || !contour || draggingPoint === null) return
 
-      setContour(updatedContour)
-      onContourChange(updatedContour)
+        const updatedContour = { ...contour }
+        const pointKey = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'][draggingPoint - 1] as keyof Contour6Points
+        const current = updatedContour[pointKey]
+        let smoothed = {
+          x: current.x + (pending.x - current.x) * 0.3,
+          y: current.y + (pending.y - current.y) * 0.3,
+        }
+        // Enforce minimum document size (40% of frame)
+        const minW = imageSize.width * 0.4
+        const minH = imageSize.height * 0.4
+        const draft = { ...updatedContour, [pointKey]: { ...updatedContour[pointKey], ...smoothed } }
+        const boxPoints = [draft.p1, draft.p2, draft.p3, draft.p4, draft.p5, draft.p6]
+        const minBoxX = Math.min(...boxPoints.map((p) => p.x))
+        const maxBoxX = Math.max(...boxPoints.map((p) => p.x))
+        const minBoxY = Math.min(...boxPoints.map((p) => p.y))
+        const maxBoxY = Math.max(...boxPoints.map((p) => p.y))
+        let width = maxBoxX - minBoxX
+        let height = maxBoxY - minBoxY
+        if (width < minW || height < minH) {
+          const cx = (minBoxX + maxBoxX) / 2
+          const cy = (minBoxY + maxBoxY) / 2
+          const halfW = Math.max(minW / 2, width / 2)
+          const halfH = Math.max(minH / 2, height / 2)
+          // Clamp smoothed point to preserve min size around center
+          smoothed = {
+            x: Math.min(Math.max(smoothed.x, cx - halfW), cx + halfW),
+            y: Math.min(Math.max(smoothed.y, cy - halfH), cy + halfH),
+          }
+        }
+        updatedContour[pointKey] = { ...updatedContour[pointKey], ...smoothed }
 
-      // Validate
-      const validation = onValidate(updatedContour)
-      setValidationErrors(validation.errors)
+        setContour(updatedContour)
+        onContourChange(updatedContour)
+
+        const validation = onValidate(updatedContour)
+        setValidationErrors(validation.errors)
+      })
     },
-    [contour, draggingPoint, snapToEdge, snapDistance, onContourChange, onValidate],
+    [contour, draggingPoint, snapToEdge, snapDistance, onContourChange, onValidate, imageSize.width, imageSize.height],
   )
 
-  const handleMouseUp = useCallback(() => {
+  // Pointer handlers with capture so dragging continues outside overlay
+  const handlePointerDownEvent = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      if (!overlayRef.current) return
+      const rect = overlayRef.current.getBoundingClientRect()
+      handlePointerDown(e.clientX, e.clientY, rect)
+    },
+    [handlePointerDown],
+  )
+
+  const handlePointerMoveEvent = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      if (draggingPoint === null) return
+      if (!overlayRef.current) return
+      updatePoint(e.clientX, e.clientY, overlayRef.current.getBoundingClientRect())
+    },
+    [updatePoint, draggingPoint],
+  )
+
+  const handlePointerUpEvent = useCallback(() => {
     setDraggingPoint(null)
   }, [])
 
   const handleReset = useCallback(() => {
-    if (canvasRef.current) {
-      const canvas = canvasRef.current
+    if (imageSize.width && imageSize.height) {
       const defaultContour: Contour6Points = {
-        p1: { x: canvas.width * 0.1, y: canvas.height * 0.1, id: 1 },
-        p2: { x: canvas.width * 0.9, y: canvas.height * 0.1, id: 2 },
-        p3: { x: canvas.width * 0.9, y: canvas.height * 0.5, id: 3 },
-        p4: { x: canvas.width * 0.9, y: canvas.height * 0.9, id: 4 },
-        p5: { x: canvas.width * 0.1, y: canvas.height * 0.9, id: 5 },
-        p6: { x: canvas.width * 0.1, y: canvas.height * 0.5, id: 6 },
+        p1: { x: imageSize.width * 0.1, y: imageSize.height * 0.1, id: 1 },
+        p2: { x: imageSize.width * 0.9, y: imageSize.height * 0.1, id: 2 },
+        p3: { x: imageSize.width * 0.9, y: imageSize.height * 0.5, id: 3 },
+        p4: { x: imageSize.width * 0.9, y: imageSize.height * 0.9, id: 4 },
+        p5: { x: imageSize.width * 0.1, y: imageSize.height * 0.9, id: 5 },
+        p6: { x: imageSize.width * 0.1, y: imageSize.height * 0.5, id: 6 },
       }
       setContour(defaultContour)
       onContourChange(defaultContour)
     }
-  }, [onContourChange])
+  }, [onContourChange, imageSize.height, imageSize.width])
 
   if (!contour) {
-    return <div>Loading...</div>
+    return (
+      <div className="flex h-full items-center justify-center text-white">
+        {loading ? 'Загрузка изображения…' : 'Контур недоступен'}
+      </div>
+    )
   }
 
   return (
@@ -252,73 +312,75 @@ export function ContourEditor({
       {/* Canvas area - full screen on mobile */}
       <div className="flex-1 overflow-auto p-2 sm:p-4">
         <div className="relative mx-auto max-w-4xl">
+          {loading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-slate-900/80 text-white">
+              Загрузка изображения…
+            </div>
+          )}
           <canvas
             ref={canvasRef}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onTouchStart={(e) => {
-              // Handle touch events for mobile
-              const touch = e.touches[0]
-              if (touch && canvasRef.current) {
-                const rect = canvasRef.current.getBoundingClientRect()
-                const x = (touch.clientX - rect.left) * (canvasRef.current.width / rect.width)
-                const y = (touch.clientY - rect.top) * (canvasRef.current.height / rect.height)
-                
-                if (contour) {
-                  const points = [contour.p1, contour.p2, contour.p3, contour.p4, contour.p5, contour.p6]
-                  let minDist = Infinity
-                  let closestIdx = -1
-                  
-                  for (let i = 0; i < points.length; i++) {
-                    const dist = Math.sqrt((x - points[i].x) ** 2 + (y - points[i].y) ** 2)
-                    if (dist < minDist && dist < 30) {
-                      minDist = dist
-                      closestIdx = i
-                    }
-                  }
-                  
-                  if (closestIdx >= 0) {
-                    setDraggingPoint(points[closestIdx].id)
-                  }
-                }
-              }
-            }}
-            onTouchMove={(e) => {
-              if (draggingPoint !== null && canvasRef.current && contour) {
-                e.preventDefault()
-                const touch = e.touches[0]
-                if (touch) {
-                  const rect = canvasRef.current.getBoundingClientRect()
-                  let x = (touch.clientX - rect.left) * (canvasRef.current.width / rect.width)
-                  let y = (touch.clientY - rect.top) * (canvasRef.current.height / rect.height)
-                  
-                  // Snap to edges if enabled
-                  if (snapToEdge) {
-                    if (Math.abs(x) < snapDistance) x = 0
-                    if (Math.abs(x - canvasRef.current.width) < snapDistance) x = canvasRef.current.width
-                    if (Math.abs(y) < snapDistance) y = 0
-                    if (Math.abs(y - canvasRef.current.height) < snapDistance) y = canvasRef.current.height
-                  }
-                  
-                  const updatedContour = { ...contour }
-                  const pointKey = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'][draggingPoint - 1] as keyof Contour6Points
-                  updatedContour[pointKey] = { ...updatedContour[pointKey], x, y }
-                  
-                  setContour(updatedContour)
-                  onContourChange(updatedContour)
-                  
-                  const validation = onValidate(updatedContour)
-                  setValidationErrors(validation.errors)
-                }
-              }
-            }}
-            onTouchEnd={() => {
-              setDraggingPoint(null)
-            }}
             className="w-full max-h-[calc(100vh-200px)] border border-white/20 rounded-lg bg-white"
-            style={{ touchAction: 'none' }}
+            style={{ display: 'none' }}
           />
+          {imageSize.width > 0 && (
+            <div
+              className="relative w-full max-h-[calc(100vh-200px)]"
+              style={{ touchAction: 'none' }}
+              ref={overlayRef}
+              onPointerDown={handlePointerDownEvent}
+              onPointerMove={handlePointerMoveEvent}
+              onPointerUp={handlePointerUpEvent}
+              onPointerCancel={handlePointerUpEvent}
+            >
+              <img
+                src={imageUrl}
+                alt="Документ"
+                className="w-full h-auto rounded-lg pointer-events-none select-none"
+                draggable={false}
+              />
+              {contour && (
+                <svg
+                  className="absolute inset-0 w-full h-full"
+                  viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  <path
+                    d={`M ${contour.p1.x} ${contour.p1.y} L ${contour.p2.x} ${contour.p2.y} L ${contour.p3.x} ${contour.p3.y} L ${contour.p4.x} ${contour.p4.y} L ${contour.p5.x} ${contour.p5.y} L ${contour.p6.x} ${contour.p6.y} Z`}
+                    fill="rgba(16,185,129,0.15)"
+                    stroke="#10b981"
+                    strokeWidth={4}
+                    pointerEvents="none"
+                  />
+                  {[contour.p1, contour.p2, contour.p3, contour.p4, contour.p5, contour.p6].map((p, idx) => (
+                    <circle
+                      key={p.id}
+                      cx={p.x}
+                      cy={p.y}
+                      r={18}
+                      fill="rgba(16,185,129,0.9)"
+                      stroke="#fff"
+                      strokeWidth={3}
+                      className="pointer-events-auto"
+                      onPointerDown={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        if (overlayRef.current) {
+                          overlayRef.current.setPointerCapture(e.pointerId)
+                        }
+                        // Directly set dragging point to this circle id for deterministic drag start
+                        setDraggingPoint(p.id)
+                        const parentRect =
+                          (e.currentTarget.ownerSVGElement as SVGSVGElement | null)?.getBoundingClientRect() ||
+                          overlayRef.current?.getBoundingClientRect()
+                        if (!parentRect) return
+                        updatePoint(e.clientX, e.clientY, parentRect)
+                      }}
+                    />
+                  ))}
+                </svg>
+              )}
+            </div>
+          )}
 
           {validationErrors.length > 0 && (
             <div className="mt-2 rounded-lg bg-red-500/90 p-3 text-sm text-white">
@@ -343,11 +405,9 @@ export function ContourEditor({
             onClick={() => {
               if (contour) {
                 const validation = onValidate(contour)
-                if (validation.valid) {
-                  onConfirm?.(contour)
-                } else {
-                  setValidationErrors(validation.errors)
-                }
+                setValidationErrors(validation.errors)
+                // Даже при предупреждениях отправляем контур
+                onConfirm?.(contour)
               }
             }}
             className="min-h-[48px] rounded-full bg-emerald-500 px-6 py-3 text-base font-semibold text-white shadow-lg active:bg-emerald-600 sm:min-h-[auto] sm:py-2"
@@ -359,4 +419,3 @@ export function ContourEditor({
     </div>
   )
 }
-

@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import re
+import secrets
+import string
+import uuid
 from typing import Any, Dict, Optional
 
 import sqlalchemy as sa
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 
 from backend.app.auth.jwt_tools import encode as encode_jwt
 from backend.app.core.config import settings
-from backend.app.core.security import verify_password
+from backend.app.core.security import hash_password, verify_password
 from backend.app.db.session import async_session_maker
+from backend.app.models.tenant import Tenant, TenantLicense, TenantStatus, TenantType, user_memberships
 from backend.app.models.user import Role as UserRole
 from backend.app.models.user import User
 from backend.app.schemas.user import UserDetailOut, UserInviteAccept
@@ -39,12 +44,28 @@ _ROLE_MAP = {
     "viewer": UserRole.viewer.value,
     "client_manager": UserRole.client_manager.value,
     "client": UserRole.client_manager.value,
+    "client_processor": UserRole.client_processor.value,
+    "processor": UserRole.client_processor.value,
     "superadmin": UserRole.superadmin.value,
 }
 
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+
+
+class RegisterIn(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    workspace_name: str = Field(..., min_length=2, max_length=128)
+    full_name: str | None = Field(default=None, max_length=255)
+    plan_code: str | None = Field(default=None, max_length=32)
+
+
+class RegisterOut(BaseModel):
+    ok: bool = True
+    user: Dict[str, Any]
+    tenant: Dict[str, Any]
 
 
 class TokenOut(BaseModel):
@@ -71,6 +92,134 @@ def _normalize_role(
         return user_role.value
     raw = str(user_role or UserRole.viewer.value).lower()
     return _ROLE_MAP.get(raw, UserRole.viewer.value)
+
+
+def _slugify_workspace(raw: str) -> str:
+    value = re.sub(r"[^a-zA-Z0-9]+", "-", (raw or "").strip().lower()).strip("-")
+    if not value:
+        return "workspace"
+    return value[:50]
+
+
+def _gen_api_key(length: int = 40) -> str:
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+async def _unique_slug(session, base_slug: str) -> str:
+    root = (base_slug or "workspace").strip("-") or "workspace"
+    root = root[:40]
+    for idx in range(0, 100):
+        suffix = "" if idx == 0 else f"-{idx + 1}"
+        candidate = f"{root}{suffix}"
+        exists = await session.execute(select(Tenant.id).where(func.lower(Tenant.slug) == candidate.lower()).limit(1))
+        if exists.scalar_one_or_none() is None:
+            return candidate
+    random_tail = secrets.token_hex(2)
+    return f"{root[:35]}-{random_tail}"
+
+
+async def _unique_tenant_name(session, desired: str) -> str:
+    root = (desired or "").strip() or "Workspace"
+    root = root[:110]
+    for idx in range(0, 100):
+        suffix = "" if idx == 0 else f" ({idx + 1})"
+        candidate = f"{root}{suffix}"
+        exists = await session.execute(select(Tenant.id).where(func.lower(Tenant.name) == candidate.lower()).limit(1))
+        if exists.scalar_one_or_none() is None:
+            return candidate
+    return f"{root[:100]} {secrets.token_hex(2)}"
+
+
+@router.post("/register", response_model=RegisterOut, tags=["auth"], summary="Self-service registration")
+async def auth_register(payload: RegisterIn) -> RegisterOut:
+    email = payload.email.lower().strip()
+    workspace_name = payload.workspace_name.strip()
+    if len(workspace_name) < 2:
+        raise HTTPException(status_code=422, detail="Workspace name is too short")
+
+    async with async_session_maker() as session:
+        existing_user = await session.execute(select(User.id).where(func.lower(User.email) == email).limit(1))
+        if existing_user.scalar_one_or_none() is not None:
+            raise HTTPException(status_code=409, detail="Email already in use")
+
+        tenant_name = await _unique_tenant_name(session, workspace_name)
+        tenant_slug = await _unique_slug(session, _slugify_workspace(workspace_name))
+
+        tenant = Tenant(
+            id=str(uuid.uuid4()),
+            name=tenant_name,
+            slug=tenant_slug,
+            api_key=_gen_api_key(),
+            type=TenantType.agency,
+            status=TenantStatus.trial,
+            workspace_label=workspace_name,
+            settings={"signup": {"source": "self_service"}},
+        )
+        session.add(tenant)
+        await session.flush()
+
+        trial_expires_at = (datetime.now(timezone.utc) + timedelta(days=14)).date()
+        license_entry = TenantLicense(
+            tenant_id=tenant.id,
+            plan="trial",
+            expires_at=trial_expires_at,
+            max_recruiters=1,
+            max_supervisors=1,
+            max_client_managers=0,
+            max_viewers=0,
+            max_storage_gb=5,
+            max_companies=1,
+            max_candidates_active=100,
+            max_vacancies_active=5,
+            max_documents=500,
+            max_public_portal_links=1,
+            auto_renew=False,
+        )
+        session.add(license_entry)
+
+        user = User(
+            id=str(uuid.uuid4()),
+            email=email,
+            password_hash=hash_password(payload.password),
+            role=UserRole.administrator,
+            tenant_id=tenant.id,
+            is_active=True,
+            full_name=(payload.full_name or "").strip() or None,
+            preferences={},
+            extra={"signup_plan_code": (payload.plan_code or "").strip() or None},
+        )
+        session.add(user)
+        await session.flush()
+
+        await session.execute(
+            sa.insert(user_memberships).values(
+                id=str(uuid.uuid4()),
+                user_id=user.id,
+                tenant_id=tenant.id,
+                role=UserRole.administrator.value,
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+
+        await session.commit()
+
+    return RegisterOut(
+        user={
+            "id": user.id,
+            "email": user.email,
+            "role": UserRole.administrator.value,
+            "tenant_id": tenant.id,
+            "full_name": user.full_name,
+        },
+        tenant={
+            "id": tenant.id,
+            "name": tenant.name,
+            "slug": tenant.slug,
+            "workspace_label": tenant.workspace_label,
+            "status": tenant.status.value if hasattr(tenant.status, "value") else str(tenant.status),
+        },
+    )
 
 
 @router.post(
@@ -139,6 +288,44 @@ async def auth_login(payload: LoginIn, request: Request) -> TokenOut:
         user={"id": user.id, "email": email, "role": role_value, "tenant_id": tenant_id},
         session_id=session_entry.id,
     )
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+@router.post("/password/request-reset", tags=["auth"])
+async def request_password_reset(payload: PasswordResetRequest):
+    """Request password reset link (self-service). Always returns 200 to prevent email enumeration."""
+    async with async_session_maker() as session:
+        ok = await users_service.request_password_reset(
+            db=session, email=payload.email
+        )
+        await session.commit()
+    return {"ok": True, "message": "If the email exists, a reset link was sent."}
+
+
+@router.post("/password/reset-with-token", tags=["auth"])
+async def reset_password_with_token(payload: PasswordResetConfirm):
+    """Set new password using reset token from email link."""
+    async with async_session_maker() as session:
+        ok = await users_service.reset_password_with_token(
+            db=session,
+            token=payload.token,
+            new_password=payload.new_password,
+        )
+        await session.commit()
+    if not ok:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired token",
+        )
+    return {"ok": True, "message": "Password updated. You can now log in."}
 
 
 @router.post("/invite/accept", response_model=UserDetailOut, tags=["auth"])

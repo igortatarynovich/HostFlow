@@ -68,7 +68,6 @@ export const http = axios.create({
   headers: {
     'X-Tenant-Id': TENANT_ID,
     'Accept': 'application/json',
-    'Content-Type': 'application/json',
   },
   timeout: 20000,
 })
@@ -77,6 +76,11 @@ export const http = axios.create({
 http.interceptors.request.use((config) => {
   const token = getAccessToken()
   config.headers = config.headers ?? {}
+
+  // Critical: let browser set correct boundary for FormData
+  if (config.data instanceof FormData) {
+    delete (config.headers as any)['Content-Type']
+  }
 
   if (token) {
     (config.headers as any)['Authorization'] = `Bearer ${token}`

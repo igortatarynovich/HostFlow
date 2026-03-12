@@ -29,22 +29,13 @@ export type ScanQualityReport = {
 
 export function analyzeImageData(imageData: ImageData, preset: ScanPresetKey): ScanQualityReport {
   const metrics = computeMetrics(imageData)
-  const thresholds = getPresetThresholds(preset)
+  // EXTREME LENIENCY: disable quality gating to allow capture/processing on all frames.
   const warnings: ScanQualityWarning[] = []
-  if (metrics.sharpness < thresholds.sharpness) {
-    warnings.push('sharpness')
-  }
-  if (metrics.glare > thresholds.glare) {
-    warnings.push('glare')
-  }
-  if (metrics.fill < thresholds.fill) {
-    warnings.push('fill')
-  }
   return {
     preset,
     metrics,
     warnings,
-    passed: warnings.length === 0,
+    passed: true,
   }
 }
 

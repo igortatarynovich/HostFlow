@@ -46,6 +46,26 @@ ADD COLUMN parent_tenant_id UUID NULL REFERENCES tenants (id);
 
 This allows an agency to have sub‑clients (companies) under its control.
 
+### 2.3 Tenant Links (Handoff Infrastructure)
+
+Table `tenant_links` connects agency tenants to clients (companies or employer tenants):
+
+```sql
+tenant_links (
+  id UUID PK,
+  agency_tenant_id UUID NOT NULL REFERENCES tenants(id),
+  client_company_id UUID NULL REFERENCES companies(id),   -- client as company under agency
+  client_tenant_id UUID NULL REFERENCES tenants(id),     -- client as employer tenant
+  status VARCHAR(32) DEFAULT 'active',
+  features_json JSONB,  -- {"handoff_enabled": false, "contact_policy": {...}}
+  ...
+)
+```
+
+- Exactly one of `client_company_id` or `client_tenant_id` must be set.
+- `features_json.handoff_enabled` — enables handoff workflow for this link (off by default).
+- Handoff is a per-link feature: only clients with `handoff_enabled=true` use the formal handoff flow.
+
 Example hierarchy:
 
 ```
@@ -70,7 +90,9 @@ type ENUM('agency', 'company', 'platform')
 |------|----------|
 | `platform` | HostFlow core platform; manages all tenants and licenses |
 | `agency` | Tenant with internal recruiters and external clients |
-| `company` | Independent SaaS customer with its own HR processes |
+| `company` | Independent SaaS customer (employer); can receive handoff from agencies |
+
+Tenant field `client_portal_enabled` controls whether the client portal is available.
 
 ---
 

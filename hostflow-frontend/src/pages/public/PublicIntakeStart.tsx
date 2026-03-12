@@ -69,7 +69,7 @@ export default function PublicIntakeStart() {
     <PublicPageShell maxWidth="3xl" headerExtra={<PublicLocaleSwitcher />}>
       <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
         <div className="mb-4">
-          <Link to="/public" className="text-sm font-medium text-brand-700 hover:text-brand-900">
+          <Link to="/public/portal" className="text-sm font-medium text-brand-700 hover:text-brand-900">
             {t('public.start.header.back')}
           </Link>
         </div>
@@ -78,7 +78,7 @@ export default function PublicIntakeStart() {
           <p className="mt-2 text-sm text-slate-600">{t('public.start.header.subtitle')}</p>
         </div>
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">{t('public.start.form.email')}</label>
             <input

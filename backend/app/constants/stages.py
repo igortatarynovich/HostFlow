@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 
 # ----- Коды ↔ Метки -----
 LABELS: Dict[str, str] = {
@@ -27,6 +27,148 @@ LABELS: Dict[str, str] = {
     # Отклонён
     "rejected": "Отклонён",
     "declined": "Отказался",
+    # Handoff flow
+    "ready_for_handoff": "Готов к передаче",
+    "processing_by_client": "Обработка заказчиком",
+    "docs_submitted_permit": "Документы поданы на разрешение",
+    "handoff_returned": "Возвращён",
+}
+
+# ----- Метаданные этапов -----
+#
+# Используются для управления отображением и правами:
+# - is_system: системный этап, который нельзя удалять/переименовывать на уровне конфигураций
+# - visible_for_agency: этап участвует в пайплайне агентства
+# - visible_for_client: этап показывается клиентским тенантам (в UI и аналитике клиента)
+# - owner: семантический «владелец» этапа: agency | client | shared
+#
+# ВАЖНО:
+# - По умолчанию любой неизвестный код считается visible_for_agency=True, visible_for_client=False, owner="agency"
+STAGE_META: Dict[str, Dict[str, Any]] = {
+    # Внутренний пайплайн агентства (до handoff)
+    "new": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "no_answer": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "contacted": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "questionnaire_submitted": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "docs_wait": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "docs_got": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "permit_ordered": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "visa": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "red_paper": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "trip_plan": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "at_client": {
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "probation_ok": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+    "ready_for_handoff": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": False,
+        "owner": "agency",
+    },
+
+    # Клиентский пайплайн (после handoff)
+    "processing_by_client": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": True,
+        "owner": "client",
+    },
+    "docs_submitted_permit": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": True,
+        "owner": "client",
+    },
+    # Разрешение на работу получено — видно обеим сторонам
+    "permit_received": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": True,
+        "owner": "shared",
+    },
+    # W trakcie zatrudnienia — для клиента и агентства
+    "on_trip": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": True,
+        "owner": "shared",
+    },
+    # Zwrócony (возврат handoff с комментарием)
+    "handoff_returned": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": True,
+        "owner": "shared",
+    },
+
+    # Терминальные статусы, общие для обеих сторон
+    "employed": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": True,
+        "owner": "shared",
+    },
+    "rejected": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": True,
+        "owner": "shared",
+    },
+    "declined": {
+        "is_system": True,
+        "visible_for_agency": True,
+        "visible_for_client": True,
+        "owner": "shared",
+    },
 }
 
 STATUS_REASON_CHOICES: Dict[str, List[Dict[str, str]]] = {
@@ -87,6 +229,14 @@ STAGES_BY_GROUP: Dict[str, List[str]] = {
         "rejected",
         "declined",
     ],
+    "ready": ["ready_for_handoff"],
+    "client_process": [
+        "processing_by_client",
+        "docs_submitted_permit",
+        "permit_received",
+        "employed",
+    ],
+    "returned": ["handoff_returned"],
 }
 
 # код -> колонка
@@ -137,6 +287,7 @@ __all__ = [
     "DEFAULT_STAGE_CODE",
     "STAGES_BY_GROUP",
     "LABELS",
+    "STAGE_META",
     "STATUS_REASON_CHOICES",
     "KANBAN_COLUMN_OF",
     "ORDER",

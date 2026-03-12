@@ -1,23 +1,48 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import {
-  createPublicScanSession,
-  getPublicScanSession,
-  processPublicScanSession,
-  uploadPublicScanPage,
-  type ScanSession,
-  type ScanPage,
-} from '../../api/scanner'
+import { createPublicScanSession, getPublicScanSession, uploadPublicScanPdf, type ScanSession, type ScanPage } from '../../api/scanner'
+import axios from 'axios'
 import { useToast } from '../../components/Toast'
 import { useI18n } from '../../i18n'
-import { CameraPane, type CaptureMetadata, type PermissionState } from '../../components/public-scanner/CameraPane'
+import { CameraPane, type CaptureMetadata, type CaptureResult, type PermissionState } from '../../components/public-scanner/CameraPane'
 import { ContourEditorModal } from '../../components/public-scanner/ContourEditorModal'
-import { PreviewModal } from '../../components/public-scanner/PreviewModal'
 import type { Contour6Points } from '../../modules/public-intake/scan/contourEditor'
 import { getScannerPreset } from '../../modules/scannerPresets'
 import { presetForDocType } from '../../modules/public-intake/scan/presets'
 import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
+import type { ScanPresetKey } from '../../modules/public-intake/scan/analyzer'
+import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+
+type FilterName = 'standard' | 'document' | 'photo' | 'grayscale' | 'contrast_boost' | 'photo_soft'
+type FrameKind = 'DRIVER_LICENSE' | 'ID_CARD' | 'CODE95' | 'PASSPORT_SPREAD' | 'PASSPORT_ID_PAGE' | 'A4'
+
+function aspectForKind(kind?: FrameKind): number {
+  switch ((kind || '').toUpperCase()) {
+    case 'DRIVER_LICENSE':
+    case 'ID_CARD':
+    case 'CODE95':
+      return 1.586
+    case 'PASSPORT_SPREAD':
+      return 1.408
+    case 'PASSPORT_ID_PAGE':
+      return 0.70
+    case 'A4':
+      return 0.707
+    default:
+      return 1.586
+  }
+}
+
+const ScanState = {
+  SCAN: 'scan',
+  EDIT: 'edit',
+  PROCESSING: 'processing',
+  REVIEW: 'review',
+  DONE_PAGE: 'done_page',
+  DONE_DOCUMENT: 'done_document',
+} as const
+type ScanState = (typeof ScanState)[keyof typeof ScanState]
 
 function statusBadgeTone(status: string): string {
   switch (status) {
@@ -36,7 +61,21 @@ function statusBadgeTone(status: string): string {
   }
 }
 
+// Quality preset mapping for camera/analyzer (limited set of keys)
+function qualityPresetForDocType(docType?: string | null): ScanPresetKey {
+  const normalized = (docType || '').toLowerCase().trim()
+  if (!normalized) return 'default'
+  // Code95 and similar certificates are usually ID-card format for scanning UX
+  if (normalized === 'code95' || normalized === 'qualification_code95' || normalized === 'code_95') {
+    return 'driving_license'
+  }
+  const preset = presetForDocType(normalized)
+  // presetForDocType already returns a ScanPresetKey
+  return preset
+}
+
 export default function PublicScanPage() {
+  const SCANNER_DISABLED = false
   const location = useLocation()
   const search = useMemo(() => new URLSearchParams(location.search), [location.search])
   const token = search.get('token') ?? ''
@@ -46,35 +85,41 @@ export default function PublicScanPage() {
   const [sessionId, setSessionId] = useState(preloadedSessionId)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [pendingCapture, setPendingCapture] = useState<{
-    blob: Blob
-    url: string
-    metadata: CaptureMetadata
-  } | null>(null)
+  const [pendingCapture, setPendingCapture] = useState<CaptureResult | null>(null)
   const [permissionState, setPermissionState] = useState<PermissionState>('pending')
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment')
   const [captureMode, setCaptureMode] = useState<'camera' | 'fallback'>('camera')
-  const [selectedPageCode, setSelectedPageCode] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [captureKey, setCaptureKey] = useState(0) // Force CameraPane remount on retake
+  const [manualContour, setManualContour] = useState<Contour6Points | null>(null)
+  const [reviewCapture, setReviewCapture] = useState<CaptureResult | null>(null)
+  const [reviewContour, setReviewContour] = useState<Contour6Points | null>(null)
+  const [selectedFilter, setSelectedFilter] = useState<FilterName>('standard')
+  const [scanState, setScanState] = useState<ScanState>(ScanState.SCAN)
+  const [processedUrl, setProcessedUrl] = useState<string | null>(null)
+  const [reviewImageLabel, setReviewImageLabel] = useState<string>('')
+  const [currentPageIndex, setCurrentPageIndex] = useState<number>(0)
+  // Preview modal visibility (EDIT state)
+  const [showPreview, setShowPreview] = useState<boolean>(false)
+  const [selectedPageCode, setSelectedPageCode] = useState<string | null>(null)
   const [viewingImage, setViewingImage] = useState<{ url: string; pageCode: string; label: string } | null>(null)
-  const [showContourEditor, setShowContourEditor] = useState(false)
-  const [showPreview, setShowPreview] = useState(false)
-  const [manualContour, setManualContour] = useState<any>(null)
-  const [selectedFilter, setSelectedFilter] = useState<'standard' | 'strong' | 'photo'>('standard')
+  const [hasManualChanges, setHasManualChanges] = useState<boolean>(false)
+  const [detectingContour, setDetectingContour] = useState<boolean>(false)
   const { notify } = useToast()
   const { t } = useI18n()
   const translate = (key: string, fallback: string, values?: Record<string, string | number>) =>
     t(key, { defaultValue: fallback, values })
-  const preset = useMemo(() => getScannerPreset(docCode), [docCode])
-  // Stable presetStepCodes - use docCode instead of preset object to prevent unnecessary recalculations
+  const qualityPreset = useMemo(() => qualityPresetForDocType(docCode), [docCode])
+  const scannerPresetCode = useMemo(() => docCode || qualityPreset, [docCode, qualityPreset])
+  const preset = useMemo(() => getScannerPreset(scannerPresetCode), [scannerPresetCode])
+  // Stable presetStepCodes - use normalized presetKey to prevent unnecessary recalculations
   const presetStepCodes = useMemo(() => {
-    if (!docCode) return []
-    const currentPreset = getScannerPreset(docCode)
+    if (!scannerPresetCode) return []
+    const currentPreset = getScannerPreset(scannerPresetCode)
     if (!currentPreset?.steps) return []
     return currentPreset.steps.map((step) => step.code)
-  }, [docCode]) // Only depend on docCode, not preset object
+  }, [scannerPresetCode]) // Only depend on preset code, not preset object
   const formatStepStatus = (statusKey?: string | null) => {
     const key = statusKey ?? 'pending'
     return {
@@ -94,7 +139,7 @@ export default function PublicScanPage() {
       setLoading(false)
       return
     }
-    
+
     // Prevent re-bootstrap if we already have a session and it matches
     // Also check if we're in preview/uploading state - don't bootstrap during user interaction
     if (bootstrappedRef.current && sessionId && bootstrapSessionIdRef.current === sessionId) {
@@ -114,14 +159,12 @@ export default function PublicScanPage() {
         } else {
           if (!docCode) throw new Error(translate('public.scan.errors.missing_doc', 'Document type is required'))
           // Calculate presetStepCodes inline to avoid dependency issues
-          const currentPreset = getScannerPreset(docCode)
-          const expectedPages = currentPreset?.steps && currentPreset.steps.length > 0 
-            ? currentPreset.steps.map((step) => step.code) 
-            : undefined
+          const currentPreset = getScannerPreset(scannerPresetCode)
+          const expectedPages = currentPreset?.steps ? currentPreset.steps.length : undefined
           nextSession = await createPublicScanSession({
             token,
             document_type: docCode,
-            preset_code: docCode,
+            preset_code: currentPreset.code,
             expected_pages: expectedPages,
           })
           const params = new URLSearchParams(location.search)
@@ -149,7 +192,9 @@ export default function PublicScanPage() {
     return () => {
       cancelled = true
     }
-  }, [docCode, token]) // Removed sessionId and presetStepCodes - use ref to track and calculate inline to prevent infinite loops
+  // Note: do NOT add sessionId/presetStepCodes to deps to avoid invalid hook call loops in production bundles.
+  // Bootstrap only on token/doc change.
+  }, [docCode, token])
 
   // Poll session status while in progress to update thumbnails/statuses.
   // CRITICAL: Completely disable polling during user interaction to prevent page refreshes
@@ -208,9 +253,23 @@ export default function PublicScanPage() {
       page,
     }
   })
+  const READY_STATUSES: Array<ScanPage['status']> = ['ok', 'needs_review', 'uploaded', 'done']
   const isReadyPage = (page?: ScanPage) => {
     if (!page) return false
-    return page.status === 'ok' || page.status === 'needs_review'
+    return READY_STATUSES.includes(page.status)
+  }
+  const updatePageStatus = (code: string, status: ScanPage['status'], processed_url?: string | null) => {
+    if (!session?.pages) return
+    const updatedPages = session.pages.map((p) =>
+      p.page_code === code
+        ? {
+            ...p,
+            status,
+            processed_url: processed_url !== undefined ? processed_url : p.processed_url,
+          }
+        : p,
+    )
+    setSession({ ...session, pages: updatedPages })
   }
   const hasSteps = wizardSteps.length > 0
   const firstBlockingStep = wizardSteps.find((step) => !isReadyPage(step.page) && !step.optional)
@@ -226,115 +285,120 @@ export default function PublicScanPage() {
   const allPagesComplete =
     hasSteps && wizardSteps.every((step) => isReadyPage(step.page) || step.optional)
 
-  const handlePendingCapture = (blob: Blob, metadata: CaptureMetadata) => {
-    if (pendingCapture?.url) {
-      URL.revokeObjectURL(pendingCapture.url)
+  const mapContourFromBackend = (contour?: Array<[number, number]> | null): Contour6Points | null => {
+    if (!contour || contour.length < 4) return null
+    // Backend returns TL, TR, BR, BL, MT, MB (6 points) when detect_only
+    const tl = contour[0]
+    const tr = contour[1] || contour[0]
+    const br = contour[2] || contour[1] || contour[0]
+    const bl = contour[3] || contour[2] || contour[0]
+    const mt = contour[4] || [
+      (tl[0] + tr[0]) / 2,
+      (tl[1] + tr[1]) / 2,
+    ]
+    const mb = contour[5] || [
+      (bl[0] + br[0]) / 2,
+      (bl[1] + br[1]) / 2,
+    ]
+    return {
+      p1: { x: tl[0], y: tl[1], id: 1 },
+      p2: { x: tr[0], y: tr[1], id: 2 },
+      p3: { x: mt[0], y: mt[1], id: 3 },
+      p4: { x: br[0], y: br[1], id: 4 },
+      p5: { x: mb[0], y: mb[1], id: 5 },
+      p6: { x: bl[0], y: bl[1], id: 6 },
     }
-    const url = URL.createObjectURL(blob)
-    setPendingCapture({ blob, url, metadata })
-    // Show preview modal after capture (user can edit contour and choose filter)
+  }
+
+  const handlePendingCapture = async (capture: CaptureResult) => {
+    if (pendingCapture?.previewUrl) {
+      URL.revokeObjectURL(pendingCapture.previewUrl)
+    }
+    // Base contour = full cropped image rectangle
+    const w = capture.croppedSize.width
+    const h = capture.croppedSize.height
+    const baseContour: Contour6Points = {
+      p1: { x: 0, y: 0, id: 1 },
+      p2: { x: w, y: 0, id: 2 },
+      p3: { x: w, y: h, id: 3 },
+      p4: { x: 0, y: h, id: 4 },
+      p5: { x: w / 2, y: 0, id: 5 },
+      p6: { x: w / 2, y: h, id: 6 },
+    }
+    setPendingCapture(capture)
+    setHasManualChanges(false)
+    setManualContour(baseContour)
+    setDetectingContour(false)
     setShowPreview(true)
+    setScanState(ScanState.EDIT)
   }
 
   const confirmCapture = async () => {
     if (!session || !activePageCode || !pendingCapture) return
+    setScanState(ScanState.PROCESSING)
     setUploading(true)
     try {
-      const next = await uploadPublicScanPage({
-        sessionId: session.id,
-        page_code: activePageCode,
-        file: pendingCapture.blob,
-        rotation: 0,
-        filter: 'original',
-        meta: {
-          source: 'public_scan',
-          capture_mode: pendingCapture.metadata.captureMode,
-          facing_mode: pendingCapture.metadata.facingMode,
-          width: pendingCapture.metadata.width,
-          height: pendingCapture.metadata.height,
-          manual_contour: manualContour ? {
-            p1: manualContour.p1,
-            p2: manualContour.p2,
-            p3: manualContour.p3,
-            p4: manualContour.p4,
-            p5: manualContour.p5,
-            p6: manualContour.p6,
-          } : null,
-        },
-      })
-      setSession(next)
-      URL.revokeObjectURL(pendingCapture.url)
+      const form = new FormData()
+      form.append('original', pendingCapture.original, 'original.jpg')
+      form.append('cropped', pendingCapture.cropped, 'cropped.jpg')
+      form.append('original_size', JSON.stringify(pendingCapture.originalSize))
+      form.append('cropped_size', JSON.stringify(pendingCapture.croppedSize))
+      if (manualContour) {
+        form.append('manual_contour', JSON.stringify(manualContour))
+      } else {
+        // Без автодетекта обязательно отправляем прямоугольник рамки
+        const w = pendingCapture.croppedSize.width
+        const h = pendingCapture.croppedSize.height
+        const fallbackRect = {
+          p1: { x: 0, y: 0 },
+          p2: { x: w, y: 0 },
+          p3: { x: w, y: h },
+          p4: { x: 0, y: h },
+          mTop: { x: w / 2, y: 0 },
+          mBottom: { x: w / 2, y: h },
+        }
+        form.append('manual_contour', JSON.stringify(fallbackRect))
+      }
+      form.append('filter', selectedFilter)
+      form.append('document_kind', docCode)
+      form.append('document_type_id', docCode)
+      form.append('page_code', activePageCode)
+      form.append('page_index', String(wizardSteps.findIndex((s) => s.code === activePageCode)))
+      form.append('expected_pages', String(wizardSteps.length))
+
+      const processed = await axios.post<{ processed_url: string; page_index?: number; width?: number; height?: number }>('/scan/process-page', form).then(res => res.data)
+
+      URL.revokeObjectURL(pendingCapture.previewUrl)
+      setReviewCapture(pendingCapture)
+      setReviewContour(manualContour)
       setPendingCapture(null)
       setManualContour(null)
-      setSelectedPageCode(null)
-      
-      // Check if there are more pages to scan
-      const updatedWizardSteps = (next.expected_pages || []).map((code) => {
-        const page = next.pages?.find((p) => p.page_code === code)
-        return { code, page }
-      })
-      const remainingSteps = updatedWizardSteps.filter((step) => !isReadyPage(step.page))
-      
-      if (remainingSteps.length > 0) {
-        // Ask if user wants to scan next page
-        const nextPageCode = remainingSteps[0].code
-        const nextStep = stepMeta.get(nextPageCode)
-        const shouldContinue = window.confirm(
-          translate(
-            'public.scan.next_page',
-            `Хотите снять следующую страницу? ${nextStep?.label || nextPageCode}`,
-            { page: nextStep?.label || nextPageCode }
-          )
-        )
-        if (shouldContinue) {
-          setSelectedPageCode(nextPageCode)
-          setCaptureKey((prev: number) => prev + 1)
-        }
-        notify({
-          title: translate('public.scan.notifications.page_uploaded', 'Страница загружена'),
-          variant: 'success',
+      // keep selectedPageCode to know which step we processed
+
+      if (processed?.processed_url) {
+        setViewingImage({
+          url: processed.processed_url,
+          pageCode: activePageCode,
+          label: translate('public.scan.viewer.processed', 'Processed image'),
         })
-      } else {
-        // All pages scanned, auto-process
-        notify({
-          title: translate('public.scan.notifications.all_pages_uploaded', 'Все страницы загружены'),
-          variant: 'success',
-        })
-        // Auto-process after a short delay
-        setTimeout(async () => {
-          try {
-            setProcessing(true)
-            const processed = await processPublicScanSession(next.id)
-            setSession(processed)
-            const refreshed = await getPublicScanSession(processed.id)
-            setSession(refreshed)
-            notify({
-              title: translate('public.scan.notifications.processed', 'Обработка завершена'),
-              variant: 'success',
-            })
-          } catch (processErr: any) {
-            notify({
-              title: processErr?.response?.data?.detail || processErr?.message || translate('public.scan.errors.process_failed', 'Ошибка обработки'),
-              variant: 'error',
-            })
-          } finally {
-            setProcessing(false)
-          }
-        }, 1000)
+        updatePageStatus(activePageCode, 'done', processed.processed_url)
       }
+
+      setScanState(ScanState.REVIEW)
     } catch (err: any) {
       notify({
-        title: err?.response?.data?.detail || err?.message || translate('public.scan.errors.upload_failed', 'Ошибка загрузки'),
+        title: err?.response?.data?.detail || err?.message || translate('public.scan.errors.upload_failed', 'Ошибка загрузки/обработки'),
         variant: 'error',
       })
+      setScanState(ScanState.EDIT)
     } finally {
       setUploading(false)
     }
   }
 
   const discardCapture = () => {
-    if (pendingCapture?.url) {
-      URL.revokeObjectURL(pendingCapture.url)
+    if (pendingCapture?.previewUrl) {
+      URL.revokeObjectURL(pendingCapture.previewUrl)
     }
     setPendingCapture(null)
     // Reset auto-capture flag when user discards capture
@@ -343,28 +407,49 @@ export default function PublicScanPage() {
 
   const handleProcess = async () => {
     if (!session) return
-    setProcessing(true)
     try {
-      const next = await processPublicScanSession(session.id)
-      setSession(next)
+      const pdfForm = new FormData()
+      pdfForm.append('session_id', session.id)
+      pdfForm.append('document_kind', docCode)
+      pdfForm.append('document_type_id', docCode)
+      const pdf = await axios.post<{ pdf_url: string }>('/scan/build-pdf', pdfForm).then((r) => r.data)
+      if (pdf?.pdf_url) {
+        const pdfBlob = await axios.get(pdf.pdf_url, { responseType: 'blob' }).then((r) => r.data as Blob)
+        setViewingImage({
+          url: pdf.pdf_url,
+          pageCode: 'pdf',
+          label: translate('public.scan.viewer.processed', 'Обработанный документ (PDF)'),
+        })
+        const nextSession = await uploadPublicScanPdf({
+          sessionId: session.id,
+          file: pdfBlob,
+          meta: { source: 'public_scan', document_kind: docCode, document_type_id: docCode },
+        })
+        setSession(nextSession)
+      }
       notify({
         title: translate('public.scan.notifications.processed', 'Processing complete'),
         variant: 'success',
       })
+      setScanState(ScanState.DONE_DOCUMENT)
     } catch (err: any) {
       notify({
-        title: err?.response?.data?.detail || err?.message || translate('public.scan.errors.process_failed', 'Processing failed, please retry'),
+        title: err?.response?.data?.detail || err?.message || translate('public.scan.errors.process_failed', 'Ошибка обработки PDF'),
         variant: 'error',
       })
-    } finally {
-      setProcessing(false)
     }
   }
 
+  const pendingSteps = useMemo(
+    () => wizardSteps.filter((step) => !isReadyPage(step.page)),
+    [wizardSteps],
+  )
+  const currentProcessedPreview = viewingImage
+
   useEffect(() => {
     return () => {
-      if (pendingCapture?.url) {
-        URL.revokeObjectURL(pendingCapture.url)
+      if (pendingCapture?.previewUrl) {
+        URL.revokeObjectURL(pendingCapture.previewUrl)
       }
     }
   }, [pendingCapture])
@@ -400,7 +485,78 @@ export default function PublicScanPage() {
     return hintsByCode[activePageCode] ?? defaultHints
   }
 
+  // Автопереход после DONE_PAGE: если остались страницы — следующая, иначе строим PDF
+  useEffect(() => {
+    if (scanState !== ScanState.DONE_PAGE) return
+    const remaining = wizardSteps.filter((step) => !isReadyPage(step.page))
+    if (remaining.length > 0) {
+      const nextPageCode = remaining[0].code
+      setSelectedPageCode(nextPageCode)
+      setCaptureKey((prev) => prev + 1)
+      setViewingImage(null)
+      setScanState(ScanState.SCAN)
+    } else {
+      handleProcess()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanState])
 
+  const heading = preset.title || translate('public.scan.heading', 'Document scanner')
+
+  // Calculate progress
+  const progressPercent = wizardSteps.length > 0
+    ? Math.round((wizardSteps.filter((step) => step.page && step.page.status !== 'pending').length / wizardSteps.length) * 100)
+    : 0
+
+  const goToNextPageOrFinish = async () => {
+    const remainingSteps = wizardSteps.filter((step) => !isReadyPage(step.page))
+    if (remainingSteps.length > 0) {
+      const nextPageCode = remainingSteps[0].code
+      setSelectedPageCode(nextPageCode)
+      setCaptureKey((prev) => prev + 1)
+      setViewingImage(null)
+      setScanState(ScanState.SCAN)
+    } else {
+      await handleProcess()
+    }
+  }
+
+  // Автопереход после DONE_PAGE: если остались страницы — сразу следующая, иначе строим PDF
+  useEffect(() => {
+    if (scanState !== ScanState.DONE_PAGE) return
+    const remaining = wizardSteps.filter((step) => !isReadyPage(step.page))
+    if (remaining.length > 0) {
+      const nextPageCode = remaining[0].code
+      setSelectedPageCode(nextPageCode)
+      setCaptureKey((prev) => prev + 1)
+      setViewingImage(null)
+      setScanState(ScanState.SCAN)
+    } else {
+      handleProcess()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanState])
+
+  if (SCANNER_DISABLED) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+        <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-md">
+          <h1 className="text-xl font-semibold text-slate-900">Сканер временно недоступен</h1>
+          <p className="mt-3 text-sm text-slate-600">
+            Автосканер отключён. Пожалуйста, загрузите документы вручную в анкете.
+          </p>
+          <div className="mt-4 flex justify-center">
+            <a
+              href="/public"
+              className="rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white active:scale-95"
+            >
+              Вернуться
+            </a>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -413,9 +569,15 @@ export default function PublicScanPage() {
   if (error) {
     return (
       <div className="grid min-h-screen place-items-center bg-gradient-to-br from-brand-50 via-white to-slate-100 px-4 py-12">
-        <div className="max-w-md rounded-xl border border-rose-200 bg-rose-50 px-6 py-4 text-center text-rose-700 shadow-sm">
-          <p className="font-medium">{translate('public.scan.errors.title', 'Something went wrong')}</p>
-          <p className="mt-2 text-sm">{error}</p>
+        <div className="max-w-md">
+          <ErrorRecoveryBanner
+            info={{
+              title: translate('public.scan.errors.title', 'Something went wrong'),
+              detail: error,
+              hint: translate('public.scan.errors.unexpected', 'Unable to start scanner, please reopen the link.'),
+            }}
+            compact
+          />
         </div>
       </div>
     )
@@ -428,13 +590,6 @@ export default function PublicScanPage() {
       </div>
     )
   }
-
-  const heading = preset.title || translate('public.scan.heading', 'Document scanner')
-
-  // Calculate progress
-  const progressPercent = wizardSteps.length > 0
-    ? Math.round((wizardSteps.filter((step) => step.page && step.page.status !== 'pending').length / wizardSteps.length) * 100)
-    : 0
 
   return (
     <>
@@ -513,37 +668,44 @@ export default function PublicScanPage() {
         </section>
 
         {/* Capture section - full screen on mobile, like iPhone camera */}
-        <section className="w-full -mx-4 md:mx-0">
-          <div className="relative">
-            <CameraPane
-              key={`camera-${activePageCode}-${captureKey}`}
-              mode={captureMode}
-              facingMode={facingMode}
-              overlayRatio={preset.aspectRatio}
-              autoCapture={true}
-              preset={presetForDocType(docCode) || 'default'}
-              onCapture={handlePendingCapture}
-              onError={(message) =>
-                notify({
-                  title: message,
-                  variant: 'error',
-                })
-              }
-              onPermissionChange={(state: PermissionState) => {
-                setPermissionState(state)
-                if ((state === 'denied' || state === 'unsupported') && captureMode !== 'fallback') {
-                  setCaptureMode('fallback')
-                }
-                if (state === 'denied') {
+        {scanState === ScanState.SCAN && (
+          <section className="w-full -mx-4 md:mx-0">
+            <div className="relative">
+              <CameraPane
+                key={`camera-${activePageCode}-${captureKey}`}
+                mode={captureMode}
+                facingMode={facingMode}
+                overlayRatio={aspectForKind(docCode as FrameKind)}
+                autoCapture={false}
+                preset={qualityPreset || 'default'}
+                onCapture={handlePendingCapture}
+                onError={(message) =>
                   notify({
-                    title: translate('public.scan.capture.permission', 'Camera blocked. Upload a photo instead.'),
-                    variant: 'info',
+                    title: message,
+                    variant: 'error',
                   })
                 }
-              }}
-            />
-          </div>
-        </section>
+                onPermissionChange={(state: PermissionState) => {
+                  setPermissionState(state)
+                  if ((state === 'denied' || state === 'unsupported') && captureMode !== 'fallback') {
+                    setCaptureMode('fallback')
+                  }
+                  if (state === 'denied') {
+                    notify({
+                      title: translate('public.scan.capture.permission', 'Camera blocked. Upload a photo instead.'),
+                      variant: 'info',
+                    })
+                  }
+                }}
+                frameOverlay={{
+                  aspectRatio: aspectForKind(docCode as FrameKind),
+                  widthPct: 0.85,
+                  stroke: 'rgba(0,194,255,0.7)',
+                }}
+              />
+            </div>
+          </section>
+        )}
         </div>
       </PublicPageShell>
 
@@ -664,131 +826,201 @@ export default function PublicScanPage() {
         </div>
       )}
 
-      {/* Preview modal with filter selection and re-edit option */}
+      {/* EDIT: контур + выбор фильтра */}
       {showPreview && pendingCapture && (
-        <PreviewModal
-          imageUrl={pendingCapture.url}
-          initialContour={manualContour}
-          uploading={uploading}
-          onRetake={() => {
-            console.log('[scanner] PreviewModal: Retake button clicked')
-            setShowPreview(false)
-            setPendingCapture(null)
-            setManualContour(null)
-            setSelectedFilter('standard')
-            setCaptureKey((prev: number) => prev + 1)
-          }}
-          onConfirm={async (filter, contour) => {
-            console.log('[scanner] PreviewModal onConfirm called:', { filter, contour: contour ? 'present' : 'null' })
-            setSelectedFilter(filter)
-            setManualContour(contour)
-            setShowPreview(false)
-            
-            // Upload with selected filter and contour
-            if (session && activePageCode) {
-              setUploading(true)
-              try {
-                const filterMap: Record<string, string> = {
-                  standard: 'standard',
-                  strong: 'strong',
-                  photo: 'photo',
-                }
-                
-                const metaPayload = {
-                  source: 'public_scan',
-                  capture_mode: pendingCapture.metadata.captureMode,
-                  facing_mode: pendingCapture.metadata.facingMode,
-                  width: pendingCapture.metadata.width,
-                  height: pendingCapture.metadata.height,
-                  enhancement_mode: filter,
-                  manual_contour: contour ? {
-                    p1: contour.p1,
-                    p2: contour.p2,
-                    p3: contour.p3,
-                    p4: contour.p4,
-                    p5: contour.p5,
-                    p6: contour.p6,
-                  } : null,
-                }
-                
-                console.log('[scanner] Uploading with meta:', JSON.stringify(metaPayload, null, 2))
-                
-                const next = await uploadPublicScanPage({
-                  sessionId: session.id,
-                  page_code: activePageCode,
-                  file: pendingCapture.blob,
-                  rotation: 0,
-                  filter: filterMap[filter] || 'original',
-                  meta: metaPayload,
-                })
-                setSession(next)
-                URL.revokeObjectURL(pendingCapture.url)
-                setPendingCapture(null)
-                setManualContour(null)
-                setSelectedPageCode(null)
-                
-                // Check if there are more pages to scan
-                const updatedWizardSteps = (next.expected_pages || []).map((code) => {
-                  const page = next.pages?.find((p) => p.page_code === code)
-                  return { code, page }
-                })
-                const remainingSteps = updatedWizardSteps.filter((step) => !isReadyPage(step.page))
-                
-                if (remainingSteps.length > 0) {
-                  // Ask if user wants to scan next page
-                  const nextPageCode = remainingSteps[0].code
-                  const nextStep = stepMeta.get(nextPageCode)
-                  const shouldContinue = window.confirm(
-                    translate(
-                      'public.scan.next_page',
-                      `Хотите снять следующую страницу? ${nextStep?.label || nextPageCode}`,
-                      { page: nextStep?.label || nextPageCode }
-                    )
-                  )
-                  if (shouldContinue) {
-                    setSelectedPageCode(nextPageCode)
-                    setCaptureKey((prev: number) => prev + 1)
-                    setShowPreview(false)  // Close preview when moving to next page
+        <>
+          {/* Небольшая панель выбора фильтра (внизу слева, чтобы не перекрывать точки) */}
+          <div className="fixed bottom-4 left-4 z-[60] rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg">
+            <p className="mb-2 text-xs font-semibold text-slate-700">Фильтр</p>
+            <div className="flex flex-col gap-1 text-xs text-slate-700">
+              {(['standard', 'document', 'photo'] as FilterName[]).map((f) => (
+                <label key={f} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="filter"
+                    value={f}
+                    checked={selectedFilter === f}
+                    onChange={() => setSelectedFilter(f)}
+                  />
+                  {f}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <ContourEditorModal
+            imageUrl={pendingCapture.previewUrl}
+            initialContour={manualContour}
+            loading={detectingContour}
+            onCancel={() => {
+              setShowPreview(false)
+              setPendingCapture(null)
+              setManualContour(null)
+              setSelectedFilter('standard')
+              setHasManualChanges(false)
+              setCaptureKey((prev: number) => prev + 1)
+              setScanState(ScanState.SCAN)
+            }}
+            onConfirm={async (contour) => {
+              setManualContour(contour)
+              setHasManualChanges(true)
+              setShowPreview(false)
+              await confirmCapture()
+            }}
+          />
+        </>
+      )}
+
+      {/* REVIEW / DONE_PAGE preview block */}
+      {currentProcessedPreview && scanState === ScanState.REVIEW && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-slate-900">
+                {translate('public.scan.viewer.processed', 'Обработанный результат')}
+              </p>
+              <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <img
+                  src={currentProcessedPreview.url}
+                  alt={currentProcessedPreview.label}
+                  className="max-h-[50vh] w-full object-contain"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:w-48">
+              <button
+                type="button"
+                className="min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 active:scale-95"
+                onClick={() => {
+                  // Исправить границы: вернуться в EDIT с тем же кадром
+                  if (reviewCapture) {
+                    updatePageStatus(activePageCode, 'pending', null)
+                    setPendingCapture(reviewCapture)
+                    setManualContour(reviewContour)
+                    setShowPreview(true)
+                    setScanState(ScanState.EDIT)
+                    setViewingImage(null)
+                  } else {
+                    updatePageStatus(activePageCode, 'pending', null)
+                    setCaptureKey((prev) => prev + 1)
+                    setScanState(ScanState.SCAN)
                   }
-                } else {
-                  // All pages scanned, auto-process
-                  notify({
-                    title: translate('public.scan.notifications.all_pages_uploaded', 'Все страницы загружены'),
-                    variant: 'success',
-                  })
-                  // Auto-process after a short delay
-                  setTimeout(async () => {
-                    try {
-                      setProcessing(true)
-                      const processed = await processPublicScanSession(next.id)
-                      setSession(processed)
-                      const refreshed = await getPublicScanSession(processed.id)
-                      setSession(refreshed)
-                      notify({
-                        title: translate('public.scan.notifications.processed', 'Обработка завершена'),
-                        variant: 'success',
-                      })
-                    } catch (processErr: any) {
-                      notify({
-                        title: processErr?.response?.data?.detail || processErr?.message || translate('public.scan.errors.process_failed', 'Ошибка обработки'),
-                        variant: 'error',
-                      })
-                    } finally {
-                      setProcessing(false)
-                    }
-                  }, 1000)
-                }
-              } catch (err: any) {
-                notify({
-                  title: err?.response?.data?.detail || err?.message || translate('public.scan.errors.upload_failed', 'Ошибка загрузки'),
-                  variant: 'error',
-                })
-              } finally {
-                setUploading(false)
-              }
-            }
-          }}
-        />
+                }}
+              >
+                {translate('public.scan.actions.edit_contour', 'Исправить границы')}
+              </button>
+              <button
+                type="button"
+                className="min-h-[44px] rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 active:scale-95"
+                onClick={() => {
+                  setViewingImage(null)
+                  updatePageStatus(activePageCode, 'pending', null)
+                  setCaptureKey((prev) => prev + 1)
+                  setScanState(ScanState.SCAN)
+                }}
+              >
+                {translate('public.scan.actions.reshoot', 'Переснять страницу')}
+              </button>
+              <button
+                type="button"
+                className="min-h-[44px] rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white active:scale-95"
+                onClick={async () => {
+                  const remaining = wizardSteps.filter((s) => !isReadyPage(s.page))
+                  if (remaining.length > 0) {
+                    setScanState(ScanState.DONE_PAGE)
+                  } else {
+                    await handleProcess()
+                  }
+                }}
+              >
+                {translate('public.scan.actions.finish_doc', 'Подтвердить страницу')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {scanState === ScanState.DONE_PAGE && (
+        <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                {translate('public.scan.status.done_page', 'Страница сохранена')}
+              </p>
+              <p className="text-xs text-slate-500">
+                {pendingSteps.length > 0
+                  ? translate('public.scan.status.more_pages', 'Осталось страниц: {count}', { count: pendingSteps.length })
+                  : translate('public.scan.status.all_pages', 'Все страницы добавлены')}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {pendingSteps.length > 0 && (
+                <button
+                  type="button"
+                  className="min-h-[44px] rounded-full border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-700 active:scale-95"
+                  onClick={() => {
+                    const nextPageCode = pendingSteps[0].code
+                    setSelectedPageCode(nextPageCode)
+                    setCaptureKey((prev) => prev + 1)
+                    setScanState(ScanState.SCAN)
+                  }}
+                >
+                  {translate('public.scan.actions.add_page', 'Добавить страницу')}
+                </button>
+              )}
+              <button
+                type="button"
+                className="min-h-[44px] rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white active:scale-95"
+                onClick={handleProcess}
+              >
+                {translate('public.scan.actions.finish_doc', 'Завершить документ')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {scanState === ScanState.DONE_DOCUMENT && (
+        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-emerald-900">
+                {translate('public.scan.status.done_document', 'Документ готов')}
+              </p>
+              {viewingImage?.url && (
+                <a
+                  href={viewingImage.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-brand-700 underline"
+                >
+                  {translate('public.scan.actions.open_pdf', 'Открыть PDF')}
+                </a>
+              )}
+            </div>
+            <div className="flex gap-2">
+              {viewingImage?.url && (
+                <a
+                  href={viewingImage.url}
+                  download
+                  className="min-h-[44px] rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 active:scale-95"
+                >
+                  {translate('public.scan.viewer.download', 'Скачать PDF')}
+                </a>
+              )}
+              <button
+                type="button"
+                className="min-h-[44px] rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white active:scale-95"
+                onClick={() => {
+                  // Здесь должен быть возврат в CRM, пока просто закрываем превью
+                  setViewingImage(null)
+                }}
+              >
+                {translate('public.scan.actions.done', 'Готово / Вернуться')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

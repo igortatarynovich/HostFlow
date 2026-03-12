@@ -93,6 +93,14 @@ const STAGE_LABEL_ALIASES: Record<string, string> = {
   не_отвечает: 'no_answer',
   brak_kontaktu: 'no_answer',
   brak_kontaktu_: 'no_answer',
+  ready_for_handoff: 'ready_for_handoff',
+  gotowy_do_przekazania: 'ready_for_handoff',
+  processing_by_client: 'processing_by_client',
+  procesowany_przez_zleceniodawce: 'processing_by_client',
+  docs_submitted_permit: 'docs_submitted_permit',
+  zlozono_dokumenty_na_zezwolenie: 'docs_submitted_permit',
+  handoff_returned: 'handoff_returned',
+  zwrocono: 'handoff_returned',
 }
 
 const REASON_LABEL_ALIASES: Record<string, string> = {
@@ -203,6 +211,10 @@ const STAGE_FALLBACK_LABELS: Record<string, string> = {
   probation_ok: 'Испытательный срок',
   rejected: 'Отказ',
   declined: 'Отказался',
+  ready_for_handoff: 'Готов к передаче',
+  processing_by_client: 'Обработка заказчиком',
+  docs_submitted_permit: 'Документы поданы на разрешение',
+  handoff_returned: 'Возвращён',
   open: 'Открыта',
   paused: 'Пауза',
   closed: 'Закрыта',

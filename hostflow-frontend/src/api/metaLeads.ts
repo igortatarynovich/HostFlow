@@ -78,3 +78,63 @@ export async function rerouteMetaLead(leadId: string, payload: MetaLeadReroutePa
   const { data } = await api.post(`${BASE}/leads/${leadId}/reroute`, payload)
   return data
 }
+
+export type UnmappedAdGroup = {
+  ad_id: string
+  count: number
+  leads: Array<{
+    id: string
+    ad_id?: number | null
+    status: string
+    vacancy_id?: string | null
+    error?: string | null
+    normalized?: Record<string, unknown> | null
+    created_at: string
+    [key: string]: unknown
+  }>
+}
+
+export type UnmappedLeadsResponse = {
+  groups: UnmappedAdGroup[]
+}
+
+export async function getUnmappedLeads(opts?: {
+  status?: string
+  limit_per_ad?: number
+}): Promise<UnmappedLeadsResponse> {
+  const params: Record<string, string | number> = {}
+  if (opts?.status) params.status = opts.status
+  if (opts?.limit_per_ad != null) params.limit_per_ad = opts.limit_per_ad
+  const { data } = await api.get<UnmappedLeadsResponse>(`${BASE}/unmapped-leads`, { params })
+  return data
+}
+
+export type RetryLeadsPayload = {
+  lead_ids?: string[]
+  statuses?: string[]
+  limit?: number
+  refresh_graph?: boolean
+}
+
+export type RetryLeadItem = {
+  lead_id: string
+  status_before: string
+  status_after: string
+  candidate_id?: string | null
+  error_before?: string | null
+  error_after?: string | null
+  processed: boolean
+  message?: string | null
+}
+
+export type RetryLeadsResponse = {
+  items: RetryLeadItem[]
+  processed: number
+  failed: number
+  skipped: number
+}
+
+export async function retryLeads(payload: RetryLeadsPayload): Promise<RetryLeadsResponse> {
+  const { data } = await api.post<RetryLeadsResponse>(`${BASE}/leads/retry`, payload)
+  return data
+}

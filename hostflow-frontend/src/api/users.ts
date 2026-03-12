@@ -133,13 +133,42 @@ export async function changeSelfPassword(payload: { current_password: string; ne
 export async function resetUserPassword(
   userId: string,
   opts?: { tenantId?: string },
-): Promise<{ temporary_password: string; revoked_sessions: number }> {
+): Promise<{ revoked_sessions: number }> {
   const client = resolveClient(opts?.tenantId)
   const { data } = await client.post(`/admin/users/${userId}/password/reset`)
   return {
-    temporary_password: String(data?.temporary_password ?? ''),
     revoked_sessions: Number(data?.revoked_sessions ?? 0),
   }
+}
+
+export async function requestPasswordReset(email: string): Promise<{ ok: boolean; message: string }> {
+  const { data } = await api.post('/auth/password/request-reset', { email })
+  return data as { ok: boolean; message: string }
+}
+
+export async function registerSelfService(payload: {
+  email: string
+  password: string
+  workspace_name: string
+  full_name?: string
+  plan_code?: string
+}): Promise<{
+  ok: boolean
+  user: { id: string; email: string; role: string; tenant_id: string; full_name?: string | null }
+  tenant: { id: string; name: string; slug: string; workspace_label?: string | null; status?: string | null }
+}> {
+  const { data } = await api.post('/auth/register', payload)
+  return data
+}
+
+export async function resetPasswordWithToken(token: string, newPassword: string): Promise<{ ok: boolean; message: string }> {
+  const { data } = await api.post('/auth/password/reset-with-token', { token, new_password: newPassword })
+  return data as { ok: boolean; message: string }
+}
+
+export async function acceptInvite(payload: { token: string; password: string; full_name?: string; short_id?: string }): Promise<unknown> {
+  const { data } = await api.post('/auth/invite/accept', payload)
+  return data
 }
 
 export async function changeUserPasswordAdmin(

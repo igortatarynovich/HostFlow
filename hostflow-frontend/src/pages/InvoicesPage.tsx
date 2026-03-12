@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { listInvoices } from '../api/client'
 import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
+import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 
 const STATUS_OPTIONS: InvoiceStatus[] = ['draft', 'issued', 'sent', 'paid', 'overdue', 'cancelled']
 
@@ -37,7 +38,7 @@ function statusBadgeClass(status: InvoiceStatus): string {
     sent: 'bg-indigo-100 text-indigo-700',
     paid: 'bg-green-100 text-green-700',
     overdue: 'bg-red-100 text-red-700',
-    cancelled: 'bg-gray-100 text-gray-700',
+    cancelled: 'bg-slate-100 text-slate-700',
   }
   return classes[status] || 'bg-slate-100 text-slate-700'
 }
@@ -48,6 +49,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -70,7 +72,7 @@ export default function InvoicesPage() {
     return () => {
       cancelled = true
     }
-  }, [statusFilter])
+  }, [statusFilter, reloadKey])
 
   return (
     <div className="h-full w-full flex flex-col space-y-4 p-6">
@@ -109,9 +111,15 @@ export default function InvoicesPage() {
         </div>
 
         {error && (
-          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
-            {error}
-          </div>
+          <ErrorRecoveryBanner
+            info={{
+              title: error,
+              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+            }}
+            onRetry={() => setReloadKey((prev) => prev + 1)}
+            retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+            compact
+          />
         )}
 
         {loading ? (
@@ -164,7 +172,7 @@ export default function InvoicesPage() {
                     <td className="py-3 px-4 text-sm text-slate-700">{formatAmount(invoice.paid_amount)}</td>
                     <td className="py-3 px-4">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(
+                        className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(
                           invoice.status
                         )}`}
                       >
@@ -181,4 +189,3 @@ export default function InvoicesPage() {
     </div>
   )
 }
-

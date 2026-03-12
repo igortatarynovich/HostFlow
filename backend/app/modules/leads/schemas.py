@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 LeadStatus = Literal["new", "processed", "duplicated", "failed", "needs_routing"]
+LeadStage = Literal["new", "contacted", "qualified", "converted", "lost"]
 LeadImportStatus = Literal["pending", "running", "completed", "failed"]
 
 
@@ -30,6 +31,7 @@ class LeadOut(BaseModel):
     source: str
     ad_id: Optional[int] = None
     status: LeadStatus
+    stage: Optional[str] = None
     candidate_id: Optional[UUID] = None
     candidate_name: Optional[str] = None
     recruiter_id: Optional[UUID] = None
@@ -42,11 +44,25 @@ class LeadOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LeadStageUpdate(BaseModel):
+    stage: Optional[LeadStage] = None
+
+
 class LeadListResponse(BaseModel):
     items: List[LeadOut]
     total: int
     limit: int
     offset: int
+
+
+class UnmappedAdGroup(BaseModel):
+    ad_id: str
+    count: int
+    leads: List[LeadOut]
+
+
+class UnmappedLeadsResponse(BaseModel):
+    groups: List[UnmappedAdGroup]
 
 
 class LeadImportJobOut(BaseModel):
@@ -71,6 +87,51 @@ class LeadImportJobListResponse(BaseModel):
 
 
 MetaCredentialStatus = Literal["active", "disabled", "rotation_pending"]
+MetaFieldMappingFormat = Literal[
+    "string",
+    "email",
+    "phone",
+    "bool",
+    "int",
+    "float",
+    "uuid",
+    "country",
+    "contact_channel",
+    "list",
+    "csv",
+    "lower",
+    "upper",
+]
+
+
+class MetaLeadFieldMappingRule(BaseModel):
+    source: Union[str, List[str]]
+    target: str
+    format: MetaFieldMappingFormat = "string"
+    overwrite: bool = True
+
+    @field_validator("target")
+    @classmethod
+    def _validate_target(cls, value: str) -> str:
+        text = (value or "").strip()
+        if not text:
+            raise ValueError("target must not be empty")
+        return text
+
+    @field_validator("source")
+    @classmethod
+    def _validate_source(cls, value: Union[str, List[str]]) -> Union[str, List[str]]:
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                raise ValueError("source must not be empty")
+            return text
+        if isinstance(value, list):
+            cleaned = [str(item).strip() for item in value if str(item).strip()]
+            if not cleaned:
+                raise ValueError("source list must not be empty")
+            return cleaned
+        raise TypeError("source must be string or list of strings")
 
 
 class MetaCredentialCreate(BaseModel):
@@ -118,6 +179,7 @@ class MetaLeadSettingsOut(BaseModel):
     reroute_after_hours: Optional[int] = None
     mask_pii_in_logs: bool
     pull_field_data_from_graph: bool
+    field_mapping: List[MetaLeadFieldMappingRule] = Field(default_factory=list)
     webhook_url: Optional[str] = None
     last_webhook_check_at: Optional[datetime] = None
     last_signature_status: Optional[str] = None
@@ -137,6 +199,7 @@ class MetaLeadSettingsUpdate(BaseModel):
     webhook_url: Optional[str] = None
     webhook_verify_token: Optional[str] = None
     pull_field_data_from_graph: Optional[bool] = None
+    field_mapping: Optional[List[MetaLeadFieldMappingRule]] = None
 
 
 class MetaAdsMapEntry(BaseModel):

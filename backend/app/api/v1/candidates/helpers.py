@@ -13,8 +13,8 @@ from fastapi import HTTPException
 
 from backend.app.constants.stages_adapter import STAGES, PIPELINE_SEQUENCE
 from backend.app.constants.stages import LABELS
-from backend.app.core.ids import make_short_id
 from backend.app.models import Candidate
+from backend.app.models.candidate import next_candidate_short_id
 from backend.app.models.document import Document
 
 
@@ -87,11 +87,17 @@ def _validate_stage_transition(
     max_skip: int = 1,
 ) -> None:
     """
-    Enforce canonical pipeline transitions:
-    - Reject undefined stages.
-    - Allow forward moves up to `max_skip` intermediate steps.
-    - Allow rejection from any stage.
-    - Permit manual reversions, including from terminal statuses, when `allow_revert` is True.
+    Validate stage code but DO NOT restrict transition order.
+
+    Исторически функция ограничивала переходы по пайплайну (нельзя было
+    «перепрыгивать» через несколько этапов). По факту это мешает работе
+    в нестандартных ситуациях, когда рекрутеру или клиенту нужно
+    вручную проставить любой этап в любой момент.
+
+    Текущая политика:
+    - Запрещаем только пустой и неизвестный код стадии.
+    - Любые переходы между валидными стадиями разрешены (вперёд, назад,
+      через сколько угодно шагов).
     """
     if not target:
         raise HTTPException(status_code=422, detail="Stage must not be empty")
@@ -99,46 +105,6 @@ def _validate_stage_transition(
     target = target.strip()
     if target not in _STAGE_INDEX:
         raise HTTPException(status_code=422, detail=f"Unknown stage '{target}'")
-
-    if current is None:
-        return
-
-    current = current.strip()
-    if current == target:
-        return
-
-    if target in {"rejected", "declined"}:
-        return
-
-    current_idx = _STAGE_INDEX.get(current)
-    target_idx = _STAGE_INDEX[target]
-
-    if current_idx is None:
-        # Unknown legacy stage – allow move but log?
-        return
-
-    if target_idx < current_idx:
-        if allow_revert:
-            return
-        raise HTTPException(
-            status_code=409,
-            detail=f"Backward transition from '{current}' to '{target}' is not permitted.",
-        )
-
-    diff = target_idx - current_idx
-    if diff == 0:
-        return
-    if diff == 1:
-        return
-    if diff == 2 and max_skip >= 1:
-        return
-
-    readable_from = LABELS.get(current, current)
-    readable_to = LABELS.get(target, target)
-    raise HTTPException(
-        status_code=409,
-        detail=f"Cannot skip from '{readable_from}' to '{readable_to}' without intermediate stages.",
-    )
 
 def _parse_dt(s: Optional[str]) -> Optional[datetime]:
     if not s:
@@ -152,15 +118,20 @@ def _parse_dt(s: Optional[str]) -> Optional[datetime]:
         return None
 
 async def _generate_unique_short_id(db: AsyncSession, attempts: int = 10) -> str:
-    for _ in range(attempts):
-        sid = make_short_id()
-        res = await db.execute(
-            select(func.count()).select_from(Candidate).where(Candidate.short_id == sid)  # type: ignore[name-defined]
-        )
-        if (res.scalar_one() or 0) == 0:
-            return sid
-    from fastapi import HTTPException
-    raise HTTPException(status_code=500, detail="Failed to generate unique short_id")
+    """
+    Generate the next sequential candidate short_id (CND000001…).
+
+    Uses the same logic as the model before_insert hook to keep a single numbering
+    scheme regardless of creation source (manual, webhook, etc.).
+    """
+    _ = attempts  # unused, kept for backward compatibility
+    # Use session.run_sync and pass a real connection into next_candidate_short_id.
+    # Passing the session itself leads to AttributeError: 'Session' object has no attribute 'dialect'.
+    def _inner(session):
+        conn = session.connection()
+        return next_candidate_short_id(conn)
+
+    return await db.run_sync(_inner)
 
 async def _ensure_short_id(db: AsyncSession, cand: Candidate) -> None:
     if getattr(cand, "short_id", None):

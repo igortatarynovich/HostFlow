@@ -1,6 +1,7 @@
 import { isAxiosError } from 'axios'
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { Modal } from '../../components/Modal'
 import { settings as tenantSettings, setToken, resolveAssetUrl } from '../../api/client'
 import {
@@ -9,7 +10,10 @@ import {
   createTenantAdmin,
   decidePlatformSeatRequest,
   getPlatformTenantModules,
+  getPlatformTenantRoleModuleMatrix,
+  getPlatformTenantUserModuleOverrides,
   impersonatePlatformTenant,
+  listPlatformTenantModuleOverrideUsers,
   listPlatformTenants,
   listPlatformSeatRequests,
   listTenantVacancyAccess,
@@ -17,6 +21,8 @@ import {
   updatePlatformTenantLicense,
   updatePlatformTenantMetadata,
   updatePlatformTenantModules,
+  updatePlatformTenantRoleModuleMatrix,
+  updatePlatformTenantUserModuleOverrides,
   updateTenantVacancyAccess,
   uploadPlatformTenantLogo,
 } from '../../api/tenants'
@@ -29,6 +35,10 @@ import type {
   TenantLicensePatchInput,
   TenantModuleSettings,
   TenantModuleSettingsPatch,
+  TenantRoleModuleMatrix,
+  TenantUserModuleOverrides,
+  TenantModuleOverrideUser,
+  RoleModuleMatrixRole,
   TenantStatus,
   TenantType,
   TenantVacancyAccessItem,
@@ -36,77 +46,19 @@ import type {
 } from '../../api/types'
 import { useAuth } from '../../store/useAuth'
 import { useI18n } from '../../i18n'
-
-type StatusFilter = 'all' | TenantStatus
-type TypeFilter = 'all' | TenantType
-
-type LicenseFormState = {
-  plan: string
-  max_recruiters: string
-  max_supervisors: string
-  max_client_managers: string
-  max_viewers: string
-  max_storage_gb: string
-  max_companies: string
-  expires_at: string
-  auto_renew: boolean
-  notes: string
-}
-
-type CreateTenantForm = {
-  name: string
-  slug: string
-  workspace_label: string
-  type: TenantType
-  status: TenantStatus
-  client_portal_enabled: boolean
-  status_sharing_allowed: boolean
-  license: LicenseFormState
-  initial_admin_email: string
-  initial_admin_name: string
-  initial_admin_password: string
-}
-
-const STATUS_BADGE: Record<TenantStatus, string> = {
-  active: 'bg-emerald-100 text-emerald-800',
-  suspended: 'bg-rose-100 text-rose-800',
-  trial: 'bg-amber-100 text-amber-800',
-}
-
-const TYPE_BADGE: Record<TenantType, string> = {
-  platform: 'bg-blue-100 text-blue-800',
-  agency: 'bg-purple-100 text-purple-800',
-  company: 'bg-slate-100 text-slate-800',
-}
-
-const MODULE_LABELS: Record<keyof TenantModuleSettings, string> = {
-  candidates: 'app.platform.tenants.modules.items.candidates',
-  companies: 'app.platform.tenants.modules.items.companies',
-  vacancies: 'app.platform.tenants.modules.items.vacancies',
-  documents: 'app.platform.tenants.modules.items.documents',
-  leads: 'app.platform.tenants.modules.items.leads',
-  services: 'app.platform.tenants.modules.items.services',
-  client_portal: 'app.platform.tenants.modules.items.client_portal',
-}
-
-const SEAT_STATUS_BADGE: Record<SeatRequest['status'], string> = {
-  pending: 'bg-amber-100 text-amber-800',
-  approved: 'bg-emerald-100 text-emerald-800',
-  rejected: 'bg-rose-100 text-rose-800',
-}
-
-const DEFAULT_LICENSE: LicenseFormState = {
-  plan: '',
-  max_recruiters: '0',
-  max_supervisors: '0',
-  max_client_managers: '0',
-  max_viewers: '0',
-  max_storage_gb: '0',
-  max_companies: '0',
-  expires_at: '',
-  auto_renew: true,
-  notes: '',
-}
+import { STATUS_BADGE, TYPE_BADGE, MODULE_LABELS, SEAT_STATUS_BADGE } from '../../modules/tenants/constants'
+import type { StatusFilter, TypeFilter, CreateTenantForm } from '../../modules/tenants/types'
+import {
+  DEFAULT_LICENSE,
+  toLicenseForm,
+  parseNumber,
+  licenseFormToPatch,
+  licenseFormToInput,
+  formatValues,
+  formatErrorMessage,
+  type LicenseFormState,
+} from '../../modules/tenants/utils'
+import { SeatProgress } from '../../modules/tenants/components/SeatProgress'
 
 const DEFAULT_CREATE_FORM: CreateTenantForm = {
   name: '',
@@ -129,109 +81,6 @@ const DEFAULT_CREATE_FORM: CreateTenantForm = {
   initial_admin_email: '',
   initial_admin_name: '',
   initial_admin_password: '',
-}
-
-function toLicenseForm(license?: TenantLicense | null): LicenseFormState {
-  if (!license) return { ...DEFAULT_LICENSE }
-  return {
-    plan: license.plan ?? '',
-    max_recruiters: String(license.max_recruiters ?? 0),
-    max_supervisors: String(license.max_supervisors ?? 0),
-    max_client_managers: String(license.max_client_managers ?? 0),
-    max_viewers: String(license.max_viewers ?? 0),
-    max_storage_gb: String(license.max_storage_gb ?? 0),
-    max_companies: String(license.max_companies ?? 0),
-    expires_at: license.expires_at ?? '',
-    auto_renew: Boolean(license.auto_renew),
-    notes: license.notes ?? '',
-  }
-}
-
-function parseNumber(value: string): number {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function licenseFormToPatch(form: LicenseFormState): TenantLicensePatchInput {
-  return {
-    plan: form.plan.trim() || undefined,
-    max_recruiters: parseNumber(form.max_recruiters),
-    max_supervisors: parseNumber(form.max_supervisors),
-    max_client_managers: parseNumber(form.max_client_managers),
-    max_viewers: parseNumber(form.max_viewers),
-    max_storage_gb: parseNumber(form.max_storage_gb),
-    max_companies: parseNumber(form.max_companies),
-    expires_at: form.expires_at || null,
-    auto_renew: Boolean(form.auto_renew),
-    notes: form.notes?.trim() || null,
-  }
-}
-
-function licenseFormToInput(form: LicenseFormState): TenantLicenseInput {
-  return {
-    plan: form.plan.trim(),
-    max_recruiters: parseNumber(form.max_recruiters),
-    max_supervisors: parseNumber(form.max_supervisors),
-    max_client_managers: parseNumber(form.max_client_managers),
-    max_viewers: parseNumber(form.max_viewers),
-    max_storage_gb: parseNumber(form.max_storage_gb),
-    max_companies: parseNumber(form.max_companies),
-    expires_at: form.expires_at || null,
-    auto_renew: Boolean(form.auto_renew),
-    notes: form.notes?.trim() || null,
-  }
-}
-
-const formatValues = (values: Record<string, string | number>) => ({
-  values: Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value)])),
-})
-
-function formatErrorMessage(err: unknown, fallback: string): string {
-  if (isAxiosError(err)) {
-    const detail = err.response?.data?.detail
-    if (typeof detail === 'string' && detail.trim().length > 0) return detail
-    if (typeof err.message === 'string') return err.message
-  }
-  if (err instanceof Error && err.message) return err.message
-  return fallback
-}
-
-function SeatProgress({
-  label,
-  used,
-  limit,
-  t,
-}: {
-  label: string
-  used: number
-  limit: number
-  t: (key: string, options?: any) => string
-}) {
-  const displayLimit = limit > 0 ? limit : '∞'
-  const percentage = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : used > 0 ? 100 : 0
-  const warn = limit > 0 && used / limit >= 0.9
-  return (
-    <div className="rounded border border-gray-100 bg-white p-3 text-sm">
-      <div className="flex items-center justify-between text-xs uppercase text-gray-400">
-        <span>{label}</span>
-        <span className="text-gray-500">
-          {limit > 0
-            ? t('app.platform.tenants.usage.limit', formatValues({ used, limit }))
-            : t('app.platform.tenants.usage.unlimited', formatValues({ used }))}
-        </span>
-      </div>
-      <div className="mt-2 h-2 rounded-full bg-gray-100">
-        <div
-          className={['h-2 rounded-full', warn ? 'bg-amber-500' : 'bg-brand-500'].join(' ')}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      <div className="mt-2 text-sm font-semibold text-gray-900">
-        {used}
-        <span className="ml-1 text-gray-500">/ {displayLimit}</span>
-      </div>
-    </div>
-  )
 }
 
 export default function TenantsPage() {
@@ -266,6 +115,16 @@ export default function TenantsPage() {
   const [modulesLoading, setModulesLoading] = useState(false)
   const [modulesSaving, setModulesSaving] = useState(false)
   const [modulesError, setModulesError] = useState<string | null>(null)
+  const [roleModuleMatrix, setRoleModuleMatrix] = useState<TenantRoleModuleMatrix | null>(null)
+  const [roleMatrixLoading, setRoleMatrixLoading] = useState(false)
+  const [roleMatrixSaving, setRoleMatrixSaving] = useState(false)
+  const [roleMatrixError, setRoleMatrixError] = useState<string | null>(null)
+  const [moduleOverrideUsers, setModuleOverrideUsers] = useState<TenantModuleOverrideUser[]>([])
+  const [userModuleOverrides, setUserModuleOverrides] = useState<TenantUserModuleOverrides | null>(null)
+  const [selectedOverrideUserId, setSelectedOverrideUserId] = useState<string>('')
+  const [userOverrideLoading, setUserOverrideLoading] = useState(false)
+  const [userOverrideSaving, setUserOverrideSaving] = useState(false)
+  const [userOverrideError, setUserOverrideError] = useState<string | null>(null)
   const [seatRequests, setSeatRequests] = useState<SeatRequest[]>([])
   const [seatLoading, setSeatLoading] = useState(false)
   const [seatError, setSeatError] = useState<string | null>(null)
@@ -284,6 +143,24 @@ export default function TenantsPage() {
   const selected = useMemo(() => tenants.find((t) => t.id === selectedId) ?? null, [selectedId, tenants])
   const selectedTenantId = selected?.id ?? null
   const isSuperAdmin = (me?.role || '').toLowerCase() === 'superadmin'
+  const roleOrder: RoleModuleMatrixRole[] = useMemo(
+    () => ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'viewer'],
+    [],
+  )
+  const normalizeRoleKey = useCallback((roleValue?: string | null): RoleModuleMatrixRole => {
+    const normalized = String(roleValue || '').trim().toLowerCase()
+    if (normalized === 'administrator') return 'administrator'
+    if (normalized === 'supervisor') return 'supervisor'
+    if (normalized === 'recruiter') return 'recruiter'
+    if (normalized === 'client_manager') return 'client_manager'
+    if (normalized === 'client_processor') return 'client_processor'
+    return 'viewer'
+  }, [])
+
+  const selectedOverrideUser = useMemo(
+    () => moduleOverrideUsers.find((user) => user.user_id === selectedOverrideUserId) ?? null,
+    [moduleOverrideUsers, selectedOverrideUserId],
+  )
 
   const refresh = useCallback(async () => {
     if (!isSuperAdmin) return
@@ -456,6 +333,13 @@ export default function TenantsPage() {
   }, [selected?.id])
 
   useEffect(() => {
+    setSelectedOverrideUserId('')
+    setModuleOverrideUsers([])
+    setUserModuleOverrides(null)
+    setUserOverrideError(null)
+  }, [selected?.id])
+
+  useEffect(() => {
     if (selected) {
       setBrandingLabel(selected.workspace_label ?? selected.name ?? '')
     } else {
@@ -566,6 +450,112 @@ export default function TenantsPage() {
       setModulesError(formatErrorMessage(err, t('app.platform.tenants.modules.errors.update_failed')))
     } finally {
       setModulesSaving(false)
+    }
+  }
+
+  const handleRoleMatrixToggle = async (
+    roleKey: RoleModuleMatrixRole,
+    moduleKey: keyof TenantModuleSettings,
+    field: 'visible' | 'editable',
+  ) => {
+    if (!selected || !roleModuleMatrix) return
+    const currentCell = roleModuleMatrix[roleKey]?.[moduleKey]
+    if (!currentCell) return
+
+    let nextVisible = currentCell.visible
+    let nextEditable = currentCell.editable
+    if (field === 'visible') {
+      nextVisible = !currentCell.visible
+      if (!nextVisible) nextEditable = false
+    } else {
+      nextEditable = !currentCell.editable
+      if (nextEditable) nextVisible = true
+    }
+
+    setRoleMatrixSaving(true)
+    setRoleMatrixError(null)
+    try {
+      const updated = await updatePlatformTenantRoleModuleMatrix(selected.id, {
+        [roleKey]: {
+          [moduleKey]: {
+            visible: nextVisible,
+            editable: nextEditable,
+          },
+        },
+      })
+      setRoleModuleMatrix(updated)
+    } catch (err) {
+      setRoleMatrixError(formatErrorMessage(err, t('app.platform.tenants.modules.errors.update_failed')))
+    } finally {
+      setRoleMatrixSaving(false)
+    }
+  }
+
+  const getEffectiveUserModuleCell = useCallback(
+    (moduleKey: keyof TenantModuleSettings) => {
+      if (!selectedOverrideUser || !roleModuleMatrix) return { visible: false, editable: false }
+      const roleKey = normalizeRoleKey(selectedOverrideUser.role)
+      const roleCell = roleModuleMatrix[roleKey]?.[moduleKey] ?? { visible: false, editable: false }
+      const overrideCell = selectedOverrideUser.user_id
+        ? userModuleOverrides?.users?.[selectedOverrideUser.user_id]?.[moduleKey]
+        : undefined
+      return overrideCell ?? roleCell
+    },
+    [normalizeRoleKey, roleModuleMatrix, selectedOverrideUser, userModuleOverrides],
+  )
+
+  const handleUserOverrideToggle = async (
+    moduleKey: keyof TenantModuleSettings,
+    field: 'visible' | 'editable',
+  ) => {
+    if (!selected || !selectedOverrideUser?.user_id || !roleModuleMatrix) return
+    const currentCell = getEffectiveUserModuleCell(moduleKey)
+    let nextVisible = currentCell.visible
+    let nextEditable = currentCell.editable
+    if (field === 'visible') {
+      nextVisible = !currentCell.visible
+      if (!nextVisible) nextEditable = false
+    } else {
+      nextEditable = !currentCell.editable
+      if (nextEditable) nextVisible = true
+    }
+
+    setUserOverrideSaving(true)
+    setUserOverrideError(null)
+    try {
+      const updated = await updatePlatformTenantUserModuleOverrides(selected.id, {
+        users: {
+          [selectedOverrideUser.user_id]: {
+            [moduleKey]: {
+              visible: nextVisible,
+              editable: nextEditable,
+            },
+          },
+        },
+      })
+      setUserModuleOverrides(updated)
+    } catch (err) {
+      setUserOverrideError(formatErrorMessage(err, t('app.platform.tenants.modules.errors.update_failed')))
+    } finally {
+      setUserOverrideSaving(false)
+    }
+  }
+
+  const handleClearUserOverrides = async () => {
+    if (!selected || !selectedOverrideUser?.user_id) return
+    setUserOverrideSaving(true)
+    setUserOverrideError(null)
+    try {
+      const updated = await updatePlatformTenantUserModuleOverrides(selected.id, {
+        users: {
+          [selectedOverrideUser.user_id]: null,
+        },
+      })
+      setUserModuleOverrides(updated)
+    } catch (err) {
+      setUserOverrideError(formatErrorMessage(err, t('app.platform.tenants.modules.errors.update_failed')))
+    } finally {
+      setUserOverrideSaving(false)
     }
   }
 
@@ -778,11 +768,22 @@ export default function TenantsPage() {
       setModuleSettings(null)
       setModulesError(null)
       setModulesLoading(false)
+      setRoleModuleMatrix(null)
+      setRoleMatrixError(null)
+      setRoleMatrixLoading(false)
+      setModuleOverrideUsers([])
+      setUserModuleOverrides(null)
+      setUserOverrideError(null)
+      setUserOverrideLoading(false)
       return
     }
     let cancelled = false
     setModulesLoading(true)
     setModulesError(null)
+    setRoleMatrixLoading(true)
+    setRoleMatrixError(null)
+    setUserOverrideLoading(true)
+    setUserOverrideError(null)
     getPlatformTenantModules(selected.id)
       .then((data) => {
         if (!cancelled) setModuleSettings(data)
@@ -795,6 +796,44 @@ export default function TenantsPage() {
       })
       .finally(() => {
         if (!cancelled) setModulesLoading(false)
+      })
+    getPlatformTenantRoleModuleMatrix(selected.id)
+      .then((data) => {
+        if (!cancelled) setRoleModuleMatrix(data)
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setRoleModuleMatrix(null)
+          setRoleMatrixError(formatErrorMessage(err, t('app.platform.tenants.modules.errors.load_failed')))
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setRoleMatrixLoading(false)
+      })
+    Promise.all([
+      listPlatformTenantModuleOverrideUsers(selected.id),
+      getPlatformTenantUserModuleOverrides(selected.id),
+    ])
+      .then(([users, overrides]) => {
+        if (cancelled) return
+        const activeUsers = users.filter((user) => user.user_id)
+        setModuleOverrideUsers(activeUsers)
+        setUserModuleOverrides(overrides)
+        setSelectedOverrideUserId((prev) => {
+          if (!prev) return activeUsers[0]?.user_id || ''
+          if (!activeUsers.some((user) => user.user_id === prev)) return activeUsers[0]?.user_id || ''
+          return prev
+        })
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setModuleOverrideUsers([])
+          setUserModuleOverrides(null)
+          setUserOverrideError(formatErrorMessage(err, t('app.platform.tenants.modules.errors.load_failed')))
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setUserOverrideLoading(false)
       })
     return () => {
       cancelled = true
@@ -813,8 +852,8 @@ export default function TenantsPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-2">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{t('app.platform.tenants.title')}</h1>
-          <p className="text-sm text-gray-500">{t('app.platform.tenants.subtitle')}</p>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('app.platform.tenants.title')}</h1>
+          <p className="text-sm text-slate-500">{t('app.platform.tenants.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <input
@@ -853,16 +892,28 @@ export default function TenantsPage() {
             </button>
           </div>
         </div>
-        {error && <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+        {error && (
+          <ErrorRecoveryBanner
+            info={{
+              title: error,
+              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+            }}
+            onRetry={() => void refresh()}
+            retryLabel={t('app.platform.tenants.actions.refresh')}
+            secondaryTo="/app/admin/tenants"
+            secondaryLabel={t('app.platform.tenants.title')}
+            compact
+          />
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(260px,340px),minmax(0,1fr)]">
-        <section className="rounded-lg border border-gray-200 bg-white p-4">
+        <section className="rounded-lg border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
               {t('app.platform.tenants.table.title')}
             </h2>
-            <span className="text-xs text-gray-400">{t('app.platform.tenants.table.count', formatValues({ count: tenants.length }))}</span>
+            <span className="text-xs text-slate-400">{t('app.platform.tenants.table.count', formatValues({ count: tenants.length }))}</span>
           </div>
           <div className="mt-3 space-y-2 overflow-y-auto max-h-[520px] pr-1">
             {tenants.map((tenant) => {
@@ -874,16 +925,16 @@ export default function TenantsPage() {
                   onClick={() => handleSelect(tenant)}
                   className={[
                     'w-full rounded-lg border px-3 py-3 text-left text-sm transition',
-                    isSelected ? 'border-brand-400 bg-brand-50 shadow-sm' : 'border-gray-200 hover:border-brand-200',
+                    isSelected ? 'border-brand-400 bg-brand-50 shadow-sm' : 'border-slate-200 hover:border-brand-200',
                   ].join(' ')}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-semibold text-gray-900">{tenant.workspace_label || tenant.name}</div>
-                      <div className="text-xs text-gray-500">{tenant.slug}</div>
+                      <div className="font-semibold text-slate-900">{tenant.workspace_label || tenant.name}</div>
+                      <div className="text-xs text-slate-500">{tenant.slug}</div>
                       <span
                         className={[
-                          'mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                          'mt-2 inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold',
                           TYPE_BADGE[tenant.type],
                         ].join(' ')}
                       >
@@ -892,15 +943,15 @@ export default function TenantsPage() {
                     </div>
                     <span
                       className={[
-                        'inline-flex rounded-full px-2 py-0.5 text-xs font-semibold',
+                        'inline-flex rounded-md px-2 py-0.5 text-xs font-semibold',
                         STATUS_BADGE[tenant.status],
                       ].join(' ')}
                     >
                       {t(`app.platform.tenants.status.${tenant.status}`)}
                     </span>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                    <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                       {tenant.license?.plan || '—'}
                     </span>
                     <span>
@@ -922,40 +973,40 @@ export default function TenantsPage() {
               )
             })}
             {!tenants.length && !loading && (
-              <div className="rounded-lg border border-dashed border-gray-200 px-3 py-6 text-center text-sm text-gray-500">
+              <div className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500">
                 {t('app.platform.tenants.table.empty')}
               </div>
             )}
           </div>
         </section>
 
-        <section className="rounded-lg border border-gray-200 bg-white p-4">
+        <section className="rounded-lg border border-slate-200 bg-white p-4">
           {selected ? (
             <>
               <div className="mb-4 flex items-start justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{selected.name}</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="text-lg font-semibold text-slate-900">{selected.name}</h3>
+                  <p className="text-sm text-slate-500">
                     {t('app.platform.tenants.detail.subtitle', formatValues({ slug: selected.slug }))}
                   </p>
                   {selected.workspace_label && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {t('app.platform.tenants.detail.workspace_label', formatValues({ label: selected.workspace_label }))}
                     </p>
                   )}
                 </div>
-                <span className={['inline-flex rounded-full px-2 py-0.5 text-xs font-semibold', STATUS_BADGE[selected.status]].join(' ')}>
+                <span className={['inline-flex rounded-md px-2 py-0.5 text-xs font-semibold', STATUS_BADGE[selected.status]].join(' ')}>
                   {t(`app.platform.tenants.status.${selected.status}`)}
                 </span>
               </div>
-              <nav className="mb-4 flex flex-wrap gap-2 text-xs font-semibold text-gray-500">
+              <nav className="mb-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
                 {detailTabs.map((tab) => (
                   <button
                     key={tab.key}
                     type="button"
                     className={[
-                      'rounded-full border px-3 py-1 transition',
-                      detailTab === tab.key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 hover:border-brand-300 hover:text-brand-700',
+                      'rounded-md border px-3 py-1 transition',
+                      detailTab === tab.key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 hover:border-brand-300 hover:text-brand-700',
                     ].join(' ')}
                     onClick={() => setDetailTab(tab.key)}
                   >
@@ -964,8 +1015,8 @@ export default function TenantsPage() {
                 ))}
               </nav>
 
-              <div className="rounded border border-gray-100 p-3">
-                <h4 className="text-sm font-semibold text-gray-900">{t('app.platform.tenants.actions.title')}</h4>
+              <div className="rounded border border-slate-100 p-3">
+                <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.actions.title')}</h4>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button type="button" className="btn-secondary" onClick={handleImpersonate} disabled={impersonating}>
                     {impersonating ? t('app.platform.tenants.actions.impersonating') : t('app.platform.tenants.actions.impersonate')}
@@ -990,29 +1041,29 @@ export default function TenantsPage() {
                 </div>
               </div>
               {detailTab === 'overview' && (
-                <div className="space-y-4 text-sm text-gray-600">
-                  <div className="grid gap-3 rounded border border-gray-100 p-3">
+                <div className="space-y-4 text-sm text-slate-600">
+                  <div className="grid gap-3 rounded border border-slate-100 p-3">
                     <div>
-                      <span className="text-xs uppercase text-gray-400">{t('app.platform.tenants.detail.type_label')}</span>
-                      <div className="font-medium text-gray-900">{t(`app.platform.tenants.type.${selected.type}`)}</div>
+                      <span className="text-xs uppercase text-slate-400">{t('app.platform.tenants.detail.type_label')}</span>
+                      <div className="font-medium text-slate-900">{t(`app.platform.tenants.type.${selected.type}`)}</div>
                     </div>
                     <div>
-                      <span className="text-xs uppercase text-gray-400">{t('app.platform.tenants.detail.created_at')}</span>
+                      <span className="text-xs uppercase text-slate-400">{t('app.platform.tenants.detail.created_at')}</span>
                       <div>{new Date(selected.created_at).toLocaleString()}</div>
                     </div>
                     <div>
-                      <span className="text-xs uppercase text-gray-400">{t('app.platform.tenants.detail.client_portal')}</span>
-                      <div className="font-medium text-gray-900">
+                      <span className="text-xs uppercase text-slate-400">{t('app.platform.tenants.detail.client_portal')}</span>
+                      <div className="font-medium text-slate-900">
                         {selected.client_portal_enabled ? t('app.platform.tenants.detail.portal_enabled') : t('app.platform.tenants.detail.portal_disabled')}
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded border border-gray-100 p-3">
-                    <h4 className="text-sm font-semibold text-gray-900">{t('app.platform.tenants.branding.title')}</h4>
+                  <div className="rounded border border-slate-100 p-3">
+                    <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.branding.title')}</h4>
                     <div className="mt-3 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                       <form className="flex-1 space-y-2" onSubmit={handleBrandingSubmit}>
-                        <label className="text-xs font-medium text-gray-500">
+                        <label className="text-xs font-medium text-slate-500">
                           {t('app.platform.tenants.branding.workspace_label')}
                           <input
                             className="input mt-1"
@@ -1023,7 +1074,13 @@ export default function TenantsPage() {
                           />
                         </label>
                         {brandingError && (
-                          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{brandingError}</div>
+                          <ErrorRecoveryBanner
+                            info={{
+                              title: brandingError,
+                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                            }}
+                            compact
+                          />
                         )}
                         <button type="submit" className="btn-primary" disabled={brandingSaving}>
                           {brandingSaving ? t('common.saving') : t('common.actions.save')}
@@ -1034,11 +1091,11 @@ export default function TenantsPage() {
                           <img
                             src={selectedLogoUrl}
                             alt={selected.workspace_label || selected.name}
-                            className="max-h-12 w-auto rounded border border-gray-200 bg-white object-contain"
+                            className="max-h-12 w-auto rounded border border-slate-200 bg-white object-contain"
                             style={{ maxHeight: 48 }}
                           />
                         ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded bg-gray-100 text-lg font-semibold text-gray-500">
+                          <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-lg font-semibold text-slate-500">
                             {(selected.workspace_label || selected.name || 'HF').slice(0, 2).toUpperCase()}
                           </div>
                         )}
@@ -1052,13 +1109,13 @@ export default function TenantsPage() {
                           />
                           {logoUploading ? t('app.platform.tenants.branding.uploading') : t('app.platform.tenants.branding.upload')}
                         </label>
-                        <p className="text-center text-[11px] text-gray-400">{t('app.platform.tenants.branding.logo_hint')}</p>
+                        <p className="text-center text-[11px] text-slate-400">{t('app.platform.tenants.branding.logo_hint')}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded border border-gray-100 p-3">
-                    <h4 className="text-sm font-semibold text-gray-900">{t('app.platform.tenants.usage.title')}</h4>
+                  <div className="rounded border border-slate-100 p-3">
+                    <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.usage.title')}</h4>
                     <div className="mt-2 grid gap-3">
                       {seatCards.map((seat) => (
                         <SeatProgress key={seat.key} label={seat.label} used={seat.used} limit={seat.limit} t={t} />
@@ -1070,12 +1127,20 @@ export default function TenantsPage() {
 
               {detailTab === 'billing' && (
                 <div className="space-y-4">
-                  <div className="rounded border border-gray-100 p-3">
+                  <div className="rounded border border-slate-100 p-3">
                     <form className="space-y-3" onSubmit={handleSaveLicense}>
-                      <h4 className="text-sm font-semibold text-gray-900">{t('app.platform.tenants.license.title')}</h4>
-                      {actionError && <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{actionError}</div>}
+                      <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.license.title')}</h4>
+                      {actionError && (
+                        <ErrorRecoveryBanner
+                          info={{
+                            title: actionError,
+                            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                          }}
+                          compact
+                        />
+                      )}
                       <div className="grid gap-3 md:grid-cols-2">
-                        <label className="text-xs font-medium text-gray-500">
+                        <label className="text-xs font-medium text-slate-500">
                           {t('app.platform.tenants.license.plan')}
                           <input
                             className="input mt-1"
@@ -1085,7 +1150,7 @@ export default function TenantsPage() {
                             onChange={handleLicenseInput}
                           />
                         </label>
-                        <label className="text-xs font-medium text-gray-500">
+                        <label className="text-xs font-medium text-slate-500">
                           {t('app.platform.tenants.license.expires_at')}
                           <input
                             className="input mt-1"
@@ -1098,7 +1163,7 @@ export default function TenantsPage() {
                         </label>
                       </div>
                       <div className="grid gap-3 md:grid-cols-2">
-                        <label className="text-xs font-medium text-gray-500">
+                        <label className="text-xs font-medium text-slate-500">
                           {t('app.platform.tenants.license.max_recruiters')}
                           <input
                             className="input mt-1"
@@ -1108,7 +1173,7 @@ export default function TenantsPage() {
                             onChange={handleLicenseInput}
                           />
                         </label>
-                        <label className="text-xs font-medium text-gray-500">
+                        <label className="text-xs font-medium text-slate-500">
                           {t('app.platform.tenants.license.max_supervisors')}
                           <input
                             className="input mt-1"
@@ -1118,7 +1183,7 @@ export default function TenantsPage() {
                             onChange={handleLicenseInput}
                           />
                         </label>
-                        <label className="text-xs font-medium text-gray-500">
+                        <label className="text-xs font-medium text-slate-500">
                           {t('app.platform.tenants.license.max_client_managers')}
                           <input
                             className="input mt-1"
@@ -1128,7 +1193,7 @@ export default function TenantsPage() {
                             onChange={handleLicenseInput}
                           />
                         </label>
-                        <label className="text-xs font-medium text-gray-500">
+                        <label className="text-xs font-medium text-slate-500">
                           {t('app.platform.tenants.license.max_viewers')}
                           <input
                             className="input mt-1"
@@ -1138,7 +1203,7 @@ export default function TenantsPage() {
                             onChange={handleLicenseInput}
                           />
                         </label>
-                        <label className="text-xs font-medium text-gray-500">
+                        <label className="text-xs font-medium text-slate-500">
                           {t('app.platform.tenants.license.max_storage_gb')}
                           <input
                             className="input mt-1"
@@ -1148,7 +1213,7 @@ export default function TenantsPage() {
                             onChange={handleLicenseInput}
                           />
                         </label>
-                        <label className="text-xs font-medium text-gray-500">
+                        <label className="text-xs font-medium text-slate-500">
                           {t('app.platform.tenants.license.max_companies')}
                           <input
                             className="input mt-1"
@@ -1159,11 +1224,11 @@ export default function TenantsPage() {
                           />
                         </label>
                       </div>
-                      <label className="flex items-center gap-2 text-xs font-medium text-gray-500">
+                      <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
                         <input type="checkbox" name="auto_renew" checked={licenseForm.auto_renew} onChange={handleLicenseInput} />
                         {t('app.platform.tenants.license.auto_renew')}
                       </label>
-                      <label className="text-xs font-medium text-gray-500">
+                      <label className="text-xs font-medium text-slate-500">
                         {t('app.platform.tenants.license.notes')}
                         <textarea className="input mt-1 min-h-[80px]" name="notes" value={licenseForm.notes} onChange={handleLicenseInput} />
                       </label>
@@ -1184,32 +1249,40 @@ export default function TenantsPage() {
                   </div>
 
                   {isSuperAdmin && (
-                    <div className="rounded border border-gray-100 p-3">
+                    <div className="rounded border border-slate-100 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <h4 className="text-sm font-semibold text-gray-900">{t('app.platform.tenants.seat_requests.title')}</h4>
-                          <p className="text-xs text-gray-500">{t('app.platform.tenants.seat_requests.subtitle')}</p>
+                          <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.seat_requests.title')}</h4>
+                          <p className="text-xs text-slate-500">{t('app.platform.tenants.seat_requests.subtitle')}</p>
                         </div>
                         <button type="button" className="btn-ghost text-xs" onClick={() => void loadSeatRequests()} disabled={seatLoading}>
                           {seatLoading ? t('common.loading') : t('app.platform.tenants.seat_requests.actions.refresh')}
                         </button>
                       </div>
                       {seatError && (
-                        <div className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{seatError}</div>
+                        <div className="mt-2">
+                          <ErrorRecoveryBanner
+                            info={{
+                              title: seatError,
+                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                            }}
+                            compact
+                          />
+                        </div>
                       )}
                       {seatLoading ? (
-                        <div className="mt-4 text-xs text-gray-500">{t('common.loading')}</div>
+                        <div className="mt-4 text-xs text-slate-500">{t('common.loading')}</div>
                       ) : seatRequests.length === 0 ? (
-                        <div className="mt-4 rounded border border-gray-100 bg-gray-50 px-3 py-3 text-xs text-gray-500">
+                        <div className="mt-4 rounded border border-slate-100 bg-slate-50 px-3 py-3 text-xs text-slate-500">
                           {t('app.platform.tenants.seat_requests.empty')}
                         </div>
                       ) : (
                         <div className="mt-3 space-y-3">
                           {seatRequests.map((request) => (
-                            <div key={request.id} className="rounded border border-gray-100 p-3 text-sm text-gray-700">
-                              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+                            <div key={request.id} className="rounded border border-slate-100 p-3 text-sm text-slate-700">
+                              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                                 <span>{new Date(request.created_at).toLocaleString()}</span>
-                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${SEAT_STATUS_BADGE[request.status]}`}>
+                                <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${SEAT_STATUS_BADGE[request.status]}`}>
                                   {t(`app.platform.tenants.seat_requests.status.${request.status}`)}
                                 </span>
                               </div>
@@ -1221,9 +1294,9 @@ export default function TenantsPage() {
                                   },
                                 })}
                               </div>
-                              {request.message && <p className="text-xs text-gray-500">{request.message}</p>}
+                              {request.message && <p className="text-xs text-slate-500">{request.message}</p>}
                               {request.resolution_notes && (
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-400">
                                   {t('app.platform.tenants.seat_requests.resolution', { values: { notes: request.resolution_notes } })}
                                 </p>
                               )}
@@ -1258,14 +1331,14 @@ export default function TenantsPage() {
 
               {detailTab === 'access' && (
                 <div className="space-y-4">
-                  <div className="rounded border border-gray-100 p-3">
+                  <div className="rounded border border-slate-100 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <h4 className="text-sm font-semibold text-gray-900">{t('app.platform.tenants.access.title')}</h4>
-                        <p className="text-xs text-gray-500">{t('app.platform.tenants.access.subtitle')}</p>
+                        <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.access.title')}</h4>
+                        <p className="text-xs text-slate-500">{t('app.platform.tenants.access.subtitle')}</p>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                           {t('app.platform.tenants.access.counter', formatValues({ count: vacancyAccess.length }))}
                         </span>
                         <button
@@ -1282,21 +1355,29 @@ export default function TenantsPage() {
                       <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{vacancyAccessMessage}</div>
                     )}
                     {vacancyAccessError && (
-                      <div className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{vacancyAccessError}</div>
+                      <div className="mt-2">
+                        <ErrorRecoveryBanner
+                          info={{
+                            title: vacancyAccessError,
+                            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                          }}
+                          compact
+                        />
+                      </div>
                     )}
                     {vacancyAccessLoading ? (
-                      <div className="mt-3 text-xs text-gray-500">{t('common.loading')}</div>
+                      <div className="mt-3 text-xs text-slate-500">{t('common.loading')}</div>
                     ) : vacancyAccess.length === 0 ? (
-                      <div className="mt-3 rounded border border-dashed border-gray-200 px-3 py-3 text-xs text-gray-500">
+                      <div className="mt-3 rounded border border-dashed border-slate-200 px-3 py-3 text-xs text-slate-500">
                         {t('app.platform.tenants.access.empty')}
                       </div>
                     ) : (
                       <ul className="mt-3 space-y-2">
                         {vacancyAccess.map((item) => (
-                          <li key={item.vacancy_id} className="flex items-start justify-between rounded border border-gray-100 bg-gray-50 px-3 py-2">
+                          <li key={item.vacancy_id} className="flex items-start justify-between rounded border border-slate-100 bg-slate-50 px-3 py-2">
                             <div>
-                              <div className="text-sm font-medium text-gray-900">{item.title}</div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-sm font-medium text-slate-900">{item.title}</div>
+                              <div className="text-xs text-slate-500">
                                 {item.company_name && <span>{item.company_name}</span>}
                                 {item.company_name && item.status && <span className="mx-1">·</span>}
                                 <span>{formatVacancyStatus(item.status)}</span>
@@ -1314,7 +1395,7 @@ export default function TenantsPage() {
                         ))}
                       </ul>
                     )}
-                    <div className="mt-4 border-t border-gray-100 pt-4">
+                    <div className="mt-4 border-t border-slate-100 pt-4">
                       <form className="flex flex-col gap-2 sm:flex-row" onSubmit={handleVacancySearchSubmit}>
                         <input
                           className="input flex-1"
@@ -1336,19 +1417,27 @@ export default function TenantsPage() {
                           )}
                         </div>
                       </form>
-                      <p className="mt-1 text-[11px] text-gray-500">{t('app.platform.tenants.access.search_hint')}</p>
+                      <p className="mt-1 text-[11px] text-slate-500">{t('app.platform.tenants.access.search_hint')}</p>
                       {vacancyOptionsError && (
-                        <div className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{vacancyOptionsError}</div>
+                        <div className="mt-2">
+                          <ErrorRecoveryBanner
+                            info={{
+                              title: vacancyOptionsError,
+                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                            }}
+                            compact
+                          />
+                        </div>
                       )}
                       {vacancyOptions.length > 0 && (
                         <ul className="mt-3 space-y-2">
                           {vacancyOptions.map((option) => {
                             const alreadyShared = vacancyAccess.some((entry) => entry.vacancy_id === option.vacancy_id)
                             return (
-                              <li key={option.vacancy_id} className="flex items-start justify-between rounded border border-gray-100 px-3 py-2">
+                              <li key={option.vacancy_id} className="flex items-start justify-between rounded border border-slate-100 px-3 py-2">
                                 <div>
-                                  <div className="text-sm font-medium text-gray-900">{option.title}</div>
-                                  <div className="text-xs text-gray-500">
+                                  <div className="text-sm font-medium text-slate-900">{option.title}</div>
+                                  <div className="text-xs text-slate-500">
                                     {option.company_name && <span>{option.company_name}</span>}
                                     {option.company_name && option.status && <span className="mx-1">·</span>}
                                     <span>{formatVacancyStatus(option.status)}</span>
@@ -1372,23 +1461,31 @@ export default function TenantsPage() {
                     </div>
                   </div>
 
-                  <div className="rounded border border-gray-100 p-3">
+                  <div className="rounded border border-slate-100 p-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="text-sm font-semibold text-gray-900">{t('app.platform.tenants.modules.title')}</h4>
-                        <p className="text-xs text-gray-500">{t('app.platform.tenants.modules.description')}</p>
+                        <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.modules.title')}</h4>
+                        <p className="text-xs text-slate-500">{t('app.platform.tenants.modules.description')}</p>
                       </div>
-                      {modulesSaving && <span className="text-xs text-gray-400">{t('common.saving')}</span>}
+                      {modulesSaving && <span className="text-xs text-slate-400">{t('common.saving')}</span>}
                     </div>
                     {modulesError && (
-                      <div className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{modulesError}</div>
+                      <div className="mt-2">
+                        <ErrorRecoveryBanner
+                          info={{
+                            title: modulesError,
+                            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                          }}
+                          compact
+                        />
+                      </div>
                     )}
                     {modulesLoading ? (
-                      <div className="mt-3 text-xs text-gray-500">{t('common.loading')}</div>
+                      <div className="mt-3 text-xs text-slate-500">{t('common.loading')}</div>
                     ) : moduleSettings ? (
                       <div className="mt-3 grid gap-2 md:grid-cols-2">
                         {(Object.keys(moduleSettings) as Array<keyof TenantModuleSettings>).map((key) => (
-                          <label key={key} className="flex items-center justify-between rounded border border-gray-200 px-3 py-2 text-sm text-gray-700">
+                          <label key={key} className="flex items-center justify-between rounded border border-slate-200 px-3 py-2 text-sm text-slate-700">
                             <span>{t(MODULE_LABELS[key])}</span>
                             <input
                               type="checkbox"
@@ -1401,21 +1498,222 @@ export default function TenantsPage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="mt-3 text-xs text-gray-500">{t('app.platform.tenants.modules.empty')}</div>
+                      <div className="mt-3 text-xs text-slate-500">{t('app.platform.tenants.modules.empty')}</div>
                     )}
+
+                    <div className="mt-4 rounded border border-slate-100 p-3">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.modules.matrix_title')}</h5>
+                        {roleMatrixSaving && <span className="text-xs text-slate-400">{t('common.saving')}</span>}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">{t('app.platform.tenants.modules.matrix_description')}</p>
+                      {roleMatrixError && (
+                        <div className="mt-2">
+                          <ErrorRecoveryBanner
+                            info={{
+                              title: roleMatrixError,
+                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                            }}
+                            compact
+                          />
+                        </div>
+                      )}
+                      {roleMatrixLoading ? (
+                        <div className="mt-3 text-xs text-slate-500">{t('common.loading')}</div>
+                      ) : roleModuleMatrix && moduleSettings ? (
+                        <div className="mt-3 overflow-x-auto">
+                          <table className="min-w-full divide-y divide-slate-200 text-xs">
+                            <thead>
+                              <tr className="bg-slate-50 text-left text-slate-600">
+                                <th className="px-2 py-2">{t('app.platform.tenants.modules.matrix_module')}</th>
+                                {roleOrder.map((roleKey) => (
+                                  <th key={roleKey} className="px-2 py-2">{t(`app.admin.users.roles.${roleKey}`)}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {(Object.keys(moduleSettings) as Array<keyof TenantModuleSettings>).map((moduleKey) => (
+                                <tr key={moduleKey}>
+                                  <td className="px-2 py-2 font-medium text-slate-700">{t(MODULE_LABELS[moduleKey])}</td>
+                                  {roleOrder.map((roleKey) => {
+                                    const cell = roleModuleMatrix[roleKey]?.[moduleKey]
+                                    const moduleEnabled = moduleSettings[moduleKey]
+                                    return (
+                                      <td key={`${roleKey}:${moduleKey}`} className="px-2 py-2">
+                                        <div className="flex items-center gap-2">
+                                          <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
+                                            <input
+                                              type="checkbox"
+                                              className="h-3.5 w-3.5 accent-brand-600"
+                                              checked={Boolean(cell?.visible)}
+                                              disabled={roleMatrixSaving || !moduleEnabled}
+                                              onChange={() => handleRoleMatrixToggle(roleKey, moduleKey, 'visible')}
+                                            />
+                                            V
+                                          </label>
+                                          <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
+                                            <input
+                                              type="checkbox"
+                                              className="h-3.5 w-3.5 accent-brand-600"
+                                              checked={Boolean(cell?.editable)}
+                                              disabled={roleMatrixSaving || !moduleEnabled || !cell?.visible}
+                                              onChange={() => handleRoleMatrixToggle(roleKey, moduleKey, 'editable')}
+                                            />
+                                            E
+                                          </label>
+                                        </div>
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <div className="mt-2 text-[11px] text-slate-500">
+                            {t('app.platform.tenants.modules.matrix_hint')}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-xs text-slate-500">{t('app.platform.tenants.modules.empty')}</div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 rounded border border-slate-100 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <h5 className="text-sm font-semibold text-slate-900">
+                          {t('app.platform.tenants.modules.user_overrides_title')}
+                        </h5>
+                        {userOverrideSaving && <span className="text-xs text-slate-400">{t('common.saving')}</span>}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {t('app.platform.tenants.modules.user_overrides_description')}
+                      </p>
+                      {userOverrideError && (
+                        <div className="mt-2">
+                          <ErrorRecoveryBanner
+                            info={{
+                              title: userOverrideError,
+                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                            }}
+                            compact
+                          />
+                        </div>
+                      )}
+                      {userOverrideLoading ? (
+                        <div className="mt-3 text-xs text-slate-500">{t('common.loading')}</div>
+                      ) : moduleOverrideUsers.length === 0 ? (
+                        <div className="mt-3 text-xs text-slate-500">{t('app.platform.tenants.modules.empty')}</div>
+                      ) : (
+                        <>
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <select
+                              className="input min-w-[280px] text-sm"
+                              value={selectedOverrideUserId}
+                              onChange={(event) => setSelectedOverrideUserId(event.target.value)}
+                              disabled={userOverrideSaving}
+                            >
+                              {moduleOverrideUsers.map((user) => (
+                                <option key={user.user_id || user.email} value={user.user_id || ''}>
+                                  {(user.full_name || user.email) + ' (' + t(`app.admin.users.roles.${user.role}`) + ')'}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="btn-ghost text-xs"
+                              onClick={handleClearUserOverrides}
+                              disabled={userOverrideSaving || !selectedOverrideUser?.user_id}
+                            >
+                              {t('app.platform.tenants.modules.user_overrides_reset')}
+                            </button>
+                          </div>
+                          {selectedOverrideUser && roleModuleMatrix && moduleSettings ? (
+                            <div className="mt-3 overflow-x-auto">
+                              <table className="min-w-full divide-y divide-slate-200 text-xs">
+                                <thead>
+                                  <tr className="bg-slate-50 text-left text-slate-600">
+                                    <th className="px-2 py-2">{t('app.platform.tenants.modules.matrix_module')}</th>
+                                    <th className="px-2 py-2">{t('app.platform.tenants.modules.user_overrides_mode')}</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                  {(Object.keys(moduleSettings) as Array<keyof TenantModuleSettings>).map((moduleKey) => {
+                                    const moduleEnabled = moduleSettings[moduleKey]
+                                    const roleKey = normalizeRoleKey(selectedOverrideUser.role)
+                                    const roleCell = roleModuleMatrix[roleKey]?.[moduleKey] ?? { visible: false, editable: false }
+                                    const effectiveCell = getEffectiveUserModuleCell(moduleKey)
+                                    const hasOverride = Boolean(
+                                      selectedOverrideUser.user_id &&
+                                        userModuleOverrides?.users?.[selectedOverrideUser.user_id]?.[moduleKey],
+                                    )
+                                    return (
+                                      <tr key={`user-override-${moduleKey}`}>
+                                        <td className="px-2 py-2 font-medium text-slate-700">{t(MODULE_LABELS[moduleKey])}</td>
+                                        <td className="px-2 py-2">
+                                          <div className="flex items-center gap-2">
+                                            <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
+                                              <input
+                                                type="checkbox"
+                                                className="h-3.5 w-3.5 accent-brand-600"
+                                                checked={Boolean(effectiveCell.visible)}
+                                                disabled={userOverrideSaving || !moduleEnabled}
+                                                onChange={() => handleUserOverrideToggle(moduleKey, 'visible')}
+                                              />
+                                              V
+                                            </label>
+                                            <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
+                                              <input
+                                                type="checkbox"
+                                                className="h-3.5 w-3.5 accent-brand-600"
+                                                checked={Boolean(effectiveCell.editable)}
+                                                disabled={userOverrideSaving || !moduleEnabled || !effectiveCell.visible}
+                                                onChange={() => handleUserOverrideToggle(moduleKey, 'editable')}
+                                              />
+                                              E
+                                            </label>
+                                            <span className="text-[11px] text-slate-500">
+                                              {hasOverride
+                                                ? t('app.platform.tenants.modules.user_overrides_custom')
+                                                : t('app.platform.tenants.modules.user_overrides_from_role', {
+                                                    values: {
+                                                      visible: roleCell.visible ? 'V' : '—',
+                                                      editable: roleCell.editable ? 'E' : '—',
+                                                    },
+                                                  })}
+                                            </span>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="rounded border border-gray-100 p-3">
-                    <h4 className="text-sm font-semibold text-gray-900">{t('app.platform.tenants.admins.title')}</h4>
-                    <p className="text-xs text-gray-500">{t('app.platform.tenants.admins.subtitle')}</p>
+                  <div className="rounded border border-slate-100 p-3">
+                    <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.admins.title')}</h4>
+                    <p className="text-xs text-slate-500">{t('app.platform.tenants.admins.subtitle')}</p>
                     {adminMessage && (
                       <div className="mt-2 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{adminMessage}</div>
                     )}
                     {adminErrorMsg && (
-                      <div className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{adminErrorMsg}</div>
+                      <div className="mt-2">
+                        <ErrorRecoveryBanner
+                          info={{
+                            title: adminErrorMsg,
+                            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                          }}
+                          compact
+                        />
+                      </div>
                     )}
                     <form className="mt-3 grid gap-2 sm:grid-cols-2" onSubmit={handleCreateTenantAdmin}>
-                      <label className="text-xs font-medium text-gray-500">
+                      <label className="text-xs font-medium text-slate-500">
                         {t('app.platform.tenants.admins.form.email')}
                         <input
                           className="input mt-1"
@@ -1425,7 +1723,7 @@ export default function TenantsPage() {
                           onChange={(event) => setAdminForm((prev) => ({ ...prev, email: event.target.value }))}
                         />
                       </label>
-                      <label className="text-xs font-medium text-gray-500">
+                      <label className="text-xs font-medium text-slate-500">
                         {t('app.platform.tenants.admins.form.full_name')}
                         <input
                           className="input mt-1"
@@ -1434,7 +1732,7 @@ export default function TenantsPage() {
                           onChange={(event) => setAdminForm((prev) => ({ ...prev, full_name: event.target.value }))}
                         />
                       </label>
-                      <label className="text-xs font-medium text-gray-500 sm:col-span-2">
+                      <label className="text-xs font-medium text-slate-500 sm:col-span-2">
                         {t('app.platform.tenants.admins.form.password')}
                         <input
                           className="input mt-1"
@@ -1455,19 +1753,27 @@ export default function TenantsPage() {
               )}
             </>
           ) : (
-            <div className="py-20 text-center text-sm text-gray-500">{t('app.platform.tenants.detail.empty')}</div>
+            <div className="py-20 text-center text-sm text-slate-500">{t('app.platform.tenants.detail.empty')}</div>
           )}
         </section>
       </div>
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title={t('app.platform.tenants.create.title')}>
         <form className="space-y-3" onSubmit={handleCreateSubmit}>
-          {createError && <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{createError}</div>}
-          <label className="text-xs font-medium text-gray-500">
+          {createError && (
+            <ErrorRecoveryBanner
+              info={{
+                title: createError,
+                hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+              }}
+              compact
+            />
+          )}
+          <label className="text-xs font-medium text-slate-500">
             {t('app.platform.tenants.create.name')}
             <input className="input mt-1" name="name" autoComplete="organization" value={createForm.name} onChange={handleCreateInput} />
           </label>
-          <label className="text-xs font-medium text-gray-500">
+          <label className="text-xs font-medium text-slate-500">
             {t('app.platform.tenants.create.workspace_label')}
             <input
               className="input mt-1"
@@ -1478,12 +1784,12 @@ export default function TenantsPage() {
               placeholder={createForm.name || undefined}
             />
           </label>
-          <label className="text-xs font-medium text-gray-500">
+          <label className="text-xs font-medium text-slate-500">
             {t('app.platform.tenants.create.slug')}
             <input className="input mt-1" name="slug" autoComplete="off" value={createForm.slug} onChange={handleCreateInput} />
           </label>
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="text-xs font-medium text-gray-500">
+            <label className="text-xs font-medium text-slate-500">
               {t('app.platform.tenants.create.initial_admin_email')}
               <input
                 className="input mt-1"
@@ -1494,7 +1800,7 @@ export default function TenantsPage() {
                 onChange={handleCreateInput}
               />
             </label>
-            <label className="text-xs font-medium text-gray-500">
+            <label className="text-xs font-medium text-slate-500">
               {t('app.platform.tenants.create.initial_admin_name')}
               <input
                 className="input mt-1"
@@ -1505,7 +1811,7 @@ export default function TenantsPage() {
               />
             </label>
           </div>
-          <label className="text-xs font-medium text-gray-500">
+          <label className="text-xs font-medium text-slate-500">
             {t('app.platform.tenants.create.initial_admin_password')}
             <input
               className="input mt-1"
@@ -1517,7 +1823,7 @@ export default function TenantsPage() {
             />
           </label>
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="text-xs font-medium text-gray-500">
+            <label className="text-xs font-medium text-slate-500">
               {t('app.platform.tenants.create.type')}
               <select className="input mt-1" name="type" value={createForm.type} onChange={handleCreateInput}>
                 <option value="agency">{t('app.platform.tenants.type.agency')}</option>
@@ -1525,7 +1831,7 @@ export default function TenantsPage() {
                 <option value="platform">{t('app.platform.tenants.type.platform')}</option>
               </select>
             </label>
-            <label className="text-xs font-medium text-gray-500">
+            <label className="text-xs font-medium text-slate-500">
               {t('app.platform.tenants.create.status')}
               <select className="input mt-1" name="status" value={createForm.status} onChange={handleCreateInput}>
                 <option value="active">{t('app.platform.tenants.status.active')}</option>
@@ -1534,16 +1840,16 @@ export default function TenantsPage() {
               </select>
             </label>
           </div>
-          <label className="flex items-center gap-2 text-xs font-medium text-gray-500">
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
             <input type="checkbox" name="client_portal_enabled" checked={createForm.client_portal_enabled} onChange={handleCreateInput} />
             {t('app.platform.tenants.create.portal')}
           </label>
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="text-xs font-medium text-gray-500">
+            <label className="text-xs font-medium text-slate-500">
               {t('app.platform.tenants.license.plan')}
               <input className="input mt-1" name="license.plan" autoComplete="off" value={createForm.license.plan} onChange={handleCreateInput} />
             </label>
-            <label className="text-xs font-medium text-gray-500">
+            <label className="text-xs font-medium text-slate-500">
               {t('app.platform.tenants.license.expires_at')}
               <input
                 className="input mt-1"
@@ -1557,7 +1863,7 @@ export default function TenantsPage() {
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             {['max_recruiters', 'max_supervisors', 'max_client_managers', 'max_viewers', 'max_storage_gb', 'max_companies'].map((field) => (
-              <label key={field} className="text-xs font-medium text-gray-500">
+              <label key={field} className="text-xs font-medium text-slate-500">
                 {t(`app.platform.tenants.license.${field}` as const)}
                 <input
                   className="input mt-1"
@@ -1569,11 +1875,11 @@ export default function TenantsPage() {
               </label>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-xs font-medium text-gray-500">
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-500">
             <input type="checkbox" name="license.auto_renew" checked={createForm.license.auto_renew} onChange={handleCreateInput} />
             {t('app.platform.tenants.license.auto_renew')}
           </label>
-          <label className="text-xs font-medium text-gray-500">
+          <label className="text-xs font-medium text-slate-500">
             {t('app.platform.tenants.license.notes')}
             <textarea className="input mt-1 min-h-[80px]" name="license.notes" value={createForm.license.notes} onChange={handleCreateInput} />
           </label>

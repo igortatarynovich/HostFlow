@@ -4,6 +4,8 @@ from datetime import date, datetime
 from typing import Any, ClassVar, Dict, List, Literal, Optional, Set
 from uuid import UUID, uuid4
 
+CompanyTypeLiteral = Literal["agency", "employer", "services"]
+
 try:
     from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 except ImportError:  # pragma: no cover - Pydantic < 2 compatibility
@@ -70,6 +72,10 @@ class CompanyMutableFields(BaseModel):
 
 class CompanyCreate(CompanyMutableFields):
     name: str = Field(..., max_length=255)
+    company_type: Optional[CompanyTypeLiteral] = Field(
+        None,
+        description="For onboarding: agency, employer, or services. Sets tenant bootstrap profile when creating first company.",
+    )
 
 
 class CompanyUpdate(CompanyMutableFields):
@@ -257,6 +263,7 @@ class Contact(BaseModel):
 
 
 class OperationsProfile(BaseModel):
+    # Transport
     fleet_tractors: Optional[int] = Field(None, ge=0)
     fleet_intl_perc: Optional[int] = Field(None, ge=0, le=100)
     fleet_local_perc: Optional[int] = Field(None, ge=0, le=100)
@@ -268,6 +275,12 @@ class OperationsProfile(BaseModel):
     cargo_types: List[str] = Field(default_factory=list)
     languages: List[str] = Field(default_factory=list)
     preferred_nationalities: List[str] = Field(default_factory=list)
+    # Office / IT
+    team_size: Optional[int] = Field(None, ge=0)
+    roles: Optional[str] = Field(None, max_length=512)
+    tech_stack: Optional[str] = Field(None, max_length=512)
+    # Custom (generic key-value)
+    custom_fields: Optional[Dict[str, Any]] = Field(None)
 
 
 class ComplianceProfile(BaseModel):
@@ -332,6 +345,8 @@ class OrderRecord(BaseModel):
     hired_drivers: Optional[int] = Field(None, ge=0)
     client_reference: Optional[str] = Field(None, max_length=128)
     code: Optional[str] = Field(None, max_length=64)
+    order_type_id: Optional[str] = Field("transport", max_length=64)
+    custom_fields: Optional[Dict[str, Any]] = Field(None)
 
 
 class CompanyProfile(BaseModel):

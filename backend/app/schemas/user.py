@@ -12,6 +12,7 @@ class UserRole(str, Enum):
     supervisor = "supervisor"
     recruiter = "recruiter"
     client_manager = "client_manager"
+    client_processor = "client_processor"
     viewer = "viewer"
 
 
@@ -143,7 +144,7 @@ class AdminPasswordChange(BaseModel):
 
 
 class UserPasswordResetOut(BaseModel):
-    temporary_password: str = Field(..., min_length=8, max_length=256)
+    temporary_password: str = Field(default="", max_length=256)
     revoked_sessions: int = Field(default=0, ge=0)
 
 

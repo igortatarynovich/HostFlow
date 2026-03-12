@@ -1,7 +1,8 @@
 import clsx from 'clsx'
 import type { ReactNode } from 'react'
-import { PublicBrandingLogo } from '../../../components/public/PublicLogo'
+import { PublicLogo } from '../../../components/public/PublicLogo'
 import { PublicCookieBanner } from '../../../components/public/PublicCookieBanner'
+import { PublicLocaleSwitcher } from '../../../components/public/PublicLocaleSwitcher'
 
 type PublicPageShellProps = {
   children: ReactNode
@@ -9,6 +10,7 @@ type PublicPageShellProps = {
   className?: string
   headerExtra?: ReactNode
   showBrand?: boolean
+  headerSub?: ReactNode
 }
 
 const WIDTH_CLASS: Record<NonNullable<PublicPageShellProps['maxWidth']>, string> = {
@@ -25,6 +27,7 @@ export function PublicPageShell({
   className,
   headerExtra,
   showBrand = true,
+  headerSub,
 }: PublicPageShellProps) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#f6fbff] px-4 py-10">
@@ -32,10 +35,11 @@ export function PublicPageShell({
       <div className={clsx('relative mx-auto w-full', WIDTH_CLASS[maxWidth], className)}>
         {showBrand && (
           <div className="mb-6 flex items-center justify-between gap-4">
-            <PublicBrandingLogo showWordmark />
-            {headerExtra}
+            <PublicLogo showWordmark />
+            {headerExtra ?? <PublicLocaleSwitcher />}
           </div>
         )}
+        {headerSub && <div className="-mx-2 mb-4">{headerSub}</div>}
         {children}
       </div>
       <PublicCookieBanner />

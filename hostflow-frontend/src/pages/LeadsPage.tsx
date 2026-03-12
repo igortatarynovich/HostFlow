@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { IconFilter, IconRefresh, IconTable } from '@tabler/icons-react'
 
 import { listLeads } from '../api/client'
-import type { Lead, LeadListResponse, LeadStatus } from '../api/types'
+import type { Lead, LeadListResponse, LeadStatus, LeadStage } from '../api/types'
 import { useI18n } from '../i18n'
+import EmptyStatePanel from '../components/EmptyStatePanel'
+import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
 const STATUS_FILTERS: Array<'' | LeadStatus> = ['', 'new', 'processed', 'duplicated', 'needs_routing', 'failed']
+const STAGE_FILTERS: Array<'' | LeadStage> = ['', 'new', 'contacted', 'qualified', 'converted', 'lost']
 const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   year: 'numeric',
   month: '2-digit',
@@ -23,36 +28,34 @@ const LOCALE_TO_DATE = {
 export default function LeadsPage() {
   const { t, locale } = useI18n()
   const [status, setStatus] = useState<'' | LeadStatus>('')
+  const [stage, setStage] = useState<'' | LeadStage>('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [data, setData] = useState<LeadListResponse>({ items: [], total: 0, limit: 20, offset: 0 })
 
   const limit = 20
   const offset = (page - 1) * limit
 
+  const loadLeads = useCallback(
+    async (nextOffset: number = offset) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const payload = await listLeads({ status: status || undefined, stage: stage || undefined, limit, offset: nextOffset })
+        setData(payload as LeadListResponse)
+      } catch (err: any) {
+        setError(getFriendlyErrorInfo(err, t('app.leads.messages.load_failed')))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [limit, offset, stage, status, t],
+  )
+
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    listLeads({ status: status || undefined, limit, offset })
-      .then((payload: LeadListResponse) => {
-        if (!cancelled) {
-          setData(payload)
-        }
-      })
-      .catch((err: any) => {
-        if (!cancelled) {
-          setError(err?.message || t('app.leads.messages.load_failed'))
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [status, page, t])
+    void loadLeads(offset)
+  }, [loadLeads, offset])
 
   const totalPages = useMemo(() => {
     if (!data.limit) return 1
@@ -71,6 +74,22 @@ export default function LeadsPage() {
       })),
     [t]
   )
+  const stageOptions = useMemo<Array<{ value: '' | LeadStage; label: string }>>(
+    () =>
+      STAGE_FILTERS.map((value) => ({
+        value,
+        label: value ? t(`app.leads.stages.${value}`) : t('app.leads.filters.stage_all', { defaultValue: 'All stages' }),
+      })),
+    [t]
+  )
+  const stageLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    STAGE_FILTERS.forEach((value) => {
+      if (!value) return
+      map[value] = t(`app.leads.stages.${value}`)
+    })
+    return map
+  }, [t])
   const statusLabels = useMemo(() => {
     const map: Record<string, string> = {}
     STATUS_FILTERS.forEach((value) => {
@@ -97,17 +116,26 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{t('app.leads.title')}</h1>
-          <p className="text-sm text-gray-500">{t('app.leads.subtitle')}</p>
+    <div className="space-y-3">
+      <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">{t('app.leads.title')}</h1>
+            <p className="text-xs text-slate-500">{t('app.leads.subtitle')}</p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
+            <IconTable size={14} />
+            <span>{t('app.leads.pagination.shown', { values: { count: items.length, total: data.total } })}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600">
-            {t('app.leads.filters.status')}
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <label className="min-w-[170px] text-xs font-medium text-slate-600">
+            <span className="mb-1 inline-flex items-center gap-1">
+              <IconFilter size={12} />
+              {t('app.leads.filters.status')}
+            </span>
             <select
-              className="ml-2 rounded border border-gray-300 px-2 py-1 text-sm"
+              className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
               value={status}
               onChange={(event) => {
                 setStatus(event.target.value as '' | LeadStatus)
@@ -119,43 +147,95 @@ export default function LeadsPage() {
               ))}
             </select>
           </label>
+          <label className="min-w-[170px] text-xs font-medium text-slate-600">
+            <span className="mb-1 inline-flex items-center gap-1">
+              <IconFilter size={12} />
+              {t('app.leads.filters.stage', { defaultValue: 'Stage' })}
+            </span>
+            <select
+              className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              value={stage}
+              onChange={(event) => {
+                setStage(event.target.value as '' | LeadStage)
+                setPage(1)
+              }}
+            >
+              {stageOptions.map((opt) => (
+                <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              setPage(1)
+              void loadLeads(0)
+            }}
+            className="btn-secondary h-9 rounded-lg px-3 text-xs"
+          >
+            <IconRefresh size={14} />
+            {t('app.candidates.actions.refresh')}
+          </button>
         </div>
       </header>
 
-      <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
-            <thead className="bg-gray-50">
+          <table className="table min-w-full text-sm">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">{t('app.leads.table.created')}</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">{t('app.leads.table.status')}</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">{t('app.leads.table.company')}</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">{t('app.leads.table.vacancy')}</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">{t('app.leads.table.contact')}</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">{t('app.leads.table.source')}</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">{t('app.leads.table.candidate')}</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-600">{t('app.leads.table.error')}</th>
+                <th>{t('app.leads.table.created')}</th>
+                <th>{t('app.leads.table.status')}</th>
+                <th>{t('app.leads.table.stage', { defaultValue: 'Stage' })}</th>
+                <th>{t('app.leads.table.company')}</th>
+                <th>{t('app.leads.table.vacancy')}</th>
+                <th>{t('app.leads.table.contact')}</th>
+                <th>{t('app.leads.table.source')}</th>
+                <th>{t('app.leads.table.candidate')}</th>
+                <th>{t('app.leads.table.error')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
+                  <td colSpan={9} className="px-3 py-5 text-center text-slate-500">
                     {t('common.loading')}
                   </td>
                 </tr>
               )}
               {error && !loading && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-red-500">
-                    {error}
+                  <td colSpan={9} className="px-3 py-4">
+                    <ErrorRecoveryBanner
+                      compact
+                      info={error}
+                      onRetry={() => void loadLeads(offset)}
+                      retryLabel={t('common.retry', { defaultValue: 'Retry' })}
+                      secondaryTo="/app/settings/leads"
+                      secondaryLabel={t('app.leads.states.empty_cta_connect', { defaultValue: 'Connect sources' })}
+                    />
                   </td>
                 </tr>
               )}
               {!loading && !error && items.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-gray-500">
-                    {t('app.leads.states.empty')}
+                  <td colSpan={9} className="px-3 py-6">
+                    <EmptyStatePanel
+                      compact
+                      title={t('app.leads.states.empty_title', { defaultValue: 'No leads yet' })}
+                      description={t('app.leads.states.empty_desc', {
+                        defaultValue:
+                          'Connect ad sources or import leads to start routing and assignment.',
+                      })}
+                      primaryAction={{
+                        label: t('app.leads.states.empty_cta_connect', { defaultValue: 'Connect sources' }),
+                        to: '/app/settings/leads',
+                      }}
+                      secondaryAction={{
+                        label: t('app.leads.states.empty_cta_clients', { defaultValue: 'Open clients' }),
+                        to: '/app/clients',
+                      }}
+                    />
                   </td>
                 </tr>
               )}
@@ -167,27 +247,36 @@ export default function LeadsPage() {
                 const contact = [contactName, contactEmail, contactPhone].filter(Boolean).join(' · ')
 
                 return (
-                  <tr key={lead.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-600">{formatDateValue(lead.created_at)}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                  <tr key={lead.id} className="hover:bg-slate-50">
+                    <td className="text-slate-600">{formatDateValue(lead.created_at)}</td>
+                    <td>
+                      <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                         {statusLabels[lead.status] ?? lead.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-800">{lead.company_name || lead.company_id}</td>
-                    <td className="px-4 py-3 text-gray-800">{lead.vacancy_title || lead.vacancy_id || '—'}</td>
-                    <td className="px-4 py-3 text-gray-700">
+                    <td>
+                      {lead.stage ? (
+                        <span className="inline-flex items-center rounded-md bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-800">
+                          {stageLabels[lead.stage] ?? lead.stage}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="text-slate-800">{lead.company_name || lead.company_id}</td>
+                    <td className="text-slate-800">{lead.vacancy_title || lead.vacancy_id || '—'}</td>
+                    <td className="text-slate-700">
                       {contact || '—'}
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{lead.source}</td>
-                    <td className="px-4 py-3 text-blue-600">
+                    <td className="text-slate-700">{lead.source}</td>
+                    <td className="text-brand-700">
                       {lead.candidate_id ? (
                         <Link to={`/app/candidates/${lead.candidate_id}`}>{lead.candidate_name || lead.candidate_id}</Link>
                       ) : (
                         '—'
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-red-500">{lead.error || '—'}</td>
+                    <td className="text-sm text-red-500">{lead.error || '—'}</td>
                   </tr>
                 )
               })}
@@ -195,7 +284,7 @@ export default function LeadsPage() {
           </table>
         </div>
 
-        <footer className="flex items-center justify-between border-t border-gray-200 px-4 py-3 text-sm text-gray-600">
+        <footer className="flex items-center justify-between border-t border-slate-200 px-3 py-2 text-xs text-slate-600">
           <div>
             {t('app.leads.pagination.shown', { values: { count: items.length, total: data.total } })}
           </div>
@@ -204,7 +293,7 @@ export default function LeadsPage() {
               type="button"
               disabled={!canPrev}
               onClick={() => canPrev && setPage((prev) => prev - 1)}
-              className="rounded border border-gray-300 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-secondary rounded-lg px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t('app.leads.pagination.prev')}
             </button>
@@ -212,7 +301,7 @@ export default function LeadsPage() {
               type="button"
               disabled={!canNext}
               onClick={() => canNext && setPage((prev) => prev + 1)}
-              className="rounded border border-gray-300 px-3 py-1 disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-secondary rounded-lg px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t('app.leads.pagination.next')}
             </button>

@@ -78,7 +78,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
     root.classList.toggle('dark', forceDark)
   }, [])
 
+  const isPublicPath = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    const path = window.location.pathname || ''
+    return (
+      path.startsWith('/public') ||
+      path.startsWith('/signup') ||
+      path.startsWith('/forgot-password') ||
+      path.startsWith('/reset-password') ||
+      path.startsWith('/invite/accept')
+    )
+  }, [])
+
   const refresh = useCallback(async () => {
+    // В публичных страницах не тянем auth/whoami, чтобы не ловить 401
+    const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
+    if (path.startsWith('/public') || path.startsWith('/signup') || path === '/forgot-password' || path.startsWith('/reset-password') || path.startsWith('/invite/accept')) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       const [{ data: whoami }, meEnvelope] = await Promise.all([
@@ -121,15 +139,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
       applyTheme(meEnvelope.preferences?.ui?.theme)
       clearLoginNotice()
     } catch (err) {
+      const status = extractStatus(err)
       console.warn('[Auth] refresh failed', err)
-      if (extractStatus(err) === 401) {
+      if (status === 401) {
         rememberLoginNotice('expired')
         setToken(null)
+        setMe(null)
+        setPreferences(null)
+        setSecurity(null)
+        setSessionId(null)
+      } else if (status !== 502 && status !== 503) {
+        // 502/503: keep session (temporary server/gateway error); other errors: clear
+        setMe(null)
+        setPreferences(null)
+        setSecurity(null)
+        setSessionId(null)
       }
-      setMe(null)
-      setPreferences(null)
-      setSecurity(null)
-      setSessionId(null)
     } finally {
       setLoading(false)
     }
@@ -208,7 +233,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [refresh])
 
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => {
+    if (isPublicPath) {
+      setLoading(false)
+      return
+    }
+    refresh()
+  }, [refresh, isPublicPath])
 
   const updateProfile = useCallback((update: Partial<WhoAmI>) => {
     setMe((prev) => (prev ? { ...prev, ...update } : prev))

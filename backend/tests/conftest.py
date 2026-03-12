@@ -305,6 +305,15 @@ def _build_token(user_id: str, email: str, role: str, tenant_id: str, supervisor
 
 
 @pytest_asyncio.fixture
+async def db():
+    """Async DB session for unit tests (e.g. audit, services)."""
+    await _init_data()
+    async with async_session_maker() as session:
+        await _set_tenant(session, DEFAULT_TENANT_ID)
+        yield session
+
+
+@pytest_asyncio.fixture
 async def client() -> AsyncClient:
     """
     In-memory HTTP client bound to FastAPI app with lifespan triggers.

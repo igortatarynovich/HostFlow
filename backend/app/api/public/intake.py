@@ -39,9 +39,14 @@ from backend.app.services.extractors import auto_fill_from_file
 from backend.app.services import reminders as reminders_service
 from backend.app.models.enums import DocumentStatus
 from backend.app.services.activity import log_public_event
+from backend.app.services.legal_documents import list_active_for_tenant
 from backend.app.services.events import EventAudience, emit_event
 from backend.app.models.user import Role
 from backend.app.services.source_labels import normalize_candidate_source
+from backend.app.services.candidate_telegram_notifications import (
+    send_candidate_documents_progress_telegram,
+    sync_candidate_ready_for_handoff_gate,
+)
 
 
 _UPLOADS_ROOT = get_uploads_root()
@@ -823,12 +828,24 @@ def _ensure_user_comment(doc_type: str, comment: Optional[str]) -> None:
 
 def _owner_context_from_state(state: Dict[str, Any], candidate_id: str) -> Dict[str, Any]:
     personal = state.get("personal") or {}
+    extra = state.get("extra") or {}
+    raw_docs = extra.get("documents") if isinstance(extra.get("documents"), dict) else {}
+    docs_ctx = {
+        str(key): bool(value)
+        for key, value in raw_docs.items()
+        if isinstance(value, bool)
+    }
+    has_adr = personal.get("has_adr")
+    if has_adr is None:
+        has_adr = extra.get("has_adr")
     ctx = {
         "candidate_id": candidate_id,
         "citizenship": (personal.get("citizenship") or "").upper() or None,
-        "residency_status": personal.get("residency_status") or None,
+        "residency_status": extra.get("poland_stay_basis") or personal.get("residency_status") or None,
+        "has_adr": has_adr if isinstance(has_adr, bool) else None,
+        "documents": docs_ctx,
     }
-    return {k: v for k, v in ctx.items() if v}
+    return {k: v for k, v in ctx.items() if v is not None}
 
 
 async def _save_public_document_upload(
@@ -1108,7 +1125,12 @@ async def _log_consent_snapshot(
 ) -> None:
     timestamp = _now()
     versions = payload.documents_version
-    base_payload = {"documents_version": versions.model_dump()}
+    base_payload = {"documents_version": versions.model_dump(), "source": "public_form"}
+    active_docs = await list_active_for_tenant(session, str(tenant_id))
+    if active_docs.get("rodo_clause"):
+        base_payload["rodo_version_id"] = active_docs["rodo_clause"].version_id
+    if active_docs.get("privacy_policy"):
+        base_payload["privacy_version_id"] = active_docs["privacy_policy"].version_id
     consent_map = payload.consents.model_dump()
     entries: List[CandidateConsent] = []
 
@@ -1511,6 +1533,8 @@ async def _upsert_employments(
 
 
 def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> None:
+    from backend.app.constants.catalog_utils import country_by_dial
+    
     contacts = payload.contacts
     personal = payload.personal
     experience = payload.experience
@@ -1521,6 +1545,7 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     existing_agreements = dict(existing_state.get("agreements") or {})
     existing_employments = list(existing_state.get("employments") or [])
 
+    # Обновляем основные поля контактов
     if contacts.phone_country_code:
         candidate.phone_country_code = contacts.phone_country_code
     if contacts.phone:
@@ -1528,6 +1553,7 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     if contacts.email:
         candidate.email = contacts.email
 
+    # Сохраняем preferred_messenger в contacts для совместимости
     contacts_payload = candidate._get_contacts()
     contacts_payload.update(
         {
@@ -1536,11 +1562,13 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     )
     candidate._set_contacts(contacts_payload)
 
+    # Обновляем имя
     if personal.full_name:
         first_name, last_name = _full_name_parts(personal.full_name)
         candidate.first_name = first_name or candidate.first_name
         candidate.last_name = last_name or candidate.last_name
 
+    # Обновляем personal_data (для совместимости, но основное хранилище - extra)
     personal_dict = candidate._get_personal_data()
     if personal.citizenship:
         personal_dict["citizenship"] = personal.citizenship.upper()
@@ -1601,9 +1629,29 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     new_employments = [_employment_state_payload(entry) for entry in payload.employments]
     state["employments"] = new_employments or existing_employments
 
+    # Обновляем extra - основное хранилище для карточки кандидата
     extra = candidate._get_extra()
+    
+    # Маппинг phone_country_code в phone_country и phone_prefix
+    if contacts.phone_country_code:
+        dial_code = contacts.phone_country_code.strip()
+        if not dial_code.startswith("+"):
+            dial_code = f"+{dial_code}"
+        # Находим страну по dial code
+        countries = country_by_dial(dial_code)
+        if countries:
+            # Берем первую найденную страну (обычно одна)
+            extra["phone_country"] = countries[0][0]
+            extra["phone_prefix"] = dial_code
+        else:
+            # Если не нашли страну, сохраняем только префикс
+            extra["phone_prefix"] = dial_code
+    
+    # Preferred contact
     if contacts.preferred_messenger:
         extra["preferred_contact"] = contacts.preferred_messenger
+    
+    # Personal data - сохраняем в extra (основное хранилище для карточки)
     if personal.citizenship:
         extra["citizenship"] = personal.citizenship.upper()
     if personal.in_poland is not None:
@@ -1617,15 +1665,20 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
         extra["frigo_experience"] = personal.frigo_experience
     if personal.has_adr is not None:
         extra["has_adr"] = personal.has_adr
+    
+    # Residency basis
     basis = _map_residency_status_to_poland_basis(residency)
     if basis:
         extra["poland_stay_basis"] = basis
+    
+    # Experience data
     if merged_years_ce is not None:
         extra["experience_eu_years"] = merged_years_ce
     if merged_intl_experience is not None:
         extra["intl_experience"] = merged_intl_experience
     extra["trailer_types"] = _normalize_string_list(merged_trailer_types)
     extra["route_types"] = _normalize_string_list(merged_route_types)
+    
     candidate._set_extra(extra)
 
 
@@ -2017,6 +2070,34 @@ async def upload_public_document(
         storage_key=storage_key,
         user_comment=user_comment,
     )
+    try:
+        await send_candidate_documents_progress_telegram(
+            db,
+            tenant_id=str(tenant_id),
+            candidate=candidate,
+            source_doc_type=doc_type.strip(),
+        )
+    except Exception:
+        logger.exception(
+            "public intake upload telegram progress notify failed tenant=%s candidate=%s",
+            str(tenant_id),
+            candidate.id,
+        )
+    try:
+        promoted = await sync_candidate_ready_for_handoff_gate(
+            db,
+            tenant_id=str(tenant_id),
+            candidate=candidate,
+            source="public_intake_upload",
+        )
+        if promoted:
+            await db.commit()
+    except Exception:
+        logger.exception(
+            "public intake upload auto-ready-for-handoff sync failed tenant=%s candidate=%s",
+            str(tenant_id),
+            candidate.id,
+        )
     employments = await _list_employments(db, tenant_id, candidate.id)
     checklist, documents = await _build_checklist_and_docs(db, tenant_id, candidate)
     return _response_payload(candidate, employments, checklist, documents)

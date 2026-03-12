@@ -13,6 +13,12 @@ import type {
   TenantAdminResponse,
   TenantBrandingPayload,
   TenantBrandingResponse,
+  TenantRoleModuleMatrix,
+  TenantRoleModuleMatrixPatch,
+  EffectiveRoleModules,
+  TenantModuleOverrideUser,
+  TenantUserModuleOverrides,
+  TenantUserModuleOverridesPatch,
   TenantImpersonationToken,
   TenantLicensePatchInput,
   TenantModuleSettings,
@@ -84,6 +90,42 @@ export async function getPlatformTenantModules(tenantId: string) {
 
 export async function updatePlatformTenantModules(tenantId: string, payload: TenantModuleSettingsPatch) {
   const { data } = await http.patch<TenantModuleSettings>(`/platform/tenants/${tenantId}/modules`, payload)
+  return data
+}
+
+export async function getPlatformTenantRoleModuleMatrix(tenantId: string) {
+  const { data } = await http.get<TenantRoleModuleMatrix>(`/platform/tenants/${tenantId}/module-matrix`)
+  return data
+}
+
+export async function updatePlatformTenantRoleModuleMatrix(
+  tenantId: string,
+  payload: TenantRoleModuleMatrixPatch,
+) {
+  const { data } = await http.patch<TenantRoleModuleMatrix>(`/platform/tenants/${tenantId}/module-matrix`, payload)
+  return data
+}
+
+export async function listPlatformTenantModuleOverrideUsers(tenantId: string) {
+  const { data } = await http.get<TenantModuleOverrideUser[]>(
+    `/platform/tenants/${tenantId}/module-overrides/users`,
+  )
+  return data
+}
+
+export async function getPlatformTenantUserModuleOverrides(tenantId: string) {
+  const { data } = await http.get<TenantUserModuleOverrides>(`/platform/tenants/${tenantId}/module-overrides`)
+  return data
+}
+
+export async function updatePlatformTenantUserModuleOverrides(
+  tenantId: string,
+  payload: TenantUserModuleOverridesPatch,
+) {
+  const { data } = await http.patch<TenantUserModuleOverrides>(
+    `/platform/tenants/${tenantId}/module-overrides`,
+    payload,
+  )
   return data
 }
 
@@ -164,6 +206,12 @@ export async function updateTenantModules(
 ) {
   const client = resolveTenantClient(opts?.tenantId)
   const { data } = await client.patch<TenantModuleSettings>('/settings/team/modules', payload)
+  return data
+}
+
+export async function getTenantEffectiveRoleModules(opts?: { tenantId?: string }) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.get<EffectiveRoleModules>('/settings/team/module-matrix/effective')
   return data
 }
 

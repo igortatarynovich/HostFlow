@@ -3,6 +3,7 @@ from enum import Enum
 
 
 class DocumentStatus(str, Enum):
+    """Статусы документов (общие, используются для всех типов)."""
     missing = "missing"
     requested = "requested"
     in_progress = "in_progress"
@@ -14,6 +15,44 @@ class DocumentStatus(str, Enum):
     overdue = "overdue"
     rejected = "rejected"
     expired = "expired"
+    # Новые статусы для EVIDENCE модели
+    uploaded = "uploaded"
+    verified = "verified"
+    # Новые статусы для PROCESS_WP_A модели
+    not_required = "not_required"
+    to_prepare = "to_prepare"
+    issued = "issued"
+    cancelled = "cancelled"
+    # Новые статусы для PROCESS_OSWIADCZENIE модели
+    to_register = "to_register"
+    registered = "registered"
+    active = "active"
+    # Новые статусы для PROCESS_RESIDENCE модели
+
+
+class DocumentStatusModel(str, Enum):
+    """Модель статусов документа (определяет набор допустимых статусов)."""
+    EVIDENCE = "evidence"  # Документы-доказательства (паспорт, права, тахо, świadectwo, карта квалификации)
+    PROCESS_WP_A = "process_wp_a"  # Work Permit A (процесс)
+    PROCESS_OSWIADCZENIE = "process_oswiadczenie"  # Oświadczenie (процесс/регистрация)
+    PROCESS_RESIDENCE = "process_residence"  # Residence Card (как замещение)
+
+
+class RequirementType(str, Enum):
+    """Типы виртуальных требований (requirements)."""
+    ID_EVIDENCE = "id_evidence"  # Документ удостоверения личности
+    CODE95_EVIDENCE = "code95_evidence"  # Доказательство Code 95 (составное требование)
+    RIGHT_TO_WORK_BASIS = "right_to_work_basis"  # Право работать (составное требование)
+    CORE_PRO_DRIVER_SET = "core_pro_driver_set"  # Базовый проф-набор для рейса (составное)
+    DRIVERS_CERTIFICATE_IF_REQUIRED = "drivers_certificate_if_required"  # Условное требование
+
+
+class GateCode(str, Enum):
+    """Коды stage gates (блокировки этапов)."""
+    GATE_DOCS_RECEIVED = "gate_docs_received"  # "Документы получены"
+    GATE_PLAN_ARRIVAL = "gate_plan_arrival"  # "Планируем приезд"
+    GATE_ON_CLIENT_BASE = "gate_on_client_base"  # "На базе клиента"
+    GATE_ON_ROUTE = "gate_on_route"  # "Выехал в рейс"
 
 
 class DocumentKind(str, Enum):

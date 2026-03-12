@@ -22,6 +22,7 @@ class Role(str, Enum):
     supervisor = "supervisor"
     recruiter = "recruiter"
     client_manager = "client_manager"
+    client_processor = "client_processor"  # Handoff: accepts/processes candidates from agency
     viewer = "viewer"
     admin = administrator
     owner = administrator
@@ -43,6 +44,8 @@ ROLE_ALIASES = {
     "viewer": Role.viewer.value,
     "client": Role.client_manager.value,
     "client_manager": Role.client_manager.value,
+    "client_processor": Role.client_processor.value,
+    "processor": Role.client_processor.value,
     "superadmin": Role.superadmin.value,
 }
 

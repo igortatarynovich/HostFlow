@@ -53,6 +53,8 @@ ROLE_ALIAS = {
     "user": Role.viewer.value,
     "client": Role.client_manager.value,
     "client_manager": Role.client_manager.value,
+    "client_processor": Role.client_processor.value,
+    "processor": Role.client_processor.value,
     "superadmin": Role.superadmin.value,
 }
 
@@ -102,6 +104,7 @@ def _apply_global_role(user: User, tenant_role: str) -> None:
         Role.supervisor.value: Role.supervisor,
         Role.administrator.value: Role.administrator,
         Role.client_manager.value: Role.client_manager,
+        Role.client_processor.value: Role.client_processor,
         Role.superadmin.value: Role.superadmin,
     }
     user.role = mapping.get(tenant_role, Role.viewer)
@@ -861,13 +864,12 @@ async def reset_user_password(
     actor_id: str | None,
     user_id: str,
     revoke_sessions: bool = True,
+    send_email: bool = True,
 ) -> Tuple[str, int]:
     user = await _load_user(db, tenant_id=tenant_id, user_id=user_id)
-    password = _generate_password()
-    user.password_hash = hash_password(password)
+    user.password_hash = hash_password(secrets.token_urlsafe(32))
     user.updated_at = _now()
     await db.flush()
-
     revoked = 0
     if revoke_sessions:
         revoked = await revoke_user_sessions(
@@ -876,6 +878,41 @@ async def reset_user_password(
             user_id=user.id,
             actor_id=actor_id,
         )
+
+    if send_email and user.email:
+        try:
+            from backend.app.core.settings import settings
+            from backend.app.services.system_email import send_system_email
+
+            raw_token, token_hash = generate_token("pwreset")
+            expires_at = _now() + timedelta(hours=24)
+            from backend.app.models.password_reset_token import PasswordResetToken
+
+            prt = PasswordResetToken(
+                user_id=user.id,
+                token_hash=token_hash,
+                expires_at=expires_at,
+            )
+            db.add(prt)
+            await db.flush()
+
+            base = (settings.frontend_url or "").strip()
+            link = f"{base}/reset-password?token={raw_token}" if base else ""
+            body = (
+                f"Dzień dobry,\n\n"
+                f"Administrator zresetował Twoje hasło do HostFlow.\n\n"
+                f"Kliknij link, aby ustawić nowe hasło (ważny 24h):\n{link}\n\n"
+                if link
+                else f"Token do ustawienia hasła (ważny 24h): {raw_token}\n\n"
+            )
+            body += "Pozdrawiamy,\nZespół HostFlow"
+            await send_system_email(
+                to=user.email,
+                subject="HostFlow – ustaw nowe hasło",
+                body=body,
+            )
+        except Exception:
+            pass
 
     await record_user_audit(
         db,
@@ -894,7 +931,86 @@ async def reset_user_password(
         target_id=user.id,
         payload={"revoked_sessions": revoked},
     )
-    return password, revoked
+    return "", revoked
+
+
+async def request_password_reset(db: AsyncSession, *, email: str) -> bool:
+    """Create password reset token and send email. Returns True if email sent (user exists)."""
+    from backend.app.models.password_reset_token import PasswordResetToken
+
+    email = (email or "").strip().lower()
+    if not email or "@" not in email:
+        return False
+    stmt = select(User).where(func.lower(User.email) == email)
+    user = (await db.execute(stmt)).scalar_one_or_none()
+    if not user or user.deleted_at:
+        return True
+
+    raw_token, token_hash = generate_token("pwreset")
+    expires_at = _now() + timedelta(hours=24)
+    prt = PasswordResetToken(user_id=user.id, token_hash=token_hash, expires_at=expires_at)
+    db.add(prt)
+    await db.flush()
+
+    try:
+        from backend.app.core.settings import settings
+        from backend.app.services.system_email import send_system_email
+
+        base = (settings.frontend_url or "").strip()
+        link = f"{base}/reset-password?token={raw_token}" if base else ""
+        body = (
+            f"Dzień dobry,\n\n"
+            f"Otrzymałeś prośbę o zresetowanie hasła do HostFlow.\n\n"
+            f"Kliknij link, aby ustawić nowe hasło (ważny 24h):\n{link}\n\n"
+            if link
+            else f"Token (ważny 24h): {raw_token}\n\n"
+        )
+        body += "Jeśli to nie Ty, zignoruj tę wiadomość.\n\nPozdrawiamy,\nZespół HostFlow"
+        await send_system_email(
+            to=user.email,
+            subject="HostFlow – reset hasła",
+            body=body,
+        )
+        return True
+    except Exception:
+        return False
+
+
+async def reset_password_with_token(
+    db: AsyncSession, *, token: str, new_password: str
+) -> bool:
+    """Verify token and set new password. Returns True on success."""
+    from backend.app.models.password_reset_token import PasswordResetToken
+
+    raw = (token or "").strip()
+    if not raw or len(raw) < 16:
+        return False
+    token_hash = hash_token(raw)
+    now = _now()
+
+    stmt = (
+        select(PasswordResetToken)
+        .where(PasswordResetToken.token_hash == token_hash)
+        .where(PasswordResetToken.used_at.is_(None))
+    )
+    prt = (await db.execute(stmt)).scalar_one_or_none()
+    if not prt:
+        return False
+    exp = prt.expires_at
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    if exp < now:
+        return False
+
+    user = await db.get(User, prt.user_id)
+    if not user or user.deleted_at:
+        return False
+
+    user.password_hash = hash_password(new_password)
+    user.updated_at = now
+    prt.used_at = now
+    await db.flush()
+    return True
 
 
 async def delete_user(
@@ -995,6 +1111,80 @@ async def list_user_audit(
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+async def list_tenant_audit(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    user_id: Optional[str] = None,
+    action: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    limit: int = 200,
+    offset: int = 0,
+) -> Tuple[List[Dict[str, Any]], int]:
+    """List audit entries for the tenant with optional filters. Returns (items, total)."""
+    stmt = (
+        select(UserAuditLog)
+        .where(UserAuditLog.tenant_id == tenant_id)
+        .order_by(UserAuditLog.created_at.desc())
+    )
+    count_stmt = (
+        select(func.count())
+        .select_from(UserAuditLog)
+        .where(UserAuditLog.tenant_id == tenant_id)
+    )
+    if user_id:
+        stmt = stmt.where(UserAuditLog.user_id == user_id)
+        count_stmt = count_stmt.where(UserAuditLog.user_id == user_id)
+    if action:
+        stmt = stmt.where(UserAuditLog.action == action)
+        count_stmt = count_stmt.where(UserAuditLog.action == action)
+    if date_from:
+        stmt = stmt.where(UserAuditLog.created_at >= date_from)
+        count_stmt = count_stmt.where(UserAuditLog.created_at >= date_from)
+    if date_to:
+        stmt = stmt.where(UserAuditLog.created_at <= date_to)
+        count_stmt = count_stmt.where(UserAuditLog.created_at <= date_to)
+
+    total = (await db.execute(count_stmt)).scalar() or 0
+    stmt = stmt.offset(offset).limit(limit)
+    result = await db.execute(stmt)
+    logs = list(result.scalars().all())
+
+    user_ids = {log.actor_id for log in logs if log.actor_id}
+    user_ids.update({log.user_id for log in logs if log.user_id})
+    user_ids.discard(None)
+    users_map: Dict[str, Dict] = {}
+    if user_ids:
+        users_rows = await db.execute(
+            select(User.id, User.full_name, User.email, User.short_id)
+            .where(User.id.in_(user_ids))
+        )
+        for row in users_rows.all():
+            users_map[row.id] = {
+                "full_name": row.full_name,
+                "email": row.email,
+                "short_id": row.short_id,
+            }
+
+    items = []
+    for log in logs:
+        actor = users_map.get(log.actor_id or "", {}) if log.actor_id else {}
+        user = users_map.get(log.user_id or "", {}) if log.user_id else {}
+        items.append({
+            "id": log.id,
+            "tenant_id": log.tenant_id,
+            "user_id": log.user_id,
+            "user_label": (user.get("full_name") or user.get("email") or log.user_id or ""),
+            "actor_id": log.actor_id,
+            "actor_label": (actor.get("full_name") or actor.get("email") or log.actor_id or "—"),
+            "action": log.action,
+            "payload": log.payload,
+            "created_at": log.created_at,
+        })
+    return items, int(total)
 
 
 async def get_user_detail(
@@ -1191,7 +1381,7 @@ async def get_tenant_managers(db: AsyncSession, tenant_id: str) -> List[Dict]:
         .where(user_memberships.c.tenant_id == tenant_id)
         .where(
             user_memberships.c.role.in_(
-                [Role.supervisor.value, Role.administrator.value]
+                [Role.supervisor.value, Role.administrator.value, Role.recruiter.value]
             )
         )
         .order_by(full_expr.asc())

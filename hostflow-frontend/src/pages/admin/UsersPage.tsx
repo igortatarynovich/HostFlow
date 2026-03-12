@@ -31,68 +31,20 @@ import { listCompanies } from '../../api/client'
 import { getPlatformTenant, listPlatformTenants } from '../../api/tenants'
 import { useAuth } from '../../store/useAuth'
 import { usePermissions } from '../../hooks/usePermissions'
+import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { UserFormCreate } from '../../components/admin/UserFormCreate'
 import { UserFormInvite } from '../../components/admin/UserFormInvite'
 import { useI18n } from '../../i18n'
 import { TeamManagementPanel } from './BillingTeamPage'
-
-type DetailTab = 'overview' | 'companies' | 'audit'
-
-const ROLE_LABEL_KEYS: Record<UserRole, string> = {
-  administrator: 'app.admin.users.roles.administrator',
-  supervisor: 'app.admin.users.roles.supervisor',
-  recruiter: 'app.admin.users.roles.recruiter',
-  viewer: 'app.admin.users.roles.viewer',
-}
-
-const ROLE_BADGE_CLASSES: Record<UserRole, string> = {
-  administrator: 'bg-brand-50 text-brand-700 border border-brand-100',
-  supervisor: 'bg-purple-50 text-purple-700 border border-purple-100',
-  recruiter: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
-  viewer: 'bg-slate-50 text-slate-700 border border-slate-200',
-}
-
-const USER_STATUS_BADGES: Record<AdminUser['status'], string> = {
-  active: 'bg-emerald-100 text-emerald-700',
-  inactive: 'bg-gray-100 text-gray-600',
-  invited: 'bg-amber-100 text-amber-700',
-}
-
-const USER_STATUS_LABELS: Record<AdminUser['status'], string> = {
-  active: 'app.admin.users.table.status.active',
-  inactive: 'app.admin.users.table.status.inactive',
-  invited: 'app.admin.users.table.status.invited',
-}
-
-interface AuditState {
-  loading: boolean
-  entries: UserAuditEntry[]
-  error: string | null
-}
-
-const EMPTY_AUDIT: AuditState = { loading: false, entries: [], error: null }
-
-function normalizeList<T>(value: any): T[] {
-  if (Array.isArray(value)) return value as T[]
-  if (value && Array.isArray(value.items)) return value.items as T[]
-  return []
-}
-
-function parseCompanies(data: any): Company[] {
-  const items = normalizeList<any>(data)
-  const result: Company[] = []
-  for (const item of items) {
-    const id = item?.id || item?.uuid || item?.company_id
-    if (!id) continue
-    result.push({
-      id,
-      name: item?.name || item?.title || item?.label || id,
-      country: item?.country ?? null,
-      city: item?.city ?? null,
-    })
-  }
-  return result
-}
+import {
+  ROLE_LABEL_KEYS,
+  ROLE_BADGE_CLASSES,
+  USER_STATUS_BADGES,
+  USER_STATUS_LABELS,
+} from '../../modules/users/constants'
+import type { DetailTab, AuditState } from '../../modules/users/types'
+import { EMPTY_AUDIT } from '../../modules/users/types'
+import { normalizeList, parseCompanies, extractErrorDetail } from '../../modules/users/utils'
 
 interface UserDetailCardProps {
   detail: AdminUserDetail
@@ -111,7 +63,7 @@ interface UserDetailCardProps {
   onChangeRole?: (role: UserRole) => Promise<void>
   onToggleActive?: (active: boolean) => Promise<void>
   onRevokeRefresh?: () => Promise<void>
-  onResetPassword?: () => Promise<string>
+  onResetPassword?: () => Promise<void>
   onChangePassword?: (newPassword: string) => Promise<void>
   onDeleteUser?: () => Promise<void>
 }
@@ -221,8 +173,8 @@ function UserDetailCard({
     if (!onResetPassword || !detail.user_id) return
     setPasswordNote(null)
     try {
-      const pwd = await onResetPassword()
-      setPasswordNote(t('app.admin.users.actions.password_reset_success', { defaultValue: 'Temporary password: {pwd}', values: { pwd } }))
+      await onResetPassword()
+      setPasswordNote(t('app.admin.users.actions.password_reset_link_sent', { defaultValue: 'Link do zresetowania hasła wysłany na adres e-mail użytkownika.' }))
     } catch (err) {
       console.error('[UserDetailCard] reset password failed', err)
       setPasswordNote(t('app.admin.users.errors.password_reset_failed', { defaultValue: 'Failed to reset password' }))
@@ -268,16 +220,16 @@ function UserDetailCard({
   const isActive = detail.status === 'active' && detail.is_active
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-6">
+    <section className="rounded-lg border border-slate-200 bg-white p-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">{t('app.admin.users.detail.title')}</h2>
-          <p className="text-sm text-gray-500">{detail.email}</p>
+          <h2 className="text-lg font-semibold text-slate-900">{t('app.admin.users.detail.title')}</h2>
+          <p className="text-sm text-slate-500">{detail.email}</p>
         </div>
-        <div className="flex items-center gap-3 text-sm text-gray-500">
+        <div className="flex items-center gap-3 text-sm text-slate-500">
           <span>
             {t('app.admin.users.detail.status_prefix')}
-            <span className="ml-1 font-medium text-gray-900">
+            <span className="ml-1 font-medium text-slate-900">
               {statusKey === 'active'
                 ? t('app.admin.users.table.status.active')
                 : statusKey === 'invited'
@@ -291,7 +243,7 @@ function UserDetailCard({
         </div>
       </div>
 
-      <div className="mt-4 border-b border-gray-200">
+      <div className="mt-4 border-b border-slate-200">
         <nav className="-mb-px flex gap-4 text-sm">
           {tabs.map((item) => (
             <button
@@ -299,7 +251,7 @@ function UserDetailCard({
               type="button"
               className={[
                 'border-b-2 px-2 py-2 font-medium',
-                tab === item.key ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-indigo-600',
+                tab === item.key ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-indigo-600',
               ].join(' ')}
               onClick={() => onTabChange(item.key)}
             >
@@ -309,24 +261,38 @@ function UserDetailCard({
         </nav>
       </div>
 
-      {error && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+      {error && (
+        <div className="mt-3">
+          <ErrorRecoveryBanner
+            info={{
+              title: error,
+              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+            }}
+            onRetry={onRefresh}
+            retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+            secondaryTo="/app/settings/team"
+            secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
+            compact
+          />
+        </div>
+      )}
 
       {tab === 'overview' && (
-        <div className="mt-4 space-y-4 text-sm text-gray-700">
+        <div className="mt-4 space-y-4 text-sm text-slate-700">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <div className="text-xs uppercase text-gray-400">{t('app.admin.users.detail.fields.name')}</div>
-              <div className="font-medium text-gray-900">{detail.full_name || notAvailableLabel}</div>
+              <div className="text-xs uppercase text-slate-400">{t('app.admin.users.detail.fields.name')}</div>
+              <div className="font-medium text-slate-900">{detail.full_name || notAvailableLabel}</div>
             </div>
             <div>
-              <div className="text-xs uppercase text-gray-400">{t('app.admin.users.detail.fields.code')}</div>
-              <div className="font-medium text-gray-900">{detail.short_id || notAvailableLabel}</div>
+              <div className="text-xs uppercase text-slate-400">{t('app.admin.users.detail.fields.code')}</div>
+              <div className="font-medium text-slate-900">{detail.short_id || notAvailableLabel}</div>
             </div>
             <div>
-              <div className="text-xs uppercase text-gray-400">{t('app.admin.users.table.columns.status')}</div>
+              <div className="text-xs uppercase text-slate-400">{t('app.admin.users.table.columns.status')}</div>
               <span
                 className={[
-                  'inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                  'inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold',
                   USER_STATUS_BADGES[statusKey as AdminUser['status']] ?? USER_STATUS_BADGES.active,
                 ].join(' ')}
               >
@@ -334,14 +300,14 @@ function UserDetailCard({
               </span>
             </div>
             <div>
-              <div className="text-xs uppercase text-gray-400">{t('app.admin.users.detail.fields.created_at')}</div>
+              <div className="text-xs uppercase text-slate-400">{t('app.admin.users.detail.fields.created_at')}</div>
               <div>{detail.created_at ? new Date(detail.created_at).toLocaleString() : notAvailableLabel}</div>
             </div>
           </div>
 
           {canManageUser && (
-            <div className="rounded border border-gray-100 bg-gray-50/80 p-3 space-y-3">
-              <label className="text-xs font-medium text-gray-500">
+            <div className="rounded border border-slate-100 bg-slate-50/80 p-3 space-y-3">
+              <label className="text-xs font-medium text-slate-500">
                 {t('app.admin.users.detail.fields.role')}
                 <select
                   className="input mt-1"
@@ -398,7 +364,7 @@ function UserDetailCard({
                   </button>
                 )}
               </div>
-              {passwordNote && <div className="text-xs text-gray-600">{passwordNote}</div>}
+              {passwordNote && <div className="text-xs text-slate-600">{passwordNote}</div>}
             </div>
           )}
 
@@ -422,7 +388,7 @@ function UserDetailCard({
                 ))}
               </select>
               {supervisorName && (
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-500">
                   {t('app.admin.users.detail.supervisor_current', { values: { name: supervisorName } })}
                 </p>
               )}
@@ -433,10 +399,10 @@ function UserDetailCard({
             <form className="mt-4 space-y-2" onSubmit={handleCompanyAccessSubmit}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <div className="text-xs uppercase text-gray-400">
+                  <div className="text-xs uppercase text-slate-400">
                     {t('app.admin.users.detail.company_access.title')}
                   </div>
-                  <p className="text-[11px] text-gray-500">
+                  <p className="text-[11px] text-slate-500">
                     {t('app.admin.users.detail.company_access.subtitle')}
                   </p>
                 </div>
@@ -450,7 +416,7 @@ function UserDetailCard({
               </div>
 
               {companyOptions.length === 0 ? (
-                <div className="rounded border border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                <div className="rounded border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
                   {t('app.admin.users.detail.company_access.empty')}
                 </div>
               ) : (
@@ -475,12 +441,12 @@ function UserDetailCard({
 
           {detail.recruiters && detail.recruiters.length > 0 && (
             <div className="mt-4">
-              <div className="text-xs uppercase text-gray-400">{t('app.admin.users.detail.recruiters.title')}</div>
+              <div className="text-xs uppercase text-slate-400">{t('app.admin.users.detail.recruiters.title')}</div>
               <ul className="mt-2 space-y-1 text-sm">
                 {detail.recruiters.map((recruiter) => (
-                  <li key={recruiter.user_id} className="flex justify-between rounded border border-gray-100 px-3 py-2">
+                  <li key={recruiter.user_id} className="flex justify-between rounded border border-slate-100 px-3 py-2">
                     <span>{recruiter.email}</span>
-                    <span className="text-xs text-gray-500">{recruiter.status}</span>
+                    <span className="text-xs text-slate-500">{recruiter.status}</span>
                   </li>
                 ))}
               </ul>
@@ -490,16 +456,16 @@ function UserDetailCard({
       )}
 
       {tab === 'companies' && (
-        <div className="mt-4 space-y-3 text-sm text-gray-700">
+        <div className="mt-4 space-y-3 text-sm text-slate-700">
           {detail.companies.length === 0 ? (
-            <div className="text-gray-500">{t('app.admin.users.detail.companies.empty')}</div>
+            <div className="text-slate-500">{t('app.admin.users.detail.companies.empty')}</div>
           ) : (
             <ul className="space-y-2">
               {detail.companies.map((company) => (
-                <li key={company.company_id} className="flex items-center justify-between rounded border border-gray-100 px-3 py-2">
+                <li key={company.company_id} className="flex items-center justify-between rounded border border-slate-100 px-3 py-2">
                   <div>
-                    <div className="font-medium text-gray-900">{company.company_id}</div>
-                    <div className="text-xs text-gray-500">
+                    <div className="font-medium text-slate-900">{company.company_id}</div>
+                    <div className="text-xs text-slate-500">
                       {t('app.admin.users.detail.companies.permissions', {
                         values: {
                           permission: t(
@@ -522,27 +488,39 @@ function UserDetailCard({
       )}
 
       {tab === 'audit' && (
-        <div className="mt-4 space-y-3 text-sm text-gray-700">
+        <div className="mt-4 space-y-3 text-sm text-slate-700">
           <button type="button" className="btn-ghost" onClick={onRefreshAudit} disabled={audit.loading}>
             {audit.loading
               ? t('app.admin.users.detail.audit.refresh_loading')
               : t('app.admin.users.detail.audit.refresh')}
           </button>
-          {audit.error && <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{audit.error}</div>}
+          {audit.error && (
+            <ErrorRecoveryBanner
+              info={{
+                title: audit.error,
+                hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+              }}
+              onRetry={onRefreshAudit}
+              retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+              secondaryTo="/app/settings/team"
+              secondaryLabel={t('app.admin.users.detail.audit.title', { defaultValue: 'Аудит' })}
+              compact
+            />
+          )}
           {!audit.loading && !audit.error && audit.entries.length === 0 && (
-            <div className="text-gray-500">{t('app.admin.users.detail.audit.no_entries')}</div>
+            <div className="text-slate-500">{t('app.admin.users.detail.audit.no_entries')}</div>
           )}
           {!audit.loading && audit.entries.length > 0 && (
             <ul className="space-y-2">
               {audit.entries.map((entry) => (
-                <li key={entry.id} className="rounded border border-gray-100 px-3 py-2">
-                  <div className="flex items-center justify-between text-xs text-gray-500">
+                <li key={entry.id} className="rounded border border-slate-100 px-3 py-2">
+                  <div className="flex items-center justify-between text-xs text-slate-500">
                     <span>{new Date(entry.created_at).toLocaleString()}</span>
                     <span>{entry.actor_id || t('app.admin.users.detail.audit.system_actor')}</span>
                   </div>
-                  <div className="text-sm font-medium text-gray-800">{entry.action}</div>
+                  <div className="text-sm font-medium text-slate-800">{entry.action}</div>
                   {entry.payload && Object.keys(entry.payload).length > 0 && (
-                    <pre className="mt-2 overflow-x-auto rounded bg-gray-50 p-2 text-xs text-gray-600">
+                    <pre className="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs text-slate-600">
                       {JSON.stringify(entry.payload, null, 2)}
                     </pre>
                   )}
@@ -556,27 +534,7 @@ function UserDetailCard({
   )
 }
 
-function extractErrorDetail(err: unknown): string | null {
-  const responseDetail = (err as any)?.response?.data?.detail
-  if (!responseDetail) return null
-  if (typeof responseDetail === 'string') return responseDetail
-  if (Array.isArray(responseDetail)) {
-    const messages = responseDetail
-      .map((item) => {
-        if (!item) return null
-        if (typeof item === 'string') return item
-        if (typeof item === 'object' && 'msg' in item) return String(item.msg)
-        return JSON.stringify(item)
-      })
-      .filter(Boolean)
-    return messages.length ? messages.join('; ') : null
-  }
-  if (typeof responseDetail === 'object') {
-    if ('msg' in responseDetail) return String(responseDetail.msg)
-    return JSON.stringify(responseDetail)
-  }
-  return String(responseDetail)
-}
+// extractErrorDetail is now imported from modules/users/utils
 
 export default function UsersPage() {
   const { me } = useAuth()
@@ -623,7 +581,8 @@ export default function UsersPage() {
       administrator: 0,
       supervisor: 1,
       recruiter: 2,
-      viewer: 3,
+      client_processor: 3,
+      viewer: 4,
     }
     return [...users].sort((a, b) => {
       const aOrder = roleOrder[a.role] ?? 9
@@ -892,8 +851,7 @@ export default function UsersPage() {
     async (userId: string) => {
       setError(null)
       try {
-        const { temporary_password } = await resetUserPassword(userId, tenantOptions)
-        return temporary_password
+        await resetUserPassword(userId, tenantOptions)
       } catch (err) {
         console.error('[UsersPage] reset password error', err)
         const detail = extractErrorDetail(err)
@@ -1034,19 +992,19 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {forbidden && (
         <div className="rounded border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
           {t('app.admin.users.page.access_denied_forbidden')}
         </div>
       )}
       {isSuperAdmin && (
-        <section className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700 space-y-3 shadow-sm">
+        <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700 space-y-3 shadow-sm">
           <div>
-            <div className="font-semibold text-gray-900">
+            <div className="font-semibold text-slate-900">
               {t('app.admin.users.page.tenant_override.heading')}
             </div>
-            <p className="text-xs text-gray-500">{t('app.admin.users.page.tenant_override.description')}</p>
+            <p className="text-xs text-slate-500">{t('app.admin.users.page.tenant_override.description')}</p>
           </div>
           <form className="flex flex-wrap items-center gap-2" onSubmit={handleTenantOverrideSubmit}>
             <input
@@ -1070,10 +1028,10 @@ export default function UsersPage() {
           </form>
           {tenantLookupError && <p className="text-xs text-rose-600">{tenantLookupError}</p>}
           {overrideError && <p className="text-xs text-rose-600">{overrideError}</p>}
-          <div className="rounded border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+          <div className="rounded border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-700">
             {tenantOverride ? (
               <>
-                <div className="font-semibold text-gray-900">
+                <div className="font-semibold text-slate-900">
                   {t('app.admin.users.page.tenant_override.title', {
                     values: {
                       name: overrideTenant?.workspace_label || overrideTenant?.name || tenantOverride,
@@ -1083,29 +1041,29 @@ export default function UsersPage() {
                 <p className="text-[11px] text-indigo-700">{t('app.admin.users.page.tenant_override.subtitle')}</p>
               </>
             ) : (
-              <p className="text-[11px] text-gray-500">{t('app.admin.users.page.tenant_override.inactive')}</p>
+              <p className="text-[11px] text-slate-500">{t('app.admin.users.page.tenant_override.inactive')}</p>
             )}
           </div>
           <div className="space-y-2">
             {tenantInput.trim().length < 2 ? (
-              <p className="text-xs text-gray-500">{t('app.admin.users.page.tenant_override.search_hint')}</p>
+              <p className="text-xs text-slate-500">{t('app.admin.users.page.tenant_override.search_hint')}</p>
             ) : tenantSearchLoading ? (
-              <p className="text-xs text-gray-500">{t('common.loading')}</p>
+              <p className="text-xs text-slate-500">{t('common.loading')}</p>
             ) : tenantSuggestions.length === 0 ? (
-              <p className="text-xs text-gray-500">{t('app.admin.users.page.tenant_override.no_results')}</p>
+              <p className="text-xs text-slate-500">{t('app.admin.users.page.tenant_override.no_results')}</p>
             ) : (
               <div>
-                <p className="text-[11px] uppercase text-gray-400">
+                <p className="text-[11px] uppercase text-slate-400">
                   {t('app.admin.users.page.tenant_override.suggestions')}
                 </p>
-                <ul className="mt-1 divide-y divide-gray-200 rounded border border-gray-100 bg-white">
+                <ul className="mt-1 divide-y divide-slate-200 rounded border border-slate-100 bg-white">
                   {tenantSuggestions.map((tenant) => (
-                    <li key={tenant.id} className="flex items-center justify-between px-3 py-2 text-xs text-gray-700">
+                    <li key={tenant.id} className="flex items-center justify-between px-3 py-2 text-xs text-slate-700">
                       <div>
-                        <div className="font-semibold text-gray-900">
+                        <div className="font-semibold text-slate-900">
                           {tenant.workspace_label || tenant.name}
                         </div>
-                        <div className="text-[11px] text-gray-500">{tenant.slug}</div>
+                        <div className="text-[11px] text-slate-500">{tenant.slug}</div>
                       </div>
                       <button
                         type="button"
@@ -1125,8 +1083,8 @@ export default function UsersPage() {
 
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{t('app.admin.users.page.title')}</h1>
-          <p className="text-sm text-gray-500">{t('app.admin.users.page.subtitle')}</p>
+          <h1 className="text-2xl font-semibold text-slate-900">{t('app.admin.users.page.title')}</h1>
+          <p className="text-sm text-slate-500">{t('app.admin.users.page.subtitle')}</p>
         </div>
         <button className="btn-secondary" onClick={() => void loadUsers()} disabled={loading}>
           {loading ? t('app.admin.users.page.refresh.loading') : t('app.admin.users.page.refresh.action')}
@@ -1134,17 +1092,27 @@ export default function UsersPage() {
       </header>
 
       {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
+        <ErrorRecoveryBanner
+          info={{
+            title: error,
+            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+          }}
+          onRetry={() => void loadUsers()}
+          retryLabel={t('app.admin.users.page.refresh.action')}
+          secondaryTo="/app/settings/team"
+          secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
+          compact
+        />
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(260px,340px),minmax(0,1fr)]">
-        <section className="rounded-lg border border-gray-200 bg-white p-4">
+        <section className="rounded-lg border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                 {t('app.admin.users.table.title')}
               </h2>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-400">
                 {t('app.admin.users.table.count', { values: { count: users.length } })}
               </p>
             </div>
@@ -1179,42 +1147,42 @@ export default function UsersPage() {
                     onClick={() => handleSelectUser(user)}
                     className={[
                       'w-full rounded-lg border px-3 py-3 text-left text-sm transition',
-                      isSelected ? 'border-brand-400 bg-brand-50 shadow-sm' : 'border-gray-200 hover:border-brand-200',
+                      isSelected ? 'border-brand-400 bg-brand-50 shadow-sm' : 'border-slate-200 hover:border-brand-200',
                     ].join(' ')}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-semibold text-gray-900">{user.email}</div>
-                        <div className="text-xs text-gray-500">{metaName}</div>
+                        <div className="font-semibold text-slate-900">{user.email}</div>
+                        <div className="text-xs text-slate-500">{metaName}</div>
                       </div>
-                      <span className={['inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold', roleBadge].join(' ')}>
+                      <span className={['inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold', roleBadge].join(' ')}>
                         {t(roleKey)}
                       </span>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-600">
                       <span
                         className={[
-                          'inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                          'inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold',
                           statusBadge,
                         ].join(' ')}
                       >
                         {t(USER_STATUS_LABELS[user.status] ?? USER_STATUS_LABELS.active)}
                       </span>
                       {companiesCount > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                           {t('app.admin.users.list.meta.companies', { values: { count: companiesCount } })}
                         </span>
                       )}
                       {recruitersCount > 0 && (
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                           {t('app.admin.users.list.meta.recruiters', { values: { count: recruitersCount } })}
                         </span>
                       )}
                     </div>
                     {(invitedLabel || createdLabel) && (
-                      <div className="mt-2 text-[11px] text-gray-500">
+                      <div className="mt-2 text-[11px] text-slate-500">
                         {invitedLabel && <span>{invitedLabel}</span>}
-                        {invitedLabel && createdLabel && <span className="mx-1 text-gray-400">•</span>}
+                        {invitedLabel && createdLabel && <span className="mx-1 text-slate-400">•</span>}
                         {createdLabel && <span>{createdLabel}</span>}
                       </div>
                     )}
@@ -1222,14 +1190,14 @@ export default function UsersPage() {
                 )
               })
             ) : (
-              <div className="rounded-lg border border-dashed border-gray-200 px-3 py-6 text-center text-sm text-gray-500">
+              <div className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500">
                 {t('app.admin.users.table.empty')}
               </div>
             )}
           </div>
         </section>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {detail ? (
             <UserDetailCard
               detail={detail}
@@ -1278,15 +1246,15 @@ export default function UsersPage() {
               onDeleteUser={detail.user_id ? () => handleDeleteUser(detail.user_id) : undefined}
             />
           ) : (
-            <section className="rounded-lg border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+            <section className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
               {t('app.admin.users.detail.empty')}
             </section>
           )}
 
           {canManage && (
-            <section className="rounded-lg border border-gray-200 bg-white p-0">
-              <div className="flex flex-wrap items-center justify-between border-b border-gray-100 px-4 py-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <section className="rounded-lg border border-slate-200 bg-white p-0">
+              <div className="flex flex-wrap items-center justify-between border-b border-slate-100 px-4 py-3">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
                   {t('app.admin.users.page.actions.title')}
                 </h2>
                 <div className="flex gap-2 text-sm">
@@ -1295,8 +1263,8 @@ export default function UsersPage() {
                       key={key}
                       type="button"
                       className={[
-                        'rounded-full px-3 py-1 transition',
-                        actionTab === key ? 'bg-brand-100 text-brand-700' : 'text-gray-500 hover:text-brand-700',
+                        'rounded-md px-3 py-1 transition',
+                        actionTab === key ? 'bg-brand-100 text-brand-700' : 'text-slate-500 hover:text-brand-700',
                       ].join(' ')}
                       onClick={() => setActionTab(key)}
                     >
@@ -1362,7 +1330,7 @@ export default function UsersPage() {
 
                 {actionTab === 'team' && (
                   <div className="space-y-4">
-                    <p className="text-sm text-gray-500">{t('app.admin.users.page.actions.team_help')}</p>
+                    <p className="text-sm text-slate-500">{t('app.admin.users.page.actions.team_help')}</p>
                     <TeamManagementPanel tenantId={tenantOverride} showHeader={false} compact />
                   </div>
                 )}

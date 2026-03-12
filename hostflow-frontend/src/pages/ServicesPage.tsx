@@ -26,70 +26,12 @@ import { usePermissions } from '../hooks/usePermissions'
 import { searchCandidates } from '../api/candidates'
 import { listCompanies } from '../api/client'
 import { listVacancies } from '../api/vacancies'
+import { getAnalyticsProfileSummary } from '../api/analytics'
 import { useI18n } from '../i18n'
-
-const ORDER_STATUSES: ServiceOrderStatus[] = [
-  'draft',
-  'quoted',
-  'approved',
-  'scheduled',
-  'in_progress',
-  'delivered',
-  'cancelled',
-  'refunded',
-]
-
-const SCHEDULE_STATUSES: ServiceScheduleStatus[] = [
-  'reserved',
-  'confirmed',
-  'completed',
-  'no_show',
-  'cancelled',
-]
-
-const ITEM_STATUSES: ServiceItemStatus[] = ['pending', 'scheduled', 'in_progress', 'delivered', 'cancelled']
-
-const DOCUMENT_STATUSES = ['approved', 'verified', 'pending_validation'] as const
-
-const currency = new Intl.NumberFormat('pl-PL', {
-  style: 'currency',
-  currency: 'PLN',
-})
-
-function formatAmount(value: number | null | undefined, fallback = '-') {
-  if (value == null || Number.isNaN(value)) {
-    return fallback
-  }
-  try {
-    return currency.format(value)
-  } catch (err) {
-    return value.toFixed(2)
-  }
-}
-
-type NewServiceFormState = {
-  code: string
-  name: string
-  category: string
-  basePrice: string
-  vatRate: string
-  resultDocumentType: string
-  requiresSchedule: boolean
-  requiresCandidate: boolean
-}
-
-type NewOrderFormState = {
-  candidateId: string
-  vacancyId: string
-  companyId: string
-  notes: string
-  serviceId: string
-  serviceCode: string
-  qty: string
-  unitPrice: string
-  vatRate: string
-  currency: string
-}
+import { ORDER_STATUSES, SCHEDULE_STATUSES, ITEM_STATUSES, DOCUMENT_STATUSES } from '../modules/services/constants'
+import type { NewServiceFormState, NewOrderFormState } from '../modules/services/types'
+import { formatAmount } from '../modules/services/utils'
+import EmptyStatePanel from '../components/EmptyStatePanel'
 
 const initialServiceState: NewServiceFormState = {
   code: '',
@@ -125,6 +67,7 @@ export function ServicesPage() {
   const [ordersMessage, setOrdersMessage] = useState<string | null>(null)
   const [orderForm, setOrderForm] = useState<NewOrderFormState>(initialOrderState)
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [profileSummary, setProfileSummary] = useState<Awaited<ReturnType<typeof getAnalyticsProfileSummary>> | null>(null)
 
   const catalogHook = useAdditionalServiceCatalog(includeInactive)
 
@@ -143,6 +86,20 @@ export function ServicesPage() {
       setSelectedOrderId(ordersHook.orders[0].id)
     }
   }, [ordersHook.orders, selectedOrderId])
+
+  useEffect(() => {
+    let active = true
+    getAnalyticsProfileSummary()
+      .then((data) => {
+        if (active) setProfileSummary(data)
+      })
+      .catch(() => {
+        if (active) setProfileSummary(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleCreateService = async (event: FormEvent) => {
     event.preventDefault()
@@ -365,7 +322,7 @@ export function ServicesPage() {
         <button
           key={key}
           type="button"
-          className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+          className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
             tab === key ? 'bg-white text-brand-700 shadow-sm' : 'bg-white/20 text-white/90 hover:bg-white/30'
           }`}
           onClick={() => setTab(key)}
@@ -400,7 +357,7 @@ export function ServicesPage() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {heroSection}
 
       {tab === 'catalog' && (
@@ -442,6 +399,7 @@ export function ServicesPage() {
         <ServicesAnalyticsTab
           orders={ordersHook.orders}
           services={catalogHook.services}
+          profileSummary={profileSummary}
           formatStatus={(status) => t(`app.services.status.order.${status}`)}
         />
       )}
@@ -476,10 +434,10 @@ function CatalogTab({
 }: CatalogTabProps) {
   const { t } = useI18n()
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-gray-600">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
             <input type="checkbox" checked={includeInactive} onChange={onToggleInclude} />
             {t('app.services.catalog.show_archived')}
           </label>
@@ -491,9 +449,9 @@ function CatalogTab({
           <h2 className="text-lg font-semibold">{t('app.services.catalog.new_service.title')}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.code')}</label>
+              <label className="block text-sm font-medium text-slate-700">{t('app.services.catalog.new_service.labels.code')}</label>
               <input
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                className="input mt-1"
                 value={formState.code}
                 onChange={(e) => onFormChange({ ...formState, code: e.target.value })}
                 placeholder={t('app.services.catalog.new_service.placeholders.code')}
@@ -501,9 +459,9 @@ function CatalogTab({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.name')}</label>
+              <label className="block text-sm font-medium text-slate-700">{t('app.services.catalog.new_service.labels.name')}</label>
               <input
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                className="input mt-1"
                 value={formState.name}
                 onChange={(e) => onFormChange({ ...formState, name: e.target.value })}
                 placeholder={t('app.services.catalog.new_service.placeholders.name')}
@@ -511,9 +469,9 @@ function CatalogTab({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.category')}</label>
+              <label className="block text-sm font-medium text-slate-700">{t('app.services.catalog.new_service.labels.category')}</label>
               <input
-                className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                className="input mt-1"
                 value={formState.category}
                 onChange={(e) => onFormChange({ ...formState, category: e.target.value })}
                 placeholder={t('app.services.catalog.new_service.placeholders.category')}
@@ -521,9 +479,9 @@ function CatalogTab({
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.price')}</label>
+                <label className="block text-sm font-medium text-slate-700">{t('app.services.catalog.new_service.labels.price')}</label>
                 <input
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                  className="input mt-1"
                   value={formState.basePrice}
                   onChange={(e) => onFormChange({ ...formState, basePrice: e.target.value })}
                   placeholder={t('app.services.catalog.new_service.placeholders.price')}
@@ -531,9 +489,9 @@ function CatalogTab({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.vat')}</label>
+                <label className="block text-sm font-medium text-slate-700">{t('app.services.catalog.new_service.labels.vat')}</label>
                 <input
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                  className="input mt-1"
                   value={formState.vatRate}
                   onChange={(e) => onFormChange({ ...formState, vatRate: e.target.value })}
                   placeholder={t('app.services.catalog.new_service.placeholders.vat')}
@@ -541,16 +499,16 @@ function CatalogTab({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">{t('app.services.catalog.new_service.labels.document')}</label>
+                <label className="block text-sm font-medium text-slate-700">{t('app.services.catalog.new_service.labels.document')}</label>
                 <input
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                  className="input mt-1"
                   value={formState.resultDocumentType}
                   onChange={(e) => onFormChange({ ...formState, resultDocumentType: e.target.value })}
                   placeholder={t('app.services.catalog.new_service.placeholders.document')}
                 />
               </div>
             </div>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 checked={formState.requiresSchedule}
@@ -558,7 +516,7 @@ function CatalogTab({
               />
               {t('app.services.catalog.new_service.labels.requires_schedule')}
             </label>
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 checked={formState.requiresCandidate}
@@ -568,10 +526,10 @@ function CatalogTab({
             </label>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">{t('app.services.catalog.new_service.hint')}</span>
+            <span className="text-sm text-slate-500">{t('app.services.catalog.new_service.hint')}</span>
             <button
               type="submit"
-              className="px-4 py-2 bg-brand-600 text-white rounded hover:bg-brand-700"
+              className="btn-primary"
             >
               {t('app.services.catalog.new_service.submit')}
             </button>
@@ -580,30 +538,30 @@ function CatalogTab({
         </form>
       )}
 
-      <div className="overflow-auto rounded-lg border border-gray-200">
+      <div className="overflow-auto rounded-lg border border-slate-200">
         <table className="min-w-full text-sm">
-          <thead className="bg-white/70 text-left text-xs uppercase tracking-wide text-gray-500">
+          <thead className="bg-slate-50/90 text-left">
             <tr>
-              <th className="px-4 py-2">{t('app.services.catalog.table.code')}</th>
-              <th className="px-4 py-2">{t('app.services.catalog.table.name')}</th>
-              <th className="px-4 py-2">{t('app.services.catalog.table.category')}</th>
-              <th className="px-4 py-2">{t('app.services.catalog.table.price')}</th>
-              <th className="px-4 py-2">{t('app.services.catalog.table.schedule')}</th>
-              <th className="px-4 py-2">{t('app.services.catalog.table.candidate')}</th>
-              <th className="px-4 py-2">{t('app.services.catalog.table.status')}</th>
-              {canManage && <th className="px-4 py-2" />}
+              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.code')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.name')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.category')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.price')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.schedule')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.candidate')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.status')}</th>
+              {canManage && <th className="border-b border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600" />}
             </tr>
           </thead>
           <tbody className="bg-white">
             {loading ? (
               <tr>
-                <td colSpan={canManage ? 7 : 6} className="px-4 py-4 text-center text-gray-500">
+                <td colSpan={canManage ? 8 : 7} className="px-4 py-4 text-center text-slate-500">
                   {t('app.services.catalog.table.loading')}
                 </td>
               </tr>
             ) : services.length === 0 ? (
               <tr>
-                <td colSpan={canManage ? 7 : 6} className="px-4 py-4 text-center text-gray-500">
+                <td colSpan={canManage ? 8 : 7} className="px-4 py-4 text-center text-slate-500">
                   {t('app.services.catalog.table.empty')}
                 </td>
               </tr>
@@ -612,18 +570,18 @@ function CatalogTab({
                 <tr
                   key={svc.id}
                   className={[
-                    'border-t border-gray-100 transition',
-                    svc.is_active ? 'hover:bg-brand-50/40' : 'bg-gray-50',
+                    'border-t border-slate-100 transition',
+                    svc.is_active ? 'hover:bg-brand-50/40' : 'bg-slate-50',
                   ].join(' ')}
                 >
-                  <td className="px-4 py-2 font-mono text-sm">{svc.code}</td>
-                  <td className="px-4 py-2">{svc.name}</td>
-                  <td className="px-4 py-2 text-gray-600">{svc.category || '—'}</td>
-                  <td className="px-4 py-2">{formatAmount(svc.base_price)}</td>
-                  <td className="px-4 py-2">{svc.requires_schedule ? t('app.services.words.yes') : t('app.services.words.no')}</td>
-                  <td className="px-4 py-2">{svc.requires_candidate ? t('app.services.words.yes') : t('app.services.words.no')}</td>
-                  <td className="px-4 py-2">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${svc.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-300 text-gray-700'}`}>
+                  <td className="border-r border-slate-200 px-4 py-2 font-mono text-sm">{svc.code}</td>
+                  <td className="border-r border-slate-200 px-4 py-2">{svc.name}</td>
+                  <td className="border-r border-slate-200 px-4 py-2 text-slate-600">{svc.category || '—'}</td>
+                  <td className="border-r border-slate-200 px-4 py-2">{formatAmount(svc.base_price)}</td>
+                  <td className="border-r border-slate-200 px-4 py-2">{svc.requires_schedule ? t('app.services.words.yes') : t('app.services.words.no')}</td>
+                  <td className="border-r border-slate-200 px-4 py-2">{svc.requires_candidate ? t('app.services.words.yes') : t('app.services.words.no')}</td>
+                  <td className="border-r border-slate-200 px-4 py-2">
+                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${svc.is_active ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-700'}`}>
                       {svc.is_active ? t('app.services.catalog.table.badges.active') : t('app.services.catalog.table.badges.archived')}
                     </span>
                   </td>
@@ -632,7 +590,7 @@ function CatalogTab({
                       <button
                         type="button"
                         onClick={() => onToggleActive(svc)}
-                        className="text-sm text-brand-600 hover:underline"
+                        className="btn-secondary btn-xs"
                       >
                         {svc.is_active ? t('app.services.catalog.table.actions.archive') : t('app.services.catalog.table.actions.activate')}
                       </button>
@@ -950,28 +908,28 @@ function OrdersTab({
         {canManage && (
           <form className="app-surface space-y-3 p-4" onSubmit={onCreateOrder}>
             <h2 className="text-lg font-semibold">{t('app.services.orders.new.title')}</h2>
-            <p className="text-sm text-gray-500">{t('app.services.orders.new.hint')}</p>
+            <p className="text-sm text-slate-500">{t('app.services.orders.new.hint')}</p>
             <div className="space-y-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {t('app.services.orders.new.owner.title')}
                 </p>
-                <p className="text-xs text-gray-500">{t('app.services.orders.new.owner.hint')}</p>
+                <p className="text-xs text-slate-500">{t('app.services.orders.new.owner.hint')}</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-3">
                   {ownerOptions.map((option) => (
                     <button
                       key={option.key}
                       type="button"
                       className={[
-                        'rounded-2xl border px-3 py-3 text-left transition',
+                        'rounded-lg border px-3 py-3 text-left transition',
                         ownerChoice === option.key
                           ? 'border-brand-300 bg-brand-50 text-brand-900 shadow-sm'
-                          : 'border-gray-200 text-slate-600 hover:border-brand-200',
+                          : 'border-slate-200 text-slate-600 hover:border-brand-200',
                       ].join(' ')}
                       onClick={() => handleOwnerChoiceChange(option.key)}
                     >
                       <div className="text-sm font-semibold">{option.label}</div>
-                      <div className="text-xs text-gray-500">{option.description}</div>
+                      <div className="text-xs text-slate-500">{option.description}</div>
                     </button>
                   ))}
                 </div>
@@ -979,22 +937,22 @@ function OrdersTab({
 
               {ownerChoice === 'candidate' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">{t('app.services.orders.new.fields.candidate')}</label>
+                  <label className="block text-sm font-medium text-slate-700">{t('app.services.orders.new.fields.candidate')}</label>
                   <input
-                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    className="input mt-1 text-sm"
                     placeholder={t('app.services.orders.new.placeholders.candidate_search')}
                     value={candidateQuery}
                     onChange={(e) => setCandidateQuery(e.target.value)}
                   />
                   {candidateLoading && showCandidateResults && (
-                    <div className="mt-1 text-xs text-gray-500">{t('app.services.orders.new.states.searching')}</div>
+                    <div className="mt-1 text-xs text-slate-500">{t('app.services.orders.new.states.searching')}</div>
                   )}
                   {showCandidateResults && !candidateLoading && (
-                    <div className="mt-2 max-h-48 overflow-auto rounded border border-gray-200 bg-white shadow-sm">
+                    <div className="mt-2 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
                       {candidateResults.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-gray-500">{t('app.services.orders.new.states.no_results')}</div>
+                        <div className="px-3 py-2 text-xs text-slate-500">{t('app.services.orders.new.states.no_results')}</div>
                       ) : (
-                        <ul className="divide-y divide-gray-100 text-sm">
+                        <ul className="divide-y divide-slate-100 text-sm">
                           {candidateResults.map((cand) => (
                             <li key={cand.id}>
                               <button
@@ -1002,10 +960,10 @@ function OrdersTab({
                                 className="flex w-full flex-col items-start px-3 py-2 hover:bg-brand-50"
                                 onClick={() => handleCandidateSelect(cand)}
                               >
-                                <span className="font-medium text-gray-800">
+                                <span className="font-medium text-slate-800">
                                   {cand.first_name} {cand.last_name} ({cand.short_id || cand.id.slice(0, 8)})
                                 </span>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-slate-500">
                                   {cand.phone || cand.email || t('app.services.orders.new.states.no_contacts')}
                                 </span>
                               </button>
@@ -1016,7 +974,7 @@ function OrdersTab({
                     </div>
                   )}
                   {selectedCandidate && (
-                    <div className="mt-3 flex items-start justify-between rounded border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
+                    <div className="alert-info mt-3 flex items-start justify-between gap-2">
                       <div>
                         <div className="font-semibold">
                           {selectedCandidate.first_name} {selectedCandidate.last_name}
@@ -1039,12 +997,12 @@ function OrdersTab({
                           </div>
                         )}
                       </div>
-                      <button type="button" className="text-xs text-brand-600 hover:underline" onClick={clearCandidateSelection}>
+                      <button type="button" className="btn-secondary btn-xs" onClick={clearCandidateSelection}>
                         {t('common.actions.clear')}
                       </button>
                     </div>
                   )}
-                  <div className="mt-1 text-xs text-gray-500">
+                  <div className="mt-1 text-xs text-slate-500">
                     {orderForm.candidateId
                       ? t('app.services.orders.new.current_candidate', {
                           values: { id: orderForm.candidateId },
@@ -1056,22 +1014,22 @@ function OrdersTab({
 
               {ownerChoice === 'vacancy' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">{t('app.services.orders.new.fields.vacancy')}</label>
+                  <label className="block text-sm font-medium text-slate-700">{t('app.services.orders.new.fields.vacancy')}</label>
                   <input
-                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    className="input mt-1 text-sm"
                     placeholder={t('app.services.orders.new.placeholders.vacancy_search')}
                     value={vacancyQuery}
                     onChange={(e) => setVacancyQuery(e.target.value)}
                   />
                   {vacancyLoading && showVacancyResults && (
-                    <div className="mt-1 text-xs text-gray-500">{t('app.services.orders.new.states.searching')}</div>
+                    <div className="mt-1 text-xs text-slate-500">{t('app.services.orders.new.states.searching')}</div>
                   )}
                   {showVacancyResults && !vacancyLoading && (
-                    <div className="mt-2 max-h-48 overflow-auto rounded border border-gray-200 bg-white shadow-sm">
+                    <div className="mt-2 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
                       {vacancyResults.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-gray-500">{t('app.services.orders.new.states.no_results')}</div>
+                        <div className="px-3 py-2 text-xs text-slate-500">{t('app.services.orders.new.states.no_results')}</div>
                       ) : (
-                        <ul className="divide-y divide-gray-100 text-sm">
+                        <ul className="divide-y divide-slate-100 text-sm">
                           {vacancyResults.map((vac) => (
                             <li key={vac.id}>
                               <button
@@ -1079,8 +1037,8 @@ function OrdersTab({
                                 className="flex w-full flex-col items-start px-3 py-2 hover:bg-brand-50"
                                 onClick={() => handleVacancySelect(vac)}
                               >
-                                <span className="font-medium text-gray-800">{vac.title}</span>
-                                <span className="text-xs text-gray-500">
+                                <span className="font-medium text-slate-800">{vac.title}</span>
+                                <span className="text-xs text-slate-500">
                                   {vac.company_name || t('common.labels.unnamed')}
                                   {vac.location ? ` • ${vac.location}` : ''}
                                 </span>
@@ -1092,7 +1050,7 @@ function OrdersTab({
                     </div>
                   )}
                   {selectedVacancy && (
-                    <div className="mt-3 flex items-start justify-between rounded border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
+                    <div className="alert-info mt-3 flex items-start justify-between gap-2">
                       <div>
                         <div className="font-semibold">{selectedVacancy.title}</div>
                         {selectedVacancy.company_name && (
@@ -1106,12 +1064,12 @@ function OrdersTab({
                           <div className="text-xs text-brand-700">{selectedVacancy.location}</div>
                         )}
                       </div>
-                      <button type="button" className="text-xs text-brand-600 hover:underline" onClick={clearVacancySelection}>
+                      <button type="button" className="btn-secondary btn-xs" onClick={clearVacancySelection}>
                         {t('common.actions.clear')}
                       </button>
                     </div>
                   )}
-                  <div className="mt-1 text-xs text-gray-500">
+                  <div className="mt-1 text-xs text-slate-500">
                     {orderForm.vacancyId
                       ? t('app.services.orders.new.current_vacancy', { values: { id: orderForm.vacancyId } })
                       : t('app.services.orders.new.current_vacancy_empty')}
@@ -1121,22 +1079,22 @@ function OrdersTab({
 
               {ownerChoice === 'company' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">{t('app.services.orders.new.fields.company')}</label>
+                  <label className="block text-sm font-medium text-slate-700">{t('app.services.orders.new.fields.company')}</label>
                   <input
-                    className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    className="input mt-1 text-sm"
                     placeholder={t('app.services.orders.new.placeholders.company_search')}
                     value={companyQuery}
                     onChange={(e) => setCompanyQuery(e.target.value)}
                   />
                   {companyLoading && showCompanyResults && (
-                    <div className="mt-1 text-xs text-gray-500">{t('app.services.orders.new.states.searching')}</div>
+                    <div className="mt-1 text-xs text-slate-500">{t('app.services.orders.new.states.searching')}</div>
                   )}
                   {showCompanyResults && !companyLoading && (
-                    <div className="mt-2 max-h-48 overflow-auto rounded border border-gray-200 bg-white shadow-sm">
+                    <div className="mt-2 max-h-48 overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
                       {companyResults.length === 0 ? (
-                        <div className="px-3 py-2 text-xs text-gray-500">{t('app.services.orders.new.states.no_results')}</div>
+                        <div className="px-3 py-2 text-xs text-slate-500">{t('app.services.orders.new.states.no_results')}</div>
                       ) : (
-                        <ul className="divide-y divide-gray-100 text-sm">
+                        <ul className="divide-y divide-slate-100 text-sm">
                           {companyResults.map((company) => (
                             <li key={company.id}>
                               <button
@@ -1144,9 +1102,9 @@ function OrdersTab({
                                 className="flex w-full flex-col items-start px-3 py-2 hover:bg-brand-50"
                                 onClick={() => handleCompanySelect(company)}
                               >
-                                <span className="font-medium text-gray-800">{company.name || company.legal_name || t('common.labels.unnamed')}</span>
+                                <span className="font-medium text-slate-800">{company.name || company.legal_name || t('common.labels.unnamed')}</span>
                                 {(company.city || company.country_code) && (
-                                  <span className="text-xs text-gray-500">
+                                  <span className="text-xs text-slate-500">
                                     {[company.city, company.country_code].filter(Boolean).join(', ')}
                                   </span>
                                 )}
@@ -1158,7 +1116,7 @@ function OrdersTab({
                     </div>
                   )}
                   {selectedCompany && (
-                    <div className="mt-3 flex items-start justify-between rounded border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-800">
+                    <div className="alert-info mt-3 flex items-start justify-between gap-2">
                       <div>
                         <div className="font-semibold">{selectedCompany.name || selectedCompany.legal_name || t('common.labels.unnamed')}</div>
                         {(selectedCompany.city || selectedCompany.country_code) && (
@@ -1168,12 +1126,12 @@ function OrdersTab({
                         )}
                         {selectedCompany.email && <div className="text-xs text-brand-700">{selectedCompany.email}</div>}
                       </div>
-                      <button type="button" className="text-xs text-brand-600 hover:underline" onClick={clearCompanySelection}>
+                      <button type="button" className="btn-secondary btn-xs" onClick={clearCompanySelection}>
                         {t('common.actions.clear')}
                       </button>
                     </div>
                   )}
-                  <div className="mt-1 text-xs text-gray-500">
+                  <div className="mt-1 text-xs text-slate-500">
                     {orderForm.companyId
                       ? t('app.services.orders.new.current_company', { values: { id: orderForm.companyId } })
                       : t('app.services.orders.new.current_company_empty')}
@@ -1183,7 +1141,7 @@ function OrdersTab({
             </div>
             <div className="space-y-2">
               <select
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                className="input text-sm"
                 value={orderForm.serviceId}
                 onChange={(e) => onOrderFormChange({ ...orderForm, serviceId: e.target.value, serviceCode: '' })}
               >
@@ -1193,28 +1151,28 @@ function OrdersTab({
                 ))}
               </select>
               <input
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                className="input text-sm"
                 placeholder={t('app.services.orders.new.placeholders.service_code')}
                 value={orderForm.serviceCode}
                 onChange={(e) => onOrderFormChange({ ...orderForm, serviceCode: e.target.value, serviceId: '' })}
               />
               <div className="grid grid-cols-3 gap-2">
                 <input
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="input text-sm"
                   placeholder={t('app.services.orders.new.placeholders.qty')}
                   type="number"
                   value={orderForm.qty}
                   onChange={(e) => onOrderFormChange({ ...orderForm, qty: e.target.value })}
                 />
                 <input
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="input text-sm"
                   placeholder={t('app.services.orders.new.placeholders.unit_price')}
                   type="number"
                   value={orderForm.unitPrice}
                   onChange={(e) => onOrderFormChange({ ...orderForm, unitPrice: e.target.value })}
                 />
                 <input
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="input text-sm"
                   placeholder={t('app.services.orders.new.placeholders.vat')}
                   type="number"
                   value={orderForm.vatRate}
@@ -1223,13 +1181,13 @@ function OrdersTab({
               </div>
             </div>
             <textarea
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+              className="textarea text-sm"
               placeholder={t('app.services.orders.new.placeholders.notes')}
               rows={3}
               value={orderForm.notes}
               onChange={(e) => onOrderFormChange({ ...orderForm, notes: e.target.value })}
             />
-            <button type="submit" className="w-full rounded bg-brand-600 py-2 text-white hover:bg-brand-700">
+            <button type="submit" className="btn-primary w-full justify-center">
               {t('app.services.orders.new.submit')}
             </button>
             {message && <div className="text-sm text-brand-700">{message}</div>}
@@ -1237,10 +1195,10 @@ function OrdersTab({
         )}
 
         <div className="app-surface p-0 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
             <h2 className="text-lg font-semibold">{t('app.services.orders.list.title')}</h2>
             <select
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="input w-auto py-1 text-sm"
               value={statusFilter}
               onChange={(e) => onStatusFilterChange(e.target.value)}
             >
@@ -1252,9 +1210,25 @@ function OrdersTab({
           </div>
           <div className="max-h-[420px] overflow-auto px-4 py-3">
             {loading ? (
-              <div className="px-4 py-6 text-center text-sm text-gray-500">{t('app.services.orders.list.loading')}</div>
+              <div className="px-4 py-6 text-center text-sm text-slate-500">{t('app.services.orders.list.loading')}</div>
             ) : orders.length === 0 ? (
-              <div className="px-4 py-6 text-center text-sm text-gray-500">{t('app.services.orders.list.empty')}</div>
+              <div className="px-2 py-4">
+                <EmptyStatePanel
+                  compact
+                  title={t('app.services.orders.list.empty_title', { defaultValue: 'No service orders yet' })}
+                  description={t('app.services.orders.list.empty_desc', {
+                    defaultValue: 'Create your first order using the form above and assign it to client, vacancy or candidate.',
+                  })}
+                  primaryAction={{
+                    label: t('app.services.orders.list.empty_cta_clients', { defaultValue: 'Open clients' }),
+                    to: '/app/clients',
+                  }}
+                  secondaryAction={{
+                    label: t('app.services.orders.list.empty_cta_leads', { defaultValue: 'Open leads' }),
+                    to: '/app/leads',
+                  }}
+                />
+              </div>
             ) : (
               <ul className="space-y-3">
                 {orders.map((ord) => (
@@ -1266,16 +1240,16 @@ function OrdersTab({
                         'w-full rounded-2xl border px-4 py-3 text-left transition',
                         selectedOrderId === ord.id
                           ? 'border-brand-200 bg-brand-50'
-                          : 'border-gray-100 bg-white hover:bg-brand-50/40',
+                          : 'border-slate-100 bg-white hover:bg-brand-50/40',
                       ].join(' ')}
                     >
                       <div className="flex items-baseline justify-between">
                        <span className="text-sm font-medium text-brand-700">{ord.id.slice(0, 8)}…</span>
-                        <span className="text-xs uppercase tracking-wide text-gray-500">
+                        <span className="text-xs uppercase tracking-wide text-slate-500">
                           {orderStatusLabels[ord.status] ?? ord.status}
                         </span>
                      </div>
-                     <div className="mt-1 text-sm text-gray-600">
+                     <div className="mt-1 text-sm text-slate-600">
                         {ord.candidate_id
                           ? t('app.services.orders.list.owner.candidate', { values: { id: ord.candidate_id.slice(0, 8) } })
                           : ord.company_id
@@ -1284,7 +1258,7 @@ function OrdersTab({
                           ? t('app.services.orders.list.owner.vacancy', { values: { id: ord.vacancy_id.slice(0, 8) } })
                           : t('app.services.orders.list.owner.none')}
                      </div>
-                      <div className="mt-1 text-xs text-gray-400">
+                      <div className="mt-1 text-xs text-slate-400">
                         {t('app.services.orders.list.meta', {
                           values: { count: ord.items.length, amount: formatAmount(ord.total_amount) },
                         })}
@@ -1300,7 +1274,7 @@ function OrdersTab({
 
       <div className="app-surface p-4 space-y-4">
         {!selectedOrderId || !order ? (
-          <div className="text-sm text-gray-500">{t('app.services.orders.detail.placeholder')}</div>
+          <div className="text-sm text-slate-500">{t('app.services.orders.detail.placeholder')}</div>
         ) : (
           <OrderDetail
             order={order}
@@ -1320,12 +1294,13 @@ function OrdersTab({
 type ServicesAnalyticsTabProps = {
   orders: AdditionalServiceOrder[]
   services: AdditionalService[]
+  profileSummary: Awaited<ReturnType<typeof getAnalyticsProfileSummary>> | null
   formatStatus: (status: ServiceOrderStatus) => string
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-function ServicesAnalyticsTab({ orders, services, formatStatus }: ServicesAnalyticsTabProps) {
+function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }: ServicesAnalyticsTabProps) {
   const { t } = useI18n()
   const [nowTs, setNowTs] = useState(() => Date.now())
 
@@ -1399,6 +1374,28 @@ function ServicesAnalyticsTab({ orders, services, formatStatus }: ServicesAnalyt
     return { total, delivered, cancelled, cancellationRate }
   }, [orders, nowTs])
 
+  const servicesBusinessCards = useMemo(() => {
+    if (!profileSummary || profileSummary.business_type !== 'services') return []
+    const kpis = profileSummary.kpis || {}
+    return [
+      {
+        key: 'clients_total',
+        label: t('app.services.analytics.profile.clients_total', { defaultValue: 'Clients' }),
+        value: Number(kpis.clients_total || 0),
+      },
+      {
+        key: 'counterparties_total',
+        label: t('app.services.analytics.profile.counterparties_total', { defaultValue: 'Counterparties' }),
+        value: Number(kpis.counterparties_total || 0),
+      },
+    ]
+  }, [profileSummary, t])
+
+  const unknownCompanyClassification = useMemo(() => {
+    if (!profileSummary || profileSummary.business_type !== 'services') return 0
+    return Number(profileSummary.datasets?.unknown_company_classification || 0)
+  }, [profileSummary])
+
   const describeOwner = (order: AdditionalServiceOrder) => {
     if (order.candidate_id) return t('app.services.analytics.owner.candidate')
     if (order.vacancy_id) return t('app.services.analytics.owner.vacancy')
@@ -1408,12 +1405,30 @@ function ServicesAnalyticsTab({ orders, services, formatStatus }: ServicesAnalyt
 
   return (
     <div className="space-y-4">
+      {servicesBusinessCards.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {servicesBusinessCards.map((card) => (
+            <div key={card.key} className="card p-4">
+              <div className="text-sm font-semibold">{card.label}</div>
+              <div className="mt-2 text-3xl font-semibold">{card.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {unknownCompanyClassification > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {t('app.services.analytics.profile.unknown_company_classification', {
+            defaultValue: 'Unclassified companies: {{count}}. Set company type (client/counterparty) for accurate analytics.',
+            values: { count: unknownCompanyClassification },
+          })}
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-3">
         <div className="card p-4">
           <div className="text-sm font-semibold">{t('app.services.analytics.last30.title')}</div>
           <div className="mt-2 text-3xl font-semibold">{last30Days.total}</div>
-          <p className="text-xs text-gray-500">{t('app.services.analytics.last30.subtitle')}</p>
-          <dl className="mt-4 space-y-1 text-sm text-gray-600">
+          <p className="text-xs text-slate-500">{t('app.services.analytics.last30.subtitle')}</p>
+          <dl className="mt-4 space-y-1 text-sm text-slate-600">
             <div className="flex justify-between">
               <dt>{t('app.services.analytics.last30.delivered')}</dt>
               <dd className="font-medium">{last30Days.delivered}</dd>
@@ -1434,33 +1449,33 @@ function ServicesAnalyticsTab({ orders, services, formatStatus }: ServicesAnalyt
         <div className="card p-4">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-semibold">{t('app.services.analytics.status_breakdown.title')}</div>
-            <div className="text-xs text-gray-500">{t('app.services.analytics.status_breakdown.subtitle')}</div>
+            <div className="text-xs text-slate-500">{t('app.services.analytics.status_breakdown.subtitle')}</div>
           </div>
           {statusRows.length ? (
-            <table className="w-full text-sm">
+            <table className="table">
               <thead>
-                <tr className="text-left text-xs uppercase text-gray-500">
-                  <th className="py-2">{t('app.services.analytics.status_breakdown.status')}</th>
-                  <th className="py-2 text-right">{t('app.services.analytics.status_breakdown.count')}</th>
+                <tr>
+                  <th>{t('app.services.analytics.status_breakdown.status')}</th>
+                  <th className="text-right">{t('app.services.analytics.status_breakdown.count')}</th>
                 </tr>
               </thead>
               <tbody>
                 {statusRows.map((row) => (
-                  <tr key={row.status} className="border-t border-gray-100">
-                    <td className="py-2">{formatStatus(row.status)}</td>
-                    <td className="py-2 text-right font-medium">{row.count}</td>
+                  <tr key={row.status}>
+                    <td>{formatStatus(row.status)}</td>
+                    <td className="text-right font-medium">{row.count}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : (
-            <div className="text-sm text-gray-500">{t('app.services.analytics.status_breakdown.empty')}</div>
+            <div className="text-sm text-slate-500">{t('app.services.analytics.status_breakdown.empty')}</div>
           )}
         </div>
         <div className="card p-4">
           <div className="mb-3 flex items-center justify-between">
             <div className="text-sm font-semibold">{t('app.services.analytics.top_services.title')}</div>
-            <div className="text-xs text-gray-500">{t('app.services.analytics.top_services.subtitle')}</div>
+            <div className="text-xs text-slate-500">{t('app.services.analytics.top_services.subtitle')}</div>
           </div>
           {topServices.length ? (
             <ul className="space-y-2 text-sm">
@@ -1468,7 +1483,7 @@ function ServicesAnalyticsTab({ orders, services, formatStatus }: ServicesAnalyt
                 <li key={service.label} className="flex items-center justify-between gap-2">
                   <div>
                     <p className="font-medium">{service.label}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-slate-500">
                       {t('app.services.analytics.top_services.pending', { values: { count: service.pending } })}
                     </p>
                   </div>
@@ -1477,7 +1492,7 @@ function ServicesAnalyticsTab({ orders, services, formatStatus }: ServicesAnalyt
               ))}
             </ul>
           ) : (
-            <div className="text-sm text-gray-500">{t('app.services.analytics.top_services.empty')}</div>
+            <div className="text-sm text-slate-500">{t('app.services.analytics.top_services.empty')}</div>
           )}
         </div>
       </div>
@@ -1485,24 +1500,24 @@ function ServicesAnalyticsTab({ orders, services, formatStatus }: ServicesAnalyt
       <div className="card p-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="text-sm font-semibold">{t('app.services.analytics.hot_services.title')}</div>
-          <div className="text-xs text-gray-500">{t('app.services.analytics.hot_services.subtitle')}</div>
+          <div className="text-xs text-slate-500">{t('app.services.analytics.hot_services.subtitle')}</div>
         </div>
         {hotOrders.length ? (
-          <ul className="divide-y divide-gray-100 text-sm">
+          <ul className="divide-y divide-slate-100 text-sm">
             {hotOrders.map((entry) => (
               <li key={entry.order.id} className="flex flex-col gap-1 py-3">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{entry.label}</span>
-                  <span className="text-xs text-gray-500">{formatStatus(entry.order.status)}</span>
+                  <span className="text-xs text-slate-500">{formatStatus(entry.order.status)}</span>
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-slate-500">
                   {t(`app.services.analytics.hot_services.reason.${entry.reason}`)} · {describeOwner(entry.order)}
                 </div>
               </li>
             ))}
           </ul>
         ) : (
-          <div className="text-sm text-gray-500">{t('app.services.analytics.hot_services.empty')}</div>
+          <div className="text-sm text-slate-500">{t('app.services.analytics.hot_services.empty')}</div>
         )}
       </div>
     </div>
@@ -1553,16 +1568,16 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center.justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm text-gray-500">{t('app.services.orders.detail.order_label')}</div>
+          <div className="text-sm text-slate-500">{t('app.services.orders.detail.order_label')}</div>
           <div className="text-lg font-semibold tracking-tight">{order.id}</div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">{t('app.services.orders.detail.status_label')}</span>
+          <span className="text-sm text-slate-500">{t('app.services.orders.detail.status_label')}</span>
           {canManage ? (
             <select
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="input w-auto py-1 text-sm"
               value={order.status}
               onChange={(e) => onStatusUpdate(order.id, e.target.value as ServiceOrderStatus)}
             >
@@ -1577,8 +1592,8 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-        <div className="rounded border border-gray-100 bg-gray-50 p-3">
-          <div className="text-gray-500">{t('app.services.orders.detail.owner_label')}</div>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="text-slate-500">{t('app.services.orders.detail.owner_label')}</div>
           <div className="font-medium">
             {order.candidate_id
               ? t('app.services.orders.detail.owner.candidate', { values: { id: order.candidate_id } })
@@ -1589,19 +1604,19 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
               : t('app.services.orders.detail.owner.none')}
           </div>
         </div>
-        <div className="rounded border border-gray-100 bg-gray-50 p-3">
-          <div className="text-gray-500">{t('app.services.orders.detail.amount_label')}</div>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="text-slate-500">{t('app.services.orders.detail.amount_label')}</div>
           <div className="font-medium">
             {formatAmount(order.total_amount)}
             {typeof order.vat_total === 'number' && (
-              <span className="ml-1 text-xs text-gray-500">
+              <span className="ml-1 text-xs text-slate-500">
                 {t('app.services.orders.detail.vat_label', { values: { vat: order.vat_total.toFixed(2) } })}
               </span>
             )}
           </div>
         </div>
-        <div className="rounded border border-gray-100 bg-gray-50 p-3">
-          <div className="text-gray-500">{t('app.services.orders.detail.items_label')}</div>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="text-slate-500">{t('app.services.orders.detail.items_label')}</div>
           <div className="font-medium">{order.items.length}</div>
         </div>
       </div>
@@ -1611,17 +1626,17 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
           const isBlocking = blockingIds.has(item.id)
           const missing = missingDocs[item.id] || []
           return (
-            <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+            <div key={item.id} className="border border-slate-200 rounded-lg p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <div className="text-sm text-gray-500">{t('app.services.orders.detail.item.service_label')}</div>
+                  <div className="text-sm text-slate-500">{t('app.services.orders.detail.item.service_label')}</div>
                   <div className="text-base font-semibold">{item.service?.name || item.service_id}</div>
-                  <div className="text-xs text-gray-400">{item.service?.code}</div>
+                  <div className="text-xs text-slate-400">{item.service?.code}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-500">{t('app.services.orders.detail.item.status_label')}</div>
+                  <div className="text-xs text-slate-500">{t('app.services.orders.detail.item.status_label')}</div>
                   <div className="text-sm font-medium uppercase">{itemStatusLabels[item.status] ?? item.status}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-slate-500">
                     {t('app.services.orders.detail.item.amount_label', { values: { amount: formatAmount(item.amount) } })}
                   </div>
                 </div>
@@ -1634,16 +1649,16 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
               )}
 
               {missing.length > 0 && (
-                <div className="mt-3 rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                <div className="mt-3 alert-error">
                   {t('app.services.orders.detail.item.missing_docs', { values: { list: missing.join(', ') } })}
                 </div>
               )}
 
               <div className="mt-4 space-y-3">
                 <div>
-                  <div className="text-sm font-medium text-gray-700">{t('app.services.orders.detail.schedule.title')}</div>
+                  <div className="text-sm font-medium text-slate-700">{t('app.services.orders.detail.schedule.title')}</div>
                   {item.schedules && item.schedules.length > 0 ? (
-                    <ul className="mt-2 space-y-2 text-sm text-gray-600">
+                    <ul className="mt-2 space-y-2 text-sm text-slate-600">
                       {item.schedules.map((sched) => (
                         <li key={sched.id}>
                           <div className="flex items-center justify-between">
@@ -1654,12 +1669,12 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
                             </span>
                             <span className="text-xs uppercase">{scheduleStatusLabels[sched.status] ?? sched.status}</span>
                           </div>
-                          {sched.location && <div className="text-xs text-gray-400">{sched.location}</div>}
+                          {sched.location && <div className="text-xs text-slate-400">{sched.location}</div>}
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <div className="mt-1 text-xs text-gray-400">
+                    <div className="mt-1 text-xs text-slate-400">
                       {t('app.services.orders.detail.schedule.empty')}
                     </div>
                   )}
@@ -1668,22 +1683,22 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
                     <form className="mt-3 grid grid-cols-1 md:grid-cols-5 gap-2" onSubmit={(e) => onScheduleSubmit(item.id, e)}>
                       <input
                         name="provider"
-                        className="rounded border border-gray-300 px-2 py-1 text-xs"
+                        className="input py-1 text-xs"
                         placeholder={t('app.services.orders.detail.schedule.form.provider_placeholder')}
                       />
-                      <input name="slot_start" type="datetime-local" className="rounded border border-gray-300 px-2 py-1 text-xs" />
-                      <input name="slot_end" type="datetime-local" className="rounded border border-gray-300 px-2 py-1 text-xs" />
+                      <input name="slot_start" type="datetime-local" className="input py-1 text-xs" />
+                      <input name="slot_end" type="datetime-local" className="input py-1 text-xs" />
                       <input
                         name="location"
-                        className="rounded border border-gray-300 px-2 py-1 text-xs"
+                        className="input py-1 text-xs"
                         placeholder={t('app.services.orders.detail.schedule.form.location_placeholder')}
                       />
-                      <select name="status" className="rounded border border-gray-300 px-2 py-1 text-xs">
+                      <select name="status" className="input py-1 text-xs">
                         {SCHEDULE_STATUSES.map((status) => (
                           <option key={status} value={status}>{scheduleStatusLabels[status] ?? status}</option>
                         ))}
                       </select>
-                      <button type="submit" className="md:col-span-5 rounded bg-brand-100 px-2 py-1 text-xs text-brand-700 hover:bg-brand-200">
+                      <button type="submit" className="btn-secondary btn-xs md:col-span-5 justify-center">
                         {t('app.services.orders.detail.schedule.form.submit')}
                       </button>
                     </form>
@@ -1692,29 +1707,29 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
 
                 {canManage && item.status !== 'delivered' && (
                   <form className="space-y-2" onSubmit={(e) => onDeliverItem(item, e)}>
-                    <div className="text-sm font-medium text-gray-700">{t('app.services.orders.detail.complete.title')}</div>
+                    <div className="text-sm font-medium text-slate-700">{t('app.services.orders.detail.complete.title')}</div>
                     {item.result_document_type && (
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
                         <input
                           name="issued_at"
                           type="date"
-                          className="rounded border border-gray-300 px-2 py-1"
+                          className="input py-1"
                           placeholder={t('app.services.orders.detail.complete.issued_placeholder')}
                         />
                         <input
                           name="expires_at"
                           type="date"
-                          className="rounded border border-gray-300 px-2 py-1"
+                          className="input py-1"
                           placeholder={t('app.services.orders.detail.complete.expires_placeholder')}
                         />
-                        <select name="doc_status" className="rounded border border-gray-300 px-2 py-1">
+                        <select name="doc_status" className="input py-1">
                           {DOCUMENT_STATUSES.map((status) => (
                             <option key={status} value={status}>{documentStatusLabels[status] ?? status}</option>
                           ))}
                         </select>
                       </div>
                     )}
-                    <button type="submit" className="rounded bg-green-600 px-3 py-1 text-xs font-medium text-white hover:bg-green-700">
+                    <button type="submit" className="btn-primary btn-xs">
                       {t('app.services.orders.detail.complete.submit')}
                     </button>
                   </form>

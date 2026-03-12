@@ -17,6 +17,8 @@ def _loads_extra(extra: Optional[str]) -> Dict[str, Any]:
 def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
                    manager_short: Optional[str] = None,
                    manager_name: Optional[str] = None,
+                   candidate_profile_id: Optional[str] = None,
+                   candidate_profile_name: Optional[str] = None,
                    candidate_count: Optional[int] = None) -> VacancyOut:
     employment_raw = getattr(v, "employment_type", None)
     if isinstance(employment_raw, EmploymentType):
@@ -25,6 +27,9 @@ def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
         employment_value = (employment_raw or EmploymentType.full_time.value)
         if employment_value not in _EMPLOYMENT_VALUES:
             employment_value = EmploymentType.full_time.value
+
+    # Get candidate_profile_id from vacancy if not provided
+    profile_id = candidate_profile_id or getattr(v, "candidate_profile_id", None)
 
     return VacancyOut(
         id=v.id,
@@ -41,6 +46,9 @@ def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
         is_active=getattr(v, "is_active", None),
         is_archived=getattr(v, "is_archived", None),
         manager=v.manager,
+        candidate_profile_id=str(profile_id) if profile_id else None,
+        candidate_profile_name=candidate_profile_name,
+        required_documents_template_id=getattr(v, "required_documents_template_id", None),
         extra=_loads_extra(v.extra),
         employment_type=employment_value,
         created_at=getattr(v, "created_at", None),

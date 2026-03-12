@@ -7,6 +7,7 @@ import { useI18n } from '../../i18n'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLegalFooter } from '../../components/public/PublicLegalFooter'
+import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 
 export default function PublicPortalLanding() {
   const navigate = useNavigate()
@@ -85,9 +86,9 @@ export default function PublicPortalLanding() {
               <h1 className="text-3xl font-semibold text-slate-900 lg:text-4xl">{t('public.portal.hero.subtitle')}</h1>
               <p className="text-base text-slate-600">{t('public.portal.hero.note')}</p>
               <div className="flex flex-wrap gap-3 text-sm text-brand-800">
-                <span className="rounded-full bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.presign')}</span>
-                <span className="rounded-full bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.hints')}</span>
-                <span className="rounded-full bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.return')}</span>
+                <span className="rounded-md bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.presign')}</span>
+                <span className="rounded-md bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.hints')}</span>
+                <span className="rounded-md bg-brand-50 px-4 py-2">{t('public.portal.hero.bullets.return')}</span>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Link
@@ -104,7 +105,10 @@ export default function PublicPortalLanding() {
                 </Link>
               </div>
               {magicRedeemError && (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{magicRedeemError}</div>
+                <ErrorRecoveryBanner
+                  info={{ title: magicRedeemError, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+                  compact
+                />
               )}
               {verifyingMagic && (
                 <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">

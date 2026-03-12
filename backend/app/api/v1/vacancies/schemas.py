@@ -16,6 +16,8 @@ class VacancyIn(BaseModel):
     currency: Optional[Union[str, int, float]] = "EUR"
     status: str = "open"
     manager: Optional[UUID] = None
+    candidate_profile_id: Optional[UUID] = None
+    required_documents_template_id: Optional[UUID] = None
     employment_type: EmploymentType = Field(default=EmploymentType.full_time)
     extra: Dict[str, Any] = Field(default_factory=dict)
 
@@ -34,6 +36,9 @@ class VacancyOut(BaseModel):
     is_active: Optional[bool] = None
     is_archived: Optional[bool] = None
     manager: Optional[str] = None
+    candidate_profile_id: Optional[str] = None
+    candidate_profile_name: Optional[str] = None
+    required_documents_template_id: Optional[str] = None
     extra: Dict[str, Any]
     employment_type: EmploymentType
     created_at: Optional[datetime] = None
@@ -65,5 +70,7 @@ class VacancyPatch(BaseModel):
     status_alt1: Optional[str] = Field(default=None, alias="state")
     status_alt2: Optional[str] = Field(default=None, alias="stage")
     manager: Optional[UUID] = None
+    candidate_profile_id: Optional[UUID] = None
+    required_documents_template_id: Optional[UUID] = None
     extra: Optional[Dict[str, Any]] = None
     model_config = ConfigDict(validate_by_name=True)

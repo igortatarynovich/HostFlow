@@ -193,14 +193,23 @@ class ImagePreprocessor:
             try:
                 from backend.app.scanner.contour_6points import Contour6Points
                 # Extract points from manual_contour dict
+                # Frontend sends: {p1: {x, y, id}, p2: {x, y, id}, ...}
+                def get_point(contour, key):
+                    """Extract point coordinates from contour dict."""
+                    point = contour.get(key, {})
+                    if isinstance(point, dict):
+                        return (point.get('x', 0), point.get('y', 0))
+                    return (0, 0)
+                
                 points = [
-                    (manual_contour.get('p1', {}).get('x', 0), manual_contour.get('p1', {}).get('y', 0)),
-                    (manual_contour.get('p2', {}).get('x', 0), manual_contour.get('p2', {}).get('y', 0)),
-                    (manual_contour.get('p3', {}).get('x', 0), manual_contour.get('p3', {}).get('y', 0)),
-                    (manual_contour.get('p4', {}).get('x', 0), manual_contour.get('p4', {}).get('y', 0)),
-                    (manual_contour.get('p5', {}).get('x', 0), manual_contour.get('p5', {}).get('y', 0)),
-                    (manual_contour.get('p6', {}).get('x', 0), manual_contour.get('p6', {}).get('y', 0)),
+                    get_point(manual_contour, 'p1'),
+                    get_point(manual_contour, 'p2'),
+                    get_point(manual_contour, 'p3'),
+                    get_point(manual_contour, 'p4'),
+                    get_point(manual_contour, 'p5'),
+                    get_point(manual_contour, 'p6'),
                 ]
+                logger.info(f"Using manual contour with points: {points}")
                 # Convert to Contour6Points
                 contour_6pts = Contour6Points(points)
                 

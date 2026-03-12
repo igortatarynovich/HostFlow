@@ -9,7 +9,7 @@ export default function Field({
       {label && <div className="label">{label} {required && <span className="text-red-600">*</span>}</div>}
       {children}
       {(error || hint) && (
-        <div className={clsx("text-xs", error ? "text-red-600" : "text-gray-500")}>
+        <div className={clsx("text-xs", error ? "text-red-600" : "text-slate-500")}>
           {error || hint}
         </div>
       )}

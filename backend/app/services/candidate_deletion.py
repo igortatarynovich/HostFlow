@@ -212,8 +212,11 @@ async def resolve_request(
     actor = await _load_user(db, actor_id)
     if actor is None or actor.tenant_id != tenant_id:
         raise CandidateDeleteError("Actor not found", 404)
+    # Проверяем роль: actor.role - это объект Role из модели User
+    # Сравниваем напрямую с Enum значениями
     if actor.role not in (Role.administrator, Role.supervisor):
         raise CandidateDeleteError("Forbidden", 403)
+    # Супервизор может одобрять только запросы, где он назначен супервизором рекрутера
     if actor.role == Role.supervisor and actor.id != request.supervisor_id:
         raise CandidateDeleteError("Supervisor can only resolve own requests", 403)
 

@@ -482,7 +482,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
     DocumentTypeDefinition(
         code="medical_certificate",
         name="Medical certificate",
-        title={"ru": "Медицинская справка", "en": "Medical certificate"},
+        title={"ru": "Медицинская справка", "en": "Medical certificate", "pl": "Orzeczenie lekarskie"},
         kind=DocumentKind.driver,
         requested_from=DocumentRequestedFrom.driver,
         metadata_schema=_object_schema(
@@ -496,7 +496,7 @@ DRIVER_DOCUMENT_TYPES: Tuple[DocumentTypeDefinition, ...] = (
         required_files=_single_required("a4", **A4_FRAME),
         expiry_rule=_expiry_rule("expires_at"),
         default_expire_in_days=365,
-        aliases=("badania_lekarskie", "medical_cert"),
+        aliases=("badania_lekarskie", "medical_cert", "orzeczenie_lekarskie", "orzeczenie"),
         owner_summary_weight=30,
     ),
     DocumentTypeDefinition(

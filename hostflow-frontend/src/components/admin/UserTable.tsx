@@ -15,11 +15,12 @@ interface UserTableProps {
   className?: string
 }
 
-const ROLE_OPTIONS: UserRole[] = ['administrator', 'supervisor', 'recruiter', 'viewer']
+const ROLE_OPTIONS: UserRole[] = ['administrator', 'supervisor', 'recruiter', 'client_processor', 'viewer']
 const ROLE_LABELS: Record<UserRole, string> = {
   administrator: 'app.admin.users.roles.administrator',
   supervisor: 'app.admin.users.roles.supervisor',
   recruiter: 'app.admin.users.roles.recruiter',
+  client_processor: 'app.admin.users.roles.client_processor',
   viewer: 'app.admin.users.roles.viewer',
 }
 
@@ -86,10 +87,10 @@ export function UserTable({
   }
 
   return (
-    <div className={['overflow-auto border border-gray-200 rounded-lg bg-white', className].filter(Boolean).join(' ')}>
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr className="text-left text-sm font-semibold text-gray-600">
+    <div className={['overflow-auto border border-slate-200 rounded-lg bg-white', className].filter(Boolean).join(' ')}>
+      <table className="min-w-full divide-y divide-slate-200">
+        <thead className="bg-slate-50">
+          <tr className="text-left text-sm font-semibold text-slate-600">
             <th className="px-4 py-3">{t('app.admin.users.table.columns.email')}</th>
             <th className="px-4 py-3">{t('app.admin.users.table.columns.role')}</th>
             <th className="px-4 py-3">{t('app.admin.users.table.columns.status')}</th>
@@ -97,7 +98,7 @@ export function UserTable({
             <th className="px-4 py-3">{t('app.admin.users.table.columns.actions')}</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100 text-sm">
+        <tbody className="divide-y divide-slate-100 text-sm">
           {sortedUsers.map((user) => {
             const key = user.user_id || user.invite_id || user.email
             const pending = pendingMap[key]
@@ -126,8 +127,8 @@ export function UserTable({
                 }}
               >
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900">{user.email}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="font-medium text-slate-900">{user.email}</div>
+                  <div className="text-xs text-slate-500">
                     {user.full_name || user.short_id || notAvailableLabel}
                   </div>
                 </td>
@@ -165,13 +166,13 @@ export function UserTable({
                           ? 'bg-emerald-500'
                           : user.status === 'invited'
                           ? 'bg-amber-500'
-                          : 'bg-gray-400',
+                          : 'bg-slate-400',
                       ].join(' ')}
                     />
                     <span>{statusLabel}</span>
                   </div>
                   {user.invite_expires_at && (
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-slate-400">
                       {t('app.admin.users.table.invite_expires_prefix', {
                         values: { date: formatDateValue(user.invite_expires_at) },
                       })}
@@ -179,11 +180,11 @@ export function UserTable({
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="text-xs text-gray-500">{formatDateValue(user.invited_at)}</div>
+                  <div className="text-xs text-slate-500">{formatDateValue(user.invited_at)}</div>
                 </td>
                 <td className="px-4 py-3">
                   {isInviteOnly ? (
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-slate-400">
                       {t('app.admin.users.table.pending_registration')}
                     </span>
                   ) : (
@@ -239,7 +240,7 @@ export function UserTable({
           })}
           {sortedUsers.length === 0 && (
             <tr>
-              <td className="px-4 py-6 text-center text-sm text-gray-500" colSpan={5}>
+              <td className="px-4 py-6 text-center text-sm text-slate-500" colSpan={5}>
                 {t('app.admin.users.table.empty')}
               </td>
             </tr>

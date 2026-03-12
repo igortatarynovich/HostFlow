@@ -571,62 +571,40 @@ function validateQuad(quad: DocumentQuad, scaledWidth: number, scaledHeight: num
     return false
   }
   
-  // Confidence - very low threshold
-  const minConfidence = strategy === 'primary' ? 0.08 : strategy === 'aggressive' ? 0.05 : 0.03
+  // Confidence - VERY low threshold for maximum detection
+  const minConfidence = strategy === 'primary' ? 0.03 : strategy === 'aggressive' ? 0.03 : 0.03
   if (quad.confidence < minConfidence) {
     return false
   }
   
-  // Coverage - reject quads that are too close to frame edges or fill too much
+  // Coverage - VERY lenient: only reject obviously wrong quads
   const coverage = (quadWidth * quadHeight) / (scaledWidth * scaledHeight)
-  if (coverage < 0.05 || coverage > 0.80) {  // Stricter: was 0.02/0.85
+  if (coverage < 0.01 || coverage > 0.95) {  // Very lenient: was 0.05/0.80
     return false
   }
 
-  // Check boundaries - reject quads too close to frame edges (likely false positives)
-  const edgeMargin = Math.min(scaledWidth, scaledHeight) * 0.08  // Increased from 5% to 8%
+  // Check boundaries - VERY lenient: only reject if ALL corners are at the very edge
+  const edgeMargin = Math.min(scaledWidth, scaledHeight) * 0.01  // Very small margin (1%)
   const corners = [quad.topLeft, quad.topRight, quad.bottomRight, quad.bottomLeft]
+  let cornersAtEdge = 0
   for (const corner of corners) {
-    // Reject if corner is too close to frame edge (likely detecting frame itself)
+    // Count corners at the very edge (within 1% of frame edge)
     if (corner.x < edgeMargin || corner.x > scaledWidth - edgeMargin ||
         corner.y < edgeMargin || corner.y > scaledHeight - edgeMargin) {
-      return false
+      cornersAtEdge++
     }
+  }
+  // Reject only if ALL 4 corners are at the very edge (definitely detecting frame itself)
+  if (cornersAtEdge === 4) {
+    return false
   }
 
   return true
 }
 
 export function detectDocument(imageData: ImageData): DocumentQuad | null {
-  try {
-    const { width, height } = imageData
-    const scale = width > 400 ? 400 / width : 1
-    
-    // Try primary strategy first
-    let quad = detectDocumentWithFallback(imageData, 'primary')
-    if (quad) {
-      return scaleQuad(quad, scale, width, height)
-    }
-    
-    // Try aggressive strategy
-    quad = detectDocumentWithFallback(imageData, 'aggressive')
-    if (quad) {
-      console.debug('[scanner] Document detected with aggressive strategy')
-      return scaleQuad(quad, scale, width, height)
-    }
-    
-    // Try minimal strategy as last resort
-    quad = detectDocumentWithFallback(imageData, 'minimal')
-    if (quad) {
-      console.debug('[scanner] Document detected with minimal strategy')
-      return scaleQuad(quad, scale, width, height)
-    }
-    
-    return null
-  } catch (err) {
-    console.warn('[scanner] Detection error:', err)
-    return null
-  }
+  // Detection is temporarily disabled to focus on manual contour editing and quality.
+  return null
 }
 
 /**
@@ -680,4 +658,3 @@ function scaleQuad(quad: DocumentQuad, scale: number, originalWidth: number, ori
   
   return scaledQuad
 }
-

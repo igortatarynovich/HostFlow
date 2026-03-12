@@ -30,6 +30,7 @@ class VacancyService:
         company_id: Optional[str],
         status: Optional[str],
         search: Optional[str],
+        candidate_profile_id: Optional[str] = None,
         limit: int,
         offset: int,
         order_by: Optional[str],
@@ -46,6 +47,7 @@ class VacancyService:
             company_id=company_id,
             status=status,
             search=search,
+            candidate_profile_id=candidate_profile_id,
             limit=limit,
             offset=offset,
             order_by=order_by,
@@ -53,14 +55,29 @@ class VacancyService:
             allowed_company_ids=allowed_company_ids,
             allowed_vacancy_ids=allowed_vacancy_ids,
         )
-        return [vacancy_to_out(v, company_name=company_name, candidate_count=cand_count)
-                for (v, company_name, cand_count) in rows]
+        return [
+            vacancy_to_out(
+                v,
+                company_name=company_name,
+                candidate_profile_id=str(profile_id) if profile_id else None,
+                candidate_profile_name=profile_name,
+                candidate_count=cand_count,
+            )
+            for (v, company_name, profile_id, profile_name, cand_count) in rows
+        ]
 
     async def get(self, vacancy_id: str) -> VacancyOut:
-        obj = await self.repo.get(vacancy_id)
-        if not obj:
+        row = await self.repo.get(vacancy_id)
+        if not row:
             raise LookupError("Vacancy not found")
-        return vacancy_to_out(obj)
+        # Unpack tuple: (Vacancy, company_name, candidate_profile_id, candidate_profile_name)
+        v, company_name, profile_id, profile_name = row
+        return vacancy_to_out(
+            v,
+            company_name=company_name,
+            candidate_profile_id=str(profile_id) if profile_id else None,
+            candidate_profile_name=profile_name,
+        )
 
     async def create(self, tenant_id: str, payload: VacancyIn) -> VacancyOut:
         values: Dict[str, Any] = {
@@ -76,15 +93,28 @@ class VacancyService:
             "currency": _to_str_or_none(payload.currency) or "EUR",
             "status": payload.status or "open",
             "manager": str(payload.manager) if payload.manager else None,
+            "candidate_profile_id": str(payload.candidate_profile_id) if payload.candidate_profile_id else None,
+            "required_documents_template_id": str(payload.required_documents_template_id) if payload.required_documents_template_id else None,
             "extra": json.dumps(payload.extra, ensure_ascii=False),
         }
         obj = await self.repo.create(values)
-        return vacancy_to_out(obj)
+        # Reload with related data
+        row = await self.repo.get(obj.id)
+        if not row:
+            raise LookupError("Failed to reload created vacancy")
+        v, company_name, profile_id, profile_name = row
+        return vacancy_to_out(
+            v,
+            company_name=company_name,
+            candidate_profile_id=str(profile_id) if profile_id else None,
+            candidate_profile_name=profile_name,
+        )
 
     async def patch(self, vacancy_id: str, payload: VacancyPatch) -> VacancyOut:
-        obj = await self.repo.get(vacancy_id)
-        if not obj:
+        row = await self.repo.get(vacancy_id)
+        if not row:
             raise LookupError("Vacancy not found")
+        obj, _, _, _ = row  # Unpack: (Vacancy, company_name, candidate_profile_id, candidate_profile_name)
 
         values: Dict[str, Any] = {}
         for f in ["title", "description", "location"]:
@@ -137,6 +167,12 @@ class VacancyService:
         if payload.manager is not None:
             values["manager"] = str(payload.manager) if payload.manager else None
 
+        if payload.candidate_profile_id is not None:
+            values["candidate_profile_id"] = str(payload.candidate_profile_id) if payload.candidate_profile_id else None
+
+        if payload.required_documents_template_id is not None:
+            values["required_documents_template_id"] = str(payload.required_documents_template_id) if payload.required_documents_template_id else None
+
         if payload.extra is not None:
             values["extra"] = json.dumps(payload.extra, ensure_ascii=False)
 
@@ -168,13 +204,31 @@ class VacancyService:
         if values:
             values["updated_at"] = _now_utc()
             obj = await self.repo.update(obj, values)
+            # Reload with related data
+            row = await self.repo.get(obj.id)
+            if row:
+                v, company_name, profile_id, profile_name = row
+                return vacancy_to_out(
+                    v,
+                    company_name=company_name,
+                    candidate_profile_id=str(profile_id) if profile_id else None,
+                    candidate_profile_name=profile_name,
+                )
 
-        return vacancy_to_out(obj)
+        # If no updates, return current data from initial row
+        _, company_name, profile_id, profile_name = row
+        return vacancy_to_out(
+            obj,
+            company_name=company_name,
+            candidate_profile_id=str(profile_id) if profile_id else None,
+            candidate_profile_name=profile_name,
+        )
 
     async def delete(self, vacancy_id: str) -> None:
-        obj = await self.repo.get(vacancy_id)
-        if not obj:
+        row = await self.repo.get(vacancy_id)
+        if not row:
             raise LookupError("Vacancy not found")
+        obj, _, _, _ = row  # Unpack: (Vacancy, company_name, candidate_profile_id, candidate_profile_name)
         if await self.repo.has_linked_candidates(obj.id):
             raise ValueError("Cannot delete vacancy with linked candidates")
         await self.repo.delete(obj)

@@ -58,6 +58,17 @@ class Lead(Base):
         server_default=text("'new'"),
         index=True,
     )
+    stage: Mapped[Optional[str]] = mapped_column(
+        String(32),
+        nullable=True,
+        index=True,
+    )
+    funnel_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("funnels.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     candidate_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("candidates.id", ondelete="SET NULL"),
@@ -154,6 +165,12 @@ class MetaLeadSettings(TimestampMixin, Base):
         nullable=False,
         default=True,
         server_default=text("true"),
+    )
+    field_mapping: Mapped[list] = mapped_column(
+        JSONType,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'"),
     )
     webhook_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     last_webhook_check_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

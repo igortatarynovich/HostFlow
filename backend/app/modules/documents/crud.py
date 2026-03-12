@@ -288,7 +288,7 @@ async def create_document(session: AsyncSession, payload: Dict[str, Any]) -> Doc
 
     custom_name = (payload.get("custom_name") or "").strip() or None
     if defaults.requires_custom_name and not custom_name:
-        raise ValueError("custom_name is required for doc_type 'other'")
+        raise ValueError(f"custom_name is required for doc_type '{doc_type}'")
 
     number = (payload.get("number") or "").strip() or None
     issue_date: Optional[date] = payload.get("issue_date") or payload.get("issued_at")
@@ -591,12 +591,15 @@ async def list_candidate_documents(
     include_deleted: bool = False,
     limit: Optional[int] = None,
     offset: Optional[int] = None,
+    allowed_tenant_ids: Optional[Iterable[str]] = None,
 ) -> List[Document]:
-    tenant_id_s = _tid(tenant_id)
+    tenant_ids = {_tid(tenant_id)}
+    if allowed_tenant_ids:
+        tenant_ids.update({_tid(tid) for tid in allowed_tenant_ids if tid})
     stmt = (
         select(Document)
         .where(
-            Document.tenant_id == tenant_id_s,
+            Document.tenant_id.in_(tenant_ids),
             Document.candidate_id == _tid(candidate_id),
         )
         .order_by(Document.created_at.desc())

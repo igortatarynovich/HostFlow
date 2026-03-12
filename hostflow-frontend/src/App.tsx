@@ -13,6 +13,14 @@ import PublicPortalLanding from './pages/public/PublicPortalLanding'
 import PublicStatusPage from './pages/public/PublicStatusPage'
 import PublicScanPage from './pages/public/PublicScanPage'
 import PublicLanding from './pages/public/PublicLanding'
+import CrmLandingPage from './pages/public/CrmLandingPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
+import InviteAcceptPage from './pages/InviteAcceptPage'
+import OnboardingCompanyPage from './pages/OnboardingCompanyPage'
+import OnboardingGettingStartedPage from './pages/OnboardingGettingStartedPage'
+import ClientPortalPage from './pages/ClientPortalPage'
+import SignupPage from './pages/SignupPage'
 import { useI18n } from './i18n'
 
 export default function App(){
@@ -31,12 +39,12 @@ export default function App(){
   )
 
   if (loading) {
-    return <div className="grid h-screen place-items-center text-gray-500">{t('common.loading')}</div>
+    return <div className="grid h-screen place-items-center text-slate-500">{t('common.loading')}</div>
   }
 
   return (
     <Routes>
-      <Route path="/public" element={<PublicLanding />} />
+      <Route path="/public" element={<Navigate to="/public/intake" replace />} />
       <Route path="/public/portal" element={<PublicPortalLanding />} />
       <Route path="/public/intake" element={<PublicIntakeStart />} />
       <Route path="/public/apply/:token" element={<PublicIntakeNew />} />
@@ -44,20 +52,29 @@ export default function App(){
       <Route path="/public/scan" element={<PublicScanPage />} />
       <Route path="/public/scan-sessions" element={<Navigate to="/public/scan" replace />} />
       <Route path="/public/status/:token" element={<PublicStatusPage />} />
+      <Route path="/client-portal" element={<ClientPortalPage />} />
 
       {!me && (
         <>
+          <Route path="/" element={<CrmLandingPage />} />
+          <Route path="/pricing" element={<CrmLandingPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/invite/accept" element={<InviteAcceptPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </>
       )}
 
       {me && (
         <>
           <Route path="/login" element={<Navigate to="/app/overview" replace />} />
+          <Route path="/signup" element={<Navigate to="/app/overview" replace />} />
           <Route path="/app" element={<AppShell me={me} navItems={navItems} onLogout={logout} />}>
             <Route index element={<Navigate to="overview" replace />} />
+            <Route path="onboarding/company" element={<OnboardingCompanyPage />} />
+            <Route path="onboarding/getting-started" element={<OnboardingGettingStartedPage />} />
             {APP_ROUTES.map(({ key, path, Component, permission }) => (
               <Route
                 key={key}

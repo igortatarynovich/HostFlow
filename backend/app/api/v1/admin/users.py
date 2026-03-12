@@ -157,6 +157,31 @@ async def create_invite(
             expires_in_hours=payload.expires_in_hours,
         )
         await db.commit()
+
+        try:
+            from backend.app.core.settings import settings
+            from backend.app.services.system_email import send_system_email
+
+            base = (settings.frontend_url or "").strip()
+            link = f"{base}/invite/accept?token={token}" if base else ""
+            exp = invite.expires_at
+            exp_str = exp.strftime("%Y-%m-%d %H:%M") if exp else ""
+            body = (
+                f"Dzień dobry,\n\n"
+                f"Otrzymujesz zaproszenie do dołączenia do HostFlow.\n\n"
+            )
+            if link:
+                body += f"Link do akceptacji (ważny do {exp_str}):\n{link}\n\n"
+            else:
+                body += f"Token (ważny do {exp_str}): {token}\n\n"
+            body += "Pozdrawiamy,\nZespół HostFlow"
+            await send_system_email(
+                to=invite.email,
+                subject="HostFlow – zaproszenie do zespołu",
+                body=body,
+            )
+        except Exception:
+            pass
     except UserServiceError as exc:
         await db.rollback()
         _handle_service_error(exc)

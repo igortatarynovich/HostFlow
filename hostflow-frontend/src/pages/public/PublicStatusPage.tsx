@@ -4,6 +4,7 @@ import type { PublicDocumentEntry, PublicDocumentType } from '../../api/publicIn
 import { usePublicStatus } from '../../modules/public-intake/usePublicStatus'
 import { useI18n } from '../../i18n'
 import { PublicTimeline } from './components/PublicTimeline'
+import { NotificationSettings } from './components/NotificationSettings'
 import { formatDocumentStatus, getDocumentTitle } from './utils/documents'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 
@@ -17,7 +18,7 @@ type DocCard = {
 export default function PublicStatusPage() {
   const { token } = useParams<{ token: string }>()
   const { t, locale } = useI18n()
-  const { loading, error, state } = usePublicStatus(token)
+  const { loading, error, state, refreshing } = usePublicStatus(token)
 
   const checklist = state?.checklist
   const docs: PublicDocumentEntry[] = state?.documents?.documents ?? []
@@ -83,7 +84,7 @@ export default function PublicStatusPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8">
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="mx-auto max-w-4xl space-y-4">
         <div className="flex justify-end">
           <PublicLocaleSwitcher />
         </div>
@@ -100,6 +101,12 @@ export default function PublicStatusPage() {
                 {t('public.status_page.expires_at', {
                   values: { date: new Date(state.expires_at).toLocaleDateString(locale) },
                 })}
+              </span>
+            )}
+            {refreshing && (
+              <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700 flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                {t('public.status_page.updating', { defaultValue: 'Обновляется...' })}
               </span>
             )}
           </div>
@@ -203,6 +210,14 @@ export default function PublicStatusPage() {
                   )
                 })}
               </div>
+            </section>
+
+            <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+              <NotificationSettings
+                token={token}
+                initialEmail={state?.contacts?.email}
+                initialPhone={state?.contacts?.phone}
+              />
             </section>
           </>
         ) : (

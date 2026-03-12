@@ -16,3 +16,8 @@ emsdk/
 opencv/
 opencv_contrib/
 .venv/
+backend/uploads/
+ad_id
+form_id
+leadgen_id
+opt.code-workspace

@@ -102,7 +102,9 @@
       "subtitle": "Новые заявки из Meta Ads и других источников",
       "filters": {
         "status": "Статус",
-        "status_all": "Все статусы"
+        "status_all": "Все статусы",
+        "stage": "Этап",
+        "stage_all": "Все этапы"
       },
       "statuses": {
         "new": "Новый",
@@ -111,9 +113,17 @@
         "needs_routing": "Требует маршрутизации",
         "failed": "Ошибка"
       },
+      "stages": {
+        "new": "Новый",
+        "contacted": "Связались",
+        "qualified": "Квалифицирован",
+        "converted": "Конвертирован",
+        "lost": "Потерян"
+      },
       "table": {
         "created": "Создан",
         "status": "Статус",
+        "stage": "Этап",
         "company": "Компания",
         "vacancy": "Вакансия",
         "contact": "Контакт",
@@ -251,22 +261,365 @@
         "overview": "Обзор",
         "candidates": "Кандидаты",
         "clients": "Компании",
+        "do_procesowania": "Процессинг",
         "vacancies": "Вакансии",
         "documents": "Документы",
         "services": "Доп. услуги / заказы",
         "invoices": "Счета",
+        "communications": "Коммуникации",
+        "communications_setup": "Настройка коммуникаций",
+        "messages_inbox": "Сообщения",
+        "email_inbox": "Почта",
+        "calendar": "Календарь",
+        "planner": "Планировщик",
+        "sla_incidents": "SLA-инциденты",
+        "command_audit": "Аудит команд",
+        "team_availability": "Доступность команды",
+        "my_availability": "Моя доступность",
+        "time_off": "Отпуска и отсутствия",
         "reminders": "Напоминания",
         "leads": "Лиды",
         "settings": "Настройки",
         "settings_users": "Пользователи и роли",
         "settings_billing": "Биллинг и команда",
         "settings_tenants": "Платформа: тенанты",
+        "settings_funnels": "Воронки и этапы",
         "settings_docs": "Каталог типов документов",
+        "settings_legal": "Юридические документы",
+        "settings_company_access": "Доступ к компаниям",
+        "settings_email": "Настройки почты",
+        "settings_tenant_links": "Связи тенантов",
         "settings_integrations": "Интеграции / Meta Leads",
         "settings_ruleset": "Версии Ruleset",
         "settings_audit": "Аудит-лог",
+        "settings_communications": "Настройки коммуникаций",
         "profile": "Профиль",
         "logout": "Выйти"
+      }
+    },
+    "clients": {
+      "title": "Клиенты",
+      "subtitle": "Клиенты агентства и настройки доступа.",
+      "add_client": "Добавить клиента",
+      "empty": "Нет клиентов. Добавьте первого.",
+      "created": "Клиент добавлен",
+      "portal_created": "Ссылка создана",
+      "portal_revoked": "Ссылка отозвана",
+      "copy_failed": "Не удалось скопировать",
+      "open_profile": "Профиль",
+      "linked_tenant": "Привязан к организации",
+      "handoff": "Передача",
+      "see_vacancies": "Вакансии",
+      "see_reduced": "Урезанные профили",
+      "portal_access": "Доступ по ссылке",
+      "revoke_link": "Отозвать",
+      "create_portal_link": "Создать ссылку",
+      "handoff_label": "Передача кандидатов",
+      "see_vacancies_label": "Видеть вакансии",
+      "see_reduced_label": "Урезанные профили",
+      "search_placeholder": "Поиск по названию или домену...",
+      "display_name": "Название клиента",
+      "display_name_placeholder": "например, Citronex",
+      "link_existing": "Или привязать к существующей компании",
+      "linked_to": "Привязать к",
+      "settings": "Настройки доступа",
+      "back_to_list": "← К списку клиентов",
+      "not_found": "Клиент не найден",
+      "errors": {
+        "name_or_link": "Введите название или привяжите к компании."
+      }
+    },
+    "vacancies": {
+      "list": {
+        "subtitle": "Список и управление вакансиями",
+        "new_vacancy": "Новая вакансия",
+        "search_placeholder": "Поиск… (⌘K)",
+        "company_placeholder": "Компания…",
+        "reset_filters_title": "Очистить поля фильтров",
+        "refresh_title": "Обновить список вакансий",
+        "export_csv_title": "Выгрузить таблицу в CSV",
+        "export_csv": "Экспорт CSV",
+        "columns": "Колонки",
+        "col_title": "Название",
+        "col_company": "Компания",
+        "col_status": "Статус",
+        "col_updated": "Обновлена",
+        "col_created": "Создана",
+        "save_view": "Сохранить как вид",
+        "view_name_prompt": "Название вида:",
+        "loading": "Загружаем список вакансий…",
+        "not_found": "Вакансии не найдены",
+        "untitled": "(без названия)",
+        "open": "Открыть",
+        "actions": "Действия",
+        "delete_view": "Удалить",
+        "total": "Всего: {total}",
+        "page": "Стр. {page} / {total}",
+        "bulk_selected": "Выбрано: {count}",
+        "bulk_set_status": "Перевести в статус:",
+        "bulk_archive": "В архив",
+        "bulk_clear_selection": "Снять выделение",
+        "status": {
+          "all": "Все",
+          "open": "Открыта",
+          "on_hold": "На паузе",
+          "closed": "Закрыта",
+          "archived": "В архиве"
+        },
+        "insights": {
+          "total": "Всего",
+          "open": "Открыты",
+          "closed": "Закрыты",
+          "archived": "В архиве"
+        },
+        "errors": {
+          "unauthorized": "Неавторизовано: войдите в систему и повторите.",
+          "load_failed": "Не удалось загрузить вакансии"
+        }
+      }
+    },
+    "handoff": {
+      "do_procesowania": "Процессинг",
+      "do_procesowania_subtitle": "Кандидаты, переданные в процесс со стороны работодателя",
+      "company": "Компания",
+      "filter_by_company": "Показать по фирме",
+      "your_org": "Кандидаты, переданные в вашу организацию",
+      "no_pending": "Нет кандидатов для выбранных фильтров",
+      "accept_btn": "Принять",
+      "reject_btn": "Отклонить",
+      "return_btn": "Вернуть",
+      "accepted": "Принято",
+      "rejected": "Отклонено",
+      "returned": "Возвращено агентству",
+      "reject_title": "Отклонить передачу",
+      "return_title": "Вернуть агентству",
+      "rejection_reason": "Причина (обязательно)",
+      "return_reason": "Причина (обязательно)",
+      "return_reason_placeholder": "Напр. нужны дополнительные документы...",
+      "client_type_firm": "Команда клиента в нашей системе",
+      "client_type_org": "Клиент с собственным порталом (напр. Транспортная компания)",
+      "client_hint": "«В нашей системе» — HR/команда клиента входит в ваш workspace с доступом к своей фирме. «Свой портал» — у клиента отдельный HostFlow, он входит в свою организацию.",
+      "badge_new": "{count} новых",
+      "tabs": {
+        "pending": "Ожидают",
+        "history": "История решений",
+        "all": "Все",
+        "to_process": "На обработку",
+        "in_process": "В процессе"
+      },
+      "range": {
+        "30d": "Последние 30 дней",
+        "all": "Весь период"
+      },
+      "status": {
+        "pending": "Ожидает",
+        "accepted": "Принято",
+        "rejected": "Отклонено",
+        "returned": "Возвращено"
+      },
+      "table": {
+        "columns": {
+          "candidate": "Кандидат",
+          "short_id": "Short ID",
+          "requested": "Передано",
+          "created": "Создан",
+          "status": "Статус",
+          "decision": "Решение",
+          "decision_at": "Решение",
+          "decision_by": "Кто",
+          "reason": "Причина",
+          "actions": "Действия",
+          "phone": "Телефон",
+          "citizenship": "Гражданство",
+          "stage": "Этап"
+        },
+        "columns_toggle": "Колонки",
+        "summary": "Показываем {count} из {total}"
+      },
+      "columns": {
+        "position": "Позиция"
+      },
+      "filters": {
+        "stage": "Этап процесса",
+        "stage_all": "Все этапы",
+        "date_from": "Дата от",
+        "date_to": "Дата до",
+        "employer_side_only": "В процессе (Employer side)",
+        "any": "Любой",
+        "open": "Фильтры",
+        "clear": "Очистить фильтры",
+        "close": "Закрыть"
+      },
+      "decisions": {
+        "employed": "Трудоустроен",
+        "rejected": "Отклонён",
+        "declined": "Отказался",
+        "returned": "Возвращён"
+      },
+      "sort": {
+        "requested": "Дата передачи",
+        "decision": "Дата решения",
+        "candidate": "Имя кандидата",
+        "status": "Статус",
+        "stage": "Этап",
+        "created": "Дата создания"
+      },
+      "export_csv": "Экспорт CSV",
+      "page": "Страница {page}",
+      "select_all": "Выбрать все",
+      "bulk_done": "Готово: {ok} из {total}",
+      "return_bulk_title": "Вернуть {count} передач",
+      "reject_bulk_title": "Отклонить {count} передач",
+      "search_placeholder": "Поиск по имени, фамилии, email, телефону...",
+      "search_min": "Введите минимум 3 символа для поиска."
+    },
+    "notifications": {
+      "handoff_requested_title": "Новый кандидат на обработку",
+      "handoff_accepted_title": "Кандидат передан",
+      "communications_sla_overdue_title": "SLA просрочен: нужен ответ в диалоге",
+      "view_handoffs": "Перейти в Процессинг",
+      "open_sla_incidents": "Открыть SLA-инциденты"
+    },
+    "sla_incidents": {
+      "title": "SLA-инциденты",
+      "subtitle": "Просроченные диалоги коммуникаций, где требуется ответ менеджера.",
+      "unread": "Непрочитанные",
+      "total": "Всего",
+      "search": "Поиск инцидентов…",
+      "include_read": "Показывать прочитанные",
+      "empty": "Сейчас SLA-инцидентов нет.",
+      "empty_group": "В группе \"{group}\" инцидентов нет.",
+      "open_dialog": "Открыть диалог",
+      "mark_read": "Отметить прочитанным",
+      "actions": {
+        "in_work": "В работе",
+        "later": "Позже",
+        "escalated": "Эскалировано",
+        "no_reply_needed": "Ответ не нужен"
+      },
+      "groups": {
+        "open": "Открытые",
+        "in_work": "В работе",
+        "later": "Позже",
+        "escalated": "Эскалировано",
+        "no_reply_needed": "Ответ не нужен",
+        "closed": "Закрытые"
+      },
+      "trust": {
+        "title": "Отчет доверия (SLA-сигналы)",
+        "window": "На основе загруженных инцидентов",
+        "closed": "Закрыто",
+        "open": "Открыто",
+        "false_sla": "Потенциально ложные SLA",
+        "duplicates": "Потенциальные дубли",
+        "summary": "Доля закрытия: {rate}% · Всего: {total} · Групп дублей: {groups}. Метрики эвристические и основаны на сигналах payload."
+      }
+    },
+    "communications_messages": {
+      "reply_required": "Требуется ответ",
+      "actions": {
+        "search": "Поиск",
+        "send": "Отправить"
+      },
+      "search": {
+        "placeholder": "Поиск диалога..."
+      },
+      "candidate_filter": "Фильтр по кандидату",
+      "action_groups": {
+        "context": "Контекст",
+        "workflow": "Работа",
+        "sla": "SLA",
+        "more": "Еще"
+      },
+      "dialogs": {
+        "title": "Диалоги",
+        "reorder_hint": "Перетащите для изменения приоритета.",
+        "select_prompt": "Выберите диалог, чтобы начать переписку."
+      },
+      "manager": {
+        "label": "Менеджер",
+        "unassigned": "Не назначен",
+        "save": "Сохранить менеджера"
+      },
+      "candidate": {
+        "label": "Кандидат",
+        "not_linked": "Не привязан",
+        "card": "Карточка кандидата",
+        "search_placeholder": "Поиск по имени / email / телефону / short ID",
+        "searching": "Поиск...",
+        "unlink": "Отвязать",
+        "link": "Привязать кандидата"
+      },
+      "timeline": {
+        "empty": "Сообщений пока нет."
+      },
+      "compose": {
+        "recipient_placeholder": "Получатель (необязательное переопределение)",
+        "message_placeholder": "Введите сообщение"
+      },
+      "task": {
+        "button": "Задача",
+        "modal_title": "Создать задачу из диалога",
+        "title_placeholder": "Название задачи"
+      },
+      "tags": {
+        "label": "Теги",
+        "manager": "Менеджер тегов",
+        "manager_hint": "Создавайте, перекрашивайте, архивируйте и переименовывайте персональные теги сообщений.",
+        "select": "Выберите тег",
+        "review_later": "Проверить позже",
+        "ad_hoc": "Произвольный тег",
+        "quick_add": "Быстро добавить",
+        "manage": "Управлять тегами",
+        "empty": "Персональных тегов пока нет.",
+        "create_new": "Создать новый",
+        "name_placeholder": "Название тега",
+        "create": "Создать тег",
+        "active": "Активный",
+        "archived": "Архивный",
+        "columns": {
+          "name": "Название",
+          "color": "Цвет",
+          "state": "Состояние"
+        }
+      },
+      "ops": {
+        "all_modes": "Все режимы",
+        "menu_label": "Статус",
+        "none": "Без режима",
+        "in_work": "В работе",
+        "later": "Пауза",
+        "escalated": "Эскалировано",
+        "no_reply_needed": "Ответ не нужен",
+        "pause_hours_prompt": "На сколько часов поставить диалог на паузу?",
+        "pause_hours_invalid": "Введите корректное число часов (> 0).",
+        "escalation_reason_prompt": "Причина эскалации",
+        "escalation_reason_required": "Причина эскалации обязательна.",
+        "escalation_target_prompt": "Цель эскалации (role/queue/user_id). Пример: role:supervisor или queue:urgent",
+        "escalation_target_required": "Нужно указать цель эскалации.",
+        "pause_modal_title": "Пауза диалога",
+        "pause_hours_label": "Длительность паузы (часы)",
+        "escalation_modal_title": "Эскалация диалога",
+        "escalated_hint": "Эскалация направляет диалог на внимание руководителя и требует указать причину.",
+        "escalation_target_type_label": "Тип цели",
+        "escalation_target_value_label": "Значение цели",
+        "target_type_role": "Роль",
+        "target_type_queue": "Очередь",
+        "target_type_user": "Пользователь",
+        "escalation_error_unknown_queue": "Выбранная очередь недоступна. Разрешенные очереди: {allowed}.",
+        "escalation_error_invalid_role": "Некорректный формат целевой роли.",
+        "escalation_error_unknown_role": "Выбранная роль недоступна. Разрешенные роли: {allowed}.",
+        "escalation_error_invalid_user": "Некорректный идентификатор пользователя.",
+        "escalation_error_unknown_user": "Пользователь неактивен или принадлежит другому tenant."
+      },
+      "sla": {
+        "menu_label": "Действия SLA",
+        "sla_muted": "SLA отключен",
+        "mute_sla": "Отключить SLA",
+        "mute_hint": "Отключите SLA, чтобы остановить просроченные алерты и напоминания по этому диалогу.",
+        "unmute_hint": "Включите SLA обратно, чтобы возобновить проверки просрочек и напоминания по этому диалогу.",
+        "snooze_1h": "Отложить +1ч",
+        "snooze_4h": "Отложить +4ч"
       }
     },
     "shell": {
@@ -338,7 +691,8 @@
         "email": "Электронная почта",
         "birth_date": "Дата рождения",
         "country": "Страна",
-        "city": "Город"
+        "city": "Город",
+        "preferred_contact": "Предпочтительный канал связи"
       },
       "preferences": {
         "labels": {
@@ -629,6 +983,16 @@
         "modules": {
           "title": "Модули тенанта",
           "description": "Включайте и отключайте разделы без входа в профиль клиента.",
+          "matrix_title": "Матрица видимости ролей",
+          "matrix_description": "Настройте видимость и редактирование модулей для каждой роли.",
+          "matrix_module": "Модуль",
+          "matrix_hint": "V = видимость, E = редактирование. Редактирование всегда требует видимости.",
+          "user_overrides_title": "Персональные переопределения",
+          "user_overrides_description": "Переопределите ролевые права для выбранного пользователя.",
+          "user_overrides_reset": "Сбросить к роли",
+          "user_overrides_mode": "Доступ пользователя",
+          "user_overrides_custom": "Переопределение пользователя",
+          "user_overrides_from_role": "Из роли: {visible}{editable}",
           "items": {
             "candidates": "Кандидаты",
             "companies": "Компании",
@@ -780,6 +1144,8 @@
           "administrator": "Администратор",
           "supervisor": "Супервайзер",
           "recruiter": "Рекрутер",
+          "client_manager": "Менеджер клиента",
+          "client_processor": "Процессор кандидатов",
           "viewer": "Наблюдатель"
         },
         "form": {
@@ -1088,7 +1454,8 @@
           "credential_created": "Подключение сохранено",
           "secret_rotated": "Новый секрет: {secret}",
           "mapping_saved": "Маппинг сохранён",
-          "lead_rerouted": "Лид отправлен в обработку"
+          "lead_rerouted": "Лид отправлен в обработку",
+          "lead_retried": "Лид успешно обработан"
         },
         "errors": {
           "load": "Не удалось загрузить данные Meta Leads",
@@ -1102,7 +1469,8 @@
           "mapping_create": "Не удалось сохранить маппинг",
           "mapping_update": "Не удалось обновить запись",
           "mapping_delete": "Не удалось удалить маппинг",
-          "reroute": "Не удалось маршрутизировать лид"
+          "reroute": "Не удалось маршрутизировать лид",
+          "retry": "Повтор не удался"
         },
         "prompts": {
           "delete_credential": "Удалить учётные данные Meta?",
@@ -1171,7 +1539,8 @@
           },
           "empty": "Нет лидов в статусе needs_routing",
           "actions": {
-            "reroute": "Маршрутизировать"
+            "reroute": "Маршрутизировать",
+            "retry": "Повторить"
           }
         }
       },
@@ -1286,6 +1655,29 @@
         "save_error": "Не удалось сохранить изменения",
         "archive_error": "Не удалось изменить статус архива"
       },
+      "invoices": {
+        "title": "Счета",
+        "subtitle": "Выставление и отправка счетов клиенту",
+        "create": "Выставить счёт",
+        "empty": "Счетов нет",
+        "download_pdf": "PDF",
+        "send_email": "Отправить",
+        "create_modal_title": "Выставить счёт",
+        "create_submit": "Создать счёт"
+      },
+      "order_types": {
+        "transport": "Транспорт (водители)",
+        "office": "Офис / IT",
+        "production": "Производство",
+        "fields": {
+          "headcount": "Штат",
+          "hired_count": "Нанято",
+          "position_type": "Тип позиции",
+          "quantity": "Количество",
+          "delivered": "Выполнено",
+          "unit": "Ед. изм."
+        }
+      },
       "readiness": {
         "title": "Готовность профиля",
         "description": "Обязательные блоки CRM: юридический профиль, контакты, платежи, комплаенс и портал клиента.",
@@ -1371,6 +1763,7 @@
           "add_representative": "Добавить представителя",
           "add_bank_account": "Добавить счёт",
           "add_contact": "Добавить контакт",
+          "add_vacancy": "+ Вакансия",
           "add_portal_user": "Добавить пользователя портала",
           "add_webhook": "Добавить вебхук",
           "add_contract": "Добавить контракт",
@@ -1395,6 +1788,7 @@
             "total": "Связанные вакансии",
             "latest_title": "Последние обновления",
             "status_label": "Статус: {status}",
+            "pipeline_link": "Пайплайн",
             "status_unknown": "Статус неизвестен",
             "empty": "Вакансии появятся после привязки к этой компании."
           },
@@ -1428,6 +1822,7 @@
             "empty": "Контракты не добавлены.",
             "due": "Продление {date}"
           },
+          "vacancies_link": "Перейти к вакансиям",
           "driver_slots": {
             "title": "Потребность в водителях",
             "subtitle": "Открытые слоты",
@@ -1451,6 +1846,25 @@
           "operations": {
             "title": "Операционный профиль"
           },
+          "operations_profile": {
+            "transport": "Транспорт (флот, маршруты, водители)",
+            "none": "Скрыть",
+            "office": "Офис / IT",
+            "custom": "Настраиваемый",
+            "office_coming": "Офисный профиль — в разработке. Пока можно выбрать «Транспорт» или «Скрыть».",
+            "custom_coming": "Настраиваемый профиль — в разработке.",
+            "office_fields": {
+              "team_size": "Численность",
+              "roles": "Роли / должности",
+              "tech_stack": "Стек технологий"
+            },
+            "custom_fields": {
+              "capacity": "Мощность",
+              "equipment": "Оборудование",
+              "certifications": "Сертификаты",
+              "regions": "Регионы"
+            }
+          },
           "compliance": {
             "title": "Комплаенс и проверки"
           },
@@ -1466,6 +1880,7 @@
           "orders": {
             "title": "Заказы"
           },
+          "order_type": "Тип заявки",
           "system": {
             "title": "Системные сведения"
           },
@@ -1519,6 +1934,7 @@
           "fleet_intl": "Международные рейсы (%)",
           "fleet_local": "Локальные рейсы (%)",
           "drivers_total": "Водителей",
+          "operations_profile_type": "Тип профиля",
           "adr_operations": "ADR перевозки",
           "work_modes": "Форматы работы",
           "lanes_origins": "Страны отправления",
@@ -1837,6 +2253,7 @@
         "company": "Компания",
         "vacancy": "Вакансия",
         "source": "Источник",
+        "manager": "Менеджер",
         "citizenship": "Гражданство",
         "country": "Страна проживания",
         "reason": "Причина отказа/отмены"
@@ -1862,7 +2279,11 @@
         "probation": "Испытательный срок",
         "red_paper_ordered": "Красная бумага заказана",
         "hiring": "Найм",
-        "interview": "Контакт установлен"
+        "interview": "Контакт установлен",
+        "ready_for_handoff": "Готов к передаче",
+        "processing_by_client": "Обработка заказчиком",
+        "docs_submitted_permit": "Документы поданы на разрешение",
+        "handoff_returned": "Возвращён"
       },
       "reason_codes": {
         "schedule": "Не подходит график работы",
@@ -1893,16 +2314,89 @@
         "no_subgroup": "Без подгруппы"
       },
       "filters": {
+        "title": "Фильтры",
         "from": "От",
         "to": "До",
+        "period": "Период",
         "date_field": "Поле даты",
         "field_created": "Дата создания",
         "field_updated": "Дата обновления",
         "vacancy": "Вакансия",
         "all_vacancies": "Все вакансии",
+        "company": "Компания",
+        "all_companies": "Все",
+        "manager": "Менеджер",
+        "all_managers": "Все",
+        "stages": "Этапы",
+        "stage_view": "Вид этапов",
+        "stage_view_all": "Полный",
+        "stage_view_agency": "Агентство",
+        "stage_view_client": "Клиент",
+        "stages_hint": "Ctrl+клик для множественного выбора",
+        "reset": "Сбросить",
+        "compare_previous": "Сравнить с предыдущим периодом",
+        "save_preset": "Сохранить срез",
+        "load_preset": "Загрузить срез",
+        "no_preset": "Нет сохранённого среза",
         "sample": "Выборка: {count} кандидатов",
         "selected_vacancy": "· Вакансия: {label}",
-        "custom_range": "Своя настройка"
+        "custom_range": "Своя настройка",
+        "widgets": "Виджеты",
+        "configure": "Настроить фильтры",
+        "labels": {
+          "period": "Период",
+          "dateRange": "Диапазон дат",
+          "dateField": "Поле даты",
+          "vacancy": "Вакансия",
+          "company": "Компания",
+          "manager": "Менеджер",
+          "stages": "Этапы",
+          "compare": "Сравнение",
+          "presets": "Срезы",
+          "widgets": "Виджеты"
+        }
+      },
+      "widgets": {
+        "labels": {
+          "handoff": "Передачи",
+          "contact": "Контакт",
+          "documents": "Документы",
+          "managerLoad": "Нагрузка менеджеров",
+          "countries": "Страны",
+          "stageStack": "Распределение этапов",
+          "globalStats": "Глобальная статистика",
+          "stages": "Этапы",
+          "reasons": "Причины",
+          "companies": "Компании",
+          "vacancies": "Вакансии",
+          "sources": "Источники",
+          "docsRisk": "Риск документов",
+          "velocity": "Скорость",
+          "pivot": "Срез",
+          "pivotChart": "График среза"
+        },
+        "handoff": {
+          "title": "Передачи",
+          "subtitle": "По запросам за период",
+          "requested": "Запросов",
+          "accepted": "Принято",
+          "rejected": "Отклонено",
+          "returned": "Возвращено"
+        },
+        "contact_attempts": {
+          "title": "Попытки контакта",
+          "subtitle": "По кандидатам за период",
+          "total": "Всего попыток",
+          "avg": "Ср. на кандидата",
+          "limit_reached": "Достигнут лимит 3+"
+        },
+        "documents": {
+          "title": "Документы",
+          "subtitle": "Реальные данные из БД",
+          "total": "Всего документов",
+          "complete": "Кандидатов с готовыми",
+          "by_status": "По статусу"
+        }
       },
       "hero": {
         "title": "Единый центр управления наймом",
@@ -1910,7 +2404,8 @@
         "stats": {
           "total": "Кандидатов в выборке",
           "vacancies": "Активных вакансий",
-          "stages": "Этапов пайплайна"
+          "stages": "Этапов пайплайна",
+          "vs_previous": "к пред. периоду:"
         }
       },
       "errors": {
@@ -2039,10 +2534,12 @@
       },
       "pivot": {
         "title": "Гибкий аналитический срез",
+        "chart_title": "График по пивоту",
         "group_by": "Группировка",
         "subgroup": "Подгруппы",
         "total": "Итого",
-        "empty": "Недостаточно данных для построения среза."
+        "empty": "Недостаточно данных для построения среза.",
+        "export": "Экспорт CSV"
       }
     },
     "candidate_card": {
@@ -2054,12 +2551,44 @@
         "history_loading": "Загружаем историю…",
         "export_bundle": "Скачать профиль кандидата",
         "exporting_bundle": "Готовим архив…",
+        "upload_link": "Ссылка для загрузки",
+        "upload_link_creating": "Создаем ссылку…",
+        "upload_link_ready": "Ссылка готова",
+        "upload_link_copied": "Ссылка скопирована",
         "refresh": "Обновить",
         "refreshing": "Обновляем…",
-        "saving_note": "Сохраняем…"
+        "saving_note": "Сохраняем…",
+        "add_tag": "Добавить",
+        "remove_tag": "Удалить тег {tag}"
       },
       "confirm": {
         "delete": "Удалить этого кандидата?"
+      },
+      "handoff": {
+        "title": "Передача",
+        "transfer_btn": "Передать клиенту",
+        "client": "Клиент",
+        "pending": "Ожидание решения клиента",
+        "accepted": "Передано клиенту",
+        "processor": "Обработчик",
+        "no_clients": "Нет клиентов с включённой передачей",
+        "created": "Передано клиенту"
+      },
+      "rodo": {
+        "title": "RODO",
+        "badge_sent": "Отправлено",
+        "send_btn": "Отправить информацию RODO",
+        "sent_at": "Отправлено",
+        "to": "Кому",
+        "no_email": "У кандидата нет email или нет активной клаузулы RODO."
+      },
+      "contact_attempts": {
+        "title": "Попытки контакта",
+        "register_btn": "Зарегистрировать попытку контакта",
+        "no_attempts": "Нет попыток",
+        "max_reached": "Достигнут лимит попыток ({max})",
+        "registered": "Попытка контакта зарегистрирована",
+        "rodo_required": "Отправьте информацию RODO кандидату перед регистрацией попыток контакта."
       },
       "contacts": {
         "options": {
@@ -2072,7 +2601,47 @@
       },
       "docs": {
         "disabled": "Сохраните кандидата, чтобы открыть документы.",
-        "helper": "Документы, сканы и готовность находятся здесь для всей команды."
+        "helper": "Документы, сканы и готовность находятся здесь для всей команды.",
+        "upload_link_label": "Отправьте эту ссылку кандидату для загрузки документов.",
+        "upload_link_expires": "Ссылка действует до {date}",
+        "actions": {
+          "menu": "Действия"
+        }
+      },
+      "operations": {
+        "title": "Операции",
+        "description": "Быстрые действия и процессные контроли.",
+        "handoff": "Передача",
+        "reminders": "Напоминания"
+      },
+      "reminders": {
+        "title": "Напоминания по кандидату",
+        "subtitle": "Быстрое напоминание: заголовок, срок, смещение (мин).",
+        "placeholder": "Перезвонить, отправить письмо…",
+        "create": "Создать",
+        "upcoming": "Ближайшие",
+        "empty": "Нет активных.",
+        "untitled": "Без заголовка",
+        "due": "Срок",
+        "date_placeholder": "—",
+        "status_label": "Статус",
+        "statuses": {
+          "pending": "Ожидает",
+          "new": "Новое",
+          "overdue": "Просрочено",
+          "done": "Завершено",
+          "completed": "Завершено",
+          "cancelled": "Отменено"
+        },
+        "offsets": {
+          "min5": "за 5 мин",
+          "min15": "за 15 мин",
+          "min30": "за 30 мин",
+          "hour1": "за 1 час"
+        },
+        "complete": "Завершить",
+        "snooze_15": "+15м",
+        "snooze_60": "+1ч"
       },
       "employment": {
         "title": "Опыт работы",
@@ -2111,11 +2680,14 @@
           "street": "Улица",
           "zip": "Почтовый индекс"
         },
+        "age_hint": "Возраст: {age} лет",
         "birth_date": "Дата рождения",
         "citizenship": "Гражданство",
+        "fill_from_phone": "Заполнить из страны телефона",
         "company": "Компания",
         "company_hint": "Подставляется автоматически из вакансии.",
         "country_code": "Страна проживания",
+        "country_code_hint": "Страна проживания",
         "created_at": "Создано",
         "created_at_hint": "Устанавливается автоматически при создании кандидата.",
         "email": "Электронная почта",
@@ -2123,7 +2695,7 @@
         "experience_eu": "Опыт по ЕС (лет)",
         "experience_non_eu": "Опыт вне ЕС (лет)",
         "experience_total": "Общий опыт CE (лет)",
-        "experience_total_hint": "Суммируется автоматически из опыта по ЕС и вне ЕС.",
+        "experience_total_hint": "Всего: {total} лет",
         "first_contact": "Первый контакт",
         "first_contact_done": "Контакт состоялся",
         "first_contact_hint": "Отметьте, когда рекрутер впервые связался с кандидатом.",
@@ -2135,6 +2707,7 @@
         "manager": "Менеджер (рекрутер)",
         "phone": "Номер телефона",
         "poland_basis": "Основание пребывания в Польше",
+        "ops_mode": "Операционный режим",
         "residency_status": "Статус проживания в Польше",
         "current_location": "Текущее местоположение",
         "frigo_experience": "Опыт работы с холодильниками",
@@ -2145,11 +2718,23 @@
         "stage": "Этап",
         "status_reasons": "Причины",
         "unset": "Не выбрано",
-        "vacancy": "Вакансия"
+        "vacancy": "Вакансия",
+        "tags": "Теги"
+      },
+      "ops_mode": {
+        "none": "Без режима",
+        "in_work": "В работе",
+        "later": "Позже",
+        "no_reply_needed": "Ответ не нужен",
+        "escalated": "Эскалировано",
+        "hint": "Операционная метка для работы менеджера. Этап кандидата не меняется."
       },
       "header": {
         "back": "Назад к кандидатам",
-        "new_label": "Новый кандидат"
+        "back_to_procesowani": "Назад в Процессинг",
+        "new_label": "Новый кандидат",
+        "masked_label": "Кандидат #{id}",
+        "masked_label_short_id": "Кандидат {short_id}"
       },
       "history": {
         "empty": "Пока нет активности.",
@@ -2207,16 +2792,52 @@
         "current_vacancy": "Текущая вакансия",
         "short_id_badge": "ID кандидата: {id}"
       },
+      "hint": {
+        "cyrillic_translit": "Кириллица будет транслитерирована для отображения клиентам."
+      },
       "messages": {
         "delete_request_failed": "Не удалось отправить запрос на удаление.",
         "delete_request_sent": "Запрос на удаление отправлен.",
         "meta_lead": "Импортировано из Meta Leads — некоторые поля могут быть недоступны для редактирования.",
         "note_add_failed": "Не удалось добавить заметку: {detail}",
         "export_failed": "Не удалось скачать профиль кандидата.",
+        "upload_link_failed": "Не удалось создать ссылку для загрузки.",
         "save_failed": "Не удалось сохранить кандидата: {detail}",
         "saved": "Изменения сохранены",
+        "rodo_stage_blocked": "Перед переводом в контактный этап нужно отправить RODO.",
+        "rodo_stage_blocked_confirm": "Перед переводом в контактный этап нужно отправить RODO. Отправить сейчас и повторить смену этапа?",
+        "rodo_sent_retry_success": "RODO отправлено, этап обновлен.",
+        "rodo_send_or_retry_failed": "Не удалось отправить RODO или повторить смену этапа.",
+        "handoff_docs_incomplete": "Нельзя перевести в «Готов к передаче»: чеклист обязательных документов не закрыт.",
         "stage_reason_required": "Выберите хотя бы одну причину.",
-        "vacancy_hint": "Вакансия определяет компанию и статусы готовности."
+        "required_fields_missing": "Заполните обязательные поля: {fields}",
+        "override_mode_required": "Включите режим override, чтобы редактировать данные, заполненные кандидатом.",
+        "override_reason_missing": "Для изменения данных кандидата необходимо указать причину override.",
+        "profile_inactive": "Профиль неактивен: {name}",
+        "profile_fallback_default": "Профиль не найден; используется профиль по умолчанию.",
+        "profile_not_found": "Профиль не найден.",
+        "vacancy_hint": "Вакансия определяет компанию и статусы готовности.",
+        "favorite_toggle_failed": "Не удалось изменить статус избранного: {detail}"
+      },
+      "override": {
+        "title": "Защита данных, заполненных кандидатом",
+        "description": "Поля персональных данных, контактов и опыта по умолчанию только для чтения. Включайте override только если сознательно исправляете данные кандидата.",
+        "edit": "Редактировать",
+        "done": "Готово",
+        "enable": "Включить override",
+        "disable": "Выключить override",
+        "reason_label": "Причина override",
+        "reason_placeholder": "Почему вы переопределяете данные, заполненные кандидатом?",
+        "protected_fields_label": "Защищённые поля кандидата",
+        "protected_fields_loading": "Загружаем контракт полей…"
+      },
+      "validation": {
+        "poland_basis_required": "Укажите основу пребывания при нахождении в Польше",
+        "email_invalid_format": "Неверный формат электронной почты.",
+        "phone_only_digits": "Номер телефона должен содержать только цифры.",
+        "phone_too_short": "Номер телефона слишком короткий.",
+        "phone_too_long": "Номер телефона слишком длинный.",
+        "stage_not_in_profile": "Текущий этап \"{stage}\" не соответствует профилю \"{profile}\". Выберите этап из профиля или измените профиль вакансии."
       },
       "nav": {
         "intake": "Анкета",
@@ -2237,7 +2858,8 @@
         }
       },
       "placeholders": {
-        "phone_number": "Номер телефона"
+        "phone_number": "Номер телефона",
+        "tag": "Введите название тега"
       },
       "prompts": {
         "delete_reason": "Укажите причину (необязательно):"
@@ -2271,7 +2893,20 @@
         },
         "status": {
           "title": "Статус и соответствие требованиям",
-          "description": "Данные о пребывании, доступность и правовые основания."
+          "description": "Данные о пребывании, доступность и правовые основания.",
+          "qualifications": "Квалификации"
+        },
+        "custom_fields": {
+          "title": "Дополнительные поля",
+          "description": "Дополнительные поля, определённые в профиле кандидата."
+        },
+        "communication": {
+          "title": "Коммуникация",
+          "description": "RODO и попытки контакта"
+        },
+        "operations": {
+          "title": "Операционная работа",
+          "description": "Режим работы менеджера, не меняет этап кандидата."
         }
       },
       "status": {
@@ -2343,6 +2978,7 @@
         }
       },
       "insights": {
+        "title": "Обзор",
         "subtitle": "Живой срез кандидатов, подходящих под текущие фильтры.",
         "total": "В выборке",
         "total_hint": "{count} соответствует фильтрам",
@@ -2396,6 +3032,7 @@
         "docs_order": "Документы: {value}",
         "preferred_channel": "Канал: {value}",
         "in_poland": "В Польше: {value}",
+        "ops_mode": "Режим: {value}",
         "poland_basis": "Основание: {value}",
         "trailer_types": "Прицепы: {value}",
         "created_range": "Создано: {from} — {to}",
@@ -2407,6 +3044,7 @@
         "manager_menu": "Менеджеры",
         "stage_menu": "Этапы",
         "reason_menu": "Причины",
+        "quick_title": "Быстрые фильтры",
         "quick_docs_ready": "Документы готовы",
         "quick_docs_attention": "Нужна проверка документов",
         "quick_docs_pending": "Документы не запрошены",
@@ -2414,6 +3052,7 @@
         "docs_order_menu": "Заказы документов",
         "preferred_channel_menu": "Канал связи",
         "in_poland_menu": "Сейчас в Польше",
+        "ops_mode_menu": "Операционный режим",
         "poland_basis_menu": "Основание пребывания",
         "trailer_types_menu": "Типы прицепов",
         "created_menu": "Дата создания",
@@ -2440,14 +3079,37 @@
         "docs_files_menu": "Файлы",
         "docs_files_with": "Есть файлы",
         "docs_files_without": "Нет файлов",
-        "docs_files_badge": "Файлы: {value}"
+        "docs_files_badge": "Файлы: {value}",
+        "quick_more": "Еще фильтры",
+        "quick_less": "Меньше фильтров",
+        "tags": "Тег: {value}",
+        "tags_menu": "Теги",
+        "tags_placeholder": "Введите теги через запятую",
+        "tags_hint": "Введите теги через запятую для фильтрации",
+        "only_favorites": "Только избранные",
+        "any": "— любые —",
+        "handoff_status_menu": "Передача",
+        "handoff_none": "Без передачи",
+        "handoff_pending": "Ожидает",
+        "handoff_accepted": "Передано",
+        "handoff_returned": "Возвращено",
+        "handoff_badge": "Передача: {value}",
+        "contact_attempts_menu": "Попытки контакта",
+        "contact_none": "Без попыток",
+        "contact_some": "1–2 попытки",
+        "contact_limit": "3+ (лимит)",
+        "contact_attempts_badge": "Попытки: {value}"
       },
       "table": {
         "columns": {
           "title": "Колонки",
           "name": "Имя",
+          "short": "Short ID",
+          "email": "Email",
           "phone": "Телефон",
           "citizenship": "Гражданство",
+          "experience": "Опыт",
+          "documents": "Документы",
           "vacancy": "Вакансия",
           "manager": "Менеджер",
           "stage": "Этап",
@@ -2458,14 +3120,27 @@
           "poland_basis": "Основание пребывания в Польше",
           "trailer_types": "Типы прицепов",
           "reasons": "Причины",
+          "tags": "Теги",
+          "is_favorite": "Избранное",
           "docs_status": "Документы",
           "docs_ordered": "Заказан",
           "docs_valid": "Действует с",
           "docs_files": "Файлы"
         },
+        "experience_years": "лет",
+        "documents_count": "док.",
+        "documents": {
+          "passport": "Паспорт",
+          "driver_license": "Права",
+          "medical": "Мед.",
+          "work_permit": "Разрешение",
+          "photo": "Фото",
+          "contract": "Договор"
+        },
         "empty": "Пусто",
         "show_more": "Показать ещё",
-        "total": "Всего: {count}"
+        "total": "Всего: {count}",
+        "total_filtered": "Показано: {shown} из {total}"
       },
       "bulk": {
         "selected": "Выбрано: {count}",
@@ -2481,26 +3156,106 @@
           "title": "Массово назначить вакансию выбранным кандидатам",
           "action": "Назначить вакансию (выбранных)"
         },
+        "handoff": {
+          "title": "Передать выбранных клиенту",
+          "action": "Передать клиенту (выбранные)"
+        },
         "archive": {
           "title": "Массово отправить в архив выбранных кандидатов",
           "action": "В архив (выбранных)"
         },
         "clear_title": "Очистить текущее выделение",
-        "clear_action": "Снять выделение"
+        "clear_action": "Снять выделение",
+        "tags": {
+          "title": "Управление тегами для выбранных кандидатов",
+          "action": "Теги (выбрано)"
+        },
+        "delete": {
+          "title": "Удалить выбранных кандидатов",
+          "action": "Удалить (выбрано)"
+        }
       },
       "row_actions": {
         "change_stage": "Сменить этап…",
         "assign_manager": "Назначить менеджера…",
         "assign_vacancy": "Назначить вакансию…"
       },
+      "context": {
+        "open_card": "Открыть карточку",
+        "select": "Выделить",
+        "deselect": "Снять выделение",
+        "change_stage": "Изменить этап",
+        "assign_manager": "Назначить менеджера",
+        "assign_vacancy": "Назначить вакансию",
+        "archive": "Архивировать"
+      },
+      "pipeline": {
+        "access_denied": "Нет доступа к пайплайну кандидатов. Обратитесь к администратору или супервайзеру для выдачи прав.",
+        "vacancy_label": "Вакансия",
+        "vacancy_untitled": "Без названия",
+        "refresh": "Обновить",
+        "refreshing": "Обновляю…",
+        "search_label": "Поиск",
+        "search_placeholder": "Имя, email, телефон…",
+        "manager_label": "Менеджер",
+        "manager_any": "Любой",
+        "citizenship_label": "Гражданство (ISO)",
+        "citizenship_placeholder": "RU/UA/PL…",
+        "docs_label": "Документы",
+        "docs_any": "Любые",
+        "docs_ready": "Готовы",
+        "docs_partial": "Частично",
+        "docs_none": "Нет",
+        "date_from_label": "С даты",
+        "date_to_label": "По дату",
+        "reset_filters": "Сбросить",
+        "empty": "Нет кандидатов по текущим фильтрам/вакансии. Измените фильтры или добавьте кандидата в вакансию.",
+        "bulk_selected": "Выбрано: {count}",
+        "bulk_move_stage_label": "Перенести в этап",
+        "bulk_move_stage_select": "— выбрать этап —",
+        "bulk_assign_manager_label": "Назначить менеджера",
+        "bulk_assign_manager_select": "— выбрать менеджера —",
+        "bulk_clear_selection": "Снять выделение",
+        "bulk_archive": "В архив",
+        "column_select_all": "Все",
+        "candidate_no_name": "Без имени",
+        "column_empty": "Пусто",
+        "switch_to_table": "Перейти к таблице",
+        "show_filters": "Показать фильтры",
+        "hide_filters": "Скрыть фильтры",
+        "card_saving": "сохраняю…",
+        "error_load": "Не удалось загрузить пайплайн",
+        "error_update_stage": "Не удалось обновить этап кандидата",
+        "error_update_stages": "Не удалось обновить этапы для части кандидатов"
+      },
+      "menu": {
+        "open": "Открыть меню",
+        "close": "Закрыть меню"
+      },
       "messages": {
         "load_failed": "Не удалось загрузить список кандидатов.",
         "reason_required": "Выберите хотя бы одну причину.",
         "bulk_stage_failed": "Не удалось применить массовую смену.",
+        "bulk_stage_partial": "Не удалось обновить {failed} из {total} кандидатов.",
+        "bulk_stage_rodo_blocked": "Для {rodo} кандидатов из {total} не отправлено RODO. Откройте карточки кандидатов, отправьте RODO и повторите массовую смену.",
+        "bulk_stage_handoff_docs_blocked": "Для {docs} кандидатов из {total} не закрыт чеклист документов. Пример недостающих: {missing}.",
+        "bulk_stage_loading": "Изменение этапа…",
         "bulk_manager_failed": "Не удалось назначить менеджера.",
         "bulk_manager_partial": "Не удалось обновить {count} кандидатов.",
+        "bulk_manager_loading": "Назначение менеджера…",
         "bulk_vacancy_failed": "Не удалось назначить вакансию.",
-        "bulk_archive_failed": "Не удалось отправить в архив."
+        "bulk_vacancy_partial": "Не удалось обновить {count} из {total} кандидатов.",
+        "bulk_vacancy_loading": "Назначение вакансии…",
+        "bulk_handoff_loading": "Загрузка клиентов…",
+        "bulk_archive_failed": "Не удалось отправить в архив.",
+        "bulk_archive_partial": "Не удалось архивировать {count} из {total} кандидатов.",
+        "bulk_archive_loading": "Архивирование кандидатов…",
+        "bulk_tags_failed": "Не удалось обновить теги.",
+        "bulk_tags_partial": "Не удалось обновить теги для {count} из {total} кандидатов.",
+        "bulk_tags_loading": "Обновление тегов...",
+        "bulk_delete_failed": "Не удалось удалить кандидатов.",
+        "bulk_delete_partial": "Не удалось удалить {count} из {total} кандидатов.",
+        "bulk_delete_loading": "Удаление кандидатов..."
       },
       "modals": {
         "manager": {
@@ -2511,31 +3266,114 @@
           "title": "Назначить вакансию (выбранные)",
           "label": "Вакансия"
         },
+        "handoff": {
+          "title": "Передать клиенту (массово)",
+          "hint": "Передать {count} выбранных кандидатов клиенту.",
+          "client_label": "Клиент",
+          "apply": "Передать",
+          "no_clients": "Нет клиентов с включённой передачей.",
+          "partial": "Передано {created} из {total}. Ошибка: {failed}.",
+          "failed": "Не удалось передать клиенту"
+        },
+        "delete": {
+          "title": "Удалить выбранных кандидатов",
+          "message": "Вы уверены, что хотите удалить {count} кандидатов? Это действие необратимо.",
+          "warning": "Внимание: удаление кандидатов необратимо. Все связанные данные будут удалены.",
+          "confirm": "Удалить"
+        },
         "archive": {
-          "title": "Отправить в архив (выбранные)",
-          "body": "Вы уверены, что хотите отправить в архив выбранных кандидатов? Действие обратимо через индивидуальное восстановление.",
-          "confirm": "Отправить в архив"
+          "title": "Архивировать выбранных кандидатов",
+          "body": "Вы уверены, что хотите архивировать выбранных кандидатов? Позже их можно восстановить из карточек кандидатов.",
+          "confirm": "Архивировать кандидатов"
         },
         "stage": {
           "title": "Массовая смена этапа",
           "new_stage": "Новый этап",
           "reasons_label": "Причины отказа"
+        },
+        "tags": {
+          "title": "Управление тегами",
+          "operation_label": "Операция",
+          "operation_add": "Добавить теги",
+          "operation_remove": "Удалить теги",
+          "tags_label": "Теги",
+          "tags_placeholder": "Введите теги через запятую",
+          "tags_hint": "Введите теги через запятую. Они будут добавлены к выбранным кандидатам или удалены из них."
         }
       },
       "select": {
         "placeholder": "— выбрать —"
       },
       "stage_labels": {
-        "probation": "Испытательный срок",
+        "new": "Новый",
+        "no_answer": "Не отвечает",
+        "contacted": "Контакт установлен",
+        "questionnaire_submitted": "Анкета заполнена",
+        "docs_wait": "Ожидаем документы",
+        "docs_got": "Документы получены",
+        "permit_ordered": "Заказ разрешения на работу",
+        "permit_received": "Разрешение на работу получено",
+        "visa": "Виза",
+        "red_paper": "Красная бумага заказана",
+        "trip_plan": "Планируем приезд",
+        "at_client": "На базе клиента",
+        "employed": "Трудоустроен",
+        "on_trip": "Выехал в рейс",
         "probation_ok": "Испытательный срок",
+        "rejected": "Отклонён",
+        "declined": "Отказался",
+        "probation": "Испытательный срок",
         "red_paper_ordered": "Красная бумага заказана",
         "hiring": "Найм",
-        "interview": "Контакт установлен"
+        "interview": "Контакт установлен",
+        "ready_for_handoff": "Готов к передаче",
+        "processing_by_client": "Обработка заказчиком",
+        "docs_submitted_permit": "Документы поданы на разрешение",
+        "handoff_returned": "Возвращён"
       }
     },
     "reminders": {
       "title": "Напоминания",
+      "inbox_title": "Входящие: напоминания и уведомления",
       "subtitle": "Показаны {scope}: {total}, непрочитанных: {unread}",
+      "quick_create": "Быстрое напоминание",
+      "create": "Создать",
+      "relative": "Относительно",
+      "tab": {
+        "tasks": "Задачи",
+        "events": "События"
+      },
+      "group": {
+        "today": "Сегодня",
+        "tomorrow": "Завтра",
+        "week": "На этой неделе",
+        "later": "Позже",
+        "unscheduled": "Без срока",
+        "done": "Завершенные / отмененные"
+      },
+      "filter": {
+        "active": "Активные",
+        "all": "Все",
+        "done": "Завершенные"
+      },
+      "priority": {
+        "low": "Низкий",
+        "normal": "Обычный",
+        "high": "Высокий"
+      },
+      "form": {
+        "title": "Что сделать",
+        "title_placeholder": "Позвонить кандидату, отправить письмо...",
+        "description": "Описание",
+        "description_placeholder": "Необязательные детали...",
+        "due": "Срок",
+        "remind_before": "Напомнить за",
+        "remind_at": "Напомнить в",
+        "priority": "Приоритет"
+      },
+      "edit": {
+        "title": "Редактировать напоминание"
+      },
       "scopes": {
         "direct": "Только мои",
         "all": "Все"
@@ -2545,13 +3383,19 @@
         "all": "все события"
       },
       "filters": {
+        "search": "Поиск",
+        "entity_all": "Все источники",
+        "priority_all": "Все приоритеты",
         "unread": "Непрочитанные",
         "all": "Все события"
       },
       "actions": {
         "refresh": "Обновить",
+        "sync": "Синхронизировать",
         "mark_all": "Очистить",
-        "mark_one": "Пометить прочитанным"
+        "mark_one": "Пометить прочитанным",
+        "open_page": "Открыть страницу напоминаний",
+        "open_entity": "Открыть"
       },
       "states": {
         "loading": "Загрузка…",
@@ -2575,6 +3419,7 @@
         "document_updated": "Документ обновлён",
         "document_requested": "Запрошен документ",
         "service_order_created": "Создан заказ услуги",
+        "communications_sla_overdue": "SLA просрочен: нужен ответ в диалоге",
         "unknown": "{event}"
       },
       "payload": {
@@ -2591,7 +3436,9 @@
       "subtitle": "Новые заявки из Meta Ads и других источников",
       "filters": {
         "status": "Статус",
-        "status_all": "Все статусы"
+        "status_all": "Все статусы",
+        "stage": "Этап",
+        "stage_all": "Все этапы"
       },
       "statuses": {
         "new": "Новый",
@@ -2600,9 +3447,17 @@
         "needs_routing": "Требует маршрутизации",
         "failed": "Ошибка"
       },
+      "stages": {
+        "new": "Новый",
+        "contacted": "Связались",
+        "qualified": "Квалифицирован",
+        "converted": "Конвертирован",
+        "lost": "Потерян"
+      },
       "table": {
         "created": "Создан",
         "status": "Статус",
+        "stage": "Этап",
         "company": "Компания",
         "vacancy": "Вакансия",
         "contact": "Контакт",
@@ -2955,9 +3810,7 @@
           "stay": "Загрузите визу или карту побыта / ВНЖ.",
           "code95": "Загрузите свидетельство Code 95, если его нет в правах.",
           "warning_title": "Не хватает документов (можно загрузить позже)",
-          "missing": {
-            "title": "Отсутствует документ: {doc}"
-          }
+          "missing": "Отсутствует документ: {doc}"
         },
         "consents": "Примите обязательные согласия.",
         "cookies": "Примите уведомление о cookie внизу страницы.",
@@ -2978,7 +3831,12 @@
           "email": "Email",
           "phone_hint": "Мы свяжемся с вами по WhatsApp, чтобы подтвердить данные и отправить инструкцию."
         },
+        "autosave": {
+          "saving": "Сохранение…",
+          "saved": "Черновик сохранён"
+        },
         "progress": {
+          "time_estimate": "~15–20 мин",
           "step": "Шаг {current} из {total}",
           "question": "Вопрос {current} из {total}",
           "document": "Документ {current} из {total}",
@@ -3109,6 +3967,9 @@
           "psych_tests": {
             "title": "Результаты психотестов"
           },
+          "medical_certificate": {
+            "title": "Медицинская справка (Orzeczenie lekarskie)"
+          },
           "adr": {
             "title": "ADR"
           }
@@ -3116,6 +3977,7 @@
         "review": {
           "title": "Проверьте информацию",
           "subtitle": "Убедитесь, что все данные верны. Вы можете редактировать любой блок.",
+          "subscribe_notifications": "Хочу получать уведомления об изменении статуса заявки",
           "contacts": "Личные данные",
           "answers": "Ответы на вопросы",
           "employment": "Опыт работы",
@@ -3134,7 +3996,12 @@
         "thank_you": {
           "title": "Спасибо!",
           "message": "Анкета отправлена. Мы проверим ваши данные и свяжемся с вами по WhatsApp. Если возникнут вопросы — напишите вашему менеджеру.",
-          "go_to_overview": "Перейти в обзор"
+          "go_to_overview": "Перейти в обзор",
+          "track_status": "Отслеживать статус заявки",
+          "open_status": "Открыть страницу статуса",
+          "copy_link": "Скопировать ссылку",
+          "link_copied": "Ссылка скопирована",
+          "qr_hint": "Отсканируйте, чтобы добавить ссылку на телефон"
         },
         "overview": {
           "title": "Обзор",
@@ -3158,7 +4025,11 @@
           "name_required": "Укажите имя и фамилию",
           "contact_required": "Укажите телефон или email",
           "no_token": "Токен не найден",
-          "submit_failed": "Не удалось отправить анкету"
+          "submit_failed": "Не удалось отправить анкету",
+          "token_expired": "Ссылка истекла или недействительна",
+          "token_expired_hint": "Запросите новую ссылку, чтобы продолжить подачу заявки.",
+          "request_new_link": "Получить новую ссылку",
+          "upload_failed": "Не удалось загрузить документ"
         },
         "in_progress": "В разработке",
         "loading": "Загрузка данных...",
@@ -3653,7 +4524,8 @@
         "received": "Получен",
         "approved": "Одобрен",
         "rejected": "Отклонён",
-        "expired": "Истёк"
+        "expired": "Истёк",
+        "ready": "Готов"
       },
       "readiness_labels": {
         "pending": "Не начато",
@@ -3683,6 +4555,29 @@
         "driver_license_exchange": "Замена прав",
         "swiadectwo_kierowcy": "Świadectwo kierowcy",
         "other": "Другое"
+      },
+      "type_codes": {
+        "driver_license": "Водительское удостоверение",
+        "driver_license_code95": "Права ЕС с кодом 95",
+        "code95": "Код 95",
+        "tacho_card": "Карта тахографа",
+        "tachograph_card": "Карта тахографа",
+        "national_id": "Удостоверение личности",
+        "identity_document": "Документ, удостоверяющий личность",
+        "passport": "Паспорт",
+        "residence_permit": "Карта побыта",
+        "residence_card": "Карта побыта",
+        "visa": "Виза",
+        "decision": "Децизия",
+        "medical_certificate": "Медицинская справка",
+        "psych_tests": "Психотесты",
+        "adr": "ADR",
+        "work_permit": "Разрешение на работу",
+        "driver_certificate": "Свидетельство водителя",
+        "swiadectwo_kierowcy": "Свидетельство водителя",
+        "additional_document": "Дополнительный документ",
+        "accommodation": "Проживание",
+        "other": "Другой документ"
       },
       "mock": {
         "passport": "Паспорт",
@@ -3726,7 +4621,12 @@
         "replace_success": "Файл обновлён",
         "workflow_failed": "Не удалось обновить процесс",
         "workflow_started": "Процесс запущен",
-        "workflow_step_marked": "Этап отмечен выполненным"
+        "workflow_step_marked": "Этап отмечен выполненным",
+        "profile_downloaded": "Профиль скачан",
+        "template_applied": "Шаблон применён: создано {created}, обновлено {updated}",
+        "notify_candidate_sent": "Письмо отправлено кандидату",
+        "notify_candidate_no_email": "У кандидата нет email",
+        "notify_candidate_failed": "Не удалось отправить письмо"
       },
       "errors": {
         "type_missing": "Выберите тип документа",
@@ -3750,7 +4650,11 @@
         "permission_reject": "Нет прав на отклонение документов",
         "permission_status": "Нет прав на смену статуса",
         "permission_upload": "Нет прав на загрузку файлов",
-        "permission_workflow": "Нет прав на управление процессом"
+        "permission_workflow": "Нет прав на управление процессом",
+        "template_not_found": "Шаблон не найден",
+        "template_apply_failed": "Не удалось применить шаблон",
+        "download_failed": "Не удалось скачать профиль",
+        "notify_failed": "Не удалось уведомить кандидата"
       },
       "actions": {
         "upload": "Загрузить",
@@ -3773,7 +4677,26 @@
         "open": "Открыть",
         "order": "Заказать",
         "ordering": "Заказываем…",
-        "upload_file": "Загрузить файл"
+        "upload_file": "Загрузить файл",
+        "notify_candidate": "Сообщить кандидату",
+        "download_profile": "Скачать профиль",
+        "apply_template": "Применить шаблон",
+        "delete_file": "Удалить файл",
+        "delete_document": "Удалить документ",
+        "confirm_delete_document": "Вы уверены, что хотите удалить этот документ?"
+      },
+      "status": {
+        "refreshing": "Обновляем…",
+        "saving": "Сохраняем…",
+        "uploading": "Загружаем…",
+        "uploading_with_progress": "Загрузка: {progress}%"
+      },
+      "simple": {
+        "upload_title": "Загрузка документов",
+        "upload_hint": "Выберите нужный документ и загрузите файл. Запрос и проверка — в «Расширенном».",
+        "upload_action": "Загрузить",
+        "advanced": "Расширенный режим",
+        "has_file": "Файл загружен"
       },
       "filters": {
         "group": "Группа",
@@ -3789,6 +4712,13 @@
         "any": "Любой",
         "not_ordered": "Без заказа",
         "ordered_only": "Только заказанные"
+      },
+      "upcoming_deadlines": {
+        "title": "Ближайшие сроки",
+        "empty": "Нет ближайших сроков",
+        "expires_in_days": "истекает через {days} дн.",
+        "expired": "просрочен",
+        "step_due": "Этап «{step}» до"
       },
       "summary": {
         "required_ready": "Готово {ready} из {total}",
@@ -3852,7 +4782,30 @@
         "reminder_placeholder": "По умолчанию",
         "optional_hint": "(опционально)",
         "metadata_section": "Метаданные",
-        "select_placeholder": "Выберите вариант"
+        "select_placeholder": "Выберите вариант",
+        "fields": {
+          "number": "Номер документа",
+          "ordered_at": "Дата заказа",
+          "issue_date": "Дата выдачи",
+          "valid_from": "Действует с",
+          "expire_date": "Действителен до",
+          "country": "Страна",
+          "work_permit_type": "Тип разрешения на работу",
+          "adr_classes": "Классы ADR",
+          "voivodeship": "Воеводство",
+          "residence_permit_type": "Тип вида на жительство",
+          "visa_type": "Тип визы"
+        },
+        "options": {
+          "work_permit_type": {
+            "type_a": "Разрешение типа A",
+            "declaration": "Заявление"
+          },
+          "residence_permit_type": {
+            "permanent": "Постоянный",
+            "temporary": "Временный"
+          }
+        }
       },
       "table": {
         "title": "Документы",
@@ -3935,6 +4888,10 @@
             "label": "Правила",
             "description": "Правила комплаенса и версии автоматизаций."
           },
+          "email": {
+            "label": "Почта (SMTP)",
+            "description": "Настройка отправки писем кандидатам (RODO, уведомления)."
+          },
           "integrations": {
             "label": "Интеграции",
             "description": "Meta Leads и подключения webhook."
@@ -3943,6 +4900,35 @@
             "label": "Журнал аудита",
             "description": "Очередь удалений и события аудита."
           }
+        },
+        "audit": {
+          "tabs": {
+            "audit": "Аудит-лог",
+            "deletion": "Очередь удаления"
+          },
+          "refresh": "Обновить",
+          "refreshing": "Загрузка…",
+          "errors": {
+            "load": "Не удалось загрузить аудит"
+          },
+          "filters": {
+            "user_id": "Пользователь (ID)",
+            "action": "Действие",
+            "from": "От",
+            "to": "До"
+          },
+          "apply": "Применить",
+          "table": {
+            "when": "Когда",
+            "actor": "Кто",
+            "action": "Действие",
+            "subject": "Объект",
+            "details": "Детали"
+          },
+          "loading": "Загрузка…",
+          "empty": "Нет записей аудита",
+          "details": "Подробнее",
+          "pagination": "Показано {from}–{to} из {total}"
         }
       },
       "aria": {
@@ -3956,6 +4942,7 @@
         "files_missing": "Нет файлов",
         "files_present": "Файлы загружены",
         "overdue": "Просрочен",
+        "missing_only": "Только отсутствующие",
         "passport_incomplete": "Паспорт неполон",
         "rejected": "Отклонён"
       },
@@ -3994,12 +4981,6 @@
         "sides_order": "Порядок сторон: {order}",
         "sides_title": "Обе стороны",
         "upload_title": "Загрузка файлов"
-      },
-      "status": {
-        "refreshing": "Обновляем…",
-        "saving": "Сохраняем…",
-        "uploading": "Загружаем…",
-        "uploading_with_progress": "Загрузка: {progress}%"
       }
     },
     "ruleset": {
@@ -4141,7 +5122,8 @@
         "credential_created": "Подключение сохранено",
         "secret_rotated": "Новый секрет: {secret}",
         "mapping_saved": "Маппинг сохранён",
-        "lead_rerouted": "Лид отправлен в обработку"
+        "lead_rerouted": "Лид отправлен в обработку",
+        "lead_retried": "Лид успешно обработан"
       },
       "errors": {
         "load": "Не удалось загрузить данные Meta Leads",
@@ -4155,7 +5137,8 @@
         "mapping_create": "Не удалось сохранить маппинг",
         "mapping_update": "Не удалось обновить запись",
         "mapping_delete": "Не удалось удалить маппинг",
-        "reroute": "Не удалось маршрутизировать лид"
+        "reroute": "Не удалось маршрутизировать лид",
+        "retry": "Повтор не удался"
       },
       "prompts": {
         "delete_credential": "Удалить учётные данные Meta?",
@@ -4224,9 +5207,29 @@
         },
         "empty": "Нет лидов в статусе needs_routing",
         "actions": {
-          "reroute": "Маршрутизировать"
+          "reroute": "Маршрутизировать",
+          "retry": "Повторить"
         }
       }
+    },
+    "funnels": {
+      "title": "Воронки кандидатов",
+      "subtitle": "Управление этапами воронки. Pipeline и Dashboard используют эти этапы.",
+      "custom_stages": "Пользовательские этапы",
+      "add_stage": "Добавить этап",
+      "no_custom_stages": "Нет пользовательских этапов. Добавьте первый или используйте системные.",
+      "system_stages": "Системные этапы (только чтение)",
+      "system_stages_help": "Этапы по умолчанию. Пользовательские этапы объединяются с ними в Pipeline и Dashboard.",
+      "edit_stage": "Редактировать этап",
+      "create_stage": "Создать этап",
+      "label_field": "Название",
+      "code_field": "Код",
+      "order_field": "Порядок",
+      "active_field": "Активен",
+      "code_readonly": "Код нельзя изменить",
+      "create": "Создать",
+      "validation_required": "Код и название обязательны",
+      "confirm_delete": "Удалить этап \"{label}\"?"
     },
     "settings": {
       "title": "Центр управления рабочим пространством",
@@ -4247,6 +5250,10 @@
           "label": "Платформа → тенанты",
           "description": "Создание и сопровождение клиентских воркспейсов."
         },
+        "funnels": {
+          "label": "Воронки и этапы",
+          "description": "Управление этапами воронки кандидатов и лидов."
+        },
         "documents": {
           "label": "Каталог документов",
           "description": "Типы документов и требования по загрузке."
@@ -4255,15 +5262,221 @@
           "label": "Правила (Ruleset)",
           "description": "Версии правил комплаенса и автопроверок."
         },
+        "candidate_profiles": {
+          "label": "Профили кандидатов",
+          "description": "Управление профилями кандидатов для вакансий."
+        },
+        "custom_fields": {
+          "label": "Кастомные поля",
+          "description": "Управление дополнительными полями для кандидатов и документов."
+        },
+        "email": {
+          "label": "Почта (SMTP)",
+          "description": "Настройка отправки писем (RODO, уведомления)."
+        },
+        "tenant_links": {
+          "label": "Передача и попытки контакта",
+          "description": "Включить передачу клиентам и политику попыток контакта."
+        },
+        "legal": {
+          "label": "RODO и политика конфиденциальности",
+          "description": "Клаузула RODO и политика для отправки кандидатам."
+        },
         "integrations": {
           "label": "Интеграции",
           "description": "Meta Leads и подключение вебхуков."
+        },
+        "communications": {
+          "label": "Настройки коммуникаций",
+          "description": "Главное меню настроек коммуникаций с разделением по доменам."
+        },
+        "communications_messengers": {
+          "label": "Настройки мессенджеров",
+          "description": "Каналы Telegram/WhatsApp, шаблоны и командные пресеты."
+        },
+        "communications_queue": {
+          "label": "Настройки очереди",
+          "description": "Стратегия маршрутизации и управление очередью менеджеров."
+        },
+        "communications_sla": {
+          "label": "Настройки SLA",
+          "description": "Политика эскалаций для просроченных диалогов."
         },
         "audit": {
           "label": "Аудит-лог",
           "description": "Очередь удалений и события аудита."
         }
       }
+    },
+    "communications_settings": {
+      "subtitle": "Настройки разделены по доменам: почта, мессенджеры, очередь и SLA управляются отдельно.",
+      "open_messengers": "Открыть настройки мессенджеров",
+      "open_email": "Открыть настройки почты",
+      "open_queue": "Открыть настройки очереди",
+      "open_sla": "Открыть настройки SLA"
+    },
+    "communications_messengers": {
+      "title": "Настройки мессенджеров",
+      "subtitle": "Компактное подключение по каналам: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.",
+      "actions": {
+        "all_settings": "Все настройки коммуникаций",
+        "open_messages": "Открыть сообщения"
+      },
+      "channel_summary": "{total} аккаунт(ов) · {active} активных · {connected} подключено",
+      "channel_state": "канал: {state}",
+      "states": {
+        "enabled": "включен",
+        "disabled": "выключен"
+      },
+      "toggles": {
+        "enabled": "Включен",
+        "inbound": "Входящие",
+        "outbound": "Исходящие"
+      },
+      "fields": {
+        "account_label": "Название аккаунта",
+        "bot_token": "Токен бота",
+        "external_ref": "Внешний ref",
+        "phone_number_id": "Phone number ID",
+        "access_token": "Токен доступа",
+        "business_account_id": "Business account ID",
+        "page_id": "Page ID",
+        "page_access_token": "Токен страницы",
+        "app_secret": "App secret",
+        "instagram_account_id": "Instagram account ID"
+      },
+      "channels": {
+        "telegram": {
+          "title": "Telegram",
+          "subtitle": "Токен бота и вебхук",
+          "connect": "Подключить Telegram"
+        },
+        "whatsapp": {
+          "title": "WhatsApp",
+          "subtitle": "Meta Cloud API (phone number id + token)",
+          "connect": "Подключить WhatsApp"
+        },
+        "viber": {
+          "title": "Viber",
+          "subtitle": "Токен бота",
+          "connect": "Подключить Viber"
+        },
+        "messenger": {
+          "title": "Facebook Messenger",
+          "subtitle": "Интеграция токена страницы",
+          "connect": "Подключить Messenger"
+        },
+        "instagram": {
+          "title": "Instagram",
+          "subtitle": "Instagram Graph API",
+          "connect": "Подключить Instagram"
+        }
+      },
+      "account": {
+        "id": "id",
+        "active": "Активен",
+        "test": "Тест",
+        "set_webhook": "Установить webhook",
+        "delete_webhook": "Удалить webhook",
+        "webhook": "Webhook",
+        "verify_token": "Verify token",
+        "copy_webhook": "Скопировать webhook URL",
+        "copy_verify_token": "Скопировать verify token",
+        "last_error": "Последняя ошибка",
+        "empty": "Для этого канала пока нет подключенных аккаунтов."
+      },
+      "checklist": {
+        "meta": {
+          "title": "Чеклист подключения провайдера",
+          "step_1": "Создайте аккаунт с учетными данными и сохраните.",
+          "step_2": "Нажмите Тест, чтобы получить webhook URL/token и проверить доступ.",
+          "step_3": "Скопируйте Webhook URL и Verify token в настройки webhook в Meta.",
+          "step_4": "Подпишите нужные webhook fields в кабинете провайдера и отправьте тестовое событие.",
+          "step_5": "Вернитесь сюда и снова нажмите Тест, чтобы увидеть статус connected."
+        },
+        "telegram": {
+          "title": "Чеклист подключения Telegram",
+          "step_1": "Создайте Telegram-аккаунт с токеном бота.",
+          "step_2": "Используйте Установить webhook, чтобы зарегистрировать публичный CRM endpoint в Bot API.",
+          "step_3": "Нажмите Тест для проверки доступа бота и диагностики webhook.",
+          "step_4": "Используйте Удалить webhook при ротации или отключении интеграции."
+        }
+      },
+      "whatsapp_flow_hint": "Поток WhatsApp: создайте аккаунт, нажмите Тест, затем скопируйте webhook URL и verify token в настройки Meta Webhook.",
+      "notices": {
+        "channel_switches_updated": "{channel}: переключатели обновлены",
+        "telegram_created": "Telegram-аккаунт создан",
+        "whatsapp_created": "WhatsApp-аккаунт создан",
+        "viber_created": "Viber-аккаунт создан",
+        "messenger_created": "Messenger-аккаунт создан",
+        "instagram_created": "Instagram-аккаунт создан",
+        "account_state_updated": "Состояние аккаунта обновлено",
+        "connection_test_completed": "Тест подключения выполнен",
+        "telegram_webhook_set": "Telegram webhook установлен",
+        "telegram_webhook_deleted": "Telegram webhook удален",
+        "webhook_copied": "Webhook URL скопирован",
+        "verify_token_copied": "Verify token скопирован"
+      }
+    },
+    "communications_sla": {
+      "title": "Настройки SLA",
+      "subtitle": "Политика эскалаций для просроченных коммуникационных диалогов.",
+      "policy_title": "Политика эскалаций SLA",
+      "recipient_mode": "Режим получателя",
+      "recipient_mode_help": "Определяет, кто получает события `communications_sla_overdue`.",
+      "muted_channels": "Отключенные каналы для SLA",
+      "actions": {
+        "all": "Все настройки коммуникаций"
+      },
+      "toggles": {
+        "enabled": "Включить SLA-эскалации",
+        "notifications": "Создавать in-app уведомления",
+        "reminders": "Создавать задачи-напоминания"
+      },
+      "errors": {
+        "load": "Не удалось загрузить настройки SLA",
+        "save": "Не удалось сохранить настройки SLA"
+      }
+    },
+    "legal": {
+      "title": "Юридические документы (RODO, политика конфиденциальности)",
+      "subtitle": "Настройте активную клаузулу RODO и политику. Без активной клаузулы RODO нельзя отправлять информацию кандидатам.",
+      "rodo": "Клаузула RODO",
+      "privacy": "Политика конфиденциальности",
+      "active": "Активный",
+      "no_rodo": "Нет активной клаузулы RODO — нельзя отправлять информацию кандидатам.",
+      "no_privacy": "Нет активной политики конфиденциальности.",
+      "link": "Ссылка",
+      "set_active": "Сделать активным",
+      "version_id": "Версия (напр. 2025-01-01)",
+      "content_url": "URL документа (PDF или страница)",
+      "add_version": "Добавить версию",
+      "created": "Создано",
+      "activated": "Установлено как активный"
+    },
+    "tenant_links": {
+      "title": "Передача и попытки контакта",
+      "subtitle": "Включите передачу и политику попыток контакта для каждого связанного клиента.",
+      "no_links": "Нет связей с клиентами. Обратитесь к администратору платформы.",
+      "handoff_label": "Передача включена",
+      "handoff_updated": "Сохранено",
+      "add_org_link": "Добавить организацию (портал клиента)",
+      "add_org_hint": "Укажите UUID тенанта организации (напр. Фирма XYZ). После добавления она появится в модалке передачи и её пользователи увидят переданных кандидатов в Процессинг.",
+      "tenant_uuid": "UUID тенанта",
+      "cancel_add": "Отмена",
+      "link_created": "Связь добавлена",
+      "invalid_uuid": "Неверный UUID тенанта",
+      "edit_policy": "Попытки контакта",
+      "hide_policy": "Скрыть попытки контакта",
+      "policy_updated": "Сохранено",
+      "policy_enabled": "Отслеживание попыток контакта",
+      "max_attempts": "Макс. попыток",
+      "post_action": "При превышении",
+      "auto_reject": "Отклонить кандидата",
+      "stage_change": "Изменить этап",
+      "stage_code": "Этап",
+      "type_company": "Команда в нашей системе",
+      "type_org": "Собственный портал клиента"
     },
     "invoices": {
       "title": "Счета",

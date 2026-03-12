@@ -17,7 +17,27 @@ export interface VacancyPayload {
   is_active?: boolean;
   is_archived?: boolean;
   is_open?: boolean;
+  candidate_profile_id?: string | null;
   extra?: Record<string, unknown> | string | null;
+}
+
+export interface Vacancy {
+  id: string;
+  company_id: string;
+  title: string;
+  status: string;
+  description?: string | null;
+  location?: string | null;
+  company_name?: string | null;
+  currency?: string | null;
+  is_open?: boolean | null;
+  is_active?: boolean | null;
+  is_archived?: boolean | null;
+  candidate_profile_id?: string | null;
+  candidate_profile_name?: string | null;
+  candidate_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export async function createVacancy(payload: VacancyPayload) {
@@ -35,7 +55,18 @@ export async function getVacancy(id: string) {
   return data;
 }
 
-export async function listVacancies(params?: Record<string, unknown>) {
-  const { data } = await api.get("/vacancies/", { params });
+export interface ListVacanciesParams {
+  company_id?: string;
+  status?: string;
+  candidate_profile_id?: string;
+  q?: string;
+  limit?: number;
+  offset?: number;
+  order_by?: string;
+  desc?: string | boolean;
+}
+
+export async function listVacancies(params?: ListVacanciesParams): Promise<Vacancy[]> {
+  const { data } = await api.get<Vacancy[]>("/vacancies/", { params });
   return data;
 }

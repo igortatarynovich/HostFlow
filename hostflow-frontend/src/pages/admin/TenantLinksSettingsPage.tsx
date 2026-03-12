@@ -1,0 +1,378 @@
+import { useCallback, useEffect, useState } from 'react'
+import { useI18n } from '../../i18n'
+import { useAuth } from '../../store/useAuth'
+import { useMetaStages } from '../../store/useMeta'
+import {
+  listTenantLinks,
+  updateTenantLink,
+  createTenantLink,
+  getContactPolicy,
+  type TenantLink,
+  type ContactPolicy,
+} from '../../api/tenantLinks'
+import { useToast } from '../../components/Toast'
+
+export default function TenantLinksSettingsPage() {
+  const { t } = useI18n()
+  const { me } = useAuth()
+  const { notify } = useToast()
+  const meta = useMetaStages()
+  const stageOptions = meta?.order || meta?.codes || []
+
+  const tenantId = (me as { tenant_id?: string })?.tenant_id
+  const [links, setLinks] = useState<TenantLink[]>([])
+  const [loading, setLoading] = useState(true)
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [addOrgOpen, setAddOrgOpen] = useState(false)
+  const [addOrgTenantId, setAddOrgTenantId] = useState('')
+  const [addOrgHandoff, setAddOrgHandoff] = useState(true)
+  const [addOrgSaving, setAddOrgSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!tenantId) return
+    try {
+      setLoading(true)
+      const data = await listTenantLinks(tenantId)
+      setLinks(data)
+    } catch (e: unknown) {
+      notify({
+        title: (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error',
+        variant: 'error',
+      })
+      setLinks([])
+    } finally {
+      setLoading(false)
+    }
+  }, [tenantId, notify])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const handleHandoffToggle = async (link: TenantLink, enabled: boolean) => {
+    if (!tenantId) return
+    setSavingId(link.id)
+    try {
+      const updated = await updateTenantLink(tenantId, link.id, { handoff_enabled: enabled })
+      setLinks((prev) => prev.map((l) => (l.id === link.id ? updated : l)))
+      notify({
+        title: t('admin.tenant_links.handoff_updated'),
+        variant: 'success',
+      })
+    } catch (e: unknown) {
+      notify({
+        title: (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error',
+        variant: 'error',
+      })
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const handleAddOrgLink = async () => {
+    if (!tenantId || !addOrgTenantId.trim()) return
+    const tid = addOrgTenantId.trim().replace(/\s/g, '')
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tid)) {
+      notify({ title: t('admin.tenant_links.invalid_uuid'), variant: 'error' })
+      return
+    }
+    setAddOrgSaving(true)
+    try {
+      const created = await createTenantLink(tenantId, {
+        client_tenant_id: tid,
+        handoff_enabled: addOrgHandoff,
+      })
+      setLinks((prev) => [...prev, created])
+      setAddOrgTenantId('')
+      setAddOrgOpen(false)
+      notify({
+        title: t('admin.tenant_links.link_created'),
+        variant: 'success',
+      })
+    } catch (e: unknown) {
+      notify({
+        title: (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error',
+        variant: 'error',
+      })
+    } finally {
+      setAddOrgSaving(false)
+    }
+  }
+
+  const handleContactPolicySave = async (link: TenantLink, policy: ContactPolicy) => {
+    if (!tenantId) return
+    setSavingId(link.id)
+    try {
+      const updated = await updateTenantLink(tenantId, link.id, { contact_policy: policy })
+      setLinks((prev) => prev.map((l) => (l.id === link.id ? updated : l)))
+      setExpandedId(null)
+      notify({
+        title: t('admin.tenant_links.policy_updated'),
+        variant: 'success',
+      })
+    } catch (e: unknown) {
+      notify({
+        title: (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error',
+        variant: 'error',
+      })
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  if (!tenantId) {
+    return (
+      <div className="card p-6">
+        <p className="text-sm text-slate-500">{t('common.loading')}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <section className="card p-6">
+        <header className="mb-4">
+          <h2 className="text-xl font-semibold text-slate-900">
+            {t('admin.tenant_links.title')}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {t('admin.tenant_links.subtitle')}
+          </p>
+        </header>
+
+        {loading ? (
+          <p className="text-sm text-slate-500">{t('common.loading')}</p>
+        ) : (
+          <>
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => setAddOrgOpen((o) => !o)}
+                className="btn-secondary btn-sm"
+              >
+                {addOrgOpen
+                  ? t('admin.tenant_links.cancel_add')
+                  : t('admin.tenant_links.add_org_link')}
+              </button>
+              {addOrgOpen && (
+                <div className="mt-3 rounded-xl border border-brand-100 bg-white p-4">
+                  <p className="mb-2 text-sm text-slate-600">
+                    {t('admin.tenant_links.add_org_hint')}
+                  </p>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="min-w-[280px] flex-1">
+                      <label className="label">
+                        {t('admin.tenant_links.tenant_uuid')}
+                      </label>
+                      <input
+                        type="text"
+                        value={addOrgTenantId}
+                        onChange={(e) => setAddOrgTenantId(e.target.value)}
+                        placeholder="517319d0-b53e-493d-9ac8-40f23091a35d"
+                        className="input mt-1 font-mono text-sm"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={addOrgHandoff}
+                        onChange={(e) => setAddOrgHandoff(e.target.checked)}
+                      />
+                      <span className="text-sm">
+                        {t('admin.tenant_links.handoff_label')}
+                      </span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddOrgLink}
+                      disabled={addOrgSaving || !addOrgTenantId.trim()}
+                      className="btn-primary"
+                    >
+                      {addOrgSaving
+                        ? t('common.saving')
+                        : t('common.actions.add')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            {links.length === 0 && !addOrgOpen ? (
+              <p className="text-sm text-slate-500">
+                {t('admin.tenant_links.no_links')}
+              </p>
+            ) : (
+          <ul className="space-y-3">
+            {links.map((link) => (
+              <LinkRow
+                key={link.id}
+                link={link}
+                stageOptions={stageOptions}
+                saving={savingId === link.id}
+                expanded={expandedId === link.id}
+                onToggleExpand={() => setExpandedId((id) => (id === link.id ? null : link.id))}
+                onHandoffToggle={(enabled) => handleHandoffToggle(link, enabled)}
+                onContactPolicySave={(policy) => handleContactPolicySave(link, policy)}
+              />
+            ))}
+          </ul>
+            )}
+          </>
+        )}
+      </section>
+    </div>
+  )
+}
+
+function LinkRow({
+  link,
+  stageOptions,
+  saving,
+  expanded,
+  onToggleExpand,
+  onHandoffToggle,
+  onContactPolicySave,
+}: {
+  link: TenantLink
+  stageOptions: string[]
+  saving: boolean
+  expanded: boolean
+  onToggleExpand: () => void
+  onHandoffToggle: (enabled: boolean) => void
+  onContactPolicySave: (policy: ContactPolicy) => void
+}) {
+  const { t } = useI18n()
+  const policy = getContactPolicy(link)
+  const companyLabel = link.company_name || link.client_company_id || '—'
+
+  return (
+    <li className="card rounded-2xl border-brand-50 bg-brand-50/30 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="font-medium text-slate-900">{companyLabel}</div>
+          {link.client_company_id && (
+            <span className="badge mt-1 bg-slate-100 text-slate-600">{t('admin.tenant_links.type_company')}</span>
+          )}
+          {link.client_tenant_id && (
+            <span className="badge mt-1 bg-brand-100 text-brand-700">{t('admin.tenant_links.type_org')}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!!link.handoff_enabled}
+              disabled={saving}
+              onChange={(e) => onHandoffToggle(e.target.checked)}
+            />
+            <span className="text-sm">{t('admin.tenant_links.handoff_label')}</span>
+          </label>
+          <button
+            type="button"
+            onClick={onToggleExpand}
+            className="text-sm text-brand-600 hover:underline"
+          >
+            {expanded
+              ? t('admin.tenant_links.hide_policy')
+              : t('admin.tenant_links.edit_policy')}
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <ContactPolicyForm
+          policy={policy}
+          stageOptions={stageOptions}
+          saving={saving}
+          onSave={onContactPolicySave}
+        />
+      )}
+    </li>
+  )
+}
+
+function ContactPolicyForm({
+  policy,
+  stageOptions,
+  saving,
+  onSave,
+}: {
+  policy: ContactPolicy
+  stageOptions: string[]
+  saving: boolean
+  onSave: (policy: ContactPolicy) => void
+}) {
+  const { t } = useI18n()
+  const [enabled, setEnabled] = useState(policy.enabled)
+  const [maxAttempts, setMaxAttempts] = useState(policy.max_attempts)
+  const [postAction, setPostAction] = useState<'auto_reject' | 'stage_change'>(policy.post_action)
+  const [stageCode, setStageCode] = useState(policy.stage_code ?? '')
+
+  const handleSave = () => {
+    onSave({
+      enabled,
+      max_attempts: maxAttempts,
+      post_action: postAction,
+      stage_code: postAction === 'stage_change' ? stageCode || undefined : undefined,
+    })
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-brand-100 bg-white p-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex items-center gap-2">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          <span className="text-sm">{t('admin.tenant_links.policy_enabled')}</span>
+        </label>
+        <div>
+          <label className="label">
+            {t('admin.tenant_links.max_attempts')}
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={10}
+            value={maxAttempts}
+            onChange={(e) => setMaxAttempts(Number(e.target.value) || 3)}
+            className="input mt-1 w-20"
+          />
+        </div>
+        <div>
+          <label className="label">
+            {t('admin.tenant_links.post_action')}
+          </label>
+          <select
+            value={postAction}
+            onChange={(e) => setPostAction(e.target.value as 'auto_reject' | 'stage_change')}
+            className="input mt-1"
+          >
+            <option value="auto_reject">{t('admin.tenant_links.auto_reject')}</option>
+            <option value="stage_change">{t('admin.tenant_links.stage_change')}</option>
+          </select>
+        </div>
+        {postAction === 'stage_change' && (
+          <div>
+            <label className="label">
+              {t('admin.tenant_links.stage_code')}
+            </label>
+            <select value={stageCode} onChange={(e) => setStageCode(e.target.value)} className="input mt-1">
+              <option value="">—</option>
+              {stageOptions.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="btn-primary mt-4"
+      >
+        {saving ? t('common.saving') : t('common.save')}
+      </button>
+    </div>
+  )
+}

@@ -1,10 +1,38 @@
 import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import type { Icon as TablerIcon } from '@tabler/icons-react'
+import {
+  IconBell,
+  IconBuilding,
+  IconCalendarEvent,
+  IconCalendarOff,
+  IconChevronDown,
+  IconChecklist,
+  IconClock,
+  IconCreditCard,
+  IconDashboard,
+  IconFileText,
+  IconFilter,
+  IconInbox,
+  IconLayoutKanban,
+  IconLogout,
+  IconMail,
+  IconMessageCircle,
+  IconPlugConnected,
+  IconSettings,
+  IconShield,
+  IconUsers,
+  IconUser,
+  IconUsersGroup,
+} from '@tabler/icons-react'
 import type { TenantSummary } from '../../api/types'
 import type { NavItem } from '../../app/routes'
-import { NAV_GROUPS } from '../../app/routes'
 import { useI18n } from '../../i18n'
+import { usePermissions } from '../../hooks/usePermissions'
+import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
+import { getTenantModules } from '../../api/tenants'
+import type { TenantModuleSettings } from '../../api/types'
 
 type SidebarProps = {
   items: NavItem[]
@@ -12,23 +40,145 @@ type SidebarProps = {
   open: boolean
   onClose: () => void
   onLogout: () => void
+  pendingHandoffsCount?: number
 }
 
 const GROUP_STORAGE_KEY = 'hf:ui:sidebar-groups'
+const DEFAULT_ICON: TablerIcon = IconChecklist
 
-export function Sidebar({ items, tenant, open, onClose, onLogout }: SidebarProps) {
+const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
+  overview: IconDashboard,
+  candidates: IconUsers,
+  clients: IconBuilding,
+  'do-procesowania': IconFilter,
+  vacancies: IconLayoutKanban,
+  documents: IconFileText,
+  services: IconChecklist,
+  invoices: IconFileText,
+  'communications-setup': IconPlugConnected,
+  'messages-inbox': IconMessageCircle,
+  'email-inbox': IconMail,
+  calendar: IconCalendarEvent,
+  planner: IconChecklist,
+  'sla-incidents': IconBell,
+  reminders: IconBell,
+  'command-audit': IconShield,
+  'team-availability': IconUsersGroup,
+  'my-availability': IconClock,
+  'time-off': IconCalendarOff,
+  leads: IconInbox,
+  settings: IconSettings,
+  'settings-users': IconUsersGroup,
+  'settings-billing': IconCreditCard,
+  'settings-tenants': IconBuilding,
+  'settings-funnels': IconLayoutKanban,
+  'settings-docs': IconFileText,
+  'settings-legal': IconShield,
+  'settings-company-access': IconUsersGroup,
+  'settings-email': IconMail,
+  'settings-tenant-links': IconUsers,
+  'settings-integrations': IconPlugConnected,
+  'settings-ruleset': IconShield,
+  'settings-audit': IconShield,
+  'settings-communications': IconMessageCircle,
+  profile: IconUser,
+}
+
+export function Sidebar({ items, tenant, open, onClose, onLogout, pendingHandoffsCount = 0 }: SidebarProps) {
   const { t } = useI18n()
+  const { isClientTenant } = usePermissions()
+  const { canUseCommunicationsFeature } = useCommunicationsAccess()
+  const [modules, setModules] = useState<TenantModuleSettings | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const data = await getTenantModules()
+        if (mounted) setModules(data)
+      } catch {
+        if (mounted) setModules(null)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const visibleItems = useMemo(() => {
+    const moduleByItemKey: Partial<Record<string, keyof TenantModuleSettings>> = {
+      candidates: 'candidates',
+      clients: 'companies',
+      vacancies: 'vacancies',
+      documents: 'documents',
+      leads: 'leads',
+      services: 'services',
+      invoices: 'services',
+      reminders: 'candidates',
+      communications: 'candidates',
+      'communications-setup': 'candidates',
+      'messages-inbox': 'candidates',
+      'email-inbox': 'candidates',
+      calendar: 'candidates',
+      planner: 'candidates',
+      'team-availability': 'candidates',
+      'my-availability': 'candidates',
+      'time-off': 'candidates',
+      'command-audit': 'candidates',
+      'sla-incidents': 'candidates',
+      'do-procesowania': 'candidates',
+    }
+
+    const commFeatureByItemKey: Partial<Record<string, Parameters<typeof canUseCommunicationsFeature>[0]>> = {
+      'messages-inbox': 'messages',
+      'email-inbox': 'email',
+      calendar: 'calendar',
+      planner: 'planner',
+      'team-availability': 'teamAvailability',
+      'my-availability': 'myAvailability',
+      'time-off': 'timeOffRequests',
+      'command-audit': 'communicationsAdmin',
+      'settings-communications': 'communicationsAdmin',
+    }
+
+    const moduleFiltered = items.filter((item) => {
+      if (item.key === 'communications') return false
+      if (item.key === 'communications-setup') {
+        return canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')
+      }
+      if (item.key === 'sla-incidents') {
+        return canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')
+      }
+      const commFeature = commFeatureByItemKey[item.key]
+      if (commFeature && !canUseCommunicationsFeature(commFeature)) return false
+      const moduleKey = moduleByItemKey[item.key]
+      if (!moduleKey) return true
+      if (!modules) return true
+      return Boolean(modules[moduleKey])
+    })
+
+    if (!isClientTenant) return moduleFiltered
+    const allowed = new Set(['candidates', 'do-procesowania', 'reminders', 'sla-incidents', 'messages-inbox', 'email-inbox'])
+    return moduleFiltered.filter((item) => allowed.has(item.key))
+  }, [canUseCommunicationsFeature, isClientTenant, items, modules])
 
   // Основные элементы, которые выносим наверх
   const mainItems = useMemo(() => {
-    const order = ['overview', 'candidates', 'clients', 'vacancies']
-    const filtered = items.filter(
+    const order = isClientTenant
+      ? ['candidates', 'do-procesowania', 'messages-inbox', 'email-inbox', 'sla-incidents', 'reminders']
+      : ['overview', 'candidates', 'clients', 'do-procesowania', 'vacancies', 'messages-inbox', 'email-inbox']
+    const filtered = visibleItems.filter(
       (item) =>
         item.path &&
-        (item.key === 'overview' ||
-          item.key === 'candidates' ||
-          item.key === 'clients' ||
-          item.key === 'vacancies')
+        (isClientTenant
+          ? item.key === 'candidates' || item.key === 'do-procesowania' || item.key === 'messages-inbox' || item.key === 'email-inbox' || item.key === 'sla-incidents' || item.key === 'reminders'
+          : item.key === 'overview' ||
+            item.key === 'candidates' ||
+            item.key === 'clients' ||
+            item.key === 'do-procesowania' ||
+            item.key === 'vacancies' ||
+            item.key === 'messages-inbox' ||
+            item.key === 'email-inbox')
     )
     // Сортируем в нужном порядке
     return filtered.sort((a, b) => {
@@ -36,19 +186,77 @@ export function Sidebar({ items, tenant, open, onClose, onLogout }: SidebarProps
       const indexB = order.indexOf(b.key)
       return indexA - indexB
     })
-  }, [items])
+  }, [isClientTenant, visibleItems])
 
-  const sections = useMemo(
-    () =>
-      NAV_GROUPS.filter((section) => section.key !== 'account' && section.key !== 'overview' && section.key !== 'people')
-        .map((section) => ({
-          ...section,
-          label: t(section.labelKey),
-          items: items.filter((item) => item.group === section.key && item.path),
-        }))
-        .filter((section) => section.items.length > 0),
-    [items, t]
-  )
+  const sections = useMemo(() => {
+    const sectionDefs = isClientTenant
+      ? [
+          {
+            key: 'client-workflow',
+            label: t('app.shell.sidebar.client_workflow', { defaultValue: 'Client Workflow' }),
+            itemKeys: ['sla-incidents', 'reminders'],
+          },
+        ]
+      : [
+          {
+            key: 'operations',
+            label: t('app.shell.sidebar.operations', { defaultValue: 'Operations' }),
+            itemKeys: ['documents', 'services', 'invoices', 'sla-incidents', 'reminders'],
+          },
+          {
+            key: 'communications',
+            label: t('app.shell.sidebar.communications_workspace', { defaultValue: 'Communications Workspace' }),
+            itemKeys: ['communications-setup', 'calendar', 'planner', 'command-audit', 'team-availability', 'my-availability', 'time-off'],
+          },
+          {
+            key: 'leads',
+            label: t('app.nav.groups.leads'),
+            itemKeys: ['leads'],
+          },
+          {
+            key: 'settings',
+            label: t('app.nav.groups.admin'),
+            itemKeys: [
+              'settings',
+              'settings-legal',
+              'settings-users',
+              'settings-company-access',
+              'settings-funnels',
+              'settings-docs',
+              'settings-billing',
+              'settings-communications',
+              'settings-email',
+              'settings-integrations',
+              'settings-tenant-links',
+              'settings-tenants',
+              'settings-ruleset',
+              'settings-audit',
+            ],
+          },
+        ]
+
+    const byKey = new Map(visibleItems.filter((item) => Boolean(item.path)).map((item) => [item.key, item]))
+    const usedKeys = new Set(mainItems.map((item) => item.key))
+    const mapped = sectionDefs
+      .map((section) => {
+        const sectionItems = section.itemKeys
+          .map((itemKey) => byKey.get(itemKey))
+          .filter((item): item is NavItem => Boolean(item))
+        sectionItems.forEach((item) => usedKeys.add(item.key))
+        return { key: section.key, label: section.label, items: sectionItems }
+      })
+      .filter((section) => section.items.length > 0)
+
+    const leftovers = visibleItems.filter((item) => item.path && !usedKeys.has(item.key))
+    if (leftovers.length > 0) {
+      mapped.push({
+        key: 'more',
+        label: t('app.shell.sidebar.more', { defaultValue: 'More' }),
+        items: leftovers,
+      })
+    }
+    return mapped
+  }, [isClientTenant, mainItems, t, visibleItems])
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
     if (typeof window === 'undefined') {
@@ -93,7 +301,7 @@ export function Sidebar({ items, tenant, open, onClose, onLogout }: SidebarProps
     <>
       <div
         className={clsx(
-          'relative z-40 bg-brand-900 transition-[width] duration-300',
+          'relative z-[100] bg-brand-900 transition-[width] duration-300',
           open ? 'w-screen max-w-sm lg:w-72 lg:max-w-none' : 'w-0'
         )}
         aria-hidden={!open}
@@ -130,7 +338,25 @@ export function Sidebar({ items, tenant, open, onClose, onLogout }: SidebarProps
                     )
                   }
                 >
-                  {t(item.labelKey)}
+                  {(() => {
+                    const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
+                    return (
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-2">
+                      <ItemIcon size={16} stroke={1.8} />
+                      <span>{t(item.labelKey)}</span>
+                    </span>
+                    {item.key === 'do-procesowania' && pendingHandoffsCount > 0 && (
+                      <span
+                        className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-semibold text-white"
+                        aria-label={t('app.handoff.badge_new', { count: pendingHandoffsCount })}
+                      >
+                        {pendingHandoffsCount}
+                      </span>
+                    )}
+                  </span>
+                    )
+                  })()}
                 </NavLink>
               ))}
             </div>
@@ -156,11 +382,11 @@ export function Sidebar({ items, tenant, open, onClose, onLogout }: SidebarProps
                       <span>{section.label}</span>
                       <span
                         className={clsx(
-                          'text-lg leading-none transition-transform',
+                          'inline-flex transition-transform',
                           expanded ? 'rotate-0' : '-rotate-90'
                         )}
                       >
-                        ‹
+                        <IconChevronDown size={16} stroke={2} />
                       </span>
                     </button>
 
@@ -178,7 +404,13 @@ export function Sidebar({ items, tenant, open, onClose, onLogout }: SidebarProps
                             )
                           }
                         >
-                          {t(item.labelKey)}
+                          <span className="inline-flex items-center gap-2">
+                            {(() => {
+                              const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
+                              return <ItemIcon size={15} stroke={1.8} />
+                            })()}
+                            <span>{t(item.labelKey)}</span>
+                          </span>
                         </NavLink>
                       ))}
                     </div>
@@ -197,6 +429,7 @@ export function Sidebar({ items, tenant, open, onClose, onLogout }: SidebarProps
               className="flex w-full items-center justify-center gap-2 rounded-md border border-white/20 px-3 py-2 text-white/90 transition hover:bg-white/10"
               onClick={onLogout}
             >
+              <IconLogout size={16} stroke={1.9} />
               {t('app.shell.actions.logout')}
             </button>
           </div>

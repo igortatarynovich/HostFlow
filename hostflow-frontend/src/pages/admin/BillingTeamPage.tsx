@@ -18,6 +18,7 @@ import type {
   TenantModuleSettings,
   TenantModuleSettingsPatch,
 } from '../../api/types'
+import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 
 const ROLE_OPTIONS: { value: SeatRequest['role']; labelKey: string }[] = [
@@ -25,6 +26,7 @@ const ROLE_OPTIONS: { value: SeatRequest['role']; labelKey: string }[] = [
   { value: 'supervisor', labelKey: 'app.settings.team.form.roles.supervisor' },
   { value: 'recruiter', labelKey: 'app.settings.team.form.roles.recruiter' },
   { value: 'client_manager', labelKey: 'app.settings.team.form.roles.client_manager' },
+  { value: 'client_processor', labelKey: 'app.admin.users.roles.client_processor' },
   { value: 'viewer', labelKey: 'app.settings.team.form.roles.viewer' },
 ]
 
@@ -234,14 +236,22 @@ export function TeamManagementPanel({
   }
 
   if (loading) {
-    return <div className="text-sm text-gray-500">{t('common.loading')}</div>
+    return <div className="text-sm text-slate-500">{t('common.loading')}</div>
   }
 
   if (error) {
     return (
-      <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-        {error}
-      </div>
+      <ErrorRecoveryBanner
+        info={{
+          title: error,
+          hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+        }}
+        onRetry={() => window.location.reload()}
+        retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+        secondaryTo="/app/settings/team"
+        secondaryLabel={t('app.settings.team.title')}
+        compact
+      />
     )
   }
 
@@ -251,26 +261,26 @@ export function TeamManagementPanel({
     : overview?.tenant?.workspace_label || overview?.tenant?.name || overview?.tenant?.slug || null
 
   return (
-    <div className={compact ? 'space-y-4' : 'space-y-6'}>
+    <div className={compact ? 'space-y-4' : 'space-y-4'}>
       {showHeader && (
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-slate-900">
             {t('app.settings.team.title')}
           </h1>
-          <p className="text-sm text-gray-500">{t('app.settings.team.subtitle')}</p>
+          <p className="text-sm text-slate-500">{t('app.settings.team.subtitle')}</p>
         </div>
       )}
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm font-semibold text-gray-900">
+            <div className="text-sm font-semibold text-slate-900">
               {t('app.settings.team.usage.title')}
             </div>
-            {tenantLabel && <div className="text-xs text-gray-500">{tenantLabel}</div>}
+            {tenantLabel && <div className="text-xs text-slate-500">{tenantLabel}</div>}
           </div>
           {license?.plan && (
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+            <span className="rounded-md bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
               {license.plan}
             </span>
           )}
@@ -281,34 +291,44 @@ export function TeamManagementPanel({
           ))}
         </div>
         {license && (
-          <dl className="grid gap-3 md:grid-cols-3 pt-2 text-sm text-gray-700">
+          <dl className="grid gap-3 md:grid-cols-3 pt-2 text-sm text-slate-700">
             <div>
-              <dt className="text-xs uppercase text-gray-400">{t('app.platform.tenants.license.plan')}</dt>
-              <dd className="font-medium text-gray-900">{license.plan || '—'}</dd>
+              <dt className="text-xs uppercase text-slate-400">{t('app.platform.tenants.license.plan')}</dt>
+              <dd className="font-medium text-slate-900">{license.plan || '—'}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-gray-400">{t('app.platform.tenants.license.expires_at')}</dt>
-              <dd className="font-medium text-gray-900">
+              <dt className="text-xs uppercase text-slate-400">{t('app.platform.tenants.license.expires_at')}</dt>
+              <dd className="font-medium text-slate-900">
                 {license.expires_at ? new Date(license.expires_at).toLocaleDateString() : '—'}
               </dd>
             </div>
             <div>
-              <dt className="text-xs uppercase text-gray-400">{t('app.platform.tenants.license.max_companies')}</dt>
-              <dd className="font-medium text-gray-900">{license.max_companies ?? 0}</dd>
+              <dt className="text-xs uppercase text-slate-400">{t('app.platform.tenants.license.max_companies')}</dt>
+              <dd className="font-medium text-slate-900">{license.max_companies ?? 0}</dd>
             </div>
           </dl>
         )}
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-900">{t('app.platform.tenants.modules.title')}</h2>
-          {modulesSaving && <span className="text-xs text-gray-500">{t('common.saving')}</span>}
+          <h2 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.modules.title')}</h2>
+          {modulesSaving && <span className="text-xs text-slate-500">{t('common.saving')}</span>}
         </div>
-        <p className="text-xs text-gray-500">{t('app.platform.tenants.modules.description')}</p>
+        <p className="text-xs text-slate-500">{t('app.platform.tenants.modules.description')}</p>
         {modulesError && (
-          <div className="mt-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-            {modulesError}
+          <div className="mt-2">
+            <ErrorRecoveryBanner
+              info={{
+                title: modulesError,
+                hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+              }}
+              onRetry={() => window.location.reload()}
+              retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+              secondaryTo="/app/settings/team"
+              secondaryLabel={t('app.platform.tenants.modules.title')}
+              compact
+            />
           </div>
         )}
         <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -316,7 +336,7 @@ export function TeamManagementPanel({
             (Object.keys(modules) as Array<keyof TenantModuleSettings>).map((moduleKey) => (
               <label
                 key={moduleKey}
-                className="flex items-center justify-between rounded border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                className="flex items-center justify-between rounded border border-slate-200 px-3 py-2 text-sm text-slate-700"
               >
                 <span>{t(`app.platform.tenants.modules.items.${moduleKey}`)}</span>
                 <input
@@ -331,13 +351,13 @@ export function TeamManagementPanel({
         </div>
       </section>
 
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm space-y-4">
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold text-gray-900">
+            <h2 className="text-sm font-semibold text-slate-900">
               {t('app.platform.tenants.seat_requests.title')}
             </h2>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               {t('app.platform.tenants.seat_requests.subtitle')}
             </p>
           </div>
@@ -351,16 +371,24 @@ export function TeamManagementPanel({
           </button>
         </div>
         {seatError && (
-          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
-            {seatError}
-          </div>
+          <ErrorRecoveryBanner
+            info={{
+              title: seatError,
+              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+            }}
+            onRetry={() => void loadSeatRequests()}
+            retryLabel={t('app.platform.tenants.seat_requests.actions.refresh')}
+            secondaryTo="/app/settings/team"
+            secondaryLabel={t('app.platform.tenants.seat_requests.title')}
+            compact
+          />
         )}
         {!isPlatformView && (
-          <form className="space-y-3 rounded border border-gray-100 bg-gray-50 p-3" onSubmit={handleSeatSubmit}>
-            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <form className="space-y-3 rounded border border-slate-100 bg-slate-50 p-3" onSubmit={handleSeatSubmit}>
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('app.settings.team.form.title')}
             </div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('app.settings.team.form.role')}
               <select
                 className="input mt-1"
@@ -374,7 +402,7 @@ export function TeamManagementPanel({
                 ))}
               </select>
             </label>
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('app.settings.team.form.count')}
               <input
                 className="input mt-1"
@@ -386,7 +414,7 @@ export function TeamManagementPanel({
                 onChange={(event) => handleSeatFormChange('requested_count', event.target.value)}
               />
             </label>
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('app.settings.team.form.message')}
               <textarea
                 className="input mt-1 min-h-[90px]"
@@ -402,17 +430,17 @@ export function TeamManagementPanel({
         )}
         <div className="space-y-3">
           {seatLoading ? (
-            <div className="text-sm text-gray-500">{t('common.loading')}</div>
+            <div className="text-sm text-slate-500">{t('common.loading')}</div>
           ) : seatRequests.length === 0 ? (
-            <div className="rounded border border-gray-100 bg-gray-50 px-3 py-3 text-xs text-gray-500">
+            <div className="rounded border border-slate-100 bg-slate-50 px-3 py-3 text-xs text-slate-500">
               {t('app.platform.tenants.seat_requests.empty')}
             </div>
           ) : (
             seatRequests.map((request) => (
-              <div key={request.id} className="rounded border border-gray-100 p-3 text-sm text-gray-700 space-y-1">
-                <div className="flex flex-wrap items-center justify-between text-xs text-gray-500">
+              <div key={request.id} className="rounded border border-slate-100 p-3 text-sm text-slate-700 space-y-1">
+                <div className="flex flex-wrap items-center justify-between text-xs text-slate-500">
                   <span>{new Date(request.created_at).toLocaleString()}</span>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${request.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : request.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
+                  <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${request.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : request.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
                     {t(`app.platform.tenants.seat_requests.status.${request.status}`)}
                   </span>
                 </div>
@@ -424,9 +452,9 @@ export function TeamManagementPanel({
                     },
                   })}
                 </div>
-                {request.message && <p className="text-xs text-gray-500">{request.message}</p>}
+                {request.message && <p className="text-xs text-slate-500">{request.message}</p>}
                 {request.resolution_notes && (
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-slate-400">
                     {t('app.platform.tenants.seat_requests.resolution', { values: { notes: request.resolution_notes } })}
                   </p>
                 )}
@@ -461,7 +489,7 @@ export function TeamManagementPanel({
 
 export default function BillingTeamPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <TeamManagementPanel />
     </div>
   )
@@ -481,17 +509,17 @@ function SeatUsageCard({
   const warn = limit > 0 && used / limit >= 0.9
 
   return (
-    <div className="rounded border border-gray-100 p-3">
-      <div className="text-xs uppercase text-gray-400">{label}</div>
-      <div className="mt-2 h-2 rounded-full bg-gray-100">
+    <div className="rounded border border-slate-100 p-3">
+      <div className="text-xs uppercase text-slate-400">{label}</div>
+      <div className="mt-2 h-2 rounded-full bg-slate-100">
         <div
           className={`h-2 rounded-full ${warn ? 'bg-amber-500' : 'bg-brand-500'}`}
           style={{ width: `${percentage}%` }}
         />
       </div>
-      <div className="mt-2 text-sm font-semibold text-gray-900">
+      <div className="mt-2 text-sm font-semibold text-slate-900">
         {used}
-        <span className="ml-1 text-xs text-gray-500">/ {displayLimit}</span>
+        <span className="ml-1 text-xs text-slate-500">/ {displayLimit}</span>
       </div>
     </div>
   )

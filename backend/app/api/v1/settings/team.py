@@ -57,6 +57,8 @@ class SeatRequestCreate(BaseModel):
 
 TenantModuleSettings = platform_schemas.TenantModuleSettings
 TenantModuleSettingsPatch = platform_schemas.TenantModuleSettingsPatch
+TenantRoleModuleMatrix = platform_schemas.TenantRoleModuleMatrix
+EffectiveRoleModules = platform_schemas.EffectiveRoleModules
 SeatRequestOut = platform_schemas.TenantSeatRequestOut
 
 
@@ -166,7 +168,18 @@ async def upload_branding_logo(
 @router.get(
     "/modules",
     response_model=TenantModuleSettings,
-    dependencies=[Depends(require_roles(Role.administrator))],
+    dependencies=[
+        Depends(
+            require_roles(
+                Role.administrator,
+                Role.supervisor,
+                Role.recruiter,
+                Role.client_manager,
+                Role.client_processor,
+                Role.viewer,
+            )
+        )
+    ],
 )
 async def get_module_settings(
     ctx: UserCtx = Depends(get_current_user),
@@ -180,6 +193,59 @@ async def get_module_settings(
         raise HTTPException(status_code=404, detail="Tenant not found")
     modules = tenant_service.get_module_settings_snapshot(tenant)
     return TenantModuleSettings(**modules)
+
+
+@router.get(
+    "/module-matrix",
+    response_model=TenantRoleModuleMatrix,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def get_module_matrix(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> TenantRoleModuleMatrix:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    matrix = tenant_service.get_role_module_matrix_snapshot(tenant)
+    return TenantRoleModuleMatrix.model_validate(matrix)
+
+
+@router.get(
+    "/module-matrix/effective",
+    response_model=EffectiveRoleModules,
+    dependencies=[
+        Depends(
+            require_roles(
+                Role.administrator,
+                Role.supervisor,
+                Role.recruiter,
+                Role.client_manager,
+                Role.client_processor,
+                Role.viewer,
+            )
+        )
+    ],
+)
+async def get_effective_module_permissions(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> EffectiveRoleModules:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    modules = tenant_service.get_effective_role_module_permissions(
+        tenant,
+        role=ctx.role,
+        user_id=ctx.sub,
+    )
+    return EffectiveRoleModules(role=ctx.role, modules=modules)
 
 
 @router.patch(

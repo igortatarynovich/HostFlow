@@ -206,6 +206,10 @@ export function presetForDocType(docType?: string | null): ScanPresetKey {
       normalized === 'driver_license_exchange' || normalized === 'prawo_jazdy') {
     return 'driving_license'
   }
+  // Driver license with code95 suffix - treat as standard license card
+  if (normalized === 'driver_license_code95' || normalized === 'driving_license_code95') {
+    return 'driving_license'
+  }
   
   // Passports
   if (normalized === 'passport' || normalized === 'travel_document') {
@@ -216,6 +220,11 @@ export function presetForDocType(docType?: string | null): ScanPresetKey {
   if (normalized === 'visa' || normalized === 'visa_d' || normalized === 'visa_c' || 
       normalized === 'entry_permit' || normalized === 'entry_permit_or_visa') {
     return 'visa'
+  }
+
+  // Certificates (Code95 etc.) - treat as ID-card format for quality thresholds
+  if (normalized === 'qualification_code95' || normalized === 'code95' || normalized === 'code_95') {
+    return 'driving_license'
   }
   
   // Tachograph

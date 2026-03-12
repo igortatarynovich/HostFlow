@@ -163,6 +163,10 @@ export function buildVacancyPayload(
     employment_type: employmentType,
   }
 
+  if (typeof form.candidate_profile_id !== 'undefined') {
+    payload.candidate_profile_id = form.candidate_profile_id || null
+  }
+
   if (form.status) {
     const s = String(form.status)
     payload.status = s

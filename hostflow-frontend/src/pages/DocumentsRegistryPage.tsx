@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../i18n'
 import { listDocuments } from '../api/documents'
+import { createReminder } from '../api/client'
 import type { Document } from '../api/types'
+import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 
 const QUICK_FILTERS = ['missing', 'requested', 'in_progress', 'ready'] as const
 const PAGE_SIZE = 20
@@ -19,6 +21,14 @@ export default function DocumentsRegistryPage() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
   const [page, setPage] = useState(1)
   const [nowTs, setNowTs] = useState(() => Date.now())
+  const [reminderDocId, setReminderDocId] = useState('')
+  const [reminderTitle, setReminderTitle] = useState('Напомнить по документу')
+  const [reminderDueAt, setReminderDueAt] = useState(() => {
+    const dt = new Date(Date.now() + 60 * 60 * 1000)
+    return dt.toISOString().slice(0, 16)
+  })
+  const [reminderOffset, setReminderOffset] = useState(15)
+  const [reminderStatus, setReminderStatus] = useState<string | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -41,6 +51,29 @@ export default function DocumentsRegistryPage() {
     // refresh relative time calculations when data changes
     setNowTs(Date.now())
   }, [documents])
+
+  const handleCreateReminder = async () => {
+    if (!reminderDocId || !reminderTitle || !reminderDueAt) {
+      setReminderStatus('Заполните все поля')
+      return
+    }
+    try {
+      const due = new Date(reminderDueAt)
+      const remindAt = new Date(due.getTime() - reminderOffset * 60 * 1000)
+      await createReminder({
+        title: reminderTitle,
+        type: 'custom',
+        entity_type: 'document',
+        entity_id: reminderDocId,
+        due_at: due.toISOString(),
+        remind_at: remindAt.toISOString(),
+        priority: 'normal',
+      })
+      setReminderStatus('Создано')
+    } catch (err: any) {
+      setReminderStatus('Ошибка создания')
+    }
+  }
 
   const stats = useMemo(() => {
     if (!documents.length) return { ready: 0, pending: 0, overdue: 0 }
@@ -126,7 +159,7 @@ export default function DocumentsRegistryPage() {
   const currentDocs = filteredDocs.slice(pageStart, pageStart + PAGE_SIZE)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
@@ -184,8 +217,8 @@ export default function DocumentsRegistryPage() {
               type="button"
               onClick={() => setActiveFilter((prev) => (prev === filter ? null : filter))}
               className={[
-                'rounded-full px-4 py-2 text-sm font-medium shadow-sm transition',
-                activeFilter === filter ? 'bg-brand-600 text-white' : 'bg-white text-slate-600',
+                'rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition',
+                activeFilter === filter ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
               ].join(' ')}
             >
               {t(`admin.documents.status_labels.${filter}`)}
@@ -228,11 +261,11 @@ export default function DocumentsRegistryPage() {
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('admin.documents.registry.view.label')}
             </span>
-            <div className="inline-flex rounded-full border border-brand-200 bg-white p-1 text-sm font-medium">
+            <div className="inline-flex rounded-lg border border-brand-200 bg-white p-1 text-sm font-medium">
               <button
                 type="button"
                 className={[
-                  'rounded-full px-3 py-1.5',
+                  'rounded-md px-3 py-1.5',
                   viewMode === 'table' ? 'bg-brand-600 text-white shadow' : 'text-brand-700',
                 ].join(' ')}
                 onClick={() => setViewMode('table')}
@@ -242,7 +275,7 @@ export default function DocumentsRegistryPage() {
               <button
                 type="button"
                 className={[
-                  'rounded-full px-3 py-1.5',
+                  'rounded-md px-3 py-1.5',
                   viewMode === 'cards' ? 'bg-brand-600 text-white shadow' : 'text-brand-700',
                 ].join(' ')}
                 onClick={() => setViewMode('cards')}
@@ -258,30 +291,38 @@ export default function DocumentsRegistryPage() {
         <div className="card space-y-4 p-5 lg:col-span-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-base font-semibold text-gray-900">{t('admin.documents.registry.table.title')}</p>
-              <p className="text-sm text-gray-500">{t('admin.documents.registry.table.subtitle')}</p>
+              <p className="text-base font-semibold text-slate-900">{t('admin.documents.registry.table.title')}</p>
+              <p className="text-sm text-slate-500">{t('admin.documents.registry.table.subtitle')}</p>
             </div>
-            <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+            <span className="rounded-md bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
               {activeFilter ? t(`admin.documents.status_labels.${activeFilter}`) : t('admin.documents.registry.table.all')}
             </span>
           </div>
 
           {error && (
-            <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-rose-700">{error}</div>
+            <ErrorRecoveryBanner
+              info={{
+                title: error,
+                hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+              }}
+              onRetry={() => setReloadKey((prev) => prev + 1)}
+              retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+              compact
+            />
           )}
           {loading ? (
-            <div className="text-sm text-gray-500">{t('admin.documents.registry.loading')}</div>
+            <div className="text-sm text-slate-500">{t('admin.documents.registry.loading')}</div>
           ) : currentDocs.length ? (
             viewMode === 'cards' ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {currentDocs.map((doc) => (
-                  <article key={doc.id} className="rounded-2xl border border-gray-100 bg-white/90 p-4 shadow-sm">
+                  <article key={doc.id} className="rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-base font-semibold text-gray-900">
+                        <p className="text-base font-semibold text-slate-900">
                           {doc.custom_name || doc.title || doc.doc_type || t('common.labels.not_available')}
                         </p>
-                        <p className="text-xs text-gray-500">{doc.doc_type}</p>
+                        <p className="text-xs text-slate-500">{doc.doc_type}</p>
                       </div>
                       <StatusChip
                         tone={doc.status}
@@ -290,12 +331,12 @@ export default function DocumentsRegistryPage() {
                         })}
                       />
                     </div>
-                    <dl className="mt-3 space-y-1 text-sm text-gray-600">
+                    <dl className="mt-3 space-y-1 text-sm text-slate-600">
                       <div>
-                        <dt className="text-xs uppercase tracking-wide text-gray-400">
+                        <dt className="text-xs uppercase tracking-wide text-slate-400">
                           {t('admin.documents.registry.table.owner')}
                         </dt>
-                        <dd className="font-medium text-gray-900">
+                        <dd className="font-medium text-slate-900">
                           {doc.meta?.candidate_name ||
                             doc.meta?.company_name ||
                             doc.extra?.owner_name ||
@@ -305,7 +346,7 @@ export default function DocumentsRegistryPage() {
                       </div>
                       {doc.readiness_state && (
                         <div>
-                          <dt className="text-xs uppercase tracking-wide text-gray-400">
+                          <dt className="text-xs uppercase tracking-wide text-slate-400">
                             {t('admin.documents.registry.table.status')}
                           </dt>
                           <dd>
@@ -316,7 +357,7 @@ export default function DocumentsRegistryPage() {
                         </div>
                       )}
                       <div>
-                        <dt className="text-xs uppercase tracking-wide text-gray-400">
+                        <dt className="text-xs uppercase tracking-wide text-slate-400">
                           {t('admin.documents.registry.table.updated')}
                         </dt>
                         <dd>{formatDate(doc.updated_at || doc.created_at)}</dd>
@@ -326,37 +367,37 @@ export default function DocumentsRegistryPage() {
                 ))}
               </div>
             ) : (
-              <table className="w-full text-sm text-gray-700">
+              <table className="w-full text-sm text-slate-700">
                 <thead>
-                  <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
-                    <th className="py-2">{t('admin.documents.registry.table.doc')}</th>
-                    <th className="py-2">{t('admin.documents.registry.table.owner')}</th>
-                    <th className="py-2">{t('admin.documents.registry.table.status')}</th>
-                    <th className="py-2 text-right">{t('admin.documents.registry.table.updated')}</th>
+                  <tr className="bg-slate-50/90 text-left">
+                    <th className="border-b border-r border-slate-200 py-2 pl-3 pr-2 text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.doc')}</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-2 text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.owner')}</th>
+                    <th className="border-b border-r border-slate-200 py-2 px-2 text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.status')}</th>
+                    <th className="border-b border-slate-200 py-2 pl-2 pr-3 text-right text-xs font-semibold text-slate-600">{t('admin.documents.registry.table.updated')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentDocs.map((doc) => (
-                    <tr key={doc.id} className="border-t border-gray-100">
-                      <td className="py-3">
-                        <p className="font-semibold text-gray-900">
+                    <tr key={doc.id} className="border-t border-slate-100">
+                      <td className="border-r border-slate-200 py-3 pl-3 pr-2">
+                        <p className="font-semibold text-slate-900">
                           {doc.custom_name || doc.title || doc.doc_type || t('common.labels.not_available')}
                         </p>
-                        <p className="text-xs text-gray-500">{doc.doc_type}</p>
+                        <p className="text-xs text-slate-500">{doc.doc_type}</p>
                       </td>
-                      <td className="py-3">
-                        <p className="font-medium text-gray-900">
+                      <td className="border-r border-slate-200 py-3 px-2">
+                        <p className="font-medium text-slate-900">
                           {doc.meta?.candidate_name ||
                             doc.meta?.company_name ||
                             doc.extra?.owner_name ||
                             doc.owner_id ||
                             t('common.labels.not_available')}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-slate-500">
                           {doc.kind ? t(`admin.documents.kinds.${doc.kind}`) : doc.owner_type || '—'}
                         </p>
                       </td>
-                      <td className="py-3">
+                      <td className="border-r border-slate-200 py-3 px-2">
                         <StatusChip
                           tone={doc.status}
                           label={t(`admin.documents.status_labels.${doc.status}`, {
@@ -364,14 +405,14 @@ export default function DocumentsRegistryPage() {
                           })}
                         />
                         {doc.readiness_state && (
-                          <div className="mt-1 text-xs text-gray-500">
+                          <div className="mt-1 text-xs text-slate-500">
                             {t(`admin.documents.readiness_labels.${doc.readiness_state}`, {
                               defaultValue: doc.readiness_state,
                             })}
                           </div>
                         )}
                       </td>
-                      <td className="py-3 text-right text-gray-600">
+                      <td className="py-3 pl-2 pr-3 text-right text-slate-600">
                         {formatDate(doc.updated_at || doc.created_at)}
                       </td>
                     </tr>
@@ -380,13 +421,13 @@ export default function DocumentsRegistryPage() {
               </table>
             )
           ) : (
-            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-6 text-center text-sm text-gray-500">
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
               {t('admin.documents.registry.table.empty')}
             </div>
           )}
 
           {!loading && filteredDocs.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 text-sm text-gray-600">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 text-sm text-slate-600">
               <span>
                 {t('admin.documents.registry.pagination', {
                   values: {
@@ -405,7 +446,7 @@ export default function DocumentsRegistryPage() {
                 >
                   {t('common.actions.back')}
                 </button>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-slate-500">
                   {currentPage} / {totalPages}
                 </span>
                 <button
@@ -421,11 +462,71 @@ export default function DocumentsRegistryPage() {
           )}
         </div>
         <div className="card space-y-3 p-5">
-          <p className="text-base font-semibold text-gray-900">{t('admin.documents.registry.automation.title')}</p>
-          <p className="text-sm text-gray-600">{t('admin.documents.registry.automation.description')}</p>
+          <p className="text-base font-semibold text-slate-900">{t('admin.documents.registry.automation.title')}</p>
+          <p className="text-sm text-slate-600">{t('admin.documents.registry.automation.description')}</p>
           <button type="button" className="btn-primary w-full">
             {t('admin.documents.registry.automation.action')}
           </button>
+        </div>
+
+        <div className="card space-y-3 p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-base font-semibold text-slate-900">Быстрое напоминание</p>
+              <p className="text-sm text-slate-500">По выбранному документу</p>
+            </div>
+          </div>
+          <label className="text-sm text-slate-700">
+            Документ
+            <select
+              className="input mt-1"
+              value={reminderDocId}
+              onChange={(e) => setReminderDocId(e.target.value)}
+            >
+              <option value="">Выберите документ</option>
+              {documents.map((doc) => (
+                <option key={doc.id} value={doc.id || ''}>
+                  {(doc.custom_name || doc.title || doc.doc_type || 'Документ') +
+                    (doc.meta?.candidate_name ? ` — ${doc.meta.candidate_name}` : '')}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm text-slate-700">
+            Заголовок
+            <input
+              className="input mt-1"
+              value={reminderTitle}
+              onChange={(e) => setReminderTitle(e.target.value)}
+              placeholder="Позвонить, отправить письмо..."
+            />
+          </label>
+          <label className="text-sm text-slate-700">
+            Срок
+            <input
+              type="datetime-local"
+              className="input mt-1"
+              value={reminderDueAt}
+              onChange={(e) => setReminderDueAt(e.target.value)}
+            />
+          </label>
+          <label className="text-sm text-slate-700">
+            Напомнить за
+            <select
+              className="input mt-1"
+              value={reminderOffset}
+              onChange={(e) => setReminderOffset(Number(e.target.value))}
+            >
+              <option value={5}>5 мин</option>
+              <option value={15}>15 мин</option>
+              <option value={30}>30 мин</option>
+              <option value={60}>1 час</option>
+            </select>
+          </label>
+          <button type="button" className="btn-primary" onClick={handleCreateReminder}>
+            Создать напоминание
+          </button>
+          {reminderStatus && <p className="text-xs text-slate-600">{reminderStatus}</p>}
         </div>
       </section>
     </div>
@@ -453,9 +554,9 @@ const STATUS_TONES: Record<string, string> = {
 }
 
 function StatusChip({ label, tone }: { label: string; tone: string }) {
-  const toneClass = STATUS_TONES[tone] ?? 'bg-gray-100 text-gray-700'
+  const toneClass = STATUS_TONES[tone] ?? 'bg-slate-100 text-slate-700'
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${toneClass}`}>
+    <span className={`inline-flex items-center rounded-md px-3 py-1 text-xs font-medium ${toneClass}`}>
       {label}
     </span>
   )

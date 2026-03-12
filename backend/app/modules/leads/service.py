@@ -175,12 +175,15 @@ async def list_leads(
     *,
     tenant_id: str,
     status: Optional[str] = None,
+    stage: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ) -> LeadListResponse:
     filters = [Lead.tenant_id == tenant_id]
     if status:
         filters.append(Lead.status == status)
+    if stage:
+        filters.append(Lead.stage == stage)
 
     total_stmt = select(func.count()).select_from(Lead).where(*filters)
     total = (await db.execute(total_stmt)).scalar_one()
@@ -233,6 +236,7 @@ async def list_leads(
                 source=lead.source,
                 ad_id=lead.ad_id,
                 status=lead.status,  # type: ignore[arg-type]
+                stage=getattr(lead, "stage", None),
                 candidate_id=_uuid_or_none(cand_id),
                 candidate_name=candidate_name,
                 recruiter_id=_uuid_or_none(cand_recruiter),
@@ -290,6 +294,60 @@ async def process_normalized_lead(
                 candidate = await db.get(Candidate, candidate_id)
                 if candidate:
                     recruiter_id = getattr(candidate, "recruiter_id", None)
+                    # Обновляем extra поля из normalized данных, если они есть
+                    import json
+                    extra = candidate._get_extra()
+                    updated = False
+                    
+                    # Обновляем preferred_contact
+                    preferred_contact = normalized.get("preferred_contact")
+                    if isinstance(preferred_contact, str) and preferred_contact.strip():
+                        if extra.get("preferred_contact") != preferred_contact.strip():
+                            extra["preferred_contact"] = preferred_contact.strip()
+                            updated = True
+                    
+                    # Обновляем in_poland
+                    in_poland_value = normalized.get("in_poland")
+                    if isinstance(in_poland_value, bool):
+                        if extra.get("in_poland") != in_poland_value:
+                            extra["in_poland"] = in_poland_value
+                            updated = True
+                    elif isinstance(in_poland_value, str):
+                        lowered = in_poland_value.strip().lower()
+                        if lowered in {"true", "yes", "1"}:
+                            if extra.get("in_poland") is not True:
+                                extra["in_poland"] = True
+                                updated = True
+                        elif lowered in {"false", "no", "0"}:
+                            if extra.get("in_poland") is not False:
+                                extra["in_poland"] = False
+                                updated = True
+                    
+                    # Обновляем poland_stay_basis
+                    poland_basis = normalized.get("poland_stay_basis")
+                    if isinstance(poland_basis, str) and poland_basis.strip():
+                        if extra.get("poland_stay_basis") != poland_basis.strip():
+                            extra["poland_stay_basis"] = poland_basis.strip()
+                            updated = True
+                    
+                    # Обновляем driving_experience_in_europe
+                    driving_experience = normalized.get("driving_experience_in_europe")
+                    if isinstance(driving_experience, str) and driving_experience.strip():
+                        if extra.get("driving_experience_in_europe") != driving_experience.strip():
+                            extra["driving_experience_in_europe"] = driving_experience.strip()
+                            updated = True
+                    
+                    # Обновляем experience_eu_years (опыт по ЕС)
+                    experience_eu_years = normalized.get("experience_eu_years")
+                    if isinstance(experience_eu_years, int) and experience_eu_years >= 0:
+                        if extra.get("experience_eu_years") != experience_eu_years:
+                            extra["experience_eu_years"] = experience_eu_years
+                            updated = True
+                    
+                    if updated:
+                        candidate.extra = json.dumps(extra, ensure_ascii=False, separators=(",", ":"))
+                        await db.flush()
+            
             return MetaLeadResult(
                 lead_id=lead.id,
                 status=lead.status,
@@ -520,6 +578,14 @@ async def process_normalized_lead(
     poland_basis = normalized.get("poland_stay_basis")
     if isinstance(poland_basis, str) and poland_basis.strip():
         extra_fields["poland_stay_basis"] = poland_basis.strip()
+    # Handle driving experience - save both raw string and normalized number
+    driving_experience = normalized.get("driving_experience_in_europe")
+    if isinstance(driving_experience, str) and driving_experience.strip():
+        extra_fields["driving_experience_in_europe"] = driving_experience.strip()
+    # Also save normalized number of years if available (опыт по ЕС)
+    experience_eu_years = normalized.get("experience_eu_years")
+    if isinstance(experience_eu_years, int) and experience_eu_years >= 0:
+        extra_fields["experience_eu_years"] = experience_eu_years
 
     candidate_payload: Dict[str, Any] = {
         "first_name": first_name.strip() or "Meta",
@@ -627,7 +693,11 @@ async def process_meta_lead(
     tenant_id: str,
     payload: Dict[str, Any],
 ) -> MetaLeadResult:
-    normalized = normalizer.normalize_meta_payload(payload)
+    settings_row = await _load_settings(db, tenant_id)
+    normalized = normalizer.normalize_meta_payload(
+        payload,
+        field_mapping=getattr(settings_row, "field_mapping", None),
+    )
     raw_lead_id = normalized.get("raw_lead_id")
     external_id = str(raw_lead_id).strip() if raw_lead_id else None
     return await process_normalized_lead(
@@ -850,7 +920,7 @@ async def reroute_lead_manual(
             error=diagnostic,
         )
 
-    if not target_vacancy:
+    if not target_vacancy and not force_process:
         await crud.update_lead(
             db,
             lead,
@@ -918,6 +988,31 @@ async def reroute_lead_manual(
             error=None,
         )
 
+    extra_fields: Dict[str, Any] = {}
+    preferred_contact = normalized.get("preferred_contact")
+    if isinstance(preferred_contact, str) and preferred_contact.strip():
+        extra_fields["preferred_contact"] = preferred_contact.strip()
+    in_poland_value = normalized.get("in_poland")
+    if isinstance(in_poland_value, bool):
+        extra_fields["in_poland"] = in_poland_value
+    elif isinstance(in_poland_value, str):
+        lowered = in_poland_value.strip().lower()
+        if lowered in {"true", "yes", "1"}:
+            extra_fields["in_poland"] = True
+        elif lowered in {"false", "no", "0"}:
+            extra_fields["in_poland"] = False
+    poland_basis = normalized.get("poland_stay_basis")
+    if isinstance(poland_basis, str) and poland_basis.strip():
+        extra_fields["poland_stay_basis"] = poland_basis.strip()
+    # Handle driving experience - save both raw string and normalized number
+    driving_experience = normalized.get("driving_experience_in_europe")
+    if isinstance(driving_experience, str) and driving_experience.strip():
+        extra_fields["driving_experience_in_europe"] = driving_experience.strip()
+    # Also save normalized number of years if available (опыт по ЕС)
+    experience_eu_years = normalized.get("experience_eu_years")
+    if isinstance(experience_eu_years, int) and experience_eu_years >= 0:
+        extra_fields["experience_eu_years"] = experience_eu_years
+
     candidate_payload: Dict[str, Any] = {
         "first_name": (normalized.get("first_name") or "Meta").strip() or "Meta",
         "last_name": (normalized.get("last_name") or normalized.get("full_name") or "Lead").strip() or "Lead",
@@ -925,7 +1020,7 @@ async def reroute_lead_manual(
         "phone": phone,
         "phone_country_code": normalized.get("phone_country_code"),
         "company_id": target_company_id,
-        "vacancy_id": str(target_vacancy.id),
+        "vacancy_id": str(target_vacancy.id) if target_vacancy else None,
         "contacts": {
             key: value
             for key, value in {
@@ -940,6 +1035,8 @@ async def reroute_lead_manual(
             "meta": normalized,
         },
     }
+    if extra_fields:
+        candidate_payload["extra"] = extra_fields
 
     try:
         candidate = await create_candidate_full(

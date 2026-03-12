@@ -32,6 +32,7 @@ class Role(str, Enum):
     supervisor = "supervisor"
     recruiter = "recruiter"
     client_manager = "client_manager"
+    client_processor = "client_processor"
     viewer = "viewer"
     admin = administrator
     owner = administrator

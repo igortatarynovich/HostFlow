@@ -2,9 +2,20 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import type { RefObject } from 'react'
 import type { InputHTMLAttributes } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import { api } from '../api/client'
+import type { Icon as TablerIcon } from '@tabler/icons-react'
+import {
+  IconBuilding,
+  IconBriefcase2,
+  IconClipboardList,
+  IconIdBadge2,
+  IconNotebook,
+  IconUser,
+  IconUserCircle,
+  IconUsersGroup,
+} from '@tabler/icons-react'
+import { api, completeReminder, createReminder, listReminders, snoozeReminder } from '../api/client'
 import { listCandidateEmployments, createCandidateEmployment, updateCandidateEmployment, deleteCandidateEmployment } from '../api/candidateEmployments'
 import type {
   Candidate,
@@ -16,28 +27,69 @@ import type {
   UUID,
   Vacancy,
 } from '../api/types'
+import type { ReminderRecord } from '../api/types'
+import { formatDistanceToNow } from 'date-fns'
+import { enUS, pl, ru } from 'date-fns/locale'
 import { createDeleteRequest } from '../api/deletionRequests'
+import { sendRodo } from '../api/legalDocuments'
 import StageTag from '../components/StageTag'
 import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import { exportCandidateBundle } from '../api/documents'
+import { createCandidateUploadLink, type CandidateUploadLinkResponse } from '../api/candidates'
+import { getVacancy } from '../api/vacancies'
+import {
+  getCandidateProfile,
+  listCandidateProfiles,
+  type CandidateProfile,
+} from '../api/candidate_profiles'
+
+const DEFAULT_PROFILE_CODE = 'driver_ce_default'
+import { getFunnel } from '../api/funnels'
+import { validateRequiredFields } from '../utils/profileUtils'
 import { usePermissions } from '../hooks/usePermissions'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
 import { useI18n } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
 import { translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
+import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
+import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
+import { useToast } from '../components/Toast'
+import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
+import CandidateHeader from '../components/candidate/CandidateHeader'
+import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
+import CandidateBasicSection from '../components/candidate/CandidateBasicSection'
+import CandidateCommunicationSection from '../components/candidate/CandidateCommunicationSection'
+import CandidateHandoffSection from '../components/candidate/CandidateHandoffSection'
+import CandidatePersonalSection from '../components/candidate/CandidatePersonalSection'
+import CandidateStatusSection from '../components/candidate/CandidateStatusSection'
+import CandidateExperienceSection from '../components/candidate/CandidateExperienceSection'
+import CandidateCustomFieldsSection from '../components/candidate/CandidateCustomFieldsSection'
+import CandidateNotesSection from '../components/candidate/CandidateNotesSection'
+import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
+import {
+  ADDRESS_KEYS,
+  UUID_RE,
+  CREATE_FIELDS,
+  PATCH_AFTER_CREATE_FIELDS,
+  MAX_EMPLOYMENTS,
+  SERVICE_ORDER_STATUSES,
+  SERVICE_ITEM_STATUSES,
+  POLAND_BASIS_VALUES,
+} from '../modules/candidate-card/constants'
+import type { Tab, PreferredContact, Option, AddressFields, CandidateNote, StageHistoryEntry } from '../modules/candidate-card/types'
+import {
+  createLocalId,
+  ccToFlag,
+  makeAddress,
+  isUuidLike,
+  formatDateTime,
+  parseJSONSafe,
+  splitFullName,
+  formatAmount,
+  mapResidencyStatusToPolandBasis,
+} from '../modules/candidate-card/utils'
 
-type Tab = 'personal' | 'docs' | 'services'
-type PreferredContact = 'viber' | 'whatsapp' | 'telegram' | 'phone' | ''
-type Option = { value: string; label: string; extra?: any }
-type AddressFields = {
-  country: string;
-  city: string;
-  street: string;
-  house: string;
-  apt: string;
-  zip: string;
-};
 type EmploymentEntry =
   NonNullable<CandidateExtra['employment_history']> extends Array<infer Item>
     ? Item
@@ -59,40 +111,6 @@ type EmploymentSnapshot = {
   end_date: string;
 }
 
-type CandidateNote = { id: string; text: string; visibility: 'internal'|'client'|'candidate'; author_id: string; created_at: string }
-type StageHistoryEntry = {
-  id: string;
-  from_code: string | null;
-  to_code: string | null;
-  at: string | null;
-  actor: string | null;
-  reason: string | null;
-}
-
-const ADDRESS_KEYS: Array<keyof AddressFields> = ['country', 'city', 'street', 'house', 'apt', 'zip']
-const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-const CREATE_FIELDS = new Set(['first_name', 'last_name', 'email', 'phone', 'phone_country_code', 'languages', 'stage', 'manager_id', 'company_id', 'vacancy_id', 'status_reason'])
-const PATCH_AFTER_CREATE_FIELDS = new Set(['address', 'city', 'country_code', 'birth_date', 'note', 'extra', 'status_reason'])
-const MAX_EMPLOYMENTS = 3
-const SERVICE_ORDER_STATUSES: ServiceOrderStatus[] = [
-  'draft',
-  'quoted',
-  'approved',
-  'scheduled',
-  'in_progress',
-  'delivered',
-  'cancelled',
-  'refunded',
-]
-const SERVICE_ITEM_STATUSES: ServiceItemStatus[] = ['pending', 'scheduled', 'in_progress', 'delivered', 'cancelled']
-
-const createLocalId = () => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return `tmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
-}
-
 const makeEmploymentRow = (seed?: Partial<EmploymentRow>): EmploymentRow => ({
   id: seed?.id,
   localId: seed?.localId ?? createLocalId(),
@@ -104,19 +122,7 @@ const makeEmploymentRow = (seed?: Partial<EmploymentRow>): EmploymentRow => ({
 })
 
 /* ----------------------------- helpers ----------------------------- */
-const ccToFlag = (cc: string) =>
-  cc.replace(/./g, ch => String.fromCodePoint(127397 + ch.toUpperCase().charCodeAt(0)))
-
-const makeAddress = (value?: Partial<AddressFields> | null): AddressFields => {
-  const base: AddressFields = { country: '', city: '', street: '', house: '', apt: '', zip: '' }
-  if (!value || typeof value !== 'object') return { ...base }
-  const next: AddressFields = { ...base }
-  for (const key of ADDRESS_KEYS) {
-    const val = (value as any)[key]
-    next[key] = val != null ? String(val) : ''
-  }
-  return next
-}
+// ccToFlag, makeAddress are now imported from modules/candidate-card/utils
 
 const sanitizeEmploymentEntry = (value: any): EmploymentEntry => {
   const entry: CandidateEmploymentEntry = {
@@ -155,16 +161,35 @@ const sanitizeEmploymentHistory = (value: any): EmploymentEntry[] => {
   return []
 }
 
-const splitFullName = (value?: string | null): { first: string; last: string } => {
-  if (!value || typeof value !== 'string') return { first: '', last: '' }
-  const parts = value
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-  if (parts.length === 0) return { first: '', last: '' }
-  if (parts.length === 1) return { first: parts[0], last: '' }
-  return { first: parts.shift() || '', last: parts.join(' ') }
+const CANDIDATE_OVERRIDE_KEYS = new Set([
+  'first_name',
+  'last_name',
+  'email',
+  'phone',
+  'phone_country_code',
+  'languages',
+  'country_code',
+  'city',
+  'birth_date',
+  'address',
+  'personal_data',
+  'contacts',
+])
+
+function stripCandidateOverrideFields(payload: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {}
+  for (const [key, value] of Object.entries(payload || {})) {
+    if (CANDIDATE_OVERRIDE_KEYS.has(key)) continue
+    out[key] = value
+  }
+  return out
 }
+
+function getCandidateOverrideFields(payload: Record<string, any>): string[] {
+  return Object.keys(payload || {}).filter((key) => CANDIDATE_OVERRIDE_KEYS.has(key))
+}
+
+// splitFullName is now imported from modules/candidate-card/utils
 
 const employmentSnapshot = (row: EmploymentRow): EmploymentSnapshot => ({
   employer_name: row.employer_name.trim(),
@@ -351,31 +376,7 @@ const normalizeLanguages = (value: any, fallback: string[] = []): string[] => {
   return [...fallback]
 }
 
-const currencyFmt = new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'PLN' })
-const formatAmount = (value: number | null | undefined) => {
-  if (value == null || Number.isNaN(value)) return '-'
-  try {
-    return currencyFmt.format(value)
-  } catch {
-    return value.toFixed(2)
-  }
-}
-
-const isUuidLike = (value: unknown): value is string =>
-  typeof value === 'string' && UUID_RE.test(value)
-
-const POLAND_BASIS_VALUES = ['', 'visa_d', 'visa_c', 'karta_pobytu', 'eu_citizen', 'waiting_for_trc', 'other']
-
-const mapResidencyStatusToPolandBasis = (value?: string): string => {
-  if (!value) return ''
-  const normalized = value.toLowerCase()
-  if (normalized === 'eu_citizen') return 'eu_citizen'
-  if (normalized === 'visa_c') return 'visa_c'
-  if (normalized === 'visa_d' || normalized === 'visa') return 'visa_d'
-  if (normalized === 'card' || normalized === 'karta_pobytu') return 'karta_pobytu'
-  if (normalized === 'other' || normalized === 'none') return 'other'
-  return ''
-}
+// formatAmount, isUuidLike, mapResidencyStatusToPolandBasis, POLAND_BASIS_VALUES are now imported from modules/candidate-card
 const TRAILER_TYPE_KEYS = [
   'mega',
   'standard',
@@ -407,6 +408,7 @@ const createEmptyCandidate = (stage?: string | null): Candidate => {
     email: '',
     phone: '',
     languages: [],
+    tags: [],
     stage: stage || '',
     manager: '',
     short_id: null,
@@ -419,26 +421,7 @@ const createEmptyCandidate = (stage?: string | null): Candidate => {
   } as Candidate
 }
 
-const formatDateTime = (value?: string | null): string => {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString()
-}
-
-const parseJSONSafe = <T,>(value: unknown, fallback: T): T => {
-  if (value == null) return fallback
-  if (typeof value === 'object') return value as T
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value)
-      return (parsed ?? fallback) as T
-    } catch {
-      return fallback
-    }
-  }
-  return fallback
-}
+// formatDateTime, parseJSONSafe are now imported from modules/candidate-card/utils
 
 function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
   const previous = prev ?? null
@@ -577,14 +560,16 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
     (managerId ? (raw?.manager_name ?? previous?.manager_name ?? null) : null) ??
     (typeof raw?.manager === 'string' && !isUuidLike(raw.manager) ? raw.manager : previous?.manager_name ?? null)
 
+  // When API returns masked candidate, do not use previous/cache for PII (no substitution of cached name/email/phone)
+  const isMasked = raw?.masked === true
   const result: Candidate = {
     ...(previous ?? {} as Candidate),
     ...raw,
     id: String(raw?.id ?? previous?.id ?? ''),
-    first_name: raw?.first_name ?? previous?.first_name ?? intakeNameParts.first ?? '',
-    last_name: raw?.last_name ?? previous?.last_name ?? intakeNameParts.last ?? '',
-    email: raw?.email ?? previous?.email ?? intakeEmail ?? '',
-    phone: raw?.phone ?? previous?.phone ?? intakePhone ?? '',
+    first_name: isMasked ? (raw?.first_name ?? '') : (raw?.first_name ?? previous?.first_name ?? intakeNameParts.first ?? ''),
+    last_name: isMasked ? (raw?.last_name ?? '') : (raw?.last_name ?? previous?.last_name ?? intakeNameParts.last ?? ''),
+    email: isMasked ? (raw?.email ?? '') : (raw?.email ?? previous?.email ?? intakeEmail ?? ''),
+    phone: isMasked ? (raw?.phone ?? '') : (raw?.phone ?? previous?.phone ?? intakePhone ?? ''),
     stage: raw?.stage ?? previous?.stage ?? '',
     manager: managerId ?? '',
     manager_name: managerDisplayName ?? null,
@@ -593,11 +578,12 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
     company_name: raw?.company_name ?? previous?.company_name ?? '',
     vacancy_name: raw?.vacancy_name ?? previous?.vacancy_name ?? '',
     short_id: raw?.short_id ?? previous?.short_id ?? null,
-    phone_country_code:
-      raw?.phone_country_code ??
-      previous?.phone_country_code ??
-      (intakePhoneCode || ''),
+    phone_country_code: isMasked
+      ? (raw?.phone_country_code ?? '')
+      : (raw?.phone_country_code ?? previous?.phone_country_code ?? (intakePhoneCode || '')),
     languages,
+    tags: Array.isArray(raw?.tags) ? raw.tags.filter((t: any) => t && String(t).trim()).map((t: any) => String(t).trim()) : (Array.isArray(previous?.tags) ? previous.tags : []),
+    is_favorite: typeof raw?.is_favorite === 'boolean' ? raw.is_favorite : (previous?.is_favorite ?? false),
     docs_progress: docsProgress,
     status_reason: statusReason,
     extra: mergedExtra,
@@ -609,6 +595,8 @@ function normalizeCandidate(raw: any, prev?: Candidate | null): Candidate {
     intake_contacts: intakeContacts,
     intake_personal: intakePersonal,
     intake_experience: intakeExperience,
+    masked: raw?.masked ?? previous?.masked ?? false,
+    can_edit: raw?.can_edit ?? previous?.can_edit ?? true,
     intake_agreements: intakeAgreements,
   } as Candidate
 
@@ -631,236 +619,110 @@ const toArray = (value: any) =>
         ? value.data
         : []
 
-function useClickOutside<T extends HTMLElement>(onOutside: () => void) {
-  const ref = useRef<T | null>(null)
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      const el = ref.current
-      if (!el) return
-      if (!el.contains(e.target as Node)) onOutside()
-    }
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape') onOutside()
-    }
-    document.addEventListener('mousedown', handler)
-    document.addEventListener('keydown', onEsc)
-    return () => {
-      document.removeEventListener('mousedown', handler)
-      document.removeEventListener('keydown', onEsc)
-    }
-  }, [onOutside])
-  return ref
-}
-
-/* ---------- searchable select ---------- */
-function SearchableSelect({
-  options,
-  value,
-  onChange,
-  placeholder,
-  className,
-  searchPlaceholder,
-  noResultsLabel,
-}: {
-  options: Option[];
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  className?: string;
-  searchPlaceholder?: string;
-  noResultsLabel?: string;
-}) {
-  const [open, setOpen] = useState(false)
-  const [q, setQ] = useState('')
-  const current = useMemo(() => options.find(o => o.value === value)?.label || '', [options, value])
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return options
-    return options.filter((option: Option) => option.label.toLowerCase().includes(s) || option.value.toLowerCase().includes(s))
-  }, [q, options])
-  const close = () => setOpen(false)
-  const boxRef = useClickOutside<HTMLDivElement>(close)
-
-  return (
-    <div className={clsx('relative', className)} ref={boxRef}>
-      <button
-        type="button"
-        className="input w-full text-left"
-        onClick={() => { setOpen(o => !o); setQ('') }}
-      >
-        {current || (placeholder || '— select —')}
-      </button>
-      {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-xl border bg-white shadow-xl">
-          <div className="p-2">
-            <input
-              autoFocus
-              className="input"
-              placeholder={searchPlaceholder || 'Search…'}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-            />
-          </div>
-          <div className="max-h-64 overflow-auto">
-            {filtered.length === 0 && <div className="px-3 py-2 text-gray-500">{noResultsLabel || 'No matches'}</div>}
-            {filtered.map((o: Option) => (
-              <button
-                key={o.value}
-                type="button"
-                className={clsx('w-full px-3 py-2 text-left hover:bg-gray-50', o.value === value && 'bg-gray-50')}
-                onClick={() => { onChange(o.value); close() }}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* ---------- checkbox multiselect ---------- */
-function CheckboxMultiSelect({
-  options,
-  values,
-  onChange,
-  placeholder,
-  className,
-  searchPlaceholder,
-  noResultsLabel,
-  multiSelectedLabel,
-}: {
-  options: Option[];
-  values: string[];
-  onChange: (vals: string[]) => void;
-  placeholder?: string;
-  className?: string;
-  searchPlaceholder?: string;
-  noResultsLabel?: string;
-  multiSelectedLabel?: (count: number) => string;
-}) {
-  const [open, setOpen] = useState(false)
-  const [q, setQ] = useState('')
-  const boxRef = useClickOutside<HTMLDivElement>(() => setOpen(false))
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return options
-    return options.filter((option: Option) => option.label.toLowerCase().includes(s) || option.value.toLowerCase().includes(s))
-  }, [q, options])
-  const toggle = (v: string) => {
-    const set = new Set(values)
-    set.has(v) ? set.delete(v) : set.add(v)
-    onChange(Array.from(set))
-  }
-  const caption = values.length === 0
-    ? (placeholder || 'Not selected')
-    : (values.length <= 3
-        ? values
-            .map((v) => {
-              const found = options.find((option: Option) => option.value === v)
-              return found?.label || v
-            })
-            .join(', ')
-        : multiSelectedLabel
-          ? multiSelectedLabel(values.length)
-          : `${values.length} selected`)
-
-  return (
-    <div className={clsx('relative', className)} ref={boxRef}>
-      <button type="button" className="input w-full text-left" onClick={() => { setOpen(o=>!o); setQ('') }}>
-        {caption}
-      </button>
-      {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-xl border bg-white shadow-xl">
-          <div className="p-2">
-            <input
-              autoFocus
-              className="input"
-              placeholder={searchPlaceholder || 'Search…'}
-              value={q}
-              onChange={e => setQ(e.target.value)}
-            />
-          </div>
-          <div className="max-h-72 overflow-auto">
-            {filtered.length === 0 && <div className="px-3 py-2 text-gray-500">{noResultsLabel || 'No matches'}</div>}
-            {filtered.map((o: Option) => {
-              const checked = values.includes(o.value)
-              return (
-                <label
-                  key={o.value}
-                  className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => toggle(o.value)}
-                >
-                  <input type="checkbox" readOnly checked={checked} />
-                  <span>{o.label}</span>
-                </label>
-              )
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/* --------------------------------- инпуты --------------------------------- */
-type InputProps = InputHTMLAttributes<HTMLInputElement> & { label?: string; hint?: string; containerClassName?: string }
-const Input = (props: InputProps) => {
-  const { label, hint, className, containerClassName, ...rest } = props
-  const isReadOnly = rest.readOnly || rest.disabled
-  return (
-    <label className={clsx('block', containerClassName)}>
-      {label && <div className="label">{label}</div>}
-      <input
-        {...rest}
-        className={clsx(
-          'input',
-          isReadOnly && 'bg-gray-100 text-gray-600 cursor-not-allowed',
-          className,
-        )}
-      />
-      {hint && <p className="mt-1 text-xs text-gray-500">{hint}</p>}
-    </label>
-  )
-}
-
-const Checkbox = ({ label, checked, onChange }:{
-  label: string; checked?: boolean; onChange?: (v:boolean)=>void
-}) => (
-  <label className="flex items-center gap-2">
-    <input type="checkbox" checked={!!checked} onChange={e=>onChange?.(e.currentTarget.checked)} />
-    <span>{label}</span>
-  </label>
-)
 
 /* ------------------------------- основная страница ------------------------------- */
 export default function CandidateCard(){
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const unknownErrorLabel = t('common.errors.unknown')
   const { id } = useParams<{id: UUID | 'new'}>()
+  const location = useLocation()
   const isNew = id === 'new'
   const nav = useNavigate()
   const { can } = usePermissions()
   const canRequestDelete = can('candidates.requestDelete')
   const canDeleteDirect = can('admin.deletionQueue') || can('admin.users')
+  const { notify } = useToast()
 
   const meta = useMetaStages()
-  const stageOptions = useMemo(() => (meta?.order || meta?.codes || []), [meta])
+  const { isClientTenant } = usePermissions()
+  const originPath = useMemo(() => {
+    const originFromState = (location.state as any)?.originPath
+    if (typeof originFromState === 'string' && originFromState.startsWith('/app/')) {
+      return originFromState
+    }
+    return '/app/candidates'
+  }, [location.state])
+  const fromProcesowani = originPath.startsWith('/app/procesowani') || location.pathname.includes('/app/procesowani')
+  
+  const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileFunnelStages, setProfileFunnelStages] = useState<Array<{ code: string; label: string }>>([])
+
+  useEffect(() => {
+    if (!candidateProfile?.funnel_id) {
+      setProfileFunnelStages([])
+      return
+    }
+    getFunnel(candidateProfile.funnel_id)
+      .then((f) => setProfileFunnelStages((f.stages || []).map((s) => ({ code: s.code, label: s.label }))))
+      .catch(() => setProfileFunnelStages([]))
+  }, [candidateProfile?.funnel_id])
+
+  // Полный список этапов профиля (без фильтра по роли)
+  const profileStageCodes = useMemo(() => {
+    let codes: string[] = []
+    if (profileFunnelStages.length > 0) {
+      codes = profileFunnelStages.map((s) => s.code)
+    } else if (candidateProfile?.config?.stage_configs && Array.isArray(candidateProfile.config.stage_configs)) {
+      const profileStages = candidateProfile.config.stage_configs
+        .filter((stage: any) => stage.active !== false)
+        .map((stage: any) => stage.stage_code)
+        .filter(Boolean)
+      if (profileStages.length > 0) {
+        codes = profileStages
+      }
+    }
+    if (!codes.length) {
+      codes = meta?.order || meta?.codes || []
+    }
+    return codes
+  }, [candidateProfile, meta, profileFunnelStages])
+
+  // Ограничиваем список для селекта с учетом роли клиента
+  const stageOptions = useMemo(() => {
+    const codes = profileStageCodes
+    if (!meta?.meta) return codes
+    if (fromProcesowani || isClientTenant) {
+      return codes.filter((code) => meta.meta?.[code]?.visible_for_client)
+    }
+    return codes
+  }, [profileStageCodes, meta, isClientTenant, fromProcesowani])
+
   const stageLabelIntl = useCallback((code: string) => {
+    const funnelStage = profileFunnelStages.find((s) => s.code === code)
+    if (funnelStage?.label) return funnelStage.label
+    if (candidateProfile?.config?.stage_configs) {
+      const profileStage = candidateProfile.config.stage_configs.find(
+        (s: any) => s.stage_code === code
+      )
+      if (profileStage?.stage_label) return profileStage.stage_label
+    }
     const fallback = meta?.labels?.[code] || code
     return translateStageLabel(t, code, fallback)
-  }, [meta?.labels, t])
+  }, [candidateProfile, meta?.labels, profileFunnelStages, t])
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [savedOk, setSavedOk] = useState(false)
   const [downloadingBundle, setDownloadingBundle] = useState(false)
+  const [uploadLinkBusy, setUploadLinkBusy] = useState(false)
+  const [uploadLink, setUploadLink] = useState<CandidateUploadLinkResponse | null>(null)
+  const [uploadLinkCopied, setUploadLinkCopied] = useState(false)
   const [tab, setTab] = useState<Tab>('personal')
+  const HEADER_STORAGE_KEY = 'hf:candidate:headerExpanded'
+  const [headerExpanded, setHeaderExpanded] = useState(() => {
+    try {
+      return window.localStorage.getItem(HEADER_STORAGE_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
   const [model, setModel] = useState<Candidate | null>(null)
   const [deleteRequestLoading, setDeleteRequestLoading] = useState(false)
   const [deleteRequestMessage, setDeleteRequestMessage] = useState<string | null>(null)
   const [deleteRequestError, setDeleteRequestError] = useState<string | null>(null)
+  const [candidateOverrideMode, setCandidateOverrideMode] = useState(false)
+  const [candidateOverrideReason, setCandidateOverrideReason] = useState('')
 
   // каталоги
   const [countries, setCountries] = useState<Option[]>([])
@@ -872,22 +734,208 @@ export default function CandidateCard(){
   const [notesLoading, setNotesLoading] = useState(false)
   const [newNote, setNewNote] = useState('')
   const [noteSending, setNoteSending] = useState(false)
+  const [quickPanelOpen, setQuickPanelOpen] = useState<null | 'handoff' | 'reminders'>(null)
+  const [rodoSentTrigger, setRodoSentTrigger] = useState(0)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+
+  const lastSavedPayloadRef = useRef<string | null>(null)
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const quickPanelRef = useRef<HTMLDivElement | null>(null)
+  const modelRef = useRef<Candidate | null>(null)
+  const routeIdRef = useRef<string | null>(null)
+  modelRef.current = model
+  if (id !== routeIdRef.current) {
+    routeIdRef.current = id ?? null
+    lastSavedPayloadRef.current = null
+  }
   const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
   const [historyInfo, setHistoryInfo] = useState<string | null>(null)
   const [employmentRows, setEmploymentRows] = useState<EmploymentRow[]>([])
   const [employmentBaseline, setEmploymentBaseline] = useState<Record<string, EmploymentSnapshot>>({})
   const [employmentLoading, setEmploymentLoading] = useState(false)
   const [employmentError, setEmploymentError] = useState<string | null>(null)
+  const [reminders, setReminders] = useState<ReminderRecord[]>([])
+  const [remindersLoading, setRemindersLoading] = useState(false)
+  const [remindersError, setRemindersError] = useState<string | null>(null)
+  const [reminderBusy, setReminderBusy] = useState<string | null>(null)
+  const [reminderTitle, setReminderTitle] = useState('')
+  const [reminderDueAt, setReminderDueAt] = useState(() => {
+    const dt = new Date(Date.now() + 60 * 60 * 1000)
+    return dt.toISOString().slice(0, 16)
+  })
+  const [reminderOffset, setReminderOffset] = useState(15)
+  const dateFnsLocale = useMemo(() => (locale === 'ru' ? ru : locale === 'pl' ? pl : enUS), [locale])
+
+  useEffect(() => {
+    if (!quickPanelOpen) return
+    const onPointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null
+      if (quickPanelRef.current && target && quickPanelRef.current.contains(target)) return
+      setQuickPanelOpen(null)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setQuickPanelOpen(null)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('touchstart', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('touchstart', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [quickPanelOpen])
+
+  const isRodoStageBlockedError = useCallback((err: any): boolean => {
+    const status = Number(err?.response?.status || 0)
+    const detailRaw = err?.response?.data?.detail
+    const detail = String(detailRaw || '').trim().toLowerCase()
+    if (status !== 409) return false
+    return detail.includes('rodo must be sent') || detail.includes('contact/screening stage')
+  }, [])
+
+  const parseHandoffDocsIncomplete = useCallback((err: any): { missingTypes: string[] } | null => {
+    const detailRaw = err?.response?.data?.detail
+    const toMissing = (val: any): string[] =>
+      Array.isArray(val) ? val.map((x) => String(x || '').trim()).filter(Boolean) : []
+
+    if (detailRaw && typeof detailRaw === 'object') {
+      const code = String((detailRaw as any).code || '').trim()
+      if (code === 'handoff_docs_incomplete') {
+        return { missingTypes: toMissing((detailRaw as any).missing_types) }
+      }
+    }
+
+    if (typeof detailRaw === 'string') {
+      const trimmed = detailRaw.trim()
+      if (trimmed.includes('handoff_docs_incomplete')) {
+        try {
+          const parsed = JSON.parse(trimmed)
+          if (parsed && typeof parsed === 'object' && String((parsed as any).code || '') === 'handoff_docs_incomplete') {
+            return { missingTypes: toMissing((parsed as any).missing_types) }
+          }
+        } catch {
+          return { missingTypes: [] }
+        }
+      }
+    }
+    return null
+  }, [])
+
+  // Функция для загрузки профиля из вакансии
+  const loadProfileFromVacancy = useCallback(async (vacancyId: string | null) => {
+    if (!vacancyId) {
+      setCandidateProfile(null)
+      return
+    }
+
+    try {
+      setProfileLoading(true)
+      const vacancy = await getVacancy(vacancyId)
+      if (!vacancy?.candidate_profile_id) {
+        try {
+          const profiles = await listCandidateProfiles()
+          const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
+          setCandidateProfile(defaultProfile ?? null)
+        } catch {
+          setCandidateProfile(null)
+        }
+        return
+      }
+      const profileId = vacancy.candidate_profile_id
+      if (profile404Ref.current.has(profileId)) {
+        const profiles = await listCandidateProfiles()
+        const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
+        if (defaultProfile) setCandidateProfile(defaultProfile)
+        else setCandidateProfile(null)
+        return
+      }
+      if (profilePendingRef.current.has(profileId)) {
+        return
+      }
+      profilePendingRef.current.add(profileId)
+      try {
+        const profile = await getCandidateProfile(profileId)
+        if (!profile.is_active) {
+          console.warn('[CandidateCard] Profile is inactive', profile.id)
+          notify({
+            title: t('app.candidate_card.messages.profile_inactive', {
+              values: { name: profile.name },
+            }),
+            variant: 'warning',
+          })
+        }
+        setCandidateProfile(profile)
+      } catch (profileErr: any) {
+        const status = profileErr?.response?.status
+        const useDefaultByDefault = status === 404 || status === 403
+        if (useDefaultByDefault) {
+          profile404Ref.current.add(profileId)
+          try {
+            const profiles = await listCandidateProfiles()
+            const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
+            if (defaultProfile) {
+              setCandidateProfile(defaultProfile)
+              if (!profile404ToastShownRef.current.has(profileId)) {
+                profile404ToastShownRef.current.add(profileId)
+                notify({
+                  title: t('app.candidate_card.messages.profile_fallback_default'),
+                  variant: 'warning',
+                })
+              }
+              return
+            }
+          } catch (_) {
+            /* ignore */
+          }
+          if (!profile404ToastShownRef.current.has(profileId)) {
+            profile404ToastShownRef.current.add(profileId)
+            notify({
+              title: t('app.candidate_card.messages.profile_not_found'),
+              variant: 'warning',
+            })
+          }
+        } else {
+          console.error('[CandidateCard] Failed to load profile', profileErr)
+        }
+        setCandidateProfile(null)
+      } finally {
+        profilePendingRef.current.delete(profileId)
+      }
+    } catch (err) {
+      console.error('[CandidateCard] Failed to load vacancy or profile', err)
+      setCandidateProfile(null)
+    } finally {
+      setProfileLoading(false)
+    }
+  }, [notify, t])
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(HEADER_STORAGE_KEY, headerExpanded ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [headerExpanded])
+  useEffect(() => {
+    setCandidateOverrideMode(false)
+    setCandidateOverrideReason('')
+  }, [id, isNew])
   const basicRef = useRef<HTMLDivElement | null>(null)
   const personalRef = useRef<HTMLDivElement | null>(null)
   const statusRef = useRef<HTMLDivElement | null>(null)
   const experienceRef = useRef<HTMLDivElement | null>(null)
+  const customFieldsRef = useRef<HTMLDivElement | null>(null)
   const employerRef = useRef<HTMLDivElement | null>(null)
   const notesRef = useRef<HTMLDivElement | null>(null)
   const employmentInitRef = useRef(false)
+  /** Profile IDs that returned 404 — skip refetch, use default profile. */
+  const profile404Ref = useRef<Set<string>>(new Set())
+  /** Profile IDs currently being fetched — avoid duplicate GET requests. */
+  const profilePendingRef = useRef<Set<string>>(new Set())
+  /** Profile IDs we already showed 404 toast for this mount — avoid spam. */
+  const profile404ToastShownRef = useRef<Set<string>>(new Set())
   const dialCodeIndex = useMemo(() => {
     return dialCodes
       .map((opt) => {
@@ -992,7 +1040,7 @@ export default function CandidateCard(){
     [t]
   )
 
-  // загрузка каталогов (один раз)
+  // загрузка каталогов (с локализацией названий стран и языков)
   useEffect(() => {
     (async () => {
       try{
@@ -1004,17 +1052,23 @@ export default function CandidateCard(){
           api.get('/vacancies/').catch(()=>({ data: [] })),
         ])
 
-        // countries / languages
-        const countriesArr: Option[] = toArray(c.data).map((x: any) => ({
-          value: String(x.code ?? x.id ?? ''),
-          label: String(x.name ?? x.label ?? x.code ?? ''),
-        })).filter((o: Option) => o.value && o.label)
+        // countries / languages — localized via Intl.DisplayNames
+        const countriesArr: Option[] = toArray(c.data)
+          .map((x: any) => {
+            const code = String(x.code ?? x.id ?? '')
+            return { value: code, label: getRegionDisplayName(code, locale) || code }
+          })
+          .filter((o: Option) => o.value && o.label)
+          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
         setCountries(countriesArr)
-        setLanguages(
-          toArray(l.data)
-            .map((x: any) => ({ value: String(x.code ?? x.id ?? ''), label: String(x.name ?? x.label ?? x.code ?? '') }))
-            .filter((o: Option) => o.value && o.label)
-        )
+        const langsArr: Option[] = toArray(l.data)
+          .map((x: any) => {
+            const code = String(x.code ?? x.id ?? '')
+            return { value: code, label: getLanguageDisplayName(code, locale) || code }
+          })
+          .filter((o: Option) => o.value && o.label)
+          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
+        setLanguages(langsArr)
 
         // dial-codes: поддерживаем и [{country,dial_code}], и {CC:"+XXX"}
         const dcMap = new Map<string,string>()
@@ -1041,7 +1095,7 @@ export default function CandidateCard(){
             } as Option
           })
           .filter((o: Option) => !!o.extra?.prefix)
-          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, 'ru'))
+          .sort((a: Option, b: Option) => a.label.localeCompare(b.label, locale))
         setDialCodes(dcList)
 
         // managers
@@ -1076,7 +1130,7 @@ export default function CandidateCard(){
         // no-op
       }
     })()
-  }, [])
+  }, [locale])
 
   useEffect(() => {
     if (!model?.manager) return
@@ -1105,6 +1159,28 @@ export default function CandidateCard(){
   }, [model?.vacancy_id, model?.vacancy_name, model?.company_id, model?.company_name, t])
 
   useEffect(() => {
+    const loadReminders = async () => {
+      if (!model?.id) return
+      setRemindersLoading(true)
+      setRemindersError(null)
+      try {
+        const res = await listReminders({
+          entityType: 'candidate',
+          entityId: model.id,
+          status: ['pending', 'new', 'overdue'],
+        })
+        const items = Array.isArray(res?.items) ? res.items : []
+        setReminders(items.slice(0, 5))
+      } catch (err: any) {
+        setRemindersError(t('app.reminders.errors.load'))
+      } finally {
+        setRemindersLoading(false)
+      }
+    }
+    void loadReminders()
+  }, [model?.id, t])
+
+  useEffect(() => {
     if (!isNew) return
     const nextStage = meta?.order?.[0] || meta?.codes?.[0]
     if (!nextStage) return
@@ -1124,16 +1200,45 @@ export default function CandidateCard(){
           const defaultStage = meta?.order?.[0] || meta?.codes?.[0] || 'new'
           setModel(createEmptyCandidate(defaultStage))
         } else {
-          const { data } = await api.get(`/candidates/${id}`)
-          const normalized = normalizeCandidate(data, model)
-          setModel(normalized)
+          const cached = getCachedCandidate(id)
+          if (cached) {
+            setModel(normalizeCandidate(cached, model))
+          }
+          try {
+            const { data } = await api.get(`/candidates/${id}`)
+            const normalized = normalizeCandidate(data, model)
+            setModel(normalized)
+            setCachedCandidate(id, normalized)
+
+            // Load candidate profile from vacancy
+            if (normalized.vacancy_id) {
+              await loadProfileFromVacancy(String(normalized.vacancy_id))
+            } else {
+              setCandidateProfile(null)
+            }
+          } catch (err: any) {
+            if (err?.response?.status === 404) {
+              nav('/app/candidates')
+              return
+            }
+            throw err
+          }
         }
       } finally {
         setLoading(false)
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isNew])
+  }, [id, isNew, loadProfileFromVacancy, nav])
+
+  // Отслеживаем изменение вакансии и перезагружаем профиль
+  useEffect(() => {
+    if (model?.vacancy_id) {
+      void loadProfileFromVacancy(String(model.vacancy_id))
+    } else {
+      setCandidateProfile(null)
+    }
+  }, [model?.vacancy_id, loadProfileFromVacancy])
 
   const applyEmploymentRecords = useCallback((records: CandidateEmploymentRecord[]) => {
     const nextRows = records.map(candidateEmploymentToRow)
@@ -1156,11 +1261,8 @@ export default function CandidateCard(){
       applyEmploymentRecords(records)
     } catch (err: any) {
       console.error('[CandidateCard] employment list error', err)
-      const r = err?.response?.data
-      const detail = typeof r?.detail === 'string'
-        ? r.detail
-        : (r ? JSON.stringify(r) : err?.message || t('app.candidate_card.errors.employment.load_failed'))
-      setEmploymentError(detail)
+      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.errors.employment.load_failed') })
+      setEmploymentError(errorMessage)
     } finally {
       if (opts.withSpinner !== false) setEmploymentLoading(false)
     }
@@ -1260,10 +1362,15 @@ export default function CandidateCard(){
       extraForPayload.preferred_contact = null
     }
 
+    const tags = Array.isArray(m.tags) ? m.tags.filter((t: any) => t && String(t).trim()).map((t: any) => String(t).trim()) : []
+    const isFavorite = typeof m.is_favorite === 'boolean' ? m.is_favorite : false
+
     const payload: Record<string, any> = {
       first_name: (m.first_name || '').trim(),
       last_name: (m.last_name || '').trim(),
       languages,
+      tags,
+      is_favorite: isFavorite,
       extra: extraForPayload,
       docs_progress: docsState,
     }
@@ -1346,9 +1453,63 @@ export default function CandidateCard(){
     }
   }
 
+  const AUTO_SAVE_DELAY_MS = 1500
+
+  useEffect(() => {
+    if (isNew || !model?.id || model.id !== id) return
+    const { payload } = buildCandidatePayload(model, meta?.reason_choices ?? {})
+    const serialized = JSON.stringify(payload)
+    if (lastSavedPayloadRef.current === null) {
+      lastSavedPayloadRef.current = serialized
+      return
+    }
+    if (lastSavedPayloadRef.current === serialized) return
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = setTimeout(async () => {
+      autoSaveTimerRef.current = null
+      const m = modelRef.current
+      if (!m?.id) return
+      const { payload: p } = buildCandidatePayload(m, meta?.reason_choices ?? {})
+      const pAuto = stripCandidateOverrideFields(p)
+      if (Object.keys(pAuto).length === 0) {
+        return
+      }
+      const currentStage = String(p.stage || m.stage || '').trim()
+      const reasonOptions = (meta?.reason_choices?.[currentStage] ?? [])
+      const reasonCodes = Array.isArray(p.status_reason) ? p.status_reason : []
+      if (reasonOptions.length > 0 && reasonCodes.length === 0) {
+        return
+      }
+      try {
+        await api.patch(`/candidates/${m.id}`, pAuto)
+        lastSavedPayloadRef.current = JSON.stringify(pAuto)
+        setRodoSentTrigger((x) => x + 1)
+        setSavedOk(true)
+        setTimeout(() => setSavedOk(false), 1500)
+        try {
+          window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: m.id } }))
+          localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: m.id, timestamp: Date.now() }))
+        } catch {
+          /* ignore */
+        }
+      } catch (err: any) {
+        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+        notify({ title: errorMessage, variant: 'error' })
+      }
+    }, AUTO_SAVE_DELAY_MS)
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current)
+        autoSaveTimerRef.current = null
+      }
+    }
+  }, [model, isNew, id, meta?.reason_choices, notify, unknownErrorLabel])
+
   const fetchCandidate = useCallback(async (candidateId: string, prev?: Candidate | null) => {
     const { data } = await api.get(`/candidates/${candidateId}`)
-    return normalizeCandidate(data, prev || model)
+    const normalized = normalizeCandidate(data, prev || model)
+    setCachedCandidate(candidateId, normalized)
+    return normalized
   }, [model])
 
   const fetchNotes = useCallback(async (candidateId: string) => {
@@ -1389,10 +1550,8 @@ export default function CandidateCard(){
         setHistoryInfo(t('app.candidate_card.history.unavailable'))
         setHistoryError(null)
       } else {
-        const detail = typeof r?.detail === 'string'
-          ? r.detail
-          : (r ? JSON.stringify(r) : err?.message || unknownErrorLabel)
-        setHistoryError(detail)
+        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+        setHistoryError(errorMessage)
       }
     } finally {
       setHistoryLoading(false)
@@ -1416,31 +1575,118 @@ export default function CandidateCard(){
     void loadStageHistory(String(model.id))
   }, [model?.id, loadStageHistory])
 
+  const onStageChangePersist = useCallback(
+    async (stage: string, statusReason: string[]) => {
+      if (isNew || !model?.id) return
+      const persistStage = async () => {
+        await api.patch(`/candidates/${model.id}`, { stage, status_reason: statusReason })
+        setRodoSentTrigger((x) => x + 1)
+        const m = modelRef.current
+        if (m) {
+          const { payload } = buildCandidatePayload(
+            { ...m, stage, status_reason: statusReason },
+            meta?.reason_choices ?? {}
+          )
+          lastSavedPayloadRef.current = JSON.stringify(payload)
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: model.id } }))
+          localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: model.id, timestamp: Date.now() }))
+        } catch {
+          /* ignore */
+        }
+      }
+      try {
+        await persistStage()
+        } catch (err: any) {
+          if (isRodoStageBlockedError(err)) {
+          const shouldSendRodo = window.confirm(
+            t('app.candidate_card.messages.rodo_stage_blocked_confirm', {
+              defaultValue: 'RODO is required before contact stage. Send RODO now and retry stage change?',
+            })
+          )
+          if (shouldSendRodo) {
+            try {
+              await sendRodo(model.id)
+              setRodoSentTrigger((x) => x + 1)
+              await persistStage()
+              notify({
+                title: t('app.candidate_card.messages.rodo_sent_retry_success', {
+                  defaultValue: 'RODO sent and stage updated.',
+                }),
+                variant: 'success',
+              })
+              return
+            } catch (retryErr: any) {
+              const retryMessage = formatErrorForDisplay(retryErr, {
+                fallback: t('app.candidate_card.messages.rodo_send_or_retry_failed', {
+                  defaultValue: 'Failed to send RODO or apply stage change.',
+                }),
+              })
+              notify({ title: retryMessage, variant: 'error' })
+              const refreshed = await fetchCandidate(String(model.id), model)
+              setModel(refreshed)
+              return
+            }
+          }
+          notify({
+            title: t('app.candidate_card.messages.rodo_stage_blocked', {
+              defaultValue: 'RODO must be sent before moving to contact stage.',
+            }),
+            variant: 'error',
+          })
+          return
+        }
+        const handoffDocs = parseHandoffDocsIncomplete(err)
+        if (handoffDocs) {
+          const missingLabels = handoffDocs.missingTypes.length > 0
+            ? handoffDocs.missingTypes
+                .map((code) => t(`admin.documents.types.${code}`, { defaultValue: code }))
+                .join(', ')
+            : ''
+          notify({
+            title: t('app.candidate_card.messages.handoff_docs_incomplete', {
+              defaultValue: 'Cannot move to ready-for-handoff: required documents checklist is incomplete.',
+            }),
+            description: missingLabels || undefined,
+            variant: 'error',
+          })
+          return
+        }
+        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+        notify({ title: errorMessage, variant: 'error' })
+        const refreshed = await fetchCandidate(String(model.id), model)
+        setModel(refreshed)
+      }
+    },
+    [isNew, model?.id, fetchCandidate, notify, unknownErrorLabel, meta?.reason_choices, isRodoStageBlockedError, parseHandoffDocsIncomplete, t]
+  )
+
   const handleScrollTo = useCallback((ref: RefObject<HTMLDivElement>) => {
     return () => {
       ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [])
 
-  const candidateTitle = useMemo(() => {
-    if (!model) return ''
-    const parts = [model.first_name, model.last_name]
-      .map((part) => (typeof part === 'string' ? part.trim() : ''))
-      .filter((part) => part.length > 0)
-    return parts.length ? parts.join(' ') : t('app.candidate_card.header.new_label')
-  }, [model?.first_name, model?.last_name, t])
-
+  const isMaskedForNav = model?.masked === true
   const sectionNavItems = useMemo(() => {
-    const items = [
-      { key: 'basic', label: t('app.candidate_card.nav.basic'), emoji: '👤', ref: basicRef },
-      ...(!isNew ? [{ key: 'notes', label: t('app.candidate_card.nav.notes'), emoji: '🗒️', ref: notesRef }] : []),
-      { key: 'personal', label: t('app.candidate_card.nav.personal'), emoji: '🧍', ref: personalRef },
-      { key: 'status', label: t('app.candidate_card.nav.status'), emoji: '🛂', ref: statusRef },
-      { key: 'experience', label: t('app.candidate_card.nav.experience'), emoji: '🧾', ref: experienceRef },
-      { key: 'employer', label: t('app.candidate_card.nav.employer'), emoji: '🏢', ref: employerRef },
+    // Проверяем, есть ли кастомные поля в профиле
+    const hasCustomFields = candidateProfile?.config?.field_configs?.some(
+      (fc: any) => fc.field_key?.startsWith('custom_') && fc.visible !== false
+    )
+    const hiddenWhenMasked = new Set(['basic', 'notes', 'personal', 'employer'])
+
+    const items: Array<{ key: string; label: string; icon: TablerIcon; ref: RefObject<HTMLDivElement> }> = [
+      { key: 'basic', label: t('app.candidate_card.nav.basic'), icon: IconUserCircle, ref: basicRef },
+      ...(!isNew ? [{ key: 'notes', label: t('app.candidate_card.nav.notes'), icon: IconNotebook, ref: notesRef }] : []),
+      { key: 'personal', label: t('app.candidate_card.nav.personal'), icon: IconUser, ref: personalRef },
+      { key: 'status', label: t('app.candidate_card.nav.status'), icon: IconIdBadge2, ref: statusRef },
+      { key: 'experience', label: t('app.candidate_card.nav.experience'), icon: IconBriefcase2, ref: experienceRef },
+      ...(hasCustomFields ? [{ key: 'custom_fields', label: t('app.candidate_card.nav.custom_fields'), icon: IconClipboardList, ref: customFieldsRef }] : []),
+      { key: 'employer', label: t('app.candidate_card.nav.employer'), icon: IconUsersGroup, ref: employerRef },
     ]
-    return items
-  }, [isNew, t])
+    return isMaskedForNav ? items.filter((x) => !hiddenWhenMasked.has(x.key)) : items
+  }, [isNew, candidateProfile, t, isMaskedForNav])
 
   const isMetaLead = useMemo(() => {
     const source = (model?.origin && (model.origin as any)?.source) || model?.source || ''
@@ -1457,20 +1703,75 @@ export default function CandidateCard(){
       setNewNote('')
       await fetchNotes(String(model.id))
       setSavedOk(true); setTimeout(()=>setSavedOk(false), 1500)
+      notify({ title: t('app.candidate_card.messages.note_added'), variant: 'success' })
     } catch (err:any) {
-      const r = err?.response?.data
-      const detail = typeof r?.detail === 'string' ? r.detail : (r ? JSON.stringify(r) : err?.message || unknownErrorLabel)
-      alert(t('app.candidate_card.messages.note_add_failed', { values: { detail } }))
+      const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+      notify({ title: t('app.candidate_card.messages.note_add_failed', { values: { detail: errorMessage } }), variant: 'error' })
       throw err
     } finally {
       setNoteSending(false)
     }
-  }, [model?.id, newNote, fetchNotes, t, unknownErrorLabel])
+  }, [model?.id, newNote, fetchNotes, t, unknownErrorLabel, notify])
   useEffect(() => {
     if (isNew) { setNotes([]); return }
     if (!id || typeof id !== 'string') return
     void fetchNotes(id)
   }, [id, isNew, fetchNotes])
+
+  // Определяем extra и setExtra до их использования в save и других функциях
+  const extra = useMemo<CandidateExtra>(
+    () => sanitizeExtra(model?.extra as CandidateExtra | undefined),
+    [model?.extra]
+  )
+  const setExtra = (patch: Partial<CandidateExtra>) =>
+    setModel(m => {
+      if (!m) return m
+      const current = sanitizeExtra(m.extra as CandidateExtra | undefined)
+      const merged = sanitizeExtra(patch, current)
+      return {
+        ...m,
+        extra: merged,
+        phone_country_code: merged.phone_prefix || '',
+      }
+    })
+
+  const getOverrideFieldLabel = useCallback((raw: string) => {
+    const key = String(raw || '').trim().toLowerCase()
+    switch (key) {
+      case 'first_name': return t('app.candidate_card.fields.first_name')
+      case 'last_name': return t('app.candidate_card.fields.last_name')
+      case 'email':
+      case 'contacts.email': return t('app.candidate_card.fields.email')
+      case 'phone':
+      case 'contacts.phone':
+      case 'contacts.phone_country_code': return t('app.candidate_card.fields.phone')
+      case 'languages':
+      case 'personal.languages': return t('app.candidate_card.fields.languages')
+      case 'country_code':
+      case 'personal.country_code': return t('app.candidate_card.fields.country_code')
+      case 'city':
+      case 'personal.city': return t('app.candidate_card.fields.address.city')
+      case 'birth_date':
+      case 'personal.birth_date': return t('app.candidate_card.fields.birth_date')
+      case 'address':
+      case 'personal.address': return t('app.candidate_card.sections.personal.address_current')
+      case 'personal_data': return t('app.candidate_card.sections.personal.title')
+      case 'contacts': return t('app.candidate_card.sections.basic.title')
+      case 'contacts.preferred_messenger': return t('app.candidate_card.fields.preferred_contact')
+      case 'personal.citizenship': return t('app.candidate_card.fields.citizenship')
+      case 'personal.current_location': return t('app.candidate_card.fields.current_location')
+      case 'personal.residency_status': return t('app.candidate_card.fields.residency_status')
+      case 'personal.in_poland': return t('app.candidate_card.fields.in_poland')
+      case 'experience.years_ce':
+      case 'experience.intl_experience':
+      case 'experience.trailer_types[]':
+      case 'experience.route_types[]':
+      case 'employments[]':
+        return t('app.candidate_card.sections.experience.title')
+      default:
+        return raw
+    }
+  }, [t])
 
   const save = useCallback(async () => {
     if (!model) return
@@ -1489,7 +1790,32 @@ export default function CandidateCard(){
       const stageForValidation = payload.stage || model.stage || ''
       const requiresReason = Boolean(meta?.reason_choices?.[stageForValidation]?.length)
       if (requiresReason && (!statusReasonForState || statusReasonForState.length === 0)) {
-        alert(t('app.candidate_card.messages.stage_reason_required'))
+        notify({ title: t('app.candidate_card.messages.stage_reason_required'), variant: 'error' })
+        setSaving(false)
+        return
+      }
+
+      // Валидация poland_stay_basis при current_location = in_poland
+      if (extra.current_location === 'in_poland' && !extra.poland_stay_basis) {
+        notify({
+          title: t('app.candidate_card.validation.poland_basis_required'),
+          variant: 'error',
+        })
+        setSaving(false)
+        return
+      }
+      // Валидация обязательных полей из профиля
+      const missingFields = validateRequiredFields(candidateProfile, model, extra)
+      if (missingFields.length > 0) {
+        const fieldLabels = missingFields
+          .map((f) => t(`app.candidate_card.fields.${f.fieldKey}`, { defaultValue: f.label || f.fieldKey }))
+          .join(', ')
+        notify({
+          title: t('app.candidate_card.messages.required_fields_missing', {
+            values: { fields: fieldLabels },
+          }),
+          variant: 'error',
+        })
         setSaving(false)
         return
       }
@@ -1499,6 +1825,7 @@ export default function CandidateCard(){
         if (createdId && Object.keys(patchAfterCreate).length > 0) {
           await api.patch(`/candidates/${createdId}`, patchAfterCreate)
         }
+        setRodoSentTrigger((x) => x + 1)
         if (createdId) {
           await syncEmploymentRows(String(createdId))
         }
@@ -1513,6 +1840,18 @@ export default function CandidateCard(){
         }, model)
         setModel(refreshed)
         setSavedOk(true); setTimeout(()=>setSavedOk(false), 2000)
+        notify({ title: t('app.candidate_card.messages.saved'), variant: 'success' })
+        // Уведомляем страницу списка кандидатов об обновлении
+        try {
+          const updatedId = createdId || model.id
+          if (updatedId) {
+            window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: String(updatedId) } }))
+            // Также используем localStorage для кросс-вкладок
+            localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: String(updatedId), timestamp: Date.now() }))
+          }
+        } catch {
+          /* ignore */
+        }
         if (createdId) {
           nav(`/app/candidates/${createdId}`, { replace: true })
         }
@@ -1520,22 +1859,109 @@ export default function CandidateCard(){
         if (model.id) {
           await syncEmploymentRows(String(model.id))
         }
-        const { data } = await api.patch(`/candidates/${model.id}`, payload)
+        const overrideFields = getCandidateOverrideFields(payload)
+        const overrideReason = candidateOverrideReason.trim()
+        if (overrideFields.length > 0 && !candidateOverrideMode) {
+          const fieldLabels = overrideFields.map((f) => getOverrideFieldLabel(f)).filter(Boolean)
+          notify({
+            title: t('app.candidate_card.messages.override_mode_required'),
+            description: fieldLabels.join(', '),
+            variant: 'error',
+          })
+          setSaving(false)
+          return
+        }
+        if (overrideFields.length > 0 && !overrideReason) {
+          notify({
+            title: t('app.candidate_card.messages.override_reason_missing'),
+            variant: 'error',
+          })
+          setSaving(false)
+          return
+        }
+        let patchResponse: any = null
+        try {
+          patchResponse = await api.patch(`/candidates/${model.id}`, overrideFields.length > 0
+            ? {
+                ...payload,
+                override_reason: overrideReason,
+              }
+            : payload)
+        } catch (err: any) {
+          const detail = err?.response?.data?.detail
+          const code = typeof detail === 'object' && detail ? String((detail as any).code || '') : ''
+          if (code === 'override_reason_required') {
+            const fields = Array.isArray((detail as any).fields) ? (detail as any).fields : []
+            const fieldLabels = fields.map((f: string) => getOverrideFieldLabel(f)).filter(Boolean)
+            notify({
+              title: t('app.candidate_card.messages.override_reason_missing'),
+              description: fieldLabels.join(', '),
+              variant: 'error',
+            })
+            setSaving(false)
+            return
+          }
+          const handoffDocs = parseHandoffDocsIncomplete(err)
+          if (handoffDocs) {
+            const missingLabels = handoffDocs.missingTypes.length > 0
+              ? handoffDocs.missingTypes
+                  .map((docCode) => t(`admin.documents.types.${docCode}`, { defaultValue: docCode }))
+                  .join(', ')
+              : ''
+            notify({
+              title: t('app.candidate_card.messages.handoff_docs_incomplete', {
+                defaultValue: 'Cannot move to ready-for-handoff: required documents checklist is incomplete.',
+              }),
+              description: missingLabels || undefined,
+              variant: 'error',
+            })
+            setSaving(false)
+            return
+          }
+          throw err
+        }
+        const { data } = patchResponse
+        setRodoSentTrigger((x) => x + 1)
         const refreshed = await fetchCandidate(String(data?.id ?? model.id), model)
         setModel(refreshed)
+        setCandidateOverrideMode(false)
+        setCandidateOverrideReason('')
+        lastSavedPayloadRef.current = JSON.stringify(buildCandidatePayload(refreshed, meta?.reason_choices ?? {}).payload)
         setSavedOk(true); setTimeout(()=>setSavedOk(false), 2000)
+        notify({ title: t('app.candidate_card.messages.saved'), variant: 'success' })
+        // Уведомляем страницу списка кандидатов об обновлении
+        try {
+          window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: model.id } }))
+          // Также используем localStorage для кросс-вкладок
+          localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: model.id, timestamp: Date.now() }))
+        } catch {
+          /* ignore */
+        }
       }
     } catch (err: any) {
-      const r = err?.response?.data
-      const detail = (typeof r?.detail === 'string')
-        ? r.detail
-        : (Array.isArray(r?.detail) ? JSON.stringify(r.detail) : (r ? JSON.stringify(r) : err?.message || unknownErrorLabel))
-      alert(t('app.candidate_card.messages.save_failed', { values: { detail } }))
+      const handoffDocs = parseHandoffDocsIncomplete(err)
+      if (handoffDocs) {
+        const missingLabels = handoffDocs.missingTypes.length > 0
+          ? handoffDocs.missingTypes
+              .map((docCode) => t(`admin.documents.types.${docCode}`, { defaultValue: docCode }))
+              .join(', ')
+          : ''
+        notify({
+          title: t('app.candidate_card.messages.handoff_docs_incomplete', {
+            defaultValue: 'Cannot move to ready-for-handoff: required documents checklist is incomplete.',
+          }),
+          description: missingLabels || undefined,
+          variant: 'error',
+        })
+      } else {
+        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+        notify({ title: t('app.candidate_card.messages.save_failed', { values: { detail: errorMessage } }), variant: 'error' })
+      }
       throw err
     } finally {
       setSaving(false)
     }
-  }, [model, isNew, nav, fetchCandidate, syncEmploymentRows, t, unknownErrorLabel])
+  }, [model, isNew, nav, fetchCandidate, syncEmploymentRows, t, unknownErrorLabel, notify, candidateProfile, extra, candidateOverrideMode, candidateOverrideReason, getOverrideFieldLabel, parseHandoffDocsIncomplete])
 
   const downloadBundle = useCallback(async () => {
     if (!model?.id) return
@@ -1548,29 +1974,38 @@ export default function CandidateCard(){
       a.download = `candidate_${model.id}_bundle.zip`
       a.click()
       URL.revokeObjectURL(url)
+      notify({ title: t('app.candidate_card.messages.export_success'), variant: 'success' })
     } catch (err: any) {
-      const detail = err?.message || t('app.candidate_card.messages.export_failed')
-      alert(detail)
+      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.export_failed') })
+      notify({ title: errorMessage, variant: 'error' })
     } finally {
       setDownloadingBundle(false)
     }
-  }, [model?.id, t])
+  }, [model?.id, t, notify])
 
-  const extra = useMemo<CandidateExtra>(
-    () => sanitizeExtra(model?.extra as CandidateExtra | undefined),
-    [model?.extra]
-  )
-  const setExtra = (patch: Partial<CandidateExtra>) =>
-    setModel(m => {
-      if (!m) return m
-      const current = sanitizeExtra(m.extra as CandidateExtra | undefined)
-      const merged = sanitizeExtra(patch, current)
-      return {
-        ...m,
-        extra: merged,
-        phone_country_code: merged.phone_prefix || '',
+  const generateUploadLink = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      setUploadLinkBusy(true)
+      const data = await createCandidateUploadLink(String(model.id))
+      setUploadLink(data)
+      const absoluteUrl = new URL(data.apply_url, window.location.origin).toString()
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(absoluteUrl)
+        setUploadLinkCopied(true)
+        window.setTimeout(() => setUploadLinkCopied(false), 2000)
+        notify({ title: t('app.candidate_card.actions.upload_link_copied'), variant: 'success' })
+      } else {
+        notify({ title: t('app.candidate_card.actions.upload_link_ready'), description: absoluteUrl, variant: 'info' })
       }
-    })
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail || err?.message || t('app.candidate_card.messages.upload_link_failed')
+      notify({ title: t('app.candidate_card.messages.upload_link_failed'), description: detail, variant: 'error' })
+    } finally {
+      setUploadLinkBusy(false)
+    }
+  }, [model?.id, notify, t])
+
   useEffect(() => {
     if (!model?.phone) return
     const detection = detectPhoneParts(model.phone)
@@ -1663,34 +2098,6 @@ export default function CandidateCard(){
     setEmploymentRows(rows => rows.filter(row => row.localId !== localId))
   }, [])
 
-  const firstContactChecked = Boolean(extra.first_contact_at)
-  const firstContactDisplay = formatDateTime(extra.first_contact_at)
-  const handleFirstContactToggle = useCallback((checked: boolean) => {
-    if (checked) {
-      if (!extra.first_contact_at) {
-        setExtra({ first_contact_at: new Date().toISOString() })
-      }
-      setModel((prev) => {
-        if (!prev) return prev
-        if (prev.stage === 'contacted') return prev
-        return { ...prev, stage: 'contacted' }
-      })
-    } else {
-      setExtra({ first_contact_at: '' })
-    }
-  }, [extra.first_contact_at, setExtra, setModel])
-
-  const inPolandValue = extra.in_poland === null || typeof extra.in_poland === 'undefined'
-    ? ''
-    : (extra.in_poland ? 'yes' : 'no')
-  const handleInPolandChange = useCallback((value: string) => {
-    if (value === '') {
-      setExtra({ in_poland: null })
-      return
-    }
-    setExtra({ in_poland: value === 'yes' })
-  }, [setExtra])
-
   const handleExperienceChange = useCallback((field: 'experience_eu_years' | 'experience_non_eu_years', raw: string) => {
     let numeric: number | null = null
     if (raw.trim() !== '') {
@@ -1722,7 +2129,7 @@ export default function CandidateCard(){
     return Number.isFinite(sum) ? Number(sum.toFixed(2)) : ''
   })()
 
-  const createdAtDisplay = formatDateTime(model?.created_at)
+  const createdAtDisplay = formatDateTime(model?.created_at, locale)
   const resolveStageLabel = useCallback(
     (code: string | null | undefined) => {
       if (!code) return ''
@@ -1732,20 +2139,6 @@ export default function CandidateCard(){
     [meta, t]
   )
 
-  // красивый телефон для шапки (код + номер), но не пишем в model.phone
-  const phoneDisplay = useMemo(() => {
-    const prefix = (extra?.phone_prefix || '').trim()
-    const number = (model?.phone || '').trim()
-    if (prefix && number) return `${prefix} ${number}`
-    return number || prefix || ''
-  }, [extra?.phone_prefix, model?.phone])
-
-  // tel: без пробелов/скобок/дефисов
-  const telHref = useMemo(() => {
-    const raw = `${(extra?.phone_prefix || '')}${(model?.phone || '')}`
-    const digits = raw.replace(/[\s()-]/g, '')
-    return digits ? `tel:${digits}` : undefined
-  }, [extra?.phone_prefix, model?.phone])
   const handlePhoneInputChange = useCallback((value: string) => {
     const detection = detectPhoneParts(value)
     const nextValue = detection ? detection.number : value
@@ -1809,112 +2202,197 @@ export default function CandidateCard(){
       setDeleteRequestMessage(t('app.candidate_card.messages.delete_request_sent'))
     } catch (err: any) {
       console.error('[CandidateCard] delete request error', err)
-      const detail = err?.response?.data?.detail
-      setDeleteRequestError(detail || t('app.candidate_card.messages.delete_request_failed'))
+      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.delete_request_failed') })
+      setDeleteRequestError(errorMessage)
     } finally {
       setDeleteRequestLoading(false)
     }
   }, [model])
 
-if (loading || !model) return <div className="h-full w-full text-gray-500">{t('common.loading')}</div>
+  const handleCreateReminder = useCallback(async () => {
+    if (!model?.id || !reminderTitle || !reminderDueAt) return
+    try {
+      const due = new Date(reminderDueAt)
+      const remindAt = new Date(due.getTime() - reminderOffset * 60 * 1000)
+      await createReminder({
+        title: reminderTitle,
+        description: '',
+        type: 'custom',
+        entity_type: 'candidate',
+        entity_id: model.id,
+        due_at: due.toISOString(),
+        remind_at: remindAt.toISOString(),
+        priority: 'normal',
+      })
+      setReminderTitle('')
+      setReminderDueAt(new Date(due.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16))
+      const res = await listReminders({
+        entityType: 'candidate',
+        entityId: model.id,
+        status: ['pending', 'new', 'overdue'],
+      })
+      const items = Array.isArray(res?.items) ? res.items : []
+      setReminders(items.slice(0, 5))
+      notify({ title: t('app.reminders.messages.created'), variant: 'success' })
+    } catch (err) {
+      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.reminders.errors.create') })
+      setRemindersError(errorMessage)
+      notify({ title: errorMessage, variant: 'error' })
+    }
+  }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, t, notify])
+
+  const handleFavoriteToggle = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      const newFavoriteValue = !model.is_favorite
+      await api.patch(`/candidates/${model.id}`, { is_favorite: newFavoriteValue })
+      setModel((prev) => {
+        if (!prev) return prev
+        return { ...prev, is_favorite: newFavoriteValue }
+      })
+      // Уведомляем страницу списка кандидатов об обновлении
+      try {
+        window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: model.id } }))
+        localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: model.id, timestamp: Date.now() }))
+      } catch {
+        /* ignore */
+      }
+    } catch (err: any) {
+      const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+      notify({ title: t('app.candidate_card.messages.favorite_toggle_failed', { values: { detail: errorMessage } }), variant: 'error' })
+    }
+  }, [model?.id, model?.is_favorite, t, unknownErrorLabel, notify])
+
+  const handleAttemptCreated = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      const refreshed = await fetchCandidate(String(model.id), model)
+      setModel(refreshed)
+    } catch {
+      /* ignore, toast handled by child */
+    }
+  }, [model?.id, model, fetchCandidate])
+
+  const handleReminderComplete = useCallback(async (id: string) => {
+    try {
+      setReminderBusy(id)
+      await completeReminder(id)
+      const res = await listReminders({
+        entityType: 'candidate',
+        entityId: model?.id || '',
+        status: ['pending', 'new', 'overdue'],
+      })
+      const items = Array.isArray(res?.items) ? res.items : []
+      setReminders(items.slice(0, 5))
+      notify({ title: t('app.reminders.messages.completed'), variant: 'success' })
+    } catch (err) {
+      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.reminders.errors.complete') })
+      setRemindersError(errorMessage)
+      notify({ title: errorMessage, variant: 'error' })
+    } finally {
+      setReminderBusy((prev) => (prev === id ? null : prev))
+    }
+  }, [model?.id, t, notify])
+
+  const handleReminderSnooze = useCallback(async (id: string, minutes: number) => {
+    try {
+      setReminderBusy(id)
+      await snoozeReminder(id, { minutes })
+      const res = await listReminders({
+        entityType: 'candidate',
+        entityId: model?.id || '',
+        status: ['pending', 'new', 'overdue'],
+      })
+      const items = Array.isArray(res?.items) ? res.items : []
+      setReminders(items.slice(0, 5))
+      notify({ title: t('app.reminders.messages.snoozed'), variant: 'success' })
+    } catch (err) {
+      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.reminders.errors.snooze') })
+      setRemindersError(errorMessage)
+      notify({ title: errorMessage, variant: 'error' })
+    } finally {
+      setReminderBusy((prev) => (prev === id ? null : prev))
+    }
+  }, [model?.id, t, notify])
+
+  const handleDelete = useCallback(async () => {
+    if (!model?.id) return
+    if (!window.confirm(t('app.candidate_card.confirm.delete'))) return
+    try {
+      await api.delete(`/candidates/${model.id}`)
+      notify({ title: t('app.candidate_card.messages.deleted'), variant: 'success' })
+      nav('/app/candidates', { state: { returnFromCandidateId: model?.id } })
+    } catch (err: any) {
+      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.delete_failed') })
+      notify({ title: errorMessage, variant: 'error' })
+    }
+  }, [model?.id, nav, t, notify])
+
+  const handleGenerateShortId = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      const { data } = await api.patch(`/candidates/${model.id}`, { extra: {} })
+      setModel((m) => normalizeCandidate(data, m || model))
+      setSavedOk(true)
+      setTimeout(() => setSavedOk(false), 2000)
+      notify({ title: t('app.candidate_card.messages.short_id_generated'), variant: 'success' })
+    } catch (err: any) {
+      notify({ title: t('app.candidate_card.messages.short_id_failed'), variant: 'error' })
+    }
+  }, [model, t, notify])
+
+  const isMasked = model?.masked === true
+  const candidateDataReadOnly = !isNew && !candidateOverrideMode
+
+  // When masked, docs tab is hidden — switch to personal if needed
+  useEffect(() => {
+    if (isMasked && tab === 'docs') setTab('personal')
+  }, [isMasked, tab])
+
+  if (loading || !model) {
+    return <div className="h-full w-full text-slate-500">{t('common.loading')}</div>
+  }
 
   return (
     <div className="h-full min-h-0 w-full flex flex-col gap-4">
-      {/* Header */}
-      <div className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-3">
-            <div className="text-xs text-white/80">
-              <Link className="hover:underline text-white" to="/app/candidates">{t('app.candidate_card.header.back')}</Link>
-            </div>
-            <div>
-              <h1 className="text-3xl font-semibold">{candidateTitle}</h1>
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-white/90">
-                <StageTag code={model.stage || 'new'} />
-                {model.email && <a className="hover:underline text-white" href={`mailto:${model.email}`}>{model.email}</a>}
-                {phoneDisplay && (
-                  <a className="hover:underline text-white" href={telHref}>{phoneDisplay}</a>
-                )}
-                {model.short_id && (
-                  <span className="text-xs rounded-full border border-white/40 px-2 py-0.5">
-                    {t('app.candidate_card.labels.short_id_badge', { values: { id: model.short_id } })}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <button
-              className="rounded-xl border border-white/40 bg-white/10 px-4 py-2 font-medium text-white transition hover:bg-white/20"
-              onClick={()=>nav(-1)}
-            >
-              {t('common.actions.cancel')}
-            </button>
-            <button
-              className="rounded-xl border border-white bg-white px-4 py-2 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
-              disabled={saving}
-              onClick={save}
-            >
-              {saving ? t('common.saving') : (isNew ? t('common.actions.create') : t('common.actions.save'))}
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            {!isNew && canDeleteDirect && (
-              <button
-                className="rounded-xl border border-white/40 bg-white/10 px-4 py-2 font-medium text-rose-50 transition hover:bg-white/20"
-                onClick={async () => {
-                  if (!confirm(t('app.candidate_card.confirm.delete'))) return
-                  await api.delete(`/candidates/${model.id}`)
-                  nav('/app/candidates')
-                }}
-              >
-                {t('common.actions.delete')}
-              </button>
-            )}
-            {!isNew && !canDeleteDirect && canRequestDelete && (
-              <button
-                type="button"
-                className="rounded-xl border border-white/40 bg-white/10 px-4 py-2 font-medium text-white transition hover:bg-white/20"
-                disabled={deleteRequestLoading}
-                onClick={() => void handleDeleteRequest()}
-              >
-                {deleteRequestLoading ? t('app.candidate_card.actions.delete_request_loading') : t('app.candidate_card.actions.delete_request')}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {deleteRequestMessage && (
-        <div className="p-3 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
-          {deleteRequestMessage}
-        </div>
-      )}
-      {deleteRequestError && (
-        <div className="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200">
-          {deleteRequestError}
-        </div>
-      )}
-
-      {savedOk && (
-        <div className="p-3 rounded-lg bg-green-50 text-green-800 border border-green-200">
-          {t('app.candidate_card.messages.saved')}
-        </div>
-      )}
+      <CandidateHeader
+        candidate={model}
+        isNew={isNew}
+        isMasked={isMasked}
+        canEdit={model.can_edit !== false}
+        saving={saving}
+        canDeleteDirect={canDeleteDirect}
+        canRequestDelete={canRequestDelete}
+        deleteRequestLoading={deleteRequestLoading}
+        deleteRequestMessage={deleteRequestMessage}
+        deleteRequestError={deleteRequestError}
+        savedOk={savedOk}
+        headerExpanded={headerExpanded}
+        onHeaderExpandedChange={setHeaderExpanded}
+        onSave={save}
+        onDelete={handleDelete}
+        onDeleteRequest={handleDeleteRequest}
+        onCancel={() => nav(originPath, { state: { returnFromCandidateId: model?.id } })}
+        backPath={originPath}
+        backLabel={originPath.startsWith('/app/procesowani') ? t('app.candidate_card.header.back_to_procesowani') : undefined}
+        onFavoriteToggle={handleFavoriteToggle}
+        candidateProfile={candidateProfile}
+        profileLoading={profileLoading}
+      />
 
       {/* Tabs */}
       <div className="card p-3">
-        <div className="mb-4 flex gap-2 border-b border-brand-100/70">
-          {([
-            ['personal', t('app.candidate_card.tabs.personal')],
-            ['docs', t('app.candidate_card.tabs.docs')],
-            ['services', t('app.candidate_card.tabs.services')],
-          ] as [Tab,string][])
+        <div className="mb-3 flex gap-2 border-b border-brand-100/70">
+          {(
+            [
+              ['personal', t('app.candidate_card.tabs.personal')],
+                ...(isMasked ? [] : [['docs', t('app.candidate_card.tabs.docs')]]),
+              ['services', t('app.candidate_card.tabs.services')],
+            ] as [Tab, string][]
+          )
             .map(([tabKey,label]) => (
             <button key={tabKey}
-              className={clsx('px-3 py-2 -mb-px border-b-2', tab===tabKey ? 'border-brand-500 text-brand-700' : 'border-transparent text-gray-500')}
+              className={clsx('px-3 py-2 -mb-px border-b-2', tab===tabKey ? 'border-brand-500 text-brand-700' : 'border-transparent text-slate-500')}
               onClick={()=>setTab(tabKey)}>{label}</button>
           ))}
         </div>
@@ -1923,632 +2401,209 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
         {tab==='personal' && (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] lg:items-start lg:justify-between">
             <div className="space-y-8 lg:pr-6">
-                  <div className="flex flex-wrap items-center gap-2 overflow-x-auto rounded-full bg-white/60 p-2">
+                  {!isNew && !isMasked && (
+                    <section
+                      ref={quickPanelRef}
+                      className="relative rounded-2xl border border-slate-200 bg-white/80 p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          className={clsx(
+                            'btn-secondary btn-sm',
+                            candidateOverrideMode
+                              ? 'border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                              : '',
+                          )}
+                          onClick={() => {
+                            const next = !candidateOverrideMode
+                            setCandidateOverrideMode(next)
+                            if (!next) setCandidateOverrideReason('')
+                          }}
+                        >
+                          {candidateOverrideMode
+                            ? t('app.candidate_card.override.done')
+                            : t('app.candidate_card.override.edit')}
+                        </button>
+                        <button
+                          type="button"
+                          className={clsx(
+                            'btn-secondary btn-sm',
+                            quickPanelOpen === 'handoff'
+                              ? 'border-brand-400 bg-brand-50 text-brand-700'
+                              : '',
+                          )}
+                          onClick={() => setQuickPanelOpen((prev) => (prev === 'handoff' ? null : 'handoff'))}
+                        >
+                          {t('app.candidate_card.handoff.title')}
+                        </button>
+                        <button
+                          type="button"
+                          className={clsx(
+                            'btn-secondary btn-sm',
+                            quickPanelOpen === 'reminders'
+                              ? 'border-brand-400 bg-brand-50 text-brand-700'
+                              : '',
+                          )}
+                          onClick={() => setQuickPanelOpen((prev) => (prev === 'reminders' ? null : 'reminders'))}
+                        >
+                          {t('app.candidate_card.reminders.title')}
+                        </button>
+                      </div>
+                      {candidateOverrideMode && (
+                        <div className="mt-3 max-w-2xl">
+                          <Input
+                            label={t('app.candidate_card.override.reason_label')}
+                            value={candidateOverrideReason}
+                            onChange={(e) => setCandidateOverrideReason(e.target.value)}
+                            placeholder={t('app.candidate_card.override.reason_placeholder')}
+                          />
+                        </div>
+                      )}
+                      {quickPanelOpen && (
+                        <div className="absolute left-0 right-0 top-full z-30 mt-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+                          {quickPanelOpen === 'handoff' ? (
+                            <CandidateHandoffSection
+                              candidateId={model.id}
+                              companyId={model.company_id}
+                              onHandoffCreated={handleAttemptCreated}
+                              embedded
+                            />
+                          ) : (
+                            <CandidateRemindersSection
+                              candidateId={String(model.id)}
+                              reminders={reminders}
+                              remindersLoading={remindersLoading}
+                              remindersError={remindersError}
+                              reminderTitle={reminderTitle}
+                              reminderDueAt={reminderDueAt}
+                              reminderOffset={reminderOffset}
+                              reminderBusy={reminderBusy}
+                              onReminderTitleChange={setReminderTitle}
+                              onReminderDueAtChange={setReminderDueAt}
+                              onReminderOffsetChange={setReminderOffset}
+                              onReminderCreate={handleCreateReminder}
+                              onReminderComplete={handleReminderComplete}
+                              onReminderSnooze={handleReminderSnooze}
+                              embedded
+                            />
+                          )}
+                        </div>
+                      )}
+                    </section>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 overflow-x-auto">
                     {sectionNavItems.map(item => (
+                      (() => {
+                        const ItemIcon = item.icon
+                        return (
                       <button
                         key={item.key}
                         type="button"
-                        className="flex items-center gap-2 rounded-full border border-brand-50 bg-white/95 px-3 py-1.5 text-sm text-gray-700 transition-all hover:border-brand-300 hover:text-brand-700"
+                        className="btn-secondary btn-sm"
                         onClick={handleScrollTo(item.ref)}
                       >
-                        <span>{item.emoji}</span>
+                        <ItemIcon size={14} className="text-slate-500" />
                         <span>{item.label}</span>
                       </button>
+                        )
+                      })()
                     ))}
                   </div>
-              <section
-                ref={basicRef}
-                id="section-basic"
-                className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-              >
-              <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">👤</span>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.basic.title')}</h2>
-                    <p className="text-sm text-gray-500">{t('app.candidate_card.sections.basic.description')}</p>
-                  </div>
-                </div>
-                {!isNew && (
-                  <button
-                    type="button"
-                    className="btn-ghost text-sm self-start border border-transparent bg-white shadow-sm transition hover:border-brand-200 hover:shadow"
-                    onClick={openHistoryModal}
-                    disabled={historyLoading}
-                  >
-                    {historyLoading ? t('app.candidate_card.actions.history_loading') : t('app.candidate_card.actions.history')}
-                  </button>
-                )}
-              </div>
-              <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div className="space-y-4">
-                  <Input label={t('app.candidate_card.fields.first_name')} value={model.first_name} onChange={e=>setModel(m=>m && ({...m, first_name: e.target.value}))}/>
-                  <Input label={t('app.candidate_card.fields.last_name')} value={model.last_name} onChange={e=>setModel(m=>m && ({...m, last_name: e.target.value}))}/>
-                  <Input
-                    label={t('app.candidate_card.fields.email')}
-                    type="email"
-                    value={model.email || ''}
-                    onChange={e=>setModel(m=>m && ({...m, email: e.target.value}))}
-                  />
 
-                  <div>
-                    <div className="label">{t('app.candidate_card.fields.phone')}</div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(160px,1fr)_12px_minmax(160px,1fr)] sm:items-center">
-                      <SearchableSelect
-                        options={dialCodes}
-                        value={(extra as any).phone_country || ''}
-                        onChange={(cc)=>{
-                          const prefix = dialCodes.find(x => x.value === cc)?.extra?.prefix || ''
-                          setExtra({ phone_country: cc, phone_prefix: prefix })
-                        }}
-                        placeholder={selectTexts.empty}
-                        searchPlaceholder={t('app.candidate_card.select.search_country')}
-                        noResultsLabel={selectTexts.noResults}
-                        className="w-full"
-                      />
-                      <span className="hidden text-gray-400 text-center sm:block">—</span>
-                      <Input
-                        placeholder={t('app.candidate_card.placeholders.phone_number')}
-                        value={model.phone || ''}
-                        onChange={e=>handlePhoneInputChange(e.target.value)}
-                      />
-                    </div>
-                  </div>
+              {!isMasked && (
+              <CandidateBasicSection
+                candidate={model}
+                extra={extra}
+                isNew={isNew}
+                locale={locale}
+                basicRef={basicRef}
+                historyLoading={historyLoading}
+                stageOptions={stageOptions}
+                profileStageCodes={profileStageCodes}
+                meta={meta}
+                dialCodes={dialCodes}
+                managers={managers}
+                preferredContactOptions={preferredContactOptions}
+                selectTexts={selectTexts}
+                createdAtDisplay={createdAtDisplay}
+                isMetaLead={isMetaLead}
+                onModelChange={setModel}
+                onExtraChange={setExtra}
+                onPhoneInputChange={handlePhoneInputChange}
+                onGenerateShortId={handleGenerateShortId}
+                onOpenHistory={openHistoryModal}
+                candidateProfile={candidateProfile}
+                stageLabelIntl={stageLabelIntl}
+                candidateDataReadOnly={candidateDataReadOnly}
+                onStageChangePersist={onStageChangePersist}
+              />
+              )}
 
-                  <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.preferred_contact')}</div>
-                    <select
-                      className="input"
-                      value={(extra.preferred_contact as PreferredContact) || ''}
-                      onChange={e=>setExtra({ preferred_contact: e.target.value as PreferredContact })}
-                    >
-                      {preferredContactOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+            {!isMasked && (
+            <CandidatePersonalSection
+              candidate={model}
+              extra={extra}
+              personalRef={personalRef}
+              countries={countries}
+              languages={languages}
+              selectTexts={selectTexts}
+              onModelChange={setModel}
+              onExtraChange={setExtra}
+              onAddressFieldChange={setAddressField}
+              candidateProfile={candidateProfile}
+              candidateDataReadOnly={candidateDataReadOnly}
+            />
+            )}
 
-                <div className="space-y-4">
-                  <div>
-                    <div className="label flex items-center justify-between">
-                      <span>{t('app.candidate_card.fields.short_id')}</span>
-                      {!isNew && !model.short_id && (
-                        <button
-                          type="button"
-                          className="btn-ghost text-xs"
-                          onClick={async ()=>{
-                            const { data } = await api.patch(`/candidates/${model.id}`, { extra: {} })
-                            setModel(m => normalizeCandidate(data, m || model))
-                            setSavedOk(true); setTimeout(()=>setSavedOk(false), 2000)
-                          }}
-                        >
-                          {t('app.candidate_card.actions.generate_short_id')}
-                        </button>
-                      )}
-                    </div>
-                    <Input
-                      value={model.short_id || ''}
-                      readOnly
-                      placeholder="—"
-                      hint={t('app.candidate_card.fields.short_id_hint')}
-                    />
-                  </div>
+            <CandidateStatusSection
+              extra={extra}
+              statusRef={statusRef}
+              polandBasisOptions={polandBasisOptions}
+              selectTexts={selectTexts}
+              onExtraChange={setExtra}
+              candidateProfile={candidateProfile}
+              candidateDataReadOnly={candidateDataReadOnly}
+            />
 
-                  <div>
-                    <div className="label">{t('app.candidate_card.fields.stage')}</div>
-                    <div className="flex items-center gap-2">
-                      <select
-                        className="input"
-                        value={model.stage || ''}
-                        onChange={e=>{
-                          const nextStage = e.target.value
-                          setModel(m => {
-                            if (!m) return m
-                            const options = meta?.reason_choices?.[nextStage] ?? []
-                            const sanitized = Array.isArray(m.status_reason)
-                              ? m.status_reason.filter(code => options.some(opt => opt.code === code))
-                              : []
-                            return {
-                              ...m,
-                              stage: nextStage,
-                              status_reason: options.length ? sanitized : [],
-                            }
-                          })
-                        }}
-                      >
-                        {stageOptions.map(code => (
-                          <option key={code} value={code}>{stageLabelIntl(code)}</option>
-                        ))}
-                      </select>
-                      <StageTag code={model.stage || 'new'} />
-                    </div>
-                  </div>
-                  {(meta?.reason_choices?.[model.stage || '']?.length ?? 0) > 0 && (
-                    <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <div className="label mb-1">{t('app.candidate_card.fields.status_reasons')}</div>
-                      <div className="space-y-1 text-sm">
-                        {(meta?.reason_choices?.[model.stage || ''] ?? []).map(option => {
-                          const checked = Array.isArray(model.status_reason) && model.status_reason.includes(option.code)
-                          const label = translateReasonLabel(t, option.code, option.label || option.code)
-                          return (
-                            <label key={option.code} className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  const nextChecked = e.target.checked
-                                  setModel(m => {
-                                    if (!m) return m
-                                    const current = Array.isArray(m.status_reason) ? m.status_reason : []
-                                    const updated = nextChecked
-                                      ? Array.from(new Set([...current, option.code]))
-                                      : current.filter(code => code !== option.code)
-                                    return { ...m, status_reason: updated }
-                                  })
-                                }}
-                              />
-                              <span>{label}</span>
-                            </label>
-                          )
-                        })}
-                      </div>
-                      {(!Array.isArray(model.status_reason) || model.status_reason.length === 0) && (
-                        <div className="text-xs text-red-600">{t('app.candidate_card.messages.stage_reason_required')}</div>
-                      )}
-                    </div>
-                  )}
+            <CandidateExperienceSection
+              extra={extra}
+              experienceRef={experienceRef}
+              experienceTotalDisplay={experienceTotalDisplay}
+              trailerTypeOptions={trailerTypeOptions}
+              routeTypeOptions={routeTypeOptions}
+              employmentHistory={employmentHistory}
+              employmentLoading={employmentLoading}
+              employmentError={employmentError}
+              selectTexts={selectTexts}
+              onExtraChange={setExtra}
+              onExperienceChange={handleExperienceChange}
+              onAddEmploymentRow={addEmploymentRow}
+              onUpdateEmploymentHistory={updateEmploymentHistory}
+              onRemoveEmploymentRow={removeEmploymentRow}
+              candidateProfile={candidateProfile}
+              candidateDataReadOnly={candidateDataReadOnly}
+            />
 
-                  <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.manager')}</div>
-                    <SearchableSelect
-                      options={managers}
-                      value={model.manager || ''}
-                      onChange={(v)=>setModel(m=>m && ({...m, manager: v || null, manager_id: v || null}))}
-                      placeholder={selectTexts.empty}
-                      searchPlaceholder={selectTexts.search}
-                      noResultsLabel={selectTexts.noResults}
-                    />
-                  </label>
+            <CandidateCustomFieldsSection
+              extra={extra}
+              customFieldsRef={customFieldsRef}
+              candidateProfile={candidateProfile}
+              selectTexts={selectTexts}
+              onExtraChange={setExtra}
+            />
 
-                  <Input
-                    label={t('app.candidate_card.fields.created_at')}
-                    value={createdAtDisplay}
-                    readOnly
-                    placeholder="—"
-                    hint={t('app.candidate_card.fields.created_at_hint')}
-                  />
-
-                  <div>
-                    <div className="label">{t('app.candidate_card.fields.first_contact')}</div>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                      <Checkbox
-                        label={t('app.candidate_card.fields.first_contact_done')}
-                        checked={firstContactChecked}
-                        onChange={handleFirstContactToggle}
-                      />
-                      <input className="input sm:max-w-xs" readOnly value={firstContactDisplay || '—'} />
-                    </div>
-                    <p className="mt-1 text-xs text-gray-500">{t('app.candidate_card.fields.first_contact_hint')}</p>
-                  </div>
-
-                  {isMetaLead && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                      {t('app.candidate_card.messages.meta_lead')}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </section>
-
-
-            <section
-              ref={personalRef}
-              id="section-personal"
-              className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🧍</span>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.personal.title')}</h2>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.sections.personal.description')}</p>
-                </div>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <Input label={t('app.candidate_card.fields.birth_date')} type="date"
-                       value={(extra.birth_date as any) || ''}
-                       onChange={e=>setExtra({ birth_date: e.target.value })}/>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.citizenship')}</div>
-                  <SearchableSelect
-                    options={countries}
-                    value={(extra.citizenship as any) || ''}
-                    onChange={(v)=>setExtra({ citizenship: v })}
-                    placeholder={selectTexts.empty}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                  />
-                </label>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.country_code')}</div>
-                  <SearchableSelect
-                    options={countries}
-                    value={(model.country_code as any) || ''}
-                    onChange={(v)=>setModel(m => m && ({ ...m, country_code: v || null }))}
-                    placeholder={selectTexts.empty}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                  />
-                </label>
-                <div className="lg:col-span-2">
-                  <div className="label">{t('app.candidate_card.fields.languages')}</div>
-                  <CheckboxMultiSelect
-                    options={languages}
-                    values={model.languages || []}
-                    onChange={(vals)=>setModel(m=>m && ({...m, languages: vals}))}
-                    placeholder={selectTexts.multiNone}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                    multiSelectedLabel={selectTexts.multiSelected}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-dashed border-gray-300 bg-white/60 p-4">
-                  <div className="font-semibold text-gray-800">{t('app.candidate_card.sections.personal.address_current')}</div>
-                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <label className="block md:col-span-2">
-                      <div className="label">{t('app.candidate_card.fields.address.country')}</div>
-                      <SearchableSelect
-                        options={countries}
-                        value={extra.address?.country || ''}
-                        onChange={(v)=>setAddressField('address','country', v)}
-                        placeholder={selectTexts.empty}
-                        searchPlaceholder={selectTexts.search}
-                        noResultsLabel={selectTexts.noResults}
-                      />
-                    </label>
-                    <Input label={t('app.candidate_card.fields.address.city')} value={extra.address?.city || ''} onChange={e=>setAddressField('address','city', e.target.value)} />
-                    <Input label={t('app.candidate_card.fields.address.zip')} value={extra.address?.zip || ''} onChange={e=>setAddressField('address','zip', e.target.value)} />
-                    <Input label={t('app.candidate_card.fields.address.street')} containerClassName="md:col-span-2" value={extra.address?.street || ''} onChange={e=>setAddressField('address','street', e.target.value)} />
-                    <Input label={t('app.candidate_card.fields.address.house')} value={extra.address?.house || ''} onChange={e=>setAddressField('address','house', e.target.value)} />
-                    <Input label={t('app.candidate_card.fields.address.apt')} value={extra.address?.apt || ''} onChange={e=>setAddressField('address','apt', e.target.value)} />
-                  </div>
-
-                  <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2">
-                    <Checkbox
-                      label={t('app.candidate_card.fields.address.diff')}
-                      checked={!!(extra as any).reg_address_diff}
-                      onChange={(v)=>setExtra({ reg_address_diff: v })}
-                    />
-                  </div>
-                </div>
-
-                {(extra as any).reg_address_diff && (
-                  <div className="rounded-xl border border-dashed border-gray-300 bg-white/60 p-4">
-                    <div className="font-semibold text-gray-800">{t('app.candidate_card.sections.personal.address_registered')}</div>
-                    <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <label className="block md:col-span-2">
-                        <div className="label">{t('app.candidate_card.fields.address.country')}</div>
-                      <SearchableSelect
-                        options={countries}
-                        value={extra.reg_address?.country || ''}
-                        onChange={(v)=>setAddressField('reg_address','country', v)}
-                        placeholder={selectTexts.empty}
-                        searchPlaceholder={selectTexts.search}
-                        noResultsLabel={selectTexts.noResults}
-                      />
-                      </label>
-                      <Input label={t('app.candidate_card.fields.address.city')} value={extra.reg_address?.city || ''} onChange={e=>setAddressField('reg_address','city', e.target.value)} />
-                      <Input label={t('app.candidate_card.fields.address.zip')} value={extra.reg_address?.zip || ''} onChange={e=>setAddressField('reg_address','zip', e.target.value)} />
-                      <Input label={t('app.candidate_card.fields.address.street')} containerClassName="md:col-span-2" value={extra.reg_address?.street || ''} onChange={e=>setAddressField('reg_address','street', e.target.value)} />
-                      <Input label={t('app.candidate_card.fields.address.house')} value={extra.reg_address?.house || ''} onChange={e=>setAddressField('reg_address','house', e.target.value)} />
-                      <Input label={t('app.candidate_card.fields.address.apt')} value={extra.reg_address?.apt || ''} onChange={e=>setAddressField('reg_address','apt', e.target.value)} />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <section
-              ref={statusRef}
-              id="section-status"
-              className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🛂</span>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.status.title')}</h2>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.sections.status.description')}</p>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.in_poland')}</div>
-                  <select
-                    className="input"
-                    value={inPolandValue}
-                    onChange={e=>handleInPolandChange(e.target.value)}
-                  >
-                    <option value="">{selectTexts.multiNone}</option>
-                    <option value="yes">{t('common.words.yes')}</option>
-                    <option value="no">{t('common.words.no')}</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.poland_basis')}</div>
-                  <select
-                    className="input"
-                    value={extra.poland_stay_basis || ''}
-                    onChange={e=>setExtra({ poland_stay_basis: e.target.value })}
-                  >
-                    {polandBasisOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.current_location')}</div>
-                  <select
-                    className="input"
-                    value={extra.current_location || ''}
-                    onChange={e=>setExtra({ current_location: e.target.value || null })}
-                  >
-                    <option value="">{selectTexts.multiNone}</option>
-                    <option value="in_poland">{t('public.intake.new.questions.location.options.in_poland')}</option>
-                    <option value="not_in_poland">{t('public.intake.new.questions.location.options.not_in_poland')}</option>
-                    <option value="other">{t('public.intake.new.questions.location.options.other')}</option>
-                  </select>
-                </label>
-              </div>
-            </section>
-
-            <section
-              ref={experienceRef}
-              id="section-experience"
-              className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🧾</span>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.experience.title')}</h2>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.sections.experience.description')}</p>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <Input
-                  label={t('app.candidate_card.fields.experience_eu')}
-                  type="number"
-                  value={
-                    typeof extra.experience_eu_years === 'number' && !Number.isNaN(extra.experience_eu_years)
-                      ? String(extra.experience_eu_years)
-                      : ''
-                  }
-                  onChange={e=>handleExperienceChange('experience_eu_years', e.target.value)}
-                />
-                <Input
-                  label={t('app.candidate_card.fields.experience_non_eu')}
-                  type="number"
-                  value={
-                    typeof extra.experience_non_eu_years === 'number' && !Number.isNaN(extra.experience_non_eu_years)
-                      ? String(extra.experience_non_eu_years)
-                      : ''
-                  }
-                  onChange={e=>handleExperienceChange('experience_non_eu_years', e.target.value)}
-                />
-                <Input
-                  label={t('app.candidate_card.fields.experience_total')}
-                  type="number"
-                  value={experienceTotalDisplay === '' ? '' : String(experienceTotalDisplay)}
-                  readOnly
-                  hint={t('app.candidate_card.fields.experience_total_hint')}
-                />
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.intl_experience')}</div>
-                  <select
-                    className="input"
-                    value={extra.intl_experience === true ? 'yes' : extra.intl_experience === false ? 'no' : ''}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setExtra({ intl_experience: value === 'yes' ? true : value === 'no' ? false : null })
-                    }}
-                  >
-                    <option value="">{t('app.candidate_card.fields.unset')}</option>
-                    <option value="yes">{t('common.words.yes')}</option>
-                    <option value="no">{t('common.words.no')}</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.eu_routes')}</div>
-                  <select
-                    className="input"
-                    value={extra.eu_routes === true ? 'yes' : extra.eu_routes === false ? 'no' : ''}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setExtra({ eu_routes: value === 'yes' ? true : value === 'no' ? false : null })
-                    }}
-                  >
-                    <option value="">{t('app.candidate_card.fields.unset')}</option>
-                    <option value="yes">{t('common.words.yes')}</option>
-                    <option value="no">{t('common.words.no')}</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.frigo_experience')}</div>
-                  <select
-                    className="input"
-                    value={extra.frigo_experience === true ? 'yes' : extra.frigo_experience === false ? 'no' : ''}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setExtra({ frigo_experience: value === 'yes' ? true : value === 'no' ? false : null })
-                    }}
-                  >
-                    <option value="">{t('app.candidate_card.fields.unset')}</option>
-                    <option value="yes">{t('common.words.yes')}</option>
-                    <option value="no">{t('common.words.no')}</option>
-                  </select>
-                </label>
-                <label className="block">
-                  <div className="label">{t('app.candidate_card.fields.has_adr')}</div>
-                  <select
-                    className="input"
-                    value={extra.has_adr === true ? 'yes' : extra.has_adr === false ? 'no' : ''}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      setExtra({ has_adr: value === 'yes' ? true : value === 'no' ? false : null })
-                    }}
-                  >
-                    <option value="">{t('app.candidate_card.fields.unset')}</option>
-                    <option value="yes">{t('common.words.yes')}</option>
-                    <option value="no">{t('common.words.no')}</option>
-                  </select>
-                </label>
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <div className="label">{t('app.candidate_card.intake.fields.trailer_types')}</div>
-                  <CheckboxMultiSelect
-                    options={trailerTypeOptions}
-                    values={Array.isArray(extra.trailer_types) ? extra.trailer_types : []}
-                    onChange={(vals) => setExtra({ trailer_types: vals })}
-                    placeholder={selectTexts.multiNone}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                    multiSelectedLabel={selectTexts.multiSelected}
-                  />
-                </div>
-                <div>
-                  <div className="label">{t('app.candidate_card.intake.fields.route_types')}</div>
-                  <CheckboxMultiSelect
-                    options={routeTypeOptions}
-                    values={Array.isArray(extra.route_types) ? extra.route_types : []}
-                    onChange={(vals) => setExtra({ route_types: vals })}
-                    placeholder={selectTexts.multiNone}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                    multiSelectedLabel={selectTexts.multiSelected}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-gray-800">{t('app.candidate_card.employment.title')}</div>
-                  <button
-                    type="button"
-                    className="btn-secondary text-sm shadow-sm transition hover:shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={addEmploymentRow}
-                    disabled={employmentHistory.length >= MAX_EMPLOYMENTS}
-                  >
-                    {t('app.candidate_card.employment.add')}
-                  </button>
-                </div>
-                {employmentHistory.length >= MAX_EMPLOYMENTS && (
-                  <p className="text-xs text-gray-500">{t('app.candidate_card.employment.limit', { values: { count: MAX_EMPLOYMENTS } })}</p>
-                )}
-                {employmentError && (
-                  <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                    {employmentError}
-                  </div>
-                )}
-                {employmentLoading ? (
-                  <div className="rounded-lg border border-dashed border-gray-300 bg-white/70 px-4 py-3 text-sm text-gray-500">
-                    {t('app.candidate_card.employment.loading')}
-                  </div>
-                ) : employmentHistory.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-gray-300 bg-white/70 px-4 py-3 text-sm text-gray-500">
-                    {t('app.candidate_card.employment.empty')}
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto rounded-2xl border border-brand-50 bg-white/95 shadow-card">
-                    <table className="min-w-full divide-y divide-brand-100/70 text-sm">
-                      <thead className="bg-brand-50/60">
-                        <tr>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.employer')}</th>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.country')}</th>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.position')}</th>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.start')}</th>
-                          <th className="px-3 py-2 text-left">{t('app.candidate_card.employment.columns.end')}</th>
-                          <th className="px-3 py-2 text-right"></th>
-                        </tr>
-                          </thead>
-                      <tbody className="divide-y divide-brand-100/70 bg-white/95">
-                        {employmentHistory.map((entry) => (
-                          <tr key={entry.id ?? entry.localId}>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                value={entry.employer_name || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'employer_name', e.target.value)}
-                                placeholder={t('app.candidate_card.employment.placeholders.employer')}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                value={entry.country || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'country', e.target.value.toUpperCase())}
-                                placeholder={t('app.candidate_card.employment.placeholders.country')}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                value={entry.position || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'position', e.target.value)}
-                                placeholder={t('app.candidate_card.employment.placeholders.position')}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                type="date"
-                                value={entry.start_date || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'start_date', e.target.value)}
-                              />
-                            </td>
-                            <td className="px-3 py-2">
-                              <input
-                                className="input"
-                                type="date"
-                                value={entry.end_date || ''}
-                                onChange={e=>updateEmploymentHistory(entry.localId, 'end_date', e.target.value)}
-                              />
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              <button
-                                type="button"
-                                className="btn-ghost text-sm text-gray-500 hover:text-rose-600"
-                                onClick={()=>removeEmploymentRow(entry.localId)}
-                              >
-                                {t('common.actions.delete')}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </section>
-
+            {!isMasked && (
             <section
               ref={employerRef}
               id="section-employer"
               className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
             >
               <div className="flex items-center gap-3">
-                <span className="text-2xl">🏢</span>
+                <IconBuilding size={22} className="text-slate-600" />
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{t('app.candidate_card.sections.employer.title')}</h2>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.sections.employer.description')}</p>
+                  <h2 className="text-lg font-semibold text-slate-900">{t('app.candidate_card.sections.employer.title')}</h2>
+                  <p className="text-sm text-slate-500">{t('app.candidate_card.sections.employer.description')}</p>
                 </div>
               </div>
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -2557,7 +2612,7 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                   <SearchableSelect
                     options={vacancyOpts}
                     value={(model.vacancy_id as string) || ''}
-                    onChange={(v) => {
+                    onChange={async (v) => {
                       if (!v) {
                         setModel(m => m && ({
                           ...m,
@@ -2566,6 +2621,7 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                           company_id: null,
                           company_name: '',
                         }))
+                        setCandidateProfile(null)
                         return
                       }
                       const opt = vacancyOpts.find(o => o.value === v)
@@ -2579,12 +2635,14 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                         company_id,
                         company_name: company_name || m.company_name || '',
                       }))
+                      // Загружаем профиль из новой вакансии
+                      await loadProfileFromVacancy(v)
                     }}
                     placeholder={selectTexts.empty}
                     searchPlaceholder={selectTexts.search}
                     noResultsLabel={selectTexts.noResults}
                   />
-                  <p className="mt-1 text-xs text-gray-500">{t('app.candidate_card.messages.vacancy_hint')}</p>
+                  <p className="mt-1 text-xs text-slate-500">{t('app.candidate_card.messages.vacancy_hint')}</p>
                 </label>
                 <Input
                   label={t('app.candidate_card.fields.company')}
@@ -2595,74 +2653,66 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                 />
               </div>
             </section>
+            )}
 
           </div>
             {!isNew && (
-              <aside
-                ref={notesRef}
-                id="section-notes"
-                className="app-surface sticky top-20 h-fit w-full max-w-sm space-y-3 self-start rounded-2xl p-5 shadow-lg lg:w-80 lg:max-w-[320px] lg:justify-self-end lg:ml-auto"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl">🗒️</span>
-                    <div>
-                      <h3 className="text-base font-semibold text-gray-900">{t('app.candidate_card.sections.notes.title')}</h3>
-                      <p className="text-xs text-gray-500">{t('app.candidate_card.sections.notes.description')}</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn-ghost text-xs"
-                    onClick={()=> model?.id && fetchNotes(String(model.id))}
-                    disabled={notesLoading}
-                  >{notesLoading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}</button>
-                </div>
-                <div className="space-y-2">
-                  <textarea
-                    className="input min-h-[72px] w-full"
-                    placeholder={t('app.candidate_card.notes.placeholder')}
-                    value={newNote}
-                    onChange={e=>setNewNote(e.target.value)}
+              <div className="flex w-full min-w-0 flex-col gap-6 overflow-hidden">
+                {model?.id && (
+                  <>
+                    {!isMasked && (
+                    <CandidateCommunicationSection
+                      candidateId={model.id}
+                      companyId={model.company_id}
+                      onRodoSent={() => setRodoSentTrigger((t) => t + 1)}
+                      onAttemptCreated={handleAttemptCreated}
+                      refreshTrigger={rodoSentTrigger}
+                    />
+                    )}
+                  </>
+                )}
+                {!isMasked && (
+                <div className="border-t border-slate-200 pt-6">
+                  <CandidateNotesSection
+                    notesRef={notesRef}
+                    notes={notes}
+                    notesLoading={notesLoading}
+                    newNote={newNote}
+                    noteSending={noteSending}
+                    onNewNoteChange={setNewNote}
+                    onAddNote={addNote}
+                    onRefreshNotes={() => model?.id && fetchNotes(String(model.id))}
                   />
-                  <button type="button" className="btn-primary w-full" onClick={addNote} disabled={noteSending || !newNote.trim()}>
-                    {noteSending ? t('app.candidate_card.actions.saving_note') : t('common.actions.add')}
-                  </button>
                 </div>
-                <div className="divide-y rounded-lg border bg-white overflow-hidden max-h-[400px] overflow-y-auto">
-                  {notes.length === 0 && (
-                    <div className="p-3 text-gray-500">{t('app.candidate_card.notes.empty')}</div>
-                  )}
-                  {notes.map(n => (
-                    <div key={n.id} className="p-3">
-                      <div className="mb-1 text-sm text-gray-500">
-                        <span className="mr-2">{new Date(n.created_at).toLocaleString()}</span>
-                        <span className="rounded bg-gray-100 px-2 py-0.5">
-                          {t(`app.candidate_card.notes.visibility.${n.visibility}`, { defaultValue: n.visibility })}
-                        </span>
-                      </div>
-                      <div className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{n.text}</div>
-                    </div>
-                  ))}
-                </div>
-              </aside>
+                )}
+              </div>
             )}
           </div>
         )}
         {/* DOCS */}
-        {tab==='docs' && (
+        {tab==='docs' && !isMasked && (
           <div className="space-y-4">
             <div className="app-surface p-4">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-lg font-semibold text-gray-900">{t('app.candidate_card.tabs.docs')}</p>
-                  <p className="text-sm text-gray-500">{t('app.candidate_card.docs.helper')}</p>
+                  <p className="text-lg font-semibold text-slate-900">{t('app.candidate_card.tabs.docs')}</p>
+                  <p className="text-sm text-slate-500">{t('app.candidate_card.docs.helper')}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     className="btn-secondary text-sm"
-                    onClick={downloadBundle}
+                    onClick={() => void generateUploadLink()}
+                    disabled={!model?.id || uploadLinkBusy}
+                  >
+                    {uploadLinkBusy
+                      ? t('app.candidate_card.actions.upload_link_creating')
+                      : t('app.candidate_card.actions.upload_link')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary text-sm"
+                    onClick={() => void downloadBundle()}
                     disabled={!model?.id || downloadingBundle}
                   >
                     {downloadingBundle
@@ -2676,6 +2726,7 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                   key={String(model.id)}
                   candidateId={String(model.id)}
                   hideHeader
+                  candidateProfile={candidateProfile}
                   {...({
                     ownerContext: { citizenship: (extra as any)?.citizenship || '' },
                     onFieldsApplied: (doc: any, fields: Record<string, any>) =>
@@ -2683,7 +2734,25 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                   } as any)}
                 />
               ) : (
-                <div className="text-gray-500">{t('app.candidate_card.docs.disabled')}</div>
+                <div className="text-slate-500">{t('app.candidate_card.docs.disabled')}</div>
+              )}
+              {uploadLink && (
+                <div className="mt-3 rounded border border-dashed border-brand-200 bg-brand-50/40 p-3 text-sm text-brand-800">
+                  <div className="font-semibold">{t('app.candidate_card.docs.upload_link_label')}</div>
+                  <div className="break-all text-xs sm:text-sm">
+                    {new URL(uploadLink.apply_url, window.location.origin).toString()}
+                  </div>
+                  {uploadLink.expires_at && (
+                    <div className="text-xs text-brand-700">
+                      {t('app.candidate_card.docs.upload_link_expires', { values: { date: uploadLink.expires_at } })}
+                    </div>
+                  )}
+                  {uploadLinkCopied && (
+                    <div className="text-xs text-green-700">
+                      {t('app.candidate_card.actions.upload_link_copied')}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -2697,18 +2766,12 @@ if (loading || !model) return <div className="h-full w-full text-gray-500">{t('c
                 canManage={can('services.orders.manage')}
               />
             ) : (
-              <div className="text-gray-500">{t('app.candidate_card.services.disabled')}</div>
+              <div className="text-slate-500">{t('app.candidate_card.services.disabled')}</div>
             )}
           </div>
         )}
       </div>
 
-      <div className="flex justify-end gap-2">
-        <button className="btn-ghost" onClick={()=>nav(-1)}>{t('common.actions.cancel')}</button>
-        <button className="btn-primary disabled:opacity-60" disabled={saving} onClick={save}>
-          {saving ? t('common.saving') : (isNew ? t('common.actions.create') : t('common.actions.save'))}
-        </button>
-      </div>
       <StageHistoryModal
         open={historyOpen}
         loading={historyLoading}
@@ -2761,9 +2824,9 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-500">{t('app.candidate_card.services.loading')}</div>
+        <div className="text-sm text-slate-500">{t('app.candidate_card.services.loading')}</div>
       ) : orders.length === 0 ? (
-        <div className="text-sm text-gray-500">{t('app.candidate_card.services.empty')}</div>
+        <div className="text-sm text-slate-500">{t('app.candidate_card.services.empty')}</div>
       ) : (
         <div className="overflow-auto rounded-2xl border border-brand-50 bg-white/95 shadow-card">
           <table className="min-w-full divide-y divide-brand-100/70 text-sm">
@@ -2779,18 +2842,18 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
               {orders.map((order) => (
                 <tr key={order.id}>
                   <td className="px-3 py-2 font-mono text-xs">{order.id.slice(0, 12)}…</td>
-                  <td className="px-3 py-2 uppercase text-xs text-gray-500">{formatOrderStatus(order.status)}</td>
+                  <td className="px-3 py-2 uppercase text-xs text-slate-500">{formatOrderStatus(order.status)}</td>
                   <td className="px-3 py-2 text-xs">
                     <ul className="list-disc list-inside space-y-1">
                       {order.items.map((item) => (
                         <li key={item.id}>
-                          <span className="font-medium text-gray-700">{item.service?.name || item.service_id}</span>
-                          <span className="ml-2 text-gray-500">{formatItemStatus(item.status)}</span>
+                          <span className="font-medium text-slate-700">{item.service?.name || item.service_id}</span>
+                          <span className="ml-2 text-slate-500">{formatItemStatus(item.status)}</span>
                         </li>
                       ))}
                     </ul>
                   </td>
-                  <td className="px-3 py-2 text-right text-sm text-gray-700">{formatAmount(order.total_amount)}</td>
+                  <td className="px-3 py-2 text-right text-sm text-slate-700">{formatAmount(order.total_amount)}</td>
                 </tr>
               ))}
             </tbody>
@@ -2822,11 +2885,11 @@ function StageHistoryModal({
   onReload,
   resolveStageLabel,
 }: StageHistoryModalProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   if (!open) return null
 
   const renderStage = (code: string | null | undefined) => {
-    if (!code) return <span className="text-gray-400">—</span>
+    if (!code) return <span className="text-slate-400">—</span>
     const label = resolveStageLabel(code)
     return (
       <div className="flex items-center gap-2">
@@ -2863,43 +2926,43 @@ function StageHistoryModal({
         </div>
         <div className="max-h-[calc(80vh-56px)] overflow-auto">
           {loading ? (
-            <div className="px-4 py-6 text-sm text-gray-500">{t('common.loading')}</div>
+            <div className="px-4 py-6 text-sm text-slate-500">{t('common.loading')}</div>
           ) : error ? (
             <div className="px-4 py-6 text-sm text-rose-600">{error}</div>
           ) : entries.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-gray-500">
+            <div className="px-4 py-6 text-sm text-slate-500">
               {infoMessage || t('app.candidate_card.history.empty')}
             </div>
           ) : (
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50">
                 <tr>
+                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.actor')}</th>
                   <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.when')}</th>
                   <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.change')}</th>
-                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.actor')}</th>
                   <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.comment')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="divide-y divide-slate-200 bg-white">
                 {entries.map((entry) => (
                   <tr key={entry.id}>
-                    <td className="px-3 py-2 text-xs text-gray-500">
-                      {entry.at ? formatDateTime(entry.at) : '—'}
+                    <td className="px-3 py-2 text-xs font-medium text-slate-700">{entry.actor || '—'}</td>
+                    <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
+                      {entry.at ? formatDateTime(entry.at, locale) : '—'}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
                           <span>{t('app.candidate_card.history.modal.previous')}</span>
                           {renderStage(entry.from_code)}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
                           <span>{t('app.candidate_card.history.modal.next')}</span>
                           {renderStage(entry.to_code)}
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-xs text-gray-600">{entry.actor || '—'}</td>
-                    <td className="px-3 py-2 text-xs text-gray-600">
+                    <td className="px-3 py-2 text-xs text-slate-600">
                       {entry.reason ? entry.reason : '—'}
                     </td>
                   </tr>

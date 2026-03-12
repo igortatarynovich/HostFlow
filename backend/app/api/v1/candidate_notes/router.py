@@ -59,12 +59,18 @@ def _to_iso(dt) -> str:
     return str(dt)
 
 def _map_note_row(row) -> dict:
+    def _get(obj, key, default=None):
+        if isinstance(obj, dict):
+            return obj.get(key, default)
+        return getattr(obj, key, default)
+    author_name = _get(row, "author_name") or _get(row, "author_email") or ""
     return {
-        "id": str(row["id"]) if isinstance(row, (dict,)) else str(row.id),
-        "text": row["text"] if isinstance(row, (dict,)) else row.text,
-        "visibility": row["visibility"] if isinstance(row, (dict,)) else row.visibility,
-        "author_id": str(row["author_id"]) if isinstance(row, (dict,)) else str(row.author_id),
-        "created_at": _to_iso(row["created_at"] if isinstance(row, (dict,)) else row.created_at),
+        "id": str(_get(row, "id", "")),
+        "text": _get(row, "text", ""),
+        "visibility": _get(row, "visibility", "internal"),
+        "author_id": str(_get(row, "author_id", "")),
+        "author_name": str(author_name).strip() if author_name else None,
+        "created_at": _to_iso(_get(row, "created_at")),
     }
 
 
@@ -78,6 +84,7 @@ class NoteOut(BaseModel):
     text: str
     visibility: str
     author_id: str
+    author_name: str | None = None
     created_at: str
 
 
@@ -86,10 +93,12 @@ async def list_candidate_notes(candidate_id: str, request: Request, user=Depends
     dbi = await _get_db(request)
     rows = await dbi.fetch_all(
         """
-        SELECT id, text, visibility, author_id, created_at
-        FROM candidate_notes
-        WHERE candidate_id = :cid AND tenant_id = :tid
-        ORDER BY created_at DESC
+        SELECT n.id, n.text, n.visibility, n.author_id, n.created_at,
+               COALESCE(u.full_name, u.email, u.short_id::text, '') as author_name
+        FROM candidate_notes n
+        LEFT JOIN users u ON u.id = n.author_id
+        WHERE n.candidate_id = :cid AND n.tenant_id = :tid
+        ORDER BY n.created_at DESC
         """,
         {"cid": candidate_id, "tid": user.tenant_id},
     )
@@ -117,9 +126,11 @@ async def add_candidate_note(candidate_id: str, payload: NoteIn, request: Reques
     # выборка свежей записи
     row = await dbi.fetch_one(
         """
-        SELECT id, text, visibility, author_id, created_at
-        FROM candidate_notes
-        WHERE id = :id AND tenant_id = :tid
+        SELECT n.id, n.text, n.visibility, n.author_id, n.created_at,
+               COALESCE(u.full_name, u.email, u.short_id::text, '') as author_name
+        FROM candidate_notes n
+        LEFT JOIN users u ON u.id = n.author_id
+        WHERE n.id = :id AND n.tenant_id = :tid
         """,
         {"id": note_id, "tid": user.tenant_id},
     )

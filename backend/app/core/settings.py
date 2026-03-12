@@ -101,6 +101,24 @@ class Settings(BaseSettings):
     pull_field_data_from_graph: bool = True
     auth_token_ttl_minutes: int = 720
 
+    # System email (info@hostflow.cc): password reset, invites
+    system_smtp_host: Optional[str] = None
+    system_smtp_port: Optional[int] = None
+    system_smtp_user: Optional[str] = None
+    system_smtp_password: Optional[str] = None
+    system_from_email: Optional[str] = None
+    system_from_name: Optional[str] = None
+    frontend_url: Optional[str] = None  # e.g. https://app.hostflow.cc
+
+    # Stripe billing
+    stripe_secret_key: Optional[str] = None
+    stripe_publishable_key: Optional[str] = None
+    stripe_webhook_secret: Optional[str] = None
+    stripe_price_starter: Optional[str] = None
+    stripe_price_team: Optional[str] = None
+    stripe_price_pro: Optional[str] = None
+    stripe_portal_return_url: Optional[str] = None
+
     if PYDANTIC_V2:
         _model_cfg: dict[str, object] = {
             "extra": "ignore",

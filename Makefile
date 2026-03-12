@@ -4,10 +4,13 @@
 ifneq (,$(wildcard .env))
 include .env
 endif
+ifneq (,$(wildcard backend/.env))
+include backend/.env
+endif
 export ASYNC_DATABASE_URL SYNC_DATABASE_URL ALEMBIC_DATABASE_URL DATABASE_URL TENANT_ID
 
-# ---- Paths / tools ----
-VENV        ?= .venv312
+# ---- Paths / tools (prefer .venv if it has alembic, else .venv312) ----
+VENV        := $(if $(wildcard .venv/bin/alembic),.venv,.venv312)
 PY          := $(VENV)/bin/python
 PIP         := $(VENV)/bin/pip
 UVICORN     := $(VENV)/bin/uvicorn
@@ -44,7 +47,9 @@ help:
 install:
 	@test -x "$(PY)" || python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip
-	@if [ -f requirements.txt ]; then \
+	@if [ -f backend/requirements.txt ]; then \
+		$(PIP) install -r backend/requirements.txt; \
+	elif [ -f requirements.txt ]; then \
 		$(PIP) install -r requirements.txt; \
 	else \
 		$(PIP) install "fastapi>=0.110" "uvicorn[standard]" "sqlalchemy>=2.0" \
@@ -69,7 +74,8 @@ mig:
 
 .PHONY: upg
 upg:
-	$(ALEMBIC) upgrade heads
+	@echo "[make upg] Using venv: $(VENV), DB: $$(echo $(SYNC_DATABASE_URL) | sed 's/:[^:@]*@/:***@/')"
+	$(ALEMBIC) -c alembic.ini upgrade head
 
 .PHONY: down
 down:

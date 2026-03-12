@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text, select
 
 from .session import async_session_maker  # ← используем твою фабрику
-from backend.app.models.tenant import TenantVacancyAccess
+from backend.app.models.tenant import Tenant, TenantLink, TenantType, TenantVacancyAccess
 from backend.app.models.vacancy import Vacancy
 from backend.app.services.tenant_visibility import TenantVisibility
 
@@ -71,6 +71,39 @@ async def get_db_with_tenant(
     except Exception:
         shared_vacancy_ids = set()
         shared_company_ids = set()
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+    # Client tenant (type=company): also include companies from tenant_links (handoff_include_company_id)
+    # so analytics and other visibility-based logic see the same scope as the candidate list.
+    try:
+        tenant_row = await db.execute(
+            select(Tenant.type).where(Tenant.id == str(tenant_id)).limit(1)
+        )
+        ttype = tenant_row.scalar_one_or_none()
+        if ttype == TenantType.company:
+            link_rows = await db.execute(
+                select(TenantLink.handoff_include_company_id)
+                .where(
+                    TenantLink.client_tenant_id == str(tenant_id),
+                    TenantLink.handoff_include_company_id.isnot(None),
+                    TenantLink.status == "active",
+                )
+            )
+            for (company_id,) in link_rows.all():
+                if company_id:
+                    shared_company_ids.add(str(company_id))
+            # Add vacancies of those companies so scope is aligned with candidate list
+            if shared_company_ids:
+                vac_rows = await db.execute(
+                    select(Vacancy.id).where(Vacancy.company_id.in_(shared_company_ids))
+                )
+                for (vid,) in vac_rows.all():
+                    if vid:
+                        shared_vacancy_ids.add(str(vid))
+    except Exception:
         try:
             await db.rollback()
         except Exception:

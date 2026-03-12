@@ -91,6 +91,8 @@ def ensure_leads_schema() -> None:
                 cur.execute("ALTER TABLE leads ADD COLUMN external_id TEXT")
             if not _column_exists(cur, "leads", "last_routed_at"):
                 cur.execute("ALTER TABLE leads ADD COLUMN last_routed_at TEXT")
+            if not _column_exists(cur, "leads", "stage"):
+                cur.execute("ALTER TABLE leads ADD COLUMN stage TEXT")
             cur.execute(
                 """
                 CREATE UNIQUE INDEX IF NOT EXISTS uq_leads_tenant_source_external_id

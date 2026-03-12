@@ -59,7 +59,7 @@ export default function Select({
         className="w-full text-left input"
         onClick={() => setOpen(o => !o)}
       >
-        {selected ? selected.label : <span className="text-gray-400">{placeholder}</span>}
+        {selected ? selected.label : <span className="text-slate-400">{placeholder}</span>}
       </button>
 
       {open && (
@@ -76,14 +76,14 @@ export default function Select({
 
           <div className="max-h-72 overflow-auto py-1">
             {filtered.length === 0 && (
-              <div className="px-4 py-3 text-sm text-gray-500">нет совпадений</div>
+              <div className="px-4 py-3 text-sm text-slate-500">нет совпадений</div>
             )}
             {filtered.map(opt => (
               <button
                 key={opt.value}
                 type="button"
-                className={`block w-full px-4 py-2 text-left hover:bg-gray-50 ${
-                  opt.value === value ? 'bg-gray-50' : ''
+                className={`block w-full px-4 py-2 text-left hover:bg-slate-50 ${
+                  opt.value === value ? 'bg-slate-50' : ''
                 }`}
                 onClick={() => choose(opt.value)}
               >

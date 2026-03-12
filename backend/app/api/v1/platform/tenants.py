@@ -247,6 +247,124 @@ async def update_platform_tenant_modules(
     return platform_schemas.TenantModuleSettings(**modules)
 
 
+@router.get(
+    "/{tenant_id}/module-matrix",
+    response_model=platform_schemas.TenantRoleModuleMatrix,
+    dependencies=[Depends(require_superadmin())],
+)
+async def get_platform_tenant_module_matrix(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantRoleModuleMatrix:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    matrix = tenant_service.get_role_module_matrix_snapshot(tenant)
+    return platform_schemas.TenantRoleModuleMatrix.model_validate(matrix)
+
+
+@router.patch(
+    "/{tenant_id}/module-matrix",
+    response_model=platform_schemas.TenantRoleModuleMatrix,
+    dependencies=[Depends(require_superadmin())],
+)
+async def update_platform_tenant_module_matrix(
+    tenant_id: UUID,
+    payload: platform_schemas.TenantRoleModuleMatrixPatch,
+    ctx: UserCtx = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantRoleModuleMatrix:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        matrix = tenant_service.get_role_module_matrix_snapshot(tenant)
+    else:
+        matrix = await tenant_service.update_role_module_matrix(
+            db,
+            tenant,
+            updates,  # type: ignore[arg-type]
+            actor_id=ctx.sub,
+        )
+    return platform_schemas.TenantRoleModuleMatrix.model_validate(matrix)
+
+
+@router.get(
+    "/{tenant_id}/module-overrides/users",
+    response_model=List[UserOut],
+    dependencies=[Depends(require_superadmin())],
+)
+async def list_platform_tenant_override_users(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> List[UserOut]:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    members_raw = await users_service.list_users(db, str(tenant_id))
+    return [UserOut(**entry) for entry in members_raw if entry.get("user_id")]
+
+
+@router.get(
+    "/{tenant_id}/module-overrides",
+    response_model=platform_schemas.TenantUserModuleOverrides,
+    dependencies=[Depends(require_superadmin())],
+)
+async def get_platform_tenant_user_module_overrides(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantUserModuleOverrides:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    members_raw = await users_service.list_users(db, str(tenant_id))
+    allowed_user_ids = {str(entry.get("user_id") or "").strip() for entry in members_raw}
+    allowed_user_ids.discard("")
+    overrides = tenant_service.get_user_module_overrides_snapshot(
+        tenant,
+        allowed_user_ids=allowed_user_ids,
+    )
+    return platform_schemas.TenantUserModuleOverrides(users=overrides)
+
+
+@router.patch(
+    "/{tenant_id}/module-overrides",
+    response_model=platform_schemas.TenantUserModuleOverrides,
+    dependencies=[Depends(require_superadmin())],
+)
+async def update_platform_tenant_user_module_overrides(
+    tenant_id: UUID,
+    payload: platform_schemas.TenantUserModuleOverridesPatch,
+    ctx: UserCtx = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.TenantUserModuleOverrides:
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    members_raw = await users_service.list_users(db, str(tenant_id))
+    allowed_user_ids = {str(entry.get("user_id") or "").strip() for entry in members_raw}
+    allowed_user_ids.discard("")
+    updates = payload.model_dump(exclude_unset=True).get("users", {})
+    try:
+        if not updates:
+            overrides = tenant_service.get_user_module_overrides_snapshot(
+                tenant,
+                allowed_user_ids=allowed_user_ids,
+            )
+        else:
+            overrides = await tenant_service.update_user_module_overrides(
+                db,
+                tenant,
+                updates,  # type: ignore[arg-type]
+                actor_id=ctx.sub,
+                allowed_user_ids=allowed_user_ids,
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return platform_schemas.TenantUserModuleOverrides(users=overrides)
+
+
 @router.patch(
     "/{tenant_id}",
     response_model=platform_schemas.PlatformTenantOut,

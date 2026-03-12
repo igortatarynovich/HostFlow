@@ -6,6 +6,31 @@ hostflow.cc, www.hostflow.cc {
         Cross-Origin-Resource-Policy "same-origin"
         Content-Security-Policy "child-src 'self' blob:; frame-src 'self' blob:"
     }
-    # Proxy to nginx on port 80 (nginx handles routing to backend and frontend)
-    reverse_proxy 127.0.0.1:80
+
+    # Scanner service
+    @scanner path /scan/*
+    handle @scanner {
+        reverse_proxy scanner-api:8000
+    }
+
+    # Scanner uploads
+    @scan_uploads path /api/uploads/scanner/*
+    handle @scan_uploads {
+        reverse_proxy scanner-api:8000
+    }
+
+    # Backend API
+    @api path /api/*
+    handle @api {
+        reverse_proxy backend:8000
+    }
+
+    # SPA frontend with fallback to index.html
+    # Handle all other paths as SPA (must be last)
+    handle {
+        root * /var/www/hostflow-frontend
+        try_files {path} /index.html
+        file_server
+    }
+
 }

@@ -3,6 +3,7 @@ from sqlalchemy import select, delete, update, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models import Candidate, Vacancy
 from backend.app.models.company import Company, CandidateVacancy
+from backend.app.models.candidate_profile import CandidateProfile
 from backend.app.services.tenant_visibility import TenantVisibility
 
 class VacancyRepo:
@@ -18,14 +19,32 @@ class VacancyRepo:
             clauses.append(Vacancy.id.in_(shared_ids))
         return or_(*clauses)
 
-    async def get(self, vacancy_id: str) -> Optional[Vacancy]:
-        res = await self.db.execute(
-            select(Vacancy).where(
+    async def get(self, vacancy_id: str):
+        # For single vacancy, we also load related data
+        stmt = (
+            select(
+                Vacancy,
+                Company.name.label("company_name"),
+                CandidateProfile.id.label("candidate_profile_id"),
+                CandidateProfile.name.label("candidate_profile_name"),
+            )
+            .where(
                 Vacancy.id == vacancy_id,
                 self._scope_clause(),
             )
+            .join(Company, Company.id == Vacancy.company_id, isouter=True)
+            .join(
+                CandidateProfile,
+                CandidateProfile.id == Vacancy.candidate_profile_id,
+                isouter=True,
+            )
         )
-        return res.scalar_one_or_none()
+        res = await self.db.execute(stmt)
+        row = res.first()
+        if row is None:
+            return None
+        # Return tuple for compatibility with service layer
+        return row  # (Vacancy, company_name, candidate_profile_id, candidate_profile_name)
 
     async def list(
         self,
@@ -33,6 +52,7 @@ class VacancyRepo:
         company_id: Optional[str],
         status: Optional[str],
         search: Optional[str],
+        candidate_profile_id: Optional[str] = None,
         limit: int,
         offset: int,
         order_by: Optional[str],
@@ -44,17 +64,24 @@ class VacancyRepo:
             select(
                 Vacancy,
                 Company.name.label("company_name"),
+                CandidateProfile.id.label("candidate_profile_id"),
+                CandidateProfile.name.label("candidate_profile_name"),
                 func.count(Candidate.id).label("candidate_count"),
             )
             .where(self._scope_clause())
             .join(Company, Company.id == Vacancy.company_id, isouter=True)
+            .join(
+                CandidateProfile,
+                CandidateProfile.id == Vacancy.candidate_profile_id,
+                isouter=True,
+            )
             .join(
                 Candidate,
                 (Candidate.vacancy_id == Vacancy.id)
                 & (Candidate.deleted_at.is_(None)),
                 isouter=True,
             )
-            .group_by(Vacancy.id, Company.name)
+            .group_by(Vacancy.id, Company.name, CandidateProfile.id, CandidateProfile.name)
         )
         if company_id:
             stmt = stmt.where(Vacancy.company_id == company_id)
@@ -62,6 +89,8 @@ class VacancyRepo:
             stmt = stmt.where(Vacancy.status == status)
         if search:
             stmt = stmt.where(Vacancy.title.ilike(f"%{search}%"))
+        if candidate_profile_id:
+            stmt = stmt.where(Vacancy.candidate_profile_id == candidate_profile_id)
         if allowed_company_ids is not None or allowed_vacancy_ids is not None:
             filters = []
             if allowed_company_ids:
@@ -84,7 +113,7 @@ class VacancyRepo:
         stmt = stmt.limit(limit).offset(offset)
 
         res = await self.db.execute(stmt)
-        return res.all()  # [(Vacancy, company_name, candidate_count)]
+        return res.all()  # [(Vacancy, company_name, candidate_profile_id, candidate_profile_name, candidate_count)]
 
     async def create(self, values: Dict[str, Any]) -> Vacancy:
         obj = Vacancy(**values)

@@ -22,6 +22,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, require_roles
+from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
@@ -59,6 +60,8 @@ from backend.app.services.document_workflow import (
     STATUS_ORDER,
 )
 from backend.app.observability.metrics import refresh_documents_overdue_metrics
+from backend.app.services import candidate_notifications
+from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
 from backend.app.services import reminders as reminders_service
 from backend.app.services.audit import log_activity
 from backend.app.modules.documents import crud as documents_crud
@@ -793,6 +796,19 @@ async def order_document(
 
     _mark_workflow_ordered(doc, ordered_at)
     await reminders_service.schedule_document_expiry_reminders(db, str(tenant_id), doc)
+    from backend.app.api.public.intake import _ensure_status_share_token
+
+    _ensure_status_share_token(candidate)
+    base_url = (settings.frontend_url or "").strip().rstrip("/") or "https://hostflow.cc"
+    status_token = getattr(candidate, "status_share_token", None) or getattr(candidate, "intake_token", None)
+    status_url = f"{base_url}/public/status/{status_token}" if status_token else None
+    await candidate_notifications.send_document_requested_email_to_candidate(
+        db,
+        tenant_id=str(tenant_id),
+        candidate=candidate,
+        doc_type=doc_type,
+        status_url=status_url,
+    )
     await db.commit()
     await db.refresh(doc)
     return _row_to_out(doc)
@@ -985,6 +1001,7 @@ async def update_document(
     obj = res.scalar_one_or_none()
     if not obj:
         raise HTTPException(status_code=404, detail="Document not found")
+    old_status_value = _enum_to_str(getattr(obj, "status", None))
 
     defaults = get_doc_type_defaults(obj.doc_type)
     process_type_before = obj.process_type
@@ -1172,6 +1189,25 @@ async def update_document(
     await reminders_service.schedule_document_expiry_reminders(db, str(tenant_id), obj)
     await db.commit()
     await db.refresh(obj)
+    try:
+        new_status_value = _enum_to_str(getattr(obj, "status", None))
+        if new_status_value and old_status_value != new_status_value and getattr(obj, "candidate_id", None):
+            candidate = await db.get(Candidate, str(obj.candidate_id))
+            if candidate and str(getattr(candidate, "tenant_id", "")) == str(tenant_id):
+                await candidate_tg_notifications.send_candidate_document_status_changed_telegram(
+                    db,
+                    tenant_id=str(tenant_id),
+                    candidate=candidate,
+                    document_type=str(getattr(obj, "doc_type", "") or ""),
+                    old_status=old_status_value,
+                    new_status=new_status_value,
+                )
+    except Exception:
+        logger.exception(
+            "documents.update_document telegram notification failed tenant=%s doc=%s",
+            str(tenant_id),
+            str(doc_id),
+        )
     await refresh_documents_overdue_metrics(db, str(tenant_id))
     return _row_to_out(obj)
 

@@ -1,186 +1,72 @@
-/**
- * Preview modal with filter selection and re-edit option
- */
-
-import { useState, useEffect } from 'react'
-import { ContourEditorModal } from './ContourEditorModal'
+import { useState } from 'react'
 import type { Contour6Points } from '../../modules/public-intake/scan/contourEditor'
-
-type EnhancementFilter = 'standard' | 'strong' | 'photo'
 
 type PreviewModalProps = {
   imageUrl: string
-  onConfirm: (filter: EnhancementFilter, contour: Contour6Points | null) => void
+  initialContour: Contour6Points | null
+  uploading: boolean
   onRetake: () => void
-  initialContour?: Contour6Points | null
-  uploading?: boolean
+  onConfirm: (filter: 'standard' | 'strong' | 'photo', contour: Contour6Points | null) => void
 }
 
-export function PreviewModal({
-  imageUrl,
-  onConfirm,
-  onRetake,
-  initialContour,
-  uploading = false,
-}: PreviewModalProps) {
-  const [selectedFilter, setSelectedFilter] = useState<EnhancementFilter>('standard')
-  const [showContourEditor, setShowContourEditor] = useState(false)
-  const [contour, setContour] = useState<Contour6Points | null>(initialContour || null)
-  
-  // Update contour when initialContour changes
-  useEffect(() => {
-    if (initialContour) {
-      setContour(initialContour)
-    }
-  }, [initialContour])
-  
-  // DEBUG: Log when filter changes
-  useEffect(() => {
-    console.log('[PreviewModal] Filter changed to:', selectedFilter)
-  }, [selectedFilter])
-  
-  // DEBUG: Log when contour changes
-  useEffect(() => {
-    console.log('[PreviewModal] Contour changed:', contour ? 'present' : 'null')
-  }, [contour])
-
-  const filters: Array<{ key: EnhancementFilter; label: string; description: string }> = [
-    {
-      key: 'standard',
-      label: 'Стандартный',
-      description: 'Автоконтраст, шумоподавление',
-    },
-    {
-      key: 'strong',
-      label: 'Черно-белый',
-      description: 'Бинаризация для документов',
-    },
-    {
-      key: 'photo',
-      label: 'Фото',
-      description: 'Для фото и ID карт',
-    },
-  ]
+export function PreviewModal({ imageUrl, initialContour, uploading, onRetake, onConfirm }: PreviewModalProps) {
+  const [filter, setFilter] = useState<'standard' | 'strong' | 'photo'>('standard')
 
   return (
-    <>
-      <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 bg-black/40 px-4 py-4 backdrop-blur-sm">
-          <h2 className="text-xl font-bold text-white">Предпросмотр документа</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+      <div className="w-full max-w-4xl rounded-2xl bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <h3 className="text-lg font-semibold text-slate-900">Предпросмотр</h3>
           <button
+            type="button"
             onClick={onRetake}
-            disabled={uploading}
-            className="rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20 disabled:opacity-50"
-            aria-label="Закрыть"
+            className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 hover:bg-slate-200"
           >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            Переснять
           </button>
         </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-4xl p-4 sm:p-6">
-            {/* Image preview */}
-            <div className="mb-6 overflow-hidden rounded-2xl border-2 border-white/20 bg-black/40 shadow-2xl">
-              <img
-                src={imageUrl}
-                alt="Document preview"
-                className="h-auto w-full object-contain"
-              />
-            </div>
-
-            {/* Filter selection */}
-            <div className="mb-6">
-              <h3 className="mb-3 text-lg font-semibold text-white">Выберите режим обработки</h3>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {filters.map((filter) => (
-                  <button
-                    key={filter.key}
-                    type="button"
-                    onClick={() => {
-                      console.log('[PreviewModal] Filter button clicked:', filter.key)
-                      setSelectedFilter(filter.key)
-                    }}
-                    disabled={uploading}
-                    className={`rounded-xl border-2 p-4 text-left transition-all ${
-                      selectedFilter === filter.key
-                        ? 'border-emerald-400 bg-emerald-500/20 shadow-lg shadow-emerald-500/20'
-                        : 'border-white/20 bg-white/5 hover:border-white/30 hover:bg-white/10'
-                    } disabled:opacity-50`}
-                  >
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="font-semibold text-white">{filter.label}</span>
-                      {selectedFilter === filter.key && (
-                        <svg className="h-5 w-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
-                    </div>
-                    <p className="text-sm text-white/70">{filter.description}</p>
-                  </button>
+        <div className="grid gap-4 p-4 md:grid-cols-[2fr_1fr]">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <img src={imageUrl} alt="preview" className="w-full object-contain" />
+          </div>
+          <div className="flex flex-col gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-800 mb-2">Фильтр</p>
+              <div className="flex flex-col gap-2">
+                {(['standard', 'strong', 'photo'] as const).map((f) => (
+                  <label key={f} className="flex items-center gap-2 text-sm text-slate-700">
+                    <input
+                      type="radio"
+                      name="filter"
+                      value={f}
+                      checked={filter === f}
+                      onChange={() => setFilter(f)}
+                    />
+                    {f}
+                  </label>
                 ))}
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Footer with actions */}
-        <div className="border-t border-white/10 bg-black/40 px-4 py-4 backdrop-blur-sm">
-          <div className="mx-auto flex max-w-4xl flex-col gap-3 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={() => {
-                console.log('[PreviewModal] Retake button clicked')
-                onRetake()
-              }}
-              disabled={uploading}
-              className="min-h-[48px] rounded-full border-2 border-white/30 bg-white/10 px-6 py-3 text-base font-medium text-white transition hover:bg-white/20 disabled:opacity-50 sm:min-h-[auto] sm:py-2"
-            >
-              Переснять
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowContourEditor(true)}
-              disabled={uploading}
-              className="min-h-[48px] rounded-full border-2 border-white/30 bg-white/10 px-6 py-3 text-base font-medium text-white transition hover:bg-white/20 disabled:opacity-50 sm:min-h-[auto] sm:py-2"
-            >
-              Редактировать контур
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                console.log('[scanner] PreviewModal: Send button clicked', { filter: selectedFilter, contour: contour ? 'present' : 'null' })
-                onConfirm(selectedFilter, contour)
-              }}
-              disabled={uploading}
-              className="min-h-[48px] rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 px-8 py-3 text-base font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50 sm:min-h-[auto] sm:py-2"
-            >
-              {uploading ? 'Отправка...' : 'Отправить'}
-            </button>
+            <div className="mt-auto flex gap-2">
+              <button
+                type="button"
+                onClick={() => onConfirm(filter, initialContour)}
+                disabled={uploading}
+                className="flex-1 rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              >
+                {uploading ? 'Отправка...' : 'Отправить'}
+              </button>
+              <button
+                type="button"
+                onClick={onRetake}
+                className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800"
+              >
+                Отмена
+              </button>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Contour editor modal */}
-      {showContourEditor && (
-        <ContourEditorModal
-          imageUrl={imageUrl}
-          initialContour={contour}
-          onConfirm={(newContour) => {
-            setContour(newContour)
-            setShowContourEditor(false)
-          }}
-          onCancel={() => setShowContourEditor(false)}
-        />
-      )}
-    </>
+    </div>
   )
 }
-

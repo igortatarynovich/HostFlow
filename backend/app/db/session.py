@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from sqlalchemy.engine.url import URL, make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -31,14 +33,35 @@ def _force_async_driver(url_str: str) -> str:
 # 1) Берём реальный async-URL из настроек и принудительно задаём async-драйвер
 ASYNC_DATABASE_URL: str = _force_async_driver(settings.ASYNC_DATABASE_URL)
 
-# 2) Создаём движок на ЭТОМ URL (без каких-либо маскировок)
-engine = create_async_engine(
-    ASYNC_DATABASE_URL,
-    future=True,
-    echo=False,
-    pool_pre_ping=False,
-    poolclass=NullPool,
-)
+# 2) Создаём движок на ЭТОМ URL (без каких-либо маскировок).
+# Для Postgres используем bounded queue pool, чтобы не взрывать число клиентов БД.
+_db_url_obj: URL = make_url(ASYNC_DATABASE_URL)
+_is_postgres = _db_url_obj.drivername.startswith("postgresql")
+
+if _is_postgres:
+    pool_size = int(os.getenv("DB_POOL_SIZE", "20"))
+    max_overflow = int(os.getenv("DB_POOL_MAX_OVERFLOW", "20"))
+    pool_timeout = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+    pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+    engine = create_async_engine(
+        ASYNC_DATABASE_URL,
+        future=True,
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=pool_size,
+        max_overflow=max_overflow,
+        pool_timeout=pool_timeout,
+        pool_recycle=pool_recycle,
+        pool_use_lifo=True,
+    )
+else:
+    engine = create_async_engine(
+        ASYNC_DATABASE_URL,
+        future=True,
+        echo=False,
+        pool_pre_ping=False,
+        poolclass=NullPool,
+    )
 
 # 3) Фабрика сессий
 async_session_maker = async_sessionmaker(

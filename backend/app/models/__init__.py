@@ -45,7 +45,9 @@ def _load_model_module(module_name: str) -> ModuleType:
 
 
 # Базовые модели (сначала Company и Vacancy, затем Candidate)
-Tenant = _load_model_module("tenant").Tenant  # type: ignore[attr-defined]
+_tenant_mod = _load_model_module("tenant")
+Tenant = _tenant_mod.Tenant  # type: ignore[attr-defined]
+TenantLink = _tenant_mod.TenantLink  # type: ignore[attr-defined]
 Company = _load_model_module("company").Company  # type: ignore[attr-defined]
 Vacancy = _load_model_module("vacancy").Vacancy  # type: ignore[attr-defined]
 VacancyRecruiter = _load_model_module("vacancy_recruiter").VacancyRecruiter  # type: ignore[attr-defined]
@@ -62,6 +64,11 @@ CandidateEmployment = _load_model_module("candidate_employment").CandidateEmploy
 CandidateConsent = _load_model_module("candidate_consent").CandidateConsent  # type: ignore[attr-defined]
 Stage = _load_model_module("stage").Stage  # type: ignore[attr-defined]
 MagicLink = _load_model_module("magic_link").MagicLink  # type: ignore[attr-defined]
+
+# Universal Funnel model
+funnel_module = _load_model_module("funnel")
+Funnel = funnel_module.Funnel  # type: ignore[attr-defined]
+FunnelStage = funnel_module.FunnelStage  # type: ignore[attr-defined]
 
 # История стадий
 CandidateStageHistory = _load_model_module("candidate_stage_history").CandidateStageHistory  # type: ignore[attr-defined]
@@ -107,6 +114,7 @@ _register_aliases("document_ruleset", _sys.modules[DocumentRulesetVersion.__modu
 _register_aliases("document_reporting", _sys.modules[BulkOperation.__module__])
 
 Reminder = _load_model_module("reminder").Reminder  # type: ignore[attr-defined]
+ReminderEvent = _load_model_module("reminder_event").ReminderEvent  # type: ignore[attr-defined]
 UserNotification = _load_model_module("user_notification").UserNotification  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
@@ -146,6 +154,51 @@ InvoiceItem = _load_model_module("invoice").InvoiceItem  # type: ignore[attr-def
 Payment = _load_model_module("invoice").Payment  # type: ignore[attr-defined]
 Refund = _load_model_module("invoice").Refund  # type: ignore[attr-defined]
 
+# Document policies & custom fields
+DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
+document_policy_module = _load_model_module("document_policy")
+DocumentPolicyScope = document_policy_module.DocumentPolicyScope  # type: ignore[attr-defined]
+RequirementLevel = document_policy_module.RequirementLevel  # type: ignore[attr-defined]
+RequirementTypeDefinition = _load_model_module("requirement_type").RequirementTypeDefinition  # type: ignore[attr-defined]
+Gate = _load_model_module("gate").Gate  # type: ignore[attr-defined]
+CandidateProfile = _load_model_module("candidate_profile").CandidateProfile  # type: ignore[attr-defined]
+candidate_profile_history_module = _load_model_module("candidate_profile_history")
+CandidateProfileHistory = candidate_profile_history_module.CandidateProfileHistory  # type: ignore[attr-defined]
+ProcessTemplate = _load_model_module("process_template").ProcessTemplate  # type: ignore[attr-defined]
+
+custom_field_module = _load_model_module("custom_field")
+CustomFieldDefinition = custom_field_module.CustomFieldDefinition  # type: ignore[attr-defined]
+CustomFieldValue = custom_field_module.CustomFieldValue  # type: ignore[attr-defined]
+CustomFieldScope = custom_field_module.CustomFieldScope  # type: ignore[attr-defined]
+CustomFieldEntityType = custom_field_module.CustomFieldEntityType  # type: ignore[attr-defined]
+CustomFieldType = custom_field_module.CustomFieldType  # type: ignore[attr-defined]
+
+# RODO / Legal documents
+LegalDocument = _load_model_module("legal_document").LegalDocument  # type: ignore[attr-defined]
+RodoNotification = _load_model_module("rodo_notification").RodoNotification  # type: ignore[attr-defined]
+
+# Contact attempts
+ContactAttempt = _load_model_module("contact_attempt").ContactAttempt  # type: ignore[attr-defined]
+FinalNoContactNotification = _load_model_module("final_no_contact_notification").FinalNoContactNotification  # type: ignore[attr-defined]
+
+# Handoff
+CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
+
+# Tenant email (SMTP)
+TenantEmailConfig = _load_model_module("tenant_email_config").TenantEmailConfig  # type: ignore[attr-defined]
+
+# Communications hub (omnichannel threads/messages/accounts)
+communication_module = _load_model_module("communication")
+CommunicationThread = communication_module.CommunicationThread  # type: ignore[attr-defined]
+CommunicationMessage = communication_module.CommunicationMessage  # type: ignore[attr-defined]
+CommunicationChannelAccount = communication_module.CommunicationChannelAccount  # type: ignore[attr-defined]
+
+# Password reset tokens (self-service)
+PasswordResetToken = _load_model_module("password_reset_token").PasswordResetToken  # type: ignore[attr-defined]
+
+# Countries (ISO2 reference)
+Country = _load_model_module("country").Country  # type: ignore[attr-defined]
+
 __all__ = [
     "Base",
     "Candidate",
@@ -165,6 +218,7 @@ __all__ = [
     "BulkOperation",
     "BulkOperationItem",
     "CandidateStageHistory",
+    "CandidateProfileHistory",
     "CandidateService",
     "CandidateEmployment",
     "CandidateConsent",
@@ -192,14 +246,40 @@ __all__ = [
     "AuthRefreshToken",
     "UserSession",
     "Tenant",
+    "TenantLink",
     "Company",
     "Vacancy",
     "Reminder",
+    "ReminderEvent",
     "UserNotification",
     "Stage",
     "MagicLink",
+    "Funnel",
+    "FunnelStage",
     "Invoice",
     "InvoiceItem",
     "Payment",
     "Refund",
+    "DocumentPolicy",
+    "DocumentPolicyScope",
+    "RequirementLevel",
+    "RequirementTypeDefinition",
+    "Gate",
+    "CandidateProfile",
+    "ProcessTemplate",
+    "CustomFieldDefinition",
+    "CustomFieldValue",
+    "CustomFieldScope",
+    "CustomFieldEntityType",
+    "CustomFieldType",
+    "LegalDocument",
+    "RodoNotification",
+    "ContactAttempt",
+    "FinalNoContactNotification",
+    "CandidateHandoff",
+    "TenantEmailConfig",
+    "CommunicationThread",
+    "CommunicationMessage",
+    "CommunicationChannelAccount",
+    "Country",
 ]

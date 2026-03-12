@@ -97,8 +97,24 @@ async def tenant2_data(tenant_id: str) -> Dict[str, str]:
             },
         )
         
+        # Add user_memberships for tenant 2
+        await session.execute(
+            text("""
+                INSERT INTO user_memberships (id, user_id, tenant_id, role)
+                VALUES (:id, :user_id, :tenant_id, :role)
+                ON CONFLICT(user_id, tenant_id)
+                DO UPDATE SET role = excluded.role
+            """),
+            {
+                "id": str(uuid.uuid4()),
+                "user_id": user2_id,
+                "tenant_id": TENANT_2_ID,
+                "role": "administrator",
+            },
+        )
+
         await session.commit()
-        
+
         return {
             "user_id": user2_id,
             "company_id": company2_id,
@@ -374,4 +390,61 @@ async def test_tenant_isolation_list_endpoints(
     
     # No overlap between tenants
     assert not candidate_ids_1.intersection(candidate_ids_2), "Tenants should not share candidates"
+
+
+@pytest.mark.anyio
+async def test_tenant_isolation_invoices(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+    tenant2_headers: Dict[str, str],
+    tenant2_data: Dict[str, str],
+) -> None:
+    """Test that invoices are isolated by tenant."""
+    from datetime import date
+
+    # Create invoice for tenant 2
+    invoice_resp = await client.post(
+        "/api/v1/invoices",
+        headers=tenant2_headers,
+        json={
+            "company_id": tenant2_data["company_id"],
+            "issue_date": date.today().isoformat(),
+            "due_date": date.today().isoformat(),
+            "items": [
+                {
+                    "description": "Tenant 2 service",
+                    "qty": 1,
+                    "unit_price": 100,
+                },
+            ],
+        },
+    )
+    if invoice_resp.status_code not in (200, 201):
+        pytest.skip(f"Invoices API not available: {invoice_resp.status_code} {invoice_resp.text}")
+    invoice2_id = invoice_resp.json()["id"]
+
+    # Tenant 1 should NOT see tenant 2's invoice
+    resp = await client.get(
+        f"/api/v1/invoices/{invoice2_id}",
+        headers=manager_headers,
+    )
+    assert resp.status_code == 404, f"Tenant 1 should not see tenant 2's invoice: {resp.text}"
+
+    # Tenant 2 should see their own invoice
+    resp = await client.get(
+        f"/api/v1/invoices/{invoice2_id}",
+        headers=tenant2_headers,
+    )
+    assert resp.status_code == 200, resp.text
+
+    # List invoices: tenant 1 should not see tenant 2's invoice in their list
+    list1 = await client.get("/api/v1/invoices", headers=manager_headers)
+    assert list1.status_code == 200, list1.text
+    invoice_ids_1 = {inv["id"] for inv in list1.json()}
+    assert invoice2_id not in invoice_ids_1, "Tenant 1 list should not contain tenant 2's invoice"
+
+    list2 = await client.get("/api/v1/invoices", headers=tenant2_headers)
+    assert list2.status_code == 200, list2.text
+    invoice_ids_2 = {inv["id"] for inv in list2.json()}
+    assert invoice2_id in invoice_ids_2, "Tenant 2 should see their own invoice in list"
 

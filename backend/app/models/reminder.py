@@ -12,8 +12,11 @@ from .mixins import TimestampMixin
 
 
 class ReminderStatus:
+    new = "new"
     pending = "pending"
     sent = "sent"
+    overdue = "overdue"
+    done = "done"
     cancelled = "cancelled"
 
 
@@ -22,6 +25,9 @@ class Reminder(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_reminders_tenant_due", "tenant_id", "due_at"),
         Index("ix_reminders_entity", "tenant_id", "entity_type", "entity_id"),
+        Index("ix_reminders_assignee_remind", "tenant_id", "assignee_id", "remind_at"),
+        Index("ix_reminders_assignee_due", "tenant_id", "assignee_id", "due_at"),
+        Index("ix_reminders_status_due", "tenant_id", "status", "due_at"),
     )
 
     id: Mapped[str] = mapped_column(
@@ -31,7 +37,17 @@ class Reminder(Base, TimestampMixin):
     type: Mapped[str] = mapped_column(String(64), nullable=False)
     entity_type: Mapped[str] = mapped_column(String(64), nullable=False)
     entity_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    title: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    owner_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    assignee_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    priority: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    channel: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, default="internal")
     due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    remind_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    snoozed_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    recurrence_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default=ReminderStatus.pending
     )

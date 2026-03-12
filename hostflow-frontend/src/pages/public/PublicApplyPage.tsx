@@ -19,7 +19,8 @@ import { useToast } from '../../components/Toast'
 import { PublicTimeline, buildFallbackTimeline } from './components/PublicTimeline'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import { PublicPageShell } from './components/PublicPageShell'
-import { PublicBrandingLogo } from '../../components/public/PublicLogo'
+import { LegalLinksBlock } from './components/LegalLinksBlock'
+import { PublicLogo } from '../../components/public/PublicLogo'
 import {
   describeRequiredFiles,
   formatDocumentStatus,
@@ -32,14 +33,9 @@ import { buildCountryOptions } from '../../data/countries'
 import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
 import { isCookieConsentGranted, subscribeCookieConsent } from '../../components/public/cookieConsent'
 
+import type { StepKey, MultiSelectOption } from '../../modules/public-intake/types'
+
 const STEP_KEYS = ['overview', 'contacts', 'personal', 'experience', 'employment', 'documents', 'agreements'] as const
-
-type StepKey = typeof STEP_KEYS[number]
-
-type MultiSelectOption = {
-  value: string
-  labelKey: string
-}
 
 const normalizeDocType = (code: string): string => String(code || '').trim().toLowerCase()
 
@@ -59,6 +55,7 @@ const GUIDED_DOC_ORDER = [
   'residence_card',
   'karta_pobytu',
   'voivodeship_decision',
+  'medical_certificate',
   'psych_tests',
 ]
 const STAY_DOC_CODES = ['id_card', 'visa', 'residence_permit', 'residence_card', 'karta_pobytu']
@@ -875,17 +872,6 @@ export default function PublicApplyPage() {
               </svg>
               {t('documents.actions.upload')}
             </label>
-            <button
-              type="button"
-              onClick={() => handleOpenScanner(code)}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm ring-1 ring-brand-700 hover:bg-brand-700 active:scale-95"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {t('public.intake.documents.scan_with_camera', { defaultValue: 'Scan with camera' })}
-            </button>
             <span className="text-xs text-slate-500">
               {currentFile
                 ? `${currentFile.name} (${Math.round(currentFile.size / 1024)} KB)`
@@ -939,7 +925,7 @@ export default function PublicApplyPage() {
 
   const stepContent: Record<StepKey, JSX.Element> = {
     overview: (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="grid gap-4 md:grid-cols-3">
           <OverviewStatCard
             title={t('public.intake.cards.status_title')}
@@ -958,7 +944,7 @@ export default function PublicApplyPage() {
           />
         </div>
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="space-y-3 rounded-2xl border border-slate-200 bg-white/80 p-5">
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -1339,7 +1325,7 @@ export default function PublicApplyPage() {
       </div>
     ),
     employment: (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="space-y-4">
           {formData.employments.length === 0 && (
             <p className="text-sm text-slate-500">{t('public.intake.forms.employment.list_hint')}</p>
@@ -1495,10 +1481,10 @@ export default function PublicApplyPage() {
       </div>
     ),
     documents: (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <PublicBrandingLogo className="text-white" showWordmark={false} size={32} />
+            <PublicLogo className="text-white" showWordmark={false} size={32} />
             <p className="text-sm text-white/80">{t('public.intake.documents.upload_hint')}</p>
           </div>
           <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
@@ -1751,7 +1737,11 @@ export default function PublicApplyPage() {
             />
             <span>
               {t('public.intake.forms.agreements.general')}{' '}
-              <a href="/legal/privacy.html" target="_blank" rel="noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
+              <a href="/legal/rodo.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
+                {t('public.portal.landing.footer.links.rodo', { defaultValue: 'RODO' })}
+              </a>
+              {' · '}
+              <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
                 {t('public.intake.forms.agreements.privacy_link')}
               </a>
               .
@@ -1775,16 +1765,17 @@ export default function PublicApplyPage() {
             />
             <span>
               {t('public.intake.forms.agreements.terms')}{' '}
-              <a href="/legal/terms.html" target="_blank" rel="noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
+              <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
                 {t('public.intake.forms.agreements.terms_link')}
               </a>{' '}
               ·{' '}
-              <a href="/legal/privacy.html" target="_blank" rel="noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
+              <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 underline-offset-2 hover:underline">
                 {t('public.intake.forms.agreements.privacy_link')}
               </a>
             </span>
           </label>
           <p className="text-xs text-slate-500">{t('public.intake.forms.agreements.cookies_hint')}</p>
+          <LegalLinksBlock className="mt-3" />
         </div>
 
         {!consentChecklistReady && (
@@ -1853,7 +1844,7 @@ export default function PublicApplyPage() {
         <div className="mb-6 rounded-2xl border border-brand-100 bg-brand-50/40 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <PublicBrandingLogo showWordmark={false} className="text-brand-700" size={28} />
+              <PublicLogo showWordmark={false} className="text-brand-700" size={28} />
               <div>
                 <h1 className="text-xl font-semibold text-slate-900">{t('public.intake.title')}</h1>
                 {state?.expires_at && (

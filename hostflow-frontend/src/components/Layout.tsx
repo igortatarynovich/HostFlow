@@ -42,7 +42,7 @@ export function Layout({ me, onLogout, children }:{
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-gray-50">
+    <div className="h-screen w-screen overflow-hidden bg-slate-50">
       <aside
         className={clsx(
           'fixed top-0 left-0 z-20 h-full transform bg-brand-900 text-white shadow-xl transition-transform duration-300 ease-in-out',
@@ -66,7 +66,7 @@ export function Layout({ me, onLogout, children }:{
         className="flex h-full flex-col transition-[padding-left] duration-300 ease-in-out"
         style={{ paddingLeft: sidebarOpen ? SIDEBAR_WIDTH : 0 }}
       >
-        <header className="relative flex h-20 items-center justify-between border-b border-gray-200 bg-white px-6">
+        <header className="relative flex h-20 items-center justify-between border-b border-slate-200 bg-white px-6">
           <button
             type="button"
             className="rounded-md p-2 text-brand-900 outline-none ring-brand-500 transition hover:bg-brand-900/10 focus-visible:ring-2"

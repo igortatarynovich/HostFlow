@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import logging
 from logging.config import dictConfig
 import os
@@ -53,8 +54,13 @@ try:
     from backend.app.api.v1 import analytics as analytics_router
     from backend.app.api.v1 import candidates_delete as candidate_delete_router
     from backend.app.api.v1 import catalogs as catalogs_router
+    from backend.app.api.v1 import reminders_v2 as reminders_v2_router
     from backend.app.api.v1 import services as additional_services_router
-    from backend.app.api.v1 import scanner as scanner_router
+    try:
+        from backend.app.api.v1 import scanner as scanner_router
+    except ImportError as _e:
+        logger.warning("[startup] scanner module disabled (opencv/cv2 unavailable): %s", _e)
+        scanner_router = None  # type: ignore[assignment]
     from backend.app.auth.router import router as auth_router
     from backend.app.auth.whoami import router as whoami_router
     from backend.app.auth.ensure_multitenancy import ensure_auth_multitenancy
@@ -64,9 +70,18 @@ try:
     from backend.app.modules.companies.router import router as companies_router
     from backend.app.modules.companies.ensure_schema import ensure_companies_schema
     from backend.app.modules.notifications.ensure_schema import ensure_notifications_schema
+    from backend.app.services.ensure_reminders_schema import ensure_reminders_schema
+    from backend.app.services.ensure_communications_schema import ensure_communications_schema
+    from backend.app.services.ensure_funnels_schema import ensure_funnels_schema
     from backend.app.api.v1.vacancies.router import router as vacancies_router
     from backend.app.api.public import intake as public_intake_router
-    from backend.app.api.public import scanner as public_scanner_router
+    try:
+        from backend.app.api.public import scanner as public_scanner_router
+    except ImportError as _e:
+        logger.warning("[startup] public scanner module disabled (opencv/cv2 unavailable): %s", _e)
+        public_scanner_router = None  # type: ignore[assignment]
+    from backend.app.api.public import notifications as public_notifications_router
+    from backend.app.api.public import client_portal as public_client_portal_router
     if not _DOCUMENTS_DISABLED:
         from backend.app.modules.documents.router import router as documents_db_router  # type: ignore[assignment]
         from backend.app.modules.documents.ensure_schema import ensure_documents_schema  # type: ignore[no-redef]
@@ -98,12 +113,27 @@ try:
     from backend.app.api.v1.platform import tenants as platform_tenants_router
     from backend.app.api.v1.settings import leads as settings_leads_router
     from backend.app.api.v1.settings import team as settings_team_router
+    from backend.app.api.v1.settings import billing as settings_billing_router
+    from backend.app.api.v1.settings import email as settings_email_router
+    from backend.app.api.v1.settings import communications as settings_communications_router
     from backend.app.api.v1.admin import users as admin_users_router
     from backend.app.api.v1.admin import companies_access as admin_companies_access_router
+    from backend.app.api.v1.admin import audit as admin_audit_router
+    from backend.app.api.v1.admin import draft_reminders as admin_draft_reminders_router
     from backend.app.api.v1.recruiters.router import router as recruiters_router
     from backend.app.api.v1.leads.router import router as leads_router
     from backend.app.api.v1.notifications import router as notifications_router
+    from backend.app.api.v1.communications import router as communications_router
     from backend.app.api.v1.invoices.router import router as invoices_router
+    from backend.app.api.v1 import document_policies as document_policies_router
+    from backend.app.api.v1 import custom_fields as custom_fields_router
+    from backend.app.api.v1 import candidate_profiles as candidate_profiles_router
+    from backend.app.api.v1.candidate_stages import router as candidate_stages_router
+    from backend.app.api.v1.funnels import router as funnels_router
+    from backend.app.api.v1 import legal_documents as legal_documents_router
+    from backend.app.api.v1 import contact_attempts as contact_attempts_router
+    from backend.app.api.v1 import handoffs as handoffs_router
+    from backend.app.api.v1 import onboarding as onboarding_router
 except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import meta as meta_router  # type: ignore[no-redef]
     from .api.v1 import health as health_router  # type: ignore[no-redef]
@@ -111,8 +141,13 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import analytics as analytics_router  # type: ignore[no-redef]
     from .api.v1 import candidates_delete as candidate_delete_router  # type: ignore[no-redef]
     from .api.v1 import catalogs as catalogs_router  # type: ignore[no-redef]
+    from .api.v1 import reminders_v2 as reminders_v2_router  # type: ignore[no-redef]
     from .api.v1 import services as additional_services_router  # type: ignore[no-redef]
-    from .api.v1 import scanner as scanner_router  # type: ignore[no-redef]
+    try:
+        from .api.v1 import scanner as scanner_router  # type: ignore[no-redef]
+    except ImportError as _e:
+        logger.warning("[startup] scanner module disabled (opencv/cv2 unavailable): %s", _e)
+        scanner_router = None  # type: ignore[assignment]
     from .auth.router import router as auth_router  # type: ignore[no-redef]
     from .auth.whoami import router as whoami_router  # type: ignore[no-redef]
     from .auth.ensure_multitenancy import ensure_auth_multitenancy  # type: ignore[no-redef]
@@ -122,9 +157,18 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .modules.companies.router import router as companies_router  # type: ignore[no-redef]
     from .modules.companies.ensure_schema import ensure_companies_schema  # type: ignore[no-redef]
     from .modules.notifications.ensure_schema import ensure_notifications_schema  # type: ignore[no-redef]
+    from .services.ensure_reminders_schema import ensure_reminders_schema  # type: ignore[no-redef]
+    from .services.ensure_communications_schema import ensure_communications_schema  # type: ignore[no-redef]
+    from .services.ensure_funnels_schema import ensure_funnels_schema  # type: ignore[no-redef]
     from .api.v1.vacancies.router import router as vacancies_router  # type: ignore[no-redef]
     from .api.public import intake as public_intake_router  # type: ignore[no-redef]
-    from .api.public import scanner as public_scanner_router  # type: ignore[no-redef]
+    try:
+        from .api.public import scanner as public_scanner_router  # type: ignore[no-redef]
+    except ImportError as _e:
+        logger.warning("[startup] public scanner module disabled (opencv/cv2 unavailable): %s", _e)
+        public_scanner_router = None  # type: ignore[assignment]
+    from .api.public import notifications as public_notifications_router  # type: ignore[no-redef]
+    from .api.public import client_portal as public_client_portal_router  # type: ignore[no-redef]
     if not _DOCUMENTS_DISABLED:
         from .modules.documents.router import router as documents_db_router  # type: ignore[no-redef]
         from .modules.documents.ensure_schema import ensure_documents_schema  # type: ignore[no-redef]
@@ -144,12 +188,47 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1.platform import tenants as platform_tenants_router  # type: ignore[no-redef]
     from .api.v1.settings import leads as settings_leads_router  # type: ignore[no-redef]
     from .api.v1.settings import team as settings_team_router  # type: ignore[no-redef]
+    from .api.v1.settings import billing as settings_billing_router  # type: ignore[no-redef]
+    from .api.v1.settings import email as settings_email_router  # type: ignore[no-redef]
+    from .api.v1.settings import communications as settings_communications_router  # type: ignore[no-redef]
     from .api.v1.admin import users as admin_users_router  # type: ignore[no-redef]
     from .api.v1.admin import companies_access as admin_companies_access_router  # type: ignore[no-redef]
+    from .api.v1.admin import audit as admin_audit_router  # type: ignore[no-redef]
+    from .api.v1.admin import draft_reminders as admin_draft_reminders_router  # type: ignore[no-redef]
     from .api.v1.recruiters.router import router as recruiters_router  # type: ignore[no-redef]
     from .api.v1.leads.router import router as leads_router  # type: ignore[no-redef]
     from .api.v1.notifications import router as notifications_router  # type: ignore[no-redef]
+    from .api.v1.communications import router as communications_router  # type: ignore[no-redef]
     from .api.v1.invoices.router import router as invoices_router  # type: ignore[no-redef]
+    from .api.v1 import document_policies as document_policies_router  # type: ignore[no-redef]
+    from .api.v1 import custom_fields as custom_fields_router  # type: ignore[no-redef]
+    from .api.v1 import candidate_profiles as candidate_profiles_router  # type: ignore[no-redef]
+    from .api.v1.candidate_stages import router as candidate_stages_router  # type: ignore[no-redef]
+    from .api.v1.funnels import router as funnels_router  # type: ignore[no-redef]
+    from .api.v1 import legal_documents as legal_documents_router  # type: ignore[no-redef]
+    from .api.v1 import contact_attempts as contact_attempts_router  # type: ignore[no-redef]
+    from .api.v1 import handoffs as handoffs_router  # type: ignore[no-redef]
+    from .api.v1 import onboarding as onboarding_router  # type: ignore[no-redef]
+
+try:
+    from backend.app.services.communications_scheduler import (
+        communications_scheduler_loop,
+        scheduler_enabled as communications_scheduler_enabled,
+    )
+except Exception:
+    try:
+        from .services.communications_scheduler import (  # type: ignore[no-redef]
+            communications_scheduler_loop,
+            scheduler_enabled as communications_scheduler_enabled,
+        )
+    except Exception as _e:
+        logger.warning("[startup] communications scheduler module disabled: %s", _e)
+
+        async def communications_scheduler_loop(_stop_event):  # type: ignore[misc]
+            return None
+
+        def communications_scheduler_enabled() -> bool:  # type: ignore[misc]
+            return False
 
 # TODO: add FastAPI router for /api/v1/ping that returns {"ok": true}
 
@@ -237,13 +316,14 @@ class ForceCORSHeadersMiddleware(BaseHTTPMiddleware):
         origin = request.headers.get("origin")
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception as e:
             import sys
             import traceback
 
             traceback.print_exc(file=sys.stderr)
+            err_msg = str(e) if os.environ.get("DEBUG_500") else "Internal Server Error"
             response = JSONResponse(
-                {"detail": "Internal Server Error"}, status_code=500
+                {"detail": err_msg}, status_code=500
             )
         if origin in ALLOWED_ORIGINS:
             response.headers["Access-Control-Allow-Origin"] = origin
@@ -282,6 +362,8 @@ def _run_alembic_upgrade_head(sync_url: str) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    scheduler_stop_event: asyncio.Event | None = None
+    scheduler_task: asyncio.Task | None = None
     if settings.SYNC_DATABASE_URL.startswith("sqlite"):
         _run_alembic_upgrade_head(settings.SYNC_DATABASE_URL)
         try:
@@ -333,6 +415,21 @@ async def lifespan(app: FastAPI):
         logger.warning("[startup:ensure_notifications_schema] skipped (%s)", e)
 
     try:
+        ensure_reminders_schema()
+    except Exception as e:
+        logger.warning("[startup:ensure_reminders_schema] skipped (%s)", e)
+
+    try:
+        ensure_communications_schema()
+    except Exception as e:
+        logger.warning("[startup:ensure_communications_schema] skipped (%s)", e)
+
+    try:
+        ensure_funnels_schema()
+    except Exception as e:
+        logger.warning("[startup:ensure_funnels_schema] skipped (%s)", e)
+
+    try:
         await ensure_auth_multitenancy()
     except Exception as e:
         logger.warning("[startup:ensure_auth_multitenancy] skipped (%s)", e)
@@ -342,7 +439,39 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("[startup:ensure_auth_seed] skipped (%s)", e)
 
+    # Seed process templates, requirements, and gates
+    try:
+        from backend.app.seed import run_seed
+        from backend.app.db.session import async_session_maker
+        async with async_session_maker() as db:
+            await run_seed(db)
+        logger.info("[startup:seed] process templates, requirements, and gates seeded")
+    except Exception as e:
+        logger.warning("[startup:seed] skipped (%s)", e)
+
+    try:
+        if communications_scheduler_enabled():
+            scheduler_stop_event = asyncio.Event()
+            scheduler_task = asyncio.create_task(
+                communications_scheduler_loop(scheduler_stop_event),
+                name="communications-scheduler",
+            )
+            logger.info("[startup:communications_scheduler] started")
+        else:
+            logger.info("[startup:communications_scheduler] disabled")
+    except Exception as e:
+        logger.warning("[startup:communications_scheduler] failed to start (%s)", e)
+
     yield
+
+    if scheduler_stop_event is not None:
+        scheduler_stop_event.set()
+    if scheduler_task is not None:
+        try:
+            await asyncio.wait_for(scheduler_task, timeout=10)
+            logger.info("[shutdown:communications_scheduler] stopped")
+        except Exception as e:
+            logger.warning("[shutdown:communications_scheduler] stop failed (%s)", e)
 
     # graceful DB disconnect on shutdown
     try:
@@ -526,12 +655,14 @@ async def healthz() -> dict[str, str]:
 
 # Public routes (register FIRST to avoid conflicts with other routes)
 # Public scanner routes - NO /api/v1 prefix, they use /public/scan-sessions directly
-app.include_router(public_scanner_router.meta_router)
-app.include_router(public_scanner_router.router)
+if public_scanner_router is not None:
+    app.include_router(public_scanner_router.meta_router)
+    app.include_router(public_scanner_router.router)
 
 # Auth
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(whoami_router, prefix="/api/v1/auth", tags=["auth"])  # /whoami
+app.include_router(onboarding_router.router, prefix="/api/v1", tags=["onboarding"])
 
 # Каталоги/метаданные (НЕ требуют X-Tenant-Id)
 app.include_router(health_router.router, prefix="/api/v1", tags=["health"])
@@ -542,17 +673,26 @@ app.include_router(general_users_router.router)
 
 app.include_router(catalogs_router.router, prefix="/api/v1", tags=["catalogs"])
 app.include_router(additional_services_router.router, prefix="/api/v1", tags=["additional-services"])
+app.include_router(reminders_v2_router.router, prefix="/api/v1", tags=["reminders"])
 
 app.include_router(stages_router, prefix="/api/v1", tags=["stages"])
 app.include_router(tenants_router, prefix="/api/v1", tags=["tenants"])
 app.include_router(platform_tenants_router.router, prefix="/api/v1", tags=["platform-tenants"])
 app.include_router(admin_users_router.router, prefix="/api/v1")
 app.include_router(admin_companies_access_router.router, prefix="/api/v1")
+app.include_router(admin_audit_router.router, prefix="/api/v1")
+app.include_router(admin_draft_reminders_router.router, prefix="/api/v1")
 app.include_router(settings_leads_router.router, prefix="/api/v1/settings")
 app.include_router(settings_team_router.router, prefix="/api/v1/settings")
+app.include_router(settings_billing_router.router, prefix="/api/v1/settings")
+app.include_router(settings_email_router.router, prefix="/api/v1/settings")
+app.include_router(settings_communications_router.router, prefix="/api/v1/settings")
 app.include_router(public_intake_router.router, prefix="/api/v1", tags=["public-intake"])
-app.include_router(scanner_router.meta_router)
-app.include_router(scanner_router.router)
+app.include_router(public_notifications_router.router, prefix="/api/v1", tags=["public-notifications"])
+app.include_router(public_client_portal_router.router, prefix="/api/v1", tags=["public-client-portal"])
+if scanner_router is not None:
+    app.include_router(scanner_router.meta_router)
+    app.include_router(scanner_router.router)
 app.include_router(invoices_router, prefix="/api/v1", tags=["invoices"])
 
 # Домен
@@ -561,6 +701,17 @@ app.include_router(vacancies_router, prefix="/api/v1", tags=["vacancies"])
 app.include_router(recruiters_router, prefix="/api/v1", tags=["recruiters"])
 app.include_router(leads_router, prefix="/api/v1", tags=["leads"])
 app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
+app.include_router(communications_router, prefix="/api/v1", tags=["communications"])
+
+# Document policies and custom fields
+app.include_router(document_policies_router.router, prefix="/api/v1", tags=["document-policies"])
+app.include_router(custom_fields_router.router, prefix="/api/v1", tags=["custom-fields"])
+app.include_router(candidate_profiles_router.router, prefix="/api/v1", tags=["candidate-profiles"])
+app.include_router(candidate_stages_router, prefix="/api/v1", tags=["candidate-stages"])
+app.include_router(funnels_router, prefix="/api/v1", tags=["funnels"])
+app.include_router(legal_documents_router.router, prefix="/api/v1", tags=["legal-documents"])
+app.include_router(contact_attempts_router.router, prefix="/api/v1", tags=["contact-attempts"])
+app.include_router(handoffs_router.router, prefix="/api/v1", tags=["handoffs"])
 
 # Documents (mount under /api/v1)
 if documents_router is not None:

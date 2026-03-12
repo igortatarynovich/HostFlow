@@ -28,6 +28,8 @@ class CandidateCreate(BaseModel):
     address: Optional[str] = None
     birth_date: Optional[date] = None
     languages: Optional[Union[List[str], str]] = None
+    tags: Optional[List[str]] = None
+    is_favorite: Optional[bool] = None
     stage: Optional[str] = None
     status: Optional[str] = None
     status_reason: Optional[List[str]] = None
@@ -103,6 +105,8 @@ class CandidateUpdate(BaseModel):
     address: Optional[str] = None
     birth_date: Optional[date] = None
     languages: Optional[Union[List[str], str, None]] = None
+    tags: Optional[List[str]] = None
+    is_favorite: Optional[bool] = None
     stage: Optional[str] = None
     status: Optional[str] = None
     status_reason: Optional[List[str]] = None
@@ -176,10 +180,13 @@ class CandidateOut(BaseModel):
     short_id: Optional[str] = None
     first_name: str
     last_name: str
+    first_name_latin: Optional[str] = None
+    last_name_latin: Optional[str] = None
     phone: Optional[str] = None           # raw number
     phone_display: Optional[str] = None   # pretty +XX NNN
     phone_country_code: Optional[str] = None
     languages: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
     stage: Optional[str] = None
     status_reason: List[str] = Field(default_factory=list)
     email: Optional[str] = None
@@ -194,6 +201,8 @@ class CandidateOut(BaseModel):
     country_code: Optional[str] = None
     city: Optional[str] = None
     address: Optional[str] = None
+    city_latin: Optional[str] = None
+    address_latin: Optional[str] = None
     birth_date: Optional[date] = None
     extra: Dict[str, Any] = Field(default_factory=dict)
     docs_progress: Dict[str, Any] = Field(default_factory=dict)
@@ -239,6 +248,14 @@ class CandidateOut(BaseModel):
             languages = [p.strip() for p in s.split(",") if p.strip()] if s else []
         else:
             languages = []
+
+        # Normalize tags from model
+        tags: List[str] = getattr(c, "tags", []) or []
+        if not isinstance(tags, list):
+            tags = []
+        
+        # Get is_favorite from model
+        is_favorite: bool = getattr(c, "is_favorite", False) or False
 
         # optional UUID-like fields rendered as str or None
         def _str_or_none(v: Any) -> Optional[str]:
@@ -290,10 +307,14 @@ class CandidateOut(BaseModel):
             short_id=getattr(c, "short_id", None),
             first_name=str(getattr(c, "first_name", "")),
             last_name=str(getattr(c, "last_name", "")),
+            first_name_latin=getattr(c, "first_name_latin", None),
+            last_name_latin=getattr(c, "last_name_latin", None),
             phone=getattr(c, "phone", None),
             phone_display=getattr(c, "phone_display", None) if hasattr(c, "phone_display") else None,
             phone_country_code=getattr(c, "phone_country_code", None),
             languages=languages,
+            tags=tags,
+            is_favorite=is_favorite,
             stage=getattr(c, "stage", None),
             email=getattr(c, "email", None),
             note=getattr(c, "note", None),
@@ -307,6 +328,8 @@ class CandidateOut(BaseModel):
             country_code=country_code_val,
             city=city_val,
             address=address_val,
+            city_latin=getattr(c, "city_latin", None),
+            address_latin=getattr(c, "address_latin", None),
             birth_date=birth_date_val,
             extra=extra_dict,
             docs_progress=cls._as_dict(getattr(c, "docs_progress", None)),

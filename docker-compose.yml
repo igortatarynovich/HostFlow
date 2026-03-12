@@ -1,4 +1,13 @@
 services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   db:
     image: postgres:16-alpine
     environment:
@@ -25,8 +34,11 @@ services:
       - SQLALCHEMY_DATABASE_URI=postgresql+psycopg://hostflow:hostflow@db:5432/hostflow
       - SYNC_DATABASE_URL=postgresql+psycopg://hostflow:hostflow@db:5432/hostflow
       - UVICORN_WORKERS=1
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports: ["8000:8000"]
@@ -43,6 +55,21 @@ services:
       retries: 10
       start_period: 20s
 
+  scanner-api:
+    build:
+      context: ./scanner-backend
+      dockerfile: Dockerfile
+    container_name: hostflow-scanner-api
+    environment:
+      - SCAN_STORAGE_ROOT=/data/uploads/scanner
+      - SCAN_MAX_CONTENT_SIZE=52428800
+    volumes:
+      - ./storage/scanner:/data/uploads/scanner
+    depends_on:
+      - db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports: ["8010:8000"]
+
   caddy:
     image: caddy:latest
     ports:
@@ -50,6 +77,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./hostflow-frontend/dist:/var/www/hostflow-frontend:ro
     depends_on:
       - backend
 

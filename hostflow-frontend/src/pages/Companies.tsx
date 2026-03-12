@@ -4,276 +4,58 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Company, CompanyReadiness } from '../api/types'
 import { useI18n } from '../i18n'
+import {
+  listDocumentPolicies,
+  createDocumentPolicy,
+  updateDocumentPolicy,
+  deleteDocumentPolicy,
+  type DocumentPolicy,
+  type DocumentPolicyScope,
+} from '../api/documents/policies'
+import { getDocumentTypes, type DocType } from '../api/documents/catalog'
+import {
+  ENABLE_READINESS,
+  READINESS_STATE_META,
+  FIN_STATUS_LABELS,
+  CURRENCY_OPTIONS,
+  FIN_STATUS_OPTIONS,
+  CONTACT_ROLE_OPTIONS,
+  WORK_MODE_OPTIONS,
+  TRAILER_TYPE_KEYS,
+  OPERATIONAL_PROFILE_OPTIONS,
+} from '../modules/companies/constants'
+import type {
+  AnyRecord,
+  AddressForm,
+  RepresentativeForm,
+  ContactForm,
+  BankAccountForm,
+  PortalUserForm,
+  WebhookForm,
+  ContractForm,
+  OrderForm,
+  EInvoiceForm,
+  CompanyDetailForm,
+  ContactInfo,
+} from '../modules/companies/types'
+import { ORDER_TYPE_OPTIONS } from '../modules/companies/types'
+import {
+  asRecord,
+  asArray,
+  mergeRecords,
+  extractAddress,
+  normalizeNumberString,
+  normalizeStringArray,
+  addressToPayload,
+  normalizeContacts,
+  normalizeContactRole,
+  combinePhone,
+} from '../modules/companies/utils'
+import { ClientInvoicesBlock } from '../components/companies/ClientInvoicesBlock'
+import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { listVacancies } from '../api/vacancies'
 
-const ENABLE_READINESS = true; // readiness API enabled
-
-
-type AnyRecord = Record<string, any>
-
-function asRecord(value: unknown): AnyRecord {
-  if (!value) return {}
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
-      return {}
-    }
-    try {
-      const parsed = JSON.parse(trimmed)
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as AnyRecord) : {}
-    } catch (err) {
-      console.warn('[Companies] failed to parse JSON record', err)
-      return {}
-    }
-  }
-  if (typeof value === 'object' && !Array.isArray(value)) {
-    return value as AnyRecord
-  }
-  return {}
-}
-
-function asArray<T = any>(value: unknown): T[] {
-  if (!value) return []
-  if (Array.isArray(value)) return value as T[]
-  if (typeof value === 'object') return Object.values(value as AnyRecord) as T[]
-  return []
-}
-
-function mergeRecords(...records: Array<AnyRecord | null | undefined>): AnyRecord {
-  const result: AnyRecord = {}
-  for (const rec of records) {
-    if (!rec) continue
-    for (const [key, value] of Object.entries(rec)) {
-      if (value !== undefined) {
-        result[key] = value
-      }
-    }
-  }
-  return result
-}
-
-type StatusTone = 'info' | 'success' | 'warning' | 'danger'
-
-const READINESS_STATE_META: Record<string, { labelKey: string; tone: StatusTone }> = {
-  ready: { labelKey: 'app.companies.readiness.states.ready', tone: 'success' },
-  legal_missing: { labelKey: 'app.companies.readiness.states.legal_missing', tone: 'warning' },
-  contact_missing: { labelKey: 'app.companies.readiness.states.contact_missing', tone: 'warning' },
-  bank_missing: { labelKey: 'app.companies.readiness.states.bank_missing', tone: 'warning' },
-  billing_invalid: { labelKey: 'app.companies.readiness.states.billing_invalid', tone: 'warning' },
-  compliance_expired: { labelKey: 'app.companies.readiness.states.compliance_expired', tone: 'danger' },
-}
-
-const FIN_STATUS_LABELS: Record<string, string> = {
-  pending: 'app.companies.readiness.fin_status.pending',
-  pass: 'app.companies.readiness.fin_status.pass',
-  fail: 'app.companies.readiness.fin_status.fail',
-  manual_review: 'app.companies.readiness.fin_status.manual_review',
-}
-
-const CURRENCY_OPTIONS = ['PLN', 'EUR', 'USD', 'GBP'];
-const FIN_STATUS_OPTIONS = ['pending', 'pass', 'fail', 'manual_review'];
-const CONTACT_ROLE_OPTIONS = ['OWNER', 'ACC', 'HR', 'FM', 'OPS', 'LEGAL', 'DISPATCH', 'SALES', 'SUPPORT', 'CEO'];
-const CONTACT_ROLE_SET = new Set(CONTACT_ROLE_OPTIONS);
-const CONTACT_ROLE_ALIASES: Record<string, string> = {
-  ACCOUNTING: 'ACC',
-  ACCOUNTANT: 'ACC',
-  ACCOUNTS: 'ACC',
-  MAIN: 'OWNER',
-  OPERATIONS: 'OPS',
-  OPERATION: 'OPS',
-  DISPATCHER: 'DISPATCH',
-  CUSTOMER_SUPPORT: 'SUPPORT',
-  CUSTOMER_SERVICE: 'SUPPORT',
-  SUPPORT_TEAM: 'SUPPORT',
-  SALES_MANAGER: 'SALES',
-  SALES_TEAM: 'SALES',
-  FINANCE: 'FM',
-  FINANCIAL: 'FM',
-  FINANCIAL_MANAGER: 'FM',
-  FINANCE_MANAGER: 'FM',
-};
-const WORK_MODE_OPTIONS = ['UOP', 'B2B', 'LEASE'];
-const TRAILER_TYPE_KEYS = ['mega', 'standard', 'frigo', 'container'];
-
-type AddressForm = {
-  country?: string;
-  city?: string;
-  street?: string;
-  zip?: string;
-  house?: string;
-  apartment?: string;
-  region?: string;
-};
-
-interface RepresentativeForm {
-  full_name: string;
-  role?: string;
-  email?: string;
-  phone?: string;
-}
-
-interface ContactForm {
-  role: string;
-  full_name: string;
-  email: string;
-  phone: string;
-  is_primary: boolean;
-  is_portal_user: boolean;
-}
-
-interface BankAccountForm {
-  bank_name: string;
-  iban: string;
-  swift_bic: string;
-  country: string;
-  label: string;
-  is_primary: boolean;
-}
-
-interface PortalUserForm {
-  full_name: string;
-  email: string;
-  role: string;
-}
-
-interface WebhookForm {
-  event: string;
-  target: string;
-}
-
-interface ContractForm {
-  title: string;
-  status: string;
-  starts_at: string;
-  ends_at: string;
-  reference: string;
-  code: string;
-}
-
-interface OrderForm {
-  title: string;
-  status: string;
-  starts_at: string;
-  ends_at: string;
-  required_drivers: string;
-  hired_drivers: string;
-  client_reference: string;
-  code: string;
-}
-
-interface EInvoiceForm {
-  participant_id: string;
-  scheme: string;
-}
-
-interface CompanyDetailForm {
-  base: {
-    name: string;
-    legal_name: string;
-    tax_id: string;
-    phone: string;
-    email: string;
-    website: string;
-    notes: string;
-    is_archived: boolean;
-    country_code: string;
-    city: string;
-    address: string;
-  };
-  legal: {
-    reg_no: string;
-    vat_eu: string;
-    established_at: string;
-    transport_license_number: string;
-    insurance_policy_no: string;
-    registered_address: AddressForm;
-    operational_address: AddressForm;
-    authorized_representatives: RepresentativeForm[];
-  };
-  billing: {
-    default_currency: string;
-    payment_terms_days: string;
-    invoice_email: string;
-    billing_address: AddressForm;
-    einvoice_peppol: EInvoiceForm;
-    bank_accounts: BankAccountForm[];
-  };
-  contacts: ContactForm[];
-  operations: {
-    fleet_tractors: string;
-    fleet_intl_perc: string;
-    fleet_local_perc: string;
-    drivers_total: string;
-    has_adr_operations: boolean;
-    work_modes: string[];
-    trailer_types: Record<string, string>;
-    lanes: { origins: string[]; destinations: string[] };
-    cargo_types: string[];
-    languages: string[];
-    preferred_nationalities: string[];
-  };
-  compliance: {
-    fin_check_status: string;
-    aml_required: boolean;
-    iso9001: boolean;
-    doc_valid_until: string;
-    last_compliance_check_at: string;
-  };
-  portal: {
-    enabled: boolean;
-    url: string;
-    last_sync_at: string;
-    portal_roles: PortalUserForm[];
-    permissions: string;
-  };
-  integrations: {
-    provider_ids: string[];
-    webhooks: WebhookForm[];
-    branding: { logo_url: string; primary_color: string };
-  };
-  contracts: ContractForm[];
-  orders: OrderForm[];
-  rawExtra: AnyRecord;
-}
-
-function extractAddress(raw: unknown): AddressForm {
-  const data = asRecord(raw)
-  return {
-    country: (data.country ?? '') as string,
-    city: (data.city ?? '') as string,
-    street: (data.street ?? data.address ?? '') as string,
-    zip: (data.zip ?? '') as string,
-    house: (data.house ?? data.number ?? '') as string,
-    apartment: (data.apartment ?? data.ap ?? '') as string,
-    region: (data.region ?? '') as string,
-  }
-}
-
-function normalizeNumberString(value: unknown): string {
-  if (value === null || value === undefined) return ''
-  const num = Number(value)
-  if (Number.isNaN(num)) return ''
-  return String(num)
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  return asArray(value)
-    .map((item) => (item === null || item === undefined ? '' : String(item)))
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0)
-}
-
-function addressToPayload(address: AddressForm): AnyRecord | null {
-  const cleaned: AnyRecord = {}
-  if (address.country) cleaned.country = address.country
-  if (address.city) cleaned.city = address.city
-  if (address.street) cleaned.street = address.street
-  if (address.zip) cleaned.zip = address.zip
-  if (address.house) cleaned.house = address.house
-  if (address.apartment) cleaned.apartment = address.apartment
-  if (address.region) cleaned.region = address.region
-  return Object.keys(cleaned).length ? cleaned : null
-}
-
+// Helper functions used only in this file
 function parseBoolean(value: unknown, fallback = false): boolean {
   if (typeof value === 'boolean') return value
   if (typeof value === 'number') return value !== 0
@@ -298,91 +80,22 @@ function pruneEmpty(obj: AnyRecord): AnyRecord {
   return result
 }
 
-interface ContactInfo {
-  role?: string
-  full_name?: string
-  email?: string
-  phone?: string
-  is_primary?: boolean
-  is_portal_user?: boolean
+function normalizeCompanyKind(value: unknown): 'client' | 'counterparty' {
+  const raw = String(value ?? '').trim().toLowerCase()
+  if (raw === 'counterparty') return 'counterparty'
+  return 'client'
 }
 
-function normalizeContactRole(value?: string | null): string | undefined {
-  if (value === null || value === undefined) return undefined
-  const normalized = String(value).trim().toUpperCase()
-  if (!normalized) return undefined
-  const canonical = normalized.replace(/[\s-]+/g, '_')
-  if (CONTACT_ROLE_SET.has(canonical)) return canonical
-  if (CONTACT_ROLE_SET.has(normalized)) return normalized
-  const alias = CONTACT_ROLE_ALIASES[canonical] ?? CONTACT_ROLE_ALIASES[normalized]
-  if (alias && CONTACT_ROLE_SET.has(alias)) return alias
-  return undefined
-}
-
-function combinePhone(data: AnyRecord): string {
-  const parts: string[] = []
-  const prefixRaw = data.phone_prefix ?? data.phone_code
-  if (prefixRaw) {
-    const prefix = String(prefixRaw)
-    parts.push(prefix.startsWith('+') ? prefix : `+${prefix}`)
-  }
-  if (data.phone_local) {
-    parts.push(String(data.phone_local))
-  }
-  if (!parts.length && data.phone) {
-    parts.push(String(data.phone))
-  }
-  return parts.join(' ').trim()
-}
-
-function normalizeContacts(raw: unknown): ContactInfo[] {
-  if (!raw) return []
-  if (Array.isArray(raw)) {
-    return (raw as unknown[]).map((item, idx) => {
-      const data = asRecord(item)
-      const combinedPhone = combinePhone(data)
-      const roleHint =
-        (typeof data.role === 'string' && data.role) ||
-        (typeof data.type === 'string' && data.type) ||
-        (typeof data.position === 'string' && data.position) ||
-        undefined
-      const normalizedRole = normalizeContactRole(roleHint)
-      const roleHintLower = roleHint ? String(roleHint).trim().toLowerCase() : ''
-      const isPrimary =
-        data.is_primary !== undefined ? Boolean(data.is_primary) : roleHintLower === 'main' || idx === 0
-      return {
-        role: normalizedRole,
-        full_name: data.full_name ?? data.name ?? undefined,
-        email: data.email ?? undefined,
-        phone: combinedPhone || (data.phone ? String(data.phone) : undefined),
-        is_primary: isPrimary,
-        is_portal_user: data.is_portal_user ?? undefined,
-      }
-    })
-  }
-  const obj = asRecord(raw)
-  return Object.entries(obj).map(([key, value], idx) => {
-    const data = asRecord(value)
-    const combinedPhone = combinePhone(data)
-    const preferredRole =
-      (typeof data.role === 'string' && data.role.trim()) ||
-      (typeof data.type === 'string' && data.type.trim()) ||
-      (typeof data.position === 'string' && data.position.trim()) ||
-      key
-    const roleHintValue = preferredRole ?? key
-    const normalizedRole = normalizeContactRole(roleHintValue)
-    const roleHintLower = String(roleHintValue ?? '').trim().toLowerCase()
-    const isPrimary =
-      data.is_primary !== undefined ? Boolean(data.is_primary) : roleHintLower === 'main' || idx === 0
-    return {
-      role: normalizedRole,
-      full_name: data.full_name ?? data.name ?? undefined,
-      email: data.email ?? undefined,
-      phone: combinedPhone || (data.phone ? String(data.phone) : undefined),
-      is_primary: isPrimary,
-      is_portal_user: data.is_portal_user ?? undefined,
-    }
-  })
+function getCompanyKindFromAny(company: AnyRecord): 'client' | 'counterparty' {
+  const extra = asRecord(company?.extra)
+  const raw =
+    extra.company_kind ??
+    extra.company_type ??
+    extra.kind ??
+    extra.entity_type ??
+    extra.segment ??
+    extra.role
+  return normalizeCompanyKind(raw)
 }
 
 export default function Companies(){
@@ -408,6 +121,17 @@ export default function Companies(){
   const [readinessError, setReadinessError] = useState<string | null>(null)
   const [readinessUnavailable, setReadinessUnavailable] = useState(false)
 
+  // company vacancies (from API)
+  const [companyVacanciesFromApi, setCompanyVacanciesFromApi] = useState<any[]>([])
+  const [companyVacanciesLoading, setCompanyVacanciesLoading] = useState(false)
+  // document policies state
+  const [documentPolicies, setDocumentPolicies] = useState<DocumentPolicy[]>([])
+  const [documentTypes, setDocumentTypes] = useState<DocType[]>([])
+  const [policiesLoading, setPoliciesLoading] = useState(false)
+  const [policiesError, setPoliciesError] = useState<string | null>(null)
+  const [editingPolicy, setEditingPolicy] = useState<DocumentPolicy | null>(null)
+  const [newPolicyMode, setNewPolicyMode] = useState(false)
+
   // ui state
   const [loading, setLoading] = useState(false)
   const [detailForm, setDetailForm] = useState<CompanyDetailForm | null>(null)
@@ -419,6 +143,7 @@ export default function Companies(){
   // list filters/sort
   const [query, setQuery] = useState('')
   const [showArchived, setShowArchived] = useState(false)
+  const [companyKindFilter, setCompanyKindFilter] = useState<'all' | 'client' | 'counterparty'>('all')
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'city_asc' | 'city_desc'>('name_asc')
 
   const updateField = useCallback(
@@ -461,6 +186,9 @@ export default function Companies(){
   const filteredItems = useMemo(() => {
     let arr: any[] = Array.isArray(items) ? items : []
     if (!showArchived) arr = arr.filter((it:any) => !it.is_archived)
+    if (companyKindFilter !== 'all') {
+      arr = arr.filter((it: any) => getCompanyKindFromAny(it) === companyKindFilter)
+    }
     if (query.trim()){
       const q = query.trim().toLowerCase()
       arr = arr.filter((it:any) => (
@@ -473,7 +201,7 @@ export default function Companies(){
     if (sortBy === 'city_asc') arr = [...arr].sort((a,b)=> get(a,'city').localeCompare(get(b,'city')))
     if (sortBy === 'city_desc') arr = [...arr].sort((a,b)=> get(b,'city').localeCompare(get(a,'city')))
     return arr
-  }, [items, showArchived, query, sortBy])
+  }, [items, showArchived, companyKindFilter, query, sortBy])
 
   const currentAny: AnyRecord | null = current ? (current as unknown as AnyRecord) : null
 
@@ -613,10 +341,27 @@ export default function Companies(){
     [extraData]
   )
 
-  const companyVacancies = useMemo(
-    () => asArray(extraData.company_vacancies ?? extraData.vacancies ?? extraData.open_vacancies).map((item) => asRecord(item)),
-    [extraData]
-  )
+  const loadCompanyVacancies = useCallback(async (companyId: string) => {
+    if (!companyId) return
+    setCompanyVacanciesLoading(true)
+    try {
+      const list = await listVacancies({ company_id: companyId, limit: 100 })
+      setCompanyVacanciesFromApi(Array.isArray(list) ? list : (list as any)?.items ?? [])
+    } catch {
+      setCompanyVacanciesFromApi([])
+    } finally {
+      setCompanyVacanciesLoading(false)
+    }
+  }, [])
+
+  const companyVacancies = useMemo(() => {
+    if (companyVacanciesFromApi.length > 0) {
+      return companyVacanciesFromApi.map((item) => asRecord(item))
+    }
+    return asArray(extraData.company_vacancies ?? extraData.vacancies ?? extraData.open_vacancies).map((item) =>
+      asRecord(item)
+    )
+  }, [companyVacanciesFromApi, extraData])
 
   const vacancyAnalytics = useMemo(() => {
     if (!companyVacancies.length) {
@@ -683,6 +428,14 @@ export default function Companies(){
     const base = {
       name: (currentAny.name as string) ?? '',
       legal_name: (currentAny.legal_name as string) ?? '',
+      company_kind: normalizeCompanyKind(
+        extraData.company_kind ??
+          extraData.company_type ??
+          extraData.kind ??
+          extraData.entity_type ??
+          extraData.segment ??
+          extraData.role
+      ),
       tax_id: (currentAny.tax_id as string) ?? '',
       phone: (currentAny.phone as string) ?? '',
       email: (currentAny.email as string) ?? '',
@@ -787,6 +540,7 @@ export default function Companies(){
 
     const trailersRecord = operationsBlock.trailers ?? {}
 
+    const customFieldsBlock = operationsBlock.custom_fields ?? {}
     const operations: CompanyDetailForm['operations'] = {
       fleet_tractors: normalizeNumberString(
         operationsBlock.fleet_tractors ?? operationsBlock.tractors ?? operationsBlock.fleet?.tractors
@@ -820,6 +574,16 @@ export default function Companies(){
       languages: normalizeStringArray(operationsBlock.languages),
       preferred_nationalities: normalizeStringArray(
         operationsBlock.preferred_nationalities ?? operationsBlock.preferredNationalities
+      ),
+      team_size: normalizeNumberString(operationsBlock.team_size ?? operationsBlock.teamSize ?? ''),
+      roles: (operationsBlock.roles ?? operationsBlock.role ?? '') as string,
+      tech_stack: (operationsBlock.tech_stack ?? operationsBlock.techStack ?? '') as string,
+      custom_fields: ['capacity', 'equipment', 'certifications', 'regions'].reduce<Record<string, string>>(
+        (acc, key) => {
+          acc[key] = String(customFieldsBlock[key] ?? '')
+          return acc
+        },
+        {}
       ),
     }
 
@@ -932,6 +696,8 @@ export default function Companies(){
     const orders: OrderForm[] = ordersList.length
       ? ordersList.map((order) => {
           const data = asRecord(order)
+          const orderTypeId = (data.order_type_id ?? 'transport') as string
+          const customFields = (data.custom_fields ?? {}) as Record<string, string | number>
           return {
             title: (data.title ?? data.name ?? '') as string,
             status: (data.status ?? '') as string,
@@ -945,6 +711,8 @@ export default function Companies(){
             ),
             client_reference: (data.client_reference ?? '') as string,
             code: (data.code ?? '') as string,
+            order_type_id: orderTypeId,
+            custom_fields: Object.keys(customFields).length ? customFields : undefined,
           }
         })
       : [
@@ -957,6 +725,8 @@ export default function Companies(){
             hired_drivers: '',
             client_reference: '',
             code: '',
+            order_type_id: 'transport' as const,
+            custom_fields: undefined,
           },
         ]
 
@@ -966,6 +736,8 @@ export default function Companies(){
     } catch {
       rawExtra = asRecord(extraData)
     }
+    rawExtra.operational_profile_type =
+      (rawExtra.operational_profile_type as string) || (extraData.operational_profile_type as string) || 'transport'
 
     return {
       base,
@@ -1086,37 +858,43 @@ export default function Companies(){
         bank_accounts: bankAccountsPayload,
       })
 
-      const operationsPayload = pruneEmpty({
-        fleet_tractors: detailForm.operations.fleet_tractors
-          ? Number(detailForm.operations.fleet_tractors)
-          : undefined,
-        fleet_intl_perc: detailForm.operations.fleet_intl_perc
-          ? Number(detailForm.operations.fleet_intl_perc)
-          : undefined,
-        fleet_local_perc: detailForm.operations.fleet_local_perc
-          ? Number(detailForm.operations.fleet_local_perc)
-          : undefined,
-        drivers_total: detailForm.operations.drivers_total
-          ? Number(detailForm.operations.drivers_total)
-          : undefined,
-        has_adr_operations: detailForm.operations.has_adr_operations || undefined,
-        work_modes: detailForm.operations.work_modes,
-        trailers: pruneEmpty(
+      const profileType = detailForm.rawExtra?.operational_profile_type ?? 'transport'
+      const ops = detailForm.operations
+      const baseOps: AnyRecord = {
+        fleet_tractors: ops.fleet_tractors ? Number(ops.fleet_tractors) : undefined,
+        fleet_intl_perc: ops.fleet_intl_perc ? Number(ops.fleet_intl_perc) : undefined,
+        fleet_local_perc: ops.fleet_local_perc ? Number(ops.fleet_local_perc) : undefined,
+        drivers_total: ops.drivers_total ? Number(ops.drivers_total) : undefined,
+        has_adr_operations: ops.has_adr_operations || undefined,
+        work_modes: ops.work_modes?.length ? ops.work_modes : undefined,
+        trailer_types: pruneEmpty(
           Object.fromEntries(
-            Object.entries(detailForm.operations.trailer_types).map(([key, value]) => [
+            Object.entries(ops.trailer_types || {}).map(([key, value]) => [
               key,
               value ? Number(value) : undefined,
             ])
           )
         ),
         lanes: pruneEmpty({
-          origins: detailForm.operations.lanes.origins,
-          destinations: detailForm.operations.lanes.destinations,
+          origins: ops.lanes?.origins,
+          destinations: ops.lanes?.destinations,
         }),
-        cargo_types: detailForm.operations.cargo_types,
-        languages: detailForm.operations.languages,
-        preferred_nationalities: detailForm.operations.preferred_nationalities,
-      })
+        cargo_types: ops.cargo_types?.length ? ops.cargo_types : undefined,
+        languages: ops.languages?.length ? ops.languages : undefined,
+        preferred_nationalities: ops.preferred_nationalities?.length ? ops.preferred_nationalities : undefined,
+      }
+      if (profileType === 'office') {
+        baseOps.team_size = ops.team_size ? Number(ops.team_size) : undefined
+        baseOps.roles = ops.roles?.trim() || undefined
+        baseOps.tech_stack = ops.tech_stack?.trim() || undefined
+      }
+      if (profileType === 'custom') {
+        const cf = Object.fromEntries(
+          Object.entries(ops.custom_fields || {}).filter(([, v]) => v != null && String(v).trim())
+        )
+        if (Object.keys(cf).length > 0) baseOps.custom_fields = cf
+      }
+      const operationsPayload = pruneEmpty(baseOps)
 
       const compliancePayload = pruneEmpty({
         fin_check_status: detailForm.compliance.fin_check_status || undefined,
@@ -1184,21 +962,29 @@ export default function Companies(){
 
       const ordersPayload = detailForm.orders
         .filter((order) => order.title || order.status)
-        .map((order) =>
-          pruneEmpty({
+        .map((order) => {
+          const base: AnyRecord = {
             title: order.title || undefined,
             code: order.code || undefined,
             status: order.status || undefined,
             starts_at: order.starts_at || undefined,
             ends_at: order.ends_at || undefined,
-            required_drivers: order.required_drivers ? Number(order.required_drivers) : undefined,
-            hired_drivers: order.hired_drivers ? Number(order.hired_drivers) : undefined,
             client_reference: order.client_reference || undefined,
-          })
-        )
+            order_type_id: order.order_type_id || 'transport',
+          }
+          if (order.order_type_id === 'transport') {
+            base.required_drivers = order.required_drivers ? Number(order.required_drivers) : undefined
+            base.hired_drivers = order.hired_drivers ? Number(order.hired_drivers) : undefined
+          }
+          if (order.custom_fields && Object.keys(order.custom_fields).length > 0) {
+            base.custom_fields = order.custom_fields
+          }
+          return pruneEmpty(base)
+        })
 
       const extraPayload: AnyRecord = {
         ...detailForm.rawExtra,
+        company_kind: detailForm.base.company_kind,
         legal: legalPayload,
         billing: billingPayload,
         operations: operationsPayload,
@@ -1471,6 +1257,19 @@ export default function Companies(){
     [updateFormState]
   )
 
+  const setOrderCustomField = useCallback(
+    (index: number, key: string, value: string | number) => {
+      updateFormState('orders', (prev) => {
+        const next = [...prev]
+        const ord = next[index]
+        const cf = { ...(ord.custom_fields ?? {}), [key]: value }
+        next[index] = { ...ord, custom_fields: cf }
+        return next
+      })
+    },
+    [updateFormState]
+  )
+
   const addOrder = useCallback(() => {
     updateFormState('orders', (prev) => [
       ...prev,
@@ -1483,6 +1282,8 @@ export default function Companies(){
         hired_drivers: '',
         client_reference: '',
         code: '',
+        order_type_id: 'transport' as const,
+        custom_fields: undefined,
       },
     ])
   }, [updateFormState])
@@ -1503,6 +1304,8 @@ export default function Companies(){
                 hired_drivers: '',
                 client_reference: '',
                 code: '',
+                order_type_id: 'transport' as const,
+                custom_fields: undefined,
               },
             ]
       })
@@ -1521,6 +1324,28 @@ export default function Companies(){
     ]
   }, [readiness, t])
   // -------- data fetching
+  const loadDocumentPolicies = useCallback(async (companyId: string | null) => {
+    if (!companyId) {
+      setDocumentPolicies([])
+      return
+    }
+    setPoliciesLoading(true)
+    setPoliciesError(null)
+    try {
+      const [policies, types] = await Promise.all([
+        listDocumentPolicies({ scope: 'CLIENT', scope_id: companyId }),
+        getDocumentTypes(),
+      ])
+      setDocumentPolicies(policies)
+      setDocumentTypes(types)
+    } catch (err: any) {
+      console.error('[Companies] failed to load document policies', err)
+      setPoliciesError(err?.message || t('app.companies.errors.policies_load_failed', { defaultValue: 'Failed to load document policies' }))
+    } finally {
+      setPoliciesLoading(false)
+    }
+  }, [t])
+
   const loadReadiness = useCallback(async (companyId: string) => {
     if (!companyId) return
     setReadinessLoading(true)
@@ -1557,12 +1382,15 @@ export default function Companies(){
     setReadiness(null)
     setReadinessUnavailable(false)
     setReadinessError(null)
+    setCompanyVacanciesFromApi([])
     try{
       const { data } = await api.get(`/companies/${companyId}`)
       setCurrent(data)
       if (ENABLE_READINESS) {
         void loadReadiness(companyId)
       }
+      void loadDocumentPolicies(companyId)
+      void loadCompanyVacancies(companyId)
     } finally { setLoading(false) }
   }
 
@@ -1668,10 +1496,10 @@ export default function Companies(){
     if (!detailForm) {
       return (
         <div className="h-full w-full flex flex-col space-y-4">
-          <div className="text-xs text-gray-500 mb-1">
+          <div className="text-xs text-slate-500 mb-1">
             <Link className="hover:underline" to="/app/clients">{t('app.companies.actions.back_to_list')}</Link>
           </div>
-          <div className="card p-4 text-sm text-gray-500">{t('common.loading')}</div>
+          <div className="card p-4 text-sm text-slate-500">{t('common.loading')}</div>
         </div>
       )
     }
@@ -1700,14 +1528,8 @@ export default function Companies(){
       {
         key: 'vacancies',
         label: t('app.companies.detail.kpis.vacancies_active'),
-        value: currentAny?.vacancies_active ?? 0,
+        value: currentAny?.vacancies_active ?? vacancyAnalytics.total ?? 0,
         hint: t('app.companies.detail.kpis.vacancies_active_hint'),
-      },
-      {
-        key: 'services',
-        label: t('app.companies.detail.kpis.services_blocking'),
-        value: currentAny?.services_blocking ?? 0,
-        hint: t('app.companies.detail.kpis.services_blocking_hint'),
       },
     ]
 
@@ -1735,6 +1557,9 @@ export default function Companies(){
         return aTime - bTime
       })[0]
 
+    const hasTransportOrders = detailForm.orders.some(
+      (o) => (numeric(o.required_drivers) || numeric(o.hired_drivers)) > 0
+    )
     const driverStats = detailForm.orders.reduce(
       (acc, order) => {
         acc.required += numeric(order.required_drivers)
@@ -1751,17 +1576,17 @@ export default function Companies(){
         title: t('app.companies.detail.overview.primary_contact.title'),
         content: primaryContactEntry ? (
           <div className="space-y-1">
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-base font-semibold text-slate-900">
               {primaryContactEntry.full_name || t('common.labels.not_available')}
             </p>
             {primaryContactEntry.role && (
-              <p className="text-xs uppercase tracking-wide text-gray-500">{primaryContactEntry.role}</p>
+              <p className="text-xs uppercase tracking-wide text-slate-500">{primaryContactEntry.role}</p>
             )}
             {primaryContactEntry.phone && <p>{primaryContactEntry.phone}</p>}
             {primaryContactEntry.email && <p>{primaryContactEntry.email}</p>}
           </div>
         ) : (
-          <p className="text-sm text-gray-500">{t('app.companies.detail.overview.primary_contact.empty')}</p>
+          <p className="text-sm text-slate-500">{t('app.companies.detail.overview.primary_contact.empty')}</p>
         ),
       },
       {
@@ -1769,27 +1594,27 @@ export default function Companies(){
         title: t('app.companies.detail.overview.finance_contact.title'),
         content: financeContactEntry ? (
           <div className="space-y-1">
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-base font-semibold text-slate-900">
               {financeContactEntry.full_name || t('common.labels.not_available')}
             </p>
             {financeContactEntry.role && (
-              <p className="text-xs uppercase tracking-wide text-gray-500">{financeContactEntry.role}</p>
+              <p className="text-xs uppercase tracking-wide text-slate-500">{financeContactEntry.role}</p>
             )}
             {financeContactEntry.phone && <p>{financeContactEntry.phone}</p>}
             {financeContactEntry.email && <p>{financeContactEntry.email}</p>}
             {invoiceEmail && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-slate-500">
                 {t('app.companies.detail.overview.finance_contact.invoice_label', { values: { email: invoiceEmail } })}
               </p>
             )}
           </div>
         ) : invoiceEmail ? (
           <div className="space-y-1">
-            <p className="text-base font-semibold text-gray-900">{invoiceEmail}</p>
-            <p className="text-xs text-gray-500">{t('app.companies.detail.overview.finance_contact.invoice_only')}</p>
+            <p className="text-base font-semibold text-slate-900">{invoiceEmail}</p>
+            <p className="text-xs text-slate-500">{t('app.companies.detail.overview.finance_contact.invoice_only')}</p>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">{t('app.companies.detail.overview.finance_contact.empty')}</p>
+          <p className="text-sm text-slate-500">{t('app.companies.detail.overview.finance_contact.empty')}</p>
         ),
       },
       {
@@ -1797,44 +1622,57 @@ export default function Companies(){
         title: t('app.companies.detail.overview.contracts.title'),
         content: upcomingContract ? (
           <div className="space-y-1">
-            <p className="text-base font-semibold text-gray-900">
+            <p className="text-base font-semibold text-slate-900">
               {upcomingContract.contract.title || t('common.labels.unnamed')}
             </p>
             {upcomingContract.contract.status && (
-              <p className="text-xs uppercase tracking-wide text-gray-500">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
                 {upcomingContract.contract.status}
               </p>
             )}
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-slate-600">
               {t('app.companies.detail.overview.contracts.due', {
                 values: { date: fmtDate(upcomingContract.dueDate) },
               })}
             </p>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">{t('app.companies.detail.overview.contracts.empty')}</p>
+          <p className="text-sm text-slate-500">{t('app.companies.detail.overview.contracts.empty')}</p>
         ),
       },
       {
-        key: 'driver_slots',
-        title: t('app.companies.detail.overview.driver_slots.title'),
-        content:
-          detailForm.orders.length > 0 ? (
-            <div className="space-y-1">
-              <p className="text-3xl font-semibold text-gray-900">{openDriverSlots}</p>
-              <p className="text-sm text-gray-600">
-                {t('app.companies.detail.overview.driver_slots.subtitle')}
-              </p>
-              <p className="text-xs text-gray-500">
-                {t('app.companies.detail.overview.driver_slots.assigned', {
-                  values: { hired: driverStats.hired, required: driverStats.required },
-                })}
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">{t('app.companies.detail.overview.driver_slots.empty')}</p>
-          ),
+        key: 'vacancies_overview',
+        title: t('app.companies.detail.widgets.vacancies.title'),
+        content: vacancyAnalytics.total > 0 ? (
+          <div className="space-y-1">
+            <p className="text-2xl font-semibold text-slate-900">{vacancyAnalytics.total}</p>
+            <p className="text-xs text-slate-500">{t('app.companies.detail.widgets.vacancies.subtitle')}</p>
+            <Link to={`/app/vacancies?company=${currentAny?.id ?? ''}`} className="text-sm text-brand-600 hover:underline">
+              {t('app.companies.detail.overview.vacancies_link', { defaultValue: 'Перейти к вакансиям' })}
+            </Link>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
+        ),
       },
+      ...(hasTransportOrders
+        ? [
+            {
+              key: 'driver_slots',
+              title: t('app.companies.detail.overview.driver_slots.title'),
+              content: (
+                <div className="space-y-1">
+                  <p className="text-2xl font-semibold text-slate-900">{openDriverSlots}</p>
+                  <p className="text-xs text-slate-500">
+                    {t('app.companies.detail.overview.driver_slots.assigned', {
+                      values: { hired: driverStats.hired, required: driverStats.required },
+                    })}
+                  </p>
+                </div>
+              ),
+            },
+          ]
+        : []),
     ]
 
     return (
@@ -1855,6 +1693,12 @@ export default function Companies(){
             </div>
             <div className="flex flex-col gap-2 text-sm text-white/80">
               <div className="flex flex-wrap gap-2">
+                <Link
+                  to={`/app/vacancies/new?company=${currentAny?.id ?? ''}`}
+                  className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
+                >
+                  {t('app.companies.detail.actions.add_vacancy')}
+                </Link>
                 <button
                   className="btn-primary bg-white text-brand-700 hover:bg-white/90"
                   type="button"
@@ -1895,10 +1739,10 @@ export default function Companies(){
             {overviewCards.map((card) => (
               <div
                 key={card.key}
-                className="rounded-2xl border border-gray-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
+                className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{card.title}</p>
-                <div className="mt-2 text-sm text-gray-600">{card.content}</div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{card.title}</p>
+                <div className="mt-2 text-sm text-slate-600">{card.content}</div>
               </div>
             ))}
           </div>
@@ -1907,11 +1751,11 @@ export default function Companies(){
         <div className="grid gap-4 lg:grid-cols-2">
           <SectionCard title={t('app.companies.detail.widgets.vacancies.title')} description={t('app.companies.detail.widgets.vacancies.subtitle')}>
             <div className="flex items-baseline justify-between">
-              <p className="text-sm text-gray-500">{t('app.companies.detail.widgets.vacancies.total')}</p>
-              <p className="text-3xl font-semibold text-gray-900">{vacancyAnalytics.total}</p>
+              <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.total')}</p>
+              <p className="text-3xl font-semibold text-slate-900">{vacancyAnalytics.total}</p>
             </div>
             {vacancyAnalytics.statusRows.length ? (
-              <ul className="divide-y divide-gray-100 text-sm text-gray-700">
+              <ul className="divide-y divide-slate-100 text-sm text-slate-700">
                 {vacancyAnalytics.statusRows.map((row) => (
                   <li key={row.status} className="flex items-center justify-between py-2">
                     <span>{humanizeStatus(row.status) || t('app.companies.detail.widgets.vacancies.status_unknown')}</span>
@@ -1920,76 +1764,99 @@ export default function Companies(){
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
+              <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
             )}
             {vacancyAnalytics.latest.length > 0 && (
               <div className="rounded-2xl bg-slate-50/60 p-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   {t('app.companies.detail.widgets.vacancies.latest_title')}
                 </div>
                 <ul className="mt-2 space-y-2 text-sm">
-                  {vacancyAnalytics.latest.map((vacancy, index) => (
-                    <li key={(vacancy.id as string) ?? (vacancy.code as string) ?? `vacancy-${index}`} className="rounded-xl border border-gray-100 bg-white/80 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-gray-900">{(vacancy.title as string) ?? (vacancy.position as string) ?? t('common.labels.unnamed')}</span>
-                        <span className="text-xs text-gray-500">
-                          {fmtDateTime((vacancy.updated_at as string | undefined) ?? (vacancy.created_at as string | undefined))}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        {t('app.companies.detail.widgets.vacancies.status_label', {
-                          values: {
-                            status:
-                              humanizeStatus((vacancy.status as string | undefined) ?? (vacancy.stage as string | undefined)) ||
-                              t('app.companies.detail.widgets.vacancies.status_unknown'),
-                          },
-                        })}
-                      </div>
-                    </li>
-                  ))}
+                  {vacancyAnalytics.latest.map((vacancy, index) => {
+                    const vacId = (vacancy.id as string) ?? (vacancy.code as string)
+                    return (
+                      <li key={vacId ?? `vacancy-${index}`} className="rounded-xl border border-slate-100 bg-white/80 p-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <Link
+                            to={vacId ? `/app/vacancies/${vacId}` : '/app/vacancies'}
+                            className="font-semibold text-slate-900 hover:text-brand-600 hover:underline"
+                          >
+                            {(vacancy.title as string) ?? (vacancy.position as string) ?? t('common.labels.unnamed')}
+                          </Link>
+                          <span className="text-xs text-slate-500">
+                            {fmtDateTime((vacancy.updated_at as string | undefined) ?? (vacancy.created_at as string | undefined))}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-2">
+                          <span className="text-xs text-slate-500">
+                            {t('app.companies.detail.widgets.vacancies.status_label', {
+                              values: {
+                                status:
+                                  humanizeStatus((vacancy.status as string | undefined) ?? (vacancy.stage as string | undefined)) ||
+                                  t('app.companies.detail.widgets.vacancies.status_unknown'),
+                              },
+                            })}
+                          </span>
+                          {vacId && (
+                            <Link
+                              to={`/app/candidates?view=kanban&vacancy=${vacId}`}
+                              className="text-xs font-medium text-brand-600 hover:underline"
+                            >
+                              {t('app.companies.detail.widgets.vacancies.pipeline_link', { defaultValue: 'Пайплайн' })}
+                            </Link>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
                 </ul>
               </div>
             )}
           </SectionCard>
 
-          <SectionCard title={t('app.companies.detail.widgets.blockers.title')} description={t('app.companies.detail.widgets.blockers.subtitle')}>
-            {blockingOrders.length ? (
+          {blockingOrders.length > 0 && (
+            <SectionCard title={t('app.companies.detail.widgets.blockers.title')} description={t('app.companies.detail.widgets.blockers.subtitle')} collapsible defaultOpen={true}>
               <ul className="space-y-3 text-sm">
                 {blockingOrders.map((entry) => (
                   <li key={entry.key} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-gray-900">{entry.title}</span>
-                      <span className="text-xs text-gray-500">{humanizeStatus(entry.status) || t('common.labels.not_available')}</span>
+                      <span className="font-semibold text-slate-900">{entry.title}</span>
+                      <span className="text-xs text-slate-500">{humanizeStatus(entry.status) || t('common.labels.not_available')}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {entry.reasons.map((reason) => (
                         <span
                           key={`${entry.key}-${reason}`}
-                          className="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
+                          className="inline-flex items-center rounded-md bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
                         >
                           {t(`app.companies.detail.widgets.blockers.reason.${reason}`)}
                         </span>
                       ))}
                     </div>
-                    <div className="mt-1 text-xs text-gray-500">
+                    <div className="mt-1 text-xs text-slate-500">
                       {entry.updatedAt ? fmtDateTime(entry.updatedAt) : t('common.labels.not_available')}
                     </div>
                   </li>
                 ))}
               </ul>
-            ) : (
-              <p className="text-sm text-gray-500">{t('app.companies.detail.widgets.blockers.empty')}</p>
-            )}
-          </SectionCard>
+            </SectionCard>
+          )}
         </div>
+
+        <section className="card p-4">
+          <ClientInvoicesBlock
+            companyId={currentAny?.id ?? ''}
+            companyName={detailForm.base.name || t('app.companies.detail.defaults.untitled')}
+          />
+        </section>
 
         {ENABLE_READINESS && (
           <SectionCard title={t('app.companies.readiness.title')}>
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div className="space-y-2 text-sm text-gray-600">
+              <div className="space-y-2 text-sm text-slate-600">
                 <p>{t('app.companies.readiness.description')}</p>
                 {readinessUnavailable && (
-                  <p className="text-gray-500">{t('app.companies.readiness.unavailable')}</p>
+                  <p className="text-slate-500">{t('app.companies.readiness.unavailable')}</p>
                 )}
                 {readinessError && (
                   <p className="text-rose-600">
@@ -2029,6 +1896,15 @@ export default function Companies(){
               label={t('app.companies.detail.fields.legal_name')}
               value={detailForm.base.legal_name}
               onChange={(value) => updateField('base', 'legal_name', value)}
+            />
+            <SelectField
+              label={t('app.companies.detail.fields.company_kind', { defaultValue: 'Company type' })}
+              value={detailForm.base.company_kind}
+              onChange={(value) => updateField('base', 'company_kind', normalizeCompanyKind(value))}
+              options={[
+                { value: 'client', label: t('app.companies.list.kind_client', { defaultValue: 'Client' }) },
+                { value: 'counterparty', label: t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' }) },
+              ]}
             />
             <TextField
               label={t('app.companies.detail.fields.tax_id')}
@@ -2071,6 +1947,17 @@ export default function Companies(){
               checked={detailForm.base.is_archived}
               onChange={(value) => updateField('base', 'is_archived', value)}
             />
+            <SelectField
+              label={t('app.companies.detail.fields.operations_profile_type')}
+              value={detailForm.rawExtra?.operational_profile_type ?? 'transport'}
+              onChange={(value) =>
+                updateFormState('rawExtra', (prev) => ({ ...prev, operational_profile_type: value }))
+              }
+              options={OPERATIONAL_PROFILE_OPTIONS.map((opt) => ({
+                value: opt.value,
+                label: t(opt.labelKey),
+              }))}
+            />
           </FieldGrid>
           <TextareaField
             label={t('app.companies.detail.fields.notes')}
@@ -2078,173 +1965,6 @@ export default function Companies(){
             onChange={(value) => updateField('base', 'notes', value)}
             rows={4}
           />
-        </SectionCard>
-
-        <SectionCard title={t('app.companies.detail.sections.legal.title')}>
-          <FieldGrid cols={3}>
-            <TextField
-              label={t('app.companies.detail.fields.reg_no')}
-              value={detailForm.legal.reg_no}
-              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, reg_no: value }))}
-            />
-            <TextField
-              label={t('app.companies.detail.fields.vat_eu')}
-              value={detailForm.legal.vat_eu}
-              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, vat_eu: value }))}
-              mono
-            />
-            <TextField
-              label={t('app.companies.detail.fields.established_at')}
-              value={detailForm.legal.established_at}
-              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, established_at: value }))}
-              placeholder="YYYY-MM-DD"
-            />
-            <TextField
-              label={t('app.companies.detail.fields.transport_license')}
-              value={detailForm.legal.transport_license_number}
-              onChange={(value) =>
-                updateFormState('legal', (prev) => ({ ...prev, transport_license_number: value }))
-              }
-            />
-            <TextField
-              label={t('app.companies.detail.fields.insurance_policy')}
-              value={detailForm.legal.insurance_policy_no}
-              onChange={(value) =>
-                updateFormState('legal', (prev) => ({ ...prev, insurance_policy_no: value }))
-              }
-            />
-          </FieldGrid>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('app.companies.detail.groups.registered_address')}</div>
-              <TextField
-                label={t('app.companies.detail.fields.country')}
-                value={detailForm.legal.registered_address.country ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    registered_address: { ...prev.registered_address, country: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.city')}
-                value={detailForm.legal.registered_address.city ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    registered_address: { ...prev.registered_address, city: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.street')}
-                value={detailForm.legal.registered_address.street ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    registered_address: { ...prev.registered_address, street: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.zip')}
-                value={detailForm.legal.registered_address.zip ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    registered_address: { ...prev.registered_address, zip: value },
-                  }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('app.companies.detail.groups.operational_address')}</div>
-              <TextField
-                label={t('app.companies.detail.fields.country')}
-                value={detailForm.legal.operational_address.country ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    operational_address: { ...prev.operational_address, country: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.city')}
-                value={detailForm.legal.operational_address.city ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    operational_address: { ...prev.operational_address, city: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.street')}
-                value={detailForm.legal.operational_address.street ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    operational_address: { ...prev.operational_address, street: value },
-                  }))
-                }
-              />
-              <TextField
-                label={t('app.companies.detail.fields.zip')}
-                value={detailForm.legal.operational_address.zip ?? ''}
-                onChange={(value) =>
-                  updateFormState('legal', (prev) => ({
-                    ...prev,
-                    operational_address: { ...prev.operational_address, zip: value },
-                  }))
-                }
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                {t('app.companies.detail.groups.representatives')}
-              </div>
-              <button className="btn-ghost" type="button" onClick={addRepresentative}>
-                {t('app.companies.detail.actions.add_representative')}
-              </button>
-            </div>
-            <div className="space-y-3">
-              {detailForm.legal.authorized_representatives.map((rep, index) => (
-                <div key={`representative-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-5">
-                  <TextField
-                    label={t('app.companies.detail.fields.full_name')}
-                    value={rep.full_name}
-                    onChange={(value) => setRepresentativeField(index, { full_name: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.role')}
-                    value={rep.role ?? ''}
-                    onChange={(value) => setRepresentativeField(index, { role: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.email')}
-                    value={rep.email ?? ''}
-                    onChange={(value) => setRepresentativeField(index, { email: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.phone')}
-                    value={rep.phone ?? ''}
-                    onChange={(value) => setRepresentativeField(index, { phone: value })}
-                  />
-                  <div className="flex items-end">
-                    <button className="btn-ghost" type="button" onClick={() => removeRepresentative(index)}>
-                      {t('common.actions.delete')}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </SectionCard>
 
         <SectionCard title={t('app.companies.detail.sections.billing.title')}>
@@ -2431,11 +2151,185 @@ export default function Companies(){
           </div>
         </SectionCard>
 
+        <SectionCard title={t('app.companies.detail.sections.legal.title')} collapsible defaultOpen={false}>
+          <FieldGrid cols={3}>
+            <TextField
+              label={t('app.companies.detail.fields.reg_no')}
+              value={detailForm.legal.reg_no}
+              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, reg_no: value }))}
+            />
+            <TextField
+              label={t('app.companies.detail.fields.vat_eu')}
+              value={detailForm.legal.vat_eu}
+              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, vat_eu: value }))}
+              mono
+            />
+            <TextField
+              label={t('app.companies.detail.fields.established_at')}
+              value={detailForm.legal.established_at}
+              onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, established_at: value }))}
+              placeholder="YYYY-MM-DD"
+            />
+            {(detailForm.rawExtra?.operational_profile_type ?? 'transport') === 'transport' && (
+              <>
+                <TextField
+                  label={t('app.companies.detail.fields.transport_license')}
+                  value={detailForm.legal.transport_license_number}
+                  onChange={(value) =>
+                    updateFormState('legal', (prev) => ({ ...prev, transport_license_number: value }))
+                  }
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.insurance_policy')}
+                  value={detailForm.legal.insurance_policy_no}
+                  onChange={(value) =>
+                    updateFormState('legal', (prev) => ({ ...prev, insurance_policy_no: value }))
+                  }
+                />
+              </>
+            )}
+          </FieldGrid>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.companies.detail.groups.registered_address')}</div>
+              <TextField
+                label={t('app.companies.detail.fields.country')}
+                value={detailForm.legal.registered_address.country ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    registered_address: { ...prev.registered_address, country: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.city')}
+                value={detailForm.legal.registered_address.city ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    registered_address: { ...prev.registered_address, city: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.street')}
+                value={detailForm.legal.registered_address.street ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    registered_address: { ...prev.registered_address, street: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.zip')}
+                value={detailForm.legal.registered_address.zip ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    registered_address: { ...prev.registered_address, zip: value },
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.companies.detail.groups.operational_address')}</div>
+              <TextField
+                label={t('app.companies.detail.fields.country')}
+                value={detailForm.legal.operational_address.country ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    operational_address: { ...prev.operational_address, country: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.city')}
+                value={detailForm.legal.operational_address.city ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    operational_address: { ...prev.operational_address, city: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.street')}
+                value={detailForm.legal.operational_address.street ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    operational_address: { ...prev.operational_address, street: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.fields.zip')}
+                value={detailForm.legal.operational_address.zip ?? ''}
+                onChange={(value) =>
+                  updateFormState('legal', (prev) => ({
+                    ...prev,
+                    operational_address: { ...prev.operational_address, zip: value },
+                  }))
+                }
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.companies.detail.groups.representatives')}
+              </div>
+              <button className="btn-ghost" type="button" onClick={addRepresentative}>
+                {t('app.companies.detail.actions.add_representative')}
+              </button>
+            </div>
+            <div className="space-y-3">
+              {detailForm.legal.authorized_representatives.map((rep, index) => (
+                <div key={`representative-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-5">
+                  <TextField
+                    label={t('app.companies.detail.fields.full_name')}
+                    value={rep.full_name}
+                    onChange={(value) => setRepresentativeField(index, { full_name: value })}
+                  />
+                  <TextField
+                    label={t('app.companies.detail.fields.role')}
+                    value={rep.role ?? ''}
+                    onChange={(value) => setRepresentativeField(index, { role: value })}
+                  />
+                  <TextField
+                    label={t('app.companies.detail.fields.email')}
+                    value={rep.email ?? ''}
+                    onChange={(value) => setRepresentativeField(index, { email: value })}
+                  />
+                  <TextField
+                    label={t('app.companies.detail.fields.phone')}
+                    value={rep.phone ?? ''}
+                    onChange={(value) => setRepresentativeField(index, { phone: value })}
+                  />
+                  <div className="flex items-end">
+                    <button className="btn-ghost" type="button" onClick={() => removeRepresentative(index)}>
+                      {t('common.actions.delete')}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </SectionCard>
+
+        {(detailForm.rawExtra?.operational_profile_type ?? 'transport') !== 'none' && (
         <SectionCard
           title={t('app.companies.detail.sections.operations.title')}
           collapsible
           defaultOpen={false}
         >
+          {(detailForm.rawExtra?.operational_profile_type ?? 'transport') === 'transport' && (
+            <>
           <FieldGrid cols={3}>
             <TextField
               label={t('app.companies.detail.fields.fleet_tractors')}
@@ -2477,7 +2371,7 @@ export default function Companies(){
           </FieldGrid>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('app.companies.detail.groups.trailer_types')}</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.companies.detail.groups.trailer_types')}</div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {TRAILER_TYPE_KEYS.map((key) => (
                   <TextField
@@ -2496,7 +2390,7 @@ export default function Companies(){
               </div>
             </div>
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('app.companies.detail.groups.lanes')}</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.companies.detail.groups.lanes')}</div>
               <ArrayInputField
                 label={t('app.companies.detail.fields.lanes_origins')}
                 values={detailForm.operations.lanes.origins}
@@ -2541,122 +2435,189 @@ export default function Companies(){
             }
             placeholder="PL"
           />
-        </SectionCard>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <SectionCard
-            title={t('app.companies.detail.sections.compliance.title')}
-            collapsible
-            defaultOpen={false}
-          >
+            </>
+          )}
+          {(detailForm.rawExtra?.operational_profile_type ?? 'transport') === 'office' && (
             <FieldGrid cols={3}>
-              <SelectField
-                label={t('app.companies.detail.fields.fin_check_status')}
-                value={detailForm.compliance.fin_check_status}
-                onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, fin_check_status: value }))}
-                options={FIN_STATUS_OPTIONS.map((status) => {
-                  const statusKey = FIN_STATUS_LABELS[status]
-                  return {
-                    value: status,
-                    label: statusKey ? t(statusKey) : status,
-                  }
-                })}
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.office_fields.team_size')}
+                value={detailForm.operations.team_size}
+                onChange={(value) => updateFormState('operations', (prev) => ({ ...prev, team_size: value }))}
+                type="number"
               />
-              <CheckboxField
-                label={t('app.companies.detail.fields.aml_required')}
-                checked={detailForm.compliance.aml_required}
-                onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, aml_required: value }))}
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.office_fields.roles')}
+                value={detailForm.operations.roles}
+                onChange={(value) => updateFormState('operations', (prev) => ({ ...prev, roles: value }))}
+                placeholder="developer, manager, …"
               />
-              <CheckboxField
-                label={t('app.companies.detail.fields.iso9001')}
-                checked={detailForm.compliance.iso9001}
-                onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, iso9001: value }))}
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.office_fields.tech_stack')}
+                value={detailForm.operations.tech_stack}
+                onChange={(value) => updateFormState('operations', (prev) => ({ ...prev, tech_stack: value }))}
+                placeholder="React, Node.js, …"
               />
             </FieldGrid>
+          )}
+          {(detailForm.rawExtra?.operational_profile_type ?? 'transport') === 'custom' && (
             <FieldGrid cols={2}>
               <TextField
-                label={t('app.companies.detail.fields.docs_valid_until')}
-                value={detailForm.compliance.doc_valid_until}
-                onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, doc_valid_until: value }))}
-                placeholder="YYYY-MM-DD"
+                label={t('app.companies.detail.sections.operations_profile.custom_fields.capacity')}
+                value={detailForm.operations.custom_fields?.capacity ?? ''}
+                onChange={(value) =>
+                  updateFormState('operations', (prev) => ({
+                    ...prev,
+                    custom_fields: { ...(prev.custom_fields ?? {}), capacity: value },
+                  }))
+                }
               />
               <TextField
-                label={t('app.companies.detail.fields.last_check')}
-                value={detailForm.compliance.last_compliance_check_at}
+                label={t('app.companies.detail.sections.operations_profile.custom_fields.equipment')}
+                value={detailForm.operations.custom_fields?.equipment ?? ''}
                 onChange={(value) =>
-                  updateFormState('compliance', (prev) => ({ ...prev, last_compliance_check_at: value }))
+                  updateFormState('operations', (prev) => ({
+                    ...prev,
+                    custom_fields: { ...(prev.custom_fields ?? {}), equipment: value },
+                  }))
                 }
-                placeholder="2025-01-01T00:00:00Z"
+              />
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.custom_fields.certifications')}
+                value={detailForm.operations.custom_fields?.certifications ?? ''}
+                onChange={(value) =>
+                  updateFormState('operations', (prev) => ({
+                    ...prev,
+                    custom_fields: { ...(prev.custom_fields ?? {}), certifications: value },
+                  }))
+                }
+              />
+              <TextField
+                label={t('app.companies.detail.sections.operations_profile.custom_fields.regions')}
+                value={detailForm.operations.custom_fields?.regions ?? ''}
+                onChange={(value) =>
+                  updateFormState('operations', (prev) => ({
+                    ...prev,
+                    custom_fields: { ...(prev.custom_fields ?? {}), regions: value },
+                  }))
+                }
               />
             </FieldGrid>
-          </SectionCard>
-
-          <SectionCard
-            title={t('app.companies.detail.sections.portal.title')}
-            collapsible
-            defaultOpen={false}
-          >
-            <CheckboxField
-              label={t('app.companies.detail.fields.portal_enabled')}
-              checked={detailForm.portal.enabled}
-              onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, enabled: value }))}
-            />
-            <TextField
-              label={t('app.companies.detail.fields.url')}
-              value={detailForm.portal.url}
-              onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, url: value }))}
-              placeholder="https://portal.example.com"
-            />
-            <TextField
-              label={t('app.companies.detail.fields.last_sync')}
-              value={detailForm.portal.last_sync_at}
-              onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, last_sync_at: value }))}
-              placeholder="2025-01-01T00:00:00Z"
-            />
-            <div className="space-y-3">
-              {detailForm.portal.portal_roles.map((user, index) => (
-                <div key={`portal-user-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-4">
-                  <TextField
-                    label={t('app.companies.detail.fields.full_name')}
-                    value={user.full_name}
-                    onChange={(value) => setPortalUserField(index, { full_name: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.email')}
-                    value={user.email}
-                    onChange={(value) => setPortalUserField(index, { email: value })}
-                  />
-                  <TextField
-                    label={t('app.companies.detail.fields.role')}
-                    value={user.role}
-                    onChange={(value) => setPortalUserField(index, { role: value })}
-                  />
-                  <div className="flex items-end">
-                    <button className="btn-ghost" type="button" onClick={() => removePortalUser(index)}>
-                      {t('common.actions.delete')}
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <button className="btn-ghost" type="button" onClick={addPortalUser}>
-                {t('app.companies.detail.actions.add_portal_user')}
-              </button>
-            </div>
-            <TextareaField
-              label={t('app.companies.detail.fields.permissions')}
-              value={detailForm.portal.permissions}
-              onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, permissions: value }))}
-              rows={6}
-              placeholder='{"contracts": {"view": true}}'
-            />
-          </SectionCard>
-        </div>
+          )}
+        </SectionCard>
+        )}
 
         <SectionCard
-          title={t('app.companies.detail.sections.integrations.title')}
+          title={t('app.companies.detail.sections.advanced.title', { defaultValue: 'Расширенные настройки' })}
+          description={t('app.companies.detail.sections.advanced.description', { defaultValue: 'Комплаенс, портал клиента, интеграции' })}
           collapsible
           defaultOpen={false}
         >
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">{t('app.companies.detail.sections.compliance.title')}</h3>
+              <FieldGrid cols={3}>
+                <SelectField
+                  label={t('app.companies.detail.fields.fin_check_status')}
+                  value={detailForm.compliance.fin_check_status}
+                  onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, fin_check_status: value }))}
+                  options={FIN_STATUS_OPTIONS.map((status) => {
+                    const statusKey = FIN_STATUS_LABELS[status]
+                    return {
+                      value: status,
+                      label: statusKey ? t(statusKey) : status,
+                    }
+                  })}
+                />
+                <CheckboxField
+                  label={t('app.companies.detail.fields.aml_required')}
+                  checked={detailForm.compliance.aml_required}
+                  onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, aml_required: value }))}
+                />
+                <CheckboxField
+                  label={t('app.companies.detail.fields.iso9001')}
+                  checked={detailForm.compliance.iso9001}
+                  onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, iso9001: value }))}
+                />
+              </FieldGrid>
+              <FieldGrid cols={2} className="mt-3">
+                <TextField
+                  label={t('app.companies.detail.fields.docs_valid_until')}
+                  value={detailForm.compliance.doc_valid_until}
+                  onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, doc_valid_until: value }))}
+                  placeholder="YYYY-MM-DD"
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.last_check')}
+                  value={detailForm.compliance.last_compliance_check_at}
+                  onChange={(value) =>
+                    updateFormState('compliance', (prev) => ({ ...prev, last_compliance_check_at: value }))
+                  }
+                  placeholder="2025-01-01T00:00:00Z"
+                />
+              </FieldGrid>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">{t('app.companies.detail.sections.portal.title')}</h3>
+              <div className="space-y-3">
+                <CheckboxField
+                  label={t('app.companies.detail.fields.portal_enabled')}
+                  checked={detailForm.portal.enabled}
+                  onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, enabled: value }))}
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.url')}
+                  value={detailForm.portal.url}
+                  onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, url: value }))}
+                  placeholder="https://portal.example.com"
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.last_sync')}
+                  value={detailForm.portal.last_sync_at}
+                  onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, last_sync_at: value }))}
+                  placeholder="2025-01-01T00:00:00Z"
+                />
+                <div className="space-y-3">
+                  {detailForm.portal.portal_roles.map((user, index) => (
+                    <div key={`portal-user-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                      <TextField
+                        label={t('app.companies.detail.fields.full_name')}
+                        value={user.full_name}
+                        onChange={(value) => setPortalUserField(index, { full_name: value })}
+                      />
+                      <TextField
+                        label={t('app.companies.detail.fields.email')}
+                        value={user.email}
+                        onChange={(value) => setPortalUserField(index, { email: value })}
+                      />
+                      <TextField
+                        label={t('app.companies.detail.fields.role')}
+                        value={user.role}
+                        onChange={(value) => setPortalUserField(index, { role: value })}
+                      />
+                      <div className="flex items-end">
+                        <button className="btn-ghost" type="button" onClick={() => removePortalUser(index)}>
+                          {t('common.actions.delete')}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <button className="btn-ghost" type="button" onClick={addPortalUser}>
+                    {t('app.companies.detail.actions.add_portal_user')}
+                  </button>
+                </div>
+                <TextareaField
+                  label={t('app.companies.detail.fields.permissions')}
+                  value={detailForm.portal.permissions}
+                  onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, permissions: value }))}
+                  rows={4}
+                  placeholder='{"contracts": {"view": true}}'
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">{t('app.companies.detail.sections.integrations.title')}</h3>
           <ArrayInputField
             label={t('app.companies.detail.fields.provider_ids')}
             values={detailForm.integrations.provider_ids}
@@ -2711,6 +2672,8 @@ export default function Companies(){
               {t('app.companies.detail.actions.add_webhook')}
             </button>
           </div>
+            </div>
+          </div>
         </SectionCard>
 
         <SectionCard
@@ -2764,57 +2727,249 @@ export default function Companies(){
           collapsible
           defaultOpen={false}
         >
-          <div className="space-y-3">
-            {detailForm.orders.map((order, index) => (
-              <div key={`order-${index}`} className="grid grid-cols-1 gap-2 lg:grid-cols-7">
-                <TextField
-                  label={t('app.companies.detail.fields.name')}
-                  value={order.title}
-                  onChange={(value) => setOrderField(index, { title: value })}
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.status')}
-                  value={order.status}
-                  onChange={(value) => setOrderField(index, { status: value })}
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.date_start')}
-                  value={order.starts_at}
-                  onChange={(value) => setOrderField(index, { starts_at: value })}
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.date_end')}
-                  value={order.ends_at}
-                  onChange={(value) => setOrderField(index, { ends_at: value })}
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.required_drivers')}
-                  value={order.required_drivers}
-                  onChange={(value) => setOrderField(index, { required_drivers: value })}
-                  type="number"
-                />
-                <TextField
-                  label={t('app.companies.detail.fields.hired_drivers')}
-                  value={order.hired_drivers}
-                  onChange={(value) => setOrderField(index, { hired_drivers: value })}
-                  type="number"
-                />
-                <div className="flex items-end gap-2">
-                  <TextField
-                    label={t('app.companies.detail.fields.reference')}
-                    value={order.client_reference}
-                    onChange={(value) => setOrderField(index, { client_reference: value })}
-                  />
-                  <button className="btn-ghost" type="button" onClick={() => removeOrder(index)}>
-                    {t('common.actions.delete')}
-                  </button>
+          <div className="space-y-4">
+            {detailForm.orders.map((order, index) => {
+              const orderTypeId = (order.order_type_id ?? 'transport') as string
+              const orderType = ORDER_TYPE_OPTIONS.find((o) => o.id === orderTypeId) ?? ORDER_TYPE_OPTIONS[0]
+              const isTransport = orderTypeId === 'transport'
+              const customFields = order.custom_fields ?? {}
+              return (
+                <div key={`order-${index}`} className="rounded-lg border border-slate-100 bg-slate-50/50 p-4 space-y-3">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+                    <TextField
+                      label={t('app.companies.detail.fields.name')}
+                      value={order.title}
+                      onChange={(value) => setOrderField(index, { title: value })}
+                    />
+                    <div>
+                      <label className="label">{t('app.companies.detail.sections.order_type', { defaultValue: 'Тип заявки' })}</label>
+                      <select
+                        className="input w-full"
+                        value={orderTypeId}
+                        onChange={(e) => setOrderField(index, { order_type_id: e.target.value as string })}
+                      >
+                        {ORDER_TYPE_OPTIONS.map((opt) => (
+                          <option key={opt.id} value={opt.id}>
+                            {t(opt.labelKey)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <TextField
+                      label={t('app.companies.detail.fields.status')}
+                      value={order.status}
+                      onChange={(value) => setOrderField(index, { status: value })}
+                    />
+                    <TextField
+                      label={t('app.companies.detail.fields.date_start')}
+                      value={order.starts_at}
+                      onChange={(value) => setOrderField(index, { starts_at: value })}
+                      placeholder="YYYY-MM-DD"
+                    />
+                    <TextField
+                      label={t('app.companies.detail.fields.date_end')}
+                      value={order.ends_at}
+                      onChange={(value) => setOrderField(index, { ends_at: value })}
+                      placeholder="YYYY-MM-DD"
+                    />
+                    <div className="flex items-end gap-2">
+                      <TextField
+                        label={t('app.companies.detail.fields.reference')}
+                        value={order.client_reference}
+                        onChange={(value) => setOrderField(index, { client_reference: value })}
+                      />
+                      <button className="btn-ghost shrink-0" type="button" onClick={() => removeOrder(index)}>
+                        {t('common.actions.delete')}
+                      </button>
+                    </div>
+                  </div>
+                  {isTransport && (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <TextField
+                        label={t('app.companies.detail.fields.required_drivers')}
+                        value={order.required_drivers}
+                        onChange={(value) => setOrderField(index, { required_drivers: value })}
+                        type="number"
+                      />
+                      <TextField
+                        label={t('app.companies.detail.fields.hired_drivers')}
+                        value={order.hired_drivers}
+                        onChange={(value) => setOrderField(index, { hired_drivers: value })}
+                        type="number"
+                      />
+                    </div>
+                  )}
+                  {!isTransport && orderType.schema.length > 0 && (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                      {orderType.schema.map((field) => (
+                        <TextField
+                          key={field.key}
+                          label={t(field.labelKey)}
+                          value={String(customFields[field.key] ?? '')}
+                          onChange={(value) =>
+                            setOrderCustomField(index, field.key, field.type === 'number' ? (Number(value) || 0) : value)
+                          }
+                          type={field.type === 'number' ? 'number' : 'text'}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
             <button className="btn-ghost" type="button" onClick={addOrder}>
               {t('app.companies.detail.actions.add_order')}
             </button>
           </div>
+        </SectionCard>
+
+        <SectionCard
+          title={t('app.companies.detail.sections.document_policies.title', { defaultValue: 'Document Policies' })}
+          description={t('app.companies.detail.sections.document_policies.description', { defaultValue: 'Configure document requirements for this client' })}
+          collapsible
+          defaultOpen={false}
+        >
+          {policiesError && (
+            <ErrorRecoveryBanner
+              info={{ title: policiesError, hint: 'Повторите действие или обновите страницу.' }}
+              compact
+            />
+          )}
+          {policiesLoading ? (
+            <div className="text-sm text-slate-500">{t('common.loading')}</div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-slate-600">
+                  {t('app.companies.detail.sections.document_policies.count', {
+                    values: { count: documentPolicies.length },
+                    defaultValue: `${documentPolicies.length} policy(ies) configured`,
+                  })}
+                </p>
+                <button
+                  className="btn-primary text-sm"
+                  type="button"
+                  onClick={() => {
+                    setNewPolicyMode(true)
+                    setEditingPolicy(null)
+                  }}
+                >
+                  {t('app.companies.detail.actions.add_policy', { defaultValue: 'Add Policy' })}
+                </button>
+              </div>
+              {newPolicyMode && (
+                <PolicyForm
+                  documentTypes={documentTypes}
+                  onSave={async (payload) => {
+                    if (!current?.id) return
+                    try {
+                      setPoliciesError(null)
+                      await createDocumentPolicy({
+                        ...payload,
+                        scope: 'CLIENT',
+                        scope_id: current.id,
+                      })
+                      await loadDocumentPolicies(current.id)
+                      setNewPolicyMode(false)
+                    } catch (err: any) {
+                      setPoliciesError(err?.message || t('app.companies.errors.policy_create_failed', { defaultValue: 'Failed to create policy' }))
+                    }
+                  }}
+                  onCancel={() => setNewPolicyMode(false)}
+                  t={t}
+                />
+              )}
+              {editingPolicy && (
+                <PolicyForm
+                  documentTypes={documentTypes}
+                  policy={editingPolicy}
+                  onSave={async (payload) => {
+                    if (!current?.id) return
+                    try {
+                      setPoliciesError(null)
+                      await updateDocumentPolicy(editingPolicy.id, payload)
+                      await loadDocumentPolicies(current.id)
+                      setEditingPolicy(null)
+                    } catch (err: any) {
+                      setPoliciesError(err?.message || t('app.companies.errors.policy_update_failed', { defaultValue: 'Failed to update policy' }))
+                    }
+                  }}
+                  onCancel={() => setEditingPolicy(null)}
+                  t={t}
+                />
+              )}
+              {!newPolicyMode && !editingPolicy && documentPolicies.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  {t('app.companies.detail.sections.document_policies.empty', { defaultValue: 'No document policies configured. Click "Add Policy" to create one.' })}
+                </p>
+              ) : null}
+              {!newPolicyMode && !editingPolicy && documentPolicies.length > 0 && (
+                <div className="space-y-3">
+                  {documentPolicies.map((policy) => {
+                    const docType = documentTypes.find((dt) => (dt.id || dt.code) === policy.document_type_id)
+                    const docTypeName = docType?.name || docType?.code || policy.document_type_id
+                    return (
+                      <div key={policy.id} className="rounded-lg border border-slate-200 bg-white p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-slate-900">{docTypeName}</span>
+                              {policy.required && (
+                                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                  {t('app.companies.detail.sections.document_policies.required', { defaultValue: 'Required' })}
+                                </span>
+                              )}
+                              {!policy.enabled && (
+                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                  {t('app.companies.detail.sections.document_policies.disabled', { defaultValue: 'Disabled' })}
+                                </span>
+                              )}
+                            </div>
+                            {policy.alert_days_before_expiry && (
+                              <p className="text-xs text-slate-500">
+                                {t('app.companies.detail.sections.document_policies.alert_days', {
+                                  values: { days: policy.alert_days_before_expiry },
+                                  defaultValue: `Alert ${policy.alert_days_before_expiry} days before expiry`,
+                                })}
+                              </p>
+                            )}
+                            {policy.notes && (
+                              <p className="text-xs text-slate-500">{policy.notes}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="btn-ghost text-sm"
+                              type="button"
+                              onClick={() => setEditingPolicy(policy)}
+                            >
+                              {t('common.actions.edit')}
+                            </button>
+                            <button
+                              className="btn-danger btn-sm"
+                              type="button"
+                              onClick={async () => {
+                                if (!current?.id || !confirm(t('app.companies.detail.actions.delete_confirm', { defaultValue: 'Delete this policy?' }))) return
+                                try {
+                                  setPoliciesError(null)
+                                  await deleteDocumentPolicy(policy.id)
+                                  await loadDocumentPolicies(current.id)
+                                } catch (err: any) {
+                                  setPoliciesError(err?.message || t('app.companies.errors.policy_delete_failed', { defaultValue: 'Failed to delete policy' }))
+                                }
+                              }}
+                            >
+                              {t('common.actions.delete')}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard title={t('app.companies.detail.sections.system.title')}>
@@ -2961,7 +3116,7 @@ export default function Companies(){
       {companyHero}
 
       <section className="app-surface space-y-4 p-6">
-        <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_minmax(180px,200px)_auto]">
+        <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_minmax(180px,200px)_minmax(170px,200px)_auto]">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('app.companies.list.search_label')}
@@ -2984,21 +3139,32 @@ export default function Companies(){
               <option value="city_desc">{t('app.companies.list.sort_options.city_desc')}</option>
             </select>
           </label>
-          <label className="inline-flex items-center gap-2 text-sm text-gray-600">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.companies.list.kind_label', { defaultValue: 'Company type' })}
+            </span>
+            <select className="input" value={companyKindFilter} onChange={(e) => setCompanyKindFilter((e.target.value as any) || 'all')}>
+              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
+              <option value="client">{t('app.companies.list.kind_client', { defaultValue: 'Client' })}</option>
+              <option value="counterparty">{t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' })}</option>
+            </select>
+          </label>
+          <label className="inline-flex items-center gap-2 text-sm text-slate-600">
             <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
             {t('app.companies.list.show_archived')}
           </label>
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
           <span>
             {t('app.companies.list.insights.visible_hint', { values: { count: filteredItems.length } })}
           </span>
-          {(query || showArchived || sortBy !== 'name_asc') && (
+          {(query || showArchived || companyKindFilter !== 'all' || sortBy !== 'name_asc') && (
             <button
               className="btn-ghost"
               onClick={() => {
                 setQuery('')
                 setShowArchived(false)
+                setCompanyKindFilter('all')
                 setSortBy('name_asc')
               }}
             >
@@ -3010,36 +3176,42 @@ export default function Companies(){
 
       <section className="app-surface overflow-hidden">
         <table className="min-w-full text-sm">
-          <thead className="bg-white/80 text-left text-xs uppercase tracking-wide text-gray-500">
+          <thead className="bg-slate-50/90 text-left">
             <tr>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.name')}</th>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.legal_name')}</th>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.country')}</th>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.city')}</th>
-              <th className="px-4 py-3">{t('app.companies.list.table.headers.archived')}</th>
-              <th className="px-4 py-3 w-1">{t('app.companies.list.table.headers.actions')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.name')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.legal_name')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.kind', { defaultValue: 'Type' })}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.country')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.city')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.archived')}</th>
+              <th className="w-1 border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
               <tr>
-                <td className="px-4 py-6 text-center text-gray-500" colSpan={6}>
+                <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
                   {t('app.companies.list.table.loading')}
                 </td>
               </tr>
             )}
             {!loading &&
               filteredItems.map((it) => (
-                <tr key={(it as any).id} className="border-t border-gray-100 hover:bg-gray-50/70 transition">
-                  <td className="px-4 py-3 font-medium text-brand-700">
+                <tr key={(it as any).id} className="border-t border-slate-100 hover:bg-slate-50/70 transition">
+                  <td className="border-r border-slate-200 px-4 py-3 font-medium text-brand-700">
                     <Link className="hover:underline" to={`/app/clients/${(it as any).id}`}>
                       {(it as any).name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{(it as any).legal_name || '—'}</td>
-                  <td className="px-4 py-3">{(it as any).country_code || (it as any).country || '—'}</td>
-                  <td className="px-4 py-3">{(it as any).city || '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="border-r border-slate-200 px-4 py-3">{(it as any).legal_name || '—'}</td>
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {getCompanyKindFromAny(it) === 'counterparty'
+                      ? t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' })
+                      : t('app.companies.list.kind_client', { defaultValue: 'Client' })}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">{(it as any).country_code || (it as any).country || '—'}</td>
+                  <td className="border-r border-slate-200 px-4 py-3">{(it as any).city || '—'}</td>
+                  <td className="border-r border-slate-200 px-4 py-3">
                     {(it as any).is_archived ? t('common.words.yes') : t('common.words.no')}
                   </td>
                   <td className="px-4 py-3 space-x-2 text-right">
@@ -3056,7 +3228,7 @@ export default function Companies(){
               ))}
             {!loading && filteredItems.length === 0 && (
               <tr>
-                <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={7}>
                   {t('app.companies.list.table.empty')}
                 </td>
               </tr>
@@ -3095,8 +3267,8 @@ function SectionCard({
     <section className="card p-4">
       <header className="flex flex-col gap-1 pb-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
-          {description && <p className="text-sm text-gray-500">{description}</p>}
+          <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+          {description && <p className="text-sm text-slate-500">{description}</p>}
         </div>
         {collapsible && (
           <button
@@ -3123,8 +3295,8 @@ function FieldGrid({ cols = 2, children }: { cols?: 1 | 2 | 3; children: React.R
 function InfoItem({ label, value, mono }: { label: string; value?: React.ReactNode; mono?: boolean }) {
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
-      <div className={["text-sm text-gray-900", mono ? "font-mono break-all" : ""].filter(Boolean).join(" ")}>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className={["text-sm text-slate-900", mono ? "font-mono break-all" : ""].filter(Boolean).join(" ")}>
         {value ?? '—'}
       </div>
     </div>
@@ -3140,7 +3312,7 @@ const STATUS_TONE_CLASS: Record<StatusTone, string> = {
 
 function StatusBadge({ tone = 'info', children }: { tone?: StatusTone; children: React.ReactNode }) {
   return (
-    <span className={['inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', STATUS_TONE_CLASS[tone]].join(' ')}>
+    <span className={['inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium', STATUS_TONE_CLASS[tone]].join(' ')}>
       {children}
     </span>
   )
@@ -3156,8 +3328,8 @@ function IndicatorList({ items }: { items: Array<{ label: string; ok: boolean | 
             ? 'bg-emerald-500'
             : item.ok === false
               ? 'bg-rose-500'
-              : 'bg-gray-300'
-        const textClass = item.ok === false ? 'text-rose-700' : 'text-gray-700'
+              : 'bg-slate-300'
+        const textClass = item.ok === false ? 'text-rose-700' : 'text-slate-700'
         return (
           <li key={item.label} className={['flex items-center gap-2 text-sm', textClass].join(' ')}>
             <span className={['h-2.5 w-2.5 rounded-full', toneClass].join(' ')} />
@@ -3200,7 +3372,7 @@ function TextField({
 }) {
   return (
     <div className="space-y-1">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <input
         className={['input', mono ? 'font-mono' : ''].filter(Boolean).join(' ')}
         type={type}
@@ -3227,7 +3399,7 @@ function TextareaField({
 }) {
   return (
     <div className="space-y-1">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <textarea
         className="input min-h-[80px]"
         rows={rows}
@@ -3249,7 +3421,7 @@ function CheckboxField({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
       <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
       <span>{label}</span>
     </label>
@@ -3276,7 +3448,7 @@ function SelectField({
   )
   return (
     <div className="space-y-1">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <select
         className="input"
         value={value}
@@ -3313,7 +3485,7 @@ function MultiCheckboxField({
   }
   return (
     <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <div className="flex flex-wrap gap-3">
         {options.map((option) => (
           <CheckboxField
@@ -3352,7 +3524,7 @@ function ArrayInputField({
   }
   return (
     <div className="space-y-2">
-      <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <div className="space-y-2">
         {values.map((value, index) => (
           <div key={`${label}-${index}`} className="flex items-center gap-2">
@@ -3370,6 +3542,102 @@ function ArrayInputField({
         <button className="btn-ghost" type="button" onClick={handleAdd}>
           {t('common.actions.add')}
         </button>
+      </div>
+    </div>
+  )
+}
+
+function PolicyForm({
+  documentTypes,
+  policy,
+  onSave,
+  onCancel,
+  t,
+}: {
+  documentTypes: DocType[];
+  policy?: DocumentPolicy | null;
+  onSave: (payload: Omit<DocumentPolicyCreate, 'scope' | 'scope_id'>) => Promise<void>;
+  onCancel: () => void;
+  t: (key: string, opts?: { defaultValue?: string; values?: Record<string, any> }) => string;
+}) {
+  const [documentTypeId, setDocumentTypeId] = useState(policy?.document_type_id || '')
+  const [enabled, setEnabled] = useState(policy?.enabled ?? true)
+  const [required, setRequired] = useState(policy?.required ?? false)
+  const [alertDays, setAlertDays] = useState(policy?.alert_days_before_expiry?.toString() || '')
+  const [notes, setNotes] = useState(policy?.notes || '')
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <h3 className="mb-3 text-sm font-semibold text-slate-900">
+        {policy
+          ? t('app.companies.detail.sections.document_policies.edit_policy', { defaultValue: 'Edit Policy' })
+          : t('app.companies.detail.sections.document_policies.create_policy', { defaultValue: 'Create Policy' })}
+      </h3>
+      <div className="space-y-3">
+        <label className="block">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.companies.detail.sections.document_policies.document_type', { defaultValue: 'Document Type' })}
+          </div>
+          <select
+            className="input w-full"
+            value={documentTypeId}
+            onChange={(e) => setDocumentTypeId(e.target.value)}
+            disabled={!!policy}
+          >
+            <option value="">{t('app.companies.detail.sections.document_policies.select_document_type', { defaultValue: 'Select document type...' })}</option>
+            {documentTypes.map((dt) => (
+              <option key={dt.id || dt.code} value={dt.id || dt.code || ''}>
+                {dt.name || dt.code || dt.id}
+              </option>
+            ))}
+          </select>
+        </label>
+        <CheckboxField
+          label={t('app.companies.detail.sections.document_policies.enabled', { defaultValue: 'Enabled' })}
+          checked={enabled}
+          onChange={setEnabled}
+        />
+        <CheckboxField
+          label={t('app.companies.detail.sections.document_policies.required', { defaultValue: 'Required' })}
+          checked={required}
+          onChange={setRequired}
+        />
+        <TextField
+          label={t('app.companies.detail.sections.document_policies.alert_days_label', { defaultValue: 'Alert Days Before Expiry' })}
+          type="number"
+          value={alertDays}
+          onChange={setAlertDays}
+          placeholder="30"
+        />
+        <TextareaField
+          label={t('app.companies.detail.sections.document_policies.notes', { defaultValue: 'Notes' })}
+          value={notes}
+          onChange={setNotes}
+          placeholder={t('app.companies.detail.sections.document_policies.notes_placeholder', { defaultValue: 'Internal notes...' })}
+          rows={3}
+        />
+        <div className="flex items-center gap-2">
+          <button
+            className="btn-primary text-sm"
+            type="button"
+            onClick={async () => {
+              if (!documentTypeId) return
+              await onSave({
+                document_type_id: documentTypeId,
+                enabled,
+                required,
+                alert_days_before_expiry: alertDays ? parseInt(alertDays, 10) : null,
+                notes: notes || null,
+              })
+            }}
+            disabled={!documentTypeId}
+          >
+            {t('common.actions.save')}
+          </button>
+          <button className="btn-ghost text-sm" type="button" onClick={onCancel}>
+            {t('common.actions.cancel')}
+          </button>
+        </div>
       </div>
     </div>
   )
