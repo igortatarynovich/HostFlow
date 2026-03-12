@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "f7:run-record:new": "node scripts/create-f7-run-record.mjs"
+  },
   "devDependencies": {
     "tsx": "^4.20.6"
   }

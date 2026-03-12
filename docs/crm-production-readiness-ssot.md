@@ -741,9 +741,9 @@ Residual risks до финального `PASS`:
 
 ### 10.2 Next Actions Для `F7`
 
-1. Провести ручной E2E прогон сценария `B` по run-sheet: [f7-scenario-b-agency.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-b-agency.md), затем создать run-record по шаблону [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md) и записать `PASS/FAIL` + ссылку на evidence в `10.1`.
-2. Провести ручной E2E прогон сценария `C` по run-sheet: [f7-scenario-c-employer.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-c-employer.md), затем создать run-record по шаблону [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md) и записать `PASS/FAIL` + ссылку на evidence в `10.1`.
-3. После подключения production Stripe/webhooks снять блокер `A` и выполнить полный прогон сценария `A` по run-sheet: [f7-scenario-a-solo-services.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-a-solo-services.md) с отдельным run-record и ссылкой в `10.1`.
+1. Провести ручной E2E прогон сценария `B` по run-sheet: [f7-scenario-b-agency.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-b-agency.md), затем создать run-record (шаблон [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md) или CLI `npm run f7:run-record:new -- --scenario b --env staging --tenant <slug> --owner "<name/role>"`) и записать `PASS/FAIL` + ссылку на evidence в `10.1`.
+2. Провести ручной E2E прогон сценария `C` по run-sheet: [f7-scenario-c-employer.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-c-employer.md), затем создать run-record (шаблон/CLI) и записать `PASS/FAIL` + ссылку на evidence в `10.1`.
+3. После подключения production Stripe/webhooks снять блокер `A` и выполнить полный прогон сценария `A` по run-sheet: [f7-scenario-a-solo-services.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-a-solo-services.md) с отдельным run-record (шаблон/CLI) и ссылкой в `10.1`.
 
 ## 11. Changelog
 
@@ -900,3 +900,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — добавлен `activation:check` (`hostflow-frontend/scripts/check-activation-routes.mjs`) для статической валидации `ACTIVATION_PATHS/ACTIVATION_ALLOWED_PREFIXES` против `APP_ROUTES`; проверка включена в `qa:static` и защищает от activation redirect-loop регрессий.
 - `2026-03-12` — `F7` execution protocol усилен evidence-форматом: добавлен [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md), run-sheets `A/B/C` привязаны к шаблону, а `10.2` требует сохранять ссылку на run-record в `10.1`.
 - `2026-03-12` — добавлен `module:permissions:check` (`hostflow-frontend/scripts/check-module-permission-mapping.mjs`): статически валидирует, что module-scoped permissions из `ROLE_PERMISSIONS` и `APP_ROUTES` имеют mapping в `VIEW/EDIT_PERMISSION_TO_MODULE`; проверка включена в `qa:static` для защиты module-gating целостности.
+- `2026-03-12` — для `F7` добавлен CLI-генератор run-record (`scripts/create-f7-run-record.mjs`, `npm run f7:run-record:new -- ...`), чтобы стандартизировать имя/структуру evidence-файлов и ускорить обновление `10.1`.
