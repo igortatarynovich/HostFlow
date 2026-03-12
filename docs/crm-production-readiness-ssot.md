@@ -392,7 +392,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | ID | Задача | Статус | DOD |
 |---|---|---|---|
 | F9.1 | Зафиксировать SEO-инвентарь публичных URL (`landing/features/use-cases/pricing/auth-public`) | `DONE` | Есть полный список indexable страниц и владельцев |
-| F9.2 | Выровнять `title/description/canonical/og:*` по всем indexable страницам | `NOT_STARTED` | На каждой странице корректные мета-теги без дублей canonical |
+| F9.2 | Выровнять `title/description/canonical/og:*` по всем indexable страницам | `DONE` | На каждой странице корректные мета-теги без дублей canonical |
 | F9.3 | Проверить и обновить `robots.txt` + `sitemap.xml` (включая auto-generation) | `IN_PROGRESS` | Поисковые боты получают актуальные правила и полный sitemap без битых URL |
 | F9.4 | Добавить schema.org (`Organization`, `SoftwareApplication`, `FAQ/Article` где уместно) | `NOT_STARTED` | Structured data проходит валидацию без критичных ошибок |
 | F9.5 | Техпроверка индексации и crawlability (`noindex`, redirects, 404/soft-404) | `NOT_STARTED` | Нет критичных indexability проблем на приоритетных страницах |
@@ -689,3 +689,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `OnboardingGettingStartedPage` сделан permission-aware: CTA шагов проверяют доступ роли к целевому разделу и при отсутствии прав ведут в `Dashboard` с явным fallback-label вместо “немого” перехода в недоступный route.
 - `2026-03-12` — старт `F9.3`: добавлены `public/robots.txt` (disallow для `/app` и tokenized public URLs) и `public/sitemap.xml` с базовым перечнем indexable страниц (`/, /pricing, /signup, /login, /public/intake, /public/portal, legal pages`); статус `F9.3` переведен в `IN_PROGRESS` до внедрения auto-generation.
 - `2026-03-12` — `F9.1 = DONE`: зафиксирован baseline SEO URL inventory (`indexable`/`non-indexable`) с owner-матрицей в разделе `5.6.1.1`.
+- `2026-03-12` — `F9.2 = DONE`: внедрен единый SPA SEO-хук (`title`, `description`, `canonical`, `og:title`, `og:description`, `og:type`, `og:url`, `og:site_name`) и подключен на indexable public/auth страницах (`/`, `/pricing`, `/signup`, `/login`, `/public/intake`, `/public/portal`) с локализацией `app.seo.*` для `en/ru/pl`.

@@ -7,11 +7,19 @@ import { PublicCookieBanner } from '../components/public/PublicCookieBanner'
 import { PublicLegalFooter } from '../components/public/PublicLegalFooter'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { LOGIN_NOTICE_STORAGE_KEY } from '../store/auth'
+import { useSeoMeta } from '../hooks/useSeoMeta'
 
 export default function Login(){
   const { login } = useAuth()
   const nav = useNavigate()
   const { t } = useI18n()
+  useSeoMeta({
+    title: t('app.seo.login.title', { defaultValue: 'Sign In to HostFlow' }),
+    description: t('app.seo.login.description', {
+      defaultValue: 'Sign in to HostFlow CRM to manage candidates, documents, and team operations.',
+    }),
+    canonicalPath: '/login',
+  })
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)

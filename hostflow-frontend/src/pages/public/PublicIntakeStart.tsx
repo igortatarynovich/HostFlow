@@ -5,6 +5,7 @@ import { useI18n } from '../../i18n'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import { PublicPageShell } from './components/PublicPageShell'
 import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
+import { useSeoMeta } from '../../hooks/useSeoMeta'
 
 const DEFAULT_FORM = {
   phone_country_code: '+48',
@@ -15,6 +16,13 @@ const DEFAULT_FORM = {
 
 export default function PublicIntakeStart() {
   const { t, locale } = useI18n()
+  useSeoMeta({
+    title: t('app.seo.public_intake.title', { defaultValue: 'Candidate Intake Portal' }),
+    description: t('app.seo.public_intake.description', {
+      defaultValue: 'Start candidate intake, submit contact details, and continue your application securely.',
+    }),
+    canonicalPath: '/public/intake',
+  })
   const [form, setForm] = useState(DEFAULT_FORM)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

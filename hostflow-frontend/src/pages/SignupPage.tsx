@@ -5,9 +5,17 @@ import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { registerSelfService } from '../api/users'
 import { useAuth } from '../store/useAuth'
+import { useSeoMeta } from '../hooks/useSeoMeta'
 
 export default function SignupPage() {
   const { t } = useI18n()
+  useSeoMeta({
+    title: t('app.seo.signup.title', { defaultValue: 'Create CRM Workspace' }),
+    description: t('app.seo.signup.description', {
+      defaultValue: 'Create your HostFlow account, start trial, and launch your recruiting workflow quickly.',
+    }),
+    canonicalPath: '/signup',
+  })
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login } = useAuth()

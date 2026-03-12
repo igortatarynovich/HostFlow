@@ -666,6 +666,32 @@
       "legal_privacy": "Polityka prywatności",
       "legal_cookies": "Cookies"
     },
+    "seo": {
+      "landing": {
+        "title": "CRM dla zespołów rekrutacyjnych",
+        "description": "HostFlow pomaga zespołom rekrutacji prowadzić leady, kandydatów, dokumenty i operacje w jednym CRM."
+      },
+      "pricing": {
+        "title": "Cennik CRM dla rekrutacji",
+        "description": "Porównaj plany HostFlow i uruchom trial CRM rekrutacyjnego w kilka minut."
+      },
+      "signup": {
+        "title": "Utwórz workspace CRM",
+        "description": "Załóż konto HostFlow, uruchom trial i szybko rozpocznij pracę w procesie rekrutacji."
+      },
+      "login": {
+        "title": "Zaloguj się do HostFlow",
+        "description": "Zaloguj się do HostFlow CRM, aby zarządzać kandydatami, dokumentami i operacjami zespołu."
+      },
+      "public_intake": {
+        "title": "Portal formularza kandydata",
+        "description": "Rozpocznij formularz kandydata, podaj dane kontaktowe i bezpiecznie kontynuuj zgłoszenie."
+      },
+      "public_portal": {
+        "title": "Portal kandydata",
+        "description": "Otwórz portal kandydata, kontynuuj onboarding i śledź wymagane kroki oraz dokumenty."
+      }
+    },
     "profile": {
       "title": "Mój profil",
       "subtitle": "Zarządzaj swoimi danymi, preferencjami UI i bezpieczeństwem.",

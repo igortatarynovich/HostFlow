@@ -666,6 +666,32 @@
       "legal_privacy": "Privacy",
       "legal_cookies": "Cookies"
     },
+    "seo": {
+      "landing": {
+        "title": "CRM for Recruitment Teams",
+        "description": "HostFlow helps recruitment teams run leads, candidates, documents, and operations in one CRM."
+      },
+      "pricing": {
+        "title": "Pricing for Recruitment CRM",
+        "description": "Compare HostFlow plans and start your recruitment CRM trial in minutes."
+      },
+      "signup": {
+        "title": "Create CRM Workspace",
+        "description": "Create your HostFlow account, start trial, and launch your recruiting workflow quickly."
+      },
+      "login": {
+        "title": "Sign In to HostFlow",
+        "description": "Sign in to HostFlow CRM to manage candidates, documents, and team operations."
+      },
+      "public_intake": {
+        "title": "Candidate Intake Portal",
+        "description": "Start candidate intake, submit contact details, and continue your application securely."
+      },
+      "public_portal": {
+        "title": "Candidate Portal",
+        "description": "Access your candidate portal, continue onboarding, and track required steps and documents."
+      }
+    },
     "profile": {
       "title": "My profile",
       "subtitle": "Manage your personal data, UI preferences, and security.",

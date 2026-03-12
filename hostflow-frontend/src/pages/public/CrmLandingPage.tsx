@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLegalFooter } from '../../components/public/PublicLegalFooter'
 import { useI18n } from '../../i18n'
+import { useSeoMeta } from '../../hooks/useSeoMeta'
 
 type PlanCard = {
   key: 'starter' | 'team' | 'pro'
@@ -14,6 +15,22 @@ type PlanCard = {
 
 export default function CrmLandingPage() {
   const { t } = useI18n()
+  const location = useLocation()
+
+  const isPricingRoute = location.pathname === '/pricing'
+  useSeoMeta({
+    title: isPricingRoute
+      ? t('app.seo.pricing.title', { defaultValue: 'Pricing for Recruitment CRM' })
+      : t('app.seo.landing.title', { defaultValue: 'CRM for Recruitment Teams' }),
+    description: isPricingRoute
+      ? t('app.seo.pricing.description', {
+          defaultValue: 'Compare HostFlow plans and start your recruitment CRM trial in minutes.',
+        })
+      : t('app.seo.landing.description', {
+          defaultValue: 'HostFlow helps recruitment teams run leads, candidates, documents, and operations in one CRM.',
+        }),
+    canonicalPath: isPricingRoute ? '/pricing' : '/',
+  })
 
   const plans: PlanCard[] = [
     {

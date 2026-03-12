@@ -8,12 +8,20 @@ import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitch
 import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLegalFooter } from '../../components/public/PublicLegalFooter'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { useSeoMeta } from '../../hooks/useSeoMeta'
 
 export default function PublicPortalLanding() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { notify } = useToast()
   const { t } = useI18n()
+  useSeoMeta({
+    title: t('app.seo.public_portal.title', { defaultValue: 'Candidate Portal' }),
+    description: t('app.seo.public_portal.description', {
+      defaultValue: 'Access your candidate portal, continue onboarding, and track required steps and documents.',
+    }),
+    canonicalPath: '/public/portal',
+  })
 
   const [tokenInput, setTokenInput] = useState('')
   const [lastEmail, setLastEmail] = useState<string | undefined>()
