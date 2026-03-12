@@ -21,6 +21,7 @@
 - CLI поддерживает `--sync-board-status`: после фиксации run-record обновляет статус сценария в execution board (раздел `10`) согласно результату прогона.
 - Для `BLOCKED`-прогонов можно передать `--blocker "<text>"`, чтобы при `--sync-board-status` автоматически обновить blocker-колонку в board.
 - Для финального sign-off можно передать `--product-signoff "<name>"` и `--qa-signoff "<name>"`, чтобы run-record сразу создавался с заполненными подписями.
+- Для ускорения заполнения evidence-блока доступны флаги: `--ui-evidence`, `--api-evidence`, `--notes`, `--issues`.
 - По умолчанию `--append-ssot` запускает post-update валидацию (`f7:run-log:check`); для отключения только в отладке использовать `--no-validate`.
 - При ошибке update/validation CLI откатывает изменения SSOT (rollback), чтобы не оставлять `10/10.1` в частично обновленном состоянии.
 - Перед финальной фиксацией run-log в SSOT проверять консистентность: `npm run f7:run-log:check`.

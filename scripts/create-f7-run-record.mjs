@@ -62,7 +62,7 @@ const SCENARIO_META = {
 function usage(code = 0) {
   const text = [
     'Usage:',
-    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--blocker "<text>"] [--product-signoff "<name>"] [--qa-signoff "<name>"] [--dry-run] [--print-ssot-row] [--append-ssot] [--upsert-ssot] [--sync-board-status] [--no-validate]',
+    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--blocker "<text>"] [--product-signoff "<name>"] [--qa-signoff "<name>"] [--ui-evidence "<text>"] [--api-evidence "<text>"] [--notes "<text>"] [--issues "<text>"] [--dry-run] [--print-ssot-row] [--append-ssot] [--upsert-ssot] [--sync-board-status] [--no-validate]',
     '',
     'Example:',
     '  node scripts/create-f7-run-record.mjs --scenario b --env staging --tenant demo-agency --owner "Product/QA" --dry-run',
@@ -82,6 +82,10 @@ function parseArgs(argv) {
     blocker: '',
     productSignoff: '',
     qaSignoff: '',
+    uiEvidence: '',
+    apiEvidence: '',
+    notes: '',
+    issues: '',
     dryRun: false,
     printSsotRow: false,
     appendSsot: false,
@@ -100,6 +104,10 @@ function parseArgs(argv) {
     else if (arg === '--blocker') out.blocker = String(argv[++i] || '').trim()
     else if (arg === '--product-signoff') out.productSignoff = String(argv[++i] || '').trim()
     else if (arg === '--qa-signoff') out.qaSignoff = String(argv[++i] || '').trim()
+    else if (arg === '--ui-evidence') out.uiEvidence = String(argv[++i] || '').trim()
+    else if (arg === '--api-evidence') out.apiEvidence = String(argv[++i] || '').trim()
+    else if (arg === '--notes') out.notes = String(argv[++i] || '').trim()
+    else if (arg === '--issues') out.issues = String(argv[++i] || '').trim()
     else if (arg === '--dry-run') out.dryRun = true
     else if (arg === '--print-ssot-row') out.printSsotRow = true
     else if (arg === '--append-ssot') out.appendSsot = true
@@ -123,7 +131,20 @@ function safeSlug(value) {
     .replace(/^-+|-+$/g, '')
 }
 
-function buildContent({ scenario, env, tenant, owner, date, result, productSignoff, qaSignoff }) {
+function buildContent({
+  scenario,
+  env,
+  tenant,
+  owner,
+  date,
+  result,
+  productSignoff,
+  qaSignoff,
+  uiEvidence,
+  apiEvidence,
+  notes,
+  issues,
+}) {
   const meta = SCENARIO_META[scenario]
   const lines = []
   lines.push(`# F7 Scenario ${meta.label} Run Record`)
@@ -147,13 +168,13 @@ function buildContent({ scenario, env, tenant, owner, date, result, productSigno
   lines.push('')
   lines.push('## Summary Evidence')
   lines.push('')
-  lines.push('- UI evidence: `<links/notes>`')
-  lines.push('- API/log evidence: `<links/snippets>`')
-  lines.push('- Notes: `<key observations>`')
+  lines.push(`- UI evidence: \`${uiEvidence || '<links/notes>'}\``)
+  lines.push(`- API/log evidence: \`${apiEvidence || '<links/snippets>'}\``)
+  lines.push(`- Notes: \`${notes || '<key observations>'}\``)
   lines.push('')
   lines.push('## Issues')
   lines.push('')
-  lines.push('- `<BUG-ID / N/A>`')
+  lines.push(`- \`${issues || '<BUG-ID / N/A>'}\``)
   lines.push('')
   lines.push('## Sign-off')
   lines.push('')
@@ -306,6 +327,10 @@ function main() {
     result: args.result || 'IN_PROGRESS',
     productSignoff: args.productSignoff || '',
     qaSignoff: args.qaSignoff || '',
+    uiEvidence: args.uiEvidence || '',
+    apiEvidence: args.apiEvidence || '',
+    notes: args.notes || '',
+    issues: args.issues || '',
   })
 
   if (args.dryRun) {
