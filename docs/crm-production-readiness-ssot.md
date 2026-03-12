@@ -490,6 +490,8 @@ Residual risk:
 | `/features/document-control` | Feature | `PUBLISHED` | `signup + pricing` | links to other wave-1 pages |
 | `/use-cases/trucking-recruitment` | Use-case | `PUBLISHED` | `signup + pricing` | links to other wave-1 pages |
 | `/use-cases/high-volume-onboarding` | Use-case | `PUBLISHED` | `signup + pricing` | links to other wave-1 pages |
+| `/comparison/hostflow-vs-spreadsheets` | Comparison | `PUBLISHED` | `signup + pricing` | links to comparison + feature pages |
+| `/comparison/recruitment-crm-vs-ats` | Comparison | `PUBLISHED` | `signup + pricing` | links to comparison + feature/use-case pages |
 | `/` (`CrmLandingPage`) | Landing hub | `UPDATED` | existing landing CTA | added guide links to all wave-1 pages |
 
 Supporting implementation:
@@ -783,6 +785,7 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F10.4 = DONE`: реализована внутренняя перелинковка между landing/features/use-cases; в landing добавлен guide-hub блок, sitemap auto-generation расширен до новых wave-1 URL.
 - `2026-03-12` — `F10.5 = DONE`: подключен baseline conversion tracking для SEO-контента (`seo_cta_click`, `seo_scroll_depth`) через `window.dataLayer` на landing и всех wave-1 страницах.
 - `2026-03-12` — направления `F9` и `F10` синхронизированы в общий `DONE` статус (включая критерии `36/37`); зафиксированы остаточные non-blocking риски по continuous monitoring и server-level `404` policy для SPA-hosting.
+- `2026-03-12` — расширен content rollout после закрытия `F10`: опубликованы comparison-страницы (`/comparison/hostflow-vs-spreadsheets`, `/comparison/recruitment-crm-vs-ats`) с SEO metadata/FAQ schema/tracking и включены в route map + auto-sitemap + landing guide links.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.

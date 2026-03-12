@@ -61,6 +61,18 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://hostflow.cc/comparison/hostflow-vs-spreadsheets</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://hostflow.cc/comparison/recruitment-crm-vs-ats</loc>
+    <lastmod>2026-03-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://hostflow.cc/legal/terms.html</loc>
     <lastmod>2026-03-12</lastmod>
     <changefreq>yearly</changefreq>

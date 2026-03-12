@@ -363,6 +363,8 @@ export default function CrmLandingPage() {
             <Link to="/features/document-control" className="btn-secondary btn-sm" onClick={() => trackCta('guide_document_control', '/features/document-control')}>Document control feature</Link>
             <Link to="/use-cases/trucking-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_trucking', '/use-cases/trucking-recruitment')}>Trucking recruitment use-case</Link>
             <Link to="/use-cases/high-volume-onboarding" className="btn-secondary btn-sm" onClick={() => trackCta('guide_high_volume', '/use-cases/high-volume-onboarding')}>High-volume onboarding use-case</Link>
+            <Link to="/comparison/hostflow-vs-spreadsheets" className="btn-secondary btn-sm" onClick={() => trackCta('guide_vs_spreadsheets', '/comparison/hostflow-vs-spreadsheets')}>HostFlow vs spreadsheets</Link>
+            <Link to="/comparison/recruitment-crm-vs-ats" className="btn-secondary btn-sm" onClick={() => trackCta('guide_crm_vs_ats', '/comparison/recruitment-crm-vs-ats')}>Recruitment CRM vs ATS</Link>
           </div>
         </section>
 

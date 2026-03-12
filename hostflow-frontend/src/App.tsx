@@ -15,6 +15,8 @@ import FeatureCandidatePipelinePage from './pages/public/FeatureCandidatePipelin
 import FeatureDocumentControlPage from './pages/public/FeatureDocumentControlPage'
 import UseCaseTruckingRecruitmentPage from './pages/public/UseCaseTruckingRecruitmentPage'
 import UseCaseHighVolumeOnboardingPage from './pages/public/UseCaseHighVolumeOnboardingPage'
+import ComparisonHostflowVsSpreadsheetsPage from './pages/public/ComparisonHostflowVsSpreadsheetsPage'
+import ComparisonRecruitmentCrmVsAtsPage from './pages/public/ComparisonRecruitmentCrmVsAtsPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
@@ -72,6 +74,8 @@ export default function App(){
           <Route path="/features/document-control" element={<FeatureDocumentControlPage />} />
           <Route path="/use-cases/trucking-recruitment" element={<UseCaseTruckingRecruitmentPage />} />
           <Route path="/use-cases/high-volume-onboarding" element={<UseCaseHighVolumeOnboardingPage />} />
+          <Route path="/comparison/hostflow-vs-spreadsheets" element={<ComparisonHostflowVsSpreadsheetsPage />} />
+          <Route path="/comparison/recruitment-crm-vs-ats" element={<ComparisonRecruitmentCrmVsAtsPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

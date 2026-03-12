@@ -16,6 +16,8 @@ const routes = [
   { path: '/features/document-control', changefreq: 'monthly', priority: '0.8' },
   { path: '/use-cases/trucking-recruitment', changefreq: 'monthly', priority: '0.8' },
   { path: '/use-cases/high-volume-onboarding', changefreq: 'monthly', priority: '0.8' },
+  { path: '/comparison/hostflow-vs-spreadsheets', changefreq: 'monthly', priority: '0.7' },
+  { path: '/comparison/recruitment-crm-vs-ats', changefreq: 'monthly', priority: '0.7' },
   { path: '/legal/terms.html', changefreq: 'yearly', priority: '0.5' },
   { path: '/legal/privacy.html', changefreq: 'yearly', priority: '0.5' },
   { path: '/legal/cookies.html', changefreq: 'yearly', priority: '0.5' },
