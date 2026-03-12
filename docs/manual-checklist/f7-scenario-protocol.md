@@ -20,6 +20,7 @@
 - В upsert-режиме при совпадающем имени `f7-run-...` run-record файл обновляется (overwrite), чтобы повторный прогон не требовал ручного удаления старого файла.
 - CLI поддерживает `--sync-board-status`: после фиксации run-record обновляет статус сценария в execution board (раздел `10`) согласно результату прогона.
 - По умолчанию `--append-ssot` запускает post-update валидацию (`f7:run-log:check`); для отключения только в отладке использовать `--no-validate`.
+- При ошибке update/validation CLI откатывает изменения SSOT (rollback), чтобы не оставлять `10/10.1` в частично обновленном состоянии.
 - Перед финальной фиксацией run-log в SSOT проверять консистентность: `npm run f7:run-log:check`.
 - `f7:run-log:check` валидирует не только таблицу `10.1`, но и соответствие header-полей run-record файлам (`date/scenario/environment/tenant/result`) для linked evidence.
 - `f7:run-log:check` запрещает дубли ключа прогона (`scenario + date + environment + tenant`) в таблице `10.1`.

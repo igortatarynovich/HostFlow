@@ -325,21 +325,32 @@ function main() {
     result: args.result || 'IN_PROGRESS',
     outPath,
   })
-  if (args.appendSsot) {
-    appendRowToSsot(row, { scenario, env, tenant: args.tenant, date })
-    console.log('SSOT 10.1 row appended.')
-  }
-  if (args.upsertSsot) {
-    upsertRowInSsot(row, { scenario, env, tenant: args.tenant, date })
-    console.log('SSOT 10.1 row upserted.')
-  }
-  if (args.syncBoardStatus) {
-    syncBoardStatusInSsot({ scenario, result: args.result || 'IN_PROGRESS' })
-    console.log('SSOT board status synced.')
-  }
-  if ((args.appendSsot || args.upsertSsot || args.syncBoardStatus) && args.validate) {
-    validateF7RunLog()
-    console.log('F7 run-log validation passed.')
+  const touchesSsot = args.appendSsot || args.upsertSsot || args.syncBoardStatus
+  const ssotBefore = touchesSsot && fs.existsSync(ssotPath) ? fs.readFileSync(ssotPath, 'utf-8') : null
+
+  try {
+    if (args.appendSsot) {
+      appendRowToSsot(row, { scenario, env, tenant: args.tenant, date })
+      console.log('SSOT 10.1 row appended.')
+    }
+    if (args.upsertSsot) {
+      upsertRowInSsot(row, { scenario, env, tenant: args.tenant, date })
+      console.log('SSOT 10.1 row upserted.')
+    }
+    if (args.syncBoardStatus) {
+      syncBoardStatusInSsot({ scenario, result: args.result || 'IN_PROGRESS' })
+      console.log('SSOT board status synced.')
+    }
+    if (touchesSsot && args.validate) {
+      validateF7RunLog()
+      console.log('F7 run-log validation passed.')
+    }
+  } catch (error) {
+    if (touchesSsot && ssotBefore != null) {
+      fs.writeFileSync(ssotPath, ssotBefore, 'utf-8')
+      console.error('SSOT changes rolled back due to validation/update error.')
+    }
+    throw error
   }
   if (args.printSsotRow) {
     console.log('SSOT 10.1 row:')
