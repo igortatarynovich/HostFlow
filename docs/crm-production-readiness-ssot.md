@@ -418,6 +418,20 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | `/public/status/:token` | Tokenized status flow | `NO` | Frontend |
 | `/public/scan*` | Session-bound scanning flow | `NO` | Frontend |
 
+### 5.6.1.2 `F9.5` Crawlability Audit Snapshot (`2026-03-12`)
+
+| URL / pattern | Ожидаемое поведение | Реализация | Статус |
+|---|---|---|---|
+| `/`, `/pricing`, `/signup`, `/login`, `/public/intake`, `/public/portal` | `index,follow` + canonical/OG | `useSeoMeta` на indexable страницах | `PASS` |
+| `/app/*` | `noindex,nofollow` | `useRobotsMeta` в `AppShell` | `PASS` |
+| `/public/apply/:token`, `/public/apply-old/:token`, `/public/status/:token`, `/public/scan*` | `noindex,nofollow` | `useRobotsMeta` в tokenized public страницах | `PASS` |
+| `/client-portal?token=...` | `noindex,nofollow` | `useRobotsMeta` в `ClientPortalPage` | `PASS` |
+| `/forgot-password`, `/reset-password`, `/invite/accept` | `noindex,nofollow` | `useRobotsMeta` в auth utility страницах | `PASS` |
+| неизвестные public URL (`*`, when unauth) | Не должны мягко индексироваться как home | отдельная `PublicNotFoundPage` + `noindex,nofollow` вместо редиректа на `/` | `PASS` |
+
+Residual risk:
+- Для SPA в статическом хостинге сервер может возвращать `200` для неизвестных URL (soft-404 на уровне HTTP). На уровне UI/SEO мета это смягчено `PublicNotFoundPage` + `noindex,nofollow`; для полного закрытия нужен server-level `404` response policy.
+
 ### 5.6.2 Декомпозиция `F10` (SEO content rollout)
 
 | ID | Задача | Статус | DOD |
@@ -693,3 +707,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — старт `F9.4`: SEO-хук расширен поддержкой JSON-LD (`application/ld+json`), на `CRM landing/pricing` добавлены schema.org `Organization` + `SoftwareApplication`; статус `F9.4` переведен в `IN_PROGRESS` до расширения на FAQ/контентные страницы и внешней валидации.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
+- `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.

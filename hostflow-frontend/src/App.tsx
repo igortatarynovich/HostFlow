@@ -14,6 +14,7 @@ import PublicStatusPage from './pages/public/PublicStatusPage'
 import PublicScanPage from './pages/public/PublicScanPage'
 import PublicLanding from './pages/public/PublicLanding'
 import CrmLandingPage from './pages/public/CrmLandingPage'
+import PublicNotFoundPage from './pages/public/PublicNotFoundPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
@@ -63,7 +64,7 @@ export default function App(){
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/invite/accept" element={<InviteAcceptPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<PublicNotFoundPage />} />
         </>
       )}
 
