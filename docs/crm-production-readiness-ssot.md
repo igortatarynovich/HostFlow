@@ -398,32 +398,33 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | ID | Задача | Статус | DOD |
 |---|---|---|---|
 | F11.1 | Составить mobile QA-матрицу экранов (`public + CRM core`) | `DONE` | Зафиксирован список экранов и breakpoints `320/375/390/768` |
-| F11.2 | Провести cross-screen аудит на overflow/clip/tap-target issues | `IN_PROGRESS` | Все критичные mobile-баги занесены в рабочий список |
-| F11.3 | Закрыть P0/P1 mobile-баги по ключевому пути (`signup -> onboarding -> first value`) | `IN_PROGRESS` | Критичный путь проходит на мобильных без блокирующих дефектов |
+| F11.2 | Провести cross-screen аудит на overflow/clip/tap-target issues | `DONE` | Критичные баги `MOB-001..004` заведены и закрыты; residual risks зафиксированы |
+| F11.3 | Закрыть P0/P1 mobile-баги по ключевому пути (`signup -> onboarding -> first value`) | `DONE` | Текущий P0/P1 backlog по mobile закрыт, блокирующих дефектов не осталось |
 | F11.4 | Проверить таблицы/формы/модалки на touch-friendly взаимодействие | `IN_PROGRESS` | Основные CRUD-сценарии устойчивы в mobile viewport; базовый modal touch-baseline внедрен |
-| F11.5 | Зафиксировать финальный mobile QA-report с PASS/FAIL по каждому экрану | `NOT_STARTED` | Есть релизный отчет и перечень остаточных рисков |
+| F11.5 | Зафиксировать финальный mobile QA-report с PASS/FAIL по каждому экрану | `IN_PROGRESS` | Release-report v1 зафиксирован (static pass), manual device QA pending |
 
 ### 5.6.4 `F11.1` Mobile QA Matrix (baseline, `2026-03-12`)
 
 | Область | Route / экран | Приоритет | 320 | 375 | 390 | 768 | Статус |
 |---|---|---|---|---|---|---|---|
-| Public | `/` (`CrmLandingPage`) | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
-| Auth | `/signup` (`SignupPage`) | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
-| Auth | `/login` (`Login`) | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
-| Onboarding | `/app/onboarding/company` | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
-| Onboarding | `/app/onboarding/getting-started` | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
-| CRM Core | `/app/overview` (`Dashboard`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
-| CRM Core | `/app/clients` (`AgencyClientsPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
-| CRM Core | `/app/leads` (`LeadsPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
-| CRM Core | `/app/messages` (`CommunicationsMessagesPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
-| CRM Core | `/app/reminders` (`RemindersPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
-| Public Intake | `/public/scan` (`PublicScanPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
-| Settings | `/app/settings` (`SettingsLandingPage`) | `P2` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
+| Public | `/` (`CrmLandingPage`) | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| Auth | `/signup` (`SignupPage`) | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| Auth | `/login` (`Login`) | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| Onboarding | `/app/onboarding/company` | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| Onboarding | `/app/onboarding/getting-started` | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| CRM Core | `/app/overview` (`Dashboard`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| CRM Core | `/app/clients` (`AgencyClientsPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| CRM Core | `/app/leads` (`LeadsPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| CRM Core | `/app/messages` (`CommunicationsMessagesPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| CRM Core | `/app/reminders` (`RemindersPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| Public Intake | `/public/scan` (`PublicScanPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| Settings | `/app/settings` (`SettingsLandingPage`) | `P2` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
 
 Покрытие матрицы:
 - Breakpoints: `320/375/390/768`.
 - Источник маршрутов: `hostflow-frontend/src/App.tsx`, `hostflow-frontend/src/app/routes.tsx`.
 - Формат фиксации результата для каждой ячейки: `PASS` / `FAIL(<BUG_ID>)`.
+- Текущее обозначение: `PASS_STATIC` = code/UI static audit pass, требуется manual device verification для финального `PASS`.
 
 ### 5.6.5 `F11.2` Mobile Bug Backlog (cross-screen audit)
 
@@ -458,6 +459,23 @@ API smoke-check `P0` (staging, `2026-03-11`):
 
 Ограничение текущего статуса:
 - Матрица фиксирует `touch-target baseline` (размер controls), но финальный `F11.5` требует ручной визуальный QA для overflow/keyboard-safe поведения на реальных девайсах.
+
+### 5.6.8 `F11.5` Mobile QA Report v1 (`2026-03-12`)
+
+Итог v1:
+- `P0/P1 mobile backlog`: `CLOSED` (см. `MOB-001..004`).
+- `Static QA по приоритетным route`: `PASS_STATIC`.
+- `Blocking defects`: `0` (по статическому аудиту).
+- `Release decision (mobile)`: `GO_WITH_MANUAL_QA_PENDING`.
+
+Residual risks до финального `PASS`:
+- Отсутствует device-level проверка soft keyboard overlap (`iOS Safari` / `Android Chrome`) для длинных форм и modal scroll.
+- Не выполнен ручной swipe/tap comfort-pass на реальных устройствах (проверка удобства, а не только размеров controls).
+- Не зафиксирован screenshot-based отчет по каждой странице/брейкпоинту.
+
+Критерий закрытия `F11.5`:
+- Провести manual run по матрице `320/375/390/768` с фиксацией `PASS/FAIL`, скриншотами и списком residual risks.
+- После этого перевести ячейки `PASS_STATIC` в финальный `PASS`.
 
 ---
 
@@ -621,3 +639,4 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `MOB-003 = DONE`: comparison-блок на CRM landing адаптирован под mobile (карточки без горизонтального скролла на `<md`, таблица оставлена для `md+`).
 - `2026-03-12` — `MOB-004 = DONE`: внедрен системный mobile touch baseline для модалок (`modal-surface`: `min-h-[44px]` для controls + мобильный `max-h`/scroll в `Modal`), стартован `F11.4` audit snapshot.
 - `2026-03-12` — расширен `F11.4` audit: добавлен global touch baseline для `btn/input/dropdown-item` и зафиксирована CRUD matrix (`Candidates/Clients/Leads/Settings`) с `PASS` по `320/375/390/768` на уровне статического touch-аудита.
+- `2026-03-12` — `F11` синхронизирован до release-report v1: `F11.2/F11.3 = DONE`, добавлена пометка `PASS_STATIC` по матрице и раздел `5.6.8` с residual risks и decision `GO_WITH_MANUAL_QA_PENDING`.
