@@ -24,6 +24,7 @@
 - `f7:run-log:check` валидирует не только таблицу `10.1`, но и соответствие header-полей run-record файлам (`date/scenario/environment/tenant/result`) для linked evidence.
 - `f7:run-log:check` запрещает дубли ключа прогона (`scenario + date + environment + tenant`) в таблице `10.1`.
 - `f7:run-log:check` сверяет статус board (`раздел 10`) с последним результатом сценария в `10.1` (минимум для `PASS/BLOCKED`), где “последний” определяется по максимальной дате (а не по позиции строки), чтобы перестановка строк не ломала проверку.
+- `f7:run-log:check` дополнительно валидирует board-таблицу: только допустимые статусы (`PASS/FAIL/BLOCKED/IN_PROGRESS`), обязательное покрытие `A/B/C` и отсутствие duplicate rows по сценарию.
 - Для записей с результатом `PASS/FAIL` evidence-файл должен использовать каноническое имя: `f7-run-<scenario>-<date>-<env>-<tenant-slug>.md`.
 
 ## Шаблон записи

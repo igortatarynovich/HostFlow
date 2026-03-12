@@ -230,13 +230,21 @@ function main() {
   } else {
     const boardDataRows = boardLines.slice(1)
     const boardStatusByScenario = {}
+    const boardScenarioCount = {}
+    const allowedBoardStatuses = new Set(['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'])
     for (const rowLine of boardDataRows) {
       const row = parseBoardTableLine(rowLine)
       if (!row || row.length !== 4) continue
       const [scenarioCell, statusCell] = row
       const match = scenarioCell.match(/([ABC])\s*[—-]/)
       if (!match) continue
-      boardStatusByScenario[match[1]] = stripTicks(statusCell).toUpperCase()
+      const scenarioCode = match[1]
+      const boardStatus = stripTicks(statusCell).toUpperCase()
+      boardStatusByScenario[scenarioCode] = boardStatus
+      boardScenarioCount[scenarioCode] = (boardScenarioCount[scenarioCode] || 0) + 1
+      if (!allowedBoardStatuses.has(boardStatus)) {
+        errors.push(`Invalid board status "${statusCell}" for scenario ${scenarioCode}`)
+      }
     }
     for (const scenarioCode of ['A', 'B', 'C']) {
       const boardStatus = boardStatusByScenario[scenarioCode]
@@ -244,6 +252,9 @@ function main() {
       if (!boardStatus) {
         errors.push(`Missing board status row for scenario ${scenarioCode} in section 10`)
         continue
+      }
+      if ((boardScenarioCount[scenarioCode] || 0) > 1) {
+        errors.push(`Duplicate board rows for scenario ${scenarioCode} in section 10`)
       }
       if (!latestResult) continue
       if (boardStatus === 'PASS' && latestResult !== 'PASS') {
