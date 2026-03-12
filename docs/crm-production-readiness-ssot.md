@@ -632,6 +632,7 @@ Residual risks до финального `PASS`:
 - `Topbar` quick-search targets: label для `/app/clients` синхронизирован с business-aware термином.
 - `Breadcrumbs`: title и crumb для `/app/clients` синхронизированы с business-aware термином.
 - `LeadsPage` и `ServicesPage` empty-state CTA на `/app/clients` переведены на business-aware label (через единый helper).
+- `OnboardingGettingStartedPage` и `OnboardingWizard`: шаги/CTA на `/app/clients` переведены на business-aware label (`Open clients` / `Open companies`) и динамический entity-термин (`Create first client/company`).
 - Добавлен общий hook `useBusinessTerminology` для канонического использования терминов в UI-слое.
 
 Текущий статус:
@@ -840,3 +841,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — для `F6` добавлен canonical словарь `docs/ux/business-terminology-map.md` с правилами использования терминов по типам бизнеса (`agency/employer/services`) и wave scope (`wave-1/wave-2`).
 - `2026-03-12` — `F6` wave-2: business-aware термин `Clients/Companies` применен в `Sidebar`, `Topbar` quick targets и `Breadcrumbs` для `/app/clients` (вместо единого статического label).
 - `2026-03-12` — `F6` расширен на secondary screens: добавлен общий `useBusinessTerminology` hook; `LeadsPage`/`ServicesPage` используют business-aware CTA/labels для перехода в `/app/clients` (`Open clients` vs `Open companies`).
+- `2026-03-12` — `F6` расширен на onboarding copy-pass: `OnboardingGettingStartedPage` и `OnboardingWizard` используют business-aware entity labels/CTA для `/app/clients` (`Open clients` / `Open companies`, `Create first client/company`).

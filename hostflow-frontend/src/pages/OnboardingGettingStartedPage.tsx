@@ -4,6 +4,7 @@ import { IconArrowRight, IconCheck, IconChecklist, IconUsers, IconUserPlus } fro
 import { useI18n } from '../i18n'
 import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
 import { usePermissions, type Permission } from '../hooks/usePermissions'
+import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
 type OnboardingStepCard = {
   key: string
@@ -17,6 +18,7 @@ type OnboardingStepCard = {
 
 export default function OnboardingGettingStartedPage() {
   const { t } = useI18n()
+  const { entitySingular, openEntityLabel } = useBusinessTerminology()
   const navigate = useNavigate()
   const { can } = usePermissions()
   const [status, setStatus] = useState<OnboardingStatus | null>(null)
@@ -53,8 +55,14 @@ export default function OnboardingGettingStartedPage() {
             ? {
                 key: 'first_client',
                 done: Boolean(status?.steps?.first_client_created),
-                title: t('app.onboarding.getting_started.step_services.title', { defaultValue: 'Create first client' }),
-                desc: t('app.onboarding.getting_started.step_services.desc', { defaultValue: 'Add your first client to start service operations.' }),
+                title: t('app.onboarding.getting_started.step_services.title_dynamic', {
+                  defaultValue: 'Create first {entity}',
+                  values: { entity: entitySingular.toLowerCase() },
+                }),
+                desc: t('app.onboarding.getting_started.step_services.desc_dynamic', {
+                  defaultValue: 'Add your first {entity} to start service operations.',
+                  values: { entity: entitySingular.toLowerCase() },
+                }),
                 href: '/app/clients',
                 permission: 'companies.view',
               }
@@ -91,12 +99,14 @@ export default function OnboardingGettingStartedPage() {
           ...step,
           href: accessible ? step.href : '/app/overview',
           openLabel: accessible
-            ? t('app.onboarding.getting_started.open', { defaultValue: 'Open' })
+            ? step.href === '/app/clients'
+              ? openEntityLabel
+              : t('app.onboarding.getting_started.open', { defaultValue: 'Open' })
             : t('app.onboarding.getting_started.open_fallback', { defaultValue: 'Open dashboard' }),
         }
       })
     },
-    [status, t, can],
+    [status, t, can, entitySingular, openEntityLabel],
   )
   const doneCount = steps.filter((step) => step.done).length
   const totalCount = steps.length

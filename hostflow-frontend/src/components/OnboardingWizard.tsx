@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { IconCheck, IconCircle, IconRocket } from '@tabler/icons-react'
 import { useI18n } from '../i18n'
 import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
+import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
 type Props = {
   tenantId: string
@@ -10,6 +11,7 @@ type Props = {
 
 export function OnboardingWizard({ tenantId: _tenantId }: Props) {
   const { t } = useI18n()
+  const { entitySingular, openEntityLabel } = useBusinessTerminology()
   const [status, setStatus] = useState<OnboardingStatus | null>(null)
 
   useEffect(() => {
@@ -56,7 +58,10 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
           id: 'company',
           done: Boolean(status?.steps?.company_created),
           href: '/app/clients',
-          label: t('app.onboarding.first_value.step_company', { defaultValue: 'Company created' }),
+          label: t('app.onboarding.first_value.step_company_dynamic', {
+            defaultValue: 'Create first {entity}',
+            values: { entity: entitySingular.toLowerCase() },
+          }),
         },
         typeStep,
         {
@@ -67,7 +72,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
         },
       ]
     },
-    [status, t],
+    [status, t, entitySingular],
   )
 
   const doneCount = steps.filter((step) => step.done).length
@@ -108,7 +113,9 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
                   <span className="text-slate-800">{`${index + 1}. ${step.label}`}</span>
                 </span>
                 <Link to={step.href} className="text-xs font-medium text-brand-700 hover:underline">
-                  {t('app.onboarding.first_value.open', { defaultValue: 'Open' })}
+                  {step.href === '/app/clients'
+                    ? openEntityLabel
+                    : t('app.onboarding.first_value.open', { defaultValue: 'Open' })}
                 </Link>
               </li>
             ))}
