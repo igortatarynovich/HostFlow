@@ -195,7 +195,28 @@ export default function CrmLandingPage() {
           <h2 className="text-2xl font-semibold text-slate-900">
             {t('public.crm_landing.compare.title', { defaultValue: 'Plan comparison at a glance' })}
           </h2>
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+          <div className="space-y-3 md:hidden">
+            {comparisonRows.map((row) => (
+              <article key={row.key} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-slate-900">{row.label}</h3>
+                <dl className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-700">
+                  <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                    <dt className="font-medium text-slate-600">Starter</dt>
+                    <dd className="text-right">{row.starter}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                    <dt className="font-medium text-slate-600">Team</dt>
+                    <dd className="text-right">{row.team}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
+                    <dt className="font-medium text-slate-600">Pro</dt>
+                    <dd className="text-right">{row.pro}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto rounded-2xl border border-slate-200 bg-white md:block">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-slate-700">
                 <tr>

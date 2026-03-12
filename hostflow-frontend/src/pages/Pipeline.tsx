@@ -947,10 +947,18 @@ export default function Pipeline(){
     return () => window.removeEventListener('keydown', onKey)
   }, [clearSelection])
 
-  const columnsOrder = useMemo(
-    () => (data?.statuses?.length ? data.statuses : (columnOrder.length ? columnOrder : Array.from(KANBAN_ORDER))),
-    [data, columnOrder]
-  )
+  const columnsOrder = useMemo(() => {
+    const base = data?.statuses?.length
+      ? data.statuses
+      : (columnOrder.length ? columnOrder : Array.from(KANBAN_ORDER))
+    const extras = Array.from(
+      new Set([
+        ...columnOrder,
+        ...Object.keys(columnStages || {}),
+      ])
+    ).filter((code) => !base.includes(code))
+    return [...base, ...extras]
+  }, [data, columnOrder, columnStages])
 
   // Filtered view of columns according to current filters
   const filteredColumns = useMemo(() => {
@@ -1131,7 +1139,7 @@ export default function Pipeline(){
   return (
     <div className="relative flex flex-col -mx-6 -my-6" style={{ height: 'calc(100vh - 4rem)', minHeight: 0 }}>
       {/* Основной контент - Kanban */}
-      <div className={clsx("flex-1 transition-all duration-300 min-h-0 flex flex-col overflow-hidden", sidebarOpen ? "mr-96" : "mr-0")}>
+      <div className={clsx("flex-1 transition-all duration-300 min-h-0 flex flex-col overflow-hidden", sidebarOpen ? "mr-0 sm:mr-96" : "mr-0")}>
         <div ref={tableContainerRef} className="flex-1 min-h-0 overflow-hidden flex flex-col p-6">
       {error && (
         <ErrorRecoveryBanner
@@ -1204,6 +1212,17 @@ export default function Pipeline(){
               key={code}
               id={code}
               title={<StageTag code={code} />}
+              subtitle={(() => {
+                const stages = (columnStages?.[code] || []).filter(Boolean)
+                if (stages.length <= 1) return null
+                return (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {stages.map((stageCode) => (
+                      <StageTag key={`${code}:${stageCode}`} code={stageCode} />
+                    ))}
+                  </div>
+                )
+              })()}
               count={filteredColumns?.[code]?.length || 0}
               total={data?.columns?.[code]?.length || 0}
               headerRight={canManage ? (
@@ -1317,7 +1336,7 @@ export default function Pipeline(){
       {/* Боковое меню справа */}
       <div
         className={clsx(
-          "fixed top-0 right-0 h-full w-96 bg-gradient-to-b from-slate-50 to-white border-l-2 border-slate-300 shadow-2xl z-40 transition-transform duration-300 ease-in-out overflow-y-auto",
+          "fixed top-0 right-0 h-full w-full sm:w-96 bg-gradient-to-b from-slate-50 to-white border-l-2 border-slate-300 shadow-2xl z-40 transition-transform duration-300 ease-in-out overflow-y-auto",
           sidebarOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
@@ -1590,14 +1609,17 @@ export default function Pipeline(){
 }
 
 // ----- DnD primitives
-function DroppableColumn({ id, title, count, total, children, headerRight }:{
-  id:string; title:React.ReactNode; count:number; total?:number; children:React.ReactNode; headerRight?: React.ReactNode
+function DroppableColumn({ id, title, subtitle, count, total, children, headerRight }:{
+  id:string; title:React.ReactNode; subtitle?: React.ReactNode; count:number; total?:number; children:React.ReactNode; headerRight?: React.ReactNode
 }){
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
     <div ref={setNodeRef} className={`rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 transition-colors ${isOver ? 'ring-2 ring-brand-300' : ''}`}>
-      <div className="mb-2 flex items-center justify-between">
-        <div className="text-sm font-semibold text-slate-800">{title}</div>
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-slate-800">{title}</div>
+          {subtitle}
+        </div>
         <div className="flex items-center gap-2">
           <div className="text-[11px] text-slate-500">
             {typeof total === 'number' ? `${count} / ${total}` : count}

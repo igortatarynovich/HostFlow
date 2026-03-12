@@ -213,7 +213,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
           setRemindersCount(unread)
           const threadItems = Array.isArray((commData as any)?.items)
             ? (commData as any).items.filter(
-                (th: any) => !Boolean(th?.is_archived) && String(th?.status || '').toLowerCase() !== 'deleted',
+                (th: any) => !th?.is_archived && String(th?.status || '').toLowerCase() !== 'deleted',
               )
             : []
           const emailUnread = threadItems
@@ -710,7 +710,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
               <span className="hidden md:inline">{me?.full_name || me?.email || t('app.shell.actions.profile')}</span>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 z-[100] mt-2 w-[320px] overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-sm shadow-2xl">
+              <div className="absolute right-0 z-[100] mt-2 w-[min(96vw,320px)] overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-sm shadow-2xl">
                 <div className="border-b border-slate-100 px-4 py-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     {t('app.shell.account.my_account', { defaultValue: 'My account' })}

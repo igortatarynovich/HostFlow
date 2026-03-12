@@ -1,7 +1,7 @@
 # CRM Production Readiness SSOT (Single Source of Truth)
 
 Дата создания: 2026-03-11  
-Последнее обновление: 2026-03-11  
+Последнее обновление: 2026-03-12  
 Статус: `IN_PROGRESS`  
 Цель: довести продукт до состояния, когда новый клиент проходит путь `Landing -> Signup -> Payment -> Active usage` без участия поддержки.
 
@@ -372,6 +372,93 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - В аккаунт-меню выводятся только релевантные действия по permission (без технических пунктов и дублей).
 - Приоритет компактной плотности: короткие заголовки, ясные CTA, минимум декоративных блоков.
 
+### 5.6.1 Декомпозиция `F9` (technical SEO baseline)
+
+| ID | Задача | Статус | DOD |
+|---|---|---|---|
+| F9.1 | Зафиксировать SEO-инвентарь публичных URL (`landing/features/use-cases/pricing/auth-public`) | `NOT_STARTED` | Есть полный список indexable страниц и владельцев |
+| F9.2 | Выровнять `title/description/canonical/og:*` по всем indexable страницам | `NOT_STARTED` | На каждой странице корректные мета-теги без дублей canonical |
+| F9.3 | Проверить и обновить `robots.txt` + `sitemap.xml` (включая auto-generation) | `NOT_STARTED` | Поисковые боты получают актуальные правила и полный sitemap без битых URL |
+| F9.4 | Добавить schema.org (`Organization`, `SoftwareApplication`, `FAQ/Article` где уместно) | `NOT_STARTED` | Structured data проходит валидацию без критичных ошибок |
+| F9.5 | Техпроверка индексации и crawlability (`noindex`, redirects, 404/soft-404) | `NOT_STARTED` | Нет критичных indexability проблем на приоритетных страницах |
+| F9.6 | Базовый CWV-pass публичных страниц (LCP/CLS/INP) | `NOT_STARTED` | По приоритетным URL нет блокирующих деградаций производительности |
+
+### 5.6.2 Декомпозиция `F10` (SEO content rollout)
+
+| ID | Задача | Статус | DOD |
+|---|---|---|---|
+| F10.1 | Собрать keyword-intent карту (`landing`, `feature`, `use-case`, `comparison`) | `NOT_STARTED` | Есть приоритизированный backlog страниц с целевым intent |
+| F10.2 | Подготовить шаблон контент-страниц (H1/H2, CTA, internal links, FAQ) | `NOT_STARTED` | Есть единый template для массовой публикации |
+| F10.3 | Выпустить пакет приоритетных страниц wave-1 | `NOT_STARTED` | Опубликованы основные страницы с согласованной семантикой и CTA |
+| F10.4 | Встроить внутреннюю перелинковку между landing/features/use-cases | `NOT_STARTED` | Все страницы wave-1 связаны по intent-цепочкам |
+| F10.5 | Проверить конверсионные CTA и аналитические события контента | `NOT_STARTED` | На каждой SEO-странице есть измеряемый conversion path |
+
+### 5.6.3 Декомпозиция `F11` (mobile adaptation pass)
+
+| ID | Задача | Статус | DOD |
+|---|---|---|---|
+| F11.1 | Составить mobile QA-матрицу экранов (`public + CRM core`) | `DONE` | Зафиксирован список экранов и breakpoints `320/375/390/768` |
+| F11.2 | Провести cross-screen аудит на overflow/clip/tap-target issues | `IN_PROGRESS` | Все критичные mobile-баги занесены в рабочий список |
+| F11.3 | Закрыть P0/P1 mobile-баги по ключевому пути (`signup -> onboarding -> first value`) | `IN_PROGRESS` | Критичный путь проходит на мобильных без блокирующих дефектов |
+| F11.4 | Проверить таблицы/формы/модалки на touch-friendly взаимодействие | `IN_PROGRESS` | Основные CRUD-сценарии устойчивы в mobile viewport; базовый modal touch-baseline внедрен |
+| F11.5 | Зафиксировать финальный mobile QA-report с PASS/FAIL по каждому экрану | `NOT_STARTED` | Есть релизный отчет и перечень остаточных рисков |
+
+### 5.6.4 `F11.1` Mobile QA Matrix (baseline, `2026-03-12`)
+
+| Область | Route / экран | Приоритет | 320 | 375 | 390 | 768 | Статус |
+|---|---|---|---|---|---|---|---|
+| Public | `/` (`CrmLandingPage`) | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
+| Auth | `/signup` (`SignupPage`) | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
+| Auth | `/login` (`Login`) | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
+| Onboarding | `/app/onboarding/company` | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
+| Onboarding | `/app/onboarding/getting-started` | `P0` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
+| CRM Core | `/app/overview` (`Dashboard`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
+| CRM Core | `/app/clients` (`AgencyClientsPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
+| CRM Core | `/app/leads` (`LeadsPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
+| CRM Core | `/app/messages` (`CommunicationsMessagesPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
+| CRM Core | `/app/reminders` (`RemindersPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
+| Public Intake | `/public/scan` (`PublicScanPage`) | `P1` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `IN_PROGRESS` |
+| Settings | `/app/settings` (`SettingsLandingPage`) | `P2` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` | `NOT_STARTED` |
+
+Покрытие матрицы:
+- Breakpoints: `320/375/390/768`.
+- Источник маршрутов: `hostflow-frontend/src/App.tsx`, `hostflow-frontend/src/app/routes.tsx`.
+- Формат фиксации результата для каждой ячейки: `PASS` / `FAIL(<BUG_ID>)`.
+
+### 5.6.5 `F11.2` Mobile Bug Backlog (cross-screen audit)
+
+| Bug ID | Severity | Область | Симптом | Доказательство | Статус | Владелец |
+|---|---|---|---|---|---|---|
+| `MOB-001` | `P1` | App topbar (authenticated) | Риск горизонтального выхода dropdown за viewport на `320px` из-за фиксированной ширины | `hostflow-frontend/src/components/nav/Topbar.tsx` (`w-[320px] -> w-[min(96vw,320px)]`) | `DONE` | Frontend |
+| `MOB-002` | `P2` | Pipeline side panel | Для узких экранов есть риск перекрытия рабочего контента фиксированной панелью `w-96` | `hostflow-frontend/src/pages/Pipeline.tsx` (`w-96 -> w-full sm:w-96`, main offset `mr-96 -> mr-0 sm:mr-96`) | `DONE` | Frontend |
+| `MOB-003` | `P2` | CRM landing pricing block | Контент pricing таблицы уходит в горизонтальный скролл; нужен UX-check на удобство swipe/CTA | `hostflow-frontend/src/pages/public/CrmLandingPage.tsx` (mobile cards `md:hidden` + desktop table `hidden md:block`) | `DONE` | Frontend + Product |
+| `MOB-004` | `P1` | Modal forms/actions | В модалках не было гарантированного touch target `44px` и ограничителя высоты на маленьких экранах | `hostflow-frontend/src/components/Modal.tsx`, `hostflow-frontend/src/styles/components.css` (`modal-surface`, `min-h-[44px]`, mobile `max-h`) | `DONE` | Frontend |
+
+Правило triage:
+- `P0/P1` баги блокируют закрытие `F11.3`.
+- `P2` баги допускаются в релиз только с явным mitigation и записью residual risk в `F11.5`.
+
+### 5.6.6 `F11.4` Touch-friendly Audit Snapshot (`2026-03-12`)
+
+| Область | Проверка | Статус | Доказательство |
+|---|---|---|---|
+| Modal shell | Модалка не выходит за viewport и доступна для скролла на mobile | `PASS` | `hostflow-frontend/src/components/Modal.tsx` (`max-h` + `overflow-y-auto`) |
+| Modal controls | CTA/inputs в модалках соответствуют touch baseline | `PASS` | `hostflow-frontend/src/styles/components.css` (`.modal-surface` + `min-h-[44px]`) |
+| Candidate bulk modals | Stage/Manager/Vacancy bulk flows используют единый modal touch baseline | `PASS` | `hostflow-frontend/src/modules/candidates/components/BulkStageModal.tsx`, `BulkManagerModal.tsx`, `BulkVacancyModal.tsx` |
+| Остаточный аудит CRUD table/forms | Требуется ручной cross-screen прогон `320/375/390/768` по рабочим таблицам и inline form controls | `IN_PROGRESS` | Остается как часть `F11.4` до финального `F11.5` report |
+
+### 5.6.7 `F11.4` CRUD Table/Forms Matrix (touch baseline, static pass `2026-03-12`)
+
+| Экран | 320 | 375 | 390 | 768 | Статус | Доказательство |
+|---|---|---|---|---|---|---|
+| `/app/candidates` | `PASS` | `PASS` | `PASS` | `PASS` | `IN_PROGRESS` | `hostflow-frontend/src/pages/Candidates.tsx` (controls через `.input`/`.btn-*`), `hostflow-frontend/src/styles/components.css` (global `min-h`) |
+| `/app/clients` | `PASS` | `PASS` | `PASS` | `PASS` | `IN_PROGRESS` | `hostflow-frontend/src/pages/Companies.tsx` (forms/actions на `.input`/`.btn-*`), `hostflow-frontend/src/styles/components.css` |
+| `/app/leads` | `PASS` | `PASS` | `PASS` | `PASS` | `IN_PROGRESS` | `hostflow-frontend/src/pages/LeadsPage.tsx` (`input/btn` с локальным `h-9`, но touch baseline обеспечен global `min-h`) |
+| `/app/settings` | `PASS` | `PASS` | `PASS` | `PASS` | `IN_PROGRESS` | `hostflow-frontend/src/pages/admin/SettingsLandingPage.tsx` + системные controls из `components.css` |
+
+Ограничение текущего статуса:
+- Матрица фиксирует `touch-target baseline` (размер controls), но финальный `F11.5` требует ручной визуальный QA для overflow/keyboard-safe поведения на реальных девайсах.
+
 ---
 
 ## 6. Единая структура настроек (принято)
@@ -526,3 +613,11 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `F8.62 = DONE`: после закрытия миграции удален legacy-класс `.btn-ghost` из `components.css`; подтверждено отсутствие `btn-ghost` usage в `hostflow-frontend/src`.
 - `2026-03-12` — обновлен рабочий git-регламент для `F8`: пакетные изменения/commit/build, единый логический трек задачи и обязательный cleanup промежуточных веток после завершения `F8`.
 - `2026-03-12` — в SSOT добавлены отдельные обязательные направления: `SEO technical`, `SEO content rollout` и `Mobile adaptation pass` (критерии `36–38`, задачи `F9/F10/F11`).
+- `2026-03-12` — детализированы треки `F9/F10/F11`: добавлена подзадачная декомпозиция с измеримыми DOD для technical SEO, content rollout и mobile QA-pass.
+- `2026-03-12` — для `F11` добавлены baseline mobile QA matrix (по ключевым route/экранам) и первичный bug backlog `MOB-001..003` с severity/owner/triage-правилом.
+- `2026-03-12` — `MOB-001 = DONE`: в `Topbar` profile dropdown переведен с фиксированной ширины `w-[320px]` на адаптивную `w-[min(96vw,320px)]` для экранов `320px`.
+- `2026-03-12` — `MOB-002 = DONE`: `Pipeline` side panel сделан адаптивным (`w-full sm:w-96`, корректный main-content offset), что убирает mobile-overlap на узких экранах.
+- `2026-03-12` — `Pipeline` исправлен по видимости этапов: в kanban-грид добавлено объединение `data.statuses + columnOrder + stage_columns`, а в заголовках колонок отображается полный список stage codes внутри колонки.
+- `2026-03-12` — `MOB-003 = DONE`: comparison-блок на CRM landing адаптирован под mobile (карточки без горизонтального скролла на `<md`, таблица оставлена для `md+`).
+- `2026-03-12` — `MOB-004 = DONE`: внедрен системный mobile touch baseline для модалок (`modal-surface`: `min-h-[44px]` для controls + мобильный `max-h`/scroll в `Modal`), стартован `F11.4` audit snapshot.
+- `2026-03-12` — расширен `F11.4` audit: добавлен global touch baseline для `btn/input/dropdown-item` и зафиксирована CRUD matrix (`Candidates/Clients/Leads/Settings`) с `PASS` по `320/375/390/768` на уровне статического touch-аудита.
