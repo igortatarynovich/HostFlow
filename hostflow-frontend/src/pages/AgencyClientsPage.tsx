@@ -19,10 +19,12 @@ import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
 export default function AgencyClientsPage() {
   const { t } = useI18n()
-  const { openEntityLabel } = useBusinessTerminology()
+  const { entitySingular, entityPlural, openEntityLabel } = useBusinessTerminology()
   const { me } = useAuth()
   const { notify } = useToast()
   const tenantId = (me as { tenant_id?: string })?.tenant_id ?? ''
+  const entitySingularLower = entitySingular.toLowerCase()
+  const entityPluralLower = entityPlural.toLowerCase()
 
   const [links, setLinks] = useState<TenantLink[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,14 +65,20 @@ export default function AgencyClientsPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {t('app.clients.title', { defaultValue: 'Клиенты' })}
+            {t('app.clients.title_dynamic', { defaultValue: entityPlural, values: { entityPlural } })}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {t('app.clients.subtitle', { defaultValue: 'Клиенты агентства и настройки доступа.' })}
+            {t('app.clients.subtitle_dynamic', {
+              defaultValue: 'Manage {entityPlural} and access settings.',
+              values: { entityPlural: entityPluralLower },
+            })}
           </p>
         </div>
         <button type="button" onClick={() => setAddOpen(true)} className="btn-primary">
-          {t('app.clients.add_client', { defaultValue: 'Добавить клиента' })}
+          {t('app.clients.add_entity_dynamic', {
+            defaultValue: 'Add {entity}',
+            values: { entity: entitySingularLower },
+          })}
         </button>
       </div>
 
@@ -81,10 +89,14 @@ export default function AgencyClientsPage() {
           <EmptyStatePanel
             title={t('app.clients.empty_title', { defaultValue: 'No clients linked yet' })}
             description={t('app.clients.empty_desc', {
-              defaultValue: 'Add the first client to enable handoff, visibility rules and shared workflows.',
+              defaultValue: 'Add the first {entity} to enable handoff, visibility rules and shared workflows.',
+              values: { entity: entitySingularLower },
             })}
             primaryAction={{
-              label: t('app.clients.add_client', { defaultValue: 'Add client' }),
+              label: t('app.clients.add_entity_dynamic', {
+                defaultValue: 'Add {entity}',
+                values: { entity: entitySingularLower },
+              }),
               onClick: () => setAddOpen(true),
             }}
             secondaryAction={{

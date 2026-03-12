@@ -853,3 +853,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — anti-dead-end UX pass для onboarding activation: в `OnboardingGettingStartedPage` карточки шагов сделаны полностью кликабельными (мышь/клавиатура), чтобы переход в целевой раздел не зависел только от маленькой inline-ссылки.
 - `2026-03-12` — `F6` secondary-screen copy-pass расширен на `ClientLinkDetailPage`: ссылка «back to list» для `/app/clients` теперь business-aware (`Back to clients` / `Back to companies`) по типу бизнеса.
 - `2026-03-12` — `F6` secondary-screen copy-pass расширен на `AgencyClientsPage`: secondary empty-state CTA на `/app/clients` переведен на `useBusinessTerminology.openEntityLabel` (`Open clients` / `Open companies`).
+- `2026-03-12` — `F6` расширен в `AgencyClientsPage` на heading/empty-state primary CTA: title/subtitle и `Add ...` action теперь используют business-aware entity terms (`Client/Company`) через `useBusinessTerminology`.
