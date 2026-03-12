@@ -1048,7 +1048,7 @@ export default function Candidates(){
           <div className="flex items-center justify-between pt-1">
             <button
               type="button"
-              className="btn-ghost btn-xs"
+              className="btn-secondary btn-xs"
               onClick={() => {
                 onReset()
                 close()
@@ -1081,7 +1081,7 @@ export default function Candidates(){
           <div className="flex items-center justify-between pt-1">
             <button
               type="button"
-              className="btn-ghost btn-xs"
+              className="btn-secondary btn-xs"
               onClick={() => {
                 setTextFilter(key, '')
                 close()
@@ -3987,7 +3987,7 @@ export default function Candidates(){
               </button>
               <div className="flex-1" />
               <button
-                className="btn-ghost"
+                className="btn-secondary"
                 title={t('app.candidates.bulk.clear_title')}
                 onClick={()=> setChecked({})}
               >
@@ -4485,7 +4485,7 @@ export default function Candidates(){
               return (
                 <div className="space-y-1">
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
                     onClick={() => {
                       handleCandidateOpen(candidate.id)
                       navigate(`/app/candidates/${candidate.id}`)
@@ -4495,7 +4495,7 @@ export default function Candidates(){
                     {t('app.candidates.context.open_card')}
                   </button>
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
                     onClick={() => {
                       toggle(candidate.id)
                       setContextMenu(null)
@@ -4508,7 +4508,7 @@ export default function Candidates(){
                   </button>
                   <div className="border-t border-slate-200 my-1" />
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
                     onClick={() => {
                       setChecked({ [candidate.id]: true })
                       setBulkStage(stageOptions[0] || 'new')
@@ -4520,7 +4520,7 @@ export default function Candidates(){
                     {t('app.candidates.context.change_stage')}
                   </button>
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
                     onClick={() => {
                       setChecked({ [candidate.id]: true })
                       setBulkManagerId(preferredManagerId)
@@ -4531,7 +4531,7 @@ export default function Candidates(){
                     {t('app.candidates.context.assign_manager')}
                   </button>
                   <button
-                    className="btn-ghost w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
                     onClick={() => {
                       setChecked({ [candidate.id]: true })
                       setBulkVacancyId(vacancies[0]?.id || '')
@@ -4594,7 +4594,7 @@ export default function Candidates(){
                 setSaveViewOpen(false)
               }}
             >{t('common.actions.save')}</button>
-            <button className="btn-ghost" onClick={()=>setSaveViewOpen(false)}>{t('common.actions.cancel')}</button>
+            <button className="btn-secondary" onClick={()=>setSaveViewOpen(false)}>{t('common.actions.cancel')}</button>
           </div>
         </div>
       </Modal>
@@ -4788,7 +4788,7 @@ export default function Candidates(){
                     <div className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
                       <div className="space-y-0.5">
                         <button
-                          className="btn-ghost w-full text-left text-xs py-1.5 px-2"
+                          className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
                           title={t('app.candidates.actions.export_title')}
                           onClick={() => {
                             const rows = displayedItems.map(item => {
@@ -4836,7 +4836,7 @@ export default function Candidates(){
                           {t('app.candidates.actions.export')}
                         </button>
                         <button
-                          className="btn-ghost w-full text-left text-xs py-1.5 px-2 disabled:opacity-60"
+                          className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2 disabled:opacity-60"
                           onClick={() => {
                             handleResetFilters()
                             setActionsMenuOpen(false)
@@ -4846,7 +4846,7 @@ export default function Candidates(){
                           {t('app.candidates.actions.reset_filters')}
                         </button>
                         <button
-                          className="btn-ghost w-full text-left text-xs py-1.5 px-2 disabled:opacity-60"
+                          className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2 disabled:opacity-60"
                           onClick={() => {
                             setActionsMenuOpen(false)
                             setSaveViewName('')
@@ -4944,7 +4944,7 @@ export default function Candidates(){
                   {savedViews.map(v => (
                     <div key={v.id} className="flex items-center justify-between gap-1.5 p-1.5 rounded-md hover:bg-slate-50 transition-colors">
                       <button
-                        className="btn-ghost text-left flex-1 truncate text-xs font-medium text-slate-700 hover:text-brand-600 px-1.5 py-1"
+                        className="btn-secondary text-left justify-start flex-1 truncate text-xs font-medium px-1.5 py-1"
                         title={t('app.candidates.views.apply_title', { values: { name: v.name } })}
                         onClick={()=>applyView(v)}
                       >{v.name}</button>

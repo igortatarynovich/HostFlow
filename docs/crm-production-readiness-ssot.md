@@ -335,6 +335,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F8.55 | Унифицировать secondary actions в vacancy/candidate/invoices модалках | `DONE` | `VacancyForm`, `VacancyDetail`, `CandidateCard`, `ClientInvoicesBlock` очищены от `btn-ghost`; secondary controls приведены к системным `btn-secondary` (`btn-sm` где уместно) |
 | F8.56 | Унифицировать secondary actions в candidate bulk modals | `DONE` | `BulkManagerModal`, `BulkHandoffModal`, `BulkTagsModal`, `BulkVacancyModal`, `BulkDeleteModal`, `BulkStageModal` очищены от `btn-ghost`; cancel/secondary actions приведены к `btn-secondary` |
 | F8.57 | Унифицировать secondary/destructive controls в candidate sections | `DONE` | `CandidateNotesSection`, `CandidateRemindersSection`, `CandidateContactAttemptsSection`, `CandidateBasicSection`, `CandidateExperienceSection`, `CandidateHandoffSection` очищены от `btn-ghost`; secondary-actions переведены на `btn-secondary`, row-delete в experience — на `btn-danger` |
+| F8.58 | Унифицировать secondary controls в Candidates page | `DONE` | `CandidatesPage` очищен от остаточных `btn-ghost` в filter reset, bulk clear, context/actions menu, save-view и saved-views apply action; применен системный `btn-secondary` (`btn-xs` где уместно) |
 
 ## 5.5 Фаза E — Multi-tenant и Auth детализация (из source docs)
 
@@ -514,5 +515,6 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `F8.55 = DONE`: пакетная унификация secondary actions в `VacancyForm`, `VacancyDetail`, `CandidateCard`, `ClientInvoicesBlock` — модальные/карточные `btn-ghost` действия переведены на `btn-secondary`.
 - `2026-03-12` — `F8.56 = DONE`: пакетная унификация secondary actions в candidate bulk-модалках (`BulkManager/Handoff/Tags/Vacancy/Delete/Stage`) — `btn-ghost` cancel/actions переведены на `btn-secondary`.
 - `2026-03-12` — `F8.57 = DONE`: пакетная унификация controls в candidate секциях (`Notes/Reminders/ContactAttempts/Basic/Experience/Handoff`) — `btn-ghost` заменены на `btn-secondary`, удаление строки опыта переведено на `btn-danger`.
+- `2026-03-12` — `F8.58 = DONE`: `CandidatesPage` очищен от остаточных `btn-ghost` в фильтрах/menus/save-view/saved-views; применен единый `btn-secondary` паттерн для вторичных действий.
 - `2026-03-12` — обновлен рабочий git-регламент для `F8`: пакетные изменения/commit/build, единый логический трек задачи и обязательный cleanup промежуточных веток после завершения `F8`.
 - `2026-03-12` — в SSOT добавлены отдельные обязательные направления: `SEO technical`, `SEO content rollout` и `Mobile adaptation pass` (критерии `36–38`, задачи `F9/F10/F11`).
