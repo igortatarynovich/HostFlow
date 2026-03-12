@@ -9,6 +9,7 @@
 - `PASS_STATIC` допустим только как промежуточная отметка в комментарии (code/UI audit), но не как финальный статус сценария.
 - Для `FAIL` обязательно указывать bug-id/ссылку на issue.
 - Для `BLOCKED` обязательно указывать внешний блокер (например, production Stripe/webhooks).
+- Каждый прогон фиксируется отдельным run-record файлом по шаблону [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md), а в SSOT `10.1` добавляется ссылка на этот файл в колонке `Evidence`.
 
 ## Шаблон записи
 

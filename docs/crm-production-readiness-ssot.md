@@ -741,9 +741,9 @@ Residual risks до финального `PASS`:
 
 ### 10.2 Next Actions Для `F7`
 
-1. Провести ручной E2E прогон сценария `B` по run-sheet: [f7-scenario-b-agency.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-b-agency.md), затем записать `PASS/FAIL` + evidence в `10.1`.
-2. Провести ручной E2E прогон сценария `C` по run-sheet: [f7-scenario-c-employer.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-c-employer.md), затем записать `PASS/FAIL` + evidence в `10.1`.
-3. После подключения production Stripe/webhooks снять блокер `A` и выполнить полный прогон сценария `A` по run-sheet: [f7-scenario-a-solo-services.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-a-solo-services.md).
+1. Провести ручной E2E прогон сценария `B` по run-sheet: [f7-scenario-b-agency.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-b-agency.md), затем создать run-record по шаблону [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md) и записать `PASS/FAIL` + ссылку на evidence в `10.1`.
+2. Провести ручной E2E прогон сценария `C` по run-sheet: [f7-scenario-c-employer.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-c-employer.md), затем создать run-record по шаблону [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md) и записать `PASS/FAIL` + ссылку на evidence в `10.1`.
+3. После подключения production Stripe/webhooks снять блокер `A` и выполнить полный прогон сценария `A` по run-sheet: [f7-scenario-a-solo-services.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-a-solo-services.md) с отдельным run-record и ссылкой в `10.1`.
 
 ## 11. Changelog
 
@@ -898,3 +898,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — activation guard стабилизирован единым route-map: создан `hostflow-frontend/src/app/activationRoutes.ts`, `AppShell` и `OnboardingGettingStartedPage` переведены на общие activation paths (`clients/vacancies/leads/reminders/settings`), что снижает риск повторного redirect-loop при изменении onboarding CTA.
 - `2026-03-12` — activation route-map расширен на соседние onboarding/trial потоки: `OnboardingWizard`, `OnboardingCompanyPage`, `Dashboard` retention CTA и `TrialStatusBanner` используют единые `ACTIVATION_PATHS` (без локальных hardcoded путей).
 - `2026-03-12` — добавлен `activation:check` (`hostflow-frontend/scripts/check-activation-routes.mjs`) для статической валидации `ACTIVATION_PATHS/ACTIVATION_ALLOWED_PREFIXES` против `APP_ROUTES`; проверка включена в `qa:static` и защищает от activation redirect-loop регрессий.
+- `2026-03-12` — `F7` execution protocol усилен evidence-форматом: добавлен [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md), run-sheets `A/B/C` привязаны к шаблону, а `10.2` требует сохранять ссылку на run-record в `10.1`.

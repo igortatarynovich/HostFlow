@@ -1,6 +1,7 @@
 # F7 Scenario B Run Sheet (Agency)
 
 Source of truth: `docs/crm-production-readiness-ssot.md` sections `4.2` and `10`.
+Run record template: [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md)
 
 Date: `YYYY-MM-DD`  
 Environment: `staging | production`  
