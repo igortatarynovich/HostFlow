@@ -30,6 +30,25 @@ export default function CrmLandingPage() {
     : t('app.seo.landing.description', {
         defaultValue: 'HostFlow helps recruitment teams run leads, candidates, documents, and operations in one CRM.',
       })
+  const faq = useMemo(
+    () => [
+      {
+        q: t('public.crm_landing.faq.q1', { defaultValue: 'Can we start without configuring everything?' }),
+        a: t('public.crm_landing.faq.a1', {
+          defaultValue: 'Yes. Core onboarding is account -> company -> first client/lead/action. Advanced settings can be done later.',
+        }),
+      },
+      {
+        q: t('public.crm_landing.faq.q2', { defaultValue: 'Can we invite team later?' }),
+        a: t('public.crm_landing.faq.a2', { defaultValue: 'Yes. Start solo, then invite teammates from Team settings when ready.' }),
+      },
+      {
+        q: t('public.crm_landing.faq.q3', { defaultValue: 'What if we choose wrong plan?' }),
+        a: t('public.crm_landing.faq.a3', { defaultValue: 'Plans can be changed in Billing. The product flow keeps your workspace data intact.' }),
+      },
+    ],
+    [t],
+  )
   const structuredData = useMemo(
     () => [
       {
@@ -54,8 +73,20 @@ export default function CrmLandingPage() {
         url: `https://hostflow.cc${canonicalPath}`,
         description: seoDescription,
       },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faq.map((item) => ({
+          '@type': 'Question',
+          name: item.q,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.a,
+          },
+        })),
+      },
     ],
-    [canonicalPath, seoDescription],
+    [canonicalPath, faq, seoDescription],
   )
 
   useSeoMeta({
@@ -139,21 +170,6 @@ export default function CrmLandingPage() {
     t('public.crm_landing.objections.0', { defaultValue: 'Too many settings before work starts.' }),
     t('public.crm_landing.objections.1', { defaultValue: 'Hard to onboard team members.' }),
     t('public.crm_landing.objections.2', { defaultValue: 'Unclear path from lead to next action.' }),
-  ]
-
-  const faq = [
-    {
-      q: t('public.crm_landing.faq.q1', { defaultValue: 'Can we start without configuring everything?' }),
-      a: t('public.crm_landing.faq.a1', { defaultValue: 'Yes. Core onboarding is account -> company -> first client/lead/action. Advanced settings can be done later.' }),
-    },
-    {
-      q: t('public.crm_landing.faq.q2', { defaultValue: 'Can we invite team later?' }),
-      a: t('public.crm_landing.faq.a2', { defaultValue: 'Yes. Start solo, then invite teammates from Team settings when ready.' }),
-    },
-    {
-      q: t('public.crm_landing.faq.q3', { defaultValue: 'What if we choose wrong plan?' }),
-      a: t('public.crm_landing.faq.a3', { defaultValue: 'Plans can be changed in Billing. The product flow keeps your workspace data intact.' }),
-    },
   ]
 
   return (
