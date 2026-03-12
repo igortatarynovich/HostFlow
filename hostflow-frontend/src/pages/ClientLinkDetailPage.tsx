@@ -12,13 +12,18 @@ import {
 import { useToast } from '../components/Toast'
 import { listCompanies } from '../api/client'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
 export default function ClientLinkDetailPage() {
   const { linkId } = useParams<{ linkId: string }>()
   const { t } = useI18n()
+  const { isEmployerTenant } = useBusinessTerminology()
   const { me } = useAuth()
   const { notify } = useToast()
   const tenantId = (me as { tenant_id?: string })?.tenant_id ?? ''
+  const backToListLabel = isEmployerTenant
+    ? t('app.companies.actions.back_to_list', { defaultValue: 'Back to companies' })
+    : t('app.clients.back_to_list', { defaultValue: 'Back to clients' })
 
   const [link, setLink] = useState<TenantLink | null>(null)
   const [loading, setLoading] = useState(true)
@@ -141,7 +146,7 @@ export default function ClientLinkDetailPage() {
     return (
       <div className="space-y-4">
         <Link to="/app/clients" className="text-sm text-brand-600 hover:underline">
-          ← {t('app.clients.back_to_list', { defaultValue: 'К списку клиентов' })}
+          ← {backToListLabel}
         </Link>
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <ErrorRecoveryBanner
@@ -167,7 +172,7 @@ export default function ClientLinkDetailPage() {
     <div className="space-y-4">
       <div>
         <Link to="/app/clients" className="text-sm text-brand-600 hover:underline">
-          ← {t('app.clients.back_to_list', { defaultValue: 'К списку клиентов' })}
+          ← {backToListLabel}
         </Link>
       </div>
 
