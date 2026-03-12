@@ -132,6 +132,7 @@ function main() {
   const seenScenarios = new Set()
   const seenRunKeys = new Set()
   const allowedResults = new Set(['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'])
+  const invalidFinalCellValues = new Set(['', 'n/a', 'na', '-', 'none', 'null'])
   const latestResultByScenario = {}
   const latestRankByScenario = {}
   let rowOrder = 0
@@ -182,6 +183,17 @@ function main() {
     }
 
     if (!owner) errors.push(`Empty owner for scenario "${scenario}"`)
+    if (normalizedResult === 'PASS' || normalizedResult === 'FAIL') {
+      if (invalidFinalCellValues.has(normalizeSoft(env))) {
+        errors.push(`Result ${normalizedResult} requires explicit environment (not N/A) for "${scenario}"`)
+      }
+      if (invalidFinalCellValues.has(normalizeSoft(tenant))) {
+        errors.push(`Result ${normalizedResult} requires explicit tenant (not N/A) for "${scenario}"`)
+      }
+      if (invalidFinalCellValues.has(normalizeSoft(owner)) || normalizeSoft(owner) === 'product/qa') {
+        errors.push(`Result ${normalizedResult} requires explicit owner sign-off (not placeholder) for "${scenario}"`)
+      }
+    }
     if (!evidence) {
       errors.push(`Empty evidence for scenario "${scenario}"`)
       continue

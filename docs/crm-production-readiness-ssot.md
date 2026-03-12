@@ -921,3 +921,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `f7:run-log:check` дополнен строгой логикой `BLOCKED/FAIL`: board-строка `BLOCKED` требует явный blocker-text, а статусы `FAIL`/`BLOCKED` теперь валидируются на консистентность с последним результатом сценария в `10.1`.
 - `2026-03-12` — `f7:run-log:check` усилен sign-off quality gate: для `PASS/FAIL` linked run-record должен содержать заполненные `Product/QA` подписи (не placeholder), иначе проверка падает.
 - `2026-03-12` — `f7:run-record` CLI переведен на безопасный apply/update flow: при `append/upsert/sync` и последующей ошибке валидации выполняется rollback SSOT (`10/10.1`), чтобы исключить частично примененные изменения.
+- `2026-03-12` — `f7:run-log:check` усилен final-result hygiene: для строк `PASS/FAIL` в `10.1` теперь обязательны явные `Environment`, `Tenant` и `Owner` (значения `N/A`/placeholder отклоняются).
