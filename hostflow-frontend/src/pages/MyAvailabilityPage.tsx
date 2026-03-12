@@ -129,13 +129,13 @@ export default function MyAvailabilityPage() {
         )}
         <form className="mt-3 grid gap-2" onSubmit={handleSubmit}>
           <div className="grid grid-cols-2 gap-2">
-            <select value={form.requestType} onChange={(e) => setForm((p) => ({ ...p, requestType: e.target.value }))} className="rounded border border-slate-300 px-3 py-2 text-sm">
+            <select value={form.requestType} onChange={(e) => setForm((p) => ({ ...p, requestType: e.target.value }))} className="input">
               <option value="vacation">Vacation</option>
               <option value="day_off">Day off</option>
               <option value="sick_leave">Sick leave</option>
               <option value="other">Other</option>
             </select>
-            <select value={form.partialDay} onChange={(e) => setForm((p) => ({ ...p, partialDay: e.target.value }))} className="rounded border border-slate-300 px-3 py-2 text-sm">
+            <select value={form.partialDay} onChange={(e) => setForm((p) => ({ ...p, partialDay: e.target.value }))} className="input">
               <option value="">Full day(s)</option>
               <option value="first_half">First half-day</option>
               <option value="second_half">Second half-day</option>
@@ -143,16 +143,16 @@ export default function MyAvailabilityPage() {
           </div>
           {form.partialDay && (
             <div className="grid grid-cols-2 gap-2">
-              <input type="time" value={form.partialFrom} onChange={(e) => setForm((p) => ({ ...p, partialFrom: e.target.value }))} className="rounded border border-slate-300 px-3 py-2 text-sm" />
-              <input type="time" value={form.partialTo} onChange={(e) => setForm((p) => ({ ...p, partialTo: e.target.value }))} className="rounded border border-slate-300 px-3 py-2 text-sm" />
+              <input type="time" value={form.partialFrom} onChange={(e) => setForm((p) => ({ ...p, partialFrom: e.target.value }))} className="input" />
+              <input type="time" value={form.partialTo} onChange={(e) => setForm((p) => ({ ...p, partialTo: e.target.value }))} className="input" />
             </div>
           )}
           <div className="grid grid-cols-2 gap-2">
-            <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} className="rounded border border-slate-300 px-3 py-2 text-sm" />
-            <input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} className="rounded border border-slate-300 px-3 py-2 text-sm" />
+            <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} className="input" />
+            <input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} className="input" />
           </div>
-          <textarea rows={3} value={form.reason} onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))} className="rounded border border-slate-300 px-3 py-2 text-sm" placeholder="Reason / comment" />
-          <button type="submit" disabled={busy || !form.startDate || !form.endDate} className="rounded border border-brand-600 bg-brand-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+          <textarea rows={3} value={form.reason} onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))} className="textarea" placeholder="Reason / comment" />
+          <button type="submit" disabled={busy || !form.startDate || !form.endDate} className="btn-primary disabled:opacity-50">
             {busy ? t('common.loading', { defaultValue: 'Loading...' }) : t('common.actions.create', { defaultValue: 'Create' })}
           </button>
         </form>
@@ -172,7 +172,7 @@ export default function MyAvailabilityPage() {
                 {row.reason && <div className="mt-1 text-sm text-slate-700 whitespace-pre-wrap">{row.reason}</div>}
                 {row.status === 'pending' && (
                   <div className="mt-2">
-                    <button type="button" onClick={() => void handleCancel(row.id)} disabled={busy} className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                    <button type="button" onClick={() => void handleCancel(row.id)} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">
                       {t('common.actions.cancel', { defaultValue: 'Cancel' })}
                     </button>
                   </div>
@@ -182,10 +182,10 @@ export default function MyAvailabilityPage() {
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link to="/app/time-off" className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+          <Link to="/app/time-off" className="btn-secondary">
             {t('app.communications.ia.open_time_off', { defaultValue: 'Open time-off requests' })}
           </Link>
-          <Link to="/app/team-availability" className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+          <Link to="/app/team-availability" className="btn-secondary">
             {t('app.nav.items.team_availability', { defaultValue: 'Team availability' })}
           </Link>
         </div>

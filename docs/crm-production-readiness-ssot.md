@@ -16,6 +16,9 @@
 - Любая завершенная задача получает: статус, дату, ссылку на PR/коммит/эндпоинт/экран.
 - Статусы только из списка: `NOT_STARTED`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 - Если статус `BLOCKED`, обязательно указывать блокер и владельца решения.
+- Git-правило: если в задаче затронуто более `10` файлов, делаем отдельный commit в конце пакета изменений.
+- Git-правило: если новая задача логически отличается от текущей, перед началом работ создается новая ветка.
+- Git-правило: каждый commit должен отражать логически завершенную задачу/правку и не смешивать несвязанные изменения.
 
 Легенда:
 - `DONE` = принято по критерию + есть проверка (ручная или автотест).
@@ -309,6 +312,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F8.39 | Унифицировать secondary badges/cards в communications views | `DONE` | `CommunicationsSlaIncidentsPage` summary/trust/group badges переведены на `badge`; `CommunicationsMessagesPage` ops/meta badges переведены на `badge`; `CommunicationsCalendarPage` upcoming cards выровнены на `rounded-lg` |
 | F8.40 | Унифицировать Candidate Card communication/quick controls | `DONE` | `CandidateCommunicationSection` переведен с локальных `cyan`-акцентов на `brand` + `alert-info`; quick-controls в `CandidateCard` переведены на системные `btn-secondary`; `StageTag` для `contacted/interview/questionnaire_submitted` выровнен под `brand` palette |
 | F8.41 | Унифицировать forms/actions в Services workspace | `DONE` | `ServicesPage` (catalog/orders/detail) переведен на системные `input/textarea/btn-primary/btn-secondary`, info-select карточки на `alert-info/rounded-lg`, исправлен layout typo `items-center.justify-between` |
+| F8.42 | Унифицировать controls/actions в My Availability self-service | `DONE` | `MyAvailabilityPage` переведен на системные `input/textarea/btn-primary/btn-secondary` для формы заявок, cancel-action и quick-links |
 
 ## 5.5 Фаза E — Multi-tenant и Auth детализация (из source docs)
 
@@ -469,3 +473,4 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `F8.39 = DONE`: secondary badges/cards в communications views выровнены на системный паттерн (`badge`, `rounded-lg`) в `CommunicationsSlaIncidentsPage`, `CommunicationsMessagesPage`, `CommunicationsCalendarPage`.
 - `2026-03-12` — `F8.40 = DONE`: `CandidateCommunicationSection` и quick-controls в `CandidateCard` переведены на системные `brand/btn-secondary/alert-info` паттерны; `StageTag` для ключевых этапов коммуникации выровнен под единый `brand` accent.
 - `2026-03-12` — `F8.41 = DONE`: `ServicesPage` (catalog + new order + order detail) переведен с локальных `rounded border ...` controls на системные `input/textarea/btn-primary/btn-secondary`; выбранные owner-блоки унифицированы через `alert-info`, исправлена опечатка layout-класса.
+- `2026-03-12` — `F8.42 = DONE`: `MyAvailabilityPage` переведен с локальных `rounded border ...` controls/actions на системные `input/textarea/btn-primary/btn-secondary` (форма, cancel-action, quick-links).
