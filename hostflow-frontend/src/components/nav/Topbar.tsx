@@ -27,7 +27,7 @@ import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, ru, pl } from 'date-fns/locale'
 
-type TenantTopbarSummary = TenantSummary & { status?: string | null }
+type TenantTopbarSummary = TenantSummary & { status?: string | null; type?: string | null }
 
 type TopbarProps = {
   me: WhoAmI | null
@@ -114,6 +114,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
   const brandLabel = tenant?.workspace_label?.trim() || tenant?.name || 'HostFlow'
   const tenantLogoUrl = useMemo(() => (tenant?.logo_url ? resolveAssetUrl(tenant.logo_url) : null), [tenant?.logo_url])
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
+  const isEmployerTenant = String(tenant?.type || '').trim().toLowerCase() === 'company'
+  const clientsNavLabel = isEmployerTenant
+    ? t('app.dashboard.terms.companies_plural', { defaultValue: 'Companies' })
+    : t('app.dashboard.terms.clients_plural', { defaultValue: 'Clients' })
 
   const toggleLang = () => {
     const index = SUPPORTED_LOCALES.indexOf(locale)
@@ -902,7 +906,9 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                     }}
                   >
                     <div className="text-xs uppercase text-slate-400">{t('app.topbar.search.quick_section')}</div>
-                    <div className="text-base font-semibold">{t(target.labelKey)}</div>
+                    <div className="text-base font-semibold">
+                      {target.key === 'companies' ? clientsNavLabel : t(target.labelKey)}
+                    </div>
                   </button>
                 ))}
               </div>

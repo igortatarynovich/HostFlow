@@ -627,8 +627,13 @@ Residual risks до финального `PASS`:
 - В `AgencyClientsPage` secondary CTA в empty-state выровнен на `Open clients` (вместо `Open companies`), чтобы не расходиться с названием раздела.
 - Добавлены i18n-термины `app.dashboard.terms.*` для `en/ru/pl` (`clients/company` singular/plural).
 
+Что внедрено (wave-2):
+- `Sidebar`: label раздела `/app/clients` теперь business-aware (`Clients` для `agency/services`, `Companies` для `employer`).
+- `Topbar` quick-search targets: label для `/app/clients` синхронизирован с business-aware термином.
+- `Breadcrumbs`: title и crumb для `/app/clients` синхронизированы с business-aware термином.
+
 Текущий статус:
-- `F6`: `IN_PROGRESS` (закрыт dashboard/entity слой; остается проход по secondary screens и breadcrumb/topbar wording).
+- `F6`: `IN_PROGRESS` (закрыт dashboard + nav/topbar/breadcrumb слой; остается copy-pass по secondary screens/empty-states).
 
 ---
 
@@ -831,3 +836,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — завершен `F5`: добавлен backend-контур retention analytics (`POST /analytics/events`, `GET /analytics/trial-retention`) на базе `activity_log`, а в `Dashboard -> Trial Center` выведен day-level отчет `D1/D2/D3/D7` (impressions/clicks/dismiss/CTR); критерий `#25` переведен в `DONE`.
 - `2026-03-12` — старт `F6` terminology unification wave-1: в `Dashboard` убран конфликт `Clients / Companies`, введены business-aware entity labels (`Client/Company` по типу бизнеса), а в `AgencyClientsPage` empty-state CTA выровнен на `Open clients`; добавлен snapshot `5.6.10`.
 - `2026-03-12` — для `F6` добавлен canonical словарь `docs/ux/business-terminology-map.md` с правилами использования терминов по типам бизнеса (`agency/employer/services`) и wave scope (`wave-1/wave-2`).
+- `2026-03-12` — `F6` wave-2: business-aware термин `Clients/Companies` применен в `Sidebar`, `Topbar` quick targets и `Breadcrumbs` для `/app/clients` (вместо единого статического label).

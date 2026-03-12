@@ -296,6 +296,10 @@ export function Sidebar({ items, tenant, open, onClose, onLogout, pendingHandoff
   }
 
   const tenantLabel = tenant?.workspace_label?.trim() || tenant?.name || 'HostFlow'
+  const isEmployerTenant = String((tenant as { type?: string } | null)?.type || '').trim().toLowerCase() === 'company'
+  const clientsNavLabel = isEmployerTenant
+    ? t('app.dashboard.terms.companies_plural', { defaultValue: 'Companies' })
+    : t('app.dashboard.terms.clients_plural', { defaultValue: 'Clients' })
 
   return (
     <>
@@ -344,7 +348,7 @@ export function Sidebar({ items, tenant, open, onClose, onLogout, pendingHandoff
                   <span className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2">
                       <ItemIcon size={16} stroke={1.8} />
-                      <span>{t(item.labelKey)}</span>
+                      <span>{item.key === 'clients' ? clientsNavLabel : t(item.labelKey)}</span>
                     </span>
                     {item.key === 'do-procesowania' && pendingHandoffsCount > 0 && (
                       <span
@@ -409,7 +413,7 @@ export function Sidebar({ items, tenant, open, onClose, onLogout, pendingHandoff
                               const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
                               return <ItemIcon size={15} stroke={1.8} />
                             })()}
-                            <span>{t(item.labelKey)}</span>
+                            <span>{item.key === 'clients' ? clientsNavLabel : t(item.labelKey)}</span>
                           </span>
                         </NavLink>
                       ))}

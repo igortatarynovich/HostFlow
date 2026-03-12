@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import type { NavItem, NavGroup } from '../../app/routes'
 import { NAV_GROUP_MAP } from '../../app/routes'
 import { useI18n } from '../../i18n'
+import { useTenantInfo } from '../../contexts/TenantInfo'
 
 type BreadcrumbsProps = {
   navItems: NavItem[]
@@ -11,6 +12,11 @@ type BreadcrumbsProps = {
 export function Breadcrumbs({ navItems }: BreadcrumbsProps) {
   const location = useLocation()
   const { t } = useI18n()
+  const tenant = useTenantInfo()
+  const isEmployerTenant = String(tenant?.type || '').trim().toLowerCase() === 'company'
+  const clientsNavLabel = isEmployerTenant
+    ? t('app.dashboard.terms.companies_plural', { defaultValue: 'Companies' })
+    : t('app.dashboard.terms.clients_plural', { defaultValue: 'Clients' })
 
   const data = useMemo(() => {
     const cleanPath = location.pathname.replace(/\/+$/, '') || '/'
@@ -48,7 +54,11 @@ export function Breadcrumbs({ navItems }: BreadcrumbsProps) {
         {t(data.groupLabelKey ?? 'app.nav.groups.overview')}
       </div>
       <div className="mt-1 text-2xl font-semibold text-slate-900">
-        {data.titleKey ? t(data.titleKey) : data.titleLabel ?? t('app.nav.items.overview')}
+        {data.titleKey
+          ? data.titleKey === 'app.nav.items.clients'
+            ? clientsNavLabel
+            : t(data.titleKey)
+          : data.titleLabel ?? t('app.nav.items.overview')}
       </div>
       {data.crumbs.length > 1 && (
         <nav className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
@@ -59,10 +69,20 @@ export function Breadcrumbs({ navItems }: BreadcrumbsProps) {
               <span key={`${crumbKey}-${index}`} className="inline-flex items-center gap-2">
                 {crumb.path && !isLast ? (
                   <Link to={crumb.path} className="transition hover:text-brand-800">
-                    {crumb.labelKey ? t(crumb.labelKey) : crumb.label}
+                    {crumb.labelKey
+                      ? crumb.labelKey === 'app.nav.items.clients'
+                        ? clientsNavLabel
+                        : t(crumb.labelKey)
+                      : crumb.label}
                   </Link>
                 ) : (
-                  <span>{crumb.labelKey ? t(crumb.labelKey) : crumb.label}</span>
+                  <span>
+                    {crumb.labelKey
+                      ? crumb.labelKey === 'app.nav.items.clients'
+                        ? clientsNavLabel
+                        : t(crumb.labelKey)
+                      : crumb.label}
+                  </span>
                 )}
                 {!isLast && <span className="text-slate-300">/</span>}
               </span>
