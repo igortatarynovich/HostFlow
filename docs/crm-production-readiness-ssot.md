@@ -915,3 +915,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — для повторных прогонов добавлен upsert-режим `f7:run-record:upsert` (`--upsert-ssot`): CLI обновляет существующую строку `10.1` по ключу (`scenario/date/env/tenant`) или вставляет новую, затем синхронизирует board и валидирует run-log.
 - `2026-03-12` — добавлен `f7:cli:smoke` (help-smoke для `new/apply/upsert`) и подключен в CI workflow `f7-docs-qa`, чтобы изменения CLI не ломали operational команды `F7`.
 - `2026-03-12` — upsert-поток `f7:run-record:upsert` доработан для повторных запусков: при совпадающем canonical run-record filename CLI обновляет existing evidence файл (overwrite) вместо падения на duplicate.
+- `2026-03-12` — `f7:run-log:check` доработан для стабильного определения “последнего” результата сценария: cross-check board теперь опирается на максимальную дату записи в `10.1` (с fallback по порядку), а не на позицию строки в таблице.

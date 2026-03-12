@@ -58,6 +58,13 @@ function parseRunRecord(content) {
   return row
 }
 
+function parseDateKey(value) {
+  const raw = stripTicks(value)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return -1
+  const normalized = raw.replace(/-/g, '')
+  return Number(normalized)
+}
+
 function main() {
   if (!fs.existsSync(ssotPath)) {
     console.error(`SSOT not found: ${ssotPath}`)
@@ -104,8 +111,11 @@ function main() {
   const seenRunKeys = new Set()
   const allowedResults = new Set(['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'])
   const latestResultByScenario = {}
+  const latestRankByScenario = {}
+  let rowOrder = 0
 
   for (const rowLine of dataRows) {
+    rowOrder += 1
     const row = parseTableLine(rowLine)
     if (!row || row.length !== 7) {
       errors.push(`Malformed row: ${rowLine}`)
@@ -122,7 +132,13 @@ function main() {
       errors.push(`Invalid scenario cell: "${scenario}"`)
     } else {
       seenScenarios.add(scenarioMatch[1])
-      latestResultByScenario[scenarioMatch[1]] = normalizedResult
+      const scenarioCode = scenarioMatch[1]
+      const rank = parseDateKey(date) * 10000 + rowOrder
+      const prevRank = latestRankByScenario[scenarioCode] ?? -1
+      if (rank >= prevRank) {
+        latestRankByScenario[scenarioCode] = rank
+        latestResultByScenario[scenarioCode] = normalizedResult
+      }
     }
     if (!env) errors.push(`Empty environment cell for scenario "${scenario}"`)
     if (!tenant) errors.push(`Empty tenant cell for scenario "${scenario}"`)

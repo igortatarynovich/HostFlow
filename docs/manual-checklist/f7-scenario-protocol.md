@@ -23,7 +23,7 @@
 - Перед финальной фиксацией run-log в SSOT проверять консистентность: `npm run f7:run-log:check`.
 - `f7:run-log:check` валидирует не только таблицу `10.1`, но и соответствие header-полей run-record файлам (`date/scenario/environment/tenant/result`) для linked evidence.
 - `f7:run-log:check` запрещает дубли ключа прогона (`scenario + date + environment + tenant`) в таблице `10.1`.
-- `f7:run-log:check` сверяет статус board (`раздел 10`) с последним результатом сценария в `10.1` (минимум для `PASS/BLOCKED`), чтобы board и run-log не расходились.
+- `f7:run-log:check` сверяет статус board (`раздел 10`) с последним результатом сценария в `10.1` (минимум для `PASS/BLOCKED`), где “последний” определяется по максимальной дате (а не по позиции строки), чтобы перестановка строк не ломала проверку.
 - Для записей с результатом `PASS/FAIL` evidence-файл должен использовать каноническое имя: `f7-run-<scenario>-<date>-<env>-<tenant-slug>.md`.
 
 ## Шаблон записи
