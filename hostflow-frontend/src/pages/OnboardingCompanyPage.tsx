@@ -1,8 +1,13 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { createCompany } from '../api/client'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import {
+  readSignupSuccessContextFromSearch,
+  readSignupSuccessContextFromSessionStorage,
+  SIGNUP_SUCCESS_CONTEXT_KEY,
+} from '../constants/signupContext'
 
 type CompanyType = 'agency' | 'employer' | 'services'
 
@@ -14,15 +19,27 @@ export default function OnboardingCompanyPage() {
   const [companyType, setCompanyType] = useState<CompanyType>('agency')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const signupSuccess = searchParams.get('signup') === 'success'
-  const welcomeEmailStatus = (searchParams.get('welcome_email') || '').trim().toLowerCase()
-  const trialEndsAt = searchParams.get('trial_ends_at')
+  const signupContext = useMemo(
+    () => readSignupSuccessContextFromSearch(searchParams) ?? readSignupSuccessContextFromSessionStorage(),
+    [searchParams],
+  )
+  const signupSuccess = signupContext?.signup === 'success'
+  const welcomeEmailStatus = signupContext?.welcome_email || ''
+  const trialEndsAt = signupContext?.trial_ends_at || null
   const trialEndsText = useMemo(() => {
     if (!trialEndsAt) return null
     const dt = new Date(trialEndsAt)
     if (Number.isNaN(dt.getTime())) return null
     return dt.toLocaleDateString()
   }, [trialEndsAt])
+  useEffect(() => {
+    if (!signupSuccess || typeof window === 'undefined') return
+    try {
+      window.sessionStorage.removeItem(SIGNUP_SUCCESS_CONTEXT_KEY)
+    } catch {
+      // ignore storage errors
+    }
+  }, [signupSuccess])
   const typeCards: Array<{
     value: CompanyType
     label: string

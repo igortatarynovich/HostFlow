@@ -6,6 +6,11 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { registerSelfService } from '../api/users'
 import { useAuth } from '../store/useAuth'
 import { useSeoMeta } from '../hooks/useSeoMeta'
+import {
+  buildSignupSuccessContext,
+  SIGNUP_SUCCESS_CONTEXT_KEY,
+  signupContextToSearchParams,
+} from '../constants/signupContext'
 
 export default function SignupPage() {
   const { t } = useI18n()
@@ -65,15 +70,28 @@ export default function SignupPage() {
         accept_terms: acceptTerms,
         accept_privacy: acceptPrivacy,
       })
-      await login(email.trim(), password)
-      const params = new URLSearchParams()
-      params.set('signup', 'success')
-      params.set('welcome_email', registration.meta?.welcome_email_sent === false ? 'not_sent' : 'sent')
-      if (registration.tenant?.trial_ends_at) {
-        params.set('trial_ends_at', registration.tenant.trial_ends_at)
+      const signupContext = buildSignupSuccessContext(
+        registration.meta?.welcome_email_sent !== false,
+        registration.tenant?.trial_ends_at || null,
+      )
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.setItem(SIGNUP_SUCCESS_CONTEXT_KEY, JSON.stringify(signupContext))
+        } catch {
+          // ignore storage errors
+        }
       }
+      await login(email.trim(), password)
+      const params = signupContextToSearchParams(signupContext)
       navigate(`/app/onboarding/company?${params.toString()}`, { replace: true })
     } catch (err: any) {
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.removeItem(SIGNUP_SUCCESS_CONTEXT_KEY)
+        } catch {
+          // ignore storage errors
+        }
+      }
       setError(err?.response?.data?.detail || err?.message || t('app.signup.errors.generic', { defaultValue: 'Registration failed' }))
     } finally {
       setLoading(false)
