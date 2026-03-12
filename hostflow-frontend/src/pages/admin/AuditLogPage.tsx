@@ -57,14 +57,14 @@ export default function AuditLogPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            className={`px-3 py-1 rounded text-sm ${tab === 'audit' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            className={tab === 'audit' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
             onClick={() => setTab('audit')}
           >
             {t('admin.settings.audit.tabs.audit', { defaultValue: 'Аудит-лог' })}
           </button>
           <button
             type="button"
-            className={`px-3 py-1 rounded text-sm ${tab === 'deletion' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            className={tab === 'deletion' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
             onClick={() => setTab('deletion')}
           >
             {t('admin.settings.audit.tabs.deletion', { defaultValue: 'Очередь удаления' })}
@@ -81,14 +81,14 @@ export default function AuditLogPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            className={`px-3 py-1 rounded text-sm ${tab === 'audit' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            className={tab === 'audit' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
             onClick={() => setTab('audit')}
           >
             {t('admin.settings.audit.tabs.audit', { defaultValue: 'Аудит-лог' })}
           </button>
           <button
             type="button"
-            className={`px-3 py-1 rounded text-sm ${tab === 'deletion' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            className={tab === 'deletion' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
             onClick={() => setTab('deletion')}
           >
             {t('admin.settings.audit.tabs.deletion', { defaultValue: 'Очередь удаления' })}
@@ -96,7 +96,7 @@ export default function AuditLogPage() {
         </div>
         <button
           type="button"
-          className="btn-ghost btn-sm"
+          className="btn-secondary btn-sm"
           onClick={handleRefresh}
           disabled={loading}
         >
@@ -232,7 +232,7 @@ export default function AuditLogPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                className="btn-ghost btn-sm"
+                className="btn-secondary btn-sm"
                 disabled={offset === 0 || loading}
                 onClick={() => setOffset((o) => Math.max(0, o - limit))}
               >
@@ -240,7 +240,7 @@ export default function AuditLogPage() {
               </button>
               <button
                 type="button"
-                className="btn-ghost btn-sm"
+                className="btn-secondary btn-sm"
                 disabled={offset + limit >= total || loading}
                 onClick={() => setOffset((o) => o + limit)}
               >
