@@ -62,7 +62,7 @@ const SCENARIO_META = {
 function usage(code = 0) {
   const text = [
     'Usage:',
-    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row] [--append-ssot] [--no-validate]',
+    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row] [--append-ssot] [--sync-board-status] [--no-validate]',
     '',
     'Example:',
     '  node scripts/create-f7-run-record.mjs --scenario b --env staging --tenant demo-agency --owner "Product/QA" --dry-run',
@@ -82,6 +82,7 @@ function parseArgs(argv) {
     dryRun: false,
     printSsotRow: false,
     appendSsot: false,
+    syncBoardStatus: false,
     validate: true,
   }
   for (let i = 0; i < argv.length; i += 1) {
@@ -95,6 +96,7 @@ function parseArgs(argv) {
     else if (arg === '--dry-run') out.dryRun = true
     else if (arg === '--print-ssot-row') out.printSsotRow = true
     else if (arg === '--append-ssot') out.appendSsot = true
+    else if (arg === '--sync-board-status') out.syncBoardStatus = true
     else if (arg === '--no-validate') out.validate = false
     else if (arg === '--help' || arg === '-h') usage(0)
     else usage(1)
@@ -185,6 +187,38 @@ function appendRowToSsot(row, { scenario, env, tenant, date }) {
   fs.writeFileSync(ssotPath, next, 'utf-8')
 }
 
+function mapRunResultToBoardStatus(result) {
+  if (result === 'PASS') return 'PASS'
+  if (result === 'BLOCKED') return 'BLOCKED'
+  if (result === 'IN_PROGRESS') return 'IN_PROGRESS'
+  // FAIL in run-log means scenario is not done yet; keep board as in-progress.
+  return 'IN_PROGRESS'
+}
+
+function syncBoardStatusInSsot({ scenario, result }) {
+  if (!fs.existsSync(ssotPath)) {
+    throw new Error(`SSOT not found: ${ssotPath}`)
+  }
+  const text = fs.readFileSync(ssotPath, 'utf-8')
+  const boardHeader = '## 10. F7 Scenario Execution Board (A/B/C)'
+  const nextHeader = '### 10.1 Журнал прогонов (операционный)'
+  const startIdx = text.indexOf(boardHeader)
+  const endIdx = text.indexOf(nextHeader)
+  if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) {
+    throw new Error('Could not locate board table section in SSOT')
+  }
+  const section = text.slice(startIdx, endIdx)
+  const scenarioLabel = SCENARIO_META[scenario].label
+  const boardStatus = mapRunResultToBoardStatus(result)
+  const pattern = new RegExp(`(\\|\\s*${scenarioLabel}\\s*[—-][^|]*\\|\\s*)\\\`[^\\\`]+\\\``)
+  if (!pattern.test(section)) {
+    throw new Error(`Could not locate board row for scenario ${scenarioLabel}`)
+  }
+  const updatedSection = section.replace(pattern, `$1\`${boardStatus}\``)
+  const next = `${text.slice(0, startIdx)}${updatedSection}${text.slice(endIdx)}`
+  fs.writeFileSync(ssotPath, next, 'utf-8')
+}
+
 function validateF7RunLog() {
   const validatorPath = path.join(repoRoot, 'scripts', 'check-f7-run-log.mjs')
   const res = spawnSync(process.execPath, [validatorPath], {
@@ -203,6 +237,7 @@ function main() {
   if (!args.tenant || !args.owner) usage(1)
   if (args.result && !['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'].includes(args.result)) usage(1)
   if (args.dryRun && args.appendSsot) usage(1)
+  if (args.dryRun && args.syncBoardStatus) usage(1)
 
   const date = args.date || todayUtc()
   const scenario = args.scenario
@@ -256,10 +291,14 @@ function main() {
   if (args.appendSsot) {
     appendRowToSsot(row, { scenario, env, tenant: args.tenant, date })
     console.log('SSOT 10.1 row appended.')
-    if (args.validate) {
-      validateF7RunLog()
-      console.log('F7 run-log validation passed.')
-    }
+  }
+  if (args.syncBoardStatus) {
+    syncBoardStatusInSsot({ scenario, result: args.result || 'IN_PROGRESS' })
+    console.log('SSOT board status synced.')
+  }
+  if ((args.appendSsot || args.syncBoardStatus) && args.validate) {
+    validateF7RunLog()
+    console.log('F7 run-log validation passed.')
   }
   if (args.printSsotRow) {
     console.log('SSOT 10.1 row:')
