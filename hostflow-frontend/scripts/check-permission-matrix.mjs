@@ -107,10 +107,15 @@ function parseAppRoutes(sf) {
   return routes
 }
 
-function resolveRole(raw, aliases, rolePermissions) {
+function resolveRole(raw, aliases, rolePermissions, tenantType = 'agency') {
   const norm = String(raw || '').trim().toLowerCase()
   const alias = aliases[norm] || norm || 'viewer'
-  if (rolePermissions[alias]) return alias
+  let effective = alias
+  // Mirror usePermissions: recruiter in client-tenant context behaves like client_processor.
+  if (tenantType === 'company' && effective === 'recruiter') {
+    effective = 'client_processor'
+  }
+  if (rolePermissions[effective]) return effective
   return 'viewer'
 }
 
@@ -149,7 +154,7 @@ const testRoles = [
   { label: 'viewer', rawRole: 'viewer' },
 ]
 
-const EXPECTED_BASELINE = {
+const EXPECTED_BASELINE_DEFAULT = {
   overview: {
     superadmin: 'ALLOW',
     'owner/admin': 'ALLOW',
@@ -229,37 +234,54 @@ if (missing.length) {
   process.exit(1)
 }
 
-const headers = ['Route', ...testRoles.map((r) => r.label)]
-const table = []
-const mismatches = []
-for (const key of targetRouteKeys) {
-  const route = routesByKey.get(key)
-  const row = [`${route.path}${route.permissions.length ? ` [${route.permissions.join('|')}]` : ''}`]
-  const expected = EXPECTED_BASELINE[key]
-  for (const role of testRoles) {
-    const resolvedRole = resolveRole(role.rawRole, roleAliases, rolePermissions)
-    const actual = canAccess(resolvedRole, route.permissions, rolePermissions) ? 'ALLOW' : 'DENY'
-    row.push(actual)
-    if (!expected || expected[role.label] !== actual) {
-      mismatches.push(
-        `[${key}] role "${role.label}" expected=${expected?.[role.label] ?? 'N/A'} actual=${actual}`,
-      )
-    }
-  }
-  table.push(row)
+const EXPECTED_BASELINE_CLIENT_TENANT = {
+  ...EXPECTED_BASELINE_DEFAULT,
+  leads: { ...EXPECTED_BASELINE_DEFAULT.leads, recruiter: 'DENY' },
+  services: { ...EXPECTED_BASELINE_DEFAULT.services, recruiter: 'DENY' },
 }
 
-console.log('Permission role matrix baseline:')
-console.log(`| ${headers.join(' | ')} |`)
-console.log(`| ${headers.map(() => '---').join(' | ')} |`)
-for (const row of table) {
-  console.log(`| ${row.join(' | ')} |`)
+function runMatrix({ label, tenantType, expectedBaseline }) {
+  const headers = ['Route', ...testRoles.map((r) => r.label)]
+  const table = []
+  const mismatches = []
+  for (const key of targetRouteKeys) {
+    const route = routesByKey.get(key)
+    const row = [`${route.path}${route.permissions.length ? ` [${route.permissions.join('|')}]` : ''}`]
+    const expected = expectedBaseline[key]
+    for (const role of testRoles) {
+      const resolvedRole = resolveRole(role.rawRole, roleAliases, rolePermissions, tenantType)
+      const actual = canAccess(resolvedRole, route.permissions, rolePermissions) ? 'ALLOW' : 'DENY'
+      row.push(actual)
+      if (!expected || expected[role.label] !== actual) {
+        mismatches.push(
+          `[${label}] [${key}] role "${role.label}" expected=${expected?.[role.label] ?? 'N/A'} actual=${actual}`,
+        )
+      }
+    }
+    table.push(row)
+  }
+
+  console.log(`Permission role matrix baseline (${label}):`)
+  console.log(`| ${headers.join(' | ')} |`)
+  console.log(`| ${headers.map(() => '---').join(' | ')} |`)
+  for (const row of table) {
+    console.log(`| ${row.join(' | ')} |`)
+  }
+  console.log('')
+  return mismatches
 }
+
+const mismatches = [
+  ...runMatrix({ label: 'default-tenant', tenantType: 'agency', expectedBaseline: EXPECTED_BASELINE_DEFAULT }),
+  ...runMatrix({ label: 'client-tenant', tenantType: 'company', expectedBaseline: EXPECTED_BASELINE_CLIENT_TENANT }),
+]
 
 if (mismatches.length) {
-  console.error('\nPermission matrix baseline mismatch:')
+  console.error('Permission matrix baseline mismatch:')
   mismatches.forEach((line) => console.error(`- ${line}`))
   process.exit(1)
 }
 
-console.log(`\nPermission matrix check passed. Roles: ${testRoles.length}, routes: ${targetRouteKeys.length}.`)
+console.log(
+  `Permission matrix check passed. Contexts: 2, roles: ${testRoles.length}, routes: ${targetRouteKeys.length}.`,
+)
