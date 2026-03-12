@@ -14,10 +14,35 @@ function parseLinkTarget(text) {
   return match ? match[1] : null
 }
 
+function stripTicks(value) {
+  return String(value || '').replace(/`/g, '').trim()
+}
+
+function normalizeSoft(value) {
+  return stripTicks(value).toLowerCase()
+}
+
 function parseTableLine(line) {
   const parts = line.split('|').map((p) => p.trim())
   if (parts.length < 9) return null
   return parts.slice(1, 8)
+}
+
+function parseRunRecord(content) {
+  const row = {}
+  for (const line of content.split('\n')) {
+    const m = line.match(/^([A-Za-z ]+):\s*`([^`]+)`/)
+    if (!m) continue
+    const key = m[1].trim().toLowerCase()
+    const value = m[2].trim()
+    if (key === 'date') row.date = value
+    if (key === 'scenario') row.scenario = value
+    if (key === 'business type') row.businessType = value
+    if (key === 'environment') row.environment = value
+    if (key === 'tenant') row.tenant = value
+    if (key === 'result') row.result = value
+  }
+  return row
 }
 
 function main() {
@@ -78,7 +103,7 @@ function main() {
     if (!env) errors.push(`Empty environment cell for scenario "${scenario}"`)
     if (!tenant) errors.push(`Empty tenant cell for scenario "${scenario}"`)
 
-    const normalizedResult = result.replace(/`/g, '').trim()
+    const normalizedResult = stripTicks(result)
     if (!allowedResults.has(normalizedResult)) {
       errors.push(`Invalid result "${result}" for scenario "${scenario}"`)
     }
@@ -94,6 +119,31 @@ function main() {
       const abs = linkTarget.startsWith('/') ? linkTarget : path.resolve(repoRoot, linkTarget)
       if (!fs.existsSync(abs)) {
         errors.push(`Evidence link target does not exist for "${scenario}": ${abs}`)
+      } else {
+        const base = path.basename(abs)
+        if (/^f7-run-[abc]-\d{4}-\d{2}-\d{2}-.+\.md$/i.test(base)) {
+          const rec = parseRunRecord(fs.readFileSync(abs, 'utf-8'))
+          const scenarioCode = scenarioMatch ? scenarioMatch[1] : null
+          if (!rec.date || !rec.scenario || !rec.environment || !rec.tenant || !rec.result) {
+            errors.push(`Run-record has missing header fields: ${abs}`)
+          } else {
+            if (normalizeSoft(rec.date) !== normalizeSoft(date)) {
+              errors.push(`Run-record date mismatch for ${scenario}: row=${stripTicks(date)} file=${rec.date}`)
+            }
+            if (normalizeSoft(rec.scenario) !== normalizeSoft(scenarioCode || '')) {
+              errors.push(`Run-record scenario mismatch for ${scenario}: row=${scenarioCode} file=${rec.scenario}`)
+            }
+            if (normalizeSoft(rec.environment) !== normalizeSoft(env)) {
+              errors.push(`Run-record environment mismatch for ${scenario}: row=${stripTicks(env)} file=${rec.environment}`)
+            }
+            if (normalizeSoft(rec.tenant) !== normalizeSoft(tenant)) {
+              errors.push(`Run-record tenant mismatch for ${scenario}: row=${stripTicks(tenant)} file=${rec.tenant}`)
+            }
+            if (normalizeSoft(rec.result) !== normalizeSoft(result)) {
+              errors.push(`Run-record result mismatch for ${scenario}: row=${stripTicks(result)} file=${rec.result}`)
+            }
+          }
+        }
       }
     } else if (normalizedResult === 'PASS' || normalizedResult === 'FAIL') {
       errors.push(`Result ${normalizedResult} requires explicit evidence link for "${scenario}"`)

@@ -903,3 +903,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — для `F7` добавлен CLI-генератор run-record (`scripts/create-f7-run-record.mjs`, `npm run f7:run-record:new -- ...`), чтобы стандартизировать имя/структуру evidence-файлов и ускорить обновление `10.1`.
 - `2026-03-12` — для `F7` добавлен `run-log` консистент-чек (`scripts/check-f7-run-log.mjs`, `npm run f7:run-log:check`): валидирует структуру таблицы `10.1`, корректность статусов (`PASS/FAIL/BLOCKED/IN_PROGRESS`), покрытие сценариев `A/B/C` и существование evidence links.
 - `2026-03-12` — `F7` checks вынесены в CI: добавлен workflow `.github/workflows/f7-docs-qa.yml`, который на изменениях SSOT/checklist/scripts запускает `f7:run-log:check` и smoke dry-run `f7:run-record:new`.
+- `2026-03-12` — `F7 run-log` validator усилен: при linked evidence теперь сверяет поля run-record (`date/scenario/environment/tenant/result`) с соответствующей строкой `10.1`, чтобы исключить расхождение таблицы и evidence-файла.
