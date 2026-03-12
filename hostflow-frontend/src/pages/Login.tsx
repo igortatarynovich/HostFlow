@@ -59,6 +59,8 @@ export default function Login(){
         setError(t('app.login.errors.expired'))
       } else if (notice === 'invite_accepted') {
         setNotice(t('app.login.notices.invite_accepted', { defaultValue: 'Invitation accepted. Sign in to continue.' }))
+      } else if (notice === 'password_reset_success') {
+        setNotice(t('app.login.notices.password_reset_success', { defaultValue: 'Password updated. Sign in with your new password.' }))
       }
       if (notice) {
         window.sessionStorage.removeItem(LOGIN_NOTICE_STORAGE_KEY)
