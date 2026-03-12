@@ -251,6 +251,12 @@ function main() {
             if (normalizeSoft(rec.scenario) !== normalizeSoft(scenarioCode || '')) {
               errors.push(`Run-record scenario mismatch for ${scenario}: row=${scenarioCode} file=${rec.scenario}`)
             }
+            const expectedBusinessType = expectedBusinessTypeByScenario[scenarioCode || '']
+            if (expectedBusinessType && normalizeSoft(rec.businessType || '') !== normalizeSoft(expectedBusinessType)) {
+              errors.push(
+                `Run-record business-type mismatch for ${scenario}: expected=${expectedBusinessType} file=${rec.businessType || '<empty>'}`,
+              )
+            }
             if (normalizeSoft(rec.environment) !== normalizeSoft(env)) {
               errors.push(`Run-record environment mismatch for ${scenario}: row=${stripTicks(env)} file=${rec.environment}`)
             }
