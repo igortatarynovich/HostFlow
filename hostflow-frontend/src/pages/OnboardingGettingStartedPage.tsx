@@ -111,6 +111,20 @@ export default function OnboardingGettingStartedPage() {
   const doneCount = steps.filter((step) => step.done).length
   const totalCount = steps.length
   const completed = doneCount >= totalCount
+  const stepVisuals = [
+    {
+      pendingIcon: IconUsers,
+      bgClass: 'bg-blue-50 text-blue-700',
+    },
+    {
+      pendingIcon: IconUserPlus,
+      bgClass: 'bg-emerald-50 text-emerald-700',
+    },
+    {
+      pendingIcon: IconChecklist,
+      bgClass: 'bg-amber-50 text-amber-700',
+    },
+  ] as const
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
@@ -136,53 +150,43 @@ export default function OnboardingGettingStartedPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <article className={`rounded-xl border bg-white p-5 shadow-sm ${steps[0].done ? 'border-emerald-200' : 'border-slate-200'}`}>
-          <div className="inline-flex rounded-lg bg-blue-50 p-2 text-blue-700">
-            {steps[0].done ? <IconCheck size={18} stroke={2} className="text-emerald-700" /> : <IconUsers size={18} stroke={1.9} />}
-          </div>
-          <h2 className="mt-3 text-base font-semibold text-slate-900">
-            {steps[0].title}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {steps[0].desc}
-          </p>
-          <Link to={steps[0].href} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-            {steps[0].openLabel}
-            <IconArrowRight size={14} stroke={1.9} />
-          </Link>
-        </article>
-
-        <article className={`rounded-xl border bg-white p-5 shadow-sm ${steps[1].done ? 'border-emerald-200' : 'border-slate-200'}`}>
-          <div className="inline-flex rounded-lg bg-emerald-50 p-2 text-emerald-700">
-            {steps[1].done ? <IconCheck size={18} stroke={2} className="text-emerald-700" /> : <IconUserPlus size={18} stroke={1.9} />}
-          </div>
-          <h2 className="mt-3 text-base font-semibold text-slate-900">
-            {steps[1].title}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {steps[1].desc}
-          </p>
-          <Link to={steps[1].href} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-            {steps[1].openLabel}
-            <IconArrowRight size={14} stroke={1.9} />
-          </Link>
-        </article>
-
-        <article className={`rounded-xl border bg-white p-5 shadow-sm ${steps[2].done ? 'border-emerald-200' : 'border-slate-200'}`}>
-          <div className="inline-flex rounded-lg bg-amber-50 p-2 text-amber-700">
-            {steps[2].done ? <IconCheck size={18} stroke={2} className="text-emerald-700" /> : <IconChecklist size={18} stroke={1.9} />}
-          </div>
-          <h2 className="mt-3 text-base font-semibold text-slate-900">
-            {steps[2].title}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {steps[2].desc}
-          </p>
-          <Link to={steps[2].href} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-            {steps[2].openLabel}
-            <IconArrowRight size={14} stroke={1.9} />
-          </Link>
-        </article>
+        {steps.map((step, idx) => {
+          const visual = stepVisuals[idx] ?? stepVisuals[0]
+          const PendingIcon = visual.pendingIcon
+          return (
+            <article
+              key={step.key}
+              className={`cursor-pointer rounded-xl border bg-white p-5 shadow-sm transition hover:border-brand-300 ${step.done ? 'border-emerald-200' : 'border-slate-200'}`}
+              role="link"
+              tabIndex={0}
+              onClick={() => navigate(step.href)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  navigate(step.href)
+                }
+              }}
+            >
+              <div className={`inline-flex rounded-lg p-2 ${visual.bgClass}`}>
+                {step.done ? <IconCheck size={18} stroke={2} className="text-emerald-700" /> : <PendingIcon size={18} stroke={1.9} />}
+              </div>
+              <h2 className="mt-3 text-base font-semibold text-slate-900">
+                {step.title}
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                {step.desc}
+              </p>
+              <Link
+                to={step.href}
+                className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
+                onClick={(event) => event.stopPropagation()}
+              >
+                {step.openLabel}
+                <IconArrowRight size={14} stroke={1.9} />
+              </Link>
+            </article>
+          )
+        })}
       </section>
 
       <div className="flex justify-end">
