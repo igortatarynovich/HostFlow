@@ -396,7 +396,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F9.3 | Проверить и обновить `robots.txt` + `sitemap.xml` (включая auto-generation) | `DONE` | Поисковые боты получают актуальные правила и полный sitemap без битых URL |
 | F9.4 | Добавить schema.org (`Organization`, `SoftwareApplication`, `FAQ/Article` где уместно) | `DONE` | Structured data проходит валидацию без критичных ошибок |
 | F9.5 | Техпроверка индексации и crawlability (`noindex`, redirects, 404/soft-404) | `DONE` | Нет критичных indexability проблем на приоритетных страницах |
-| F9.6 | Базовый CWV-pass публичных страниц (LCP/CLS/INP) | `IN_PROGRESS` | По приоритетным URL нет блокирующих деградаций производительности |
+| F9.6 | Базовый CWV-pass публичных страниц (LCP/CLS/INP) | `DONE` | По приоритетным URL нет блокирующих деградаций производительности |
 
 ### 5.6.1.1 `F9.1` SEO URL Inventory (baseline, `2026-03-12`)
 
@@ -440,6 +440,9 @@ Residual risk:
 | Hero media hint | `/public/portal` hero image переведен на `loading="eager"` + `fetchPriority="high"` | улучшен приоритет вероятного LCP media |
 | Public route code-splitting | `public apply/scan/status/intake-new` и `client-portal` переведены на lazy chunks | в build появились отдельные чанки (`~4–109KB`), основной `index` bundle снижен до `~5.23MB` |
 | Render deferral below-the-fold | в `CRM landing` и `Public portal` секциях ниже hero включен `content-visibility:auto` (`.cv-auto`) | уменьшена начальная render cost для длинных маркетинговых страниц |
+
+Residual risk:
+- Требуется регулярный lab/field мониторинг (`Lighthouse`/RUM) после релизов, чтобы ловить регрессии CWV при росте контента и JS-чанков.
 
 ### 5.6.2 Декомпозиция `F10` (SEO content rollout)
 
@@ -720,6 +723,7 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — расширен `F9.6`: включен lazy route code-splitting для тяжелых public flows (`/public/apply*`, `/public/status/:token`, `/public/scan`, `/client-portal`), что вынесло их в отдельные чанки (`~4–109KB`) и снизило основной `index` bundle до `~5.23MB` (по build snapshot).
 - `2026-03-12` — расширен `F9.6`: для секций ниже первого экрана в `CRM landing` и `Public portal` включен render deferral (`content-visibility:auto`, utility `.cv-auto`) для снижения initial render cost.
 - `2026-03-12` — `F9.3 = DONE`: добавлена автогенерация sitemap (`scripts/generate-sitemap.mjs`) и подключение в `prebuild`, что гарантирует актуальный `public/sitemap.xml` на каждом production build.
+- `2026-03-12` — `F9.6 = DONE`: завершен baseline CWV pass (font/network hints, LCP media priority, lazy route splitting, below-the-fold render deferral) с фиксацией static snapshot и residual monitoring риска.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.
