@@ -17,13 +17,17 @@ import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 export default function ClientLinkDetailPage() {
   const { linkId } = useParams<{ linkId: string }>()
   const { t } = useI18n()
-  const { isEmployerTenant } = useBusinessTerminology()
+  const { isEmployerTenant, entitySingular } = useBusinessTerminology()
   const { me } = useAuth()
   const { notify } = useToast()
   const tenantId = (me as { tenant_id?: string })?.tenant_id ?? ''
   const backToListLabel = isEmployerTenant
     ? t('app.companies.actions.back_to_list', { defaultValue: 'Back to companies' })
     : t('app.clients.back_to_list', { defaultValue: 'Back to clients' })
+  const notFoundTitle = t('app.clients.not_found_dynamic', {
+    defaultValue: '{entity} not found',
+    values: { entity: entitySingular },
+  })
 
   const [link, setLink] = useState<TenantLink | null>(null)
   const [loading, setLoading] = useState(true)
@@ -151,7 +155,7 @@ export default function ClientLinkDetailPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <ErrorRecoveryBanner
             info={{
-              title: t('app.clients.not_found', { defaultValue: 'Клиент не найден' }),
+              title: notFoundTitle,
               hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
             }}
             onRetry={() => void load()}
