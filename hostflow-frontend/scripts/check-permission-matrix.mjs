@@ -240,6 +240,54 @@ const EXPECTED_BASELINE_CLIENT_TENANT = {
   services: { ...EXPECTED_BASELINE_DEFAULT.services, recruiter: 'DENY' },
 }
 
+function parseArgs(argv) {
+  const out = { reportFile: null }
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i]
+    if (arg === '--report-file') {
+      out.reportFile = argv[i + 1] || null
+      i += 1
+    }
+  }
+  return out
+}
+
+function toMarkdownTable(headers, rows) {
+  const lines = []
+  lines.push(`| ${headers.join(' | ')} |`)
+  lines.push(`| ${headers.map(() => '---').join(' | ')} |`)
+  for (const row of rows) {
+    lines.push(`| ${row.join(' | ')} |`)
+  }
+  return lines.join('\n')
+}
+
+function writeMarkdownReport(reportFile, results) {
+  if (!reportFile) return
+  const now = new Date().toISOString().slice(0, 10)
+  const body = [
+    '# F3 Permission Matrix Static Snapshot',
+    '',
+    `Date: \`${now}\``,
+    'Source: `npm --prefix hostflow-frontend run permissions:report`',
+    '',
+    'Этот файл сгенерирован автоматически из `scripts/check-permission-matrix.mjs`.',
+    '',
+    ...results.flatMap((result) => [
+      `## ${result.label}`,
+      '',
+      toMarkdownTable(result.headers, result.table),
+      '',
+      `Mismatches: \`${result.mismatches.length}\``,
+      '',
+    ]),
+  ].join('\n')
+  const absPath = path.resolve(process.cwd(), reportFile)
+  fs.mkdirSync(path.dirname(absPath), { recursive: true })
+  fs.writeFileSync(absPath, `${body}\n`, 'utf-8')
+  console.log(`Permission matrix report written to ${absPath}`)
+}
+
 function runMatrix({ label, tenantType, expectedBaseline }) {
   const headers = ['Route', ...testRoles.map((r) => r.label)]
   const table = []
@@ -268,13 +316,17 @@ function runMatrix({ label, tenantType, expectedBaseline }) {
     console.log(`| ${row.join(' | ')} |`)
   }
   console.log('')
-  return mismatches
+  return { label, headers, table, mismatches }
 }
 
-const mismatches = [
-  ...runMatrix({ label: 'default-tenant', tenantType: 'agency', expectedBaseline: EXPECTED_BASELINE_DEFAULT }),
-  ...runMatrix({ label: 'client-tenant', tenantType: 'company', expectedBaseline: EXPECTED_BASELINE_CLIENT_TENANT }),
+const args = parseArgs(process.argv.slice(2))
+const results = [
+  runMatrix({ label: 'default-tenant', tenantType: 'agency', expectedBaseline: EXPECTED_BASELINE_DEFAULT }),
+  runMatrix({ label: 'client-tenant', tenantType: 'company', expectedBaseline: EXPECTED_BASELINE_CLIENT_TENANT }),
 ]
+const mismatches = results.flatMap((result) => result.mismatches)
+
+writeMarkdownReport(args.reportFile, results)
 
 if (mismatches.length) {
   console.error('Permission matrix baseline mismatch:')

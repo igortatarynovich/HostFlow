@@ -707,14 +707,13 @@ Residual risks до финального `PASS`:
 Оставшиеся действия:
 - Провести формальный role-by-role прогон по всем nav/route/module combinations.
 - Зафиксировать таблицу PASS/FAIL по ролям в этом разделе.
-- Автоматизировать базовый контроль `NAV_ITEMS <-> APP_ROUTES` (path + permission overlap) как регулярный статический чек.
-- Автоматизировать baseline role-matrix check (`superadmin/administrator/supervisor/recruiter/viewer` x core routes) как регулярный статический чек.
 
 ### 9.4 Role-by-Role Run Log
 
 | Дата | Окружение | Tenant | Матрица | Результат | Owner |
 |---|---|---|---|---|---|
 | `2026-03-12` | staging | `N/A` (static audit) | [f3-permission-role-matrix.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix.md) | `IN_PROGRESS` (`routes:check = PASS`, ручной role-by-role run pending) | Product/QA |
+| `2026-03-12` | staging | `default + client` (static baseline) | [f3-permission-role-matrix-static.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix-static.md) | `PASS` (`permissions:report` snapshot, mismatches=`0` в обоих контекстах) | Product/QA |
 
 ## 10. F7 Scenario Execution Board (A/B/C)
 
@@ -893,3 +892,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — static QA gate вынесен в CI: добавлен workflow `.github/workflows/frontend-static-qa.yml`, который на `push/pull_request` для `hostflow-frontend/**` запускает `npm run qa:static` (route/permission/i18n/build checks).
 - `2026-03-12` — `permissions:check` усилен до baseline-assert: скрипт сравнивает фактический `ALLOW/DENY` по ролям и core routes с ожидаемой матрицей и падает при расхождении (защита от permission-regрессий в CI).
 - `2026-03-12` — `permissions:check` расширен вторым контекстом (`client-tenant`): baseline теперь валидирует доступы в `default` и `tenant.type=company` режимах, включая alias-логику `recruiter -> client_processor`, и падает при расхождении.
+- `2026-03-12` — для `F3` добавлен автоматический статический evidence-snapshot: `permissions:report` генерирует [f3-permission-role-matrix-static.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix-static.md) с таблицами `default/client-tenant` и фиксирует `mismatches=0` для текущего baseline.

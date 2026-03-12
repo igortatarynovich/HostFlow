@@ -1,6 +1,7 @@
 # F3 Permission Role Matrix (Role-by-Role)
 
 Source of truth: `docs/crm-production-readiness-ssot.md` section `9`.
+Static snapshot: [f3-permission-role-matrix-static.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix-static.md)
 
 Date: `YYYY-MM-DD`  
 Environment: `staging | production`  

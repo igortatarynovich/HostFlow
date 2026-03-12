@@ -12,6 +12,7 @@
     "i18n:check": "node scripts/check-i18n.mjs",
     "routes:check": "node scripts/check-route-permissions.mjs",
     "permissions:check": "node scripts/check-permission-matrix.mjs",
+    "permissions:report": "node scripts/check-permission-matrix.mjs --report-file ../docs/manual-checklist/f3-permission-role-matrix-static.md",
     "qa:static": "npm run routes:check && npm run permissions:check && npm run i18n:check && npm run build",
     "generate:sitemap": "node scripts/generate-sitemap.mjs"
   },
