@@ -1,0 +1,38 @@
+name: f7-docs-qa
+
+on:
+  push:
+    paths:
+      - "docs/crm-production-readiness-ssot.md"
+      - "docs/manual-checklist/**"
+      - "scripts/check-f7-run-log.mjs"
+      - "scripts/create-f7-run-record.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/f7-docs-qa.yml"
+  pull_request:
+    paths:
+      - "docs/crm-production-readiness-ssot.md"
+      - "docs/manual-checklist/**"
+      - "scripts/check-f7-run-log.mjs"
+      - "scripts/create-f7-run-record.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/f7-docs-qa.yml"
+
+jobs:
+  f7-run-log:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Validate F7 run-log
+        run: npm run f7:run-log:check
+      - name: Smoke CLI run-record generator
+        run: npm run f7:run-record:new -- --scenario b --env staging --tenant ci-smoke --owner "CI" --dry-run
