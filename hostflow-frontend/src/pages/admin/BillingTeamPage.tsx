@@ -280,7 +280,7 @@ export function TeamManagementPanel({
             {tenantLabel && <div className="text-xs text-slate-500">{tenantLabel}</div>}
           </div>
           {license?.plan && (
-            <span className="rounded-md bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+            <span className="badge">
               {license.plan}
             </span>
           )}
@@ -363,7 +363,7 @@ export function TeamManagementPanel({
           </div>
           <button
             type="button"
-            className="btn-ghost text-xs"
+            className="btn-secondary btn-xs"
             onClick={() => void loadSeatRequests()}
             disabled={seatLoading}
           >
@@ -417,7 +417,7 @@ export function TeamManagementPanel({
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('app.settings.team.form.message')}
               <textarea
-                className="input mt-1 min-h-[90px]"
+                className="textarea mt-1 min-h-[90px]"
                 value={seatForm.message}
                 onChange={(event) => handleSeatFormChange('message', event.target.value)}
               />
@@ -425,7 +425,7 @@ export function TeamManagementPanel({
             <button type="submit" className="btn-primary" disabled={seatSubmitting}>
               {seatSubmitting ? t('common.saving') : t('app.settings.team.form.submit')}
             </button>
-            {seatError && <div className="text-xs text-red-600">{seatError}</div>}
+            {seatError && <div className="alert-error text-xs">{seatError}</div>}
           </form>
         )}
         <div className="space-y-3">
@@ -440,7 +440,7 @@ export function TeamManagementPanel({
               <div key={request.id} className="rounded border border-slate-100 p-3 text-sm text-slate-700 space-y-1">
                 <div className="flex flex-wrap items-center justify-between text-xs text-slate-500">
                   <span>{new Date(request.created_at).toLocaleString()}</span>
-                  <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${request.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : request.status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}`}>
+                  <span className={`badge ${request.status === 'approved' ? 'text-emerald-700' : request.status === 'rejected' ? 'text-rose-700' : 'text-amber-700'}`}>
                     {t(`app.platform.tenants.seat_requests.status.${request.status}`)}
                   </span>
                 </div>
