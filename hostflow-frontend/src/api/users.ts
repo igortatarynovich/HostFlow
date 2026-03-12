@@ -166,6 +166,9 @@ export async function registerSelfService(payload: {
     trial_ends_at?: string | null
     trial_days?: number | null
   }
+  meta?: {
+    welcome_email_sent?: boolean
+  }
 }> {
   const { data } = await api.post('/auth/register', payload)
   return data

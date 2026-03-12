@@ -60,6 +60,7 @@ export default function SignupPage() {
       await login(email.trim(), password)
       const params = new URLSearchParams()
       params.set('signup', 'success')
+      params.set('welcome_email', registration.meta?.welcome_email_sent === false ? 'not_sent' : 'sent')
       if (registration.tenant?.trial_ends_at) {
         params.set('trial_ends_at', registration.tenant.trial_ends_at)
       }

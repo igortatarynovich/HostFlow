@@ -15,6 +15,7 @@ export default function OnboardingCompanyPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const signupSuccess = searchParams.get('signup') === 'success'
+  const welcomeEmailStatus = (searchParams.get('welcome_email') || '').trim().toLowerCase()
   const trialEndsAt = searchParams.get('trial_ends_at')
   const trialEndsText = useMemo(() => {
     if (!trialEndsAt) return null
@@ -99,6 +100,16 @@ export default function OnboardingCompanyPage() {
               : t('app.onboarding.company.signup_success', {
                   defaultValue: 'Регистрация успешна. Пробный период активирован. Подтверждение email сейчас не требуется.',
                 })}
+            <div className="mt-1 text-xs leading-relaxed text-emerald-900/90">
+              {welcomeEmailStatus === 'sent' &&
+                t('app.onboarding.company.signup_success_email_sent', {
+                  defaultValue: 'Welcome email with trial details has been sent to your inbox.',
+                })}
+              {welcomeEmailStatus === 'not_sent' &&
+                t('app.onboarding.company.signup_success_email_not_sent', {
+                  defaultValue: 'We could not deliver welcome email right now. Trial details are available in Billing.',
+                })}
+            </div>
             <div className="mt-1 text-xs leading-relaxed text-emerald-900/90">
               {t('app.onboarding.company.signup_success_links_prefix', { defaultValue: 'Документы и условия:' })}{' '}
               <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">

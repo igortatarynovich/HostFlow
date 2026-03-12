@@ -660,3 +660,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — расширен self-serve signup информационный контур: добавлены legal links на `/signup` и onboarding success, backend welcome email с trial/policy/billing ссылками, в topbar внедрен постоянный `Trial` badge (пока tenant в статусе `trial`).
 - `2026-03-12` — добавлен `Trial Center` banner на `Dashboard`: для tenant в статусе `trial` отображаются статус/остаток дней (если доступен), legal links и CTA в `Billing`.
 - `2026-03-12` — усилен legal-consent на self-serve signup: добавлены обязательные чекбоксы `Terms`/`Privacy` в форме регистрации и backend-валидация с записью `signup_consents` (`accepted_at`, версии документов) в `user.extra`.
+- `2026-03-12` — добавлена прозрачность доставки welcome email: `/auth/register` возвращает `meta.welcome_email_sent`, а onboarding success показывает статус (`sent/not_sent`) с fallback на `Billing`.

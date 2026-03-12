@@ -69,6 +69,7 @@ class RegisterOut(BaseModel):
     ok: bool = True
     user: Dict[str, Any]
     tenant: Dict[str, Any]
+    meta: Dict[str, Any] = Field(default_factory=dict)
 
 
 class TokenOut(BaseModel):
@@ -249,6 +250,7 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
 
         await session.commit()
 
+    welcome_email_sent = False
     response = RegisterOut(
         user={
             "id": user.id,
@@ -266,9 +268,10 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
             "trial_ends_at": trial_expires_at.isoformat(),
             "trial_days": 14,
         },
+        meta={"welcome_email_sent": False},
     )
     try:
-        await send_system_email(
+        welcome_email_sent = await send_system_email(
             to=email,
             subject="Welcome to HostFlow CRM: your trial is active",
             body=_signup_welcome_email_body(
@@ -278,7 +281,8 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
         )
     except Exception:
         # Registration must not fail due to outbound email issues.
-        pass
+        welcome_email_sent = False
+    response.meta = {"welcome_email_sent": bool(welcome_email_sent)}
     return response
 
 
