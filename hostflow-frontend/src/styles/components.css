@@ -60,11 +60,6 @@
            hover:bg-brand-50 active:bg-brand-100/70
            focus:ring-4 focus:ring-brand-100;
   }
-  .btn-ghost {
-    @apply btn bg-transparent text-slate-700
-           hover:bg-brand-50/60 active:bg-brand-50
-           focus:ring-4 focus:ring-brand-100;
-  }
   .btn-danger {
     @apply btn bg-rose-50 text-rose-700 border border-rose-200
            hover:bg-rose-100 active:bg-rose-200
