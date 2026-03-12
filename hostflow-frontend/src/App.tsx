@@ -11,6 +11,10 @@ import PublicPortalLanding from './pages/public/PublicPortalLanding'
 import PublicLanding from './pages/public/PublicLanding'
 import CrmLandingPage from './pages/public/CrmLandingPage'
 import PublicNotFoundPage from './pages/public/PublicNotFoundPage'
+import FeatureCandidatePipelinePage from './pages/public/FeatureCandidatePipelinePage'
+import FeatureDocumentControlPage from './pages/public/FeatureDocumentControlPage'
+import UseCaseTruckingRecruitmentPage from './pages/public/UseCaseTruckingRecruitmentPage'
+import UseCaseHighVolumeOnboardingPage from './pages/public/UseCaseHighVolumeOnboardingPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
@@ -64,6 +68,10 @@ export default function App(){
         <>
           <Route path="/" element={<CrmLandingPage />} />
           <Route path="/pricing" element={<CrmLandingPage />} />
+          <Route path="/features/candidate-pipeline" element={<FeatureCandidatePipelinePage />} />
+          <Route path="/features/document-control" element={<FeatureDocumentControlPage />} />
+          <Route path="/use-cases/trucking-recruitment" element={<UseCaseTruckingRecruitmentPage />} />
+          <Route path="/use-cases/high-volume-onboarding" element={<UseCaseHighVolumeOnboardingPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

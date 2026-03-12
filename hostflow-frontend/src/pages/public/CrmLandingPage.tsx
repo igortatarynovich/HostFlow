@@ -345,6 +345,19 @@ export default function CrmLandingPage() {
           </div>
         </section>
 
+        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6">
+          <h2 className="text-xl font-semibold text-slate-900">Explore product guides</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Start with the page closest to your current challenge and move to the next linked guide.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm">Candidate pipeline feature</Link>
+            <Link to="/features/document-control" className="btn-secondary btn-sm">Document control feature</Link>
+            <Link to="/use-cases/trucking-recruitment" className="btn-secondary btn-sm">Trucking recruitment use-case</Link>
+            <Link to="/use-cases/high-volume-onboarding" className="btn-secondary btn-sm">High-volume onboarding use-case</Link>
+          </div>
+        </section>
+
         <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 text-center">
           <h2 className="text-2xl font-semibold text-slate-900">
             {t('public.crm_landing.final_cta.title', { defaultValue: 'Ready to launch your CRM workflow?' })}

@@ -450,8 +450,8 @@ Residual risk:
 |---|---|---|---|
 | F10.1 | Собрать keyword-intent карту (`landing`, `feature`, `use-case`, `comparison`) | `DONE` | Есть приоритизированный backlog страниц с целевым intent |
 | F10.2 | Подготовить шаблон контент-страниц (H1/H2, CTA, internal links, FAQ) | `DONE` | Есть единый template для массовой публикации |
-| F10.3 | Выпустить пакет приоритетных страниц wave-1 | `NOT_STARTED` | Опубликованы основные страницы с согласованной семантикой и CTA |
-| F10.4 | Встроить внутреннюю перелинковку между landing/features/use-cases | `NOT_STARTED` | Все страницы wave-1 связаны по intent-цепочкам |
+| F10.3 | Выпустить пакет приоритетных страниц wave-1 | `DONE` | Опубликованы основные страницы с согласованной семантикой и CTA |
+| F10.4 | Встроить внутреннюю перелинковку между landing/features/use-cases | `DONE` | Все страницы wave-1 связаны по intent-цепочкам |
 | F10.5 | Проверить конверсионные CTA и аналитические события контента | `NOT_STARTED` | На каждой SEO-странице есть измеряемый conversion path |
 
 ### 5.6.2.1 `F10.1` Keyword-Intent Map (baseline, `2026-03-12`)
@@ -481,6 +481,20 @@ Residual risk:
   - internal linking minimums
   - FAQ + JSON-LD guidance
   - baseline conversion tracking events
+
+### 5.6.2.3 `F10.3/F10.4` Wave-1 Publication Snapshot (`2026-03-12`)
+
+| URL | Тип | Статус | CTA | Internal links |
+|---|---|---|---|---|
+| `/features/candidate-pipeline` | Feature | `PUBLISHED` | `signup + pricing` | links to other wave-1 pages |
+| `/features/document-control` | Feature | `PUBLISHED` | `signup + pricing` | links to other wave-1 pages |
+| `/use-cases/trucking-recruitment` | Use-case | `PUBLISHED` | `signup + pricing` | links to other wave-1 pages |
+| `/use-cases/high-volume-onboarding` | Use-case | `PUBLISHED` | `signup + pricing` | links to other wave-1 pages |
+| `/` (`CrmLandingPage`) | Landing hub | `UPDATED` | existing landing CTA | added guide links to all wave-1 pages |
+
+Supporting implementation:
+- Routes wired in `hostflow-frontend/src/App.tsx`.
+- URLs included in auto-generated sitemap (`scripts/generate-sitemap.mjs` -> `public/sitemap.xml`).
 
 ### 5.6.3 Декомпозиция `F11` (mobile adaptation pass)
 
@@ -754,6 +768,8 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F9.6 = DONE`: завершен baseline CWV pass (font/network hints, LCP media priority, lazy route splitting, below-the-fold render deferral) с фиксацией static snapshot и residual monitoring риска.
 - `2026-03-12` — `F10.1 = DONE`: зафиксирована keyword-intent карта (`landing/pricing/feature/use-case/comparison`) и приоритизированный content backlog `Wave-1/Wave-2`; статус направления `F10` переведен в `IN_PROGRESS`.
 - `2026-03-12` — `F10.2 = DONE`: сформирован единый SEO content template pack (`docs/seo/content-page-template.md`) с обязательной структурой блоков/CTA/internal links/FAQ/schema и baseline tracking требованиями для wave-публикаций.
+- `2026-03-12` — `F10.3 = DONE`: выпущен wave-1 контент-пакет (`/features/candidate-pipeline`, `/features/document-control`, `/use-cases/trucking-recruitment`, `/use-cases/high-volume-onboarding`) с SEO metadata + FAQ schema + dual CTA.
+- `2026-03-12` — `F10.4 = DONE`: реализована внутренняя перелинковка между landing/features/use-cases; в landing добавлен guide-hub блок, sitemap auto-generation расширен до новых wave-1 URL.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.
