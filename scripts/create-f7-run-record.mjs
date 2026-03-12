@@ -305,12 +305,17 @@ function main() {
     return
   }
 
-  if (fs.existsSync(outPath)) {
+  const fileExists = fs.existsSync(outPath)
+  if (fileExists && !args.upsertSsot) {
     console.error(`File already exists: ${outPath}`)
     process.exit(1)
   }
   fs.writeFileSync(outPath, content, 'utf-8')
-  console.log(`Created: ${outPath}`)
+  if (fileExists) {
+    console.log(`Updated: ${outPath}`)
+  } else {
+    console.log(`Created: ${outPath}`)
+  }
   const row = buildSsotRow({
     scenario,
     env,
