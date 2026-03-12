@@ -396,7 +396,7 @@ export default function CandidateProfilesPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              className="btn-ghost text-sm"
+              className="btn-secondary btn-sm"
               type="button"
               onClick={async () => {
                 try {
@@ -475,7 +475,7 @@ export default function CandidateProfilesPage() {
               <button
                 type="button"
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="btn-ghost px-3"
+                className="btn-secondary btn-sm"
                 title={sortOrder === 'asc' ? 'По возрастанию' : 'По убыванию'}
               >
                 {sortOrder === 'asc' ? '↑' : '↓'}
@@ -713,7 +713,7 @@ export default function CandidateProfilesPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            className="btn-ghost text-sm"
+                            className="btn-secondary btn-sm"
                             type="button"
                             onClick={() => setPreviewProfile(profile)}
                             title="Предпросмотр профиля"
@@ -721,7 +721,7 @@ export default function CandidateProfilesPage() {
                             Просмотр
                           </button>
                           <button
-                            className="btn-ghost text-sm"
+                            className="btn-secondary btn-sm"
                             type="button"
                             onClick={() => setUsageStatsProfile(profile)}
                             title="Статистика использования профиля"
@@ -729,7 +729,7 @@ export default function CandidateProfilesPage() {
                             Статистика
                           </button>
                           <button
-                            className="btn-ghost text-sm"
+                            className="btn-secondary btn-sm"
                             type="button"
                             onClick={() => setHistoryProfile(profile)}
                             title="История изменений профиля"
@@ -738,7 +738,7 @@ export default function CandidateProfilesPage() {
                           </button>
                           {profile.is_system ? (
                             <button
-                              className="btn-ghost text-sm"
+                              className="btn-secondary btn-sm"
                               type="button"
                               onClick={() => handleDuplicate(profile)}
                               title="Создать копию профиля для редактирования"
@@ -748,7 +748,7 @@ export default function CandidateProfilesPage() {
                           ) : (
                             <>
                               <button
-                                className="btn-ghost text-sm"
+                                className="btn-secondary btn-sm"
                                 type="button"
                                 onClick={() => setApplyToVacanciesMode(profile)}
                                 title="Применить профиль к вакансиям"
@@ -756,7 +756,7 @@ export default function CandidateProfilesPage() {
                                 Применить к вакансиям
                               </button>
                               <button
-                                className="btn-ghost text-sm"
+                                className="btn-secondary btn-sm"
                                 type="button"
                                 onClick={() => handleExport(profile)}
                                 title="Экспортировать профиль в JSON"
@@ -764,7 +764,7 @@ export default function CandidateProfilesPage() {
                                 Экспорт
                               </button>
                               <button
-                                className="btn-ghost text-sm"
+                                className="btn-secondary btn-sm"
                                 type="button"
                                 onClick={() => handleDuplicate(profile)}
                                 title="Скопировать профиль"
@@ -772,7 +772,7 @@ export default function CandidateProfilesPage() {
                                 Копировать
                               </button>
                               <button
-                                className="btn-ghost text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="btn-secondary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 type="button"
                                 onClick={() => setEditingProfile(profile)}
                                 disabled={(profile.usage_count ?? 0) > 0}

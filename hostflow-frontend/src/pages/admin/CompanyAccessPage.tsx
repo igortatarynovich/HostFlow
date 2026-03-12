@@ -238,7 +238,7 @@ export default function CompanyAccessPage() {
                   </button>
                   <button
                     type="button"
-                    className="btn-ghost text-xs"
+                    className="btn-secondary btn-xs"
                     disabled={saving}
                     onClick={() => void handleRevoke(entry)}
                   >

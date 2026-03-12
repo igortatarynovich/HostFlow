@@ -176,7 +176,7 @@ export default function DeletionRequestsPage() {
                     </button>
                     <button
                       type="button"
-                      className="btn-ghost"
+                      className="btn-secondary"
                       disabled={saving}
                       onClick={() => void handleDecision(request, false)}
                     >

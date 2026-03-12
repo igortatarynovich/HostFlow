@@ -270,7 +270,7 @@ function LinkRow({
           <button
             type="button"
             onClick={onToggleExpand}
-            className="text-sm text-brand-600 hover:underline"
+            className="btn-secondary btn-sm"
           >
             {expanded
               ? t('admin.tenant_links.hide_policy')

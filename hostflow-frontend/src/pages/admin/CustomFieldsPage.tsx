@@ -376,7 +376,7 @@ export default function CustomFieldsPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            className="btn-ghost text-sm"
+                            className="btn-secondary btn-sm"
                             type="button"
                             onClick={() => setEditingDefinition(def)}
                             disabled={def.is_system}
