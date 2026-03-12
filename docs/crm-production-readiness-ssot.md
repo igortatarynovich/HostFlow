@@ -631,9 +631,11 @@ Residual risks до финального `PASS`:
 - `Sidebar`: label раздела `/app/clients` теперь business-aware (`Clients` для `agency/services`, `Companies` для `employer`).
 - `Topbar` quick-search targets: label для `/app/clients` синхронизирован с business-aware термином.
 - `Breadcrumbs`: title и crumb для `/app/clients` синхронизированы с business-aware термином.
+- `LeadsPage` и `ServicesPage` empty-state CTA на `/app/clients` переведены на business-aware label (через единый helper).
+- Добавлен общий hook `useBusinessTerminology` для канонического использования терминов в UI-слое.
 
 Текущий статус:
-- `F6`: `IN_PROGRESS` (закрыт dashboard + nav/topbar/breadcrumb слой; остается copy-pass по secondary screens/empty-states).
+- `F6`: `IN_PROGRESS` (закрыт dashboard + nav/topbar/breadcrumb + ключевые empty-state CTA; остается финальный copy-pass по оставшимся secondary screens).
 
 ---
 
@@ -837,3 +839,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — старт `F6` terminology unification wave-1: в `Dashboard` убран конфликт `Clients / Companies`, введены business-aware entity labels (`Client/Company` по типу бизнеса), а в `AgencyClientsPage` empty-state CTA выровнен на `Open clients`; добавлен snapshot `5.6.10`.
 - `2026-03-12` — для `F6` добавлен canonical словарь `docs/ux/business-terminology-map.md` с правилами использования терминов по типам бизнеса (`agency/employer/services`) и wave scope (`wave-1/wave-2`).
 - `2026-03-12` — `F6` wave-2: business-aware термин `Clients/Companies` применен в `Sidebar`, `Topbar` quick targets и `Breadcrumbs` для `/app/clients` (вместо единого статического label).
+- `2026-03-12` — `F6` расширен на secondary screens: добавлен общий `useBusinessTerminology` hook; `LeadsPage`/`ServicesPage` используют business-aware CTA/labels для перехода в `/app/clients` (`Open clients` vs `Open companies`).

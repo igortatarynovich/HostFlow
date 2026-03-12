@@ -24,6 +24,7 @@ import { searchGlobal, type GlobalSearchResult } from '../../api/search'
 import { useI18n, type LocaleCode } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
 import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
+import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, ru, pl } from 'date-fns/locale'
 
@@ -114,10 +115,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
   const brandLabel = tenant?.workspace_label?.trim() || tenant?.name || 'HostFlow'
   const tenantLogoUrl = useMemo(() => (tenant?.logo_url ? resolveAssetUrl(tenant.logo_url) : null), [tenant?.logo_url])
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
-  const isEmployerTenant = String(tenant?.type || '').trim().toLowerCase() === 'company'
-  const clientsNavLabel = isEmployerTenant
-    ? t('app.dashboard.terms.companies_plural', { defaultValue: 'Companies' })
-    : t('app.dashboard.terms.clients_plural', { defaultValue: 'Clients' })
+  const { entityPlural: clientsNavLabel } = useBusinessTerminology()
 
   const toggleLang = () => {
     const index = SUPPORTED_LOCALES.indexOf(locale)

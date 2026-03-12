@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import type { NavItem, NavGroup } from '../../app/routes'
 import { NAV_GROUP_MAP } from '../../app/routes'
 import { useI18n } from '../../i18n'
-import { useTenantInfo } from '../../contexts/TenantInfo'
+import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 
 type BreadcrumbsProps = {
   navItems: NavItem[]
@@ -12,11 +12,7 @@ type BreadcrumbsProps = {
 export function Breadcrumbs({ navItems }: BreadcrumbsProps) {
   const location = useLocation()
   const { t } = useI18n()
-  const tenant = useTenantInfo()
-  const isEmployerTenant = String(tenant?.type || '').trim().toLowerCase() === 'company'
-  const clientsNavLabel = isEmployerTenant
-    ? t('app.dashboard.terms.companies_plural', { defaultValue: 'Companies' })
-    : t('app.dashboard.terms.clients_plural', { defaultValue: 'Clients' })
+  const { entityPlural: clientsNavLabel } = useBusinessTerminology()
 
   const data = useMemo(() => {
     const cleanPath = location.pathname.replace(/\/+$/, '') || '/'

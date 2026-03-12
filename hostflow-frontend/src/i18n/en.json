@@ -32,7 +32,9 @@
       "apply": "Apply",
       "refresh": "Refresh",
       "collapse": "Collapse",
-      "expand": "Expand"
+      "expand": "Expand",
+      "open_clients": "Open clients",
+      "open_companies": "Open companies"
     },
     "errors": {
       "unknown": "Unknown error"

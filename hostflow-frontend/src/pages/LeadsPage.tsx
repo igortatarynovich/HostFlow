@@ -8,6 +8,7 @@ import { useI18n } from '../i18n'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
 const STATUS_FILTERS: Array<'' | LeadStatus> = ['', 'new', 'processed', 'duplicated', 'needs_routing', 'failed']
 const STAGE_FILTERS: Array<'' | LeadStage> = ['', 'new', 'contacted', 'qualified', 'converted', 'lost']
@@ -27,6 +28,7 @@ const LOCALE_TO_DATE = {
 
 export default function LeadsPage() {
   const { t, locale } = useI18n()
+  const { entitySingular, openEntityLabel } = useBusinessTerminology()
   const [status, setStatus] = useState<'' | LeadStatus>('')
   const [stage, setStage] = useState<'' | LeadStage>('')
   const [page, setPage] = useState(1)
@@ -187,7 +189,7 @@ export default function LeadsPage() {
                 <th>{t('app.leads.table.created')}</th>
                 <th>{t('app.leads.table.status')}</th>
                 <th>{t('app.leads.table.stage', { defaultValue: 'Stage' })}</th>
-                <th>{t('app.leads.table.company')}</th>
+                <th>{entitySingular}</th>
                 <th>{t('app.leads.table.vacancy')}</th>
                 <th>{t('app.leads.table.contact')}</th>
                 <th>{t('app.leads.table.source')}</th>
@@ -232,7 +234,7 @@ export default function LeadsPage() {
                         to: '/app/settings/leads',
                       }}
                       secondaryAction={{
-                        label: t('app.leads.states.empty_cta_clients', { defaultValue: 'Open clients' }),
+                        label: openEntityLabel,
                         to: '/app/clients',
                       }}
                     />

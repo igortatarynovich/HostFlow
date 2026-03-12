@@ -33,6 +33,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
 import { getTenantModules } from '../../api/tenants'
 import type { TenantModuleSettings } from '../../api/types'
+import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 
 type SidebarProps = {
   items: NavItem[]
@@ -296,10 +297,7 @@ export function Sidebar({ items, tenant, open, onClose, onLogout, pendingHandoff
   }
 
   const tenantLabel = tenant?.workspace_label?.trim() || tenant?.name || 'HostFlow'
-  const isEmployerTenant = String((tenant as { type?: string } | null)?.type || '').trim().toLowerCase() === 'company'
-  const clientsNavLabel = isEmployerTenant
-    ? t('app.dashboard.terms.companies_plural', { defaultValue: 'Companies' })
-    : t('app.dashboard.terms.clients_plural', { defaultValue: 'Clients' })
+  const { entityPlural: clientsNavLabel } = useBusinessTerminology()
 
   return (
     <>

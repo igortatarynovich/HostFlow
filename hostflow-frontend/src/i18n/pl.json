@@ -32,7 +32,9 @@
       "apply": "Zastosuj",
       "refresh": "Odśwież",
       "collapse": "Zwiń",
-      "expand": "Rozwiń"
+      "expand": "Rozwiń",
+      "open_clients": "Otwórz klientów",
+      "open_companies": "Otwórz firmy"
     },
     "errors": {
       "unknown": "Nieznany błąd"

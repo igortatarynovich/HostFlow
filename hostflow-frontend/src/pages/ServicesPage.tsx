@@ -32,6 +32,7 @@ import { ORDER_STATUSES, SCHEDULE_STATUSES, ITEM_STATUSES, DOCUMENT_STATUSES } f
 import type { NewServiceFormState, NewOrderFormState } from '../modules/services/types'
 import { formatAmount } from '../modules/services/utils'
 import EmptyStatePanel from '../components/EmptyStatePanel'
+import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
 const initialServiceState: NewServiceFormState = {
   code: '',
@@ -59,6 +60,7 @@ const initialOrderState: NewOrderFormState = {
 
 export function ServicesPage() {
   const { t } = useI18n()
+  const { openEntityLabel } = useBusinessTerminology()
   const { can } = usePermissions()
   const [tab, setTab] = useState<'analytics' | 'orders' | 'catalog'>('orders')
   const [includeInactive, setIncludeInactive] = useState(false)
@@ -1220,7 +1222,7 @@ function OrdersTab({
                     defaultValue: 'Create your first order using the form above and assign it to client, vacancy or candidate.',
                   })}
                   primaryAction={{
-                    label: t('app.services.orders.list.empty_cta_clients', { defaultValue: 'Open clients' }),
+                    label: openEntityLabel,
                     to: '/app/clients',
                   }}
                   secondaryAction={{
