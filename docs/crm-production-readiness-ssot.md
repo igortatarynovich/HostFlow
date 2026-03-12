@@ -449,7 +449,7 @@ Residual risk:
 | ID | Задача | Статус | DOD |
 |---|---|---|---|
 | F10.1 | Собрать keyword-intent карту (`landing`, `feature`, `use-case`, `comparison`) | `DONE` | Есть приоритизированный backlog страниц с целевым intent |
-| F10.2 | Подготовить шаблон контент-страниц (H1/H2, CTA, internal links, FAQ) | `NOT_STARTED` | Есть единый template для массовой публикации |
+| F10.2 | Подготовить шаблон контент-страниц (H1/H2, CTA, internal links, FAQ) | `DONE` | Есть единый template для массовой публикации |
 | F10.3 | Выпустить пакет приоритетных страниц wave-1 | `NOT_STARTED` | Опубликованы основные страницы с согласованной семантикой и CTA |
 | F10.4 | Встроить внутреннюю перелинковку между landing/features/use-cases | `NOT_STARTED` | Все страницы wave-1 связаны по intent-цепочкам |
 | F10.5 | Проверить конверсионные CTA и аналитические события контента | `NOT_STARTED` | На каждой SEO-странице есть измеряемый conversion path |
@@ -470,6 +470,17 @@ Residual risk:
 | Use-case | high volume candidate onboarding | Problem/solution | `/use-cases/high-volume-onboarding` (planned) | `Wave-1` | Product marketing + Ops |
 | Comparison | hostflow vs spreadsheets recruitment | Alternative comparison | `/comparison/hostflow-vs-spreadsheets` (planned) | `Wave-2` | Product marketing |
 | Comparison | recruitment crm vs ats | Alternative comparison | `/comparison/recruitment-crm-vs-ats` (planned) | `Wave-2` | Product marketing |
+
+### 5.6.2.2 `F10.2` Content Template Pack (`2026-03-12`)
+
+- Source template: [content-page-template.md](/opt/HostFlow/docs/seo/content-page-template.md)
+- Template covers required structure for wave pages:
+  - metadata (`title/description/canonical/og`)
+  - hero (`H1 + value + dual CTA`)
+  - core sections (`problem/solution/workflow/proof/objections`)
+  - internal linking minimums
+  - FAQ + JSON-LD guidance
+  - baseline conversion tracking events
 
 ### 5.6.3 Декомпозиция `F11` (mobile adaptation pass)
 
@@ -742,6 +753,7 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F9.3 = DONE`: добавлена автогенерация sitemap (`scripts/generate-sitemap.mjs`) и подключение в `prebuild`, что гарантирует актуальный `public/sitemap.xml` на каждом production build.
 - `2026-03-12` — `F9.6 = DONE`: завершен baseline CWV pass (font/network hints, LCP media priority, lazy route splitting, below-the-fold render deferral) с фиксацией static snapshot и residual monitoring риска.
 - `2026-03-12` — `F10.1 = DONE`: зафиксирована keyword-intent карта (`landing/pricing/feature/use-case/comparison`) и приоритизированный content backlog `Wave-1/Wave-2`; статус направления `F10` переведен в `IN_PROGRESS`.
+- `2026-03-12` — `F10.2 = DONE`: сформирован единый SEO content template pack (`docs/seo/content-page-template.md`) с обязательной структурой блоков/CTA/internal links/FAQ/schema и baseline tracking требованиями для wave-публикаций.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.
