@@ -218,7 +218,7 @@ export default function CrmLandingPage() {
           </div>
         </section>
 
-        <section id="pricing" className="space-y-5">
+        <section id="pricing" className="cv-auto space-y-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
@@ -257,7 +257,7 @@ export default function CrmLandingPage() {
           </div>
         </section>
 
-        <section className="space-y-4">
+        <section className="cv-auto space-y-4">
           <h2 className="text-2xl font-semibold text-slate-900">
             {t('public.crm_landing.compare.title', { defaultValue: 'Plan comparison at a glance' })}
           </h2>
@@ -306,7 +306,7 @@ export default function CrmLandingPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6">
+        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6">
           <h2 className="text-xl font-semibold text-slate-900">
             {t('public.crm_landing.objections.title', { defaultValue: 'Common blockers we remove' })}
           </h2>
@@ -319,7 +319,7 @@ export default function CrmLandingPage() {
           </ul>
         </section>
 
-        <section className="rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
+        <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
           <h2 className="text-xl font-semibold text-slate-900">
             {t('public.crm_landing.faq.title', { defaultValue: 'FAQ' })}
           </h2>
@@ -333,7 +333,7 @@ export default function CrmLandingPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
+        <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
           <h2 className="text-xl font-semibold text-slate-900">
             {t('public.crm_landing.audience.title', { defaultValue: 'Who this CRM is for' })}
           </h2>
@@ -345,7 +345,7 @@ export default function CrmLandingPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 text-center">
+        <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6 text-center">
           <h2 className="text-2xl font-semibold text-slate-900">
             {t('public.crm_landing.final_cta.title', { defaultValue: 'Ready to launch your CRM workflow?' })}
           </h2>

@@ -141,7 +141,7 @@ export default function PublicPortalLanding() {
           </div>
         </section>
 
-        <section className="grid gap-6 rounded-3xl bg-white/90 p-6 shadow-card lg:grid-cols-2">
+        <section className="cv-auto grid gap-6 rounded-3xl bg-white/90 p-6 shadow-card lg:grid-cols-2">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">{t('public.portal.landing.steps.title')}</h2>
             <ol className="mt-4 space-y-3 text-slate-700">
@@ -166,7 +166,7 @@ export default function PublicPortalLanding() {
           </div>
         </section>
 
-        <section className="grid gap-6 rounded-3xl bg-white/90 p-6 shadow-card lg:grid-cols-2">
+        <section className="cv-auto grid gap-6 rounded-3xl bg-white/90 p-6 shadow-card lg:grid-cols-2">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">{t('public.portal.landing.why.title')}</h2>
             <ul className="mt-4 space-y-2 text-slate-700">
@@ -193,7 +193,7 @@ export default function PublicPortalLanding() {
           </div>
         </section>
 
-        <section id="apply" className="grid gap-6 lg:grid-cols-2">
+        <section id="apply" className="cv-auto grid gap-6 lg:grid-cols-2">
           <div className="relative overflow-hidden rounded-3xl border-2 border-brand-200 bg-gradient-to-br from-brand-50 via-white to-brand-100 p-6 shadow-2xl">
             <div className="absolute inset-0 pointer-events-none opacity-30" aria-hidden>
               <div className="absolute -left-10 top-6 h-32 w-32 rounded-full bg-white mix-blend-overlay" />

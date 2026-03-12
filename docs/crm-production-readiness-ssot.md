@@ -439,6 +439,7 @@ Residual risk:
 | Font loading hints | добавлены `dns-prefetch` для `fonts.googleapis.com`/`fonts.gstatic.com` | снижены риски DNS/TLS latency перед загрузкой шрифтов |
 | Hero media hint | `/public/portal` hero image переведен на `loading="eager"` + `fetchPriority="high"` | улучшен приоритет вероятного LCP media |
 | Public route code-splitting | `public apply/scan/status/intake-new` и `client-portal` переведены на lazy chunks | в build появились отдельные чанки (`~4–109KB`), основной `index` bundle снижен до `~5.23MB` |
+| Render deferral below-the-fold | в `CRM landing` и `Public portal` секциях ниже hero включен `content-visibility:auto` (`.cv-auto`) | уменьшена начальная render cost для длинных маркетинговых страниц |
 
 ### 5.6.2 Декомпозиция `F10` (SEO content rollout)
 
@@ -717,6 +718,7 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F9.5 = DONE`: завершен crawlability baseline (robots + noindex-map + anti-soft-404 route handling + audit snapshot). Остается non-blocking residual risk: server-level HTTP `404` policy для SPA-hosting.
 - `2026-03-12` — старт `F9.6`: внедрен CWV-baseline micro-pass для public surfaces (dns-prefetch к font origins в `index.html`, LCP-hint для hero media на `/public/portal` через `loading=eager` + `fetchPriority=high`); статус `F9.6` переведен в `IN_PROGRESS`.
 - `2026-03-12` — расширен `F9.6`: включен lazy route code-splitting для тяжелых public flows (`/public/apply*`, `/public/status/:token`, `/public/scan`, `/client-portal`), что вынесло их в отдельные чанки (`~4–109KB`) и снизило основной `index` bundle до `~5.23MB` (по build snapshot).
+- `2026-03-12` — расширен `F9.6`: для секций ниже первого экрана в `CRM landing` и `Public portal` включен render deferral (`content-visibility:auto`, utility `.cv-auto`) для снижения initial render cost.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.

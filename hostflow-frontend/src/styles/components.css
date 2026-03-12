@@ -229,4 +229,10 @@
   .modal-surface :where(.btn-xs, .btn-sm) {
     @apply min-h-[40px] sm:min-h-0;
   }
+
+  /* ===== Public CWV helpers ===== */
+  .cv-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 900px;
+  }
 }
