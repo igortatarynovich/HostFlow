@@ -94,6 +94,7 @@ export default function App(){
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/invite/accept" element={<InviteAcceptPage />} />
+          <Route path="/app/*" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<PublicNotFoundPage />} />
         </>
       )}
