@@ -152,6 +152,8 @@ export async function registerSelfService(payload: {
   workspace_name: string
   full_name?: string
   plan_code?: string
+  accept_terms: boolean
+  accept_privacy: boolean
 }): Promise<{
   ok: boolean
   user: { id: string; email: string; role: string; tenant_id: string; full_name?: string | null }

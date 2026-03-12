@@ -18,6 +18,8 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,6 +42,10 @@ export default function SignupPage() {
       setError(t('app.signup.errors.password_short', { defaultValue: 'Password must be at least 8 characters' }))
       return
     }
+    if (!acceptTerms || !acceptPrivacy) {
+      setError(t('app.signup.errors.consent_required', { defaultValue: 'You must accept Terms and Privacy Policy to continue.' }))
+      return
+    }
     setLoading(true)
     try {
       const registration = await registerSelfService({
@@ -48,6 +54,8 @@ export default function SignupPage() {
         workspace_name: workspaceName.trim(),
         full_name: fullName.trim() || undefined,
         plan_code: preselectedPlan || undefined,
+        accept_terms: acceptTerms,
+        accept_privacy: acceptPrivacy,
       })
       await login(email.trim(), password)
       const params = new URLSearchParams()
@@ -144,6 +152,36 @@ export default function SignupPage() {
                 compact
               />
             )}
+            <label className="flex items-start gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+              />
+              <span>
+                {t('app.signup.accept_terms_prefix', { defaultValue: 'I accept the' })}{' '}
+                <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
+                  {t('app.signup.accept_terms_link', { defaultValue: 'Terms of Service' })}
+                </a>
+                .
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                checked={acceptPrivacy}
+                onChange={(e) => setAcceptPrivacy(e.target.checked)}
+              />
+              <span>
+                {t('app.signup.accept_privacy_prefix', { defaultValue: 'I accept the' })}{' '}
+                <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
+                  {t('app.signup.accept_privacy_link', { defaultValue: 'Privacy Policy' })}
+                </a>
+                .
+              </span>
+            </label>
             <button type="submit" className="btn-primary w-full py-3" disabled={loading}>
               {loading ? t('common.loading') : t('app.signup.submit', { defaultValue: 'Create account' })}
             </button>

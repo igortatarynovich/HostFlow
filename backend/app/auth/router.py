@@ -61,6 +61,8 @@ class RegisterIn(BaseModel):
     workspace_name: str = Field(..., min_length=2, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
     plan_code: str | None = Field(default=None, max_length=32)
+    accept_terms: bool = False
+    accept_privacy: bool = False
 
 
 class RegisterOut(BaseModel):
@@ -169,6 +171,8 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
     workspace_name = payload.workspace_name.strip()
     if len(workspace_name) < 2:
         raise HTTPException(status_code=422, detail="Workspace name is too short")
+    if not payload.accept_terms or not payload.accept_privacy:
+        raise HTTPException(status_code=422, detail="Terms and privacy acceptance is required")
 
     async with async_session_maker() as session:
         existing_user = await session.execute(select(User.id).where(func.lower(User.email) == email).limit(1))
@@ -219,7 +223,16 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
             is_active=True,
             full_name=(payload.full_name or "").strip() or None,
             preferences={},
-            extra={"signup_plan_code": (payload.plan_code or "").strip() or None},
+            extra={
+                "signup_plan_code": (payload.plan_code or "").strip() or None,
+                "signup_consents": {
+                    "terms": bool(payload.accept_terms),
+                    "privacy": bool(payload.accept_privacy),
+                    "accepted_at": datetime.now(timezone.utc).isoformat(),
+                    "terms_version": "2025-02-01",
+                    "privacy_version": "2025-02-01",
+                },
+            },
         )
         session.add(user)
         await session.flush()
