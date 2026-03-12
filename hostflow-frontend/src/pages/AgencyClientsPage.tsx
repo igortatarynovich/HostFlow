@@ -248,28 +248,28 @@ function ClientRow({
           </div>
           <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
             {link.client_tenant_id && (
-              <span className="rounded bg-brand-100 px-1.5 py-0.5 text-brand-700">
+              <span className="badge text-brand-700">
                 {t('app.clients.linked_tenant', { defaultValue: 'Привязан к организации' })}
               </span>
             )}
             {link.handoff_enabled && (
-              <span className="rounded bg-green-100 px-1.5 py-0.5 text-green-700">
+              <span className="badge text-green-700">
                 {t('app.clients.handoff', { defaultValue: 'Передача' })}
               </span>
             )}
             {link.see_vacancies && (
-              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700">
+              <span className="badge text-brand-700">
                 {t('app.clients.see_vacancies', { defaultValue: 'Вакансии' })}
               </span>
             )}
             {link.see_reduced_profiles && (
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-600">
+              <span className="badge">
                 {t('app.clients.see_reduced', { defaultValue: 'Урезанные профили' })}
               </span>
             )}
           </div>
         </div>
-        <button type="button" onClick={onToggleEdit} className="text-sm text-brand-600 hover:underline">
+        <button type="button" onClick={onToggleEdit} className="btn-secondary btn-sm">
           {editing ? t('common.cancel', { defaultValue: 'Отмена' }) : t('common.edit', { defaultValue: 'Изменить' })}
         </button>
       </div>
@@ -284,7 +284,7 @@ function ClientRow({
               type="text"
               readOnly
               value={portalUrl}
-              className="flex-1 min-w-[200px] rounded border border-slate-200 bg-slate-50 px-2 py-1 text-sm"
+              className="input min-w-[200px] flex-1 bg-slate-50"
             />
             <button
               type="button"
@@ -446,7 +446,7 @@ function AddClientModal({
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder={t('app.clients.display_name_placeholder', { defaultValue: 'ООО «Пример»' })}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="input mt-1 block w-full"
               disabled={!!selected}
             />
           </div>
@@ -459,7 +459,7 @@ function AddClientModal({
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setSelected(null) }}
               placeholder={t('app.clients.search_placeholder', { defaultValue: 'Поиск по названию или домену...' })}
-              className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2"
+              className="input mt-1 block w-full"
             />
             {searching && <p className="mt-1 text-xs text-slate-500">{t('common.loading', { defaultValue: 'Поиск...' })}</p>}
             {searchResults.length > 0 && !selected && (
