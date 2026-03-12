@@ -708,6 +708,7 @@ Residual risks до финального `PASS`:
 - Провести формальный role-by-role прогон по всем nav/route/module combinations.
 - Зафиксировать таблицу PASS/FAIL по ролям в этом разделе.
 - Автоматизировать базовый контроль `NAV_ITEMS <-> APP_ROUTES` (path + permission overlap) как регулярный статический чек.
+- Автоматизировать baseline role-matrix check (`superadmin/administrator/supervisor/recruiter/viewer` x core routes) как регулярный статический чек.
 
 ### 9.4 Role-by-Role Run Log
 
@@ -888,3 +889,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — усилен `F3` permission integrity: добавлен автоматический static-check `hostflow-frontend/scripts/check-route-permissions.mjs` + npm-команда `routes:check` для валидации консистентности `NAV_ITEMS` и `APP_ROUTES` (path mapping + permission overlap). Текущий прогон: `PASS` (`36` nav items, `55` app routes).
 - `2026-03-12` — static QA gate стандартизирован командой `npm --prefix hostflow-frontend run qa:static` (`routes:check` + `i18n:check` + `build`); `i18n:check` переведен на `node scripts/check-i18n.mjs` (без `tsx` IPC), текущий прогон `PASS`.
 - `2026-03-12` — для `F3` добавлен role-by-role run-sheet (`docs/manual-checklist/f3-permission-role-matrix.md`) и стартовый run-log `9.4`; текущий статус `IN_PROGRESS` до ручного матричного прогона по ролям.
+- `2026-03-12` — усилен `F3` static baseline: добавлен `permissions:check` (`hostflow-frontend/scripts/check-permission-matrix.mjs`) с машинной матрицей ролей по core routes; команда включена в `qa:static` (`routes:check` + `permissions:check` + `i18n:check` + `build`), текущий прогон `PASS`.

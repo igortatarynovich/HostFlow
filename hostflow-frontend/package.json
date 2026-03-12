@@ -11,7 +11,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "i18n:check": "node scripts/check-i18n.mjs",
     "routes:check": "node scripts/check-route-permissions.mjs",
-    "qa:static": "npm run routes:check && npm run i18n:check && npm run build",
+    "permissions:check": "node scripts/check-permission-matrix.mjs",
+    "qa:static": "npm run routes:check && npm run permissions:check && npm run i18n:check && npm run build",
     "generate:sitemap": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
