@@ -391,12 +391,32 @@ API smoke-check `P0` (staging, `2026-03-11`):
 
 | ID | Задача | Статус | DOD |
 |---|---|---|---|
-| F9.1 | Зафиксировать SEO-инвентарь публичных URL (`landing/features/use-cases/pricing/auth-public`) | `NOT_STARTED` | Есть полный список indexable страниц и владельцев |
+| F9.1 | Зафиксировать SEO-инвентарь публичных URL (`landing/features/use-cases/pricing/auth-public`) | `DONE` | Есть полный список indexable страниц и владельцев |
 | F9.2 | Выровнять `title/description/canonical/og:*` по всем indexable страницам | `NOT_STARTED` | На каждой странице корректные мета-теги без дублей canonical |
 | F9.3 | Проверить и обновить `robots.txt` + `sitemap.xml` (включая auto-generation) | `IN_PROGRESS` | Поисковые боты получают актуальные правила и полный sitemap без битых URL |
 | F9.4 | Добавить schema.org (`Organization`, `SoftwareApplication`, `FAQ/Article` где уместно) | `NOT_STARTED` | Structured data проходит валидацию без критичных ошибок |
 | F9.5 | Техпроверка индексации и crawlability (`noindex`, redirects, 404/soft-404) | `NOT_STARTED` | Нет критичных indexability проблем на приоритетных страницах |
 | F9.6 | Базовый CWV-pass публичных страниц (LCP/CLS/INP) | `NOT_STARTED` | По приоритетным URL нет блокирующих деградаций производительности |
+
+### 5.6.1.1 `F9.1` SEO URL Inventory (baseline, `2026-03-12`)
+
+| URL | Тип | Index target | Владелец |
+|---|---|---|---|
+| `/` | CRM marketing landing | `YES` | Frontend + Product marketing |
+| `/pricing` | CRM pricing landing alias | `YES` | Frontend + Product marketing |
+| `/signup` | Self-serve conversion entry | `YES` | Frontend + Growth |
+| `/login` | Auth entry | `YES` | Frontend |
+| `/public/intake` | Candidate portal landing | `YES` | Frontend + Operations |
+| `/public/portal` | Candidate portal promo | `YES` | Frontend + Operations |
+| `/legal/terms.html` | Legal static | `YES` | Product + Legal |
+| `/legal/privacy.html` | Legal static | `YES` | Product + Legal |
+| `/legal/cookies.html` | Legal static | `YES` | Product + Legal |
+| `/data-deletion.html` | Legal static | `YES` | Product + Legal |
+| `/app/*` | Authenticated workspace | `NO` | Frontend |
+| `/public/apply/:token` | Tokenized candidate flow | `NO` | Frontend |
+| `/public/apply-old/:token` | Legacy tokenized candidate flow | `NO` | Frontend |
+| `/public/status/:token` | Tokenized status flow | `NO` | Frontend |
+| `/public/scan*` | Session-bound scanning flow | `NO` | Frontend |
 
 ### 5.6.2 Декомпозиция `F10` (SEO content rollout)
 
@@ -668,3 +688,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — исправлен activation redirect-loop в `AppShell`: при `activation_required=true` разрешены рабочие маршруты шагов (`/app/clients`, `/app/vacancies`, `/app/leads`, `/app/reminders`, `settings/billing`, `settings/legal`), поэтому CTA в `OnboardingGettingStartedPage` больше не “застревают” на той же странице.
 - `2026-03-12` — `OnboardingGettingStartedPage` сделан permission-aware: CTA шагов проверяют доступ роли к целевому разделу и при отсутствии прав ведут в `Dashboard` с явным fallback-label вместо “немого” перехода в недоступный route.
 - `2026-03-12` — старт `F9.3`: добавлены `public/robots.txt` (disallow для `/app` и tokenized public URLs) и `public/sitemap.xml` с базовым перечнем indexable страниц (`/, /pricing, /signup, /login, /public/intake, /public/portal, legal pages`); статус `F9.3` переведен в `IN_PROGRESS` до внедрения auto-generation.
+- `2026-03-12` — `F9.1 = DONE`: зафиксирован baseline SEO URL inventory (`indexable`/`non-indexable`) с owner-матрицей в разделе `5.6.1.1`.
