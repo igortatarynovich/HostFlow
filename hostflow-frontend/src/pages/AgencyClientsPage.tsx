@@ -86,7 +86,7 @@ export default function AgencyClientsPage() {
               onClick: () => setAddOpen(true),
             }}
             secondaryAction={{
-              label: t('app.clients.empty_cta_companies', { defaultValue: 'Open companies' }),
+              label: t('app.clients.empty_cta_companies', { defaultValue: 'Open clients' }),
               to: '/app/clients',
             }}
           />

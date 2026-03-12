@@ -375,7 +375,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F3 | Permission integrity аудит по ролям (`superadmin/owner/admin/manager/user`) | `IN_PROGRESS` | Нет конфликтов видимости, подтверждено тест-матрицей |
 | F4 | Failure recovery matrix (оплата, интеграции, сеть, прерывание onboarding) | `IN_PROGRESS` | При ошибке путь пользователя сохраняется и продолжается |
 | F5 | Lifecycle retention path (день 1/2/3/7) | `DONE` | Для каждого дня есть понятный next-step и ценность |
-| F6 | Терминологическая унификация UI по типам бизнеса | `NOT_STARTED` | Нет конфликтующих терминов в интерфейсе |
+| F6 | Терминологическая унификация UI по типам бизнеса | `IN_PROGRESS` | Нет конфликтующих терминов в интерфейсе |
 | F7 | Сценарии успеха A/B/C — формальный прогон и фиксация PASS/FAIL | `IN_PROGRESS` | Все три сценария закрыты без саппорта |
 | F8 | Compact CRM UI standard + Tabler icons rollout | `IN_PROGRESS` | Ключевые экраны (`Pipeline`, `Leads`, `Candidates`, `Dashboard`) визуально компактны, единообразны и без лишних элементов |
 | F9 | SEO optimization baseline (technical SEO) | `DONE` | Публичные страницы имеют корректные `title/description/canonical`, `robots.txt`, `sitemap.xml`, OG tags, schema.org и индексацию без критичных ошибок |
@@ -615,6 +615,20 @@ Residual risks до финального `PASS`:
 Текущий статус:
 - `F5`: `DONE` (in-app путь D1/D2/D3/D7 + day-level metrics/report внедрены).
 
+### 5.6.10 `F6` Terminology Unification Snapshot (`2026-03-12`)
+
+Что внедрено (wave-1):
+- В `Dashboard` убран конфликтный label `Clients / Companies`; для `agency` используется единый термин `Clients`.
+- В `Dashboard` введены business-aware термины для entity-блока:
+  - `employer`: `Company/Companies`;
+  - `agency/services`: `Client/Clients`.
+- Термины применены в ключевых KPI и таблице entity-overview (`global stats`, `companies widget` title/header/empty).
+- В `AgencyClientsPage` secondary CTA в empty-state выровнен на `Open clients` (вместо `Open companies`), чтобы не расходиться с названием раздела.
+- Добавлены i18n-термины `app.dashboard.terms.*` для `en/ru/pl` (`clients/company` singular/plural).
+
+Текущий статус:
+- `F6`: `IN_PROGRESS` (закрыт dashboard/entity слой; остается проход по secondary screens и breadcrumb/topbar wording).
+
 ---
 
 ## 6. Единая структура настроек (принято)
@@ -814,3 +828,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — старт `F5` lifecycle retention path: в `Dashboard` добавлены trial in-app nudges по day-buckets `D1/D3/D7` с context-aware CTA на следующий onboarding шаг и tenant/day-scoped dismiss persistence; критерий `#25` переведен в `IN_PROGRESS`.
 - `2026-03-12` — расширен `F5` lifecycle retention path: добавлен day-bucket `D2` и baseline analytics events (`trial_retention_nudge`: `impression/cta_click/dismiss`) через `window.dataLayer`.
 - `2026-03-12` — завершен `F5`: добавлен backend-контур retention analytics (`POST /analytics/events`, `GET /analytics/trial-retention`) на базе `activity_log`, а в `Dashboard -> Trial Center` выведен day-level отчет `D1/D2/D3/D7` (impressions/clicks/dismiss/CTR); критерий `#25` переведен в `DONE`.
+- `2026-03-12` — старт `F6` terminology unification wave-1: в `Dashboard` убран конфликт `Clients / Companies`, введены business-aware entity labels (`Client/Company` по типу бизнеса), а в `AgencyClientsPage` empty-state CTA выровнен на `Open clients`; добавлен snapshot `5.6.10`.

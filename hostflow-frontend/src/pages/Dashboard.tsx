@@ -1354,12 +1354,26 @@ export default function Dashboard() {
       ]
     }
     return [
-      { key: 'companies_total', label: t('app.dashboard.business.agency.companies_total', { defaultValue: 'Clients / Companies' }), value: Number(kpis.companies_total || 0) },
+      { key: 'companies_total', label: t('app.dashboard.business.agency.companies_total', { defaultValue: 'Clients' }), value: Number(kpis.companies_total || 0) },
       { key: 'vacancies_active', label: t('app.dashboard.business.agency.vacancies_active', { defaultValue: 'Active vacancies' }), value: Number(kpis.vacancies_active || 0) },
       { key: 'candidates_total', label: t('app.dashboard.business.agency.candidates_total', { defaultValue: 'Candidates' }), value: Number(kpis.candidates_total || 0) },
       { key: 'leads_total', label: t('app.dashboard.business.agency.leads_total', { defaultValue: 'Leads' }), value: Number(kpis.leads_total || 0) },
     ]
   }, [profileSummary, t])
+
+  const dashboardCompanyLabels = useMemo(() => {
+    const bt = profileSummary?.business_type
+    if (bt === 'employer') {
+      return {
+        plural: t('app.dashboard.terms.companies_plural', { defaultValue: 'Companies' }),
+        singular: t('app.dashboard.terms.companies_singular', { defaultValue: 'Company' }),
+      }
+    }
+    return {
+      plural: t('app.dashboard.terms.clients_plural', { defaultValue: 'Clients' }),
+      singular: t('app.dashboard.terms.clients_singular', { defaultValue: 'Client' }),
+    }
+  }, [profileSummary?.business_type, t])
 
   const businessTypeLabel = useMemo(() => {
     const bt = profileSummary?.business_type
@@ -2205,7 +2219,7 @@ export default function Dashboard() {
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.candidates)}</div>
           </div>
           <div className="card p-4">
-            <div className="text-slate-500 text-sm mb-1">{t('app.dashboard.stats.companies')}</div>
+            <div className="text-slate-500 text-sm mb-1">{dashboardCompanyLabels.plural}</div>
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.companies)}</div>
           </div>
           <div className="card p-4">
@@ -2319,14 +2333,24 @@ export default function Dashboard() {
           {isWidgetVisible('companies') && (
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-semibold">{t('app.dashboard.companies.title')}</div>
-              <div className="text-xs text-slate-500">{t('app.dashboard.companies.subtitle')}</div>
+              <div className="text-sm font-semibold">
+                {t('app.dashboard.companies.title', {
+                  defaultValue: '{label} overview',
+                  values: { label: dashboardCompanyLabels.plural },
+                })}
+              </div>
+              <div className="text-xs text-slate-500">
+                {t('app.dashboard.companies.subtitle', {
+                  defaultValue: 'Top {label} pipelines',
+                  values: { label: dashboardCompanyLabels.plural.toLowerCase() },
+                })}
+              </div>
             </div>
             {slices?.companies?.length ? (
               <table className="table">
                 <thead>
                   <tr>
-                    <th>{t('app.dashboard.companies.table.company')}</th>
+                    <th>{dashboardCompanyLabels.singular}</th>
                     <th className="text-right">{t('app.dashboard.companies.table.total')}</th>
                     <th className="text-right">{t('app.dashboard.companies.table.in_pipeline')}</th>
                     <th className="text-right">{t('app.dashboard.companies.table.hired')}</th>
@@ -2351,7 +2375,12 @@ export default function Dashboard() {
                 </tbody>
               </table>
             ) : (
-              <div className="text-sm text-slate-500">{t('app.dashboard.companies.empty')}</div>
+              <div className="text-sm text-slate-500">
+                {t('app.dashboard.companies.empty', {
+                  defaultValue: 'No {label} data.',
+                  values: { label: dashboardCompanyLabels.singular.toLowerCase() },
+                })}
+              </div>
             )}
           </div>
           )}

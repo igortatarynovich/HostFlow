@@ -2513,6 +2513,12 @@
         "period_suffix_created": "по дате создания",
         "period_suffix_updated": "по дате обновления"
       },
+      "terms": {
+        "clients_plural": "Клиенты",
+        "clients_singular": "Клиент",
+        "companies_plural": "Компании",
+        "companies_singular": "Компания"
+      },
       "stages": {
         "title": "Статусы кандидатов",
         "subtitle": "Срез по текущему периоду",

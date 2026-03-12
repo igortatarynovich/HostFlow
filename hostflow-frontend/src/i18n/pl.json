@@ -2190,6 +2190,12 @@
         "period_suffix_created": "wg daty utworzenia",
         "period_suffix_updated": "wg daty aktualizacji"
       },
+      "terms": {
+        "clients_plural": "Klienci",
+        "clients_singular": "Klient",
+        "companies_plural": "Firmy",
+        "companies_singular": "Firma"
+      },
       "stages": {
         "title": "Statusy kandydatów",
         "subtitle": "Przekrój bieżącego okresu",

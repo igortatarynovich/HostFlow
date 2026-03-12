@@ -2513,6 +2513,12 @@
         "period_suffix_created": "by creation date",
         "period_suffix_updated": "by update date"
       },
+      "terms": {
+        "clients_plural": "Clients",
+        "clients_singular": "Client",
+        "companies_plural": "Companies",
+        "companies_singular": "Company"
+      },
       "stages": {
         "title": "Candidate stages",
         "subtitle": "Current period snapshot",
