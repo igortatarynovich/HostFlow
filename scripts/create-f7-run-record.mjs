@@ -62,7 +62,7 @@ const SCENARIO_META = {
 function usage(code = 0) {
   const text = [
     'Usage:',
-    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row] [--append-ssot] [--sync-board-status] [--no-validate]',
+    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row] [--append-ssot] [--upsert-ssot] [--sync-board-status] [--no-validate]',
     '',
     'Example:',
     '  node scripts/create-f7-run-record.mjs --scenario b --env staging --tenant demo-agency --owner "Product/QA" --dry-run',
@@ -82,6 +82,7 @@ function parseArgs(argv) {
     dryRun: false,
     printSsotRow: false,
     appendSsot: false,
+    upsertSsot: false,
     syncBoardStatus: false,
     validate: true,
   }
@@ -96,6 +97,7 @@ function parseArgs(argv) {
     else if (arg === '--dry-run') out.dryRun = true
     else if (arg === '--print-ssot-row') out.printSsotRow = true
     else if (arg === '--append-ssot') out.appendSsot = true
+    else if (arg === '--upsert-ssot') out.upsertSsot = true
     else if (arg === '--sync-board-status') out.syncBoardStatus = true
     else if (arg === '--no-validate') out.validate = false
     else if (arg === '--help' || arg === '-h') usage(0)
@@ -187,6 +189,35 @@ function appendRowToSsot(row, { scenario, env, tenant, date }) {
   fs.writeFileSync(ssotPath, next, 'utf-8')
 }
 
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function upsertRowInSsot(row, { scenario, env, tenant, date }) {
+  if (!fs.existsSync(ssotPath)) {
+    throw new Error(`SSOT not found: ${ssotPath}`)
+  }
+  const text = fs.readFileSync(ssotPath, 'utf-8')
+  const startMarker = '### 10.1 Журнал прогонов (операционный)'
+  const endMarker = '### 10.2 Next Actions Для `F7`'
+  const startIdx = text.indexOf(startMarker)
+  const endIdx = text.indexOf(endMarker)
+  if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) {
+    throw new Error('Could not locate section 10.1 in SSOT')
+  }
+  const section = text.slice(startIdx, endIdx)
+  const label = SCENARIO_META[scenario].label
+  const keyRegex = new RegExp(
+    `^\\|\\s*\\\`${escapeRegex(date)}\\\`\\s*\\|\\s*${escapeRegex(label)}\\s*\\([^|]+\\)\\s*\\|\\s*${escapeRegex(env)}\\s*\\|\\s*\\\`${escapeRegex(tenant)}\\\`\\s*\\|.*$`,
+    'm',
+  )
+  const updatedSection = keyRegex.test(section)
+    ? section.replace(keyRegex, row)
+    : `${section}${row}\n`
+  const next = `${text.slice(0, startIdx)}${updatedSection}${text.slice(endIdx)}`
+  fs.writeFileSync(ssotPath, next, 'utf-8')
+}
+
 function mapRunResultToBoardStatus(result) {
   if (result === 'PASS') return 'PASS'
   if (result === 'BLOCKED') return 'BLOCKED'
@@ -236,7 +267,8 @@ function main() {
   if (!['staging', 'production'].includes(args.env)) usage(1)
   if (!args.tenant || !args.owner) usage(1)
   if (args.result && !['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'].includes(args.result)) usage(1)
-  if (args.dryRun && args.appendSsot) usage(1)
+  if (args.appendSsot && args.upsertSsot) usage(1)
+  if (args.dryRun && (args.appendSsot || args.upsertSsot)) usage(1)
   if (args.dryRun && args.syncBoardStatus) usage(1)
 
   const date = args.date || todayUtc()
@@ -292,11 +324,15 @@ function main() {
     appendRowToSsot(row, { scenario, env, tenant: args.tenant, date })
     console.log('SSOT 10.1 row appended.')
   }
+  if (args.upsertSsot) {
+    upsertRowInSsot(row, { scenario, env, tenant: args.tenant, date })
+    console.log('SSOT 10.1 row upserted.')
+  }
   if (args.syncBoardStatus) {
     syncBoardStatusInSsot({ scenario, result: args.result || 'IN_PROGRESS' })
     console.log('SSOT board status synced.')
   }
-  if ((args.appendSsot || args.syncBoardStatus) && args.validate) {
+  if ((args.appendSsot || args.upsertSsot || args.syncBoardStatus) && args.validate) {
     validateF7RunLog()
     console.log('F7 run-log validation passed.')
   }

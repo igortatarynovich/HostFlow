@@ -33,6 +33,7 @@
    - Для каждого прогона `F7` сохранять отдельный run-record по шаблону `docs/manual-checklist/f7-run-record-template.md` и указывать ссылку на него в колонке `Evidence` раздела `10.1`.
    - Для создания run-record файла использовать CLI: `npm run f7:run-record:new -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>"`.
    - Для полного авто-обновления `F7` использовать: `npm run f7:run-record:apply -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" --result <PASS|FAIL|BLOCKED|IN_PROGRESS>`.
+   - Для обновления уже существующей записи по тому же ключу прогона использовать: `npm run f7:run-record:upsert -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" --result <PASS|FAIL|BLOCKED|IN_PROGRESS>`.
    - Для мгновенной вставки в SSOT использовать `--print-ssot-row` (CLI выводит готовую строку таблицы `10.1`).
    - Для автодобавления записи в `10.1` использовать `--append-ssot` (CLI вставит строку и защитит от дубля по `date/scenario/env/tenant`).
    - Для синхронизации статуса в execution board использовать `--sync-board-status` (обновляет статус сценария в разделе `10` на основе `--result`).

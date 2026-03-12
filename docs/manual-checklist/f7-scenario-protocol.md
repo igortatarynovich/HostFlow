@@ -12,8 +12,10 @@
 - Каждый прогон фиксируется отдельным run-record файлом по шаблону [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md), а в SSOT `10.1` добавляется ссылка на этот файл в колонке `Evidence`.
 - Для ускорения фиксации можно сгенерировать run-record через CLI: `npm run f7:run-record:new -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>"`.
 - Для полного авто-пакета (создать run-record + добавить в `10.1` + синхронизировать board + валидация) использовать: `npm run f7:run-record:apply -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" --result <PASS|FAIL|BLOCKED|IN_PROGRESS>`.
+- Для повторного прогона по тому же ключу (`scenario/date/env/tenant`) использовать upsert-режим: `npm run f7:run-record:upsert -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" --result <PASS|FAIL|BLOCKED|IN_PROGRESS>`.
 - CLI поддерживает `--print-ssot-row`, который выводит готовую markdown-строку для вставки в таблицу `10.1`.
 - CLI поддерживает `--append-ssot`: после создания run-record автоматически добавляет строку в `10.1` (с anti-duplicate проверкой по `date/scenario/env/tenant`).
+- CLI поддерживает `--upsert-ssot`: вставляет или обновляет строку `10.1` по ключу (`date/scenario/env/tenant`).
 - CLI поддерживает `--sync-board-status`: после фиксации run-record обновляет статус сценария в execution board (раздел `10`) согласно результату прогона.
 - По умолчанию `--append-ssot` запускает post-update валидацию (`f7:run-log:check`); для отключения только в отладке использовать `--no-validate`.
 - Перед финальной фиксацией run-log в SSOT проверять консистентность: `npm run f7:run-log:check`.
