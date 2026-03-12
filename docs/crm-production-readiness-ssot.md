@@ -363,7 +363,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | E1 | Citronex flow: tenant-linked client visibility (vacancies/candidates scope) | `NOT_STARTED` | Tenant с лицензией видит корректный скоуп без ручных правок |
 | E2 | POLTRAK flow: portal-link access for client without tenant | `NOT_STARTED` | Клиент без лицензии проходит сценарий только по защищенной ссылке |
 | E3 | Tenant links policy hardening (handoff/visibility/audit) | `NOT_STARTED` | Настройки и видимость формально проверены в E2E |
-| E4 | Auth hardening for self-serve launch (signup/invite/session recovery) | `IN_PROGRESS` | Нет тупиков в auth-сценариях, recovery покрыт |
+| E4 | Auth hardening for self-serve launch (signup/invite/session recovery) | `DONE` | Нет тупиков в auth-сценариях, recovery покрыт |
 | E5 | Communications depth checklist (scheduler/OAuth/webhooks/audit consistency) | `IN_PROGRESS` | Все обязательные domain-checks имеют PASS статус |
 
 ## 5.6 Фаза F — UX целостность и retention (новые критические критерии)
@@ -809,6 +809,7 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — session-expiry routing fix: для `!me` добавлен явный редирект `/app/* -> /login` (вместо попадания в public `404`), чтобы recovery path после истечения токена был однозначным.
 - `2026-03-12` — password reset recovery UX доработан: после успешного `reset-with-token` перед редиректом на `/login` сохраняется notice (`Password updated`), и на login показывается явное подтверждение завершения сценария.
 - `2026-03-12` — auth refresh hardening: `AuthProvider` переведен на path-aware логику через `useLocation` (вместо одноразового `window.location` snapshot), чтобы переход `public -> /app` корректно инициировал `refresh()` и не приводил к ложному `unauth` состоянию.
+- `2026-03-12` — `E4 = DONE`: закрыт пакет auth hardening для self-serve (`signup`, `invite accept`, `session expiry`, `password reset`, `public->app refresh`) с явными recovery notices и route-level fallback.
 - `2026-03-12` — расширен self-serve signup информационный контур: добавлены legal links на `/signup` и onboarding success, backend welcome email с trial/policy/billing ссылками, в topbar внедрен постоянный `Trial` badge (пока tenant в статусе `trial`).
 - `2026-03-12` — добавлен `Trial Center` banner на `Dashboard`: для tenant в статусе `trial` отображаются статус/остаток дней (если доступен), legal links и CTA в `Billing`.
 - `2026-03-12` — усилен legal-consent на self-serve signup: добавлены обязательные чекбоксы `Terms`/`Privacy` в форме регистрации и backend-валидация с записью `signup_consents` (`accepted_at`, версии документов) в `user.extra`.
