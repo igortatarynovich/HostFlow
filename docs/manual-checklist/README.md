@@ -15,7 +15,7 @@
    - `make test` (или точечные `pytest backend/tests/api/test_documents.py backend/tests/notifications/test_reminders.py`).
    - Frontend static QA gate:
      - `npm --prefix hostflow-frontend run qa:static`
-     - Включает `routes:check` (консистентность `NAV_ITEMS`/`APP_ROUTES`), `activation:check` (целостность activation route-map + allowlist), `comm:gates:check` (обязательный communications feature-gating), `permissions:check`, `i18n:check`, production `build`.
+     - Включает `routes:check` (консистентность `NAV_ITEMS`/`APP_ROUTES`), `activation:check` (целостность activation route-map + allowlist), `comm:gates:check` (обязательный communications feature-gating), `module:permissions:check` (module-permission mapping integrity), `permissions:check`, `i18n:check`, production `build`.
 
 4. **Метрики и наблюдаемость**
    - Проверить, что `/metrics` отдаёт новые счётчики:
