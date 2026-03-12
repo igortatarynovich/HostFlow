@@ -13,6 +13,7 @@
 - Для ускорения фиксации можно сгенерировать run-record через CLI: `npm run f7:run-record:new -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>"`.
 - CLI поддерживает `--print-ssot-row`, который выводит готовую markdown-строку для вставки в таблицу `10.1`.
 - CLI поддерживает `--append-ssot`: после создания run-record автоматически добавляет строку в `10.1` (с anti-duplicate проверкой по `date/scenario/env/tenant`).
+- По умолчанию `--append-ssot` запускает post-update валидацию (`f7:run-log:check`); для отключения только в отладке использовать `--no-validate`.
 - Перед финальной фиксацией run-log в SSOT проверять консистентность: `npm run f7:run-log:check`.
 - `f7:run-log:check` валидирует не только таблицу `10.1`, но и соответствие header-полей run-record файлам (`date/scenario/environment/tenant/result`) для linked evidence.
 - Для записей с результатом `PASS/FAIL` evidence-файл должен использовать каноническое имя: `f7-run-<scenario>-<date>-<env>-<tenant-slug>.md`.

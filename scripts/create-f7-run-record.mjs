@@ -3,6 +3,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -61,7 +62,7 @@ const SCENARIO_META = {
 function usage(code = 0) {
   const text = [
     'Usage:',
-    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row] [--append-ssot]',
+    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row] [--append-ssot] [--no-validate]',
     '',
     'Example:',
     '  node scripts/create-f7-run-record.mjs --scenario b --env staging --tenant demo-agency --owner "Product/QA" --dry-run',
@@ -81,6 +82,7 @@ function parseArgs(argv) {
     dryRun: false,
     printSsotRow: false,
     appendSsot: false,
+    validate: true,
   }
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
@@ -93,6 +95,7 @@ function parseArgs(argv) {
     else if (arg === '--dry-run') out.dryRun = true
     else if (arg === '--print-ssot-row') out.printSsotRow = true
     else if (arg === '--append-ssot') out.appendSsot = true
+    else if (arg === '--no-validate') out.validate = false
     else if (arg === '--help' || arg === '-h') usage(0)
     else usage(1)
   }
@@ -182,6 +185,17 @@ function appendRowToSsot(row, { scenario, env, tenant, date }) {
   fs.writeFileSync(ssotPath, next, 'utf-8')
 }
 
+function validateF7RunLog() {
+  const validatorPath = path.join(repoRoot, 'scripts', 'check-f7-run-log.mjs')
+  const res = spawnSync(process.execPath, [validatorPath], {
+    cwd: repoRoot,
+    stdio: 'inherit',
+  })
+  if (res.status !== 0) {
+    throw new Error('f7 run-log validation failed after SSOT update')
+  }
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2))
   if (!SCENARIO_META[args.scenario]) usage(1)
@@ -242,6 +256,10 @@ function main() {
   if (args.appendSsot) {
     appendRowToSsot(row, { scenario, env, tenant: args.tenant, date })
     console.log('SSOT 10.1 row appended.')
+    if (args.validate) {
+      validateF7RunLog()
+      console.log('F7 run-log validation passed.')
+    }
   }
   if (args.printSsotRow) {
     console.log('SSOT 10.1 row:')

@@ -34,6 +34,7 @@
    - Для создания run-record файла использовать CLI: `npm run f7:run-record:new -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>"`.
    - Для мгновенной вставки в SSOT использовать `--print-ssot-row` (CLI выводит готовую строку таблицы `10.1`).
    - Для автодобавления записи в `10.1` использовать `--append-ssot` (CLI вставит строку и защитит от дубля по `date/scenario/env/tenant`).
+   - `--append-ssot` по умолчанию запускает валидацию `f7:run-log:check` сразу после вставки строки; отключение доступно флагом `--no-validate`.
    - Перед финальным обновлением `10.1` запускать: `npm run f7:run-log:check`.
 
 Готово — можно выкатывать 🚀
