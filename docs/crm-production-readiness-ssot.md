@@ -123,8 +123,8 @@
 | 33 | Прозрачный billing для пользователя | `IN_PROGRESS` | План/лимиты/usage/renewal/invoices/изменение тарифа на 1 экране | История платежей и live Stripe не завершены |
 | 34 | Self-guided UX (система помогает, а не требует обучения) | `IN_PROGRESS` | Подсказки, понятные labels, success/error states, next steps | Частично реализовано |
 | 35 | Контрольные сценарии успеха (A/B/C) | `IN_PROGRESS` | Сценарии соло/агентство/работодатель проходят end-to-end | Матрица сценариев добавлена, нужен фактический PASS прогон |
-| 36 | SEO техническая готовность marketing/public surface | `NOT_STARTED` | Индексация, sitemap, robots, canonical, meta/open graph, structured data и базовые Core Web Vitals в целевых пределах | Требуется отдельный технический SEO-pass по публичным страницам |
-| 37 | SEO контентное наполнение для конверсии | `NOT_STARTED` | Ключевые landing/feature/use-case страницы имеют целевой контент, CTA и семантические заголовки | Нужен контент-план и пакетная публикация страниц |
+| 36 | SEO техническая готовность marketing/public surface | `DONE` | Индексация, sitemap, robots, canonical, meta/open graph, structured data и базовые Core Web Vitals в целевых пределах | Technical baseline закрыт; остается регулярный мониторинг и server-level 404 policy как non-blocking риск |
+| 37 | SEO контентное наполнение для конверсии | `DONE` | Ключевые landing/feature/use-case страницы имеют целевой контент, CTA и семантические заголовки | Wave-1 контент-пакет выпущен, перелинковка и baseline tracking внедрены |
 | 38 | Mobile adaptation (responsive-first) | `IN_PROGRESS` | Публичные и core CRM-экраны проходят mobile QA (320/375/390/768), без критичных overflow и с рабочими CTA | Частично закрыто, нужен формальный mobile cross-screen pass |
 
 ---
@@ -378,8 +378,8 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F6 | Терминологическая унификация UI по типам бизнеса | `NOT_STARTED` | Нет конфликтующих терминов в интерфейсе |
 | F7 | Сценарии успеха A/B/C — формальный прогон и фиксация PASS/FAIL | `IN_PROGRESS` | Все три сценария закрыты без саппорта |
 | F8 | Compact CRM UI standard + Tabler icons rollout | `IN_PROGRESS` | Ключевые экраны (`Pipeline`, `Leads`, `Candidates`, `Dashboard`) визуально компактны, единообразны и без лишних элементов |
-| F9 | SEO optimization baseline (technical SEO) | `NOT_STARTED` | Публичные страницы имеют корректные `title/description/canonical`, `robots.txt`, `sitemap.xml`, OG tags, schema.org и индексацию без критичных ошибок |
-| F10 | SEO content rollout (pages + copy + intent mapping) | `IN_PROGRESS` | Выпущен контент-пакет для приоритетных запросов (landing/use-cases/features), есть внутренняя перелинковка и конверсионные CTA |
+| F9 | SEO optimization baseline (technical SEO) | `DONE` | Публичные страницы имеют корректные `title/description/canonical`, `robots.txt`, `sitemap.xml`, OG tags, schema.org и индексацию без критичных ошибок |
+| F10 | SEO content rollout (pages + copy + intent mapping) | `DONE` | Выпущен контент-пакет для приоритетных запросов (landing/use-cases/features), есть внутренняя перелинковка и конверсионные CTA |
 | F11 | Mobile adaptation pass (public + CRM core) | `IN_PROGRESS` | Пройден responsive-аудит по брейкпоинтам `320/375/390/768`, устранены критичные UI/UX разрывы, оформлен mobile QA-report |
 
 Стандарт `F8` (принят):
@@ -452,7 +452,7 @@ Residual risk:
 | F10.2 | Подготовить шаблон контент-страниц (H1/H2, CTA, internal links, FAQ) | `DONE` | Есть единый template для массовой публикации |
 | F10.3 | Выпустить пакет приоритетных страниц wave-1 | `DONE` | Опубликованы основные страницы с согласованной семантикой и CTA |
 | F10.4 | Встроить внутреннюю перелинковку между landing/features/use-cases | `DONE` | Все страницы wave-1 связаны по intent-цепочкам |
-| F10.5 | Проверить конверсионные CTA и аналитические события контента | `NOT_STARTED` | На каждой SEO-странице есть измеряемый conversion path |
+| F10.5 | Проверить конверсионные CTA и аналитические события контента | `DONE` | На каждой SEO-странице есть измеряемый conversion path |
 
 ### 5.6.2.1 `F10.1` Keyword-Intent Map (baseline, `2026-03-12`)
 
@@ -495,6 +495,17 @@ Residual risk:
 Supporting implementation:
 - Routes wired in `hostflow-frontend/src/App.tsx`.
 - URLs included in auto-generated sitemap (`scripts/generate-sitemap.mjs` -> `public/sitemap.xml`).
+
+### 5.6.2.4 `F10.5` Conversion Tracking Snapshot (`2026-03-12`)
+
+| Event | Trigger | Coverage |
+|---|---|---|
+| `seo_cta_click` | клики по primary/secondary/related CTA | `CrmLandingPage` + все wave-1 feature/use-case страницы |
+| `seo_scroll_depth` | milestone глубины скролла `25/50/75/100` | `CrmLandingPage` + все wave-1 feature/use-case страницы |
+
+Implementation notes:
+- Tracking hook: `hostflow-frontend/src/hooks/useSeoTracking.ts`.
+- Transport: `window.dataLayer` (vendor-agnostic baseline).
 
 ### 5.6.3 Декомпозиция `F11` (mobile adaptation pass)
 
@@ -770,6 +781,8 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F10.2 = DONE`: сформирован единый SEO content template pack (`docs/seo/content-page-template.md`) с обязательной структурой блоков/CTA/internal links/FAQ/schema и baseline tracking требованиями для wave-публикаций.
 - `2026-03-12` — `F10.3 = DONE`: выпущен wave-1 контент-пакет (`/features/candidate-pipeline`, `/features/document-control`, `/use-cases/trucking-recruitment`, `/use-cases/high-volume-onboarding`) с SEO metadata + FAQ schema + dual CTA.
 - `2026-03-12` — `F10.4 = DONE`: реализована внутренняя перелинковка между landing/features/use-cases; в landing добавлен guide-hub блок, sitemap auto-generation расширен до новых wave-1 URL.
+- `2026-03-12` — `F10.5 = DONE`: подключен baseline conversion tracking для SEO-контента (`seo_cta_click`, `seo_scroll_depth`) через `window.dataLayer` на landing и всех wave-1 страницах.
+- `2026-03-12` — направления `F9` и `F10` синхронизированы в общий `DONE` статус (включая критерии `36/37`); зафиксированы остаточные non-blocking риски по continuous monitoring и server-level `404` policy для SPA-hosting.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.

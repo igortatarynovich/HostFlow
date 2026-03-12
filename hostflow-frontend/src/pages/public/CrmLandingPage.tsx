@@ -4,6 +4,7 @@ import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLegalFooter } from '../../components/public/PublicLegalFooter'
 import { useI18n } from '../../i18n'
 import { useSeoMeta } from '../../hooks/useSeoMeta'
+import { useSeoTracking } from '../../hooks/useSeoTracking'
 
 type PlanCard = {
   key: 'starter' | 'team' | 'pro'
@@ -17,6 +18,10 @@ type PlanCard = {
 export default function CrmLandingPage() {
   const { t } = useI18n()
   const location = useLocation()
+  const { trackCta } = useSeoTracking({
+    pageType: 'landing',
+    pageKey: location.pathname === '/pricing' ? 'pricing' : 'landing',
+  })
 
   const isPricingRoute = location.pathname === '/pricing'
   const canonicalPath = isPricingRoute ? '/pricing' : '/'
@@ -193,12 +198,14 @@ export default function CrmLandingPage() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   to="/signup"
+                  onClick={() => trackCta('hero_primary_signup', '/signup')}
                   className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-brand-500/30 transition hover:bg-brand-700"
                 >
                   {t('public.crm_landing.hero.primary_cta', { defaultValue: 'Start free trial' })}
                 </Link>
                 <Link
                   to="/login"
+                  onClick={() => trackCta('hero_secondary_login', '/login')}
                   className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3 text-base font-semibold text-slate-800 transition hover:bg-slate-50"
                 >
                   {t('public.crm_landing.hero.secondary_cta', { defaultValue: 'Sign in' })}
@@ -248,6 +255,7 @@ export default function CrmLandingPage() {
                 </ul>
                 <Link
                   to={plan.ctaHref}
+                  onClick={() => trackCta(`pricing_select_${plan.key}`, plan.ctaHref)}
                   className="mt-5 inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
                   {t('public.crm_landing.pricing.select_cta', { defaultValue: 'Select plan' })}
@@ -351,10 +359,10 @@ export default function CrmLandingPage() {
             Start with the page closest to your current challenge and move to the next linked guide.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm">Candidate pipeline feature</Link>
-            <Link to="/features/document-control" className="btn-secondary btn-sm">Document control feature</Link>
-            <Link to="/use-cases/trucking-recruitment" className="btn-secondary btn-sm">Trucking recruitment use-case</Link>
-            <Link to="/use-cases/high-volume-onboarding" className="btn-secondary btn-sm">High-volume onboarding use-case</Link>
+            <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('guide_pipeline', '/features/candidate-pipeline')}>Candidate pipeline feature</Link>
+            <Link to="/features/document-control" className="btn-secondary btn-sm" onClick={() => trackCta('guide_document_control', '/features/document-control')}>Document control feature</Link>
+            <Link to="/use-cases/trucking-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_trucking', '/use-cases/trucking-recruitment')}>Trucking recruitment use-case</Link>
+            <Link to="/use-cases/high-volume-onboarding" className="btn-secondary btn-sm" onClick={() => trackCta('guide_high_volume', '/use-cases/high-volume-onboarding')}>High-volume onboarding use-case</Link>
           </div>
         </section>
 
@@ -368,6 +376,7 @@ export default function CrmLandingPage() {
           <div className="mt-4 flex justify-center">
             <Link
               to="/signup?plan=team"
+              onClick={() => trackCta('final_cta_signup_team', '/signup?plan=team')}
               className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-brand-500/30 transition hover:bg-brand-700"
             >
               {t('public.crm_landing.final_cta.button', { defaultValue: 'Start free trial' })}

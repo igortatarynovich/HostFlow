@@ -2,8 +2,10 @@ import { Link } from 'react-router-dom'
 import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLegalFooter } from '../../components/public/PublicLegalFooter'
 import { useSeoMeta } from '../../hooks/useSeoMeta'
+import { useSeoTracking } from '../../hooks/useSeoTracking'
 
 export default function FeatureCandidatePipelinePage() {
+  const { trackCta } = useSeoTracking({ pageType: 'feature', pageKey: 'candidate_pipeline' })
   const faq = [
     {
       q: 'Can we configure pipeline stages for different teams?',
@@ -45,8 +47,8 @@ export default function FeatureCandidatePipelinePage() {
             Keep every candidate moving with clear stages, owners, and next actions so your pipeline does not stall.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Link to="/signup" className="btn-primary">Start free trial</Link>
-            <Link to="/pricing" className="btn-secondary">View pricing</Link>
+            <Link to="/signup" className="btn-primary" onClick={() => trackCta('primary_signup', '/signup')}>Start free trial</Link>
+            <Link to="/pricing" className="btn-secondary" onClick={() => trackCta('secondary_pricing', '/pricing')}>View pricing</Link>
           </div>
         </section>
 
@@ -83,9 +85,9 @@ export default function FeatureCandidatePipelinePage() {
         <section className="cv-auto rounded-3xl border border-brand-200 bg-brand-50/60 p-6">
           <h2 className="text-xl font-semibold text-slate-900">Related guides</h2>
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
-            <Link to="/features/document-control" className="btn-secondary btn-sm">Document control</Link>
-            <Link to="/use-cases/trucking-recruitment" className="btn-secondary btn-sm">Trucking recruitment use-case</Link>
-            <Link to="/use-cases/high-volume-onboarding" className="btn-secondary btn-sm">High-volume onboarding</Link>
+            <Link to="/features/document-control" className="btn-secondary btn-sm" onClick={() => trackCta('related_document_control', '/features/document-control')}>Document control</Link>
+            <Link to="/use-cases/trucking-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('related_trucking', '/use-cases/trucking-recruitment')}>Trucking recruitment use-case</Link>
+            <Link to="/use-cases/high-volume-onboarding" className="btn-secondary btn-sm" onClick={() => trackCta('related_high_volume', '/use-cases/high-volume-onboarding')}>High-volume onboarding</Link>
           </div>
         </section>
 
