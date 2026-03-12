@@ -399,7 +399,7 @@ export default function MetaLeadsAdminPage() {
             type="button"
             onClick={() => void refreshAll()}
             disabled={loading}
-            className="rounded border border-slate-300 px-3 py-1 text-sm disabled:opacity-50"
+            className="btn-secondary btn-sm disabled:opacity-50"
           >
             {loading ? t('common.loading') : t('common.actions.refresh')}
           </button>
@@ -419,14 +419,14 @@ export default function MetaLeadsAdminPage() {
           <div className="mt-3 flex gap-2">
             <button
               type="button"
-              className="rounded bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              className="btn-primary"
               onClick={() => setTab('credentials')}
             >
               {t('app.admin.meta_leads.tabs.credentials')} →
             </button>
             <button
               type="button"
-              className="rounded border border-brand-300 bg-white px-3 py-2 text-sm text-brand-700 hover:bg-brand-50"
+              className="btn-secondary"
               onClick={() => setTab('mapping')}
             >
               {t('app.admin.meta_leads.tabs.mapping')} →
@@ -448,7 +448,7 @@ export default function MetaLeadsAdminPage() {
             />
           )}
           {notice && !error && (
-            <div className="rounded border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">{notice}</div>
+            <div className="alert-success">{notice}</div>
           )}
         </div>
       )}
@@ -507,7 +507,7 @@ export default function MetaLeadsAdminPage() {
                 </span>
                 <button
                   type="button"
-                  className="rounded bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700"
+                  className="btn-primary btn-xs"
                   onClick={() => setAttachModal({ group, vacancyId: '' })}
                   disabled={submitting}
                 >
@@ -545,7 +545,7 @@ export default function MetaLeadsAdminPage() {
             <label className="text-sm text-slate-700">
               {t('app.admin.meta_leads.settings.default_company')}
               <select
-                className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                className="input mt-1 w-full"
                 value={selectedCompanyId ?? ''}
                 onChange={(event) => handleSettingsChange('default_company_id', event.target.value ? event.target.value : null)}
               >
@@ -562,7 +562,7 @@ export default function MetaLeadsAdminPage() {
             <label className="text-sm text-slate-700">
               {t('app.admin.meta_leads.settings.default_recruiter')}
               <select
-                className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                className="input mt-1 w-full"
                 value={selectedRecruiterId ?? ''}
                 onChange={(event) => handleSettingsChange('fallback_recruiter_id', event.target.value ? event.target.value : null)}
               >
@@ -581,7 +581,7 @@ export default function MetaLeadsAdminPage() {
               <input
                 type="number"
                 min={0}
-                className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                className="input mt-1 w-full"
                 value={settingsDraft.reroute_after_hours ?? settings?.reroute_after_hours ?? ''}
                 onChange={(event) => {
                   const value = event.target.value
@@ -594,7 +594,7 @@ export default function MetaLeadsAdminPage() {
               {t('app.admin.meta_leads.settings.webhook_url')}
               <input
                 type="text"
-                className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                className="input mt-1 w-full"
                 value={settingsDraft.webhook_url ?? settings?.webhook_url ?? ''}
                 onChange={(event) => handleSettingsChange('webhook_url', event.target.value)}
               />
@@ -603,7 +603,7 @@ export default function MetaLeadsAdminPage() {
               {t('app.admin.meta_leads.settings.webhook_token')}
               <input
                 type="text"
-                className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                className="input mt-1 w-full"
                 value={settingsDraft.webhook_verify_token ?? settings?.webhook_verify_token ?? ''}
                 onChange={(event) => handleSettingsChange('webhook_verify_token', event.target.value)}
               />
@@ -612,7 +612,7 @@ export default function MetaLeadsAdminPage() {
             <label className="text-sm text-slate-700 md:col-span-2">
               {t('app.admin.meta_leads.settings.field_mapping', { defaultValue: 'Field mapping (source → target → format)' })}
               <textarea
-                className="mt-1 min-h-[180px] w-full rounded border border-slate-300 px-2 py-1 font-mono text-xs"
+                className="textarea mt-1 min-h-[180px] w-full font-mono text-xs"
                 value={fieldMappingText}
                 onChange={(event) => setFieldMappingText(event.target.value)}
                 placeholder='[{"source":"phone_number","target":"phone","format":"phone","overwrite":true}]'
@@ -634,7 +634,7 @@ export default function MetaLeadsAdminPage() {
           <button
             type="button"
             onClick={handleSettingsSubmit}
-            className="mt-4 rounded bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+            className="btn-primary mt-4"
           >
             {t('app.admin.meta_leads.settings.save')}
           </button>
@@ -650,7 +650,7 @@ export default function MetaLeadsAdminPage() {
                 {t('app.admin.meta_leads.credentials.label')}
                 <input
                   type="text"
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                  className="input mt-1 w-full"
                   value={credentialForm.label}
                   onChange={(event) => setCredentialForm((prev) => ({ ...prev, label: event.target.value }))}
                 />
@@ -658,7 +658,7 @@ export default function MetaLeadsAdminPage() {
               <label className="text-sm text-slate-700">
                 {t('app.admin.meta_leads.credentials.status')}
                 <select
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                  className="input mt-1 w-full"
                   value={credentialForm.status}
                   onChange={(event) => setCredentialForm((prev) => ({ ...prev, status: event.target.value as CredentialFormState['status'] }))}
                 >
@@ -671,7 +671,7 @@ export default function MetaLeadsAdminPage() {
                 {t('app.admin.meta_leads.credentials.webhook_secret')}
                 <input
                   type="text"
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                  className="input mt-1 w-full"
                   value={credentialForm.secret}
                   onChange={(event) => setCredentialForm((prev) => ({ ...prev, secret: event.target.value }))}
                 />
@@ -680,7 +680,7 @@ export default function MetaLeadsAdminPage() {
                 {t('app.admin.meta_leads.credentials.access_token')}
                 <input
                   type="text"
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                  className="input mt-1 w-full"
                   value={credentialForm.accessToken}
                   onChange={(event) => setCredentialForm((prev) => ({ ...prev, accessToken: event.target.value }))}
                 />
@@ -689,7 +689,7 @@ export default function MetaLeadsAdminPage() {
                 ad_account_id
                 <input
                   type="text"
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                  className="input mt-1 w-full"
                   value={credentialForm.adAccountId}
                   onChange={(event) => setCredentialForm((prev) => ({ ...prev, adAccountId: event.target.value }))}
                 />
@@ -698,7 +698,7 @@ export default function MetaLeadsAdminPage() {
                 page_id
                 <input
                   type="text"
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                  className="input mt-1 w-full"
                   value={credentialForm.pageId}
                   onChange={(event) => setCredentialForm((prev) => ({ ...prev, pageId: event.target.value }))}
                 />
@@ -706,7 +706,7 @@ export default function MetaLeadsAdminPage() {
             </div>
             <button
               type="button"
-              className="mt-4 rounded bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              className="btn-primary mt-4"
               onClick={handleCredentialCreate}
             >
               {t('common.actions.save')}
@@ -936,14 +936,14 @@ export default function MetaLeadsAdminPage() {
                         <div className="flex gap-2">
                           <button
                             type="button"
-                            className="text-xs text-brand-600 hover:underline"
+                            className="btn-secondary btn-xs"
                             onClick={() => void handleRetry(lead)}
                           >
                             {t('app.admin.meta_leads.logs.actions.retry', { defaultValue: 'Retry' })}
                           </button>
                           <button
                             type="button"
-                            className="text-xs text-brand-600 hover:underline"
+                            className="btn-secondary btn-xs"
                             onClick={() => void handleReroute(lead)}
                           >
                             {t('app.admin.meta_leads.logs.actions.reroute')}
@@ -977,7 +977,7 @@ export default function MetaLeadsAdminPage() {
             <label className="mt-3 block text-sm text-slate-700">
               {t('app.admin.meta_leads.unmapped.select_vacancy', { defaultValue: 'Вакансия' })}
               <select
-                className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                className="input mt-1 w-full"
                 value={attachModal.vacancyId}
                 onChange={(e) => setAttachModal((prev) => prev && { ...prev, vacancyId: e.target.value })}
               >
@@ -992,7 +992,7 @@ export default function MetaLeadsAdminPage() {
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded border border-slate-300 px-3 py-2 text-sm"
+                className="btn-secondary"
                 onClick={() => setAttachModal(null)}
                 disabled={submitting}
               >
@@ -1000,7 +1000,7 @@ export default function MetaLeadsAdminPage() {
               </button>
               <button
                 type="button"
-                className="rounded bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+                className="btn-primary disabled:opacity-50"
                 onClick={() => void handleAttachUnmapped()}
                 disabled={submitting || !attachModal.vacancyId.trim()}
               >
