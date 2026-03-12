@@ -2141,6 +2141,29 @@
           "by_status": "Wg statusu"
         }
       },
+      "retention": {
+        "badge": "Kolejny krok trial",
+        "cta_billing": "Otwórz billing",
+        "dismiss": "Ukryj na teraz",
+        "cta_step": {
+          "lead": "Dodaj pierwszy lead",
+          "vacancy": "Utwórz pierwszy wakat",
+          "client": "Utwórz pierwszego klienta",
+          "type_step": "Kontynuuj konfigurację"
+        },
+        "d1": {
+          "title": "Dzień 1: uruchom pierwszy workflow",
+          "subtitle": "Wykonaj pierwszą akcję biznesową teraz, aby szybko zobaczyć wartość trialu."
+        },
+        "d3": {
+          "title": "Dzień 3: domknij ścieżkę aktywacji",
+          "subtitle": "Zamknij kroki onboardingu i ustaw next action, aby zespół działał w stałym rytmie."
+        },
+        "d7": {
+          "title": "Dzień 7: utrzymaj ciągłość pracy",
+          "subtitle": "Sprawdź billing wcześniej, aby workspace pozostał aktywny po trialu."
+        }
+      },
       "hero": {
         "title": "Centrum kontroli rekrutacji",
         "subtitle": "Monitoruj lejek, dokumenty i oferty w jednym interfejsie.",

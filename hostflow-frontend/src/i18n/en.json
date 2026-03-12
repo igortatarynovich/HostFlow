@@ -2464,6 +2464,29 @@
           "by_status": "By status"
         }
       },
+      "retention": {
+        "badge": "Trial next step",
+        "cta_billing": "Open billing",
+        "dismiss": "Hide for now",
+        "cta_step": {
+          "lead": "Add first lead",
+          "vacancy": "Create first vacancy",
+          "client": "Create first client",
+          "type_step": "Continue setup"
+        },
+        "d1": {
+          "title": "Day 1: launch your first workflow",
+          "subtitle": "Complete the first business action now to get value from trial in minutes."
+        },
+        "d3": {
+          "title": "Day 3: lock in your activation path",
+          "subtitle": "Finish onboarding steps and set next action so the team has a repeatable flow."
+        },
+        "d7": {
+          "title": "Day 7: keep operations uninterrupted",
+          "subtitle": "Review billing now and keep your workspace active after trial."
+        }
+      },
       "hero": {
         "title": "Central hiring overview",
         "subtitle": "Monitor funnel, documents, and vacancies in a single workspace.",

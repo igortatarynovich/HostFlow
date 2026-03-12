@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import api, { withTenant } from '../api/client'
+import api, { getOnboardingStatus, type OnboardingStatus, withTenant } from '../api/client'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
@@ -304,6 +304,8 @@ const STAGE_STACK_COLORS: Record<StageOutcome, string> = {
   pipeline: 'bg-brand-400',
 }
 
+type TrialRetentionDay = 1 | 3 | 7
+
 // normalizeTotal is now imported from modules/dashboard/utils
 
 export default function Dashboard() {
@@ -330,6 +332,8 @@ export default function Dashboard() {
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
   const canManageBilling = role === 'administrator' || role === 'supervisor'
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null)
+  const [retentionStatus, setRetentionStatus] = useState<OnboardingStatus | null>(null)
+  const [retentionDismissed, setRetentionDismissed] = useState(false)
   const [stageView, setStageView] = useState<'all' | 'agency' | 'client'>(() =>
     isClientRole ? 'client' : 'all',
   )
@@ -421,6 +425,121 @@ export default function Dashboard() {
       urgency: 'inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-800',
     } as const
   }, [trialTone])
+
+  useEffect(() => {
+    if (!isTrialTenant) {
+      setRetentionStatus(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await getOnboardingStatus()
+        if (!cancelled) {
+          setRetentionStatus(data)
+        }
+      } catch {
+        if (!cancelled) {
+          setRetentionStatus(null)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isTrialTenant])
+
+  const trialAgeDays = useMemo(() => {
+    const createdAtRaw = String(tenant?.created_at || '').trim()
+    if (!createdAtRaw) return null
+    const createdAt = new Date(createdAtRaw)
+    if (Number.isNaN(createdAt.getTime())) return null
+    const diffMs = Date.now() - createdAt.getTime()
+    return Math.max(0, Math.floor(diffMs / DAY_MS))
+  }, [tenant?.created_at])
+
+  const retentionDay = useMemo<TrialRetentionDay | null>(() => {
+    if (trialAgeDays == null) return null
+    if (trialAgeDays >= 7) return 7
+    if (trialAgeDays >= 3) return 3
+    if (trialAgeDays >= 1) return 1
+    return null
+  }, [trialAgeDays])
+
+  const retentionDismissKey = useMemo(() => {
+    if (!tenantId || retentionDay == null) return null
+    return `hf:trial-retention:${tenantId}:d${retentionDay}`
+  }, [tenantId, retentionDay])
+
+  useEffect(() => {
+    if (!retentionDismissKey) {
+      setRetentionDismissed(false)
+      return
+    }
+    try {
+      const raw = localStorage.getItem(retentionDismissKey)
+      setRetentionDismissed(raw === '1')
+    } catch {
+      setRetentionDismissed(false)
+    }
+  }, [retentionDismissKey])
+
+  const dismissRetentionNudge = useCallback(() => {
+    if (!retentionDismissKey) return
+    try {
+      localStorage.setItem(retentionDismissKey, '1')
+    } catch {
+      /* ignore */
+    }
+    setRetentionDismissed(true)
+  }, [retentionDismissKey])
+
+  const typeSpecificStepDone = useMemo(() => {
+    if (!retentionStatus) return false
+    if (retentionStatus.business_type === 'employer') {
+      return Boolean(retentionStatus.steps.first_vacancy_created)
+    }
+    if (retentionStatus.business_type === 'services') {
+      return Boolean(retentionStatus.steps.first_client_created)
+    }
+    return Boolean(retentionStatus.steps.first_lead_created)
+  }, [retentionStatus])
+
+  const retentionNextHref = useMemo(() => {
+    if (!retentionStatus) return '/app/overview'
+    if (!retentionStatus.steps.company_created) return '/app/onboarding/company'
+    if (!typeSpecificStepDone) {
+      return retentionStatus.business_type === 'employer'
+        ? '/app/vacancies'
+        : retentionStatus.business_type === 'services'
+          ? '/app/clients'
+          : '/app/leads'
+    }
+    if (!retentionStatus.steps.next_action_created) return '/app/reminders'
+    return '/app/settings/billing'
+  }, [retentionStatus, typeSpecificStepDone])
+
+  const retentionStepKey = useMemo(() => {
+    if (!retentionStatus) return 'type_step'
+    if (retentionStatus.business_type === 'employer') return 'vacancy'
+    if (retentionStatus.business_type === 'services') return 'client'
+    return 'lead'
+  }, [retentionStatus])
+
+  const retentionNudge = useMemo(() => {
+    if (!isTrialTenant || retentionDay == null || retentionDismissed) return null
+    const activationDone = Boolean(
+      retentionStatus && !retentionStatus.onboarding_required && !retentionStatus.activation_required,
+    )
+    const dayKey = `d${retentionDay}` as const
+    return {
+      day: retentionDay,
+      dayKey,
+      activationDone,
+      href: retentionNextHref,
+      stepKey: retentionStepKey,
+    }
+  }, [isTrialTenant, retentionDay, retentionDismissed, retentionStatus, retentionNextHref, retentionStepKey])
 
   const visibleWidgetsKey = useMemo(() => `hf:dashboard:${tenantId}:visibleWidgets`, [tenantId])
   const visibleFiltersKey = useMemo(() => `hf:dashboard:${tenantId}:visibleFilters`, [tenantId])
@@ -1334,6 +1453,43 @@ export default function Dashboard() {
     <section className="h-full min-h-0 w-full flex flex-col">
       <div className="flex-1 min-h-0 overflow-auto px-6 py-4 space-y-4">
         {tenantId && <OnboardingWizard tenantId={tenantId} />}
+        {retentionNudge && (
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">
+                  {t('app.dashboard.retention.badge', { defaultValue: 'Trial next step' })}
+                </p>
+                <h2 className="text-sm font-semibold text-brand-950">
+                  {t(`app.dashboard.retention.${retentionNudge.dayKey}.title`, {
+                    defaultValue: retentionNudge.activationDone
+                      ? 'Keep momentum during trial'
+                      : 'Finish activation and get first value',
+                  })}
+                </h2>
+                <p className="text-xs text-brand-900/90">
+                  {t(`app.dashboard.retention.${retentionNudge.dayKey}.subtitle`, {
+                    defaultValue: retentionNudge.activationDone
+                      ? 'Your base setup is done. Keep using the workspace and prepare billing before trial ends.'
+                      : 'Complete the next guided step now to keep progress and avoid drop-off during trial.',
+                  })}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link to={retentionNudge.href} className="btn-secondary btn-sm">
+                  {retentionNudge.activationDone
+                    ? t('app.dashboard.retention.cta_billing', { defaultValue: 'Open billing' })
+                    : t(`app.dashboard.retention.cta_step.${retentionNudge.stepKey}`, {
+                        defaultValue: 'Continue setup',
+                      })}
+                </Link>
+                <button type="button" className="btn-secondary btn-sm" onClick={dismissRetentionNudge}>
+                  {t('app.dashboard.retention.dismiss', { defaultValue: 'Hide for now' })}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {isTrialTenant && (
           <div className={trialCenterClasses.wrapper}>
             <div className="flex flex-wrap items-start justify-between gap-3">
