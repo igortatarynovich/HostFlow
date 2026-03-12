@@ -237,7 +237,7 @@ function UserDetailCard({
                 : t('app.admin.users.table.status.inactive')}
             </span>
           </span>
-          <button type="button" className="btn-ghost" onClick={onRefresh} disabled={loading}>
+          <button type="button" className="btn-secondary" onClick={onRefresh} disabled={loading}>
             {loading ? t('app.admin.users.detail.refresh.loading') : t('app.admin.users.detail.refresh.action')}
           </button>
         </div>
@@ -342,7 +342,7 @@ function UserDetailCard({
                 </button>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn-secondary"
                   onClick={handleRevokeTokens}
                   disabled={revokingRefresh}
                 >
@@ -477,7 +477,7 @@ function UserDetailCard({
                       })}
                     </div>
                   </div>
-                  <Link className="btn-ghost text-xs" to={`/app/settings/company-access?company=${company.company_id}`}>
+                  <Link className="btn-secondary btn-xs" to={`/app/settings/company-access?company=${company.company_id}`}>
                     {t('app.admin.users.detail.companies.configure_acl')}
                   </Link>
                 </li>
@@ -489,7 +489,7 @@ function UserDetailCard({
 
       {tab === 'audit' && (
         <div className="mt-4 space-y-3 text-sm text-slate-700">
-          <button type="button" className="btn-ghost" onClick={onRefreshAudit} disabled={audit.loading}>
+          <button type="button" className="btn-secondary" onClick={onRefreshAudit} disabled={audit.loading}>
             {audit.loading
               ? t('app.admin.users.detail.audit.refresh_loading')
               : t('app.admin.users.detail.audit.refresh')}
@@ -1019,7 +1019,7 @@ export default function UsersPage() {
             </button>
             <button
               type="button"
-              className="btn-ghost text-xs sm:text-sm"
+              className="btn-secondary btn-xs sm:text-sm"
               onClick={() => updateTenantParam(null)}
               disabled={!tenantOverride}
             >
@@ -1067,7 +1067,7 @@ export default function UsersPage() {
                       </div>
                       <button
                         type="button"
-                        className="btn-ghost text-xs"
+                        className="btn-secondary btn-xs"
                         onClick={() => handleTenantSuggestionClick(tenant.id)}
                       >
                         {t('app.admin.users.page.tenant_override.apply')}
@@ -1116,7 +1116,7 @@ export default function UsersPage() {
                 {t('app.admin.users.table.count', { values: { count: users.length } })}
               </p>
             </div>
-            <button className="btn-ghost text-xs" onClick={() => void loadUsers()} disabled={loading}>
+            <button className="btn-secondary btn-xs" onClick={() => void loadUsers()} disabled={loading}>
               {loading ? t('app.admin.users.page.refresh.loading') : t('app.admin.users.page.refresh.action')}
             </button>
           </div>
