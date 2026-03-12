@@ -618,6 +618,7 @@ Residual risks до финального `PASS`:
 ### 5.6.10 `F6` Terminology Unification Snapshot (`2026-03-12`)
 
 Что внедрено (wave-1):
+- Добавлен канонический словарь терминов: [business-terminology-map.md](/opt/HostFlow/docs/ux/business-terminology-map.md).
 - В `Dashboard` убран конфликтный label `Clients / Companies`; для `agency` используется единый термин `Clients`.
 - В `Dashboard` введены business-aware термины для entity-блока:
   - `employer`: `Company/Companies`;
@@ -829,3 +830,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — расширен `F5` lifecycle retention path: добавлен day-bucket `D2` и baseline analytics events (`trial_retention_nudge`: `impression/cta_click/dismiss`) через `window.dataLayer`.
 - `2026-03-12` — завершен `F5`: добавлен backend-контур retention analytics (`POST /analytics/events`, `GET /analytics/trial-retention`) на базе `activity_log`, а в `Dashboard -> Trial Center` выведен day-level отчет `D1/D2/D3/D7` (impressions/clicks/dismiss/CTR); критерий `#25` переведен в `DONE`.
 - `2026-03-12` — старт `F6` terminology unification wave-1: в `Dashboard` убран конфликт `Clients / Companies`, введены business-aware entity labels (`Client/Company` по типу бизнеса), а в `AgencyClientsPage` empty-state CTA выровнен на `Open clients`; добавлен snapshot `5.6.10`.
+- `2026-03-12` — для `F6` добавлен canonical словарь `docs/ux/business-terminology-map.md` с правилами использования терминов по типам бизнеса (`agency/employer/services`) и wave scope (`wave-1/wave-2`).
