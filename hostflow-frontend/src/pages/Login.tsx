@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
@@ -12,6 +12,7 @@ import { useSeoMeta } from '../hooks/useSeoMeta'
 export default function Login(){
   const { login } = useAuth()
   const nav = useNavigate()
+  const [searchParams] = useSearchParams()
   const { t } = useI18n()
   useSeoMeta({
     title: t('app.seo.login.title', { defaultValue: 'Sign In to HostFlow' }),
@@ -20,9 +21,10 @@ export default function Login(){
     }),
     canonicalPath: '/login',
   })
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(() => (searchParams.get('email') || '').trim())
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const valuePropKeys = ['pipeline', 'documents', 'support'] as const
   const valueProps = valuePropKeys.map((key) => ({
@@ -55,6 +57,8 @@ export default function Login(){
       const notice = window.sessionStorage.getItem(LOGIN_NOTICE_STORAGE_KEY)
       if (notice === 'expired') {
         setError(t('app.login.errors.expired'))
+      } else if (notice === 'invite_accepted') {
+        setNotice(t('app.login.notices.invite_accepted', { defaultValue: 'Invitation accepted. Sign in to continue.' }))
       }
       if (notice) {
         window.sessionStorage.removeItem(LOGIN_NOTICE_STORAGE_KEY)
@@ -88,6 +92,11 @@ export default function Login(){
             className="card w-full space-y-4 rounded-3xl border border-white/70 bg-white/95 p-8 shadow-card backdrop-blur-lg"
           >
             <h2 className="text-2xl font-semibold text-center text-slate-900">{t('app.login.title')}</h2>
+            {notice && (
+              <div className="alert-success text-sm">
+                {notice}
+              </div>
+            )}
             {error && (
               <ErrorRecoveryBanner
                 info={{ title: error, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}

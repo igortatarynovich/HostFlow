@@ -6,6 +6,7 @@ import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useAuth } from '../store/useAuth'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
+import { LOGIN_NOTICE_STORAGE_KEY } from '../store/auth'
 
 export default function InviteAcceptPage() {
   useRobotsMeta({ index: false, follow: false })
@@ -23,6 +24,15 @@ export default function InviteAcceptPage() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [noToken, setNoToken] = useState(false)
+
+  const rememberManualLoginNotice = () => {
+    if (typeof window === 'undefined') return
+    try {
+      window.sessionStorage.setItem(LOGIN_NOTICE_STORAGE_KEY, 'invite_accepted')
+    } catch {
+      // ignore storage errors
+    }
+  }
 
   useEffect(() => {
     if (!token || token.length < 16) {
@@ -59,7 +69,11 @@ export default function InviteAcceptPage() {
         } catch {
           // fallback to login page
         }
+        rememberManualLoginNotice()
+        navigate(`/login?email=${encodeURIComponent(userEmail)}`, { replace: true })
+        return
       }
+      rememberManualLoginNotice()
       navigate('/login', { replace: true })
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
