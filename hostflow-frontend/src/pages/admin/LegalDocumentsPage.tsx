@@ -218,7 +218,7 @@ export default function LegalDocumentsPage() {
                             setFormContentUrl('')
                           }}
                           disabled={saving}
-                          className="btn-ghost"
+                          className="btn-secondary"
                         >
                           {t('common.actions.cancel')}
                         </button>
@@ -232,7 +232,7 @@ export default function LegalDocumentsPage() {
                         setFormVersionId('')
                         setFormContentUrl('')
                       }}
-                      className="btn-ghost mt-2 text-sm"
+                      className="btn-secondary btn-sm mt-2"
                     >
                       + {t('admin.legal.add_version', { defaultValue: 'Dodaj wersję' })}
                     </button>

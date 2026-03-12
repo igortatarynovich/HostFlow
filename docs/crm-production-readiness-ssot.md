@@ -322,6 +322,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F8.49 | Унифицировать controls/actions в Meta Leads admin page | `DONE` | `MetaLeadsAdminPage` переведен с ad-hoc кнопок/инпутов на системные `btn-primary/btn-secondary/input/textarea`, success notice выровнен на `alert-success`, actions в logs/modal приведены к системному паттерну |
 | F8.50 | Унифицировать mapping form/search controls в Meta Leads | `DONE` | `MetaLeadsAdminPage` mapping-flow переведен на системные `input`/`btn-primary` (ad_id, vacancy_id, note, save, search), убраны остаточные `rounded border ...` controls |
 | F8.51 | Унифицировать tab/pagination secondary controls в Audit Log | `DONE` | `AuditLogPage` переведен с ad-hoc tab-кнопок и `btn-ghost` на системные `btn-primary/btn-secondary btn-sm` для tabs, refresh и pagination actions |
+| F8.52 | Унифицировать form secondary actions в Legal Documents | `DONE` | `LegalDocumentsPage` очищен от `btn-ghost` в create-version flow: cancel/add-version actions переведены на системные `btn-secondary`/`btn-secondary btn-sm` |
 
 ## 5.5 Фаза E — Multi-tenant и Auth детализация (из source docs)
 
@@ -492,3 +493,4 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `F8.49 = DONE`: `MetaLeadsAdminPage` выровнен по системным controls/actions (`btn-primary/btn-secondary/input/textarea`), success notice переведен на `alert-success`, logs/modal actions унифицированы.
 - `2026-03-12` — `F8.50 = DONE`: в `MetaLeadsAdminPage` mapping form/search controls переведены на системные `input`/`btn-primary`; ad-hoc `rounded border ...` поля для `ad_id/vacancy_id/note/search` убраны.
 - `2026-03-12` — `F8.51 = DONE`: `AuditLogPage` tabs/refresh/pagination actions выровнены на системный `btn-primary/btn-secondary btn-sm` паттерн, ad-hoc tab styles и `btn-ghost` убраны.
+- `2026-03-12` — `F8.52 = DONE`: `LegalDocumentsPage` cleanup secondary actions — кнопки `cancel` и `add version` переведены с `btn-ghost` на системные `btn-secondary`/`btn-secondary btn-sm`.
