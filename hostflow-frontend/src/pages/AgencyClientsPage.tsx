@@ -15,9 +15,11 @@ import {
 } from '../api/tenantLinks'
 import { useToast } from '../components/Toast'
 import EmptyStatePanel from '../components/EmptyStatePanel'
+import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
 export default function AgencyClientsPage() {
   const { t } = useI18n()
+  const { openEntityLabel } = useBusinessTerminology()
   const { me } = useAuth()
   const { notify } = useToast()
   const tenantId = (me as { tenant_id?: string })?.tenant_id ?? ''
@@ -86,7 +88,7 @@ export default function AgencyClientsPage() {
               onClick: () => setAddOpen(true),
             }}
             secondaryAction={{
-              label: t('app.clients.empty_cta_companies', { defaultValue: 'Open clients' }),
+              label: openEntityLabel || t('app.clients.empty_cta_companies', { defaultValue: 'Open clients' }),
               to: '/app/clients',
             }}
           />
