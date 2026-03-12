@@ -24,6 +24,7 @@ from .mixins import now_utc, TimestampMixin
 
 
 JSONType = MutableDict.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql"))
+JSONAnyType = SQLiteJSON().with_variant(JSONB, "postgresql")
 
 
 class Lead(Base):
@@ -167,7 +168,7 @@ class MetaLeadSettings(TimestampMixin, Base):
         server_default=text("true"),
     )
     field_mapping: Mapped[list] = mapped_column(
-        JSONType,
+        JSONAnyType,
         nullable=False,
         default=list,
         server_default=text("'[]'"),

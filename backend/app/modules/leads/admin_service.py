@@ -54,6 +54,26 @@ async def _ensure_settings_schema(db: AsyncSession) -> None:
     try:
         await db.execute(
             text(
+                "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS webhook_url VARCHAR(512)"
+            )
+        )
+        await db.execute(
+            text(
+                "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS last_webhook_check_at TIMESTAMPTZ"
+            )
+        )
+        await db.execute(
+            text(
+                "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS last_signature_status VARCHAR(32)"
+            )
+        )
+        await db.execute(
+            text(
+                "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS webhook_verify_token VARCHAR(255)"
+            )
+        )
+        await db.execute(
+            text(
                 "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS pull_field_data_from_graph BOOLEAN DEFAULT true"
             )
         )
@@ -65,6 +85,26 @@ async def _ensure_settings_schema(db: AsyncSession) -> None:
         await db.flush()
     except Exception:  # pragma: no cover - best effort for legacy DBs
         try:
+            await db.execute(
+                text(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS webhook_url TEXT"
+                )
+            )
+            await db.execute(
+                text(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS last_webhook_check_at TEXT"
+                )
+            )
+            await db.execute(
+                text(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS last_signature_status TEXT"
+                )
+            )
+            await db.execute(
+                text(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS webhook_verify_token TEXT"
+                )
+            )
             await db.execute(
                 text(
                     "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS field_mapping JSON DEFAULT '[]'"
