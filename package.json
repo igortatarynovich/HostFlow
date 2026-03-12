@@ -1,6 +1,7 @@
 {
   "scripts": {
     "f7:run-record:new": "node scripts/create-f7-run-record.mjs",
+    "f7:run-record:apply": "node scripts/create-f7-run-record.mjs --append-ssot --sync-board-status",
     "f7:run-log:check": "node scripts/check-f7-run-log.mjs"
   },
   "devDependencies": {
