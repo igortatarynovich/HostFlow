@@ -2,7 +2,7 @@
  * Component for displaying document workflow steps
  */
 
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import clsx from "clsx";
 import type { Document, DocumentWorkflow, DocumentWorkflowStep, DocumentStatus } from "../../../api/types";
 import { DOCUMENT_STATUS_META } from "../constants";
@@ -31,6 +31,10 @@ export const DocumentWorkflow = memo(function DocumentWorkflow({
   onCompleteStep,
 }: DocumentWorkflowProps) {
   const { t } = useI18n();
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => {
+    setNowMs(Date.now());
+  }, []);
   const steps = Array.isArray(workflow?.steps) ? workflow!.steps : [];
   if (!steps.length) return null;
 
@@ -63,7 +67,7 @@ export const DocumentWorkflow = memo(function DocumentWorkflow({
           const isDone = rawStatus === "done";
           const badge = DOCUMENT_STATUS_META[step.status as DocumentStatus]?.color ?? "bg-slate-100 text-slate-600";
           const dueAtDate = step.due_at ? new Date(step.due_at) : null;
-          const overdue = Boolean(dueAtDate && dueAtDate.getTime() < Date.now() && !isDone);
+          const overdue = Boolean(dueAtDate && nowMs !== null && dueAtDate.getTime() < nowMs && !isDone);
           return (
             <div key={step.code} className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600">
               <div className="flex flex-wrap items-center gap-2">
@@ -116,4 +120,3 @@ export const DocumentWorkflow = memo(function DocumentWorkflow({
     </div>
   );
 });
-

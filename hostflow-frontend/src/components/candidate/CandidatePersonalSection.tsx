@@ -1,4 +1,4 @@
-import { memo, useRef, useState, useCallback } from 'react'
+import { memo, useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import { IconChevronDown, IconUser } from '@tabler/icons-react'
 import type { Candidate, CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
@@ -60,6 +60,19 @@ function CandidatePersonalSection({
       return next
     })
   }, [])
+  const [nowMs, setNowMs] = useState<number | null>(null)
+  useEffect(() => {
+    setNowMs(Date.now())
+  }, [])
+  const ageHint = useMemo(() => {
+    if (!extra.birth_date || nowMs === null) return null
+    const bd = String(extra.birth_date).slice(0, 10)
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(bd) ? new Date(bd) : null
+    const age = d && !isNaN(d.getTime())
+      ? Math.floor((nowMs - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+      : null
+    return age != null && age >= 0 && age <= 120 ? age : null
+  }, [extra.birth_date, nowMs])
 
   return (
     <section
@@ -89,16 +102,9 @@ function CandidatePersonalSection({
               readOnly={candidateDataReadOnly}
               required={isFieldRequired(candidateProfile, 'birth_date')}
             />
-            {(extra.birth_date as string) && (() => {
-              const bd = (extra.birth_date as string).slice(0, 10)
-              const d = /^\d{4}-\d{2}-\d{2}$/.test(bd) ? new Date(bd) : null
-              const age = d && !isNaN(d.getTime())
-                ? Math.floor((Date.now() - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-                : null
-              return age != null && age >= 0 && age <= 120 ? (
-                <p className="mt-1 text-xs text-slate-500">{t('app.candidate_card.fields.age_hint', { values: { age } })}</p>
-              ) : null
-            })()}
+            {ageHint != null && (
+              <p className="mt-1 text-xs text-slate-500">{t('app.candidate_card.fields.age_hint', { values: { age: ageHint } })}</p>
+            )}
           </div>
         )}
         {(!candidateProfile || isFieldVisible(candidateProfile, 'citizenship')) && (

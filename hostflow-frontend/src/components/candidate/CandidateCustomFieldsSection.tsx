@@ -228,7 +228,7 @@ function CandidateCustomFieldsSection({
                 </div>
               )
 
-            case 'SELECT':
+            case 'SELECT': {
               const selectOptions =
                 definition.options?.map((opt) => ({ value: opt, label: opt })) || []
               return (
@@ -248,8 +248,9 @@ function CandidateCustomFieldsSection({
                   {definition.help_text && <p className="mt-1 text-xs text-slate-500">{definition.help_text}</p>}
                 </label>
               )
+            }
 
-            case 'MULTISELECT':
+            case 'MULTISELECT': {
               const multiSelectOptions =
                 definition.options?.map((opt) => ({ value: opt, label: opt })) || []
               const multiSelectValues = Array.isArray(value) ? value : []
@@ -271,6 +272,7 @@ function CandidateCustomFieldsSection({
                   {definition.help_text && <p className="mt-1 text-xs text-slate-500">{definition.help_text}</p>}
                 </div>
               )
+            }
 
             default:
               return null

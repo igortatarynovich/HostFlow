@@ -29,7 +29,7 @@ export interface CandidateProfileCreate {
   notes?: string | null;
 }
 
-export interface CandidateProfileUpdate extends CandidateProfileCreate {}
+export type CandidateProfileUpdate = CandidateProfileCreate;
 
 export interface ListCandidateProfilesOptions {
   client_id?: string;

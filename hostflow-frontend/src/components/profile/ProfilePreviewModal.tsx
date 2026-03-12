@@ -28,23 +28,19 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
       .catch(() => setFunnelStages([]))
   }, [profile.funnel_id])
 
-  const stageConfigs = useMemo(() => {
-    if (profile.funnel_id && funnelStages.length > 0) {
-      return funnelStages.map((s) => ({
+  const stageConfigs = profile.funnel_id && funnelStages.length > 0
+    ? funnelStages.map((s) => ({
         stage_code: s.code,
         stage_label: s.label,
         order: s.order,
         active: !s.is_terminal,
       }))
-    }
-    if (!profile.config?.stage_configs) return []
-    return profile.config.stage_configs as Array<{
-      stage_code: string
-      stage_label: string
-      order: number
-      active?: boolean
-    }>
-  }, [profile.funnel_id, profile.config?.stage_configs, funnelStages])
+    : ((profile.config?.stage_configs as Array<{
+        stage_code: string
+        stage_label: string
+        order: number
+        active?: boolean
+      }>) || [])
 
   const documentConfigs = useMemo(() => {
     if (!profile.config?.document_configs) return []

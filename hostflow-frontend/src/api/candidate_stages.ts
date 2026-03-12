@@ -16,7 +16,7 @@ export interface CandidateStageCreate {
   active?: boolean;
 }
 
-export interface CandidateStageUpdate extends CandidateStageCreate {}
+export type CandidateStageUpdate = CandidateStageCreate;
 
 export interface ListCandidateStagesOptions {
   active?: boolean;

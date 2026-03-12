@@ -147,7 +147,7 @@ const slaMutedOf = slaMutedFromThread
 function isTelegramCommandMessage(msg: CommunicationMessage): boolean {
   if (String(msg.channel || '').toLowerCase() !== 'telegram') return false
   const payload = (msg.payload || {}) as Record<string, any>
-  if (Boolean(payload.telegram_command)) return true
+  if (payload.telegram_command) return true
   const text = String(msg.body_text || '').trim()
   return text.startsWith('/')
 }

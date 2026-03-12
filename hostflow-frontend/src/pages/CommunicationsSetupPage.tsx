@@ -227,7 +227,7 @@ export default function CommunicationsSetupPage() {
       reasons.push('No active email account connected')
       return reasons
     }
-    const oauthWithoutToken = oauthEmailAccounts.filter((acc) => !Boolean(acc.settings_json?.oauth?.has_access_token))
+    const oauthWithoutToken = oauthEmailAccounts.filter((acc) => !acc.settings_json?.oauth?.has_access_token)
     if (oauthWithoutToken.length > 0) {
       reasons.push(`OAuth is not completed for ${oauthWithoutToken.length} email account(s)`)
     }
@@ -253,7 +253,7 @@ export default function CommunicationsSetupPage() {
       reasons.push('No active Telegram account connected')
       return reasons
     }
-    const tokenMissing = telegramAccounts.filter((acc) => !Boolean(acc.settings_json?.telegram?.has_bot_token))
+    const tokenMissing = telegramAccounts.filter((acc) => !acc.settings_json?.telegram?.has_bot_token)
     if (tokenMissing.length > 0) {
       reasons.push(`Bot token is missing for ${tokenMissing.length} Telegram account(s)`)
     }

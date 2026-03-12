@@ -35,7 +35,7 @@ export interface CustomFieldDefinitionCreate {
   order?: number;
 }
 
-export interface CustomFieldDefinitionUpdate extends CustomFieldDefinitionCreate {}
+export type CustomFieldDefinitionUpdate = CustomFieldDefinitionCreate;
 
 export interface CustomFieldValue {
   id: string;

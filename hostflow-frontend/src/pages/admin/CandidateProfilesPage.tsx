@@ -512,16 +512,18 @@ export default function CandidateProfilesPage() {
                   case 'created_at':
                     comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
                     break
-                  case 'fields_count':
+                  case 'fields_count': {
                     const aFieldsCount = (a.config?.field_configs as any[])?.length || 0
                     const bFieldsCount = (b.config?.field_configs as any[])?.length || 0
                     comparison = aFieldsCount - bFieldsCount
                     break
-                  case 'stages_count':
+                  }
+                  case 'stages_count': {
                     const aStagesCount = a.funnel_id ? 1 : (a.config?.stage_configs as any[])?.length || 0
                     const bStagesCount = b.funnel_id ? 1 : (b.config?.stage_configs as any[])?.length || 0
                     comparison = aStagesCount - bStagesCount
                     break
+                  }
                   case 'usage_count':
                     comparison = (a.usage_count || 0) - (b.usage_count || 0)
                     break
@@ -631,16 +633,18 @@ export default function CandidateProfilesPage() {
                   case 'created_at':
                     comparison = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
                     break
-                  case 'fields_count':
+                  case 'fields_count': {
                     const aFieldsCount = (a.config?.field_configs as any[])?.length || 0
                     const bFieldsCount = (b.config?.field_configs as any[])?.length || 0
                     comparison = aFieldsCount - bFieldsCount
                     break
-                  case 'stages_count':
+                  }
+                  case 'stages_count': {
                     const aStagesCount = a.funnel_id ? 1 : (a.config?.stage_configs as any[])?.length || 0
                     const bStagesCount = b.funnel_id ? 1 : (b.config?.stage_configs as any[])?.length || 0
                     comparison = aStagesCount - bStagesCount
                     break
+                  }
                   case 'usage_count':
                     comparison = (a.usage_count || 0) - (b.usage_count || 0)
                     break

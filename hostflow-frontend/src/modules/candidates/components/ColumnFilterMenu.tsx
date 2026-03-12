@@ -57,7 +57,7 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
     }
   }, [])
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     // При закрытии применяем изменения только если они изменились
     if (props.onChange) {
       const currentSelected = props.selected || []
@@ -71,7 +71,7 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
       }
     }
     setOpen(false)
-  }, [props.onChange, props.selected, localSelected])
+  }
 
   useEffect(() => {
     if (!open) {

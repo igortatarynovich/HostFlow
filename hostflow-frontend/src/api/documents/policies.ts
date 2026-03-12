@@ -28,7 +28,7 @@ export interface DocumentPolicyCreate {
   notes?: string | null;
 }
 
-export interface DocumentPolicyUpdate extends DocumentPolicyCreate {}
+export type DocumentPolicyUpdate = DocumentPolicyCreate;
 
 export interface ListDocumentPoliciesOptions {
   scope?: DocumentPolicyScope;
@@ -111,4 +111,3 @@ export async function updateDocumentPolicy(
 export async function deleteDocumentPolicy(policyId: string): Promise<void> {
   await api.delete(`/document-policies/${policyId}`);
 }
-
