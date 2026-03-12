@@ -801,6 +801,19 @@
         "current_badge": "Текущая"
       }
     },
+    "signup": {
+      "accept_terms_prefix": "Я принимаю",
+      "accept_terms_link": "Условия использования",
+      "accept_privacy_prefix": "Я принимаю",
+      "accept_privacy_link": "Политику конфиденциальности",
+      "legal_notice": "Создавая аккаунт, вы подтверждаете, что ознакомились с:",
+      "legal_notice_terms": "Условиями использования",
+      "legal_notice_privacy": "Политикой конфиденциальности",
+      "legal_notice_cookies": "Политикой cookies",
+      "errors": {
+        "consent_required": "Чтобы продолжить, необходимо принять Условия и Политику конфиденциальности."
+      }
+    },
     "login": {
       "title": "Вход в HostFlow",
       "fields": {

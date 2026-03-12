@@ -801,6 +801,19 @@
         "current_badge": "Bieżąca"
       }
     },
+    "signup": {
+      "accept_terms_prefix": "Akceptuję",
+      "accept_terms_link": "Regulamin",
+      "accept_privacy_prefix": "Akceptuję",
+      "accept_privacy_link": "Politykę prywatności",
+      "legal_notice": "Tworząc konto, potwierdzasz, że zapoznałeś(-aś) się z:",
+      "legal_notice_terms": "Regulaminem",
+      "legal_notice_privacy": "Polityką prywatności",
+      "legal_notice_cookies": "Polityką cookies",
+      "errors": {
+        "consent_required": "Aby kontynuować, musisz zaakceptować Regulamin i Politykę prywatności."
+      }
+    },
     "login": {
       "title": "Zaloguj się do HostFlow",
       "fields": {
