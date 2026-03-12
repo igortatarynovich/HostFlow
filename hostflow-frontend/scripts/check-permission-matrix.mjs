@@ -149,6 +149,79 @@ const testRoles = [
   { label: 'viewer', rawRole: 'viewer' },
 ]
 
+const EXPECTED_BASELINE = {
+  overview: {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'ALLOW',
+    viewer: 'ALLOW',
+  },
+  candidates: {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'ALLOW',
+    viewer: 'ALLOW',
+  },
+  clients: {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'ALLOW',
+    viewer: 'ALLOW',
+  },
+  leads: {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'ALLOW',
+    viewer: 'ALLOW',
+  },
+  services: {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'ALLOW',
+    viewer: 'ALLOW',
+  },
+  settings: {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'DENY',
+    viewer: 'DENY',
+  },
+  'settings-users': {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'DENY',
+    viewer: 'DENY',
+  },
+  'settings-company-access': {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'DENY',
+    viewer: 'DENY',
+  },
+  'settings-communications': {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'DENY',
+    recruiter: 'DENY',
+    viewer: 'DENY',
+  },
+  'settings-integrations': {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'DENY',
+    viewer: 'DENY',
+  },
+}
+
 const routesByKey = new Map(appRoutes.map((r) => [r.key, r]))
 const missing = targetRouteKeys.filter((key) => !routesByKey.has(key))
 if (missing.length) {
@@ -158,12 +231,20 @@ if (missing.length) {
 
 const headers = ['Route', ...testRoles.map((r) => r.label)]
 const table = []
+const mismatches = []
 for (const key of targetRouteKeys) {
   const route = routesByKey.get(key)
   const row = [`${route.path}${route.permissions.length ? ` [${route.permissions.join('|')}]` : ''}`]
+  const expected = EXPECTED_BASELINE[key]
   for (const role of testRoles) {
     const resolvedRole = resolveRole(role.rawRole, roleAliases, rolePermissions)
-    row.push(canAccess(resolvedRole, route.permissions, rolePermissions) ? 'ALLOW' : 'DENY')
+    const actual = canAccess(resolvedRole, route.permissions, rolePermissions) ? 'ALLOW' : 'DENY'
+    row.push(actual)
+    if (!expected || expected[role.label] !== actual) {
+      mismatches.push(
+        `[${key}] role "${role.label}" expected=${expected?.[role.label] ?? 'N/A'} actual=${actual}`,
+      )
+    }
   }
   table.push(row)
 }
@@ -174,4 +255,11 @@ console.log(`| ${headers.map(() => '---').join(' | ')} |`)
 for (const row of table) {
   console.log(`| ${row.join(' | ')} |`)
 }
+
+if (mismatches.length) {
+  console.error('\nPermission matrix baseline mismatch:')
+  mismatches.forEach((line) => console.error(`- ${line}`))
+  process.exit(1)
+}
+
 console.log(`\nPermission matrix check passed. Roles: ${testRoles.length}, routes: ${targetRouteKeys.length}.`)
