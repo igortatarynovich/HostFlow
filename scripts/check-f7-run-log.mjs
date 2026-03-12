@@ -22,6 +22,13 @@ function normalizeSoft(value) {
   return stripTicks(value).toLowerCase()
 }
 
+function safeSlug(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 function parseTableLine(line) {
   const parts = line.split('|').map((p) => p.trim())
   if (parts.length < 9) return null
@@ -121,12 +128,28 @@ function main() {
         errors.push(`Evidence link target does not exist for "${scenario}": ${abs}`)
       } else {
         const base = path.basename(abs)
-        if (/^f7-run-[abc]-\d{4}-\d{2}-\d{2}-.+\.md$/i.test(base)) {
+        const filePattern = /^f7-run-([abc])-(\d{4}-\d{2}-\d{2})-(staging|production)-(.+)\.md$/i
+        const fileMatch = base.match(filePattern)
+        if (fileMatch) {
           const rec = parseRunRecord(fs.readFileSync(abs, 'utf-8'))
           const scenarioCode = scenarioMatch ? scenarioMatch[1] : null
+          const [, fileScenario, fileDate, fileEnv, fileTenant] = fileMatch
           if (!rec.date || !rec.scenario || !rec.environment || !rec.tenant || !rec.result) {
             errors.push(`Run-record has missing header fields: ${abs}`)
           } else {
+            if (normalizeSoft(fileScenario) !== normalizeSoft(scenarioCode || '')) {
+              errors.push(`Run-record filename scenario mismatch for ${scenario}: row=${scenarioCode} file=${fileScenario}`)
+            }
+            if (normalizeSoft(fileDate) !== normalizeSoft(date)) {
+              errors.push(`Run-record filename date mismatch for ${scenario}: row=${stripTicks(date)} file=${fileDate}`)
+            }
+            if (normalizeSoft(fileEnv) !== normalizeSoft(env)) {
+              errors.push(`Run-record filename environment mismatch for ${scenario}: row=${stripTicks(env)} file=${fileEnv}`)
+            }
+            const rowTenantSlug = safeSlug(stripTicks(tenant))
+            if (normalizeSoft(fileTenant) !== normalizeSoft(rowTenantSlug)) {
+              errors.push(`Run-record filename tenant mismatch for ${scenario}: row=${rowTenantSlug} file=${fileTenant}`)
+            }
             if (normalizeSoft(rec.date) !== normalizeSoft(date)) {
               errors.push(`Run-record date mismatch for ${scenario}: row=${stripTicks(date)} file=${rec.date}`)
             }
@@ -143,6 +166,8 @@ function main() {
               errors.push(`Run-record result mismatch for ${scenario}: row=${stripTicks(result)} file=${rec.result}`)
             }
           }
+        } else if (normalizedResult === 'PASS' || normalizedResult === 'FAIL') {
+          errors.push(`Result ${normalizedResult} requires canonical run-record filename for "${scenario}": ${base}`)
         }
       }
     } else if (normalizedResult === 'PASS' || normalizedResult === 'FAIL') {
