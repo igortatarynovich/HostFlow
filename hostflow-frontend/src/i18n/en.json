@@ -2478,6 +2478,10 @@
           "title": "Day 1: launch your first workflow",
           "subtitle": "Complete the first business action now to get value from trial in minutes."
         },
+        "d2": {
+          "title": "Day 2: keep activation moving",
+          "subtitle": "Confirm your next guided step so progress does not stall after initial setup."
+        },
         "d3": {
           "title": "Day 3: lock in your activation path",
           "subtitle": "Finish onboarding steps and set next action so the team has a repeatable flow."

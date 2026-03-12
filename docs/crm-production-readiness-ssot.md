@@ -112,7 +112,7 @@
 | 22 | Empty State UX в каждом ключевом разделе | `IN_PROGRESS` | Во всех пустых экранах есть объяснение + CTA + next step | Нужно довести консистентность |
 | 23 | Permission Integrity (роль/тариф/тип бизнеса/готовность модуля) | `IN_PROGRESS` | Нет утечек видимости для неподходящих ролей и тарифов | Нужен формальный role-by-role прогон |
 | 24 | Failure Recovery (ошибки без потери пути) | `IN_PROGRESS` | Ошибки объясняются, прогресс не теряется, есть безопасный retry | Частично закрыто, не полностью |
-| 25 | Lifecycle Retention (день 2/3/7) | `IN_PROGRESS` | Пользователь понимает зачем возвращаться и что делать дальше | Внедрены in-app retention nudges D1/D3/D7 в `Dashboard`, нужна метрика возвратов/конверсии |
+| 25 | Lifecycle Retention (день 2/3/7) | `IN_PROGRESS` | Пользователь понимает зачем возвращаться и что делать дальше | Внедрены in-app retention nudges D1/D2/D3/D7 + baseline tracking, нужна метрика возвратов/конверсии |
 | 26 | Модульность по типу бизнеса (`agency/employer/services`) | `IN_PROGRESS` | Тип бизнеса меняет модули, термины, роли, шаблоны, onboarding | `services` профиль нужно завершить |
 | 27 | Progressive onboarding (обязательное сейчас / остальное потом) | `IN_PROGRESS` | Можно начать работу до полной настройки всех модулей | Сильный прогресс, нужен финальный UX pass |
 | 28 | Solo-логика не хуже командной | `IN_PROGRESS` | В solo не показываются лишние командные ветки | Нужен финальный UI-аудит |
@@ -596,16 +596,20 @@ Residual risks до финального `PASS`:
 ### 5.6.9 `F5` Lifecycle Retention Snapshot (`2026-03-12`)
 
 Что внедрено:
-- В `Dashboard` добавлен in-app retention nudge для trial-tenant по возрасту workspace (`tenant.created_at`): day buckets `D1/D3/D7`.
+- В `Dashboard` добавлен in-app retention nudge для trial-tenant по возрасту workspace (`tenant.created_at`): day buckets `D1/D2/D3/D7`.
 - Для каждого bucket показывается конкретный `next-step` CTA на основе фактического onboarding status (`/onboarding/status`):
   - если не создана компания -> `/app/onboarding/company`;
   - если не выполнен type-specific шаг -> `/app/leads` / `/app/vacancies` / `/app/clients`;
   - если не создан `next action` -> `/app/reminders`;
   - если activation закрыт -> `/app/settings/billing`.
 - Добавлен мягкий dismiss (`Hide for now`) с tenant/day-scoped persistence в `localStorage` (`hf:trial-retention:<tenant_id>:d<day>`), чтобы nudge не повторялся навязчиво в пределах одного bucket.
+- Добавлен baseline retention tracking через `window.dataLayer`:
+  - `trial_retention_nudge` (`action=impression`);
+  - `trial_retention_nudge` (`action=cta_click`);
+  - `trial_retention_nudge` (`action=dismiss`).
 
 Текущий статус:
-- `F5`: `IN_PROGRESS` (in-app путь D1/D3/D7 закрыт, остается day2 и метрики ретеншна/конверсии возвратов).
+- `F5`: `IN_PROGRESS` (in-app путь D1/D2/D3/D7 закрыт, остается формализация day-level метрик ретеншна/конверсии возвратов).
 
 ---
 
@@ -804,3 +808,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.
 - `2026-03-12` — старт `F5` lifecycle retention path: в `Dashboard` добавлены trial in-app nudges по day-buckets `D1/D3/D7` с context-aware CTA на следующий onboarding шаг и tenant/day-scoped dismiss persistence; критерий `#25` переведен в `IN_PROGRESS`.
+- `2026-03-12` — расширен `F5` lifecycle retention path: добавлен day-bucket `D2` и baseline analytics events (`trial_retention_nudge`: `impression/cta_click/dismiss`) через `window.dataLayer`.

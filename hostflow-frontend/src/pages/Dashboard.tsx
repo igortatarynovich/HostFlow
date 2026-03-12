@@ -1,5 +1,5 @@
 // src/pages/Dashboard.tsx
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import api, { getOnboardingStatus, type OnboardingStatus, withTenant } from '../api/client'
@@ -304,7 +304,7 @@ const STAGE_STACK_COLORS: Record<StageOutcome, string> = {
   pipeline: 'bg-brand-400',
 }
 
-type TrialRetentionDay = 1 | 3 | 7
+type TrialRetentionDay = 1 | 2 | 3 | 7
 
 // normalizeTotal is now imported from modules/dashboard/utils
 
@@ -334,6 +334,7 @@ export default function Dashboard() {
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null)
   const [retentionStatus, setRetentionStatus] = useState<OnboardingStatus | null>(null)
   const [retentionDismissed, setRetentionDismissed] = useState(false)
+  const retentionImpressionRef = useRef<string | null>(null)
   const [stageView, setStageView] = useState<'all' | 'agency' | 'client'>(() =>
     isClientRole ? 'client' : 'all',
   )
@@ -462,6 +463,7 @@ export default function Dashboard() {
     if (trialAgeDays == null) return null
     if (trialAgeDays >= 7) return 7
     if (trialAgeDays >= 3) return 3
+    if (trialAgeDays >= 2) return 2
     if (trialAgeDays >= 1) return 1
     return null
   }, [trialAgeDays])
@@ -540,6 +542,43 @@ export default function Dashboard() {
       stepKey: retentionStepKey,
     }
   }, [isTrialTenant, retentionDay, retentionDismissed, retentionStatus, retentionNextHref, retentionStepKey])
+
+  const trackRetentionEvent = useCallback(
+    (
+      action: 'impression' | 'cta_click' | 'dismiss',
+      payload?: { day?: TrialRetentionDay; stepKey?: string; href?: string; activationDone?: boolean },
+    ) => {
+      if (typeof window === 'undefined') return
+      const dataLayer = (window as typeof window & { dataLayer?: unknown[] }).dataLayer
+      if (!Array.isArray(dataLayer)) return
+      dataLayer.push({
+        event: 'trial_retention_nudge',
+        action,
+        day: payload?.day ?? null,
+        step_key: payload?.stepKey ?? null,
+        target_href: payload?.href ?? null,
+        activation_done: payload?.activationDone ?? null,
+        tenant_id: tenantId,
+      })
+    },
+    [tenantId],
+  )
+
+  useEffect(() => {
+    if (!retentionNudge) {
+      retentionImpressionRef.current = null
+      return
+    }
+    const impressionKey = `${tenantId}:${retentionNudge.day}:${retentionNudge.stepKey}`
+    if (retentionImpressionRef.current === impressionKey) return
+    retentionImpressionRef.current = impressionKey
+    trackRetentionEvent('impression', {
+      day: retentionNudge.day,
+      stepKey: retentionNudge.stepKey,
+      href: retentionNudge.href,
+      activationDone: retentionNudge.activationDone,
+    })
+  }, [retentionNudge, tenantId, trackRetentionEvent])
 
   const visibleWidgetsKey = useMemo(() => `hf:dashboard:${tenantId}:visibleWidgets`, [tenantId])
   const visibleFiltersKey = useMemo(() => `hf:dashboard:${tenantId}:visibleFilters`, [tenantId])
@@ -1476,14 +1515,37 @@ export default function Dashboard() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Link to={retentionNudge.href} className="btn-secondary btn-sm">
+                <Link
+                  to={retentionNudge.href}
+                  className="btn-secondary btn-sm"
+                  onClick={() =>
+                    trackRetentionEvent('cta_click', {
+                      day: retentionNudge.day,
+                      stepKey: retentionNudge.stepKey,
+                      href: retentionNudge.href,
+                      activationDone: retentionNudge.activationDone,
+                    })
+                  }
+                >
                   {retentionNudge.activationDone
                     ? t('app.dashboard.retention.cta_billing', { defaultValue: 'Open billing' })
                     : t(`app.dashboard.retention.cta_step.${retentionNudge.stepKey}`, {
                         defaultValue: 'Continue setup',
                       })}
                 </Link>
-                <button type="button" className="btn-secondary btn-sm" onClick={dismissRetentionNudge}>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => {
+                    trackRetentionEvent('dismiss', {
+                      day: retentionNudge.day,
+                      stepKey: retentionNudge.stepKey,
+                      href: retentionNudge.href,
+                      activationDone: retentionNudge.activationDone,
+                    })
+                    dismissRetentionNudge()
+                  }}
+                >
                   {t('app.dashboard.retention.dismiss', { defaultValue: 'Hide for now' })}
                 </button>
               </div>
