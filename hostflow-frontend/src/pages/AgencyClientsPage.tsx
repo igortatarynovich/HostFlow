@@ -501,7 +501,7 @@ function AddClientModal({
               </p>
               <button
                 type="button"
-                className="btn-ghost btn-xs"
+                className="btn-secondary btn-xs"
                 onClick={() => setAdvancedOpen((prev) => !prev)}
               >
                 {advancedOpen

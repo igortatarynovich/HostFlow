@@ -848,7 +848,7 @@ export default function DoProcesowaniaPage() {
               </button>
             </>
           )}
-          <button type="button" onClick={handleExportCSV} disabled={sortedRows.length === 0} className="btn-ghost btn-sm">
+          <button type="button" onClick={handleExportCSV} disabled={sortedRows.length === 0} className="btn-secondary btn-sm">
             CSV
           </button>
         </div>
@@ -949,7 +949,7 @@ export default function DoProcesowaniaPage() {
                           <div className="mt-2 flex justify-end gap-2 border-t pt-2">
                             <button
                               type="button"
-                              className="btn-ghost btn-xs"
+                              className="btn-secondary btn-xs"
                               onClick={() => {
                                 updateFilter('created_from', '')
                                 updateFilter('created_to', '')
@@ -994,7 +994,7 @@ export default function DoProcesowaniaPage() {
                           <div className="mt-2 flex justify-end gap-2 border-t pt-2">
                             <button
                               type="button"
-                              className="btn-ghost btn-xs"
+                              className="btn-secondary btn-xs"
                               onClick={() => {
                                 updateFilter('requested_from', '')
                                 updateFilter('requested_to', '')
@@ -1070,7 +1070,7 @@ export default function DoProcesowaniaPage() {
                       {hasActiveFilters && (
                         <button
                           type="button"
-                          className="btn-ghost btn-sm"
+                          className="btn-secondary btn-sm"
                           onClick={() => {
                             setFilters(EMPTY_FILTERS)
                             setGlobalSearch('')
@@ -1186,7 +1186,7 @@ export default function DoProcesowaniaPage() {
                   setReturnReason('')
                 }}
                 disabled={submitting}
-                className="btn-ghost btn-sm"
+                className="btn-secondary btn-sm"
               >
                 {t('common.cancel')}
               </button>
@@ -1225,7 +1225,7 @@ export default function DoProcesowaniaPage() {
                   setRejectReason('')
                 }}
                 disabled={submitting}
-                className="btn-ghost btn-sm"
+                className="btn-secondary btn-sm"
               >
                 {t('common.cancel')}
               </button>

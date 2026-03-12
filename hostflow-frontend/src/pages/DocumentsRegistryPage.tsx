@@ -202,7 +202,7 @@ export default function DocumentsRegistryPage() {
           </div>
           <button
             type="button"
-            className="btn-ghost self-start"
+            className="btn-secondary self-start"
             onClick={() => setReloadKey((prev) => prev + 1)}
             disabled={loading}
           >
@@ -440,7 +440,7 @@ export default function DocumentsRegistryPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn-secondary"
                   onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                 >
@@ -451,7 +451,7 @@ export default function DocumentsRegistryPage() {
                 </span>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn-secondary"
                   onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
                 >
