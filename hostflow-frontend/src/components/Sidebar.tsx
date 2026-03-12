@@ -12,7 +12,12 @@ export function Sidebar() {
 
   return (
     <aside className="h-full w-[200px] min-w-[200px] max-w-[200px] bg-brand-900 text-white p-4 flex flex-col gap-4">
-      <div className="text-xl font-bold tracking-wide">HostFlow</div>
+      <img
+        src="/logo_hf_white.svg"
+        alt="HostFlow"
+        className="h-9 w-auto"
+        loading="lazy"
+      />
 
       <nav className="flex-1 mt-6 flex flex-col gap-3">
         <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/">Дашборд</Link>

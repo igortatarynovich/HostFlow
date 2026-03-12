@@ -68,7 +68,7 @@ export default function Login(){
       <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-12">
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-3xl border border-white/20 bg-brand-900/95 p-8 text-white shadow-2xl">
-            <PublicBrandingLogo showWordmark />
+            <PublicBrandingLogo showWordmark white />
             <div className="mt-8 space-y-5">
               <h1 className="text-3xl font-semibold">{t('app.login.hero.title', { defaultValue: 'Добро пожаловать' })}</h1>
               <p className="text-white/80">

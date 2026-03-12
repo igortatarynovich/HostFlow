@@ -1,5 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="12" fill="#1f7a8c"/>
-  <path d="M14 40h18a10 10 0 0 0 0-20H14v6h17a4 4 0 0 1 0 8H14v6z" fill="white"/>
-  <circle cx="46" cy="24" r="6" fill="#e76f51"/>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_Слой_1" data-name="Слой 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #3f8e8e;
+      }
+    </style>
+  </defs>
+  <path class="cls-1" d="M0,0v32h32V0H0ZM26.2,14.92v1.71h-6.59v7.31h-2.07v-15.87h9.73v1.71h-7.66v5.14h6.59ZM6.8,16.6v7.34h-2.07v-15.87h2.07v6.82h7.92v-6.82h2.08v15.87h-2.08v-7.34h-7.92Z"/>
 </svg>

@@ -15,7 +15,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import type { TenantSummary, WhoAmI } from '../../api/types'
-import { listNotifications, markNotificationsRead, reconcileNotifications, resolveAssetUrl } from '../../api/client'
+import { listNotifications, markNotificationsRead, reconcileNotifications } from '../../api/client'
 import type { NotificationItem, NotificationListResponse } from '../../api/types'
 import { listCommunicationThreads, reconcileCommunicationThreadUnread } from '../../api/communications'
 import { useToast } from '../Toast'
@@ -112,8 +112,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
     return (first + last || me.email?.slice(0, 2) || 'HF').toUpperCase()
   }, [me])
 
-  const brandLabel = tenant?.workspace_label?.trim() || tenant?.name || 'HostFlow'
-  const tenantLogoUrl = useMemo(() => (tenant?.logo_url ? resolveAssetUrl(tenant.logo_url) : null), [tenant?.logo_url])
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
   const { entityPlural: clientsNavLabel } = useBusinessTerminology()
 
@@ -414,19 +412,12 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
           >
             <IconMenu2 size={20} stroke={1.8} />
           </button>
-          {tenantLogoUrl ? (
-            <img
-              src={tenantLogoUrl}
-              alt={brandLabel}
-              className="max-h-8 w-auto max-w-[9rem] object-contain sm:max-w-[12rem]"
-              style={{ maxHeight: 32 }}
-            />
-          ) : (
-            <>
-              <span className="text-sm font-semibold text-slate-700 sm:hidden">HF</span>
-              <span className="hidden text-base font-semibold text-slate-700 sm:inline">HostFlow</span>
-            </>
-          )}
+          <img
+            src="/logo_hf.svg"
+            alt="HostFlow"
+            className="h-8 w-auto sm:h-9"
+            loading="lazy"
+          />
           {isTrialTenant &&
             (can('admin.users') ? (
               <button

@@ -61,7 +61,7 @@ export default function CrmLandingPage() {
         '@type': 'Organization',
         name: 'HostFlow',
         url: 'https://hostflow.cc',
-        logo: 'https://hostflow.cc/favicon.svg',
+        logo: 'https://hostflow.cc/logo_hf.svg',
       },
       {
         '@context': 'https://schema.org',

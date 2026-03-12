@@ -1486,7 +1486,7 @@ export default function PublicApplyPage() {
       <div className="space-y-4">
         <div className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <PublicLogo className="text-white" showWordmark={false} size={32} />
+            <PublicLogo showWordmark={false} size={32} white />
             <p className="text-sm text-white/80">{t('public.intake.documents.upload_hint')}</p>
           </div>
           <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">

@@ -112,7 +112,7 @@ export function Sidebar({
   return (
     <div className="flex h-full w-full flex-col px-4 py-6">
       <div className="mb-6">
-        <PublicBrandingLogo showWordmark className="text-white" />
+        <PublicBrandingLogo showWordmark white />
       </div>
 
       <nav className="flex-1 overflow-y-auto space-y-2">

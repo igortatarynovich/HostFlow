@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type FormE
 import { useNavigate } from 'react-router-dom'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { Modal } from '../../components/Modal'
-import { settings as tenantSettings, setToken, resolveAssetUrl } from '../../api/client'
+import { settings as tenantSettings, setToken } from '../../api/client'
 import {
   changePlatformTenantStatus,
   createPlatformTenant,
@@ -758,11 +758,6 @@ export default function TenantsPage() {
     ],
     [t],
   )
-  const selectedLogoUrl = useMemo(
-    () => (selected?.logo_url ? resolveAssetUrl(selected.logo_url) : null),
-    [selected?.logo_url],
-  )
-
   useEffect(() => {
     if (!selected || !isSuperAdmin) {
       setModuleSettings(null)
@@ -1087,18 +1082,12 @@ export default function TenantsPage() {
                         </button>
                       </form>
                       <div className="flex flex-col items-center gap-2 md:w-48">
-                        {selectedLogoUrl ? (
-                          <img
-                            src={selectedLogoUrl}
-                            alt={selected.workspace_label || selected.name}
-                            className="max-h-12 w-auto rounded border border-slate-200 bg-white object-contain"
-                            style={{ maxHeight: 48 }}
-                          />
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-lg font-semibold text-slate-500">
-                            {(selected.workspace_label || selected.name || 'HF').slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
+                        <img
+                          src="/logo_hf.svg"
+                          alt="HostFlow"
+                          className="max-h-12 w-auto rounded border border-slate-200 bg-white object-contain"
+                          style={{ maxHeight: 48 }}
+                        />
                         <label className={`btn-secondary relative text-center ${logoUploading ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}>
                           <input
                             type="file"
