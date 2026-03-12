@@ -3,10 +3,22 @@ import { Link, useNavigate } from 'react-router-dom'
 import { IconArrowRight, IconCheck, IconChecklist, IconUsers, IconUserPlus } from '@tabler/icons-react'
 import { useI18n } from '../i18n'
 import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
+import { usePermissions, type Permission } from '../hooks/usePermissions'
+
+type OnboardingStepCard = {
+  key: string
+  done: boolean
+  title: string
+  desc: string
+  href: string
+  permission?: Permission
+  openLabel?: string
+}
 
 export default function OnboardingGettingStartedPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const { can } = usePermissions()
   const [status, setStatus] = useState<OnboardingStatus | null>(null)
 
   useEffect(() => {
@@ -27,7 +39,7 @@ export default function OnboardingGettingStartedPage() {
   const steps = useMemo(
     () => {
       const businessType = status?.business_type ?? 'agency'
-      const typeStep =
+      const typeStep: OnboardingStepCard =
         businessType === 'employer'
           ? {
               key: 'vacancy',
@@ -35,6 +47,7 @@ export default function OnboardingGettingStartedPage() {
               title: t('app.onboarding.getting_started.step_employer.title', { defaultValue: 'Create first vacancy' }),
               desc: t('app.onboarding.getting_started.step_employer.desc', { defaultValue: 'Open your first position and set responsible recruiter.' }),
               href: '/app/vacancies',
+              permission: 'vacancies.view',
             }
           : businessType === 'services'
             ? {
@@ -43,6 +56,7 @@ export default function OnboardingGettingStartedPage() {
                 title: t('app.onboarding.getting_started.step_services.title', { defaultValue: 'Create first client' }),
                 desc: t('app.onboarding.getting_started.step_services.desc', { defaultValue: 'Add your first client to start service operations.' }),
                 href: '/app/clients',
+                permission: 'companies.view',
               }
             : {
                 key: 'lead',
@@ -50,14 +64,16 @@ export default function OnboardingGettingStartedPage() {
                 title: t('app.onboarding.getting_started.step_agency.title', { defaultValue: 'Add first lead' }),
                 desc: t('app.onboarding.getting_started.step_agency.desc', { defaultValue: 'Capture first lead and assign source/status.' }),
                 href: '/app/leads',
+                permission: 'leads.view',
               }
-      return [
+      const nextSteps: OnboardingStepCard[] = [
         {
           key: 'company',
           done: Boolean(status?.steps?.company_created),
           title: t('app.onboarding.getting_started.step0.title', { defaultValue: 'Company created' }),
           desc: t('app.onboarding.getting_started.step0.desc', { defaultValue: 'Workspace company setup is complete.' }),
           href: '/app/clients',
+          permission: 'companies.view',
         },
         typeStep,
         {
@@ -66,10 +82,21 @@ export default function OnboardingGettingStartedPage() {
           title: t('app.onboarding.getting_started.step3.title', { defaultValue: 'Set next action' }),
           desc: t('app.onboarding.getting_started.step3.desc', { defaultValue: 'Add reminder/task so no lead is lost.' }),
           href: '/app/reminders',
+          permission: 'notifications.view',
         },
       ]
+      return nextSteps.map((step) => {
+        const accessible = !step.permission || can(step.permission)
+        return {
+          ...step,
+          href: accessible ? step.href : '/app/overview',
+          openLabel: accessible
+            ? t('app.onboarding.getting_started.open', { defaultValue: 'Open' })
+            : t('app.onboarding.getting_started.open_fallback', { defaultValue: 'Open dashboard' }),
+        }
+      })
     },
-    [status, t],
+    [status, t, can],
   )
   const doneCount = steps.filter((step) => step.done).length
   const totalCount = steps.length
@@ -110,7 +137,7 @@ export default function OnboardingGettingStartedPage() {
             {steps[0].desc}
           </p>
           <Link to={steps[0].href} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-            {t('app.onboarding.getting_started.open', { defaultValue: 'Open' })}
+            {steps[0].openLabel}
             <IconArrowRight size={14} stroke={1.9} />
           </Link>
         </article>
@@ -126,7 +153,7 @@ export default function OnboardingGettingStartedPage() {
             {steps[1].desc}
           </p>
           <Link to={steps[1].href} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-            {t('app.onboarding.getting_started.open', { defaultValue: 'Open' })}
+            {steps[1].openLabel}
             <IconArrowRight size={14} stroke={1.9} />
           </Link>
         </article>
@@ -142,7 +169,7 @@ export default function OnboardingGettingStartedPage() {
             {steps[2].desc}
           </p>
           <Link to={steps[2].href} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline">
-            {t('app.onboarding.getting_started.open', { defaultValue: 'Open' })}
+            {steps[2].openLabel}
             <IconArrowRight size={14} stroke={1.9} />
           </Link>
         </article>
