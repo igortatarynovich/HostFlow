@@ -1255,7 +1255,7 @@ export default function TenantsPage() {
                           <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.seat_requests.title')}</h4>
                           <p className="text-xs text-slate-500">{t('app.platform.tenants.seat_requests.subtitle')}</p>
                         </div>
-                        <button type="button" className="btn-ghost text-xs" onClick={() => void loadSeatRequests()} disabled={seatLoading}>
+                        <button type="button" className="btn-secondary btn-xs" onClick={() => void loadSeatRequests()} disabled={seatLoading}>
                           {seatLoading ? t('common.loading') : t('app.platform.tenants.seat_requests.actions.refresh')}
                         </button>
                       </div>
@@ -1343,7 +1343,7 @@ export default function TenantsPage() {
                         </span>
                         <button
                           type="button"
-                          className="btn-ghost"
+                          className="btn-secondary"
                           onClick={handleRefreshVacancyAccess}
                           disabled={vacancyAccessLoading}
                         >
@@ -1385,7 +1385,7 @@ export default function TenantsPage() {
                             </div>
                             <button
                               type="button"
-                              className="btn-ghost text-xs"
+                              className="btn-secondary btn-xs"
                               onClick={() => handleRemoveSharedVacancy(item.vacancy_id)}
                               disabled={vacancyAccessSaving}
                             >
@@ -1411,7 +1411,7 @@ export default function TenantsPage() {
                               : t('app.platform.tenants.access.actions.search')}
                           </button>
                           {vacancyOptions.length > 0 && (
-                            <button type="button" className="btn-ghost text-xs" onClick={clearVacancySearchResults}>
+                            <button type="button" className="btn-secondary btn-xs" onClick={clearVacancySearchResults}>
                               {t('app.platform.tenants.access.actions.clear_results')}
                             </button>
                           )}
@@ -1445,7 +1445,7 @@ export default function TenantsPage() {
                                 </div>
                                 <button
                                   type="button"
-                                  className={alreadyShared ? 'btn-ghost text-xs' : 'btn-primary text-xs'}
+                                  className={alreadyShared ? 'btn-secondary btn-xs' : 'btn-primary text-xs'}
                                   onClick={() => handleAddSharedVacancy(option)}
                                   disabled={alreadyShared || vacancyAccessSaving}
                                 >
@@ -1620,7 +1620,7 @@ export default function TenantsPage() {
                             </select>
                             <button
                               type="button"
-                              className="btn-ghost text-xs"
+                              className="btn-secondary btn-xs"
                               onClick={handleClearUserOverrides}
                               disabled={userOverrideSaving || !selectedOverrideUser?.user_id}
                             >

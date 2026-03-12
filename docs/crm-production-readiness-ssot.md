@@ -318,6 +318,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F8.45 | Унифицировать saved-views/actions и status badges в Profile | `DONE` | `ProfilePage` переведен на системные `btn-secondary` для saved-view actions, `badge` для default/current/editable статусов и `alert-success/alert-error` для локальных сообщений |
 | F8.46 | Унифицировать seat-request controls/status badges в Billing Team | `DONE` | `BillingTeamPage` переведен на системные `btn-secondary btn-xs`, `textarea`, `alert-error`, `badge` для seat-request refresh/form/status patterns |
 | F8.47 | Унифицировать secondary actions в Users admin page | `DONE` | `UsersPage` переведен с `btn-ghost` на системные `btn-secondary`/`btn-secondary btn-xs` в detail-card actions, audit refresh, tenant-override и list refresh controls |
+| F8.48 | Унифицировать secondary actions в Tenants admin access flows | `DONE` | `TenantsPage` очищен от `btn-ghost` в seat requests/access/module-overrides сценариях; применен единый `btn-secondary`/`btn-secondary btn-xs` паттерн |
 
 ## 5.5 Фаза E — Multi-tenant и Auth детализация (из source docs)
 
@@ -484,3 +485,4 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `F8.45 = DONE`: `ProfilePage` выровнен по системным action/status patterns (`btn-secondary` для saved-view actions, `badge` для статусных маркеров, `alert-success/alert-error` для локальных уведомлений).
 - `2026-03-12` — `F8.46 = DONE`: `BillingTeamPage` выровнен по системным seat-request patterns (`btn-secondary btn-xs`, `textarea`, `alert-error`, `badge`) в refresh/form/status блоках.
 - `2026-03-12` — `F8.47 = DONE`: `UsersPage` очищен от `btn-ghost` в ключевых вторичных действиях (detail, audit, tenant override, list refresh), применен единый `btn-secondary` паттерн.
+- `2026-03-12` — `F8.48 = DONE`: `TenantsPage` очищен от остаточных `btn-ghost` в admin access flows (seat requests, vacancy sharing, module user overrides), применен системный `btn-secondary` паттерн.
