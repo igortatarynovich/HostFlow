@@ -58,6 +58,19 @@ function parseRunRecord(content) {
   return row
 }
 
+function hasTemplatePlaceholders(content) {
+  const patterns = [
+    /<observed behavior>/i,
+    /<pass\/fail\/blocked>/i,
+    /<screenshot\/video\/log link>/i,
+    /<links\/notes>/i,
+    /<links\/snippets>/i,
+    /<key observations>/i,
+    /<bug-id \/ n\/a>/i,
+  ]
+  return patterns.some((re) => re.test(content))
+}
+
 function parseDateKey(value) {
   const raw = stripTicks(value)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return -1
@@ -175,7 +188,8 @@ function main() {
         const filePattern = /^f7-run-([abc])-(\d{4}-\d{2}-\d{2})-(staging|production)-(.+)\.md$/i
         const fileMatch = base.match(filePattern)
         if (fileMatch) {
-          const rec = parseRunRecord(fs.readFileSync(abs, 'utf-8'))
+          const recordContent = fs.readFileSync(abs, 'utf-8')
+          const rec = parseRunRecord(recordContent)
           const scenarioCode = scenarioMatch ? scenarioMatch[1] : null
           const [, fileScenario, fileDate, fileEnv, fileTenant] = fileMatch
           if (!rec.date || !rec.scenario || !rec.environment || !rec.tenant || !rec.result) {
@@ -208,6 +222,9 @@ function main() {
             }
             if (normalizeSoft(rec.result) !== normalizeSoft(result)) {
               errors.push(`Run-record result mismatch for ${scenario}: row=${stripTicks(result)} file=${rec.result}`)
+            }
+            if ((normalizedResult === 'PASS' || normalizedResult === 'FAIL') && hasTemplatePlaceholders(recordContent)) {
+              errors.push(`Run-record for ${scenario} contains unresolved template placeholders: ${abs}`)
             }
           }
         } else if (normalizedResult === 'PASS' || normalizedResult === 'FAIL') {
