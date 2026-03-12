@@ -35,6 +35,12 @@ function parseTableLine(line) {
   return parts.slice(1, 8)
 }
 
+function parseBoardTableLine(line) {
+  const parts = line.split('|').map((p) => p.trim())
+  if (parts.length < 6) return null
+  return parts.slice(1, 5)
+}
+
 function parseRunRecord(content) {
   const row = {}
   for (const line of content.split('\n')) {
@@ -60,15 +66,22 @@ function main() {
   const text = fs.readFileSync(ssotPath, 'utf-8')
   const startMarker = '### 10.1 Журнал прогонов (операционный)'
   const endMarker = '### 10.2 Next Actions Для `F7`'
+  const boardStartMarker = '## 10. F7 Scenario Execution Board (A/B/C)'
 
+  const boardStartIdx = text.indexOf(boardStartMarker)
   const startIdx = text.indexOf(startMarker)
   const endIdx = text.indexOf(endMarker)
-  if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) {
+  if (boardStartIdx < 0 || startIdx < 0 || endIdx < 0 || endIdx <= startIdx || startIdx <= boardStartIdx) {
     console.error('Could not locate F7 run-log section in SSOT')
     process.exit(1)
   }
 
+  const boardSection = text.slice(boardStartIdx, startIdx)
   const section = text.slice(startIdx, endIdx)
+  const boardLines = boardSection
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('|') && !l.includes('|---'))
   const lines = section
     .split('\n')
     .map((l) => l.trim())
@@ -90,6 +103,7 @@ function main() {
   const seenScenarios = new Set()
   const seenRunKeys = new Set()
   const allowedResults = new Set(['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'])
+  const latestResultByScenario = {}
 
   for (const rowLine of dataRows) {
     const row = parseTableLine(rowLine)
@@ -98,6 +112,7 @@ function main() {
       continue
     }
     const [date, scenario, env, tenant, result, evidence, owner] = row
+    const normalizedResult = stripTicks(result)
 
     if (!/^\`?\d{4}-\d{2}-\d{2}\`?$/.test(date)) {
       errors.push(`Invalid date cell: "${date}"`)
@@ -107,6 +122,7 @@ function main() {
       errors.push(`Invalid scenario cell: "${scenario}"`)
     } else {
       seenScenarios.add(scenarioMatch[1])
+      latestResultByScenario[scenarioMatch[1]] = normalizedResult
     }
     if (!env) errors.push(`Empty environment cell for scenario "${scenario}"`)
     if (!tenant) errors.push(`Empty tenant cell for scenario "${scenario}"`)
@@ -123,7 +139,6 @@ function main() {
       seenRunKeys.add(runKey)
     }
 
-    const normalizedResult = stripTicks(result)
     if (!allowedResults.has(normalizedResult)) {
       errors.push(`Invalid result "${result}" for scenario "${scenario}"`)
     }
@@ -191,6 +206,45 @@ function main() {
   for (const scenarioCode of ['A', 'B', 'C']) {
     if (!seenScenarios.has(scenarioCode)) {
       errors.push(`Missing run-log row for scenario ${scenarioCode}`)
+    }
+  }
+
+  if (boardLines.length < 2) {
+    errors.push('F7 board table (section 10) is empty or malformed')
+  } else {
+    const boardDataRows = boardLines.slice(1)
+    const boardStatusByScenario = {}
+    for (const rowLine of boardDataRows) {
+      const row = parseBoardTableLine(rowLine)
+      if (!row || row.length !== 4) continue
+      const [scenarioCell, statusCell] = row
+      const match = scenarioCell.match(/([ABC])\s*[—-]/)
+      if (!match) continue
+      boardStatusByScenario[match[1]] = stripTicks(statusCell).toUpperCase()
+    }
+    for (const scenarioCode of ['A', 'B', 'C']) {
+      const boardStatus = boardStatusByScenario[scenarioCode]
+      const latestResult = latestResultByScenario[scenarioCode]
+      if (!boardStatus) {
+        errors.push(`Missing board status row for scenario ${scenarioCode} in section 10`)
+        continue
+      }
+      if (!latestResult) continue
+      if (boardStatus === 'PASS' && latestResult !== 'PASS') {
+        errors.push(
+          `Board status mismatch for scenario ${scenarioCode}: board=PASS but latest run-log result=${latestResult}`,
+        )
+      }
+      if (latestResult === 'PASS' && boardStatus !== 'PASS') {
+        errors.push(
+          `Board status mismatch for scenario ${scenarioCode}: latest run-log result=PASS but board=${boardStatus}`,
+        )
+      }
+      if (boardStatus === 'BLOCKED' && latestResult === 'PASS') {
+        errors.push(
+          `Board status mismatch for scenario ${scenarioCode}: board=BLOCKED but latest run-log result=PASS`,
+        )
+      }
     }
   }
 

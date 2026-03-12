@@ -909,3 +909,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — CLI `f7:run-record:new` расширен флагом `--append-ssot`: после создания run-record может автоматически добавить строку в `10.1` с anti-duplicate guard по `date/scenario/env/tenant`.
 - `2026-03-12` — `f7:run-record:new` дополнен post-append validation: при `--append-ssot` CLI по умолчанию запускает `f7:run-log:check` и подтверждает консистентность `10.1` сразу после вставки (опционально отключается `--no-validate`).
 - `2026-03-12` — `f7:run-log:check` усилен anti-duplicate контролем: валидатор отклоняет повторные записи в `10.1` с одинаковым ключом прогона (`scenario + date + environment + tenant`).
+- `2026-03-12` — `f7:run-log:check` дополнен cross-check board vs run-log: валидатор сверяет статус сценария в разделе `10` с последним результатом в `10.1` и сигнализирует о расхождении (`PASS/BLOCKED` консистентность).
