@@ -32,6 +32,7 @@ import Select from '../../components/controls/Select'
 import { buildCountryOptions } from '../../data/countries'
 import { PREFERRED_CONTACT_VALUES } from '../../data/preferredContactChannels'
 import { isCookieConsentGranted, subscribeCookieConsent } from '../../components/public/cookieConsent'
+import { useRobotsMeta } from '../../hooks/useRobotsMeta'
 
 import type { StepKey, MultiSelectOption } from '../../modules/public-intake/types'
 
@@ -133,6 +134,7 @@ function statusTone(status?: string): string {
 }
 
 export default function PublicApplyPage() {
+  useRobotsMeta({ index: false, follow: false })
   const { token } = useParams<{ token: string }>()
   const [activeStep, setActiveStep] = useState<StepKey>('overview')
   const initialStepChosen = useRef(false)

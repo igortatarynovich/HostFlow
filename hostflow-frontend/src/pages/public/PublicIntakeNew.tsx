@@ -18,6 +18,7 @@ import { subscribeToNotifications } from '../../api/publicNotifications'
 import http from '../../api/http'
 import { CONSENT_DOCUMENT_VERSIONS } from './constants'
 import { isCookieConsentGranted } from '../../components/public/cookieConsent'
+import { useRobotsMeta } from '../../hooks/useRobotsMeta'
 import type {
   IntakeStep,
   QuestionId,
@@ -29,6 +30,7 @@ import type {
 } from '../../modules/public-intake/types'
 
 export default function PublicIntakeNew() {
+  useRobotsMeta({ index: false, follow: false })
   const { token } = useParams<{ token: string }>()
   const { t, locale, setLocale } = useI18n()
   const navigate = useNavigate()

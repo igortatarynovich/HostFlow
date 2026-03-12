@@ -3,8 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import { getClientPortalByToken, type ClientPortalData } from '../api/tenantLinks'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { useRobotsMeta } from '../hooks/useRobotsMeta'
 
 export default function ClientPortalPage() {
+  useRobotsMeta({ index: false, follow: false })
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token') ?? ''
   const { t } = useI18n()

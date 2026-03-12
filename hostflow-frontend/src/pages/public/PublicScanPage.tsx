@@ -13,6 +13,7 @@ import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
 import type { ScanPresetKey } from '../../modules/public-intake/scan/analyzer'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { useRobotsMeta } from '../../hooks/useRobotsMeta'
 
 type FilterName = 'standard' | 'document' | 'photo' | 'grayscale' | 'contrast_boost' | 'photo_soft'
 type FrameKind = 'DRIVER_LICENSE' | 'ID_CARD' | 'CODE95' | 'PASSPORT_SPREAD' | 'PASSPORT_ID_PAGE' | 'A4'
@@ -75,6 +76,7 @@ function qualityPresetForDocType(docType?: string | null): ScanPresetKey {
 }
 
 export default function PublicScanPage() {
+  useRobotsMeta({ index: false, follow: false })
   const SCANNER_DISABLED = false
   const location = useLocation()
   const search = useMemo(() => new URLSearchParams(location.search), [location.search])

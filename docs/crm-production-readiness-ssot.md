@@ -395,7 +395,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F9.2 | Выровнять `title/description/canonical/og:*` по всем indexable страницам | `DONE` | На каждой странице корректные мета-теги без дублей canonical |
 | F9.3 | Проверить и обновить `robots.txt` + `sitemap.xml` (включая auto-generation) | `IN_PROGRESS` | Поисковые боты получают актуальные правила и полный sitemap без битых URL |
 | F9.4 | Добавить schema.org (`Organization`, `SoftwareApplication`, `FAQ/Article` где уместно) | `IN_PROGRESS` | Structured data проходит валидацию без критичных ошибок |
-| F9.5 | Техпроверка индексации и crawlability (`noindex`, redirects, 404/soft-404) | `NOT_STARTED` | Нет критичных indexability проблем на приоритетных страницах |
+| F9.5 | Техпроверка индексации и crawlability (`noindex`, redirects, 404/soft-404) | `IN_PROGRESS` | Нет критичных indexability проблем на приоритетных страницах |
 | F9.6 | Базовый CWV-pass публичных страниц (LCP/CLS/INP) | `NOT_STARTED` | По приоритетным URL нет блокирующих деградаций производительности |
 
 ### 5.6.1.1 `F9.1` SEO URL Inventory (baseline, `2026-03-12`)
@@ -691,3 +691,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F9.1 = DONE`: зафиксирован baseline SEO URL inventory (`indexable`/`non-indexable`) с owner-матрицей в разделе `5.6.1.1`.
 - `2026-03-12` — `F9.2 = DONE`: внедрен единый SPA SEO-хук (`title`, `description`, `canonical`, `og:title`, `og:description`, `og:type`, `og:url`, `og:site_name`) и подключен на indexable public/auth страницах (`/`, `/pricing`, `/signup`, `/login`, `/public/intake`, `/public/portal`) с локализацией `app.seo.*` для `en/ru/pl`.
 - `2026-03-12` — старт `F9.4`: SEO-хук расширен поддержкой JSON-LD (`application/ld+json`), на `CRM landing/pricing` добавлены schema.org `Organization` + `SoftwareApplication`; статус `F9.4` переведен в `IN_PROGRESS` до расширения на FAQ/контентные страницы и внешней валидации.
+- `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.

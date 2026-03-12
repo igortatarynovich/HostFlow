@@ -7,6 +7,7 @@ import { PublicTimeline } from './components/PublicTimeline'
 import { NotificationSettings } from './components/NotificationSettings'
 import { formatDocumentStatus, getDocumentTitle } from './utils/documents'
 import { PublicLocaleSwitcher } from '../../components/public/PublicLocaleSwitcher'
+import { useRobotsMeta } from '../../hooks/useRobotsMeta'
 
 type DocCard = {
   code: string
@@ -16,6 +17,7 @@ type DocCard = {
 }
 
 export default function PublicStatusPage() {
+  useRobotsMeta({ index: false, follow: false })
   const { token } = useParams<{ token: string }>()
   const { t, locale } = useI18n()
   const { loading, error, state, refreshing } = usePublicStatus(token)

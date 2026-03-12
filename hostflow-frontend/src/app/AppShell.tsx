@@ -14,6 +14,7 @@ import { LicenseExpiredBanner } from '../components/LicenseExpiredBanner'
 import { TrialStatusBanner } from '../components/TrialStatusBanner'
 import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
 import { useLicenseStatus } from '../hooks/useLicenseStatus'
+import { useRobotsMeta } from '../hooks/useRobotsMeta'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -22,6 +23,7 @@ type AppShellProps = {
 }
 
 export function AppShell({ me, navItems, onLogout }: AppShellProps) {
+  useRobotsMeta({ index: false, follow: false })
   const location = useLocation()
   const path = location.pathname
   const isOnboardingPage = location.pathname.startsWith('/app/onboarding/')

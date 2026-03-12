@@ -64,6 +64,7 @@ export function useSeoMeta({ title, description, canonicalPath, ogType = 'websit
     document.title = fullTitle
     upsertCanonical(canonicalUrl)
     upsertMeta('name="description"', { name: 'description', content: description })
+    upsertMeta('name="robots"', { name: 'robots', content: 'index,follow' })
     upsertMeta('property="og:title"', { property: 'og:title', content: fullTitle })
     upsertMeta('property="og:description"', { property: 'og:description', content: description })
     upsertMeta('property="og:type"', { property: 'og:type', content: ogType })
