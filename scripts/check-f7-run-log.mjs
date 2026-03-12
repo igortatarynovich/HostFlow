@@ -88,6 +88,7 @@ function main() {
   const dataRows = lines.slice(1)
   const errors = []
   const seenScenarios = new Set()
+  const seenRunKeys = new Set()
   const allowedResults = new Set(['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'])
 
   for (const rowLine of dataRows) {
@@ -109,6 +110,18 @@ function main() {
     }
     if (!env) errors.push(`Empty environment cell for scenario "${scenario}"`)
     if (!tenant) errors.push(`Empty tenant cell for scenario "${scenario}"`)
+
+    const runKey = [
+      normalizeSoft(scenario),
+      normalizeSoft(date),
+      normalizeSoft(env),
+      normalizeSoft(tenant),
+    ].join('|')
+    if (seenRunKeys.has(runKey)) {
+      errors.push(`Duplicate run-log row key detected: scenario/date/env/tenant = ${runKey}`)
+    } else {
+      seenRunKeys.add(runKey)
+    }
 
     const normalizedResult = stripTicks(result)
     if (!allowedResults.has(normalizedResult)) {

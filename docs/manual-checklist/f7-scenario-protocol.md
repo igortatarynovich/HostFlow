@@ -16,6 +16,7 @@
 - По умолчанию `--append-ssot` запускает post-update валидацию (`f7:run-log:check`); для отключения только в отладке использовать `--no-validate`.
 - Перед финальной фиксацией run-log в SSOT проверять консистентность: `npm run f7:run-log:check`.
 - `f7:run-log:check` валидирует не только таблицу `10.1`, но и соответствие header-полей run-record файлам (`date/scenario/environment/tenant/result`) для linked evidence.
+- `f7:run-log:check` запрещает дубли ключа прогона (`scenario + date + environment + tenant`) в таблице `10.1`.
 - Для записей с результатом `PASS/FAIL` evidence-файл должен использовать каноническое имя: `f7-run-<scenario>-<date>-<env>-<tenant-slug>.md`.
 
 ## Шаблон записи

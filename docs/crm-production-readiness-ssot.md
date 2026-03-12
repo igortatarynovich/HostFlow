@@ -908,3 +908,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F7 run-log` validator дополнительно проверяет каноническое имя evidence-файла для `PASS/FAIL` (`f7-run-<scenario>-<date>-<env>-<tenant-slug>.md`) и сверяет slug tenant из строки `10.1` с именем файла.
 - `2026-03-12` — CLI `f7:run-record:new` расширен флагом `--append-ssot`: после создания run-record может автоматически добавить строку в `10.1` с anti-duplicate guard по `date/scenario/env/tenant`.
 - `2026-03-12` — `f7:run-record:new` дополнен post-append validation: при `--append-ssot` CLI по умолчанию запускает `f7:run-log:check` и подтверждает консистентность `10.1` сразу после вставки (опционально отключается `--no-validate`).
+- `2026-03-12` — `f7:run-log:check` усилен anti-duplicate контролем: валидатор отклоняет повторные записи в `10.1` с одинаковым ключом прогона (`scenario + date + environment + tenant`).
