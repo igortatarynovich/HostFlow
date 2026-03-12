@@ -1708,7 +1708,7 @@ export default function Companies(){
                   {saving ? t('common.saving') : t('common.actions.save')}
                 </button>
                 <button
-                  className="btn-ghost bg-white/10 text-white hover:bg-white/20"
+                  className="btn-secondary border-white/40 bg-white/10 text-white hover:bg-white/20"
                   type="button"
                   onClick={handleResetDetail}
                   disabled={saving || !isDirty}
@@ -2089,13 +2089,13 @@ export default function Companies(){
                     checked={account.is_primary}
                     onChange={(value) => setBankAccountField(index, { is_primary: value })}
                   />
-                  <button className="btn-ghost" type="button" onClick={() => removeBankAccount(index)}>
+                  <button className="btn-danger" type="button" onClick={() => removeBankAccount(index)}>
                     {t('common.actions.delete')}
                   </button>
                 </div>
               </div>
             ))}
-            <button className="btn-ghost" type="button" onClick={addBankAccount}>
+            <button className="btn-secondary" type="button" onClick={addBankAccount}>
               {t('app.companies.detail.actions.add_bank_account')}
             </button>
           </div>
@@ -2139,13 +2139,13 @@ export default function Companies(){
                   />
                 </div>
                 <div className="flex items-end">
-                  <button className="btn-ghost" type="button" onClick={() => removeContact(index)}>
+                  <button className="btn-danger" type="button" onClick={() => removeContact(index)}>
                     {t('common.actions.delete')}
                   </button>
                 </div>
               </div>
             ))}
-            <button className="btn-ghost" type="button" onClick={addContact}>
+            <button className="btn-secondary" type="button" onClick={addContact}>
               {t('app.companies.detail.actions.add_contact')}
             </button>
           </div>
@@ -2284,7 +2284,7 @@ export default function Companies(){
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t('app.companies.detail.groups.representatives')}
               </div>
-              <button className="btn-ghost" type="button" onClick={addRepresentative}>
+              <button className="btn-secondary" type="button" onClick={addRepresentative}>
                 {t('app.companies.detail.actions.add_representative')}
               </button>
             </div>
@@ -2312,7 +2312,7 @@ export default function Companies(){
                     onChange={(value) => setRepresentativeField(index, { phone: value })}
                   />
                   <div className="flex items-end">
-                    <button className="btn-ghost" type="button" onClick={() => removeRepresentative(index)}>
+                    <button className="btn-danger" type="button" onClick={() => removeRepresentative(index)}>
                       {t('common.actions.delete')}
                     </button>
                   </div>
@@ -2596,13 +2596,13 @@ export default function Companies(){
                         onChange={(value) => setPortalUserField(index, { role: value })}
                       />
                       <div className="flex items-end">
-                        <button className="btn-ghost" type="button" onClick={() => removePortalUser(index)}>
+                        <button className="btn-danger" type="button" onClick={() => removePortalUser(index)}>
                           {t('common.actions.delete')}
                         </button>
                       </div>
                     </div>
                   ))}
-                  <button className="btn-ghost" type="button" onClick={addPortalUser}>
+                  <button className="btn-secondary" type="button" onClick={addPortalUser}>
                     {t('app.companies.detail.actions.add_portal_user')}
                   </button>
                 </div>
@@ -2662,13 +2662,13 @@ export default function Companies(){
                   placeholder="https://api.example.com/hooks"
                 />
                 <div className="flex items-end">
-                  <button className="btn-ghost" type="button" onClick={() => removeWebhook(index)}>
+                  <button className="btn-danger" type="button" onClick={() => removeWebhook(index)}>
                     {t('common.actions.delete')}
                   </button>
                 </div>
               </div>
             ))}
-            <button className="btn-ghost" type="button" onClick={addWebhook}>
+            <button className="btn-secondary" type="button" onClick={addWebhook}>
               {t('app.companies.detail.actions.add_webhook')}
             </button>
           </div>
@@ -2710,13 +2710,13 @@ export default function Companies(){
                   onChange={(value) => setContractField(index, { reference: value })}
                 />
                 <div className="flex items-end">
-                  <button className="btn-ghost" type="button" onClick={() => removeContract(index)}>
+                  <button className="btn-danger" type="button" onClick={() => removeContract(index)}>
                     {t('common.actions.delete')}
                   </button>
                 </div>
               </div>
             ))}
-            <button className="btn-ghost" type="button" onClick={addContract}>
+            <button className="btn-secondary" type="button" onClick={addContract}>
               {t('app.companies.detail.actions.add_contract')}
             </button>
           </div>
@@ -2778,7 +2778,7 @@ export default function Companies(){
                         value={order.client_reference}
                         onChange={(value) => setOrderField(index, { client_reference: value })}
                       />
-                      <button className="btn-ghost shrink-0" type="button" onClick={() => removeOrder(index)}>
+                      <button className="btn-danger shrink-0" type="button" onClick={() => removeOrder(index)}>
                         {t('common.actions.delete')}
                       </button>
                     </div>
@@ -2817,7 +2817,7 @@ export default function Companies(){
                 </div>
               )
             })}
-            <button className="btn-ghost" type="button" onClick={addOrder}>
+            <button className="btn-secondary" type="button" onClick={addOrder}>
               {t('app.companies.detail.actions.add_order')}
             </button>
           </div>
@@ -2939,7 +2939,7 @@ export default function Companies(){
                           </div>
                           <div className="flex items-center gap-2">
                             <button
-                              className="btn-ghost text-sm"
+                              className="btn-secondary text-sm"
                               type="button"
                               onClick={() => setEditingPolicy(policy)}
                             >
@@ -3160,7 +3160,7 @@ export default function Companies(){
           </span>
           {(query || showArchived || companyKindFilter !== 'all' || sortBy !== 'name_asc') && (
             <button
-              className="btn-ghost"
+              className="btn-secondary"
               onClick={() => {
                 setQuery('')
                 setShowArchived(false)
@@ -3215,10 +3215,13 @@ export default function Companies(){
                     {(it as any).is_archived ? t('common.words.yes') : t('common.words.no')}
                   </td>
                   <td className="px-4 py-3 space-x-2 text-right">
-                    <button className="btn-ghost" onClick={() => navigate(`/app/clients/${(it as any).id}`)}>
+                    <button className="btn-secondary" onClick={() => navigate(`/app/clients/${(it as any).id}`)}>
                       {t('app.companies.list.table.actions.edit')}
                     </button>
-                    <button className="btn-ghost" onClick={() => toggleArchive(it)}>
+                    <button
+                      className={(it as any).is_archived ? 'btn-secondary' : 'btn-danger'}
+                      onClick={() => toggleArchive(it)}
+                    >
                       {(it as any).is_archived
                         ? t('app.companies.list.table.actions.restore')
                         : t('app.companies.list.table.actions.archive')}
@@ -3534,12 +3537,12 @@ function ArrayInputField({
               placeholder={placeholder}
               onChange={(event) => handleChange(index, event.target.value)}
             />
-            <button className="btn-ghost" onClick={() => handleRemove(index)} type="button">
+            <button className="btn-danger" onClick={() => handleRemove(index)} type="button">
               {t('common.actions.delete')}
             </button>
           </div>
         ))}
-        <button className="btn-ghost" type="button" onClick={handleAdd}>
+        <button className="btn-secondary" type="button" onClick={handleAdd}>
           {t('common.actions.add')}
         </button>
       </div>
@@ -3634,7 +3637,7 @@ function PolicyForm({
           >
             {t('common.actions.save')}
           </button>
-          <button className="btn-ghost text-sm" type="button" onClick={onCancel}>
+          <button className="btn-secondary text-sm" type="button" onClick={onCancel}>
             {t('common.actions.cancel')}
           </button>
         </div>
