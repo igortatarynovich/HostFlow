@@ -709,13 +709,14 @@ Residual risks до финального `PASS`:
 
 ## 10. F7 Scenario Execution Board (A/B/C)
 
-Дата: `2026-03-11`
+Дата: `2026-03-12`  
+Протокол: [f7-scenario-protocol.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-protocol.md)
 
 | Сценарий | Статус | Блокер | Комментарий |
 |---|---|---|---|
-| A — Solo (`services`) | `BLOCKED` | `A1/A2` (production Stripe + webhooks) | До оплаты путь неполный, финальный PASS невозможен |
-| B — Agency (`agency`) | `IN_PROGRESS` | Частично `A1/A2`, частично `C3/C4` | Core flow работает, нужен формальный сквозной прогон |
-| C — Employer (`employer`) | `IN_PROGRESS` | Частично `A1/A2` | Основной hiring-flow доступен, нужен end-to-end sign-off |
+| A — Solo (`services`) | `BLOCKED` | `A1/A2` (production Stripe + webhooks) | До оплаты путь неполный, финальный `PASS` невозможен |
+| B — Agency (`agency`) | `IN_PROGRESS` | Manual run + sign-off | Code/UI static прогон = `PASS_STATIC`; нужен формальный ручной E2E протокол по шагам `4.2` |
+| C — Employer (`employer`) | `IN_PROGRESS` | Manual run + sign-off | Code/UI static прогон = `PASS_STATIC`; нужен формальный ручной E2E протокол по шагам `4.2` |
 
 Правило фиксации:
 - Каждый сценарий получает `PASS` только после полного прогона по шагам из раздела `4.2`.
@@ -858,3 +859,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F6` расширен в `AgencyClientsPage` на heading/empty-state primary CTA: title/subtitle и `Add ...` action теперь используют business-aware entity terms (`Client/Company`) через `useBusinessTerminology`.
 - `2026-03-12` — `F6` расширен в `AgencyClientsPage` на add-link modal: modal title и `display name` label переведены на dynamic entity-term (`client/company`) через `useBusinessTerminology`.
 - `2026-03-12` — `F6 = DONE`: финальный secondary-screen copy-pass завершен (включая dynamic empty-title и success toast в `AgencyClientsPage`), конфликтующих `client/company` терминов в user-facing CTA/headers не осталось.
+- `2026-03-12` — `F7` execution board обновлен: добавлен формальный протокол прогона (`docs/manual-checklist/f7-scenario-protocol.md`), зафиксирован текущий state (`A=BLOCKED` по Stripe, `B/C=IN_PROGRESS` с `PASS_STATIC` как промежуточный code/UI результат до ручного sign-off).
