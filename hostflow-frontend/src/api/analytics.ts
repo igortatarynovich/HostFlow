@@ -36,6 +36,33 @@ export type AnalyticsProfileSummary = {
   }
 }
 
+export type TrialRetentionEventPayload = {
+  event: 'trial_retention_nudge'
+  action: 'impression' | 'cta_click' | 'dismiss'
+  day_bucket: 'd1' | 'd2' | 'd3' | 'd7'
+  step_key?: string | null
+  target_href?: string | null
+  activation_done?: boolean | null
+}
+
+export type TrialRetentionReport = {
+  period: { from: string | null; to: string | null }
+  totals: {
+    impression: number
+    cta_click: number
+    dismiss: number
+    ctr_percent: number
+  }
+  buckets: Array<{
+    day_bucket: 'd1' | 'd2' | 'd3' | 'd7'
+    impression: number
+    cta_click: number
+    dismiss: number
+    ctr_percent: number
+    dismiss_percent: number
+  }>
+}
+
 export async function getHandoffStats(params?: {
   from?: string
   to?: string
@@ -77,5 +104,18 @@ export async function getDocumentStats(params?: {
 
 export async function getAnalyticsProfileSummary(): Promise<AnalyticsProfileSummary> {
   const { data } = await api.get<AnalyticsProfileSummary>('/analytics/profile-summary')
+  return data
+}
+
+export async function recordTrialRetentionEvent(payload: TrialRetentionEventPayload): Promise<void> {
+  await api.post('/analytics/events', payload)
+}
+
+export async function getTrialRetentionReport(params?: { days?: number }): Promise<TrialRetentionReport> {
+  const q: Record<string, string> = {}
+  if (params?.days != null) q.days = String(params.days)
+  const { data } = await api.get<TrialRetentionReport>('/analytics/trial-retention', {
+    params: Object.keys(q).length ? q : undefined,
+  })
   return data
 }

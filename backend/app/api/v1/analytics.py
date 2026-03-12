@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Counter as TCounter
+from typing import Any, Dict, List, Optional, Literal, Counter as TCounter
 import json
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import func, select, or_, and_, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
@@ -15,7 +16,9 @@ from uuid import UUID
 
 from backend.app.core.cache import cache_get, cache_set
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.models import (
+    ActivityLog,
     Candidate,
     CandidateHandoff,
     Company,
@@ -38,6 +41,7 @@ from backend.app.constants.stages import (
 )
 from backend.app.services.tenant_visibility import TenantVisibility, get_tenant_visibility
 from backend.app.services.source_labels import normalize_candidate_source
+from backend.app.services.audit import log_activity
 from backend.app.api.v1.candidates import repo as candidates_repo
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause as repo_scope_clause
 
@@ -1296,3 +1300,148 @@ async def candidate_slices(
     }
     await cache_set("candidate-slices", scope_tenant, cache_params, result, ttl_sec=300)
     return result
+
+
+class AnalyticsEventIn(BaseModel):
+    event: Literal["trial_retention_nudge"]
+    action: Literal["impression", "cta_click", "dismiss"]
+    day_bucket: Literal["d1", "d2", "d3", "d7"]
+    step_key: Optional[str] = None
+    target_href: Optional[str] = None
+    activation_done: Optional[bool] = None
+
+
+class TrialRetentionBucketOut(BaseModel):
+    day_bucket: str
+    impression: int
+    cta_click: int
+    dismiss: int
+    ctr_percent: float
+    dismiss_percent: float
+
+
+class TrialRetentionReportOut(BaseModel):
+    period: dict[str, Optional[str]]
+    totals: dict[str, float | int]
+    buckets: list[TrialRetentionBucketOut]
+
+
+@router.post("/analytics/events")
+async def post_analytics_event(
+    payload: AnalyticsEventIn,
+    user: UserCtx = Depends(get_current_user),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    if str(user.tenant_id or "").strip() != tenant_id:
+        return {"ok": False, "reason": "tenant_mismatch"}
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=str(user.sub or "").strip() or None,
+        action=f"analytics.{payload.event}.{payload.action}",
+        target_type="analytics",
+        payload={
+            "event": payload.event,
+            "action": payload.action,
+            "day_bucket": payload.day_bucket,
+            "step_key": payload.step_key,
+            "target_href": payload.target_href,
+            "activation_done": payload.activation_done,
+        },
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@router.get("/analytics/trial-retention", response_model=TrialRetentionReportOut)
+async def get_trial_retention_report(
+    days: int = Query(30, ge=1, le=180),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    now = datetime.utcnow()
+    since = now - timedelta(days=days)
+    actions = [
+        "analytics.trial_retention_nudge.impression",
+        "analytics.trial_retention_nudge.cta_click",
+        "analytics.trial_retention_nudge.dismiss",
+    ]
+    rows = (
+        await db.execute(
+            select(ActivityLog.action, ActivityLog.payload, ActivityLog.created_at)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.action.in_(actions),
+                ActivityLog.created_at >= since,
+            )
+            .order_by(ActivityLog.created_at.desc())
+        )
+    ).all()
+
+    counters: dict[str, Counter[str]] = {
+        "d1": Counter(),
+        "d2": Counter(),
+        "d3": Counter(),
+        "d7": Counter(),
+    }
+    valid_days = set(counters.keys())
+    for action, raw_payload, _created_at in rows:
+        payload_dict = _safe_dict(raw_payload)
+        day_bucket = str(payload_dict.get("day_bucket") or "").strip().lower()
+        if day_bucket not in valid_days:
+            continue
+        event_action = str(payload_dict.get("action") or "").strip().lower()
+        if event_action not in {"impression", "cta_click", "dismiss"}:
+            action_str = str(action or "").strip().lower()
+            if action_str.endswith(".impression"):
+                event_action = "impression"
+            elif action_str.endswith(".cta_click"):
+                event_action = "cta_click"
+            elif action_str.endswith(".dismiss"):
+                event_action = "dismiss"
+        if event_action not in {"impression", "cta_click", "dismiss"}:
+            continue
+        counters[day_bucket][event_action] += 1
+
+    buckets: list[TrialRetentionBucketOut] = []
+    total_impression = 0
+    total_cta = 0
+    total_dismiss = 0
+    for day_bucket in ("d1", "d2", "d3", "d7"):
+        row = counters[day_bucket]
+        impression = int(row.get("impression", 0))
+        cta_click = int(row.get("cta_click", 0))
+        dismiss = int(row.get("dismiss", 0))
+        total_impression += impression
+        total_cta += cta_click
+        total_dismiss += dismiss
+        ctr_percent = round((cta_click / impression) * 100.0, 2) if impression > 0 else 0.0
+        dismiss_percent = round((dismiss / impression) * 100.0, 2) if impression > 0 else 0.0
+        buckets.append(
+            TrialRetentionBucketOut(
+                day_bucket=day_bucket,
+                impression=impression,
+                cta_click=cta_click,
+                dismiss=dismiss,
+                ctr_percent=ctr_percent,
+                dismiss_percent=dismiss_percent,
+            )
+        )
+
+    totals_ctr = round((total_cta / total_impression) * 100.0, 2) if total_impression > 0 else 0.0
+    return TrialRetentionReportOut(
+        period={
+            "from": since.isoformat(),
+            "to": now.isoformat(),
+        },
+        totals={
+            "impression": total_impression,
+            "cta_click": total_cta,
+            "dismiss": total_dismiss,
+            "ctr_percent": totals_ctr,
+        },
+        buckets=buckets,
+    )

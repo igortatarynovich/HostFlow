@@ -9,10 +9,13 @@ import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { useTenantInfo } from '../contexts/TenantInfo'
 import { OnboardingWizard } from '../components/OnboardingWizard'
 import {
+  getTrialRetentionReport,
   getAnalyticsProfileSummary,
   getHandoffStats,
   getContactAttemptStats,
   getDocumentStats,
+  recordTrialRetentionEvent,
+  type TrialRetentionReport,
 } from '../api/analytics'
 import { listTenantManagers } from '../api/users'
 import { getBillingSubscription } from '../api/billing'
@@ -335,6 +338,8 @@ export default function Dashboard() {
   const [retentionStatus, setRetentionStatus] = useState<OnboardingStatus | null>(null)
   const [retentionDismissed, setRetentionDismissed] = useState(false)
   const retentionImpressionRef = useRef<string | null>(null)
+  const [retentionReport, setRetentionReport] = useState<TrialRetentionReport | null>(null)
+  const [retentionReportLoading, setRetentionReportLoading] = useState(false)
   const [stageView, setStageView] = useState<'all' | 'agency' | 'client'>(() =>
     isClientRole ? 'client' : 'all',
   )
@@ -427,6 +432,29 @@ export default function Dashboard() {
     } as const
   }, [trialTone])
 
+  const retentionReportRows = useMemo(() => {
+    const source = retentionReport?.buckets ?? []
+    const order: Array<'d1' | 'd2' | 'd3' | 'd7'> = ['d1', 'd2', 'd3', 'd7']
+    const labels: Record<string, string> = {
+      d1: t('app.dashboard.trial_center.retention.day1', { defaultValue: 'Day 1' }),
+      d2: t('app.dashboard.trial_center.retention.day2', { defaultValue: 'Day 2' }),
+      d3: t('app.dashboard.trial_center.retention.day3', { defaultValue: 'Day 3' }),
+      d7: t('app.dashboard.trial_center.retention.day7', { defaultValue: 'Day 7' }),
+    }
+    const map = new Map(source.map((row) => [row.day_bucket, row]))
+    return order.map((key) => {
+      const row = map.get(key)
+      return {
+        key,
+        label: labels[key],
+        impression: row?.impression ?? 0,
+        ctaClick: row?.cta_click ?? 0,
+        dismiss: row?.dismiss ?? 0,
+        ctr: row?.ctr_percent ?? 0,
+      }
+    })
+  }, [retentionReport?.buckets, t])
+
   useEffect(() => {
     if (!isTrialTenant) {
       setRetentionStatus(null)
@@ -449,6 +477,35 @@ export default function Dashboard() {
       cancelled = true
     }
   }, [isTrialTenant])
+
+  useEffect(() => {
+    if (!isTrialTenant || !canManageBilling) {
+      setRetentionReport(null)
+      setRetentionReportLoading(false)
+      return
+    }
+    let cancelled = false
+    setRetentionReportLoading(true)
+    ;(async () => {
+      try {
+        const data = await getTrialRetentionReport({ days: 30 })
+        if (!cancelled) {
+          setRetentionReport(data)
+        }
+      } catch {
+        if (!cancelled) {
+          setRetentionReport(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setRetentionReportLoading(false)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [canManageBilling, isTrialTenant])
 
   const trialAgeDays = useMemo(() => {
     const createdAtRaw = String(tenant?.created_at || '').trim()
@@ -548,18 +605,31 @@ export default function Dashboard() {
       action: 'impression' | 'cta_click' | 'dismiss',
       payload?: { day?: TrialRetentionDay; stepKey?: string; href?: string; activationDone?: boolean },
     ) => {
-      if (typeof window === 'undefined') return
-      const dataLayer = (window as typeof window & { dataLayer?: unknown[] }).dataLayer
-      if (!Array.isArray(dataLayer)) return
-      dataLayer.push({
-        event: 'trial_retention_nudge',
-        action,
-        day: payload?.day ?? null,
-        step_key: payload?.stepKey ?? null,
-        target_href: payload?.href ?? null,
-        activation_done: payload?.activationDone ?? null,
-        tenant_id: tenantId,
-      })
+      const dayBucket = payload?.day != null ? (`d${payload.day}` as 'd1' | 'd2' | 'd3' | 'd7') : null
+      if (typeof window !== 'undefined') {
+        const dataLayer = (window as typeof window & { dataLayer?: unknown[] }).dataLayer
+        if (Array.isArray(dataLayer)) {
+          dataLayer.push({
+            event: 'trial_retention_nudge',
+            action,
+            day: payload?.day ?? null,
+            step_key: payload?.stepKey ?? null,
+            target_href: payload?.href ?? null,
+            activation_done: payload?.activationDone ?? null,
+            tenant_id: tenantId,
+          })
+        }
+      }
+      if (dayBucket) {
+        void recordTrialRetentionEvent({
+          event: 'trial_retention_nudge',
+          action,
+          day_bucket: dayBucket,
+          step_key: payload?.stepKey ?? null,
+          target_href: payload?.href ?? null,
+          activation_done: payload?.activationDone ?? null,
+        }).catch(() => undefined)
+      }
     },
     [tenantId],
   )
@@ -1607,6 +1677,55 @@ export default function Dashboard() {
               </a>
               .
             </p>
+            {canManageBilling && (
+              <div className="mt-3 rounded-lg border border-slate-200 bg-white/80 p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">
+                    {t('app.dashboard.trial_center.retention.title', { defaultValue: 'Retention events (30d)' })}
+                  </p>
+                  {retentionReportLoading && (
+                    <span className="text-[11px] text-slate-500">
+                      {t('app.dashboard.trial_center.retention.loading', { defaultValue: 'Loading…' })}
+                    </span>
+                  )}
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>{t('app.dashboard.trial_center.retention.columns.day', { defaultValue: 'Day' })}</th>
+                        <th>{t('app.dashboard.trial_center.retention.columns.impression', { defaultValue: 'Impressions' })}</th>
+                        <th>{t('app.dashboard.trial_center.retention.columns.click', { defaultValue: 'CTA clicks' })}</th>
+                        <th>{t('app.dashboard.trial_center.retention.columns.dismiss', { defaultValue: 'Dismiss' })}</th>
+                        <th>{t('app.dashboard.trial_center.retention.columns.ctr', { defaultValue: 'CTR' })}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {retentionReportRows.map((row) => (
+                        <tr key={row.key}>
+                          <td>{row.label}</td>
+                          <td>{row.impression}</td>
+                          <td>{row.ctaClick}</td>
+                          <td>{row.dismiss}</td>
+                          <td>{row.ctr.toFixed(2)}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-2 text-xs text-slate-600">
+                  {t('app.dashboard.trial_center.retention.summary', {
+                    defaultValue: 'Total impressions: {impression}, clicks: {click}, dismiss: {dismiss}, CTR: {ctr}%.',
+                    values: {
+                      impression: retentionReport?.totals?.impression ?? 0,
+                      click: retentionReport?.totals?.cta_click ?? 0,
+                      dismiss: retentionReport?.totals?.dismiss ?? 0,
+                      ctr: Number(retentionReport?.totals?.ctr_percent ?? 0).toFixed(2),
+                    },
+                  })}
+                </p>
+              </div>
+            )}
           </div>
         )}
         <div className="flex items-center justify-between flex-wrap gap-3">
