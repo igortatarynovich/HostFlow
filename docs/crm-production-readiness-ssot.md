@@ -722,6 +722,20 @@ Residual risks до финального `PASS`:
 - Каждый сценарий получает `PASS` только после полного прогона по шагам из раздела `4.2`.
 - Для каждого прогона обязательно сохранять дату, тестовый tenant и результат (`PASS/FAIL`) в этот раздел.
 
+### 10.1 Журнал прогонов (операционный)
+
+| Дата | Сценарий | Окружение | Tenant | Результат | Evidence | Owner |
+|---|---|---|---|---|---|---|
+| `2026-03-12` | A (`services`) | staging | `N/A` | `BLOCKED` | Внешний блокер: production Stripe + webhooks (`A1/A2`) не подключены | Product/Eng |
+| `2026-03-12` | B (`agency`) | staging | `N/A` (static board update) | `IN_PROGRESS` | UI/code pass зафиксирован в SSOT (`PASS_STATIC`), ожидается ручной E2E run по `4.2` с evidence | Product/QA |
+| `2026-03-12` | C (`employer`) | staging | `N/A` (static board update) | `IN_PROGRESS` | UI/code pass зафиксирован в SSOT (`PASS_STATIC`), ожидается ручной E2E run по `4.2` с evidence | Product/QA |
+
+### 10.2 Next Actions Для `F7`
+
+1. Провести ручной E2E прогон сценария `B` по шагам `4.2` и записать `PASS/FAIL` + evidence в `10.1`.
+2. Провести ручной E2E прогон сценария `C` по шагам `4.2` и записать `PASS/FAIL` + evidence в `10.1`.
+3. После подключения production Stripe/webhooks снять блокер `A` и выполнить полный прогон сценария `A`.
+
 ## 11. Changelog
 
 - `2026-03-11` — создан единый SSOT-файл готовности CRM к запуску продаж, консолидированы критерии, статусы и дорожная карта до 100%.
@@ -860,3 +874,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F6` расширен в `AgencyClientsPage` на add-link modal: modal title и `display name` label переведены на dynamic entity-term (`client/company`) через `useBusinessTerminology`.
 - `2026-03-12` — `F6 = DONE`: финальный secondary-screen copy-pass завершен (включая dynamic empty-title и success toast в `AgencyClientsPage`), конфликтующих `client/company` терминов в user-facing CTA/headers не осталось.
 - `2026-03-12` — `F7` execution board обновлен: добавлен формальный протокол прогона (`docs/manual-checklist/f7-scenario-protocol.md`), зафиксирован текущий state (`A=BLOCKED` по Stripe, `B/C=IN_PROGRESS` с `PASS_STATIC` как промежуточный code/UI результат до ручного sign-off).
+- `2026-03-12` — `F7` execution board переведен в операционный формат: добавлен run-log `10.1` (дата/окружение/tenant/result/evidence/owner) и зафиксированы next actions `10.2` для последовательного закрытия `B/C` и снятия блокера `A`.
