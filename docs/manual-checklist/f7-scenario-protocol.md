@@ -13,6 +13,7 @@
 - Для ускорения фиксации можно сгенерировать run-record через CLI: `npm run f7:run-record:new -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>"`.
 - Для полного авто-пакета (создать run-record + добавить в `10.1` + синхронизировать board + валидация) использовать: `npm run f7:run-record:apply -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" --result <PASS|FAIL|BLOCKED|IN_PROGRESS>`.
 - Для повторного прогона по тому же ключу (`scenario/date/env/tenant`) использовать upsert-режим: `npm run f7:run-record:upsert -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" --result <PASS|FAIL|BLOCKED|IN_PROGRESS>`.
+- Базовая доступность CLI-команд проверяется командой `npm run f7:cli:smoke` (help-smoke для `new/apply/upsert`), в том числе в CI.
 - CLI поддерживает `--print-ssot-row`, который выводит готовую markdown-строку для вставки в таблицу `10.1`.
 - CLI поддерживает `--append-ssot`: после создания run-record автоматически добавляет строку в `10.1` (с anti-duplicate проверкой по `date/scenario/env/tenant`).
 - CLI поддерживает `--upsert-ssot`: вставляет или обновляет строку `10.1` по ключу (`date/scenario/env/tenant`).

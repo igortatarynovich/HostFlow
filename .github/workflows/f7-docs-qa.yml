@@ -34,5 +34,7 @@ jobs:
         run: npm ci
       - name: Validate F7 run-log
         run: npm run f7:run-log:check
+      - name: Smoke F7 CLI commands
+        run: npm run f7:cli:smoke
       - name: Smoke CLI run-record generator
         run: npm run f7:run-record:new -- --scenario b --env staging --tenant ci-smoke --owner "CI" --dry-run

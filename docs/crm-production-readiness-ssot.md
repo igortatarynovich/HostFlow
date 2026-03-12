@@ -913,3 +913,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — CLI `f7:run-record:new` расширен флагом `--sync-board-status`: после фиксации run-record может автоматически синхронизировать статус сценария в execution board (раздел `10`) по значению `--result`; затем выполняется общий `f7:run-log:check`.
 - `2026-03-12` — добавлена npm-обертка `f7:run-record:apply` (create + append `10.1` + sync board + validate) для полного автоматизированного обновления `F7` без ручного последовательного ввода флагов.
 - `2026-03-12` — для повторных прогонов добавлен upsert-режим `f7:run-record:upsert` (`--upsert-ssot`): CLI обновляет существующую строку `10.1` по ключу (`scenario/date/env/tenant`) или вставляет новую, затем синхронизирует board и валидирует run-log.
+- `2026-03-12` — добавлен `f7:cli:smoke` (help-smoke для `new/apply/upsert`) и подключен в CI workflow `f7-docs-qa`, чтобы изменения CLI не ломали operational команды `F7`.

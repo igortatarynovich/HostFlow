@@ -3,7 +3,8 @@
     "f7:run-record:new": "node scripts/create-f7-run-record.mjs",
     "f7:run-record:apply": "node scripts/create-f7-run-record.mjs --append-ssot --sync-board-status",
     "f7:run-record:upsert": "node scripts/create-f7-run-record.mjs --upsert-ssot --sync-board-status",
-    "f7:run-log:check": "node scripts/check-f7-run-log.mjs"
+    "f7:run-log:check": "node scripts/check-f7-run-log.mjs",
+    "f7:cli:smoke": "npm run f7:run-record:new -- --help && npm run f7:run-record:apply -- --help && npm run f7:run-record:upsert -- --help"
   },
   "devDependencies": {
     "tsx": "^4.20.6"
