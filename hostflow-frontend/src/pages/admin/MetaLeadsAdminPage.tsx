@@ -416,7 +416,7 @@ export default function MetaLeadsAdminPage() {
               defaultValue: '1) Добавьте Credential (Webhook Secret, Access Token). 2) Настройте маппинг ad_id → вакансия. 3) Проверьте логи входящих лидов.',
             })}
           </p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               className="btn-primary"
@@ -453,7 +453,7 @@ export default function MetaLeadsAdminPage() {
         </div>
       )}
 
-      <nav className="flex gap-3">
+      <nav className="flex flex-wrap items-center gap-2 sm:gap-3">
         <button
           type="button"
           className={`rounded px-3 py-2 text-sm ${tab === 'settings' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
@@ -482,7 +482,7 @@ export default function MetaLeadsAdminPage() {
         >
           {t('app.admin.meta_leads.tabs.logs')}
         </button>
-        <span className="self-center text-xs text-slate-400">
+        <span className="w-full text-xs text-slate-400 sm:ml-auto sm:w-auto">
           {t('app.admin.meta_leads.other_platforms', { defaultValue: 'TikTok, YouTube, Google — скоро' })}
         </span>
       </nav>

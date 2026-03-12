@@ -128,7 +128,7 @@ export default function MyAvailabilityPage() {
           </div>
         )}
         <form className="mt-3 grid gap-2" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <select value={form.requestType} onChange={(e) => setForm((p) => ({ ...p, requestType: e.target.value }))} className="input">
               <option value="vacation">Vacation</option>
               <option value="day_off">Day off</option>
@@ -142,12 +142,12 @@ export default function MyAvailabilityPage() {
             </select>
           </div>
           {form.partialDay && (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input type="time" value={form.partialFrom} onChange={(e) => setForm((p) => ({ ...p, partialFrom: e.target.value }))} className="input" />
               <input type="time" value={form.partialTo} onChange={(e) => setForm((p) => ({ ...p, partialTo: e.target.value }))} className="input" />
             </div>
           )}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} className="input" />
             <input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} className="input" />
           </div>

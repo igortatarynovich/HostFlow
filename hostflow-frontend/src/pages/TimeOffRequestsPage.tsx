@@ -98,7 +98,7 @@ export default function TimeOffRequestsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Pending: <strong>{summary.pending}</strong></div>
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Approved: <strong>{summary.approved}</strong></div>
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Rejected: <strong>{summary.rejected}</strong></div>

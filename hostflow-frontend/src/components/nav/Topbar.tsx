@@ -399,8 +399,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
 
   return (
     <>
-      <header className="relative z-50 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm lg:px-6">
-        <div className="flex items-center gap-3">
+      <header className="relative z-50 flex h-16 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 shadow-sm sm:px-4 lg:px-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
             type="button"
             className="rounded-md p-2 text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
@@ -413,24 +413,28 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
             <img
               src={tenantLogoUrl}
               alt={brandLabel}
-              className="max-h-8 w-auto object-contain"
+              className="max-h-8 w-auto max-w-[9rem] object-contain sm:max-w-[12rem]"
               style={{ maxHeight: 32 }}
             />
           ) : (
-            <span className="text-base font-semibold text-slate-700">HostFlow</span>
+            <>
+              <span className="text-sm font-semibold text-slate-700 sm:hidden">HF</span>
+              <span className="hidden text-base font-semibold text-slate-700 sm:inline">HostFlow</span>
+            </>
           )}
         </div>
 
-        <div className="flex flex-1 items-center justify-end gap-2">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">
           {canReturnToPlatform && (
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
+              className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-2 text-xs font-semibold text-amber-800 transition hover:bg-amber-100 sm:gap-2 sm:px-3 sm:text-sm"
               onClick={() => {
                 void restorePlatformSession()
               }}
             >
-              {t('app.topbar.actions.return_to_platform')}
+              <IconLayoutSidebarLeftExpand size={14} stroke={1.9} />
+              <span className="hidden sm:inline">{t('app.topbar.actions.return_to_platform')}</span>
             </button>
           )}
           <button
@@ -447,7 +451,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
 
           <button
             type="button"
-            className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold uppercase text-slate-700 transition hover:bg-slate-50"
+            className="hidden rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold uppercase text-slate-700 transition hover:bg-slate-50 sm:inline-flex"
             onClick={toggleLang}
           >
             {locale.toUpperCase()}
@@ -471,7 +475,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
 
               <button
                 type="button"
-                className="relative rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50"
+                className="relative hidden rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 sm:inline-flex"
                 aria-label={t('app.nav.items.email', { defaultValue: 'Email' })}
                 onClick={() => navigate('/app/email')}
               >
@@ -701,7 +705,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
           <div className="relative" ref={menuRef}>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-2 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:px-3"
               onClick={() => setMenuOpen((prev) => !prev)}
             >
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-900 text-white">

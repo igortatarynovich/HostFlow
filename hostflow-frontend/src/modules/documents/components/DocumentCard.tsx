@@ -130,7 +130,7 @@ export const DocumentCard = memo(function DocumentCard({
   return (
     <div key={doc.id} className="rounded border border-slate-200 bg-white shadow-sm">
       <div
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50"
+        className="flex flex-col gap-3 p-4 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
         onClick={toggleExpanded}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -182,11 +182,11 @@ export const DocumentCard = memo(function DocumentCard({
             {statusUpdating[doc.id] && <span className="text-[10px] text-slate-600">…</span>}
           </span>
         </div>
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <label className="flex items-center gap-2 text-xs">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end" onClick={(e) => e.stopPropagation()}>
+          <label className="flex w-full items-center gap-2 text-xs sm:w-auto">
             <span className="text-slate-600">{t("admin.documents.table.status")}</span>
             <select
-              className="input input-sm"
+              className="input input-sm w-full sm:w-auto"
               value={selectStatus}
               onChange={(e) => updateStatus(doc, e.target.value as DocumentStatus)}
               disabled={!canManageDocuments || statusUpdating[doc.id]}
@@ -199,26 +199,26 @@ export const DocumentCard = memo(function DocumentCard({
             </select>
           </label>
           <button
-            className="btn-primary btn-xs"
+            className="btn-primary btn-xs w-full sm:w-auto"
             onClick={() => approveDocument(doc)}
             disabled={!canManageDocuments || statusUpdating[doc.id] || selectStatus === "approved"}
           >
             {t("admin.documents.actions.approve")}
           </button>
           <button
-            className="btn-danger btn-xs"
+            className="btn-danger btn-xs w-full sm:w-auto"
             onClick={() => rejectDocument(doc)}
             disabled={!canManageDocuments || statusUpdating[doc.id]}
           >
             {t("admin.documents.actions.reject")}
           </button>
-          <label className="input flex cursor-pointer items-center gap-2 btn-xs">
+          <label className="input btn-xs flex w-full cursor-pointer items-center gap-2 sm:w-auto">
             <span className="text-xs">{t("admin.documents.actions.choose_file")}</span>
             <input type="file" className="hidden" onChange={handleFileSelect} />
           </label>
           {selectedReplaceFile && (
             <button
-              className="btn-primary btn-xs"
+              className="btn-primary btn-xs w-full sm:w-auto"
               onClick={handleReplaceUploadClick}
               disabled={isReplacing}
             >
@@ -228,7 +228,7 @@ export const DocumentCard = memo(function DocumentCard({
             </button>
           )}
           {hasFiles && (
-            <button type="button" className="btn-secondary btn-xs" onClick={() => openDoc(doc)}>
+            <button type="button" className="btn-secondary btn-xs w-full sm:w-auto" onClick={() => openDoc(doc)}>
               {t("admin.documents.actions.open")}
             </button>
           )}

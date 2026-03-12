@@ -1154,7 +1154,7 @@ export default function CommunicationsCalendarPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Time-off: <strong>{stats.timeOff}</strong></div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Reminders: <strong>{stats.reminders}</strong></div>
         <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-800">Planner items: <strong>{stats.planner}</strong></div>

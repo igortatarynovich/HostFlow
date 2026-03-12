@@ -25,13 +25,13 @@ export default function WorkspaceTopNav({ active }: Props) {
 
   return (
     <div className="sticky top-2 z-20 rounded-lg border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1">
         {ITEMS.filter((item) => visibleKeys.includes(item.key)).map((item) => (
           <Link
             key={item.key}
             to={item.to}
             className={clsx(
-              'rounded border px-3 py-1.5 text-sm',
+              'shrink-0 whitespace-nowrap rounded border px-3 py-1.5 text-sm',
               active === item.key
                 ? 'border-slate-900 bg-slate-900 text-white'
                 : 'border-slate-300 text-slate-700 hover:bg-slate-50',

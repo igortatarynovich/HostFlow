@@ -137,7 +137,7 @@ export default function CommunicationsPlannerPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">Total: <strong>{stats.total}</strong></div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Planned: <strong>{stats.planned}</strong></div>
         <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">In progress: <strong>{stats.inProgress}</strong></div>
@@ -164,7 +164,7 @@ export default function CommunicationsPlannerPage() {
           )}
           <form className="space-y-2" onSubmit={handleCreate}>
             <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} className="input" placeholder="Title" />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <select value={form.kind} onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value }))} className="input">
                 <option value="task">Task</option>
                 <option value="call">Call</option>
@@ -186,7 +186,7 @@ export default function CommunicationsPlannerPage() {
               <input type="checkbox" checked={form.allDay} onChange={(e) => setForm((p) => ({ ...p, allDay: e.target.checked }))} />
               All day
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input type={form.allDay ? 'date' : 'datetime-local'} value={form.startAt} onChange={(e) => setForm((p) => ({ ...p, startAt: e.target.value }))} className="input" />
               <input type={form.allDay ? 'date' : 'datetime-local'} value={form.endAt} onChange={(e) => setForm((p) => ({ ...p, endAt: e.target.value }))} className="input" />
             </div>
