@@ -147,7 +147,7 @@ function CandidateRemindersSection({
                   </button>
                   <button
                     type="button"
-                    className="btn-ghost btn-xs disabled:opacity-60"
+                    className="btn-secondary btn-xs disabled:opacity-60"
                     onClick={() => onReminderSnooze(r.id, 60)}
                     disabled={reminderBusy === r.id}
                   >
@@ -227,7 +227,7 @@ function CandidateRemindersSection({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="btn-ghost btn-sm"
+                className="btn-secondary btn-sm"
               >
                 {t('common.actions.close', { defaultValue: 'Zamknij' })}
               </button>

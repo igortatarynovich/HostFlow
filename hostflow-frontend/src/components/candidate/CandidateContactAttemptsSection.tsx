@@ -253,7 +253,7 @@ function CandidateContactAttemptsSection({
                 type="button"
                 onClick={() => setModalOpen(false)}
                 disabled={submitting}
-                className="btn-ghost"
+                className="btn-secondary"
               >
                 {t('common.cancel', { defaultValue: 'Anuluj' })}
               </button>

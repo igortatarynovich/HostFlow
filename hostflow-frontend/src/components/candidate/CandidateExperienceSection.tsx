@@ -267,7 +267,7 @@ function CandidateExperienceSection({
                     <td className="px-3 py-2 text-right">
                       <button
                         type="button"
-                        className="btn-ghost text-sm text-slate-500 hover:text-rose-600"
+                        className="btn-danger btn-sm"
                         disabled={candidateDataReadOnly}
                         onClick={() => onRemoveEmploymentRow(entry.localId)}
                       >

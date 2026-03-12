@@ -137,7 +137,7 @@ function CandidateBasicSection({
         {!isNew && (
           <button
             type="button"
-            className="btn-ghost text-sm self-start border border-transparent bg-white shadow-sm transition hover:border-brand-200 hover:shadow"
+            className="btn-secondary btn-sm self-start"
             onClick={onOpenHistory}
             disabled={historyLoading}
           >
@@ -253,7 +253,7 @@ function CandidateBasicSection({
             <div className="label flex items-center justify-between">
               <span>{t('app.candidate_card.fields.short_id')}</span>
               {!isNew && !candidate.short_id && (
-                <button type="button" className="btn-ghost text-xs" onClick={onGenerateShortId}>
+                <button type="button" className="btn-secondary btn-xs" onClick={onGenerateShortId}>
                   {t('app.candidate_card.actions.generate_short_id')}
                 </button>
               )}
@@ -429,7 +429,7 @@ function CandidateBasicSection({
                       setNewTagInput('')
                     }
                   }}
-                  className="btn-ghost text-sm"
+                  className="btn-secondary btn-sm"
                   disabled={!newTagInput.trim()}
                 >
                   {t('app.candidate_card.actions.add_tag')}

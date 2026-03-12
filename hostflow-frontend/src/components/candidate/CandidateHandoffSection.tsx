@@ -252,7 +252,7 @@ function CandidateHandoffSection({
                       setReturnReason('')
                     }}
                     disabled={submitting}
-                    className="btn-ghost btn-sm"
+                    className="btn-secondary btn-sm"
                   >
                     {t('common.cancel', { defaultValue: 'Anuluj' })}
                   </button>
@@ -307,7 +307,7 @@ function CandidateHandoffSection({
                       setRejectReason('')
                     }}
                     disabled={submitting}
-                    className="btn-ghost btn-sm"
+                    className="btn-secondary btn-sm"
                   >
                     {t('common.cancel', { defaultValue: 'Anuluj' })}
                   </button>

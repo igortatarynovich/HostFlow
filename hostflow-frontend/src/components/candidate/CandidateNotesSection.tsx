@@ -51,7 +51,7 @@ function CandidateNotesSection({
         </div>
         <button
           type="button"
-          className="btn-ghost text-xs"
+          className="btn-secondary btn-xs"
           onClick={onRefreshNotes}
           disabled={notesLoading}
         >
