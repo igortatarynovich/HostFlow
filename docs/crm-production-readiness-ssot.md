@@ -313,6 +313,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F8.40 | Унифицировать Candidate Card communication/quick controls | `DONE` | `CandidateCommunicationSection` переведен с локальных `cyan`-акцентов на `brand` + `alert-info`; quick-controls в `CandidateCard` переведены на системные `btn-secondary`; `StageTag` для `contacted/interview/questionnaire_submitted` выровнен под `brand` palette |
 | F8.41 | Унифицировать forms/actions в Services workspace | `DONE` | `ServicesPage` (catalog/orders/detail) переведен на системные `input/textarea/btn-primary/btn-secondary`, info-select карточки на `alert-info/rounded-lg`, исправлен layout typo `items-center.justify-between` |
 | F8.42 | Унифицировать controls/actions в My Availability self-service | `DONE` | `MyAvailabilityPage` переведен на системные `input/textarea/btn-primary/btn-secondary` для формы заявок, cancel-action и quick-links |
+| F8.43 | Унифицировать create/diff/usage controls в Ruleset Versions | `DONE` | `RulesetVersionsPage` переведен на системные `textarea/input/btn-primary/btn-secondary/badge`; diff-списки и active-row выровнены под единый `slate/brand` паттерн |
 
 ## 5.5 Фаза E — Multi-tenant и Auth детализация (из source docs)
 
@@ -474,3 +475,4 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `F8.40 = DONE`: `CandidateCommunicationSection` и quick-controls в `CandidateCard` переведены на системные `brand/btn-secondary/alert-info` паттерны; `StageTag` для ключевых этапов коммуникации выровнен под единый `brand` accent.
 - `2026-03-12` — `F8.41 = DONE`: `ServicesPage` (catalog + new order + order detail) переведен с локальных `rounded border ...` controls на системные `input/textarea/btn-primary/btn-secondary`; выбранные owner-блоки унифицированы через `alert-info`, исправлена опечатка layout-класса.
 - `2026-03-12` — `F8.42 = DONE`: `MyAvailabilityPage` переведен с локальных `rounded border ...` controls/actions на системные `input/textarea/btn-primary/btn-secondary` (форма, cancel-action, quick-links).
+- `2026-03-12` — `F8.43 = DONE`: `RulesetVersionsPage` переведен на системные controls/actions (`textarea`, `input`, `btn-primary`, `btn-secondary`, `badge`), diff-секции и active-row выровнены под единый `slate/brand` стиль.

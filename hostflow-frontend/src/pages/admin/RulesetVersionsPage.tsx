@@ -246,7 +246,7 @@ export default function RulesetVersionsPage() {
             </label>
             <textarea
               id="ruleset-json"
-              className="w-full rounded border border-slate-300 font-mono text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="textarea font-mono"
               rows={12}
               value={draftJson}
               onChange={(event) => setDraftJson(event.target.value)}
@@ -260,7 +260,7 @@ export default function RulesetVersionsPage() {
               </label>
               <input
                 id="ruleset-comment"
-                className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="input"
                 placeholder={t('app.admin.ruleset.create.comment_placeholder')}
                 value={draftComment}
                 onChange={(event) => setDraftComment(event.target.value)}
@@ -279,7 +279,7 @@ export default function RulesetVersionsPage() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="rounded bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="btn-primary"
               onClick={handleCreateDraft}
             >
               {t('app.admin.ruleset.create.save')}
@@ -287,7 +287,7 @@ export default function RulesetVersionsPage() {
             {active && (
               <button
                 type="button"
-                className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                className="btn-secondary"
                 onClick={() => handleUseAsDraft(active)}
               >
                 {t('app.admin.ruleset.create.copy_active')}
@@ -316,7 +316,7 @@ export default function RulesetVersionsPage() {
               {versions.map((version) => (
                 <tr
                   key={version.id}
-                  className={version.is_active ? 'bg-indigo-50' : ''}
+                  className={version.is_active ? 'bg-brand-50/40' : ''}
                 >
                   <td className="px-3 py-2 font-medium text-slate-900">v{version.version}</td>
                   <td className="px-3 py-2">
@@ -403,7 +403,7 @@ export default function RulesetVersionsPage() {
             </div>
             <button
               type="button"
-              className="rounded border border-indigo-400 px-3 py-1 text-sm text-indigo-700 hover:bg-indigo-100"
+              className="btn-secondary btn-sm"
               onClick={() => setDiffState(INITIAL_DIFF)}
             >
               {t('common.actions.close')}
@@ -464,7 +464,7 @@ export default function RulesetVersionsPage() {
           <h2 className="text-lg font-medium text-slate-900">{t('app.admin.ruleset.usage.title')}</h2>
           <button
             type="button"
-            className="rounded border border-slate-300 bg-white px-3 py-1 text-sm text-slate-700 hover:bg-slate-50"
+            className="btn-secondary btn-sm"
             onClick={refreshUsage}
             disabled={usageLoading}
           >
@@ -492,7 +492,7 @@ export default function RulesetVersionsPage() {
               <h3 className="font-medium text-slate-900">{t('app.admin.ruleset.usage.summary_title')}</h3>
               <div className="mt-2 flex flex-wrap gap-3">
                 {Object.entries(usage.summary || {}).map(([key, value]) => (
-                  <span key={key} className="rounded bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                  <span key={key} className="badge">
                     {key}: {value}
                   </span>
                 ))}
@@ -541,21 +541,21 @@ function DiffList({ title, entries, emptyLabel }: { title: string; entries?: Rec
 
   if (pairs.length === 0) {
     return (
-      <div className="rounded border border-indigo-100 bg-white p-3 text-xs text-indigo-700 shadow-sm">
-        <h3 className="mb-2 font-medium text-indigo-900">{title}</h3>
-        <p className="text-indigo-500">{emptyLabel}</p>
+      <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">
+        <h3 className="mb-2 font-medium text-slate-900">{title}</h3>
+        <p className="text-slate-500">{emptyLabel}</p>
       </div>
     )
   }
 
   return (
-    <div className="rounded border border-indigo-100 bg-white p-3 text-xs text-indigo-700 shadow-sm">
-      <h3 className="mb-2 font-medium text-indigo-900">{title}</h3>
+    <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">
+      <h3 className="mb-2 font-medium text-slate-900">{title}</h3>
       <ul className="space-y-1">
         {pairs.map(([key, value]) => (
           <li key={key}>
-            <span className="font-semibold text-indigo-900">{key}</span>
-            <pre className="mt-1 overflow-auto rounded bg-indigo-50 px-2 py-1 text-[11px] leading-snug text-indigo-800">
+            <span className="font-semibold text-slate-900">{key}</span>
+            <pre className="mt-1 overflow-auto rounded bg-slate-50 px-2 py-1 text-[11px] leading-snug text-slate-700">
               {typeof value === 'string' ? value : JSON.stringify(value, null, 2)}
             </pre>
           </li>
