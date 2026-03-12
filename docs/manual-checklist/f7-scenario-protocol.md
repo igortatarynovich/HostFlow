@@ -11,6 +11,7 @@
 - Для `BLOCKED` обязательно указывать внешний блокер (например, production Stripe/webhooks).
 - Каждый прогон фиксируется отдельным run-record файлом по шаблону [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md), а в SSOT `10.1` добавляется ссылка на этот файл в колонке `Evidence`.
 - Для ускорения фиксации можно сгенерировать run-record через CLI: `npm run f7:run-record:new -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>"`.
+- Перед финальной фиксацией run-log в SSOT проверять консистентность: `npm run f7:run-log:check`.
 
 ## Шаблон записи
 
