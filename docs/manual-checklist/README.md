@@ -32,6 +32,7 @@
    - Для release-gate сценариев `A/B/C` обновить run-log в `docs/crm-production-readiness-ssot.md` (раздел `10.1`) по шаблону `docs/manual-checklist/f7-scenario-protocol.md`.
    - Для каждого прогона `F7` сохранять отдельный run-record по шаблону `docs/manual-checklist/f7-run-record-template.md` и указывать ссылку на него в колонке `Evidence` раздела `10.1`.
    - Для создания run-record файла использовать CLI: `npm run f7:run-record:new -- --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>"`.
+   - Для мгновенной вставки в SSOT использовать `--print-ssot-row` (CLI выводит готовую строку таблицы `10.1`).
    - Перед финальным обновлением `10.1` запускать: `npm run f7:run-log:check`.
 
 Готово — можно выкатывать 🚀

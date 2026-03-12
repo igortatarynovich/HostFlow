@@ -60,7 +60,7 @@ const SCENARIO_META = {
 function usage(code = 0) {
   const text = [
     'Usage:',
-    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED] [--dry-run]',
+    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row]',
     '',
     'Example:',
     '  node scripts/create-f7-run-record.mjs --scenario b --env staging --tenant demo-agency --owner "Product/QA" --dry-run',
@@ -78,6 +78,7 @@ function parseArgs(argv) {
     date: '',
     result: 'IN_PROGRESS',
     dryRun: false,
+    printSsotRow: false,
   }
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
@@ -88,6 +89,7 @@ function parseArgs(argv) {
     else if (arg === '--date') out.date = String(argv[++i] || '').trim()
     else if (arg === '--result') out.result = String(argv[++i] || '').trim().toUpperCase()
     else if (arg === '--dry-run') out.dryRun = true
+    else if (arg === '--print-ssot-row') out.printSsotRow = true
     else if (arg === '--help' || arg === '-h') usage(0)
     else usage(1)
   }
@@ -145,6 +147,13 @@ function buildContent({ scenario, env, tenant, owner, date, result }) {
   return lines.join('\n')
 }
 
+function buildSsotRow({ scenario, env, tenant, owner, date, result, outPath }) {
+  const meta = SCENARIO_META[scenario]
+  const fileName = path.basename(outPath)
+  const link = `[${fileName}](${outPath})`
+  return `| \`${date}\` | ${meta.label} (\`${meta.businessType}\`) | ${env} | \`${tenant}\` | \`${result}\` | ${link} | ${owner} |`
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2))
   if (!SCENARIO_META[args.scenario]) usage(1)
@@ -170,6 +179,19 @@ function main() {
 
   if (args.dryRun) {
     console.log(`Dry run: ${outPath}`)
+    if (args.printSsotRow) {
+      const row = buildSsotRow({
+        scenario,
+        env,
+        tenant: args.tenant,
+        owner: args.owner,
+        date,
+        result: args.result || 'IN_PROGRESS',
+        outPath,
+      })
+      console.log('SSOT 10.1 row preview:')
+      console.log(row)
+    }
     return
   }
 
@@ -179,6 +201,19 @@ function main() {
   }
   fs.writeFileSync(outPath, content, 'utf-8')
   console.log(`Created: ${outPath}`)
+  if (args.printSsotRow) {
+    const row = buildSsotRow({
+      scenario,
+      env,
+      tenant: args.tenant,
+      owner: args.owner,
+      date,
+      result: args.result || 'IN_PROGRESS',
+      outPath,
+    })
+    console.log('SSOT 10.1 row:')
+    console.log(row)
+  }
 }
 
 main()
