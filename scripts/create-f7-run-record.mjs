@@ -62,7 +62,7 @@ const SCENARIO_META = {
 function usage(code = 0) {
   const text = [
     'Usage:',
-    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--blocker "<text>"] [--dry-run] [--print-ssot-row] [--append-ssot] [--upsert-ssot] [--sync-board-status] [--no-validate]',
+    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--blocker "<text>"] [--product-signoff "<name>"] [--qa-signoff "<name>"] [--dry-run] [--print-ssot-row] [--append-ssot] [--upsert-ssot] [--sync-board-status] [--no-validate]',
     '',
     'Example:',
     '  node scripts/create-f7-run-record.mjs --scenario b --env staging --tenant demo-agency --owner "Product/QA" --dry-run',
@@ -80,6 +80,8 @@ function parseArgs(argv) {
     date: '',
     result: 'IN_PROGRESS',
     blocker: '',
+    productSignoff: '',
+    qaSignoff: '',
     dryRun: false,
     printSsotRow: false,
     appendSsot: false,
@@ -96,6 +98,8 @@ function parseArgs(argv) {
     else if (arg === '--date') out.date = String(argv[++i] || '').trim()
     else if (arg === '--result') out.result = String(argv[++i] || '').trim().toUpperCase()
     else if (arg === '--blocker') out.blocker = String(argv[++i] || '').trim()
+    else if (arg === '--product-signoff') out.productSignoff = String(argv[++i] || '').trim()
+    else if (arg === '--qa-signoff') out.qaSignoff = String(argv[++i] || '').trim()
     else if (arg === '--dry-run') out.dryRun = true
     else if (arg === '--print-ssot-row') out.printSsotRow = true
     else if (arg === '--append-ssot') out.appendSsot = true
@@ -119,7 +123,7 @@ function safeSlug(value) {
     .replace(/^-+|-+$/g, '')
 }
 
-function buildContent({ scenario, env, tenant, owner, date, result }) {
+function buildContent({ scenario, env, tenant, owner, date, result, productSignoff, qaSignoff }) {
   const meta = SCENARIO_META[scenario]
   const lines = []
   lines.push(`# F7 Scenario ${meta.label} Run Record`)
@@ -153,8 +157,8 @@ function buildContent({ scenario, env, tenant, owner, date, result }) {
   lines.push('')
   lines.push('## Sign-off')
   lines.push('')
-  lines.push('- Product: `<name>`')
-  lines.push('- QA: `<name>`')
+  lines.push(`- Product: \`${productSignoff || '<name>'}\``)
+  lines.push(`- QA: \`${qaSignoff || '<name>'}\``)
   lines.push('')
   return lines.join('\n')
 }
@@ -300,6 +304,8 @@ function main() {
     owner: args.owner,
     date,
     result: args.result || 'IN_PROGRESS',
+    productSignoff: args.productSignoff || '',
+    qaSignoff: args.qaSignoff || '',
   })
 
   if (args.dryRun) {

@@ -39,6 +39,7 @@
    - Для автодобавления записи в `10.1` использовать `--append-ssot` (CLI вставит строку и защитит от дубля по `date/scenario/env/tenant`).
    - Для синхронизации статуса в execution board использовать `--sync-board-status` (обновляет статус сценария в разделе `10` на основе `--result`).
    - Для blocked-сценариев добавлять `--blocker "<text>"`, чтобы CLI синхронизировал blocker-колонку в board вместе со статусом.
+   - Для финального протокола передавать `--product-signoff "<name>"` и `--qa-signoff "<name>"`, чтобы run-record сразу удовлетворял sign-off quality gate для `PASS/FAIL`.
    - `--append-ssot` по умолчанию запускает валидацию `f7:run-log:check` сразу после вставки строки; отключение доступно флагом `--no-validate`.
    - Перед финальным обновлением `10.1` запускать: `npm run f7:run-log:check`.
 
