@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { Suspense, lazy, useMemo } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './store/useAuth'
 import Login from './pages/Login'
@@ -7,11 +7,7 @@ import { APP_ROUTES, NAV_ITEMS } from './app/routes'
 import { RoutePermissionGuard } from './app/RoutePermissionGuard'
 import { usePermissions } from './hooks/usePermissions'
 import PublicIntakeStart from './pages/public/PublicIntakeStart'
-import PublicApplyPage from './pages/public/PublicApplyPage'
-import PublicIntakeNew from './pages/public/PublicIntakeNew'
 import PublicPortalLanding from './pages/public/PublicPortalLanding'
-import PublicStatusPage from './pages/public/PublicStatusPage'
-import PublicScanPage from './pages/public/PublicScanPage'
 import PublicLanding from './pages/public/PublicLanding'
 import CrmLandingPage from './pages/public/CrmLandingPage'
 import PublicNotFoundPage from './pages/public/PublicNotFoundPage'
@@ -20,9 +16,18 @@ import ResetPasswordPage from './pages/ResetPasswordPage'
 import InviteAcceptPage from './pages/InviteAcceptPage'
 import OnboardingCompanyPage from './pages/OnboardingCompanyPage'
 import OnboardingGettingStartedPage from './pages/OnboardingGettingStartedPage'
-import ClientPortalPage from './pages/ClientPortalPage'
 import SignupPage from './pages/SignupPage'
 import { useI18n } from './i18n'
+
+const PublicApplyPage = lazy(() => import('./pages/public/PublicApplyPage'))
+const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
+const PublicStatusPage = lazy(() => import('./pages/public/PublicStatusPage'))
+const PublicScanPage = lazy(() => import('./pages/public/PublicScanPage'))
+const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage'))
+
+function LazyRoute({ children, loadingLabel }: { children: JSX.Element; loadingLabel: string }) {
+  return <Suspense fallback={<div className="grid h-screen place-items-center text-slate-500">{loadingLabel}</div>}>{children}</Suspense>
+}
 
 export default function App(){
   const { me, loading, logout } = useAuth()
@@ -48,12 +53,12 @@ export default function App(){
       <Route path="/public" element={<Navigate to="/public/intake" replace />} />
       <Route path="/public/portal" element={<PublicPortalLanding />} />
       <Route path="/public/intake" element={<PublicIntakeStart />} />
-      <Route path="/public/apply/:token" element={<PublicIntakeNew />} />
-      <Route path="/public/apply-old/:token" element={<PublicApplyPage />} />
-      <Route path="/public/scan" element={<PublicScanPage />} />
+      <Route path="/public/apply/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicIntakeNew /></LazyRoute>} />
+      <Route path="/public/apply-old/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicApplyPage /></LazyRoute>} />
+      <Route path="/public/scan" element={<LazyRoute loadingLabel={t('common.loading')}><PublicScanPage /></LazyRoute>} />
       <Route path="/public/scan-sessions" element={<Navigate to="/public/scan" replace />} />
-      <Route path="/public/status/:token" element={<PublicStatusPage />} />
-      <Route path="/client-portal" element={<ClientPortalPage />} />
+      <Route path="/public/status/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicStatusPage /></LazyRoute>} />
+      <Route path="/client-portal" element={<LazyRoute loadingLabel={t('common.loading')}><ClientPortalPage /></LazyRoute>} />
 
       {!me && (
         <>
