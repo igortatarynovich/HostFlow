@@ -23,6 +23,7 @@ type AppShellProps = {
 
 export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const location = useLocation()
+  const path = location.pathname
   const isOnboardingPage = location.pathname.startsWith('/app/onboarding/')
   const isSettingsArea = location.pathname.startsWith('/app/settings')
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
@@ -112,12 +113,21 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const enforceActivation = role === 'administrator' || role === 'superadmin'
   const canOpenBilling = role === 'administrator' || role === 'superadmin' || role === 'owner' || role === 'admin'
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
+  const isActivationRoute =
+    path.startsWith('/app/onboarding/') ||
+    path.startsWith('/app/clients') ||
+    path.startsWith('/app/vacancies') ||
+    path.startsWith('/app/leads') ||
+    path.startsWith('/app/reminders') ||
+    path.startsWith('/app/settings/billing') ||
+    path.startsWith('/app/settings/legal')
 
   if (!isOnboardingPage && onboardingStatus?.onboarding_required === true) {
     return <Navigate to="/app/onboarding/company" replace />
   }
   if (
     !isOnboardingPage &&
+    !isActivationRoute &&
     enforceActivation &&
     onboardingStatus?.onboarding_required === false &&
     onboardingStatus?.activation_required === true
