@@ -653,6 +653,19 @@
         }
       }
     },
+    "trial_banner": {
+      "badge": "Trial status",
+      "title": "Trial active",
+      "title_with_days": "Trial active: {days} day(s) left",
+      "subtitle": "Review billing and legal terms now to avoid interruption when trial ends.",
+      "billing_admin_hint": "Billing is available for administrators.",
+      "cta_billing": "Open billing",
+      "cta_setup": "Continue setup",
+      "legal_prefix": "Legal:",
+      "legal_terms": "Terms",
+      "legal_privacy": "Privacy",
+      "legal_cookies": "Cookies"
+    },
     "profile": {
       "title": "My profile",
       "subtitle": "Manage your personal data, UI preferences, and security.",

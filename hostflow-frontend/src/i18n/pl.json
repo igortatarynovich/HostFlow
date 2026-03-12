@@ -653,6 +653,19 @@
         }
       }
     },
+    "trial_banner": {
+      "badge": "Status trial",
+      "title": "Okres próbny aktywny",
+      "title_with_days": "Okres próbny aktywny: pozostało {days} dni",
+      "subtitle": "Sprawdź billing i dokumenty prawne wcześniej, aby uniknąć przerwy po trialu.",
+      "billing_admin_hint": "Billing jest dostępny tylko dla administratorów.",
+      "cta_billing": "Otwórz billing",
+      "cta_setup": "Kontynuuj konfigurację",
+      "legal_prefix": "Dokumenty prawne:",
+      "legal_terms": "Regulamin",
+      "legal_privacy": "Polityka prywatności",
+      "legal_cookies": "Cookies"
+    },
     "profile": {
       "title": "Mój profil",
       "subtitle": "Zarządzaj swoimi danymi, preferencjami UI i bezpieczeństwem.",

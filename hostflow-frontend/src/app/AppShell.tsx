@@ -11,6 +11,7 @@ import { Sidebar } from '../components/nav/Sidebar'
 import { Topbar } from '../components/nav/Topbar'
 import { SettingsChrome } from '../components/nav/SettingsChrome'
 import { LicenseExpiredBanner } from '../components/LicenseExpiredBanner'
+import { TrialStatusBanner } from '../components/TrialStatusBanner'
 import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
 import { useLicenseStatus } from '../hooks/useLicenseStatus'
 
@@ -109,6 +110,8 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
 
   const role = String(me?.role || '').toLowerCase()
   const enforceActivation = role === 'administrator' || role === 'superadmin'
+  const canOpenBilling = role === 'administrator' || role === 'superadmin' || role === 'owner' || role === 'admin'
+  const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
 
   if (!isOnboardingPage && onboardingStatus?.onboarding_required === true) {
     return <Navigate to="/app/onboarding/company" replace />
@@ -137,6 +140,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
 
           <div className="flex flex-1 flex-col overflow-hidden">
             <LicenseExpiredBanner visible={licenseExpired} validUntil={validUntil} />
+            <TrialStatusBanner visible={isTrialTenant && !licenseExpired} validUntil={validUntil} canOpenBilling={canOpenBilling} />
             <Topbar
               me={me}
               tenant={tenant}
