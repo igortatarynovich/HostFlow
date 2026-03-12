@@ -62,7 +62,7 @@ const SCENARIO_META = {
 function usage(code = 0) {
   const text = [
     'Usage:',
-    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row] [--append-ssot] [--upsert-ssot] [--sync-board-status] [--no-validate]',
+    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--blocker "<text>"] [--dry-run] [--print-ssot-row] [--append-ssot] [--upsert-ssot] [--sync-board-status] [--no-validate]',
     '',
     'Example:',
     '  node scripts/create-f7-run-record.mjs --scenario b --env staging --tenant demo-agency --owner "Product/QA" --dry-run',
@@ -79,6 +79,7 @@ function parseArgs(argv) {
     owner: '',
     date: '',
     result: 'IN_PROGRESS',
+    blocker: '',
     dryRun: false,
     printSsotRow: false,
     appendSsot: false,
@@ -94,6 +95,7 @@ function parseArgs(argv) {
     else if (arg === '--owner') out.owner = String(argv[++i] || '').trim()
     else if (arg === '--date') out.date = String(argv[++i] || '').trim()
     else if (arg === '--result') out.result = String(argv[++i] || '').trim().toUpperCase()
+    else if (arg === '--blocker') out.blocker = String(argv[++i] || '').trim()
     else if (arg === '--dry-run') out.dryRun = true
     else if (arg === '--print-ssot-row') out.printSsotRow = true
     else if (arg === '--append-ssot') out.appendSsot = true
@@ -226,7 +228,7 @@ function mapRunResultToBoardStatus(result) {
   return 'IN_PROGRESS'
 }
 
-function syncBoardStatusInSsot({ scenario, result }) {
+function syncBoardStatusInSsot({ scenario, result, blocker }) {
   if (!fs.existsSync(ssotPath)) {
     throw new Error(`SSOT not found: ${ssotPath}`)
   }
@@ -241,11 +243,24 @@ function syncBoardStatusInSsot({ scenario, result }) {
   const section = text.slice(startIdx, endIdx)
   const scenarioLabel = SCENARIO_META[scenario].label
   const boardStatus = mapRunResultToBoardStatus(result)
-  const pattern = new RegExp(`(\\|\\s*${scenarioLabel}\\s*[—-][^|]*\\|\\s*)\\\`[^\\\`]+\\\``)
-  if (!pattern.test(section)) {
+  const rowPattern = new RegExp(`^\\|\\s*${scenarioLabel}\\s*[—-].*$`, 'm')
+  const rowMatch = section.match(rowPattern)
+  if (!rowMatch) {
     throw new Error(`Could not locate board row for scenario ${scenarioLabel}`)
   }
-  const updatedSection = section.replace(pattern, `$1\`${boardStatus}\``)
+  const targetLine = rowMatch[0]
+  const parts = targetLine.split('|')
+  if (parts.length < 6) {
+    throw new Error(`Malformed board row for scenario ${scenarioLabel}`)
+  }
+  const cells = parts.slice(1, -1).map((c) => c.trim())
+  // cells: scenario | status | blocker | comment
+  cells[1] = `\`${boardStatus}\``
+  if (boardStatus === 'BLOCKED' && String(blocker || '').trim()) {
+    cells[2] = String(blocker).trim()
+  }
+  const updatedLine = `| ${cells.join(' | ')} |`
+  const updatedSection = section.replace(targetLine, updatedLine)
   const next = `${text.slice(0, startIdx)}${updatedSection}${text.slice(endIdx)}`
   fs.writeFileSync(ssotPath, next, 'utf-8')
 }
@@ -338,7 +353,11 @@ function main() {
       console.log('SSOT 10.1 row upserted.')
     }
     if (args.syncBoardStatus) {
-      syncBoardStatusInSsot({ scenario, result: args.result || 'IN_PROGRESS' })
+      syncBoardStatusInSsot({
+        scenario,
+        result: args.result || 'IN_PROGRESS',
+        blocker: args.blocker || '',
+      })
       console.log('SSOT board status synced.')
     }
     if (touchesSsot && args.validate) {
