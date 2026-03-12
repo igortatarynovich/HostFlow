@@ -778,7 +778,7 @@ export default function MetaLeadsAdminPage() {
                 ad_id
                 <input
                   type="text"
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                  className="input mt-1 w-full"
                   value={mappingForm.adId}
                   onChange={(event) => setMappingForm((prev) => ({ ...prev, adId: event.target.value }))}
                 />
@@ -787,7 +787,7 @@ export default function MetaLeadsAdminPage() {
                 vacancy_id
                 <input
                   type="text"
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                  className="input mt-1 w-full"
                   value={mappingForm.vacancyId}
                   onChange={(event) => setMappingForm((prev) => ({ ...prev, vacancyId: event.target.value }))}
                 />
@@ -796,7 +796,7 @@ export default function MetaLeadsAdminPage() {
                 {t('app.admin.meta_leads.mapping.note')}
                 <input
                   type="text"
-                  className="mt-1 w-full rounded border border-slate-300 px-2 py-1"
+                  className="input mt-1 w-full"
                   value={mappingForm.note}
                   onChange={(event) => setMappingForm((prev) => ({ ...prev, note: event.target.value }))}
                 />
@@ -804,7 +804,7 @@ export default function MetaLeadsAdminPage() {
             </div>
             <button
               type="button"
-              className="mt-4 rounded bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700"
+              className="btn-primary mt-4"
               onClick={handleMappingCreate}
             >
               {t('app.admin.meta_leads.mapping.save')}
@@ -817,7 +817,7 @@ export default function MetaLeadsAdminPage() {
               placeholder={t('app.admin.meta_leads.mapping.search_placeholder')}
               value={mappingSearch}
               onChange={(event) => setMappingSearch(event.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+              className="input w-full"
             />
           </div>
 
