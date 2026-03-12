@@ -4,8 +4,10 @@ import { useI18n } from '../i18n'
 import { resetPasswordWithToken } from '../api/users'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { useRobotsMeta } from '../hooks/useRobotsMeta'
 
 export default function ResetPasswordPage() {
+  useRobotsMeta({ index: false, follow: false })
   const { t } = useI18n()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()

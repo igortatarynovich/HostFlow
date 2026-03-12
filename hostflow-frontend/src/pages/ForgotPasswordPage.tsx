@@ -4,8 +4,10 @@ import { useI18n } from '../i18n'
 import { requestPasswordReset } from '../api/users'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { useRobotsMeta } from '../hooks/useRobotsMeta'
 
 export default function ForgotPasswordPage() {
+  useRobotsMeta({ index: false, follow: false })
   const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)

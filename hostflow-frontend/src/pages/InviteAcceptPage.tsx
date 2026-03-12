@@ -5,8 +5,10 @@ import { acceptInvite } from '../api/users'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useAuth } from '../store/useAuth'
+import { useRobotsMeta } from '../hooks/useRobotsMeta'
 
 export default function InviteAcceptPage() {
+  useRobotsMeta({ index: false, follow: false })
   const { t } = useI18n()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
