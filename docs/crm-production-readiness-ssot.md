@@ -379,7 +379,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F7 | Сценарии успеха A/B/C — формальный прогон и фиксация PASS/FAIL | `IN_PROGRESS` | Все три сценария закрыты без саппорта |
 | F8 | Compact CRM UI standard + Tabler icons rollout | `IN_PROGRESS` | Ключевые экраны (`Pipeline`, `Leads`, `Candidates`, `Dashboard`) визуально компактны, единообразны и без лишних элементов |
 | F9 | SEO optimization baseline (technical SEO) | `NOT_STARTED` | Публичные страницы имеют корректные `title/description/canonical`, `robots.txt`, `sitemap.xml`, OG tags, schema.org и индексацию без критичных ошибок |
-| F10 | SEO content rollout (pages + copy + intent mapping) | `NOT_STARTED` | Выпущен контент-пакет для приоритетных запросов (landing/use-cases/features), есть внутренняя перелинковка и конверсионные CTA |
+| F10 | SEO content rollout (pages + copy + intent mapping) | `IN_PROGRESS` | Выпущен контент-пакет для приоритетных запросов (landing/use-cases/features), есть внутренняя перелинковка и конверсионные CTA |
 | F11 | Mobile adaptation pass (public + CRM core) | `IN_PROGRESS` | Пройден responsive-аудит по брейкпоинтам `320/375/390/768`, устранены критичные UI/UX разрывы, оформлен mobile QA-report |
 
 Стандарт `F8` (принят):
@@ -448,11 +448,28 @@ Residual risk:
 
 | ID | Задача | Статус | DOD |
 |---|---|---|---|
-| F10.1 | Собрать keyword-intent карту (`landing`, `feature`, `use-case`, `comparison`) | `NOT_STARTED` | Есть приоритизированный backlog страниц с целевым intent |
+| F10.1 | Собрать keyword-intent карту (`landing`, `feature`, `use-case`, `comparison`) | `DONE` | Есть приоритизированный backlog страниц с целевым intent |
 | F10.2 | Подготовить шаблон контент-страниц (H1/H2, CTA, internal links, FAQ) | `NOT_STARTED` | Есть единый template для массовой публикации |
 | F10.3 | Выпустить пакет приоритетных страниц wave-1 | `NOT_STARTED` | Опубликованы основные страницы с согласованной семантикой и CTA |
 | F10.4 | Встроить внутреннюю перелинковку между landing/features/use-cases | `NOT_STARTED` | Все страницы wave-1 связаны по intent-цепочкам |
 | F10.5 | Проверить конверсионные CTA и аналитические события контента | `NOT_STARTED` | На каждой SEO-странице есть измеряемый conversion path |
+
+### 5.6.2.1 `F10.1` Keyword-Intent Map (baseline, `2026-03-12`)
+
+| Cluster | Keyword intent | Поисковый интент | Target URL | Priority wave | Владелец |
+|---|---|---|---|---|---|
+| Landing (core) | recruitment crm | Commercial investigation | `/` | `Wave-1` | Product marketing + Frontend |
+| Landing (geo) | crm for recruitment agency | Commercial investigation | `/` | `Wave-1` | Product marketing + Frontend |
+| Landing (geo) | crm dla agencji rekrutacyjnej | Commercial investigation | `/` | `Wave-1` | Product marketing + Frontend |
+| Pricing | recruitment crm pricing | Transactional/comparison | `/pricing` | `Wave-1` | Product marketing |
+| Pricing | crm pricing for recruiters | Transactional/comparison | `/pricing` | `Wave-1` | Product marketing |
+| Feature | candidate pipeline software | Commercial investigation | `/features/candidate-pipeline` (planned) | `Wave-1` | Product marketing + Frontend |
+| Feature | recruitment document management | Commercial investigation | `/features/document-control` (planned) | `Wave-1` | Product marketing + Frontend |
+| Feature | recruitment team collaboration crm | Commercial investigation | `/features/team-workflow` (planned) | `Wave-2` | Product marketing |
+| Use-case | crm for trucking recruitment | Commercial investigation | `/use-cases/trucking-recruitment` (planned) | `Wave-1` | Product marketing + Ops |
+| Use-case | high volume candidate onboarding | Problem/solution | `/use-cases/high-volume-onboarding` (planned) | `Wave-1` | Product marketing + Ops |
+| Comparison | hostflow vs spreadsheets recruitment | Alternative comparison | `/comparison/hostflow-vs-spreadsheets` (planned) | `Wave-2` | Product marketing |
+| Comparison | recruitment crm vs ats | Alternative comparison | `/comparison/recruitment-crm-vs-ats` (planned) | `Wave-2` | Product marketing |
 
 ### 5.6.3 Декомпозиция `F11` (mobile adaptation pass)
 
@@ -724,6 +741,7 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — расширен `F9.6`: для секций ниже первого экрана в `CRM landing` и `Public portal` включен render deferral (`content-visibility:auto`, utility `.cv-auto`) для снижения initial render cost.
 - `2026-03-12` — `F9.3 = DONE`: добавлена автогенерация sitemap (`scripts/generate-sitemap.mjs`) и подключение в `prebuild`, что гарантирует актуальный `public/sitemap.xml` на каждом production build.
 - `2026-03-12` — `F9.6 = DONE`: завершен baseline CWV pass (font/network hints, LCP media priority, lazy route splitting, below-the-fold render deferral) с фиксацией static snapshot и residual monitoring риска.
+- `2026-03-12` — `F10.1 = DONE`: зафиксирована keyword-intent карта (`landing/pricing/feature/use-case/comparison`) и приоритизированный content backlog `Wave-1/Wave-2`; статус направления `F10` переведен в `IN_PROGRESS`.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.
