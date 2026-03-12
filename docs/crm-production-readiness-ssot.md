@@ -928,3 +928,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `f7:run-log:check` дополнен semantic-check для run-record header: `business type` внутри linked evidence файла должен соответствовать сценарию (`A=services`, `B=agency`, `C=employer`).
 - `2026-03-12` — CLI `f7:run-record` расширен `--product-signoff/--qa-signoff`: можно сразу заполнять подписи в run-record при генерации, что ускоряет финализацию `PASS/FAIL` без ручного редактирования блока sign-off.
 - `2026-03-12` — CLI `f7:run-record` расширен prefill-флагами evidence-блока (`--ui-evidence`, `--api-evidence`, `--notes`, `--issues`), чтобы run-record сразу формировался с заполненными operational данными.
+- `2026-03-12` — `f7:run-record` board-sync hardening: при `--sync-board-status --result BLOCKED` флаг `--blocker` стал обязательным, а при переходе в не-`BLOCKED` статус CLI автоматически очищает blocker-колонку board для исключения stale-blocker состояния.

@@ -38,7 +38,8 @@
    - Для мгновенной вставки в SSOT использовать `--print-ssot-row` (CLI выводит готовую строку таблицы `10.1`).
    - Для автодобавления записи в `10.1` использовать `--append-ssot` (CLI вставит строку и защитит от дубля по `date/scenario/env/tenant`).
    - Для синхронизации статуса в execution board использовать `--sync-board-status` (обновляет статус сценария в разделе `10` на основе `--result`).
-   - Для blocked-сценариев добавлять `--blocker "<text>"`, чтобы CLI синхронизировал blocker-колонку в board вместе со статусом.
+   - Для blocked-сценариев добавлять `--blocker "<text>"` (обязательно с `--sync-board-status`), чтобы CLI синхронизировал blocker-колонку в board вместе со статусом.
+   - При смене статуса на не-`BLOCKED` CLI очищает blocker-колонку автоматически.
    - Для финального протокола передавать `--product-signoff "<name>"` и `--qa-signoff "<name>"`, чтобы run-record сразу удовлетворял sign-off quality gate для `PASS/FAIL`.
    - Для prefill evidence использовать `--ui-evidence`, `--api-evidence`, `--notes`, `--issues`.
    - `--append-ssot` по умолчанию запускает валидацию `f7:run-log:check` сразу после вставки строки; отключение доступно флагом `--no-validate`.

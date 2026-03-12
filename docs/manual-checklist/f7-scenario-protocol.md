@@ -19,7 +19,8 @@
 - CLI поддерживает `--upsert-ssot`: вставляет или обновляет строку `10.1` по ключу (`date/scenario/env/tenant`).
 - В upsert-режиме при совпадающем имени `f7-run-...` run-record файл обновляется (overwrite), чтобы повторный прогон не требовал ручного удаления старого файла.
 - CLI поддерживает `--sync-board-status`: после фиксации run-record обновляет статус сценария в execution board (раздел `10`) согласно результату прогона.
-- Для `BLOCKED`-прогонов можно передать `--blocker "<text>"`, чтобы при `--sync-board-status` автоматически обновить blocker-колонку в board.
+- Для `BLOCKED`-прогонов `--blocker "<text>"` обязателен при `--sync-board-status`; CLI не применяет update board без явной причины блокировки.
+- При смене статуса на не-`BLOCKED` CLI автоматически очищает blocker-колонку в board, чтобы не оставался устаревший блокер.
 - Для финального sign-off можно передать `--product-signoff "<name>"` и `--qa-signoff "<name>"`, чтобы run-record сразу создавался с заполненными подписями.
 - Для ускорения заполнения evidence-блока доступны флаги: `--ui-evidence`, `--api-evidence`, `--notes`, `--issues`.
 - По умолчанию `--append-ssot` запускает post-update валидацию (`f7:run-log:check`); для отключения только в отладке использовать `--no-validate`.

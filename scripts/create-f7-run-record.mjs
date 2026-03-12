@@ -281,8 +281,11 @@ function syncBoardStatusInSsot({ scenario, result, blocker }) {
   const cells = parts.slice(1, -1).map((c) => c.trim())
   // cells: scenario | status | blocker | comment
   cells[1] = `\`${boardStatus}\``
-  if (boardStatus === 'BLOCKED' && String(blocker || '').trim()) {
-    cells[2] = String(blocker).trim()
+  if (boardStatus === 'BLOCKED') {
+    cells[2] = String(blocker || '').trim()
+  } else {
+    // Prevent stale blocker reasons when scenario is no longer blocked.
+    cells[2] = '-'
   }
   const updatedLine = `| ${cells.join(' | ')} |`
   const updatedSection = section.replace(targetLine, updatedLine)
@@ -310,6 +313,7 @@ function main() {
   if (args.appendSsot && args.upsertSsot) usage(1)
   if (args.dryRun && (args.appendSsot || args.upsertSsot)) usage(1)
   if (args.dryRun && args.syncBoardStatus) usage(1)
+  if (args.syncBoardStatus && args.result === 'BLOCKED' && !String(args.blocker || '').trim()) usage(1)
 
   const date = args.date || todayUtc()
   const scenario = args.scenario
