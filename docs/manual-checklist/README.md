@@ -13,6 +13,9 @@
 3. **Линты и тесты**
    - `make lint`
    - `make test` (или точечные `pytest backend/tests/api/test_documents.py backend/tests/notifications/test_reminders.py`).
+   - Frontend static QA gate:
+     - `npm --prefix hostflow-frontend run qa:static`
+     - Включает `routes:check` (консистентность `NAV_ITEMS`/`APP_ROUTES`), `i18n:check`, production `build`.
 
 4. **Метрики и наблюдаемость**
    - Проверить, что `/metrics` отдаёт новые счётчики:
@@ -26,5 +29,6 @@
 
 6. **Документация**
    - Синхронизировать `docs/specs/modules/documents.md` и `docs/specs/platform/observability.md` с актуальным состоянием.
+   - Для release-gate сценариев `A/B/C` обновить run-log в `docs/crm-production-readiness-ssot.md` (раздел `10.1`) по шаблону `docs/manual-checklist/f7-scenario-protocol.md`.
 
 Готово — можно выкатывать 🚀

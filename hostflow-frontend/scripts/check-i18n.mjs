@@ -1,16 +1,16 @@
-import fs from 'fs'
-import path from 'path'
+import fs from 'node:fs'
+import path from 'node:path'
 
 const LOCALES = ['en', 'ru', 'pl']
 const baseDir = path.join(process.cwd(), 'src', 'i18n')
 
-function loadLocale(locale: string) {
+function loadLocale(locale) {
   const file = path.join(baseDir, `${locale}.json`)
   return JSON.parse(fs.readFileSync(file, 'utf-8'))
 }
 
-function flatten(obj: any, prefix = ''): Record<string, string> {
-  const acc: Record<string, string> = {}
+function flatten(obj, prefix = '') {
+  const acc = {}
   Object.entries(obj ?? {}).forEach(([key, value]) => {
     const nextKey = prefix ? `${prefix}.${key}` : key
     if (value && typeof value === 'object' && !Array.isArray(value)) {
