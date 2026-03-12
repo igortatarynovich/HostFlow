@@ -375,7 +375,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F3 | Permission integrity аудит по ролям (`superadmin/owner/admin/manager/user`) | `IN_PROGRESS` | Нет конфликтов видимости, подтверждено тест-матрицей |
 | F4 | Failure recovery matrix (оплата, интеграции, сеть, прерывание onboarding) | `IN_PROGRESS` | При ошибке путь пользователя сохраняется и продолжается |
 | F5 | Lifecycle retention path (день 1/2/3/7) | `DONE` | Для каждого дня есть понятный next-step и ценность |
-| F6 | Терминологическая унификация UI по типам бизнеса | `IN_PROGRESS` | Нет конфликтующих терминов в интерфейсе |
+| F6 | Терминологическая унификация UI по типам бизнеса | `DONE` | Нет конфликтующих терминов в интерфейсе |
 | F7 | Сценарии успеха A/B/C — формальный прогон и фиксация PASS/FAIL | `IN_PROGRESS` | Все три сценария закрыты без саппорта |
 | F8 | Compact CRM UI standard + Tabler icons rollout | `IN_PROGRESS` | Ключевые экраны (`Pipeline`, `Leads`, `Candidates`, `Dashboard`) визуально компактны, единообразны и без лишних элементов |
 | F9 | SEO optimization baseline (technical SEO) | `DONE` | Публичные страницы имеют корректные `title/description/canonical`, `robots.txt`, `sitemap.xml`, OG tags, schema.org и индексацию без критичных ошибок |
@@ -633,10 +633,11 @@ Residual risks до финального `PASS`:
 - `Breadcrumbs`: title и crumb для `/app/clients` синхронизированы с business-aware термином.
 - `LeadsPage` и `ServicesPage` empty-state CTA на `/app/clients` переведены на business-aware label (через единый helper).
 - `OnboardingGettingStartedPage` и `OnboardingWizard`: CTA на `/app/clients` переведены на business-aware label (`Open clients` / `Open companies`); в `OnboardingGettingStartedPage` сервисный шаг использует динамический entity-термин (`Create first client/company`).
+- `AgencyClientsPage` и `ClientLinkDetailPage`: secondary copy-pass завершен (back/not-found/empty/add/success copy используют business-aware entity terms в user-facing CTA и headers).
 - Добавлен общий hook `useBusinessTerminology` для канонического использования терминов в UI-слое.
 
 Текущий статус:
-- `F6`: `IN_PROGRESS` (закрыт dashboard + nav/topbar/breadcrumb + ключевые empty-state CTA; остается финальный copy-pass по оставшимся secondary screens).
+- `F6`: `DONE` (dashboard + nav/topbar/breadcrumb + onboarding + secondary screens выровнены по business-aware `client/company` терминологии).
 
 ---
 
@@ -856,3 +857,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F6` secondary-screen copy-pass расширен на `AgencyClientsPage`: secondary empty-state CTA на `/app/clients` переведен на `useBusinessTerminology.openEntityLabel` (`Open clients` / `Open companies`).
 - `2026-03-12` — `F6` расширен в `AgencyClientsPage` на heading/empty-state primary CTA: title/subtitle и `Add ...` action теперь используют business-aware entity terms (`Client/Company`) через `useBusinessTerminology`.
 - `2026-03-12` — `F6` расширен в `AgencyClientsPage` на add-link modal: modal title и `display name` label переведены на dynamic entity-term (`client/company`) через `useBusinessTerminology`.
+- `2026-03-12` — `F6 = DONE`: финальный secondary-screen copy-pass завершен (включая dynamic empty-title и success toast в `AgencyClientsPage`), конфликтующих `client/company` терминов в user-facing CTA/headers не осталось.

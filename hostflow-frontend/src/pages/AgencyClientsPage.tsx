@@ -87,7 +87,10 @@ export default function AgencyClientsPage() {
       ) : links.length === 0 && !addOpen ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <EmptyStatePanel
-            title={t('app.clients.empty_title', { defaultValue: 'No clients linked yet' })}
+            title={t('app.clients.empty_title_dynamic', {
+              defaultValue: 'No {entityPlural} linked yet',
+              values: { entityPlural: entityPluralLower },
+            })}
             description={t('app.clients.empty_desc', {
               defaultValue: 'Add the first {entity} to enable handoff, visibility rules and shared workflows.',
               values: { entity: entitySingularLower },
@@ -157,7 +160,13 @@ export default function AgencyClientsPage() {
           onCreated={(link) => {
             setLinks((prev) => [...prev, link])
             setAddOpen(false)
-            notify({ title: t('app.clients.created', { defaultValue: 'Клиент добавлен' }), variant: 'success' })
+            notify({
+              title: t('app.clients.created_dynamic', {
+                defaultValue: '{entity} added',
+                values: { entity: entitySingular },
+              }),
+              variant: 'success',
+            })
           }}
           onError={(msg) => notify({ title: msg, variant: 'error' })}
         />
