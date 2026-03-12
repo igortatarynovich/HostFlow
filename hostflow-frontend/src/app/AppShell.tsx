@@ -15,7 +15,7 @@ import { TrialStatusBanner } from '../components/TrialStatusBanner'
 import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
 import { useLicenseStatus } from '../hooks/useLicenseStatus'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
-import { isActivationRoute } from './activationRoutes'
+import { ACTIVATION_PATHS, isActivationRoute } from './activationRoutes'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -117,7 +117,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const canOpenBilling = role === 'administrator' || role === 'superadmin' || role === 'owner' || role === 'admin'
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
   if (!isOnboardingPage && onboardingStatus?.onboarding_required === true) {
-    return <Navigate to="/app/onboarding/company" replace />
+    return <Navigate to={ACTIVATION_PATHS.onboardingCompany} replace />
   }
   if (
     !isOnboardingPage &&
@@ -126,7 +126,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     onboardingStatus?.onboarding_required === false &&
     onboardingStatus?.activation_required === true
   ) {
-    return <Navigate to="/app/onboarding/getting-started" replace />
+    return <Navigate to={ACTIVATION_PATHS.onboardingGettingStarted} replace />
   }
 
   return (

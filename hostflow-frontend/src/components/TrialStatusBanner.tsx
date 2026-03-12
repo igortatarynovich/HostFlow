@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useI18n } from '../i18n'
+import { ACTIVATION_PATHS } from '../app/activationRoutes'
 
 type Props = {
   visible: boolean
@@ -68,11 +69,11 @@ export function TrialStatusBanner({ visible, validUntil, canOpenBilling }: Props
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canOpenBilling && (
-            <Link to="/app/settings/billing" className="btn-primary btn-sm">
+            <Link to={ACTIVATION_PATHS.billing} className="btn-primary btn-sm">
               {t('app.trial_banner.cta_billing', { defaultValue: 'Open billing' })}
             </Link>
           )}
-          <Link to="/app/overview" className="btn-secondary btn-sm">
+          <Link to={ACTIVATION_PATHS.overview} className="btn-secondary btn-sm">
             {t('app.trial_banner.cta_setup', { defaultValue: 'Continue setup' })}
           </Link>
         </div>

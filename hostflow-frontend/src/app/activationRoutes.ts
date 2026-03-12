@@ -1,6 +1,8 @@
 export const ACTIVATION_PATHS = {
   overview: '/app/overview',
   onboarding: '/app/onboarding/',
+  onboardingCompany: '/app/onboarding/company',
+  onboardingGettingStarted: '/app/onboarding/getting-started',
   clients: '/app/clients',
   vacancies: '/app/vacancies',
   leads: '/app/leads',

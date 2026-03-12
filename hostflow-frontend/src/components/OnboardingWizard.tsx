@@ -4,6 +4,7 @@ import { IconCheck, IconCircle, IconRocket } from '@tabler/icons-react'
 import { useI18n } from '../i18n'
 import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
+import { ACTIVATION_PATHS } from '../app/activationRoutes'
 
 type Props = {
   tenantId: string
@@ -37,7 +38,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
           ? {
               id: 'vacancy',
               done: Boolean(status?.steps?.first_vacancy_created),
-              href: '/app/vacancies',
+              href: ACTIVATION_PATHS.vacancies,
               label: t('app.onboarding.first_value.step_vacancy', { defaultValue: 'Create first vacancy' }),
             }
           : businessType === 'services'
@@ -50,21 +51,21 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
             : {
                 id: 'lead',
                 done: Boolean(status?.steps?.first_lead_created),
-                href: '/app/leads',
+                href: ACTIVATION_PATHS.leads,
                 label: t('app.onboarding.first_value.step_lead', { defaultValue: 'Add first lead' }),
               }
       return [
         {
           id: 'company',
           done: Boolean(status?.steps?.company_created),
-          href: '/app/clients',
+          href: ACTIVATION_PATHS.clients,
           label: t('app.onboarding.first_value.step_company', { defaultValue: 'Company created' }),
         },
         typeStep,
         {
           id: 'next_action',
           done: Boolean(status?.steps?.next_action_created),
-          href: '/app/reminders',
+          href: ACTIVATION_PATHS.reminders,
           label: t('app.onboarding.first_value.step_next_action', { defaultValue: 'Create next action (task/reminder)' }),
         },
       ]
@@ -110,7 +111,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
                   <span className="text-slate-800">{`${index + 1}. ${step.label}`}</span>
                 </span>
                 <Link to={step.href} className="text-xs font-medium text-brand-700 hover:underline">
-                  {step.href === '/app/clients'
+                  {step.href === ACTIVATION_PATHS.clients
                     ? openEntityLabel
                     : t('app.onboarding.first_value.open', { defaultValue: 'Open' })}
                 </Link>

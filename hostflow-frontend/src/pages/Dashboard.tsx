@@ -40,6 +40,7 @@ import { DEFAULT_VISIBLE_WIDGETS, DEFAULT_VISIBLE_FILTERS, type DashboardFilterI
 import { formatDateInput, calcRange, calcPrevPeriod, formatDelta, normalizeKey, normalizeTotal } from '../modules/dashboard/utils'
 import { getRegionDisplayName } from '../utils/catalogLocale'
 import { toCSV } from '../modules/candidates/candidateUtils'
+import { ACTIVATION_PATHS } from '../app/activationRoutes'
 
 // StageLabelConfig, normalizeKey are now imported from modules/dashboard
 
@@ -565,17 +566,17 @@ export default function Dashboard() {
   }, [retentionStatus])
 
   const retentionNextHref = useMemo(() => {
-    if (!retentionStatus) return '/app/overview'
-    if (!retentionStatus.steps.company_created) return '/app/onboarding/company'
+    if (!retentionStatus) return ACTIVATION_PATHS.overview
+    if (!retentionStatus.steps.company_created) return ACTIVATION_PATHS.onboardingCompany
     if (!typeSpecificStepDone) {
       return retentionStatus.business_type === 'employer'
-        ? '/app/vacancies'
+        ? ACTIVATION_PATHS.vacancies
         : retentionStatus.business_type === 'services'
-          ? '/app/clients'
-          : '/app/leads'
+          ? ACTIVATION_PATHS.clients
+          : ACTIVATION_PATHS.leads
     }
-    if (!retentionStatus.steps.next_action_created) return '/app/reminders'
-    return '/app/settings/billing'
+    if (!retentionStatus.steps.next_action_created) return ACTIVATION_PATHS.reminders
+    return ACTIVATION_PATHS.billing
   }, [retentionStatus, typeSpecificStepDone])
 
   const retentionStepKey = useMemo(() => {
