@@ -623,7 +623,7 @@ export default function ProfilePage() {
                 <div key={module} className="mb-4 rounded border border-slate-200 p-3">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-sm font-medium text-slate-800">{savedViewLabels[module]}</p>
-                    <button type="button" className="text-xs font-medium text-brand-600 hover:underline" onClick={() => handleAddSavedView(module)}>{t('app.profile.saved_views.add')}</button>
+                    <button type="button" className="btn-secondary btn-xs" onClick={() => handleAddSavedView(module)}>{t('app.profile.saved_views.add')}</button>
                   </div>
                   {savedViewsByModule(module).length === 0 ? (
                     <p className="text-xs text-slate-500">{t('app.profile.saved_views.empty')}</p>
@@ -635,14 +635,14 @@ export default function ProfilePage() {
                             <div>
                               <p className="font-semibold text-slate-800">{view.name}</p>
                               <p className="mt-1 text-xs text-slate-500">{JSON.stringify(view.filters ?? {})}</p>
-                              {view.is_default && <span className="mt-1 inline-block rounded bg-brand-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-brand-700">{t('app.profile.saved_views.badge_default')}</span>}
+                              {view.is_default && <span className="mt-1 inline-block badge text-brand-700">{t('app.profile.saved_views.badge_default')}</span>}
                             </div>
-                            <div className="flex flex-col items-end gap-1 text-xs text-brand-600">
+                            <div className="flex flex-col items-end gap-1">
                               {!view.is_default && (
-                                <button type="button" onClick={() => handleSetDefaultView(module, view.id)} className="hover:underline">{t('app.profile.saved_views.actions.set_default')}</button>
+                                <button type="button" onClick={() => handleSetDefaultView(module, view.id)} className="btn-secondary btn-xs">{t('app.profile.saved_views.actions.set_default')}</button>
                               )}
-                              <button type="button" onClick={() => handleRenameSavedView(module, view.id)} className="hover:underline">{t('app.profile.saved_views.actions.rename')}</button>
-                              <button type="button" onClick={() => handleEditSavedViewFilters(module, view.id)} className="hover:underline">{t('app.profile.saved_views.actions.filters')}</button>
+                              <button type="button" onClick={() => handleRenameSavedView(module, view.id)} className="btn-secondary btn-xs">{t('app.profile.saved_views.actions.rename')}</button>
+                              <button type="button" onClick={() => handleEditSavedViewFilters(module, view.id)} className="btn-secondary btn-xs">{t('app.profile.saved_views.actions.filters')}</button>
                               <button type="button" onClick={() => handleDeleteSavedView(module, view.id)} className="btn-danger btn-xs">{t('common.actions.delete')}</button>
                             </div>
                           </div>
@@ -732,7 +732,7 @@ export default function ProfilePage() {
                     {security?.companies.map((company) => (
                       <li key={company.id} className="flex items-center gap-2">
                         <span>{company.name || company.id}</span>
-                        {company.can_edit && <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-700">{t('app.profile.security.company_edit_badge')}</span>}
+                        {company.can_edit && <span className="badge text-emerald-700">{t('app.profile.security.company_edit_badge')}</span>}
                       </li>
                     ))}
                   </ul>
@@ -789,7 +789,7 @@ export default function ProfilePage() {
                       <p className="text-xs text-slate-500">{t('app.profile.sessions.last_seen', { values: { value: session.last_seen_at ? new Date(session.last_seen_at).toLocaleString() : '—' } })}</p>
                       {session.revoked_at && <p className="text-xs text-red-600">{t('app.profile.sessions.revoked_at', { values: { value: new Date(session.revoked_at).toLocaleString() } })}</p>}
                     </div>
-                    {session.id === sessionId && <span className="rounded bg-brand-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-brand-700">{t('app.profile.sessions.current_badge')}</span>}
+                    {session.id === sessionId && <span className="badge text-brand-700">{t('app.profile.sessions.current_badge')}</span>}
                   </div>
                 </div>
               ))
@@ -811,11 +811,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function Alert({ variant, message }: { variant: 'success' | 'error'; message: string }) {
-  const styles = variant === 'success'
-    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-    : 'border-red-200 bg-red-50 text-red-700'
+  const styles = variant === 'success' ? 'alert-success' : 'alert-error'
   return (
-    <div className={`rounded border px-3 py-2 text-sm ${styles}`}>
+    <div className={styles}>
       {message}
     </div>
   )
