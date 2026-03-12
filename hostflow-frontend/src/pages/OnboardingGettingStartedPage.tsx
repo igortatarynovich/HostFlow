@@ -5,6 +5,7 @@ import { useI18n } from '../i18n'
 import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
 import { usePermissions, type Permission } from '../hooks/usePermissions'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
+import { ACTIVATION_PATHS } from '../app/activationRoutes'
 
 type OnboardingStepCard = {
   key: string
@@ -48,7 +49,7 @@ export default function OnboardingGettingStartedPage() {
               done: Boolean(status?.steps?.first_vacancy_created),
               title: t('app.onboarding.getting_started.step_employer.title', { defaultValue: 'Create first vacancy' }),
               desc: t('app.onboarding.getting_started.step_employer.desc', { defaultValue: 'Open your first position and set responsible recruiter.' }),
-              href: '/app/vacancies',
+              href: ACTIVATION_PATHS.vacancies,
               permission: 'vacancies.view',
             }
           : businessType === 'services'
@@ -63,7 +64,7 @@ export default function OnboardingGettingStartedPage() {
                   defaultValue: 'Add your first {entity} to start service operations.',
                   values: { entity: entitySingular.toLowerCase() },
                 }),
-                href: '/app/clients',
+                href: ACTIVATION_PATHS.clients,
                 permission: 'companies.view',
               }
             : {
@@ -71,7 +72,7 @@ export default function OnboardingGettingStartedPage() {
                 done: Boolean(status?.steps?.first_lead_created),
                 title: t('app.onboarding.getting_started.step_agency.title', { defaultValue: 'Add first lead' }),
                 desc: t('app.onboarding.getting_started.step_agency.desc', { defaultValue: 'Capture first lead and assign source/status.' }),
-                href: '/app/leads',
+                href: ACTIVATION_PATHS.leads,
                 permission: 'leads.view',
               }
       const nextSteps: OnboardingStepCard[] = [
@@ -80,7 +81,7 @@ export default function OnboardingGettingStartedPage() {
           done: Boolean(status?.steps?.company_created),
           title: t('app.onboarding.getting_started.step0.title', { defaultValue: 'Company created' }),
           desc: t('app.onboarding.getting_started.step0.desc', { defaultValue: 'Workspace company setup is complete.' }),
-          href: '/app/clients',
+          href: ACTIVATION_PATHS.clients,
           permission: 'companies.view',
         },
         typeStep,
@@ -89,7 +90,7 @@ export default function OnboardingGettingStartedPage() {
           done: Boolean(status?.steps?.next_action_created),
           title: t('app.onboarding.getting_started.step3.title', { defaultValue: 'Set next action' }),
           desc: t('app.onboarding.getting_started.step3.desc', { defaultValue: 'Add reminder/task so no lead is lost.' }),
-          href: '/app/reminders',
+          href: ACTIVATION_PATHS.reminders,
           permission: 'notifications.view',
         },
       ]
@@ -97,9 +98,9 @@ export default function OnboardingGettingStartedPage() {
         const accessible = !step.permission || can(step.permission)
         return {
           ...step,
-          href: accessible ? step.href : '/app/overview',
+          href: accessible ? step.href : ACTIVATION_PATHS.overview,
           openLabel: accessible
-            ? step.href === '/app/clients'
+            ? step.href === ACTIVATION_PATHS.clients
               ? openEntityLabel
               : t('app.onboarding.getting_started.open', { defaultValue: 'Open' })
             : t('app.onboarding.getting_started.open_fallback', { defaultValue: 'Open dashboard' }),
@@ -192,7 +193,7 @@ export default function OnboardingGettingStartedPage() {
       <div className="flex justify-end">
         <button
           type="button"
-          onClick={() => navigate('/app/overview', { replace: true })}
+          onClick={() => navigate(ACTIVATION_PATHS.overview, { replace: true })}
           className={`inline-flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-medium text-white ${completed ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-brand-600 hover:bg-brand-700'}`}
         >
           {completed
