@@ -125,7 +125,14 @@ export default function PublicPortalLanding() {
               )}
             </div>
             <div className="relative overflow-hidden rounded-3xl bg-slate-900 text-white shadow-lg">
-              <img src="/assets/image_truck.png" alt={t('public.portal.hero.image_alt')} className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+              <img
+                src="/assets/image_truck.png"
+                alt={t('public.portal.hero.image_alt')}
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+              />
               <div className="relative flex h-full flex-col justify-end bg-gradient-to-t from-slate-900/90 via-slate-900/25 to-transparent p-6">
                 <p className="text-xs uppercase tracking-wide text-brand-100">{t('public.portal.hero.card_title')}</p>
                 <p className="mt-2 text-lg font-semibold">{t('public.portal.hero.card_caption')}</p>

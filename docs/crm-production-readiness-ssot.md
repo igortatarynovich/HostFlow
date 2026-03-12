@@ -396,7 +396,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F9.3 | Проверить и обновить `robots.txt` + `sitemap.xml` (включая auto-generation) | `IN_PROGRESS` | Поисковые боты получают актуальные правила и полный sitemap без битых URL |
 | F9.4 | Добавить schema.org (`Organization`, `SoftwareApplication`, `FAQ/Article` где уместно) | `DONE` | Structured data проходит валидацию без критичных ошибок |
 | F9.5 | Техпроверка индексации и crawlability (`noindex`, redirects, 404/soft-404) | `DONE` | Нет критичных indexability проблем на приоритетных страницах |
-| F9.6 | Базовый CWV-pass публичных страниц (LCP/CLS/INP) | `NOT_STARTED` | По приоритетным URL нет блокирующих деградаций производительности |
+| F9.6 | Базовый CWV-pass публичных страниц (LCP/CLS/INP) | `IN_PROGRESS` | По приоритетным URL нет блокирующих деградаций производительности |
 
 ### 5.6.1.1 `F9.1` SEO URL Inventory (baseline, `2026-03-12`)
 
@@ -707,6 +707,7 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — старт `F9.4`: SEO-хук расширен поддержкой JSON-LD (`application/ld+json`), на `CRM landing/pricing` добавлены schema.org `Organization` + `SoftwareApplication`; статус `F9.4` переведен в `IN_PROGRESS` до расширения на FAQ/контентные страницы и внешней валидации.
 - `2026-03-12` — `F9.4 = DONE`: structured data расширен до `FAQPage` (JSON-LD из фактического FAQ блока CRM landing), что закрывает baseline-покрытие `Organization + SoftwareApplication + FAQ`.
 - `2026-03-12` — `F9.5 = DONE`: завершен crawlability baseline (robots + noindex-map + anti-soft-404 route handling + audit snapshot). Остается non-blocking residual risk: server-level HTTP `404` policy для SPA-hosting.
+- `2026-03-12` — старт `F9.6`: внедрен CWV-baseline micro-pass для public surfaces (dns-prefetch к font origins в `index.html`, LCP-hint для hero media на `/public/portal` через `loading=eager` + `fetchPriority=high`); статус `F9.6` переведен в `IN_PROGRESS`.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.
