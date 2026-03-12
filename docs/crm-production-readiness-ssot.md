@@ -104,7 +104,7 @@
 - Product readiness: `~80%`
 - Блокер запуска self-serve продаж: `Stripe production integration`
 
-## 3.3 Дополнительные критические критерии (21–35)
+## 3.3 Дополнительные критические критерии (21–38)
 
 | # | Критерий | Статус | Проверка готовности | Комментарий |
 |---|---|---|---|---|
@@ -123,6 +123,9 @@
 | 33 | Прозрачный billing для пользователя | `IN_PROGRESS` | План/лимиты/usage/renewal/invoices/изменение тарифа на 1 экране | История платежей и live Stripe не завершены |
 | 34 | Self-guided UX (система помогает, а не требует обучения) | `IN_PROGRESS` | Подсказки, понятные labels, success/error states, next steps | Частично реализовано |
 | 35 | Контрольные сценарии успеха (A/B/C) | `IN_PROGRESS` | Сценарии соло/агентство/работодатель проходят end-to-end | Матрица сценариев добавлена, нужен фактический PASS прогон |
+| 36 | SEO техническая готовность marketing/public surface | `NOT_STARTED` | Индексация, sitemap, robots, canonical, meta/open graph, structured data и базовые Core Web Vitals в целевых пределах | Требуется отдельный технический SEO-pass по публичным страницам |
+| 37 | SEO контентное наполнение для конверсии | `NOT_STARTED` | Ключевые landing/feature/use-case страницы имеют целевой контент, CTA и семантические заголовки | Нужен контент-план и пакетная публикация страниц |
+| 38 | Mobile adaptation (responsive-first) | `IN_PROGRESS` | Публичные и core CRM-экраны проходят mobile QA (320/375/390/768), без критичных overflow и с рабочими CTA | Частично закрыто, нужен формальный mobile cross-screen pass |
 
 ---
 
@@ -351,6 +354,9 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F6 | Терминологическая унификация UI по типам бизнеса | `NOT_STARTED` | Нет конфликтующих терминов в интерфейсе |
 | F7 | Сценарии успеха A/B/C — формальный прогон и фиксация PASS/FAIL | `IN_PROGRESS` | Все три сценария закрыты без саппорта |
 | F8 | Compact CRM UI standard + Tabler icons rollout | `IN_PROGRESS` | Ключевые экраны (`Pipeline`, `Leads`, `Candidates`, `Dashboard`) визуально компактны, единообразны и без лишних элементов |
+| F9 | SEO optimization baseline (technical SEO) | `NOT_STARTED` | Публичные страницы имеют корректные `title/description/canonical`, `robots.txt`, `sitemap.xml`, OG tags, schema.org и индексацию без критичных ошибок |
+| F10 | SEO content rollout (pages + copy + intent mapping) | `NOT_STARTED` | Выпущен контент-пакет для приоритетных запросов (landing/use-cases/features), есть внутренняя перелинковка и конверсионные CTA |
+| F11 | Mobile adaptation pass (public + CRM core) | `IN_PROGRESS` | Пройден responsive-аудит по брейкпоинтам `320/375/390/768`, устранены критичные UI/UX разрывы, оформлен mobile QA-report |
 
 Стандарт `F8` (принят):
 - Навигация и аккаунт-меню строятся по responsibility-first: `My account` и `Company overview`.
@@ -501,3 +507,4 @@ API smoke-check `P0` (staging, `2026-03-11`):
 - `2026-03-12` — `F8.52 = DONE`: `LegalDocumentsPage` cleanup secondary actions — кнопки `cancel` и `add version` переведены с `btn-ghost` на системные `btn-secondary`/`btn-secondary btn-sm`.
 - `2026-03-12` — `F8.53 = DONE`: пакетная унификация secondary actions в admin-экранах (`CandidateProfiles`, `CompanyAccess`, `DeletionRequests`, `CustomFields`, `TenantLinksSettings`) — `btn-ghost`/link-style кнопки переведены на `btn-secondary` (`btn-sm/btn-xs`).
 - `2026-03-12` — обновлен рабочий git-регламент для `F8`: пакетные изменения/commit/build, единый логический трек задачи и обязательный cleanup промежуточных веток после завершения `F8`.
+- `2026-03-12` — в SSOT добавлены отдельные обязательные направления: `SEO technical`, `SEO content rollout` и `Mobile adaptation pass` (критерии `36–38`, задачи `F9/F10/F11`).
