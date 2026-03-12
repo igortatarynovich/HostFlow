@@ -71,6 +71,15 @@ function hasTemplatePlaceholders(content) {
   return patterns.some((re) => re.test(content))
 }
 
+function hasUnresolvedSignOff(content) {
+  const productLine = content.match(/^- Product:\s*`([^`]+)`/m)
+  const qaLine = content.match(/^- QA:\s*`([^`]+)`/m)
+  const productValue = normalizeSoft(productLine ? productLine[1] : '')
+  const qaValue = normalizeSoft(qaLine ? qaLine[1] : '')
+  const unresolved = new Set(['', '<name>', 'name', 'todo', 'tbd'])
+  return unresolved.has(productValue) || unresolved.has(qaValue)
+}
+
 function parseDateKey(value) {
   const raw = stripTicks(value)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return -1
@@ -225,6 +234,9 @@ function main() {
             }
             if ((normalizedResult === 'PASS' || normalizedResult === 'FAIL') && hasTemplatePlaceholders(recordContent)) {
               errors.push(`Run-record for ${scenario} contains unresolved template placeholders: ${abs}`)
+            }
+            if ((normalizedResult === 'PASS' || normalizedResult === 'FAIL') && hasUnresolvedSignOff(recordContent)) {
+              errors.push(`Run-record for ${scenario} has unresolved Product/QA sign-off: ${abs}`)
             }
           }
         } else if (normalizedResult === 'PASS' || normalizedResult === 'FAIL') {

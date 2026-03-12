@@ -919,3 +919,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `f7:run-log:check` усилен структурной валидацией board-таблицы (раздел `10`): допустимые статусы, обязательные строки `A/B/C` и отсутствие дубликатов по сценарию.
 - `2026-03-12` — `f7:run-log:check` усилен quality-gate для evidence: для строк `PASS/FAIL` linked run-record должен быть заполнен (валидатор отклоняет файлы с шаблонными placeholder-маркерами `<...>`).
 - `2026-03-12` — `f7:run-log:check` дополнен строгой логикой `BLOCKED/FAIL`: board-строка `BLOCKED` требует явный blocker-text, а статусы `FAIL`/`BLOCKED` теперь валидируются на консистентность с последним результатом сценария в `10.1`.
+- `2026-03-12` — `f7:run-log:check` усилен sign-off quality gate: для `PASS/FAIL` linked run-record должен содержать заполненные `Product/QA` подписи (не placeholder), иначе проверка падает.
