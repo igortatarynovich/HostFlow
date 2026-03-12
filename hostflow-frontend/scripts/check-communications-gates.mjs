@@ -1,0 +1,142 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import ts from 'typescript'
+
+const routesFile = path.join(process.cwd(), 'src', 'app', 'routes.tsx')
+const source = fs.readFileSync(routesFile, 'utf-8')
+const sf = ts.createSourceFile(routesFile, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+
+const EXPECTED_COMM_GATES = {
+  'communications-setup': { type: 'any', features: ['messages', 'email'] },
+  'messages-inbox': { type: 'feature', features: ['messages'] },
+  'email-inbox': { type: 'feature', features: ['email'] },
+  calendar: { type: 'feature', features: ['calendar'] },
+  planner: { type: 'feature', features: ['planner'] },
+  'sla-incidents': { type: 'any', features: ['messages', 'email'] },
+  'command-audit': { type: 'feature', features: ['communicationsAdmin'] },
+  'team-availability': { type: 'feature', features: ['teamAvailability'] },
+  'my-availability': { type: 'feature', features: ['myAvailability'] },
+  'time-off': { type: 'feature', features: ['timeOffRequests'] },
+  'communications-thread': { type: 'any', features: ['messages', 'email'] },
+  'settings-communications': { type: 'feature', features: ['communicationsAdmin'] },
+  'settings-communications-messengers': { type: 'feature', features: ['communicationsAdmin'] },
+  'settings-communications-queue': { type: 'feature', features: ['communicationsAdmin'] },
+  'settings-communications-sla': { type: 'feature', features: ['communicationsAdmin'] },
+}
+
+function getPropertyName(node) {
+  if (!node) return null
+  if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text
+  return null
+}
+
+function readString(node) {
+  if (!node) return null
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
+  return null
+}
+
+function readStringArray(node) {
+  if (!node || !ts.isArrayLiteralExpression(node)) return []
+  return node.elements.map((el) => readString(el)).filter(Boolean)
+}
+
+function findArrayLiteral(variableName) {
+  for (const stmt of sf.statements) {
+    if (!ts.isVariableStatement(stmt)) continue
+    for (const decl of stmt.declarationList.declarations) {
+      if (!ts.isIdentifier(decl.name) || decl.name.text !== variableName) continue
+      if (decl.initializer && ts.isArrayLiteralExpression(decl.initializer)) {
+        return decl.initializer
+      }
+    }
+  }
+  return null
+}
+
+function parseComponentGate(node) {
+  if (!node) return { type: 'none', features: [] }
+  if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) {
+    return { type: 'none', features: [] }
+  }
+  const callee = node.expression.text
+  if (callee === 'withCommFeature') {
+    const feature = readString(node.arguments[1])
+    return { type: 'feature', features: feature ? [feature] : [] }
+  }
+  if (callee === 'withCommAnyFeature') {
+    return { type: 'any', features: readStringArray(node.arguments[1]) }
+  }
+  return { type: 'none', features: [] }
+}
+
+function parseRoutes() {
+  const arr = findArrayLiteral('APP_ROUTES')
+  const routes = []
+  if (!arr) return routes
+  for (const el of arr.elements) {
+    if (!ts.isObjectLiteralExpression(el)) continue
+    let key = null
+    let routePath = null
+    let gate = { type: 'none', features: [] }
+    for (const prop of el.properties) {
+      if (!ts.isPropertyAssignment(prop)) continue
+      const name = getPropertyName(prop.name)
+      if (!name) continue
+      if (name === 'key') key = readString(prop.initializer)
+      if (name === 'path') routePath = readString(prop.initializer)
+      if (name === 'Component') gate = parseComponentGate(prop.initializer)
+    }
+    if (key && routePath) routes.push({ key, path: routePath, gate })
+  }
+  return routes
+}
+
+function sameFeatures(left, right) {
+  const a = [...left].sort()
+  const b = [...right].sort()
+  if (a.length !== b.length) return false
+  return a.every((item, idx) => item === b[idx])
+}
+
+const routes = parseRoutes()
+const byKey = new Map(routes.map((r) => [r.key, r]))
+const errors = []
+
+for (const [key, expected] of Object.entries(EXPECTED_COMM_GATES)) {
+  const route = byKey.get(key)
+  if (!route) {
+    errors.push(`[${key}] missing route in APP_ROUTES`)
+    continue
+  }
+  if (route.gate.type !== expected.type) {
+    errors.push(
+      `[${key}] invalid gate type: expected=${expected.type} actual=${route.gate.type} path="${route.path}"`,
+    )
+    continue
+  }
+  if (!sameFeatures(route.gate.features, expected.features)) {
+    errors.push(
+      `[${key}] invalid gate features: expected=[${expected.features.join(',')}] actual=[${route.gate.features.join(',')}] path="${route.path}"`,
+    )
+  }
+}
+
+const gatedButUntracked = routes.filter(
+  (route) =>
+    (route.gate.type === 'feature' || route.gate.type === 'any') && !Object.prototype.hasOwnProperty.call(EXPECTED_COMM_GATES, route.key),
+)
+
+for (const route of gatedButUntracked) {
+  errors.push(`[${route.key}] gated route is not tracked in EXPECTED_COMM_GATES (path="${route.path}")`)
+}
+
+if (errors.length) {
+  console.error('Communications gate check failed:')
+  errors.forEach((line) => console.error(`- ${line}`))
+  process.exit(1)
+}
+
+console.log(
+  `Communications gate check passed. Tracked routes: ${Object.keys(EXPECTED_COMM_GATES).length}, total app routes: ${routes.length}.`,
+)

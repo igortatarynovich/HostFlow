@@ -697,7 +697,7 @@ Residual risks до финального `PASS`:
 | Sidebar и маршруты используют единую permission-модель | `PASS` | После фикса маршрута `/app/settings` на `settings.view` |
 | `Settings` доступен ролям с `settings.view` без ложного deny | `PASS` | Исправлено в `hostflow-frontend/src/app/routes.tsx` |
 | `Users` экран согласован с `users.view/users.manage/admin.users` | `PASS` | Исправлено в `hostflow-frontend/src/app/routes.tsx` |
-| Module/entitlement gating для communications включен | `PASS` | `withCommFeature`, `withCommAnyFeature`, backend access rules |
+| Module/entitlement gating для communications включен | `PASS` | `withCommFeature`, `withCommAnyFeature`, backend access rules + static `comm:gates:check` |
 | Неготовые модули полностью скрыты во всех ролях | `IN_PROGRESS` | Нужен финальный route-by-route аудит |
 
 ### 9.3 Выявленные и закрытые разрывы
@@ -714,6 +714,7 @@ Residual risks до финального `PASS`:
 |---|---|---|---|---|---|
 | `2026-03-12` | staging | `N/A` (static audit) | [f3-permission-role-matrix.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix.md) | `IN_PROGRESS` (`routes:check = PASS`, ручной role-by-role run pending) | Product/QA |
 | `2026-03-12` | staging | `default + client` (static baseline) | [f3-permission-role-matrix-static.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix-static.md) | `PASS` (`permissions:report` snapshot, mismatches=`0` в обоих контекстах) | Product/QA |
+| `2026-03-12` | staging | `N/A` (communications gating static audit) | `qa:static` (`comm:gates:check`) | `PASS` (`withCommFeature/withCommAnyFeature` baseline зафиксирован для tracked routes) | Product/QA |
 
 ## 10. F7 Scenario Execution Board (A/B/C)
 
@@ -893,3 +894,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `permissions:check` усилен до baseline-assert: скрипт сравнивает фактический `ALLOW/DENY` по ролям и core routes с ожидаемой матрицей и падает при расхождении (защита от permission-regрессий в CI).
 - `2026-03-12` — `permissions:check` расширен вторым контекстом (`client-tenant`): baseline теперь валидирует доступы в `default` и `tenant.type=company` режимах, включая alias-логику `recruiter -> client_processor`, и падает при расхождении.
 - `2026-03-12` — для `F3` добавлен автоматический статический evidence-snapshot: `permissions:report` генерирует [f3-permission-role-matrix-static.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix-static.md) с таблицами `default/client-tenant` и фиксирует `mismatches=0` для текущего baseline.
+- `2026-03-12` — добавлен `comm:gates:check` (`hostflow-frontend/scripts/check-communications-gates.mjs`) для статической валидации communications feature-gating в `APP_ROUTES`; проверка включена в `qa:static` и CI как защита от утечек недоступных communications маршрутов.
