@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
+import { useLocation } from 'react-router-dom'
 import { api, setToken, settings as tenantSettings } from '../api/client'
 import { getUserMe } from '../api/users'
 import type { UserPreferences, UserSecuritySummary, WhoAmI } from '../api/types'
@@ -36,6 +37,13 @@ const extractStatus = (error: unknown): number | undefined => {
   return undefined
 }
 
+const isPublicAuthPath = (path: string): boolean =>
+  path.startsWith('/public') ||
+  path.startsWith('/signup') ||
+  path.startsWith('/forgot-password') ||
+  path.startsWith('/reset-password') ||
+  path.startsWith('/invite/accept')
+
 type AuthCtx = {
   me: WhoAmI | null
   preferences: UserPreferences | null
@@ -56,6 +64,7 @@ type AuthCtx = {
 const Ctx = createContext<AuthCtx | null>(null)
 
 export function AuthProvider({ children }: PropsWithChildren) {
+  const location = useLocation()
   const [me, setMe] = useState<WhoAmI | null>(null)
   const [loading, setLoading] = useState(true)
   const [preferences, setPreferences] = useState<UserPreferences | null>(null)
@@ -78,29 +87,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     root.classList.toggle('dark', forceDark)
   }, [])
 
-  const isPublicPath = useMemo(() => {
-    if (typeof window === 'undefined') return false
-    const path = window.location.pathname || ''
-    return (
-      path.startsWith('/public') ||
-      path.startsWith('/signup') ||
-      path.startsWith('/forgot-password') ||
-      path.startsWith('/reset-password') ||
-      path.startsWith('/invite/accept')
-    )
-  }, [])
-
   const refresh = useCallback(async (opts?: { force?: boolean }) => {
     // В публичных страницах не тянем auth/whoami, чтобы не ловить 401
     const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
-    if (
-      !opts?.force &&
-      (path.startsWith('/public') ||
-        path.startsWith('/signup') ||
-        path === '/forgot-password' ||
-        path.startsWith('/reset-password') ||
-        path.startsWith('/invite/accept'))
-    ) {
+    if (!opts?.force && isPublicAuthPath(path)) {
       setLoading(false)
       return
     }
@@ -241,12 +231,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [refresh])
 
   useEffect(() => {
-    if (isPublicPath) {
+    const path = location.pathname || ''
+    if (isPublicAuthPath(path)) {
       setLoading(false)
       return
     }
-    refresh()
-  }, [refresh, isPublicPath])
+    if (!me) {
+      void refresh()
+    }
+  }, [location.pathname, me, refresh])
 
   const updateProfile = useCallback((update: Partial<WhoAmI>) => {
     setMe((prev) => (prev ? { ...prev, ...update } : prev))
