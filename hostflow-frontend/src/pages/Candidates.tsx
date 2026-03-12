@@ -2182,7 +2182,7 @@ export default function Candidates(){
             {renderSortButton(columnLabelMap.is_favorite, 'is_favorite')}
           </>
         )
-      case 'tags':
+      case 'tags': {
         // Собираем все уникальные теги из всех кандидатов
         const allTags = new Set<string>()
         enrichedItems.forEach(item => {
@@ -2208,6 +2208,7 @@ export default function Candidates(){
             />
           </>
         )
+      }
       case 'docsStatus':
         return (
           <>
