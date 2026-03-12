@@ -5,6 +5,7 @@ type SeoMetaOptions = {
   description: string
   canonicalPath: string
   ogType?: 'website' | 'article'
+  structuredData?: Record<string, unknown> | Array<Record<string, unknown>>
 }
 
 const DEFAULT_BASE_URL = 'https://hostflow.cc'
@@ -40,7 +41,19 @@ function upsertCanonical(href: string) {
   node.setAttribute('href', href)
 }
 
-export function useSeoMeta({ title, description, canonicalPath, ogType = 'website' }: SeoMetaOptions) {
+function upsertStructuredData(data: Record<string, unknown> | Array<Record<string, unknown>>) {
+  let node = document.head.querySelector('script[data-hf-seo-jsonld="1"]') as HTMLScriptElement | null
+  if (!node) {
+    node = document.createElement('script')
+    node.setAttribute('type', 'application/ld+json')
+    node.setAttribute('data-hf-seo-jsonld', '1')
+    node.setAttribute('data-hf-seo', '1')
+    document.head.appendChild(node)
+  }
+  node.textContent = JSON.stringify(data)
+}
+
+export function useSeoMeta({ title, description, canonicalPath, ogType = 'website', structuredData }: SeoMetaOptions) {
   useEffect(() => {
     if (typeof document === 'undefined') return
 
@@ -56,5 +69,8 @@ export function useSeoMeta({ title, description, canonicalPath, ogType = 'websit
     upsertMeta('property="og:type"', { property: 'og:type', content: ogType })
     upsertMeta('property="og:url"', { property: 'og:url', content: canonicalUrl })
     upsertMeta('property="og:site_name"', { property: 'og:site_name', content: 'HostFlow' })
-  }, [canonicalPath, description, ogType, title])
+    if (structuredData) {
+      upsertStructuredData(structuredData)
+    }
+  }, [canonicalPath, description, ogType, structuredData, title])
 }

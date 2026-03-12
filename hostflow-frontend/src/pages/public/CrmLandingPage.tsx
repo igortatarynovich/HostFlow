@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { PublicPageShell } from './components/PublicPageShell'
 import { PublicLegalFooter } from '../../components/public/PublicLegalFooter'
@@ -18,18 +19,50 @@ export default function CrmLandingPage() {
   const location = useLocation()
 
   const isPricingRoute = location.pathname === '/pricing'
+  const canonicalPath = isPricingRoute ? '/pricing' : '/'
+  const seoTitle = isPricingRoute
+    ? t('app.seo.pricing.title', { defaultValue: 'Pricing for Recruitment CRM' })
+    : t('app.seo.landing.title', { defaultValue: 'CRM for Recruitment Teams' })
+  const seoDescription = isPricingRoute
+    ? t('app.seo.pricing.description', {
+        defaultValue: 'Compare HostFlow plans and start your recruitment CRM trial in minutes.',
+      })
+    : t('app.seo.landing.description', {
+        defaultValue: 'HostFlow helps recruitment teams run leads, candidates, documents, and operations in one CRM.',
+      })
+  const structuredData = useMemo(
+    () => [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'HostFlow',
+        url: 'https://hostflow.cc',
+        logo: 'https://hostflow.cc/favicon.svg',
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'HostFlow CRM',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD',
+          description: 'Trial access available',
+        },
+        url: `https://hostflow.cc${canonicalPath}`,
+        description: seoDescription,
+      },
+    ],
+    [canonicalPath, seoDescription],
+  )
+
   useSeoMeta({
-    title: isPricingRoute
-      ? t('app.seo.pricing.title', { defaultValue: 'Pricing for Recruitment CRM' })
-      : t('app.seo.landing.title', { defaultValue: 'CRM for Recruitment Teams' }),
-    description: isPricingRoute
-      ? t('app.seo.pricing.description', {
-          defaultValue: 'Compare HostFlow plans and start your recruitment CRM trial in minutes.',
-        })
-      : t('app.seo.landing.description', {
-          defaultValue: 'HostFlow helps recruitment teams run leads, candidates, documents, and operations in one CRM.',
-        }),
-    canonicalPath: isPricingRoute ? '/pricing' : '/',
+    title: seoTitle,
+    description: seoDescription,
+    canonicalPath,
+    structuredData,
   })
 
   const plans: PlanCard[] = [
