@@ -1,0 +1,29 @@
+name: frontend-static-qa
+
+on:
+  push:
+    paths:
+      - "hostflow-frontend/**"
+      - ".github/workflows/frontend-static-qa.yml"
+  pull_request:
+    paths:
+      - "hostflow-frontend/**"
+      - ".github/workflows/frontend-static-qa.yml"
+
+jobs:
+  qa-static:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hostflow-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: hostflow-frontend/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Static QA gate
+        run: npm run qa:static
