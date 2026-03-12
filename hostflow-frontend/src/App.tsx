@@ -24,6 +24,10 @@ import OnboardingCompanyPage from './pages/OnboardingCompanyPage'
 import OnboardingGettingStartedPage from './pages/OnboardingGettingStartedPage'
 import SignupPage from './pages/SignupPage'
 import { useI18n } from './i18n'
+import {
+  readSignupSuccessContextFromSessionStorage,
+  signupContextToSearchParams,
+} from './constants/signupContext'
 
 const PublicApplyPage = lazy(() => import('./pages/public/PublicApplyPage'))
 const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
@@ -33,6 +37,15 @@ const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage'))
 
 function LazyRoute({ children, loadingLabel }: { children: JSX.Element; loadingLabel: string }) {
   return <Suspense fallback={<div className="grid h-screen place-items-center text-slate-500">{loadingLabel}</div>}>{children}</Suspense>
+}
+
+function SignupRedirectForAuthed() {
+  const context = readSignupSuccessContextFromSessionStorage()
+  if (context) {
+    const params = signupContextToSearchParams(context)
+    return <Navigate to={`/app/onboarding/company?${params.toString()}`} replace />
+  }
+  return <Navigate to="/app/overview" replace />
 }
 
 export default function App(){
@@ -88,7 +101,7 @@ export default function App(){
       {me && (
         <>
           <Route path="/login" element={<Navigate to="/app/overview" replace />} />
-          <Route path="/signup" element={<Navigate to="/app/overview" replace />} />
+          <Route path="/signup" element={<SignupRedirectForAuthed />} />
           <Route path="/app" element={<AppShell me={me} navItems={navItems} onLogout={logout} />}>
             <Route index element={<Navigate to="overview" replace />} />
             <Route path="onboarding/company" element={<OnboardingCompanyPage />} />
