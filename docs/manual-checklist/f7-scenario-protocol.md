@@ -34,6 +34,7 @@
 - Для `PASS/FAIL` валидатор требует заполненный sign-off в run-record (`Product` и `QA` не placeholder-значения).
 - Для `PASS/FAIL` в `10.1` валидатор требует явные `Environment`, `Tenant` и `Owner` (без `N/A`/placeholder), иначе запись считается неготовой к финальной фиксации.
 - Для записей с результатом `PASS/FAIL` evidence-файл должен использовать каноническое имя: `f7-run-<scenario>-<date>-<env>-<tenant-slug>.md`.
+- Для `PASS/FAIL` evidence-link должен указывать на файл в `docs/manual-checklist/` (а не во внешние/временные директории).
 
 ## Шаблон записи
 

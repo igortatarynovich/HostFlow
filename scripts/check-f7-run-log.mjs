@@ -218,9 +218,13 @@ function main() {
         errors.push(`Evidence link target does not exist for "${scenario}": ${abs}`)
       } else {
         const base = path.basename(abs)
+        const rel = path.relative(repoRoot, abs).replace(/\\/g, '/')
         const filePattern = /^f7-run-([abc])-(\d{4}-\d{2}-\d{2})-(staging|production)-(.+)\.md$/i
         const fileMatch = base.match(filePattern)
         if (fileMatch) {
+          if (!rel.startsWith('docs/manual-checklist/')) {
+            errors.push(`Run-record for ${scenario} must be under docs/manual-checklist: ${rel}`)
+          }
           const recordContent = fs.readFileSync(abs, 'utf-8')
           const rec = parseRunRecord(recordContent)
           const scenarioCode = scenarioMatch ? scenarioMatch[1] : null

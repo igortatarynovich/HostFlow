@@ -924,3 +924,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `f7:run-log:check` усилен final-result hygiene: для строк `PASS/FAIL` в `10.1` теперь обязательны явные `Environment`, `Tenant` и `Owner` (значения `N/A`/placeholder отклоняются).
 - `2026-03-12` — CLI `f7:run-record` расширен флагом `--blocker`: при `--sync-board-status --result BLOCKED` можно автоматически синхронизировать blocker-колонку execution board (раздел `10`) без ручного редактирования таблицы.
 - `2026-03-12` — `f7:run-log:check` усилен semantic-check для `10.1`: сценарий обязан соответствовать бизнес-типу (`A=services`, `B=agency`, `C=employer`), чтобы исключить ручные ошибки в scenario-label колонке.
+- `2026-03-12` — `f7:run-log:check` дополнен location-gate для evidence: для `PASS/FAIL` linked run-record должен находиться внутри `docs/manual-checklist/` (не допускаются ссылки на внешние/временные пути).
