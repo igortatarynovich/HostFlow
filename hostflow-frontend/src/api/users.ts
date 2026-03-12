@@ -155,7 +155,15 @@ export async function registerSelfService(payload: {
 }): Promise<{
   ok: boolean
   user: { id: string; email: string; role: string; tenant_id: string; full_name?: string | null }
-  tenant: { id: string; name: string; slug: string; workspace_label?: string | null; status?: string | null }
+  tenant: {
+    id: string
+    name: string
+    slug: string
+    workspace_label?: string | null
+    status?: string | null
+    trial_ends_at?: string | null
+    trial_days?: number | null
+  }
 }> {
   const { data } = await api.post('/auth/register', payload)
   return data

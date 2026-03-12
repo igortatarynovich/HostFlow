@@ -155,6 +155,7 @@ export interface TenantSummary {
   id: string;
   name: string;
   slug: string;
+  status?: TenantStatus;
   workspace_label?: string | null;
   logo_url?: string | null;
   logo_meta?: Record<string, any> | null;

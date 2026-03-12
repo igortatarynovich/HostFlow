@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useParams } from 'react-router-dom'
 import type { Permission } from '../hooks/usePermissions'
 import CommunicationsFeatureGate from '../components/communications/CommunicationsFeatureGate'
 import Dashboard from '../pages/Dashboard'
@@ -319,6 +319,12 @@ const PipelineRedirect = () => <Navigate to="candidates?view=kanban" replace />
 const NotFoundRedirect = () => <Navigate to="overview" replace />
 const LegacyDoProcesowaniaRedirect = () => <Navigate to="../procesowani" replace />
 const LegacyCommunicationsRedirect = () => <Navigate to="../settings/communications" replace />
+const LegacyCompaniesRedirect = () => <Navigate to="../clients" replace />
+const LegacyCompanyDetailRedirect = () => {
+  const { id, tab } = useParams<{ id?: string; tab?: string }>()
+  if (!id) return <Navigate to="../clients" replace />
+  return <Navigate to={tab ? `../clients/${id}/${tab}` : `../clients/${id}`} replace />
+}
 
 function withCommFeature(Component: ComponentType, feature: Parameters<typeof CommunicationsFeatureGate>[0]['feature'], fallbackPath?: string): ComponentType {
   const Wrapped = () => (
@@ -351,11 +357,14 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'candidate-detail', path: 'candidates/:id', Component: CandidateCard, permission: 'candidates.view' },
   { key: 'candidate-tab', path: 'candidates/:id/:tab', Component: CandidateCard, permission: 'candidates.view' },
   { key: 'clients', path: 'clients', Component: AgencyClientsPage, permission: 'companies.view' },
+  { key: 'companies-legacy', path: 'companies', Component: LegacyCompaniesRedirect, permission: 'companies.view' },
   { key: 'client-link-detail', path: 'clients/link/:linkId', Component: ClientLinkDetailPage, permission: 'companies.view' },
   { key: 'procesowani', path: 'procesowani', Component: DoProcesowaniaPage, permission: 'companies.view' },
   { key: 'do-procesowania-legacy', path: 'do-procesowania', Component: LegacyDoProcesowaniaRedirect, permission: 'companies.view' },
   { key: 'client-detail', path: 'clients/:id', Component: Companies, permission: 'companies.view' },
   { key: 'client-tab', path: 'clients/:id/:tab', Component: Companies, permission: 'companies.view' },
+  { key: 'company-detail-legacy', path: 'companies/:id', Component: LegacyCompanyDetailRedirect, permission: 'companies.view' },
+  { key: 'company-tab-legacy', path: 'companies/:id/:tab', Component: LegacyCompanyDetailRedirect, permission: 'companies.view' },
   { key: 'vacancies', path: 'vacancies', Component: Vacancies, permission: 'vacancies.view' },
   { key: 'vacancy-detail', path: 'vacancies/:id', Component: VacancyDetailRoute, permission: 'vacancies.view' },
   { key: 'vacancy-tab', path: 'vacancies/:id/:tab', Component: VacancyDetailRoute, permission: 'vacancies.view' },

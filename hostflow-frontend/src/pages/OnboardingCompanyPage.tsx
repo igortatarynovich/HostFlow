@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useMemo, useState, type FormEvent } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { createCompany } from '../api/client'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -9,10 +9,19 @@ type CompanyType = 'agency' | 'employer' | 'services'
 export default function OnboardingCompanyPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [name, setName] = useState('')
   const [companyType, setCompanyType] = useState<CompanyType>('agency')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const signupSuccess = searchParams.get('signup') === 'success'
+  const trialEndsAt = searchParams.get('trial_ends_at')
+  const trialEndsText = useMemo(() => {
+    if (!trialEndsAt) return null
+    const dt = new Date(trialEndsAt)
+    if (Number.isNaN(dt.getTime())) return null
+    return dt.toLocaleDateString()
+  }, [trialEndsAt])
   const typeCards: Array<{
     value: CompanyType
     label: string
@@ -80,6 +89,37 @@ export default function OnboardingCompanyPage() {
         <p className="mt-1 text-sm text-slate-500">
           {t('app.onboarding.company.subtitle', { defaultValue: 'После этого шага вы сразу перейдете к быстрому запуску CRM.' })}
         </p>
+        {signupSuccess && (
+          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+            {trialEndsText
+              ? t('app.onboarding.company.signup_success_with_trial', {
+                  defaultValue: 'Регистрация успешна. Пробный период активирован до {date}. Подтверждение email сейчас не требуется.',
+                  values: { date: trialEndsText },
+                })
+              : t('app.onboarding.company.signup_success', {
+                  defaultValue: 'Регистрация успешна. Пробный период активирован. Подтверждение email сейчас не требуется.',
+                })}
+            <div className="mt-1 text-xs leading-relaxed text-emerald-900/90">
+              {t('app.onboarding.company.signup_success_links_prefix', { defaultValue: 'Документы и условия:' })}{' '}
+              <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+                {t('app.onboarding.company.signup_success_terms', { defaultValue: 'Terms' })}
+              </a>
+              {', '}
+              <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+                {t('app.onboarding.company.signup_success_privacy', { defaultValue: 'Privacy' })}
+              </a>
+              {', '}
+              <a href="/legal/cookies.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+                {t('app.onboarding.company.signup_success_cookies', { defaultValue: 'Cookies' })}
+              </a>
+              {'. '}
+              <Link to="/app/settings/billing" className="underline hover:no-underline">
+                {t('app.onboarding.company.signup_success_billing', { defaultValue: 'Open billing' })}
+              </Link>
+              .
+            </div>
+          </div>
+        )}
         <form onSubmit={onSubmit} className="mt-6 space-y-5">
           <div>
             <label htmlFor="onboarding-company-name" className="block text-sm font-medium text-slate-700">

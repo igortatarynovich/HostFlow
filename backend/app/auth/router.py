@@ -20,6 +20,7 @@ from backend.app.models.tenant import Tenant, TenantLicense, TenantStatus, Tenan
 from backend.app.models.user import Role as UserRole
 from backend.app.models.user import User
 from backend.app.schemas.user import UserDetailOut, UserInviteAccept
+from backend.app.services.system_email import send_system_email
 from backend.app.services import users as users_service
 from backend.app.services.users import UserServiceError
 
@@ -131,6 +132,37 @@ async def _unique_tenant_name(session, desired: str) -> str:
     return f"{root[:100]} {secrets.token_hex(2)}"
 
 
+def _frontend_base_url() -> str:
+    base = (settings.frontend_url or "").strip().rstrip("/")
+    return base or "https://hostflow.cc"
+
+
+def _signup_welcome_email_body(
+    *,
+    workspace_name: str,
+    trial_expires_at: str,
+) -> str:
+    base = _frontend_base_url()
+    billing_url = f"{base}/app/settings/billing"
+    privacy_url = f"{base}/legal/privacy.html"
+    terms_url = f"{base}/legal/terms.html"
+    cookies_url = f"{base}/legal/cookies.html"
+    return (
+        f"Welcome to HostFlow CRM.\n\n"
+        f"Workspace: {workspace_name}\n"
+        f"Trial status: active\n"
+        f"Trial ends: {trial_expires_at}\n\n"
+        f"Next steps:\n"
+        f"1) Create company and complete onboarding\n"
+        f"2) Open billing settings to monitor trial and plan: {billing_url}\n"
+        f"3) Review legal documents:\n"
+        f"   - Privacy Policy: {privacy_url}\n"
+        f"   - Terms of Service: {terms_url}\n"
+        f"   - Cookie Policy: {cookies_url}\n\n"
+        f"If you did not create this account, contact support immediately."
+    )
+
+
 @router.post("/register", response_model=RegisterOut, tags=["auth"], summary="Self-service registration")
 async def auth_register(payload: RegisterIn) -> RegisterOut:
     email = payload.email.lower().strip()
@@ -204,7 +236,7 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
 
         await session.commit()
 
-    return RegisterOut(
+    response = RegisterOut(
         user={
             "id": user.id,
             "email": user.email,
@@ -218,8 +250,23 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
             "slug": tenant.slug,
             "workspace_label": tenant.workspace_label,
             "status": tenant.status.value if hasattr(tenant.status, "value") else str(tenant.status),
+            "trial_ends_at": trial_expires_at.isoformat(),
+            "trial_days": 14,
         },
     )
+    try:
+        await send_system_email(
+            to=email,
+            subject="Welcome to HostFlow CRM: your trial is active",
+            body=_signup_welcome_email_body(
+                workspace_name=workspace_name,
+                trial_expires_at=trial_expires_at.isoformat(),
+            ),
+        )
+    except Exception:
+        # Registration must not fail due to outbound email issues.
+        pass
+    return response
 
 
 @router.post(

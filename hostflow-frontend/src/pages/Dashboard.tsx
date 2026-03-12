@@ -6,6 +6,7 @@ import api, { withTenant } from '../api/client'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
+import { useTenantInfo } from '../contexts/TenantInfo'
 import { OnboardingWizard } from '../components/OnboardingWizard'
 import {
   getAnalyticsProfileSummary,
@@ -14,6 +15,7 @@ import {
   getDocumentStats,
 } from '../api/analytics'
 import { listTenantManagers } from '../api/users'
+import { getBillingSubscription } from '../api/billing'
 import { listCandidateStages } from '../api/candidate_stages'
 import { usePermissions } from '../hooks/usePermissions'
 import { DAY_MS, QUICK_RANGE_OPTIONS, DIMENSION_OPTIONS, DEFAULT_STAGE_CODES } from '../modules/dashboard/constants'
@@ -307,6 +309,7 @@ const STAGE_STACK_COLORS: Record<StageOutcome, string> = {
 export default function Dashboard() {
   const { t, locale } = useI18n()
   const { me } = useAuth()
+  const tenant = useTenantInfo()
   const currentTenantId = useCurrentTenantId()
   const tenantId = (currentTenantId ?? (me as { tenant_id?: string })?.tenant_id) ?? 'default'
   const scopeTid = currentTenantId ?? (me as { tenant_id?: string })?.tenant_id
@@ -324,6 +327,9 @@ export default function Dashboard() {
   const [slices, setSlices] = useState<CandidateSlicesResponse | null>(null)
   const { role, isClientTenant } = usePermissions()
   const isClientRole = isClientTenant && role !== 'administrator'
+  const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
+  const canManageBilling = role === 'administrator' || role === 'supervisor'
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null)
   const [stageView, setStageView] = useState<'all' | 'agency' | 'client'>(() =>
     isClientRole ? 'client' : 'all',
   )
@@ -346,6 +352,75 @@ export default function Dashboard() {
   const [prevPeriodTotal, setPrevPeriodTotal] = useState<number | null>(null)
   const [prevHandoffStats, setPrevHandoffStats] = useState<Awaited<ReturnType<typeof getHandoffStats>> | null>(null)
   const [savedPreset, setSavedPreset] = useState<Record<string, unknown> | null>(null)
+
+  useEffect(() => {
+    if (!isTrialTenant || !canManageBilling) {
+      setTrialEndsAt(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const subscription = await getBillingSubscription()
+        if (!cancelled) {
+          setTrialEndsAt(subscription?.trial_ends_at || null)
+        }
+      } catch {
+        if (!cancelled) {
+          setTrialEndsAt(null)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [canManageBilling, isTrialTenant])
+
+  const trialDaysLeft = useMemo(() => {
+    if (!trialEndsAt) return null
+    const ends = new Date(trialEndsAt)
+    if (Number.isNaN(ends.getTime())) return null
+    const diffMs = ends.getTime() - Date.now()
+    return Math.max(0, Math.ceil(diffMs / DAY_MS))
+  }, [trialEndsAt])
+
+  const trialTone = useMemo<'normal' | 'warning' | 'critical'>(() => {
+    if (trialDaysLeft == null) return 'normal'
+    if (trialDaysLeft <= 2) return 'critical'
+    if (trialDaysLeft <= 7) return 'warning'
+    return 'normal'
+  }, [trialDaysLeft])
+
+  const trialCenterClasses = useMemo(() => {
+    if (trialTone === 'critical') {
+      return {
+        wrapper: 'rounded-xl border border-rose-300 bg-rose-50 p-4 shadow-sm',
+        badge: 'text-xs font-semibold uppercase tracking-wide text-rose-800',
+        title: 'text-sm font-semibold text-rose-950',
+        subtitle: 'text-xs text-rose-900/90',
+        legal: 'mt-2 text-xs text-rose-900/90',
+        urgency: 'inline-flex items-center rounded-md border border-rose-300 bg-rose-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-rose-800',
+      } as const
+    }
+    if (trialTone === 'warning') {
+      return {
+        wrapper: 'rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-sm',
+        badge: 'text-xs font-semibold uppercase tracking-wide text-amber-800',
+        title: 'text-sm font-semibold text-amber-950',
+        subtitle: 'text-xs text-amber-900/90',
+        legal: 'mt-2 text-xs text-amber-900/90',
+        urgency: 'inline-flex items-center rounded-md border border-amber-300 bg-amber-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800',
+      } as const
+    }
+    return {
+      wrapper: 'rounded-xl border border-emerald-300 bg-emerald-50 p-4 shadow-sm',
+      badge: 'text-xs font-semibold uppercase tracking-wide text-emerald-800',
+      title: 'text-sm font-semibold text-emerald-950',
+      subtitle: 'text-xs text-emerald-900/90',
+      legal: 'mt-2 text-xs text-emerald-900/90',
+      urgency: 'inline-flex items-center rounded-md border border-emerald-300 bg-emerald-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-800',
+    } as const
+  }, [trialTone])
 
   const visibleWidgetsKey = useMemo(() => `hf:dashboard:${tenantId}:visibleWidgets`, [tenantId])
   const visibleFiltersKey = useMemo(() => `hf:dashboard:${tenantId}:visibleFilters`, [tenantId])
@@ -1259,6 +1334,63 @@ export default function Dashboard() {
     <section className="h-full min-h-0 w-full flex flex-col">
       <div className="flex-1 min-h-0 overflow-auto px-6 py-4 space-y-4">
         {tenantId && <OnboardingWizard tenantId={tenantId} />}
+        {isTrialTenant && (
+          <div className={trialCenterClasses.wrapper}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className={trialCenterClasses.badge}>
+                  {t('app.dashboard.trial_center.badge', { defaultValue: 'Trial Center' })}
+                </p>
+                <h2 className={trialCenterClasses.title}>
+                  {trialDaysLeft != null
+                    ? t('app.dashboard.trial_center.title_with_days', {
+                        defaultValue: 'Your trial is active: {days} day(s) left',
+                        values: { days: trialDaysLeft },
+                      })
+                    : t('app.dashboard.trial_center.title', {
+                        defaultValue: 'Your trial is active',
+                      })}
+                </h2>
+                <p className={trialCenterClasses.subtitle}>
+                  {t('app.dashboard.trial_center.subtitle', {
+                    defaultValue:
+                      'Review billing and legal terms now to avoid interruption when trial ends.',
+                  })}
+                </p>
+                {trialTone === 'critical' && (
+                  <span className={trialCenterClasses.urgency}>
+                    {t('app.dashboard.trial_center.urgency_critical', { defaultValue: 'Action required now' })}
+                  </span>
+                )}
+                {trialTone === 'warning' && (
+                  <span className={trialCenterClasses.urgency}>
+                    {t('app.dashboard.trial_center.urgency_warning', { defaultValue: 'Trial ending soon' })}
+                  </span>
+                )}
+              </div>
+              {canManageBilling && (
+                <Link to="/app/settings/billing" className="btn-secondary">
+                  {t('app.dashboard.trial_center.open_billing', { defaultValue: 'Open billing' })}
+                </Link>
+              )}
+            </div>
+            <p className={trialCenterClasses.legal}>
+              {t('app.dashboard.trial_center.legal_prefix', { defaultValue: 'Legal:' })}{' '}
+              <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+                {t('app.dashboard.trial_center.legal_terms', { defaultValue: 'Terms' })}
+              </a>
+              {', '}
+              <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+                {t('app.dashboard.trial_center.legal_privacy', { defaultValue: 'Privacy' })}
+              </a>
+              {', '}
+              <a href="/legal/cookies.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+                {t('app.dashboard.trial_center.legal_cookies', { defaultValue: 'Cookies' })}
+              </a>
+              .
+            </p>
+          </div>
+        )}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-xl font-semibold">{t('app.dashboard.title')}</h1>
           <div className="flex items-center gap-2">

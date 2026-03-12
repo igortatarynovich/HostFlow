@@ -27,9 +27,11 @@ import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, ru, pl } from 'date-fns/locale'
 
+type TenantTopbarSummary = TenantSummary & { status?: string | null }
+
 type TopbarProps = {
   me: WhoAmI | null
-  tenant: TenantSummary | null
+  tenant: TenantTopbarSummary | null
   onLogout: () => void
   onToggleSidebar: () => void
 }
@@ -111,6 +113,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
 
   const brandLabel = tenant?.workspace_label?.trim() || tenant?.name || 'HostFlow'
   const tenantLogoUrl = useMemo(() => (tenant?.logo_url ? resolveAssetUrl(tenant.logo_url) : null), [tenant?.logo_url])
+  const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
 
   const toggleLang = () => {
     const index = SUPPORTED_LOCALES.indexOf(locale)
@@ -422,6 +425,21 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
               <span className="hidden text-base font-semibold text-slate-700 sm:inline">HostFlow</span>
             </>
           )}
+          {isTrialTenant &&
+            (can('admin.users') ? (
+              <button
+                type="button"
+                className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800 transition hover:bg-amber-100"
+                onClick={() => navigate('/app/settings/billing')}
+                title={t('app.topbar.trial_badge_hint', { defaultValue: 'Trial workspace. Open billing to manage plan.' })}
+              >
+                {t('app.topbar.trial_badge', { defaultValue: 'Trial' })}
+              </button>
+            ) : (
+              <span className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
+                {t('app.topbar.trial_badge', { defaultValue: 'Trial' })}
+              </span>
+            ))}
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">

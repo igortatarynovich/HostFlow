@@ -35,6 +35,10 @@ class TenantUpdate(BaseModel):
 class TenantOut(TenantBase):
     id: UUID
     api_key: str
+    type: str = "agency"
+    status: str = "active"
+    client_portal_enabled: bool = True
+    status_sharing_allowed: bool = False
     created_at: datetime
     updated_at: datetime
 

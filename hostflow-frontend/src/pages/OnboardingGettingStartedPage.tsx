@@ -42,7 +42,7 @@ export default function OnboardingGettingStartedPage() {
                 done: Boolean(status?.steps?.first_client_created),
                 title: t('app.onboarding.getting_started.step_services.title', { defaultValue: 'Create first client' }),
                 desc: t('app.onboarding.getting_started.step_services.desc', { defaultValue: 'Add your first client to start service operations.' }),
-                href: '/app/companies',
+                href: '/app/clients',
               }
             : {
                 key: 'lead',

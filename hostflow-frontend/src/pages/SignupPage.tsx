@@ -42,7 +42,7 @@ export default function SignupPage() {
     }
     setLoading(true)
     try {
-      await registerSelfService({
+      const registration = await registerSelfService({
         email: email.trim(),
         password,
         workspace_name: workspaceName.trim(),
@@ -50,7 +50,12 @@ export default function SignupPage() {
         plan_code: preselectedPlan || undefined,
       })
       await login(email.trim(), password)
-      navigate('/app/onboarding/company', { replace: true })
+      const params = new URLSearchParams()
+      params.set('signup', 'success')
+      if (registration.tenant?.trial_ends_at) {
+        params.set('trial_ends_at', registration.tenant.trial_ends_at)
+      }
+      navigate(`/app/onboarding/company?${params.toString()}`, { replace: true })
     } catch (err: any) {
       setError(err?.response?.data?.detail || err?.message || t('app.signup.errors.generic', { defaultValue: 'Registration failed' }))
     } finally {
@@ -142,6 +147,21 @@ export default function SignupPage() {
             <button type="submit" className="btn-primary w-full py-3" disabled={loading}>
               {loading ? t('common.loading') : t('app.signup.submit', { defaultValue: 'Create account' })}
             </button>
+            <p className="text-xs leading-relaxed text-slate-500">
+              {t('app.signup.legal_notice', { defaultValue: 'By creating an account, you confirm that you reviewed:' })}{' '}
+              <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
+                {t('app.signup.legal_notice_terms', { defaultValue: 'Terms of Service' })}
+              </a>
+              {', '}
+              <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
+                {t('app.signup.legal_notice_privacy', { defaultValue: 'Privacy Policy' })}
+              </a>
+              {', '}
+              <a href="/legal/cookies.html" target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline">
+                {t('app.signup.legal_notice_cookies', { defaultValue: 'Cookie Policy' })}
+              </a>
+              .
+            </p>
           </form>
 
           <p className="mt-4 text-center text-sm text-slate-600">

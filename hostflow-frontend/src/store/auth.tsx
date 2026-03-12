@@ -44,7 +44,7 @@ type AuthCtx = {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => void
-  refresh: () => Promise<void>
+  refresh: (opts?: { force?: boolean }) => Promise<void>
   updateProfile: (update: Partial<WhoAmI>) => void
   updatePreferences: (prefs: UserPreferences) => void
   updateSecurity: (summary: UserSecuritySummary) => void
@@ -90,10 +90,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
     )
   }, [])
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { force?: boolean }) => {
     // В публичных страницах не тянем auth/whoami, чтобы не ловить 401
     const path = typeof window !== 'undefined' ? window.location.pathname || '' : ''
-    if (path.startsWith('/public') || path.startsWith('/signup') || path === '/forgot-password' || path.startsWith('/reset-password') || path.startsWith('/invite/accept')) {
+    if (
+      !opts?.force &&
+      (path.startsWith('/public') ||
+        path.startsWith('/signup') ||
+        path === '/forgot-password' ||
+        path.startsWith('/reset-password') ||
+        path.startsWith('/invite/accept'))
+    ) {
       setLoading(false)
       return
     }
@@ -171,7 +178,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       if (tenantFromLogin) {
         tenantSettings.set(String(tenantFromLogin))
       }
-      await refresh() // обновит me в общем контексте
+      await refresh({ force: true }) // обновит me в общем контексте даже на /signup
       clearLoginNotice()
     } catch (err) {
       setToken(null)

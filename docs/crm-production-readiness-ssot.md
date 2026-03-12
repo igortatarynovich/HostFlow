@@ -240,6 +240,21 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | A4 | Финализировать recovery-флоу оплаты (cancel/error/retry/pending webhook) | `IN_PROGRESS` | На каждой ошибке есть понятный следующий шаг | A1/A2 |
 | A5 | Прогон сквозного E2E #20 (staging -> production) | `NOT_STARTED` | Подписанный PASS протокол | A1-A4 |
 
+### 5.1.1 Sales Unblock Execution Pack (`2026-03-12`)
+
+Цель пакета: закрыть блокер self-serve продаж (`A1/A2`) и подготовить формальный `PASS` по `A5`.
+
+| Шаг | Действие | Владелец | Артефакт приемки | Статус |
+|---|---|---|---|---|
+| S1 | Получить/проверить production доступы Stripe (live keys, webhook signing secret, product/price IDs) | `Billing/Platform` | Заполненный `.env`/secret-store + список `price_id` в runbook | `NOT_STARTED` |
+| S2 | Провести dry-run checkout в production-safe режиме (минимальный тестовый tenant) | `Backend` | Лог `checkout.session.completed` + созданная подписка в Stripe и tenant | `NOT_STARTED` |
+| S3 | Включить и проверить webhook цепочку (`checkout.session.completed`, `invoice.paid`, `customer.subscription.updated/deleted`) | `Backend` | Таблица соответствий `Stripe event -> tenant state` + PASS smoke | `NOT_STARTED` |
+| S4 | Закрыть recovery path для ошибок оплаты (cancel/error/retry + pending webhook) | `Frontend + Backend` | Чеклист UX-веток с ожидаемым CTA и фактическим поведением | `IN_PROGRESS` |
+| S5 | Выполнить release-gate прогон #20 (`staging -> production`) и зафиксировать протокол | `QA/Product` | Подписанный `PASS/FAIL` протокол по шагам раздела 4 | `NOT_STARTED` |
+
+Правило перехода к продажам:
+- Self-serve продажи можно включать только после `S1..S5 = DONE` и обновления раздела `10` со статусом сценария `A = PASS`.
+
 ## 5.2 Фаза B — Онбординг и TTV
 
 | ID | Задача | Статус | DOD |
@@ -640,3 +655,7 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `MOB-004 = DONE`: внедрен системный mobile touch baseline для модалок (`modal-surface`: `min-h-[44px]` для controls + мобильный `max-h`/scroll в `Modal`), стартован `F11.4` audit snapshot.
 - `2026-03-12` — расширен `F11.4` audit: добавлен global touch baseline для `btn/input/dropdown-item` и зафиксирована CRUD matrix (`Candidates/Clients/Leads/Settings`) с `PASS` по `320/375/390/768` на уровне статического touch-аудита.
 - `2026-03-12` — `F11` синхронизирован до release-report v1: `F11.2/F11.3 = DONE`, добавлена пометка `PASS_STATIC` по матрице и раздел `5.6.8` с residual risks и decision `GO_WITH_MANUAL_QA_PENDING`.
+- `2026-03-12` — добавлен `Sales Unblock Execution Pack` (раздел `5.1.1`) с пошаговым планом `S1..S5` для снятия блока `A1/A2` и формального выхода на release-gate `A5`.
+- `2026-03-12` — закрыт signup/onboarding hotfix: принудительный auth-refresh после login на `/signup`, добавлен явный post-signup trial-success banner на onboarding, исправлен маршрут шага `services` (`/app/clients`), добавлены legacy redirects `/app/companies* -> /app/clients*`.
+- `2026-03-12` — расширен self-serve signup информационный контур: добавлены legal links на `/signup` и onboarding success, backend welcome email с trial/policy/billing ссылками, в topbar внедрен постоянный `Trial` badge (пока tenant в статусе `trial`).
+- `2026-03-12` — добавлен `Trial Center` banner на `Dashboard`: для tenant в статусе `trial` отображаются статус/остаток дней (если доступен), legal links и CTA в `Billing`.
