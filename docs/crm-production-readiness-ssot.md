@@ -906,3 +906,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F7 run-log` validator усилен: при linked evidence теперь сверяет поля run-record (`date/scenario/environment/tenant/result`) с соответствующей строкой `10.1`, чтобы исключить расхождение таблицы и evidence-файла.
 - `2026-03-12` — CLI `f7:run-record:new` расширен флагом `--print-ssot-row`: после генерации (или dry-run) выводит готовую markdown-строку для `10.1`, чтобы ускорить и унифицировать обновление run-log.
 - `2026-03-12` — `F7 run-log` validator дополнительно проверяет каноническое имя evidence-файла для `PASS/FAIL` (`f7-run-<scenario>-<date>-<env>-<tenant-slug>.md`) и сверяет slug tenant из строки `10.1` с именем файла.
+- `2026-03-12` — CLI `f7:run-record:new` расширен флагом `--append-ssot`: после создания run-record может автоматически добавить строку в `10.1` с anti-duplicate guard по `date/scenario/env/tenant`.

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, '..')
+const ssotPath = path.join(repoRoot, 'docs', 'crm-production-readiness-ssot.md')
 
 const SCENARIO_META = {
   a: {
@@ -60,7 +61,7 @@ const SCENARIO_META = {
 function usage(code = 0) {
   const text = [
     'Usage:',
-    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row]',
+    '  node scripts/create-f7-run-record.mjs --scenario <a|b|c> --env <staging|production> --tenant <slug> --owner "<name/role>" [--date YYYY-MM-DD] [--result PASS|FAIL|BLOCKED|IN_PROGRESS] [--dry-run] [--print-ssot-row] [--append-ssot]',
     '',
     'Example:',
     '  node scripts/create-f7-run-record.mjs --scenario b --env staging --tenant demo-agency --owner "Product/QA" --dry-run',
@@ -79,6 +80,7 @@ function parseArgs(argv) {
     result: 'IN_PROGRESS',
     dryRun: false,
     printSsotRow: false,
+    appendSsot: false,
   }
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i]
@@ -90,6 +92,7 @@ function parseArgs(argv) {
     else if (arg === '--result') out.result = String(argv[++i] || '').trim().toUpperCase()
     else if (arg === '--dry-run') out.dryRun = true
     else if (arg === '--print-ssot-row') out.printSsotRow = true
+    else if (arg === '--append-ssot') out.appendSsot = true
     else if (arg === '--help' || arg === '-h') usage(0)
     else usage(1)
   }
@@ -154,12 +157,38 @@ function buildSsotRow({ scenario, env, tenant, owner, date, result, outPath }) {
   return `| \`${date}\` | ${meta.label} (\`${meta.businessType}\`) | ${env} | \`${tenant}\` | \`${result}\` | ${link} | ${owner} |`
 }
 
+function appendRowToSsot(row, { scenario, env, tenant, date }) {
+  if (!fs.existsSync(ssotPath)) {
+    throw new Error(`SSOT not found: ${ssotPath}`)
+  }
+  const text = fs.readFileSync(ssotPath, 'utf-8')
+  const startMarker = '### 10.1 Журнал прогонов (операционный)'
+  const endMarker = '### 10.2 Next Actions Для `F7`'
+  const startIdx = text.indexOf(startMarker)
+  const endIdx = text.indexOf(endMarker)
+  if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) {
+    throw new Error('Could not locate section 10.1 in SSOT')
+  }
+  const section = text.slice(startIdx, endIdx)
+  const duplicatePattern = new RegExp(
+    `\\|\\s*\\\`${date}\\\`\\s*\\|\\s*${SCENARIO_META[scenario].label}\\s*\\([^|]+\\)\\s*\\|\\s*${env}\\s*\\|\\s*\\\`${tenant.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\\`\\s*\\|`,
+    'i',
+  )
+  if (duplicatePattern.test(section)) {
+    throw new Error('Duplicate SSOT 10.1 row detected for same date/scenario/env/tenant')
+  }
+  const insertionPoint = endIdx - 1
+  const next = `${text.slice(0, insertionPoint)}${row}\n${text.slice(insertionPoint)}`
+  fs.writeFileSync(ssotPath, next, 'utf-8')
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2))
   if (!SCENARIO_META[args.scenario]) usage(1)
   if (!['staging', 'production'].includes(args.env)) usage(1)
   if (!args.tenant || !args.owner) usage(1)
   if (args.result && !['PASS', 'FAIL', 'BLOCKED', 'IN_PROGRESS'].includes(args.result)) usage(1)
+  if (args.dryRun && args.appendSsot) usage(1)
 
   const date = args.date || todayUtc()
   const scenario = args.scenario
@@ -201,16 +230,20 @@ function main() {
   }
   fs.writeFileSync(outPath, content, 'utf-8')
   console.log(`Created: ${outPath}`)
+  const row = buildSsotRow({
+    scenario,
+    env,
+    tenant: args.tenant,
+    owner: args.owner,
+    date,
+    result: args.result || 'IN_PROGRESS',
+    outPath,
+  })
+  if (args.appendSsot) {
+    appendRowToSsot(row, { scenario, env, tenant: args.tenant, date })
+    console.log('SSOT 10.1 row appended.')
+  }
   if (args.printSsotRow) {
-    const row = buildSsotRow({
-      scenario,
-      env,
-      tenant: args.tenant,
-      owner: args.owner,
-      date,
-      result: args.result || 'IN_PROGRESS',
-      outPath,
-    })
     console.log('SSOT 10.1 row:')
     console.log(row)
   }
