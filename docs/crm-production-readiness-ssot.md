@@ -706,6 +706,7 @@ Residual risks до финального `PASS`:
 Оставшиеся действия:
 - Провести формальный role-by-role прогон по всем nav/route/module combinations.
 - Зафиксировать таблицу PASS/FAIL по ролям в этом разделе.
+- Автоматизировать базовый контроль `NAV_ITEMS <-> APP_ROUTES` (path + permission overlap) как регулярный статический чек.
 
 ## 10. F7 Scenario Execution Board (A/B/C)
 
@@ -877,3 +878,4 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — `F7` execution board переведен в операционный формат: добавлен run-log `10.1` (дата/окружение/tenant/result/evidence/owner) и зафиксированы next actions `10.2` для последовательного закрытия `B/C` и снятия блокера `A`.
 - `2026-03-12` — для `F7` добавлены отдельные run-sheets сценариев `B/C` (`docs/manual-checklist/f7-scenario-b-agency.md`, `docs/manual-checklist/f7-scenario-c-employer.md`) и привязаны к шагам `10.2`.
 - `2026-03-12` — для `F7` добавлен run-sheet сценария `A` (`docs/manual-checklist/f7-scenario-a-solo-services.md`), шаг `10.2.3` привязан к явному шаблону прогона после снятия Stripe-блокера.
+- `2026-03-12` — усилен `F3` permission integrity: добавлен автоматический static-check `hostflow-frontend/scripts/check-route-permissions.mjs` + npm-команда `routes:check` для валидации консистентности `NAV_ITEMS` и `APP_ROUTES` (path mapping + permission overlap). Текущий прогон: `PASS` (`36` nav items, `55` app routes).

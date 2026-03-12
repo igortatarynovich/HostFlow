@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx",
     "i18n:check": "tsx scripts/check-i18n.ts",
+    "routes:check": "node scripts/check-route-permissions.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
