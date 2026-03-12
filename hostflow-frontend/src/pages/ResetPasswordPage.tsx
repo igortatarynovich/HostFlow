@@ -5,7 +5,7 @@ import { resetPasswordWithToken } from '../api/users'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
-import { LOGIN_NOTICE_STORAGE_KEY } from '../store/auth'
+import { rememberLoginNotice } from '../store/auth'
 
 export default function ResetPasswordPage() {
   useRobotsMeta({ index: false, follow: false })
@@ -20,15 +20,6 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [noToken, setNoToken] = useState(false)
-
-  const rememberPasswordResetNotice = () => {
-    if (typeof window === 'undefined') return
-    try {
-      window.sessionStorage.setItem(LOGIN_NOTICE_STORAGE_KEY, 'password_reset_success')
-    } catch {
-      // ignore storage errors
-    }
-  }
 
   useEffect(() => {
     if (!token || token.length < 20) {
@@ -51,7 +42,7 @@ export default function ResetPasswordPage() {
     try {
       await resetPasswordWithToken(token, password)
       setSuccess(true)
-      rememberPasswordResetNotice()
+      rememberLoginNotice('password_reset_success')
       setTimeout(() => navigate('/login', { replace: true }), 2000)
     } catch (err: unknown) {
       setError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? t('app.reset_password.errors.generic', { defaultValue: 'Token nieprawidłowy lub wygasł' }))

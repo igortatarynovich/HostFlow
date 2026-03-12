@@ -6,9 +6,9 @@ import type { UserPreferences, UserSecuritySummary, WhoAmI } from '../api/types'
 
 const IMPERSONATION_BACKUP_KEY = 'hf:platform-session-backup'
 export const LOGIN_NOTICE_STORAGE_KEY = 'hf:last-login-notice'
-type LoginNotice = 'expired'
+export type LoginNotice = 'expired' | 'invite_accepted' | 'password_reset_success'
 
-const rememberLoginNotice = (code: LoginNotice) => {
+export const rememberLoginNotice = (code: LoginNotice) => {
   if (typeof window === 'undefined') return
   try {
     window.sessionStorage.setItem(LOGIN_NOTICE_STORAGE_KEY, code)
@@ -17,12 +17,26 @@ const rememberLoginNotice = (code: LoginNotice) => {
   }
 }
 
-const clearLoginNotice = () => {
+export const clearLoginNotice = () => {
   if (typeof window === 'undefined') return
   try {
     window.sessionStorage.removeItem(LOGIN_NOTICE_STORAGE_KEY)
   } catch {
     /* ignore storage errors */
+  }
+}
+
+export const consumeLoginNotice = (): LoginNotice | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = (window.sessionStorage.getItem(LOGIN_NOTICE_STORAGE_KEY) || '').trim()
+    clearLoginNotice()
+    if (raw === 'expired' || raw === 'invite_accepted' || raw === 'password_reset_success') {
+      return raw
+    }
+    return null
+  } catch {
+    return null
   }
 }
 
