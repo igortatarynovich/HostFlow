@@ -116,7 +116,7 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
       <div className="w-full max-w-3xl rounded-xl bg-white shadow-xl overflow-hidden">
         <div className="px-4 py-3 border-b flex items-center justify-between">
           <div className="font-semibold">{title}</div>
-          <button onClick={onClose} className="btn-ghost" aria-label="Закрыть">
+          <button onClick={onClose} className="btn-secondary btn-sm" aria-label="Закрыть">
             ✕
           </button>
         </div>
@@ -217,7 +217,7 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
           </div>
 
           <div className="col-span-2 flex justify-end gap-2 pt-3 border-t">
-            <button type="button" onClick={onClose} className="btn-ghost">
+            <button type="button" onClick={onClose} className="btn-secondary">
               Отмена
             </button>
             <button type="submit" className="btn-primary disabled:opacity-60" disabled={isSubmitting}>

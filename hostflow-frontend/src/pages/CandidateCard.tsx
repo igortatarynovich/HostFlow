@@ -2812,11 +2812,11 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
       <div className="flex items-center justify-between">
         <div className="font-semibold">{t('app.candidate_card.services.title')}</div>
         <div className="flex items-center gap-2">
-          <button type="button" className="btn-ghost text-sm" onClick={reload} disabled={loading}>
+          <button type="button" className="btn-secondary btn-sm" onClick={reload} disabled={loading}>
             {loading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}
           </button>
           {canManage && (
-            <Link to="/app/services" className="btn-ghost text-sm">
+            <Link to="/app/services" className="btn-secondary btn-sm">
               {t('app.candidate_card.services.open_module')}
             </Link>
           )}
@@ -2913,13 +2913,13 @@ function StageHistoryModal({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="btn-ghost text-sm"
+              className="btn-secondary btn-sm"
               onClick={onReload}
               disabled={loading}
             >
               {loading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}
             </button>
-            <button type="button" className="btn-ghost text-sm" onClick={onClose}>
+            <button type="button" className="btn-secondary btn-sm" onClick={onClose}>
               {t('common.actions.close')}
             </button>
           </div>

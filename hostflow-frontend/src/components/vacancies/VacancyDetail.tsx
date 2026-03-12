@@ -854,7 +854,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                           </div>
                           <div className="flex items-center gap-2">
                             <button
-                              className="btn-ghost text-sm"
+                              className="btn-secondary btn-sm"
                               type="button"
                               onClick={() => setEditingPolicy(policy)}
                             >
@@ -995,7 +995,7 @@ function PolicyForm({
           >
             {t('save', { defaultValue: 'Сохранить' })}
           </button>
-          <button className="btn-ghost text-sm" type="button" onClick={onCancel}>
+          <button className="btn-secondary btn-sm" type="button" onClick={onCancel}>
             {t('cancel', { defaultValue: 'Отмена' })}
           </button>
         </div>

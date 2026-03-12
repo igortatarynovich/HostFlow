@@ -316,7 +316,7 @@ function InvoiceCreateModal({
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="btn-ghost">
+          <button type="button" onClick={onClose} className="btn-secondary">
             {t('common.actions.cancel')}
           </button>
           <button type="submit" className="btn-primary" disabled={creating}>
