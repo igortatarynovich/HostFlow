@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run generate:sitemap",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .ts,.tsx",
-    "i18n:check": "tsx scripts/check-i18n.ts"
+    "i18n:check": "tsx scripts/check-i18n.ts",
+    "generate:sitemap": "node scripts/generate-sitemap.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

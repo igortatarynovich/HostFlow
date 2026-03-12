@@ -393,7 +393,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 |---|---|---|---|
 | F9.1 | Зафиксировать SEO-инвентарь публичных URL (`landing/features/use-cases/pricing/auth-public`) | `DONE` | Есть полный список indexable страниц и владельцев |
 | F9.2 | Выровнять `title/description/canonical/og:*` по всем indexable страницам | `DONE` | На каждой странице корректные мета-теги без дублей canonical |
-| F9.3 | Проверить и обновить `robots.txt` + `sitemap.xml` (включая auto-generation) | `IN_PROGRESS` | Поисковые боты получают актуальные правила и полный sitemap без битых URL |
+| F9.3 | Проверить и обновить `robots.txt` + `sitemap.xml` (включая auto-generation) | `DONE` | Поисковые боты получают актуальные правила и полный sitemap без битых URL |
 | F9.4 | Добавить schema.org (`Organization`, `SoftwareApplication`, `FAQ/Article` где уместно) | `DONE` | Structured data проходит валидацию без критичных ошибок |
 | F9.5 | Техпроверка индексации и crawlability (`noindex`, redirects, 404/soft-404) | `DONE` | Нет критичных indexability проблем на приоритетных страницах |
 | F9.6 | Базовый CWV-pass публичных страниц (LCP/CLS/INP) | `IN_PROGRESS` | По приоритетным URL нет блокирующих деградаций производительности |
@@ -719,6 +719,7 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — старт `F9.6`: внедрен CWV-baseline micro-pass для public surfaces (dns-prefetch к font origins в `index.html`, LCP-hint для hero media на `/public/portal` через `loading=eager` + `fetchPriority=high`); статус `F9.6` переведен в `IN_PROGRESS`.
 - `2026-03-12` — расширен `F9.6`: включен lazy route code-splitting для тяжелых public flows (`/public/apply*`, `/public/status/:token`, `/public/scan`, `/client-portal`), что вынесло их в отдельные чанки (`~4–109KB`) и снизило основной `index` bundle до `~5.23MB` (по build snapshot).
 - `2026-03-12` — расширен `F9.6`: для секций ниже первого экрана в `CRM landing` и `Public portal` включен render deferral (`content-visibility:auto`, utility `.cv-auto`) для снижения initial render cost.
+- `2026-03-12` — `F9.3 = DONE`: добавлена автогенерация sitemap (`scripts/generate-sitemap.mjs`) и подключение в `prebuild`, что гарантирует актуальный `public/sitemap.xml` на каждом production build.
 - `2026-03-12` — старт `F9.5`: внедрен управляемый `robots` meta для crawlability (глобальный `noindex,nofollow` в `/app/*` + tokenized/public private routes), а для indexable страниц `useSeoMeta` принудительно устанавливает `index,follow` для корректного SPA-переопределения при навигации.
 - `2026-03-12` — расширен `F9.5` на auth-utility страницы: `Forgot password`, `Reset password`, `Invite accept` помечены как `noindex,nofollow` для исключения нецелевых service URL из выдачи.
 - `2026-03-12` — `F9.5` дополнен anti-soft-404 фиксом: неизвестные public URL больше не редиректятся на home, а открывают `PublicNotFoundPage` с `noindex,nofollow`; добавлен crawlability audit snapshot (`5.6.1.2`) и зафиксирован residual risk server-level `HTTP 404` policy для SPA-hosting.
