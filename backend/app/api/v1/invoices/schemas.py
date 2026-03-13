@@ -173,3 +173,15 @@ class InvoiceSummary(BaseModel):
     overdue_count: int
     overdue_amount: Decimal
 
+
+class InvoiceActivityOut(BaseModel):
+    """Invoice activity timeline entry."""
+
+    id: str
+    tenant_id: str
+    actor_id: Optional[str] = None
+    action: str
+    target_type: Optional[str] = None
+    target_id: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime

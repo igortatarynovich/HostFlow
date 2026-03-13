@@ -127,6 +127,7 @@ export type {
   RefundStatus,
   InvoiceItem,
   Invoice,
+  InvoiceActivity,
   Payment,
   Refund,
 } from './invoice';

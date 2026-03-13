@@ -626,6 +626,13 @@ export async function getInvoice(id: string) {
   return data;
 }
 
+export async function getInvoiceActivity(id: string, opts?: { limit?: number }) {
+  const params: Record<string, any> = {};
+  if (opts?.limit != null) params.limit = opts.limit;
+  const { data } = await api.get(`/invoices/${id}/activity`, { params });
+  return data;
+}
+
 export async function createInvoice(payload: Record<string, any>) {
   const { data } = await api.post(`/invoices`, payload);
   return data;

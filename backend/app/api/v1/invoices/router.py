@@ -13,14 +13,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.models.audit import ActivityLog
 from backend.app.models.invoice import Invoice, InvoiceStatus
 from backend.app.models.additional_service import ServiceOrder
 from backend.app.models.company import Company
+from backend.app.services.audit import log_activity
 from backend.app.services.invoice_pdf import generate_invoice_pdf
 from backend.app.services.notifications import send_webhook
 
 from . import crud
 from .schemas import (
+    InvoiceActivityOut,
     InvoiceCreate,
     InvoiceOut,
     InvoiceUpdate,
@@ -32,6 +35,33 @@ from .schemas import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/invoices", tags=["invoices"])
+
+
+async def _log_invoice_activity(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    invoice: Invoice,
+    action: str,
+    actor_id: str | None,
+    payload: dict | None = None,
+) -> None:
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action=action,
+        target_type="invoice",
+        target_id=invoice.id,
+        payload={
+            "invoice_id": invoice.id,
+            "invoice_number": invoice.invoice_number,
+            "status": invoice.status,
+            "company_id": invoice.company_id,
+            "service_order_id": invoice.service_order_id,
+            **(payload or {}),
+        },
+    )
 
 
 @router.post("", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
@@ -56,6 +86,14 @@ async def create_invoice(
             str(tenant_id),
             payload.model_dump(),
             created_by=current_user.user_id,
+        )
+        await _log_invoice_activity(
+            db,
+            tenant_id=str(tenant_id),
+            invoice=invoice,
+            action="invoice.created",
+            actor_id=current_user.user_id,
+            payload={"source": "manual"},
         )
         await db.commit()
         await db.refresh(invoice)
@@ -172,6 +210,14 @@ async def create_invoice_from_service_order(
         },
         created_by=current_user.user_id,
     )
+    await _log_invoice_activity(
+        db,
+        tenant_id=tenant_id_str,
+        invoice=invoice,
+        action="invoice.created",
+        actor_id=current_user.user_id,
+        payload={"source": "service_order", "service_order_id": order.id},
+    )
     await db.commit()
     await db.refresh(invoice)
     return InvoiceOut.model_validate(invoice)
@@ -196,6 +242,49 @@ async def get_invoice(
     return InvoiceOut.model_validate(invoice)
 
 
+@router.get("/{invoice_id}/activity", response_model=List[InvoiceActivityOut])
+async def get_invoice_activity(
+    invoice_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    limit: int = Query(100, ge=1, le=500),
+) -> List[InvoiceActivityOut]:
+    """Get invoice activity timeline entries."""
+    db, tenant_id = db_tenant
+
+    invoice = await crud.get_invoice(db, str(tenant_id), invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found",
+        )
+
+    stmt = (
+        select(ActivityLog)
+        .where(
+            ActivityLog.tenant_id == str(tenant_id),
+            ActivityLog.target_type == "invoice",
+            ActivityLog.target_id == invoice_id,
+        )
+        .order_by(ActivityLog.created_at.desc())
+        .limit(limit)
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    return [
+        InvoiceActivityOut(
+            id=row.id,
+            tenant_id=row.tenant_id,
+            actor_id=row.actor_id,
+            action=row.action,
+            target_type=row.target_type,
+            target_id=row.target_id,
+            payload=dict(row.payload or {}),
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
+
 @router.patch("/{invoice_id}", response_model=InvoiceOut)
 async def update_invoice(
     invoice_id: str,
@@ -205,12 +294,19 @@ async def update_invoice(
 ) -> InvoiceOut:
     """Update invoice."""
     db, tenant_id = db_tenant
+    existing_invoice = await crud.get_invoice(db, str(tenant_id), invoice_id)
+    previous_status = existing_invoice.status if existing_invoice else None
     
     # Only managers and admins can update invoices
     if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only managers and admins can update invoices",
+        )
+    if not existing_invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found",
         )
     
     try:
@@ -225,6 +321,27 @@ async def update_invoice(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Invoice not found",
             )
+        action = "invoice.updated"
+        activity_payload: dict = {}
+        next_status = payload.status
+        if next_status and next_status != previous_status:
+            action = "invoice.status_changed"
+            activity_payload = {
+                "previous_status": previous_status,
+                "next_status": next_status,
+            }
+            if next_status == InvoiceStatus.issued.value:
+                action = "invoice.issued"
+            elif next_status == InvoiceStatus.cancelled.value:
+                action = "invoice.cancelled"
+        await _log_invoice_activity(
+            db,
+            tenant_id=str(tenant_id),
+            invoice=invoice,
+            action=action,
+            actor_id=current_user.user_id,
+            payload=activity_payload,
+        )
         await db.commit()
         await db.refresh(invoice)
         return InvoiceOut.model_validate(invoice)
@@ -266,6 +383,21 @@ async def create_payment(
             str(tenant_id),
             invoice_id,
             payload.model_dump(),
+        )
+        await db.refresh(invoice)
+        await _log_invoice_activity(
+            db,
+            tenant_id=str(tenant_id),
+            invoice=invoice,
+            action="invoice.payment_recorded",
+            actor_id=current_user.user_id,
+            payload={
+                "payment_id": payment.id,
+                "amount": str(payment.amount),
+                "currency": payment.currency,
+                "method": payment.method,
+                "paid_amount": str(invoice.paid_amount),
+            },
         )
         await db.commit()
         await db.refresh(payment)
@@ -411,6 +543,14 @@ async def send_invoice(
         
         # Update status to 'sent'
         invoice.status = InvoiceStatus.sent.value
+        await _log_invoice_activity(
+            db,
+            tenant_id=str(tenant_id),
+            invoice=invoice,
+            action="invoice.sent",
+            actor_id=current_user.user_id,
+            payload={"recipient_email": recipient_email},
+        )
         await db.commit()
         await db.refresh(invoice)
         
@@ -455,6 +595,14 @@ async def cancel_invoice(
     
     # Update status to cancelled
     invoice.status = InvoiceStatus.cancelled.value
+    await _log_invoice_activity(
+        db,
+        tenant_id=str(tenant_id),
+        invoice=invoice,
+        action="invoice.cancelled",
+        actor_id=current_user.user_id,
+        payload={},
+    )
     await db.commit()
     await db.refresh(invoice)
     

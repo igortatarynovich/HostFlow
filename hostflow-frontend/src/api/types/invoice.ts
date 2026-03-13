@@ -66,3 +66,13 @@ export interface Refund {
   updated_at: string;
 }
 
+export interface InvoiceActivity {
+  id: string;
+  tenant_id: string;
+  actor_id?: string | null;
+  action: string;
+  target_type?: string | null;
+  target_id?: string | null;
+  payload: Record<string, any>;
+  created_at: string;
+}

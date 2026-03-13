@@ -4,13 +4,14 @@ import {
   cancelInvoice,
   createPayment,
   createReminder,
+  getInvoiceActivity,
   getInvoice,
   getInvoicePdf,
   listReminders,
   sendInvoice,
   updateInvoice,
 } from '../api/client'
-import type { Invoice, InvoiceStatus, ReminderRecord } from '../api/types'
+import type { Invoice, InvoiceActivity, InvoiceStatus, ReminderRecord } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 
@@ -67,11 +68,31 @@ type TimelineItem = {
   tone?: 'default' | 'success' | 'warning'
 }
 
+function invoiceActionMeta(action: string, t: ReturnType<typeof useI18n>['t']): Pick<TimelineItem, 'title' | 'tone'> {
+  switch (action) {
+    case 'invoice.created':
+      return { title: t('app.invoices.timeline.created', { defaultValue: 'Invoice created' }), tone: 'default' }
+    case 'invoice.issued':
+      return { title: t('app.invoices.timeline.issued', { defaultValue: 'Invoice issued' }), tone: 'default' }
+    case 'invoice.sent':
+      return { title: t('app.invoices.timeline.sent', { defaultValue: 'Invoice sent' }), tone: 'default' }
+    case 'invoice.payment_recorded':
+      return { title: t('app.invoices.timeline.paid', { defaultValue: 'Payment recorded' }), tone: 'success' }
+    case 'invoice.cancelled':
+      return { title: t('app.invoices.timeline.cancelled', { defaultValue: 'Invoice cancelled' }), tone: 'warning' }
+    case 'invoice.status_changed':
+      return { title: t('app.invoices.timeline.status', { defaultValue: 'Status updated' }), tone: 'default' }
+    default:
+      return { title: action, tone: 'default' }
+  }
+}
+
 export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { t } = useI18n()
   const navigate = useNavigate()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [activities, setActivities] = useState<InvoiceActivity[]>([])
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -87,11 +108,13 @@ export default function InvoiceDetailPage() {
     setError(null)
     Promise.all([
       getInvoice(id),
+      getInvoiceActivity(id, { limit: 100 }),
       listReminders({ entityType: 'invoice', entityId: id, status: ['new', 'pending', 'sent', 'overdue', 'done'] }),
     ])
-      .then(([invoiceData, reminderData]) => {
+      .then(([invoiceData, activityData, reminderData]) => {
         if (cancelled) return
         setInvoice(invoiceData as Invoice)
+        setActivities(Array.isArray(activityData) ? (activityData as InvoiceActivity[]) : [])
         setReminders(Array.isArray((reminderData as any)?.items) ? (reminderData as any).items : [])
       })
       .catch((err: any) => {
@@ -108,30 +131,25 @@ export default function InvoiceDetailPage() {
 
   const timelineItems = useMemo(() => {
     if (!invoice) return []
-    const items: TimelineItem[] = [
-      {
-        key: `created:${invoice.created_at}`,
-        ts: invoice.created_at,
-        title: t('app.invoices.timeline.created', { defaultValue: 'Invoice created' }),
-        detail: invoice.invoice_number,
-      },
-      {
-        key: `status:${invoice.updated_at}`,
-        ts: invoice.updated_at,
-        title: t('app.invoices.timeline.status', { defaultValue: 'Status updated' }),
-        detail: t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status }),
-        tone: invoice.status === 'paid' ? 'success' : invoice.status === 'overdue' ? 'warning' : 'default',
-      },
-    ]
-    if (invoice.payment_date) {
-      items.push({
-        key: `paid:${invoice.payment_date}`,
-        ts: invoice.payment_date,
-        title: t('app.invoices.timeline.paid', { defaultValue: 'Payment recorded' }),
-        detail: formatAmount(Number(invoice.paid_amount || 0)),
-        tone: 'success',
-      })
-    }
+    const items: TimelineItem[] = activities.map((activity) => {
+      const meta = invoiceActionMeta(activity.action, t)
+      const nextStatus = activity.payload?.next_status
+      const detail =
+        activity.action === 'invoice.payment_recorded'
+          ? `${formatAmount(Number(activity.payload?.amount || 0))} • ${String(activity.payload?.method || '-')}`
+          : activity.action === 'invoice.sent'
+            ? String(activity.payload?.recipient_email || invoice.billing_details?.email || '-')
+            : nextStatus
+              ? `${String(activity.payload?.previous_status || '-')} → ${String(nextStatus)}`
+              : String(activity.payload?.source || activity.payload?.invoice_number || '').trim() || null
+      return {
+        key: `activity:${activity.id}`,
+        ts: activity.created_at,
+        title: meta.title,
+        detail,
+        tone: meta.tone,
+      }
+    })
     reminders.forEach((reminder) => {
       items.push({
         key: `reminder:${reminder.id}`,
@@ -142,7 +160,7 @@ export default function InvoiceDetailPage() {
       })
     })
     return items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
-  }, [invoice, reminders, t])
+  }, [activities, invoice, reminders, t])
 
   const outstandingAmount = useMemo(() => {
     if (!invoice) return 0
@@ -164,11 +182,13 @@ export default function InvoiceDetailPage() {
 
   const refreshInvoice = async () => {
     if (!id) return
-    const [invoiceData, reminderData] = await Promise.all([
+    const [invoiceData, activityData, reminderData] = await Promise.all([
       getInvoice(id),
+      getInvoiceActivity(id, { limit: 100 }),
       listReminders({ entityType: 'invoice', entityId: id, status: ['new', 'pending', 'sent', 'overdue', 'done'] }),
     ])
     setInvoice(invoiceData as Invoice)
+    setActivities(Array.isArray(activityData) ? (activityData as InvoiceActivity[]) : [])
     setReminders(Array.isArray((reminderData as any)?.items) ? (reminderData as any).items : [])
   }
 
@@ -177,6 +197,7 @@ export default function InvoiceDetailPage() {
     await withAction('issue', async () => {
       const updated = await updateInvoice(invoice.id, { status: 'issued' })
       setInvoice(updated as Invoice)
+      await refreshInvoice()
       setActionMessage(t('app.invoices.issue_success', { defaultValue: 'Invoice issued.' }))
     })
   }
@@ -186,6 +207,7 @@ export default function InvoiceDetailPage() {
     await withAction('send', async () => {
       const updated = await sendInvoice(invoice.id)
       setInvoice(updated as Invoice)
+      await refreshInvoice()
       setActionMessage(
         t('app.invoices.send_success', {
           defaultValue: invoice.status === 'sent' ? 'Invoice resent.' : 'Invoice sent.',
@@ -214,6 +236,7 @@ export default function InvoiceDetailPage() {
     await withAction('cancel', async () => {
       const updated = await cancelInvoice(invoice.id)
       setInvoice(updated as Invoice)
+      await refreshInvoice()
       setActionMessage(t('app.invoices.cancel_success', { defaultValue: 'Invoice cancelled.' }))
     })
   }
