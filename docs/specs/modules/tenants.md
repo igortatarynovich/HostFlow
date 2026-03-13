@@ -16,7 +16,7 @@
 |-------|------|-------|
 | `id` | UUID | PK |
 | `name` | text | Отображаемое название |
-| `slug` | text | Уникальный идентификатор (`citronex`) |
+| `slug` | text | Уникальный идентификатор (`northwind-logistics`) |
 | `type` | enum(`agency`,`company`,`platform`) | см. multi_tenant_model |
 | `parent_tenant_id` | UUID? | для sub-clients |
 | `status` | enum(`active`,`suspended`,`trial`) | Управление доступом |

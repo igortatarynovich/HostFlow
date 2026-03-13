@@ -5,6 +5,9 @@
 - Too many technical controls are exposed at once (queue diagnostics, scheduler internals, entitlements, role overrides).
 - Core operator flow is fragmented: inboxes, planner, calendar, availability, time-off are not tied by one clear entry scenario.
 - Inbound channels are not explicit for users: outbound works, inbound path is unclear (poll/webhook, schedule, account readiness).
+- In working inboxes, control surface still dominates the viewport: filters, management buttons and auxiliary actions compete with the actual conversation area.
+- On mobile, communication screens can degenerate into button stacks where the message timeline is pushed below the fold.
+- Email Inbox still needs a hard reliability rule: expected inbound emails must appear in the operator workspace without resorting to technical debugging.
 
 ## 2) Product goal
 A new tenant admin should be able to:
@@ -114,3 +117,5 @@ These stay in advanced admin settings only.
 - Default-first: prefill sane defaults.
 - Hide advanced controls unless user asks.
 - Always show “what to do next” in operational terms, not technical terms.
+- Thread-first: conversation list and active timeline are the main surface; secondary controls are subordinate.
+- Mobile-first inbox rule: above the fold user sees conversation context, not control chrome.

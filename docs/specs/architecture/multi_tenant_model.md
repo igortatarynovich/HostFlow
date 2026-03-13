@@ -8,7 +8,7 @@ HostFlow is designed as a **multi-tenant SaaS ecosystem** that supports three hi
 |-------|---------|--------------|----------|
 | **L0 – Platform Core** | HostFlow HQ | Master level that manages tenants, licenses, and global configuration. | HostFlow platform |
 | **L1 – Tenant (Agency)** | Recruitment or HR agency | Owns its data, manages recruiters and sub-clients (companies). | Work Host, TruckForce |
-| **L2 – Sub‑Client (Company)** | Transport company or business client | Has limited access (client portal) to its candidates, documents, and vacancies. | Citronex, OmegaPil |
+| **L2 – Sub‑Client (Company)** | Transport company or business client | Has limited access (client portal) to its candidates, documents, and vacancies. | Northwind Logistics, OmegaPil |
 | **L3 – User / Candidate** | Individual | Limited account for candidate or employee data access. | Driver profile |
 
 This architecture allows HostFlow to operate simultaneously as:
@@ -71,11 +71,11 @@ Example hierarchy:
 ```
 HostFlow (SUPERADMIN)
  ├── Tenant: Work Host (type: agency)
- │    ├── Company: Citronex (client portal)
+ │    ├── Company: Northwind Logistics (client portal)
  │    └── Company: Poltrakt
  ├── Tenant: TruckForce (type: agency)
  │    └── Company: EuroTrans
- └── Tenant: Citronex (type: company, independent SaaS license)
+ └── Tenant: Northwind Logistics (type: company, independent SaaS license)
 ```
 
 ---
@@ -187,7 +187,7 @@ licenses (
 ```bash
 POST /api/v1/platform/tenants
 {
-  "name": "Citronex",
+  "name": "Northwind Logistics",
   "type": "company",
   "plan": "company_basic"
 }

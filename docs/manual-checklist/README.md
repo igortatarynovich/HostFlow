@@ -46,5 +46,7 @@
    - Перед финальным обновлением `10.1` запускать: `npm run f7:run-log:check`.
    - Для закрытия `F11.5` использовать протокол `docs/manual-checklist/f11-mobile-qa-protocol.md`.
    - Для каждого manual mobile прогона сохранять отдельный run-record по шаблону `docs/manual-checklist/f11-mobile-run-record-template.md` и ссылаться на него при обновлении секции `5.6.8` в SSOT.
+   - Для governance-блока `B6/B7/B8` использовать чеклист `docs/manual-checklist/b6-b8-governance-checklist.md` и фиксировать evidence по матрице settings access, company bootstrap contract и ownership bootstrap.
+   - Для multi-tenant release-блока `E1/E2/E3` использовать чеклист `docs/manual-checklist/e1-e3-tenant-link-release-checklist.md` и фиксировать evidence по `tenant-backed client`, `portal-only client` и policy/audit rules вокруг `tenant_links`.
 
 Готово — можно выкатывать 🚀
