@@ -197,3 +197,16 @@ POST /service-items/{id}/deliver
 - Для каждой позиции в каталоге обязательны reusable billing defaults: `currency`, `tax_mode`, `vat_rate`, `unit`, `base_price`, `sku/code`, `is_active`.
 - `ServiceOrder` должен позволять выбирать эти позиции из каталога и сохранять snapshot на уровне `ServiceItem`.
 - Дальнейший invoicing flow обязан уметь переиспользовать `ServiceItem` как основу invoice line items без ручного повторного ввода.
+
+## Analytics contract (`2026-03-13`)
+
+- `Services` workspace обязан поддерживать не только операционное исполнение, но и управленческую аналитику для service-led tenants.
+- Минимальный analytics baseline:
+  - revenue / paid / outstanding
+  - gross profit / margin
+  - top services/products
+  - top clients
+  - trends by period
+  - slices by manager, client, item, currency, tax mode, status
+- Важное правило: любая сводная метрика должна иметь drill-down в underlying `service_orders`, `service_items`, `invoices`, `payments`.
+- Если tenant продает услуги, отсутствие profitability analytics считается product gap, даже если создание заказов и счетов уже работает.

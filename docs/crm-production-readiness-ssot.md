@@ -603,7 +603,7 @@ Routing rules:
 Dashboard contract:
 - `agency` dashboard показывает candidate/vacancy throughput, recent clients, recruiting reminders.
 - `employer` dashboard показывает hiring pipeline, open vacancies, upcoming interviews/onboarding.
-- `services` dashboard показывает new clients/leads, active service orders, unpaid invoices, communication queue.
+- `services` dashboard показывает new clients/leads, active service orders, unpaid invoices, communication queue, gross profit/margin snapshot и links в analytics workspace.
 
 Orientation-mode next-step contract:
 - `agency`:
@@ -657,6 +657,7 @@ Acceptance rule:
 | C12 | Ввести paid services workflow для `services` клиентов | `NOT_STARTED` | Для service-clients можно создать и отследить платную услугу/заказ с привязкой к фактуре и automation hooks |
 | C13 | Настраиваемые Telegram notifications для CRM событий | `IN_PROGRESS` | Пользователь сам выбирает Telegram-уведомления по событиям (`new lead`, `status changed`, etc.), особенно для `services` lead/client flows |
 | C14 | Автоматизации для `services` lead/client lifecycle | `NOT_STARTED` | Новые service-leads/clients можно автоматически маршрутизировать, уведомлять, создавать задачи/услуги и доводить до счета |
+| C15 | Services analytics / profitability workspace | `NOT_STARTED` | Service-led tenant видит прибыль, выручку, маржу, top positions, top clients, trends и pivot-like slices по заказам/счетам без выгрузки в Excel |
 
 ## 5.4 Фаза D — UX качество и надежность
 
@@ -900,9 +901,37 @@ Customer invoicing должен поддерживать:
 - service order должен собираться из reusable catalog entries (`service/product`) с сохранением snapshot цены/валюты/налога в момент заказа.
 - invoice line items должны переиспользовать тот же catalog contract, но позволять точечный override description/qty/price без разрушения source-of-truth.
 - отправка фактуры клиенту из системы обязательна как operational action, а не как внешний manual step.
+- `services` workspace не считается завершенным, если tenant не может видеть управленческую аналитику по выручке, прибыли, позициям и клиентам.
 
 Acceptance rule:
 - пользователь может из client card выставить фактуру клиенту, потом открыть `/app/invoices` и увидеть тот же документ, тот же статус и ту же историю без потери данных.
+
+#### 5.5.4.4 Services Analytics And Profitability Contract
+
+Для tenant, который продает услуги, billing flow без управленческой аналитики считается неполным.
+
+Обязательный analytics baseline:
+- revenue, collected cash, outstanding invoices
+- gross profit / margin per invoice, service order, item, client
+- top services/products by revenue, quantity, profit
+- top clients by revenue, profit, overdue exposure
+- trends by day/week/month for leads -> orders -> invoices -> paid
+- pivot-like slices без выгрузки: по client, item, manager, status, currency, tax mode, date range
+
+Минимальные source-of-truth inputs:
+- invoice totals and payments
+- service order totals and line items
+- item-level cost basis or margin input where applicable
+- client/company classification
+- owner/manager attribution
+
+UI contract:
+- `Services -> Analytics` не должен ограничиваться только KPI-counters;
+- пользователь должен иметь trend view, table view и pivot/slice view;
+- drill-down из метрики в underlying clients/orders/invoices обязателен.
+
+Acceptance rule:
+- service-led tenant может ответить прямо в системе, без Excel: что дает прибыль, кто лучший клиент, какие позиции проседают, где растет/падает спрос и где зависает дебиторка.
 
 ### 5.5.5 Vacancy Document Policy Decision Contract (`2026-03-13`)
 
