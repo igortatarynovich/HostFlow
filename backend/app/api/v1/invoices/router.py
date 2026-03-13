@@ -118,14 +118,14 @@ async def create_invoice(
             db,
             str(tenant_id),
             payload.model_dump(),
-            created_by=current_user.user_id,
+            created_by=current_user.sub,
         )
         await _log_invoice_activity(
             db,
             tenant_id=str(tenant_id),
             invoice=invoice,
             action="invoice.created",
-            actor_id=current_user.user_id,
+            actor_id=current_user.sub,
             payload={"source": "manual"},
         )
         await db.commit()
@@ -254,14 +254,14 @@ async def create_invoice_from_service_order(
             "billing_details": billing_details,
             "notes": getattr(order, "notes", None),
         },
-        created_by=current_user.user_id,
+        created_by=current_user.sub,
     )
     await _log_invoice_activity(
         db,
         tenant_id=tenant_id_str,
         invoice=invoice,
         action="invoice.created",
-        actor_id=current_user.user_id,
+        actor_id=current_user.sub,
         payload={"source": "service_order", "service_order_id": order.id},
     )
     await db.commit()
@@ -385,7 +385,7 @@ async def update_invoice(
             tenant_id=str(tenant_id),
             invoice=invoice,
             action=action,
-            actor_id=current_user.user_id,
+            actor_id=current_user.sub,
             payload=activity_payload,
         )
         await db.commit()
@@ -436,7 +436,7 @@ async def create_payment(
             tenant_id=str(tenant_id),
             invoice=invoice,
             action="invoice.payment_recorded",
-            actor_id=current_user.user_id,
+            actor_id=current_user.sub,
             payload={
                 "payment_id": payment.id,
                 "amount": str(payment.amount),
@@ -579,7 +579,7 @@ async def send_invoice(
                 tenant_id=str(tenant_id),
                 invoice=invoice,
                 action="invoice.send_failed",
-                actor_id=current_user.user_id,
+                actor_id=current_user.sub,
                 payload={"delivery_status": "failed", "reason": "missing_recipient_email"},
             )
             await db.commit()
@@ -609,7 +609,7 @@ async def send_invoice(
                 tenant_id=str(tenant_id),
                 invoice=invoice,
                 action="invoice.send_failed",
-                actor_id=current_user.user_id,
+                actor_id=current_user.sub,
                 payload={
                     "recipient_email": recipient_email,
                     "delivery_status": delivery_status,
@@ -630,7 +630,7 @@ async def send_invoice(
             tenant_id=str(tenant_id),
             invoice=invoice,
             action="invoice.sent",
-            actor_id=current_user.user_id,
+            actor_id=current_user.sub,
             payload={
                 "recipient_email": recipient_email,
                 "delivery_status": delivery_status,
@@ -687,7 +687,7 @@ async def cancel_invoice(
         tenant_id=str(tenant_id),
         invoice=invoice,
         action="invoice.cancelled",
-        actor_id=current_user.user_id,
+        actor_id=current_user.sub,
         payload={},
     )
     await db.commit()
