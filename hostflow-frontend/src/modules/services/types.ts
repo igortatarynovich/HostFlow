@@ -7,6 +7,8 @@ export type NewServiceFormState = {
   name: string;
   category: string;
   basePrice: string;
+  estimatedCost: string;
+  costCurrency: string;
   vatRate: string;
   resultDocumentType: string;
   requiresSchedule: boolean;
@@ -22,7 +24,9 @@ export type NewOrderFormState = {
   serviceCode: string;
   qty: string;
   unitPrice: string;
+  estimatedCost: string;
+  actualCost: string;
+  costCurrency: string;
   vatRate: string;
   currency: string;
 };
-

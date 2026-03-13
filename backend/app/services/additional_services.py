@@ -79,6 +79,13 @@ def _dec(value: Decimal | float | int | str | None, default: Decimal = Decimal("
 def _quantize(amount: Decimal) -> Decimal:
     return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+
+def _normalize_cost_status(value: object) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"missing", "estimated", "confirmed"}:
+        return normalized
+    return "missing"
+
 class AdditionalServicesService:
     def __init__(self, db: AsyncSession, tenant_id: str):
         self.db = db
@@ -245,6 +252,24 @@ class AdditionalServicesService:
                 item_payload.get("unit_price"),
                 _dec(service.base_price, Decimal("0")),
             )
+            estimated_cost = _dec(
+                item_payload.get("estimated_cost"),
+                _quantize(qty * _dec(service.estimated_cost, Decimal("0"))),
+            )
+            actual_cost = item_payload.get("actual_cost")
+            actual_cost_dec = _quantize(_dec(actual_cost)) if actual_cost is not None else None
+            cost_currency = str(
+                item_payload.get("cost_currency")
+                or getattr(service, "cost_currency", None)
+                or service.currency
+                or payload.get("currency")
+                or "PLN"
+            )
+            cost_status = _normalize_cost_status(item_payload.get("cost_status"))
+            if actual_cost_dec is not None:
+                cost_status = "confirmed"
+            elif estimated_cost > 0 and cost_status == "missing":
+                cost_status = "estimated"
             vat_rate = _dec(
                 item_payload.get("vat_rate"),
                 _dec(service.vat_rate, Decimal("0")),
@@ -270,6 +295,11 @@ class AdditionalServicesService:
                 service_id=service.id,
                 qty=qty,
                 unit_price=unit_price,
+                estimated_cost=estimated_cost,
+                actual_cost=actual_cost_dec,
+                cost_currency=cost_currency,
+                cost_source=str(item_payload.get("cost_source") or "service_catalog"),
+                cost_status=cost_status,
                 vat_rate=vat_rate,
                 amount=_quantize(qty * unit_price),
                 required_documents=required_docs,
@@ -300,6 +330,24 @@ class AdditionalServicesService:
             item_payload.get("unit_price"),
             _dec(service.base_price, Decimal("0")),
         )
+        estimated_cost = _dec(
+            item_payload.get("estimated_cost"),
+            _quantize(qty * _dec(service.estimated_cost, Decimal("0"))),
+        )
+        actual_cost = item_payload.get("actual_cost")
+        actual_cost_dec = _quantize(_dec(actual_cost)) if actual_cost is not None else None
+        cost_currency = str(
+            item_payload.get("cost_currency")
+            or getattr(service, "cost_currency", None)
+            or service.currency
+            or order.currency
+            or "PLN"
+        )
+        cost_status = _normalize_cost_status(item_payload.get("cost_status"))
+        if actual_cost_dec is not None:
+            cost_status = "confirmed"
+        elif estimated_cost > 0 and cost_status == "missing":
+            cost_status = "estimated"
         vat_rate = _dec(
             item_payload.get("vat_rate"),
             _dec(service.vat_rate, Decimal("0")),
@@ -317,6 +365,11 @@ class AdditionalServicesService:
             service_id=service.id,
             qty=qty,
             unit_price=unit_price,
+            estimated_cost=estimated_cost,
+            actual_cost=actual_cost_dec,
+            cost_currency=cost_currency,
+            cost_source=str(item_payload.get("cost_source") or "service_catalog"),
+            cost_status=cost_status,
             vat_rate=vat_rate,
             amount=_quantize(qty * unit_price),
             required_documents=required_docs,

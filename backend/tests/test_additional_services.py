@@ -98,6 +98,8 @@ async def test_additional_services_end_to_end():
                     "category": "medical",
                     "unit": "person",
                     "base_price": 320.0,
+                    "estimated_cost": 180.0,
+                    "cost_currency": "PLN",
                     "vat_rate": 8.0,
                     "requires_schedule": True,
                     "requires_candidate": True,
@@ -120,6 +122,7 @@ async def test_additional_services_end_to_end():
                             "service_id": service_id,
                             "qty": 1,
                             "unit_price": 320,
+                            "estimated_cost": 190,
                             "vat_rate": 8,
                         }
                     ],
@@ -131,6 +134,8 @@ async def test_additional_services_end_to_end():
             assert order_body["status"] == "draft"
             assert len(order_body["items"]) == 1
             item_id = order_body["items"][0]["id"]
+            assert float(order_body["items"][0]["estimated_cost"]) == pytest.approx(190.0)
+            assert order_body["items"][0]["cost_status"] == "estimated"
 
             schedule_resp = await client.post(
                 f"/api/v1/service-items/{item_id}/schedule",

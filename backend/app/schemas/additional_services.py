@@ -41,6 +41,8 @@ class ServiceBase(BaseModel):
     category: Optional[str] = None
     unit: ServiceUnitLiteral = "piece"
     base_price: Decimal = Decimal("0")
+    estimated_cost: Decimal = Decimal("0")
+    cost_currency: str = Field("PLN", min_length=3, max_length=3)
     currency: str = Field("PLN", min_length=3, max_length=3)
     vat_rate: Decimal = Decimal("23")
     requires_schedule: bool = False
@@ -62,6 +64,8 @@ class ServiceUpdate(BaseModel):
     category: Optional[str] = None
     unit: Optional[ServiceUnitLiteral] = None
     base_price: Optional[Decimal] = None
+    estimated_cost: Optional[Decimal] = None
+    cost_currency: Optional[str] = Field(None, min_length=3, max_length=3)
     currency: Optional[str] = Field(None, min_length=3, max_length=3)
     vat_rate: Optional[Decimal] = None
     requires_schedule: Optional[bool] = None
@@ -124,6 +128,11 @@ class ServiceItemOut(BaseModel):
     service_id: str
     qty: Decimal
     unit_price: Decimal
+    estimated_cost: Decimal
+    actual_cost: Optional[Decimal] = None
+    cost_currency: str
+    cost_source: Optional[str] = None
+    cost_status: str
     vat_rate: Decimal
     amount: Decimal
     status: ServiceItemStatusLiteral
@@ -142,6 +151,11 @@ class ServiceItemCreate(BaseModel):
     service_code: Optional[str] = None
     qty: Decimal = Decimal("1")
     unit_price: Optional[Decimal] = None
+    estimated_cost: Optional[Decimal] = None
+    actual_cost: Optional[Decimal] = None
+    cost_currency: Optional[str] = Field(None, min_length=3, max_length=3)
+    cost_source: Optional[str] = None
+    cost_status: Optional[str] = None
     vat_rate: Optional[Decimal] = None
     required_documents: Optional[List[str]] = None
     result_document_type: Optional[str] = None

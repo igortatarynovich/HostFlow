@@ -39,6 +39,8 @@ const initialServiceState: NewServiceFormState = {
   name: '',
   category: '',
   basePrice: '0',
+  estimatedCost: '0',
+  costCurrency: 'PLN',
   vatRate: '23',
   resultDocumentType: '',
   requiresSchedule: false,
@@ -54,6 +56,9 @@ const initialOrderState: NewOrderFormState = {
   serviceCode: '',
   qty: '1',
   unitPrice: '',
+  estimatedCost: '',
+  actualCost: '',
+  costCurrency: 'PLN',
   vatRate: '',
   currency: 'PLN',
 }
@@ -116,6 +121,8 @@ export function ServicesPage() {
         name: catalogForm.name.trim(),
         category: catalogForm.category.trim() || undefined,
         base_price: Number.parseFloat(catalogForm.basePrice) || 0,
+        estimated_cost: Number.parseFloat(catalogForm.estimatedCost) || 0,
+        cost_currency: catalogForm.costCurrency.trim() || 'PLN',
         vat_rate: Number.parseFloat(catalogForm.vatRate) || 0,
         result_document_type: catalogForm.resultDocumentType.trim() || undefined,
         requires_schedule: catalogForm.requiresSchedule,
@@ -166,6 +173,10 @@ export function ServicesPage() {
             service_code: orderForm.serviceCode.trim() || undefined,
             qty: Number.parseFloat(orderForm.qty) || 1,
             unit_price: orderForm.unitPrice ? Number.parseFloat(orderForm.unitPrice) : undefined,
+            estimated_cost: orderForm.estimatedCost ? Number.parseFloat(orderForm.estimatedCost) : undefined,
+            actual_cost: orderForm.actualCost ? Number.parseFloat(orderForm.actualCost) : undefined,
+            cost_currency: orderForm.costCurrency.trim() || undefined,
+            cost_source: 'manual_order_form',
             vat_rate: orderForm.vatRate ? Number.parseFloat(orderForm.vatRate) : undefined,
           },
         ],
@@ -254,9 +265,21 @@ export function ServicesPage() {
     let deliveredOrders = 0
     let totalRevenue = 0
     let deliveredRevenue = 0
+    let estimatedCost = 0
+    let actualCost = 0
+    let confirmedCostItems = 0
+    let totalCostItems = 0
     ordersHook.orders.forEach((order: AdditionalServiceOrder) => {
       const status = order.status
       const amount = Number(order.total_amount ?? 0)
+      order.items.forEach((item) => {
+        totalCostItems += 1
+        estimatedCost += Number(item.estimated_cost ?? 0)
+        if (typeof item.actual_cost === 'number') {
+          actualCost += Number(item.actual_cost)
+          confirmedCostItems += 1
+        }
+      })
       if (status === 'delivered') {
         deliveredOrders += 1
         deliveredRevenue += amount
@@ -268,6 +291,9 @@ export function ServicesPage() {
     const catalogActive = catalogHook.services.filter((svc) => svc.is_active).length
     const pipelineValue = totalRevenue - deliveredRevenue
     const averageCheck = deliveredOrders ? deliveredRevenue / deliveredOrders : 0
+    const costCoverage = totalCostItems ? Math.round((confirmedCostItems / totalCostItems) * 100) : 0
+    const grossProfit = totalRevenue - (actualCost || estimatedCost)
+    const grossMargin = totalRevenue > 0 ? Math.round((grossProfit / totalRevenue) * 100) : 0
     return {
       visibleOrders,
       activeOrders,
@@ -276,6 +302,11 @@ export function ServicesPage() {
       averageCheck,
       pipelineValue,
       catalogActive,
+      grossProfit,
+      grossMargin,
+      estimatedCost,
+      actualCost,
+      costCoverage,
     }
   }, [ordersHook.orders, catalogHook.services])
 
@@ -311,10 +342,13 @@ export function ServicesPage() {
       hint: t('app.services.hero.catalog_hint', { values: { total: catalogHook.services.length } }),
     },
     {
-      key: 'avg',
-      label: t('app.services.hero.orders_avg_check'),
-      value: serviceInsights.averageCheck ? formatAmount(serviceInsights.averageCheck) : formatAmount(0),
-      hint: t('app.services.hero.orders_avg_check_hint'),
+      key: 'profit',
+      label: t('app.services.hero.gross_profit', { defaultValue: 'Gross profit' }),
+      value: formatAmount(serviceInsights.grossProfit),
+      hint: t('app.services.hero.gross_profit_hint', {
+        defaultValue: 'Margin {{margin}}% · cost coverage {{coverage}}%',
+        values: { margin: serviceInsights.grossMargin, coverage: serviceInsights.costCoverage },
+      }),
     },
   ]
 
@@ -491,6 +525,18 @@ function CatalogTab({
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  {t('app.services.catalog.new_service.labels.estimated_cost', { defaultValue: 'Est. cost' })}
+                </label>
+                <input
+                  className="input mt-1"
+                  value={formState.estimatedCost}
+                  onChange={(e) => onFormChange({ ...formState, estimatedCost: e.target.value })}
+                  placeholder={t('app.services.catalog.new_service.placeholders.estimated_cost', { defaultValue: '210' })}
+                  type="number"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-slate-700">{t('app.services.catalog.new_service.labels.vat')}</label>
                 <input
                   className="input mt-1"
@@ -498,6 +544,19 @@ function CatalogTab({
                   onChange={(e) => onFormChange({ ...formState, vatRate: e.target.value })}
                   placeholder={t('app.services.catalog.new_service.placeholders.vat')}
                   type="number"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-sm font-medium text-slate-700">
+                  {t('app.services.catalog.new_service.labels.cost_currency', { defaultValue: 'Cost currency' })}
+                </label>
+                <input
+                  className="input mt-1"
+                  value={formState.costCurrency}
+                  onChange={(e) => onFormChange({ ...formState, costCurrency: e.target.value.toUpperCase() })}
+                  placeholder="PLN"
                 />
               </div>
               <div>
@@ -659,6 +718,7 @@ function OrdersTab({
     return map
   }, [t])
   const availableServices = useMemo(() => services.map((svc) => ({ id: svc.id, label: `${svc.name} (${svc.code})` })), [services])
+  const serviceLookup = useMemo(() => new Map(services.map((svc) => [svc.id, svc])), [services])
   const [ownerChoice, setOwnerChoice] = useState<OrderOwnerChoice>('candidate')
   const [candidateQuery, setCandidateQuery] = useState('')
   const [candidateResults, setCandidateResults] = useState<Candidate[]>([])
@@ -1145,7 +1205,20 @@ function OrdersTab({
               <select
                 className="input text-sm"
                 value={orderForm.serviceId}
-                onChange={(e) => onOrderFormChange({ ...orderForm, serviceId: e.target.value, serviceCode: '' })}
+                onChange={(e) => {
+                  const serviceId = e.target.value
+                  const selected = serviceLookup.get(serviceId)
+                  onOrderFormChange({
+                    ...orderForm,
+                    serviceId,
+                    serviceCode: '',
+                    unitPrice: selected ? String(selected.base_price ?? '') : orderForm.unitPrice,
+                    estimatedCost: selected ? String(selected.estimated_cost ?? '') : orderForm.estimatedCost,
+                    costCurrency: selected ? String(selected.cost_currency || selected.currency || 'PLN') : orderForm.costCurrency,
+                    vatRate: selected ? String(selected.vat_rate ?? '') : orderForm.vatRate,
+                    currency: selected ? String(selected.currency || 'PLN') : orderForm.currency,
+                  })
+                }}
               >
                 <option value="">{t('app.services.orders.new.placeholders.service_id')}</option>
                 {availableServices.map((svc) => (
@@ -1179,6 +1252,28 @@ function OrdersTab({
                   type="number"
                   value={orderForm.vatRate}
                   onChange={(e) => onOrderFormChange({ ...orderForm, vatRate: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  className="input text-sm"
+                  placeholder={t('app.services.orders.new.placeholders.estimated_cost', { defaultValue: 'Estimated cost' })}
+                  type="number"
+                  value={orderForm.estimatedCost}
+                  onChange={(e) => onOrderFormChange({ ...orderForm, estimatedCost: e.target.value })}
+                />
+                <input
+                  className="input text-sm"
+                  placeholder={t('app.services.orders.new.placeholders.actual_cost', { defaultValue: 'Actual cost' })}
+                  type="number"
+                  value={orderForm.actualCost}
+                  onChange={(e) => onOrderFormChange({ ...orderForm, actualCost: e.target.value })}
+                />
+                <input
+                  className="input text-sm"
+                  placeholder={t('app.services.orders.new.placeholders.cost_currency', { defaultValue: 'Cost currency' })}
+                  value={orderForm.costCurrency}
+                  onChange={(e) => onOrderFormChange({ ...orderForm, costCurrency: e.target.value.toUpperCase() })}
                 />
               </div>
             </div>
@@ -1319,6 +1414,65 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
       .sort((a, b) => b.count - a.count)
   }, [orders])
 
+  const profitabilitySummary = useMemo(() => {
+    let revenue = 0
+    let estimatedCost = 0
+    let actualCost = 0
+    let confirmedItems = 0
+    let estimatedItems = 0
+    let missingItems = 0
+    orders.forEach((order) => {
+      revenue += Number(order.total_amount ?? 0)
+      order.items.forEach((item) => {
+        const estimated = Number(item.estimated_cost ?? 0)
+        const actual = typeof item.actual_cost === 'number' ? Number(item.actual_cost) : null
+        estimatedCost += estimated
+        if (actual !== null) {
+          actualCost += actual
+          confirmedItems += 1
+        } else if ((item.cost_status || 'missing') === 'estimated' || estimated > 0) {
+          estimatedItems += 1
+        } else {
+          missingItems += 1
+        }
+      })
+    })
+    const costBase = actualCost || estimatedCost
+    const grossProfit = revenue - costBase
+    const grossMargin = revenue > 0 ? Math.round((grossProfit / revenue) * 100) : 0
+    const totalItems = confirmedItems + estimatedItems + missingItems
+    const coverage = totalItems ? Math.round((confirmedItems / totalItems) * 100) : 0
+    return { revenue, estimatedCost, actualCost, grossProfit, grossMargin, confirmedItems, estimatedItems, missingItems, coverage }
+  }, [orders])
+
+  const topClients = useMemo(() => {
+    const stats = new Map<string, { label: string; revenue: number; profit: number; orders: number }>()
+    orders.forEach((order) => {
+      const label = order.company_id
+        ? `${t('app.services.analytics.owner.company', { defaultValue: 'Company' })} ${order.company_id.slice(0, 8)}`
+        : order.candidate_id
+        ? `${t('app.services.analytics.owner.candidate', { defaultValue: 'Candidate' })} ${order.candidate_id.slice(0, 8)}`
+        : order.vacancy_id
+        ? `${t('app.services.analytics.owner.vacancy', { defaultValue: 'Vacancy' })} ${order.vacancy_id.slice(0, 8)}`
+        : t('app.services.analytics.owner.unknown')
+      const entry = stats.get(label) ?? { label, revenue: 0, profit: 0, orders: 0 }
+      entry.revenue += Number(order.total_amount ?? 0)
+      entry.orders += 1
+      order.items.forEach((item) => {
+        const itemRevenue = Number(item.amount ?? 0)
+        const itemCost =
+          typeof item.actual_cost === 'number'
+            ? Number(item.actual_cost)
+            : Number(item.estimated_cost ?? 0)
+        entry.profit += itemRevenue - itemCost
+      })
+      stats.set(label, entry)
+    })
+    return Array.from(stats.values())
+      .sort((a, b) => b.profit - a.profit || b.revenue - a.revenue)
+      .slice(0, 5)
+  }, [orders, t])
+
   const topServices = useMemo(() => {
     const stats = new Map<string, { label: string; total: number; pending: number }>()
     orders.forEach((order) => {
@@ -1425,7 +1579,7 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
           })}
         </div>
       )}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <div className="card p-4">
           <div className="text-sm font-semibold">{t('app.services.analytics.last30.title')}</div>
           <div className="mt-2 text-3xl font-semibold">{last30Days.total}</div>
@@ -1442,6 +1596,45 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
             <div className="flex justify-between">
               <dt>{t('app.services.analytics.last30.rate')}</dt>
               <dd className="font-medium">{last30Days.cancellationRate}%</dd>
+            </div>
+          </dl>
+        </div>
+        <div className="card p-4">
+          <div className="text-sm font-semibold">{t('app.services.analytics.profitability.gross_profit', { defaultValue: 'Gross profit' })}</div>
+          <div className="mt-2 text-3xl font-semibold">{formatAmount(profitabilitySummary.grossProfit)}</div>
+          <p className="text-xs text-slate-500">
+            {t('app.services.analytics.profitability.gross_margin', {
+              defaultValue: 'Margin {{margin}}%',
+              values: { margin: profitabilitySummary.grossMargin },
+            })}
+          </p>
+        </div>
+        <div className="card p-4">
+          <div className="text-sm font-semibold">{t('app.services.analytics.profitability.cost_basis', { defaultValue: 'Cost basis' })}</div>
+          <div className="mt-2 text-3xl font-semibold">
+            {formatAmount(profitabilitySummary.actualCost || profitabilitySummary.estimatedCost)}
+          </div>
+          <p className="text-xs text-slate-500">
+            {t('app.services.analytics.profitability.coverage', {
+              defaultValue: 'Confirmed cost coverage {{coverage}}%',
+              values: { coverage: profitabilitySummary.coverage },
+            })}
+          </p>
+        </div>
+        <div className="card p-4">
+          <div className="text-sm font-semibold">{t('app.services.analytics.profitability.data_quality', { defaultValue: 'Data quality' })}</div>
+          <dl className="mt-4 space-y-1 text-sm text-slate-600">
+            <div className="flex justify-between">
+              <dt>{t('app.services.analytics.profitability.confirmed', { defaultValue: 'Confirmed' })}</dt>
+              <dd className="font-medium">{profitabilitySummary.confirmedItems}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>{t('app.services.analytics.profitability.estimated', { defaultValue: 'Estimated' })}</dt>
+              <dd className="font-medium">{profitabilitySummary.estimatedItems}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt>{t('app.services.analytics.profitability.missing', { defaultValue: 'Missing' })}</dt>
+              <dd className="font-medium">{profitabilitySummary.missingItems}</dd>
             </div>
           </dl>
         </div>
@@ -1497,6 +1690,37 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
             <div className="text-sm text-slate-500">{t('app.services.analytics.top_services.empty')}</div>
           )}
         </div>
+      </div>
+
+      <div className="card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-sm font-semibold">{t('app.services.analytics.top_clients.title', { defaultValue: 'Top clients' })}</div>
+          <div className="text-xs text-slate-500">{t('app.services.analytics.top_clients.subtitle', { defaultValue: 'Ranked by profit and revenue' })}</div>
+        </div>
+        {topClients.length ? (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>{t('app.services.analytics.top_clients.client', { defaultValue: 'Client' })}</th>
+                <th className="text-right">{t('app.services.analytics.top_clients.orders', { defaultValue: 'Orders' })}</th>
+                <th className="text-right">{t('app.services.analytics.top_clients.revenue', { defaultValue: 'Revenue' })}</th>
+                <th className="text-right">{t('app.services.analytics.top_clients.profit', { defaultValue: 'Profit' })}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topClients.map((client) => (
+                <tr key={client.label}>
+                  <td>{client.label}</td>
+                  <td className="text-right">{client.orders}</td>
+                  <td className="text-right">{formatAmount(client.revenue)}</td>
+                  <td className="text-right">{formatAmount(client.profit)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="text-sm text-slate-500">{t('app.services.analytics.top_clients.empty', { defaultValue: 'No client data yet' })}</div>
+        )}
       </div>
 
       <div className="card p-4">

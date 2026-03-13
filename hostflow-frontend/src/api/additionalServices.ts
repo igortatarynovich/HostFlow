@@ -18,6 +18,8 @@ export interface CreateAdditionalServiceInput {
   category?: string | null
   unit?: ServiceUnit
   base_price?: number
+  estimated_cost?: number
+  cost_currency?: string
   currency?: string
   vat_rate?: number
   requires_schedule?: boolean
@@ -54,6 +56,11 @@ export interface CreateServiceOrderItemInput {
   service_code?: string
   qty?: number
   unit_price?: number
+  estimated_cost?: number
+  actual_cost?: number
+  cost_currency?: string
+  cost_source?: string
+  cost_status?: string
   vat_rate?: number
   required_documents?: string[]
   result_document_type?: string | null

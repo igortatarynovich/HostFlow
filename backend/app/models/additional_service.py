@@ -85,6 +85,10 @@ class Service(Base, TimestampMixin):
     base_price: Mapped[float] = mapped_column(
         Numeric(12, 2), nullable=False, default=0
     )
+    estimated_cost: Mapped[float] = mapped_column(
+        Numeric(12, 2), nullable=False, default=0
+    )
+    cost_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="PLN")
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="PLN")
     vat_rate: Mapped[float] = mapped_column(Numeric(4, 2), nullable=False, default=23)
     requires_schedule: Mapped[bool] = mapped_column(
@@ -203,6 +207,13 @@ class ServiceItem(Base, TimestampMixin):
     unit_price: Mapped[float] = mapped_column(
         Numeric(12, 2), nullable=False, default=0
     )
+    estimated_cost: Mapped[float] = mapped_column(
+        Numeric(12, 2), nullable=False, default=0
+    )
+    actual_cost: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    cost_currency: Mapped[str] = mapped_column(String(3), nullable=False, default="PLN")
+    cost_source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    cost_status: Mapped[str] = mapped_column(String(16), nullable=False, default="missing")
     vat_rate: Mapped[float] = mapped_column(Numeric(4, 2), nullable=False, default=0)
     amount: Mapped[float] = mapped_column(
         Numeric(12, 2), nullable=False, default=0

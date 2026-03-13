@@ -33,6 +33,8 @@ export interface AdditionalService {
   category?: string | null;
   unit: ServiceUnit;
   base_price: number;
+  estimated_cost: number;
+  cost_currency: string;
   currency: string;
   vat_rate: number;
   requires_schedule: boolean;
@@ -76,6 +78,11 @@ export interface AdditionalServiceItem {
   service_id: UUID;
   qty: number;
   unit_price: number;
+  estimated_cost: number;
+  actual_cost?: number | null;
+  cost_currency: string;
+  cost_source?: string | null;
+  cost_status: string;
   vat_rate: number;
   amount: number;
   status: ServiceItemStatus;
@@ -113,4 +120,3 @@ export interface AdditionalServiceOrderSummary {
   blocking_items: AdditionalServiceItem[];
   missing_documents: Record<string, string[]>;
 }
-
