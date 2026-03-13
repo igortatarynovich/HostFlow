@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import {
   addServiceSchedule,
@@ -66,6 +67,7 @@ const initialOrderState: NewOrderFormState = {
 export function ServicesPage() {
   const { t } = useI18n()
   const { openEntityLabel } = useBusinessTerminology()
+  const navigate = useNavigate()
   const { can } = usePermissions()
   const [tab, setTab] = useState<'analytics' | 'orders' | 'catalog'>('orders')
   const [includeInactive, setIncludeInactive] = useState(false)
@@ -472,6 +474,16 @@ export function ServicesPage() {
           onAnalyticsDaysChange={setAnalyticsDays}
           onAnalyticsTrendBucketChange={setAnalyticsTrendBucket}
           onAnalyticsSliceByChange={setAnalyticsSliceBy}
+          onOpenClient={(companyId) => {
+            if (companyId) navigate(`/app/clients/${companyId}`)
+          }}
+          onOpenInvoices={(params) => {
+            const search = new URLSearchParams()
+            if (params.companyId) search.set('company_id', params.companyId)
+            if (params.serviceOrderId) search.set('service_order_id', params.serviceOrderId)
+            if (params.status) search.set('status', params.status)
+            navigate(`/app/invoices${search.toString() ? `?${search.toString()}` : ''}`)
+          }}
           onDrilldown={(next) => {
             setOrdersDrilldown(next)
             if (next.kind === 'status') {
@@ -1505,6 +1517,8 @@ type ServicesAnalyticsTabProps = {
   onAnalyticsDaysChange: (value: 30 | 90 | 180) => void
   onAnalyticsTrendBucketChange: (value: 'week' | 'month') => void
   onAnalyticsSliceByChange: (value: 'client' | 'item' | 'status' | 'manager') => void
+  onOpenClient: (companyId?: string | null) => void
+  onOpenInvoices: (params: { companyId?: string | null; serviceOrderId?: string | null; status?: string | null }) => void
   onDrilldown: (value:
     | { kind: 'order'; orderId: string }
     | { kind: 'client'; ownerKind: string; ownerId?: string | null }
@@ -1527,6 +1541,8 @@ function ServicesAnalyticsTab({
   onAnalyticsDaysChange,
   onAnalyticsTrendBucketChange,
   onAnalyticsSliceByChange,
+  onOpenClient,
+  onOpenInvoices,
   onDrilldown,
   formatStatus,
 }: ServicesAnalyticsTabProps) {
@@ -1814,6 +1830,7 @@ function ServicesAnalyticsTab({
                 <th className="text-right">{t('app.services.analytics.top_clients.orders', { defaultValue: 'Orders' })}</th>
                 <th className="text-right">{t('app.services.analytics.top_clients.revenue', { defaultValue: 'Revenue' })}</th>
                 <th className="text-right">{t('app.services.analytics.top_clients.profit', { defaultValue: 'Profit' })}</th>
+                <th className="text-right">{t('common.labels.actions', { defaultValue: 'Actions' })}</th>
               </tr>
             </thead>
             <tbody>
@@ -1827,6 +1844,34 @@ function ServicesAnalyticsTab({
                   <td className="text-right">{client.orders}</td>
                   <td className="text-right">{formatAmount(client.revenue)}</td>
                   <td className="text-right">{formatAmount(client.profit)}</td>
+                  <td className="text-right">
+                    <div className="flex justify-end gap-2">
+                      {client.owner_kind === 'company' && client.owner_id && (
+                        <button
+                          type="button"
+                          className="btn-secondary btn-xs"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            onOpenClient(client.owner_id)
+                          }}
+                        >
+                          {t('app.services.analytics.actions.open_client', { defaultValue: 'Open client' })}
+                        </button>
+                      )}
+                      {client.owner_kind === 'company' && client.owner_id && (
+                        <button
+                          type="button"
+                          className="btn-secondary btn-xs"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            onOpenInvoices({ companyId: client.owner_id })
+                          }}
+                        >
+                          {t('app.services.analytics.actions.open_invoices', { defaultValue: 'Open invoices' })}
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1844,10 +1889,10 @@ function ServicesAnalyticsTab({
         {(analytics?.hot_orders.length ?? 0) > 0 ? (
           <ul className="divide-y divide-slate-100 text-sm">
             {analytics?.hot_orders.map((entry) => (
-              <li key={entry.order_id}>
+              <li key={entry.order_id} className="rounded-lg py-3 hover:bg-brand-50/40">
                 <button
                   type="button"
-                  className="flex w-full flex-col gap-1 rounded-lg py-3 text-left hover:bg-brand-50/40"
+                  className="flex w-full flex-col gap-1 text-left"
                   onClick={() => onDrilldown({ kind: 'order', orderId: entry.order_id })}
                 >
                 <div className="flex items-center justify-between">
@@ -1858,6 +1903,15 @@ function ServicesAnalyticsTab({
                   {t(`app.services.analytics.hot_services.reason.${entry.reason}`)} · {describeOwner(entry.owner_kind)}
                 </div>
                 </button>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary btn-xs"
+                    onClick={() => onOpenInvoices({ serviceOrderId: entry.order_id })}
+                  >
+                    {t('app.services.analytics.actions.open_invoices', { defaultValue: 'Open invoices' })}
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

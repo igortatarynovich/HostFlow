@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { listInvoices } from '../api/client'
 import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
@@ -45,17 +46,32 @@ function statusBadgeClass(status: InvoiceStatus): string {
 
 export default function InvoicesPage() {
   const { t } = useI18n()
+  const [searchParams] = useSearchParams()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('')
   const [reloadKey, setReloadKey] = useState(0)
+  const companyIdFilter = searchParams.get('company_id') || ''
+  const serviceOrderIdFilter = searchParams.get('service_order_id') || ''
+  const urlStatusFilter = (searchParams.get('status') || '') as InvoiceStatus | ''
+
+  useEffect(() => {
+    if (urlStatusFilter && urlStatusFilter !== statusFilter) {
+      setStatusFilter(urlStatusFilter)
+    }
+  }, [urlStatusFilter, statusFilter])
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setError(null)
-    listInvoices({ status: statusFilter || undefined, limit: 100 })
+    listInvoices({
+      company_id: companyIdFilter || undefined,
+      service_order_id: serviceOrderIdFilter || undefined,
+      status: statusFilter || undefined,
+      limit: 100,
+    })
       .then((data: Invoice[]) => {
         if (!cancelled) {
           setInvoices(Array.isArray(data) ? data : [])
@@ -72,7 +88,7 @@ export default function InvoicesPage() {
     return () => {
       cancelled = true
     }
-  }, [statusFilter, reloadKey])
+  }, [companyIdFilter, serviceOrderIdFilter, statusFilter, reloadKey])
 
   return (
     <div className="h-full w-full flex flex-col space-y-4 p-6">
@@ -108,6 +124,19 @@ export default function InvoicesPage() {
               ))}
             </select>
           </label>
+          {(companyIdFilter || serviceOrderIdFilter) && (
+            <div className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs text-brand-800">
+              {companyIdFilter
+                ? t('app.invoices.drilldown.company', {
+                    defaultValue: 'Filtered by client: {{id}}',
+                    values: { id: companyIdFilter.slice(0, 8) },
+                  })
+                : t('app.invoices.drilldown.service_order', {
+                    defaultValue: 'Filtered by service order: {{id}}',
+                    values: { id: serviceOrderIdFilter.slice(0, 8) },
+                  })}
+            </div>
+          )}
         </div>
 
         {error && (

@@ -609,10 +609,11 @@ export async function createLeadServiceOrder(leadId: string) {
 }
 
 // Invoices ---------------------------------------------------------------
-export async function listInvoices(opts?: { company_id?: string; candidate_id?: string; status?: string; limit?: number; offset?: number }) {
+export async function listInvoices(opts?: { company_id?: string; candidate_id?: string; service_order_id?: string; status?: string; limit?: number; offset?: number }) {
   const params: Record<string, any> = {};
   if (opts?.company_id) params.company_id = opts.company_id;
   if (opts?.candidate_id) params.candidate_id = opts.candidate_id;
+  if (opts?.service_order_id) params.service_order_id = opts.service_order_id;
   if (opts?.status) params.status = opts.status;
   if (opts?.limit != null) params.limit = opts.limit;
   if (opts?.offset != null) params.offset = opts.offset;
