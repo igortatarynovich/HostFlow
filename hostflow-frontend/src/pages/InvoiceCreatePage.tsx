@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { listAdditionalServices } from '../api/additionalServices'
-import { createInvoice, getCompany, getInvoice, listCompanies, updateInvoice } from '../api/client'
+import { createInvoice, getCompany, getInvoice, listCompanies, listInvoices, updateInvoice } from '../api/client'
 import type { AdditionalService, Company, Invoice } from '../api/types'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
@@ -131,6 +131,29 @@ function addDays(isoValue: string, days: number) {
   return dt.toISOString().slice(0, 10)
 }
 
+function invoicePrefix(invoiceKind: string, taxMode: string) {
+  if (invoiceKind === 'proforma') return 'PRO'
+  if (invoiceKind === 'invoice') return 'INV'
+  if (invoiceKind === 'vat' || taxMode === 'standard_vat') return 'FV'
+  return 'INV'
+}
+
+function buildSuggestedInvoiceNumber(invoiceKind: string, taxMode: string, issueDate: string, existingNumbers: string[]) {
+  const dt = new Date(issueDate)
+  if (Number.isNaN(dt.getTime())) return ''
+  const year = dt.getFullYear()
+  const month = `${dt.getMonth() + 1}`.padStart(2, '0')
+  const prefix = invoicePrefix(invoiceKind, taxMode)
+  const pattern = new RegExp(`^${prefix}/${year}/${month}/(\\d{4,})$`)
+  let maxSeq = 0
+  for (const number of existingNumbers) {
+    const match = pattern.exec(String(number || '').trim())
+    if (!match) continue
+    maxSeq = Math.max(maxSeq, Number.parseInt(match[1], 10) || 0)
+  }
+  return `${prefix}/${year}/${month}/${String(maxSeq + 1).padStart(4, '0')}`
+}
+
 export default function InvoiceCreatePage() {
   const { t } = useI18n()
   const { me } = useAuth()
@@ -145,9 +168,12 @@ export default function InvoiceCreatePage() {
   const [loadingInvoice, setLoadingInvoice] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [knownInvoiceNumbers, setKnownInvoiceNumbers] = useState<string[]>([])
 
   const [companyId, setCompanyId] = useState('')
   const [issuerCompanyId, setIssuerCompanyId] = useState('')
+  const [invoiceKind, setInvoiceKind] = useState('vat')
+  const [invoiceNumber, setInvoiceNumber] = useState('')
   const [issueDate, setIssueDate] = useState(isoDate(0))
   const [dueDate, setDueDate] = useState(isoDate(14))
   const [paymentTermsDays, setPaymentTermsDays] = useState('14')
@@ -177,6 +203,26 @@ export default function InvoiceCreatePage() {
       })
       .finally(() => {
         if (!cancelled) setLoadingCompanies(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    listInvoices({ limit: 1000 })
+      .then((data) => {
+        if (!cancelled) {
+          setKnownInvoiceNumbers(
+            (Array.isArray(data) ? data : [])
+              .map((entry: any) => String(entry?.invoice_number || '').trim())
+              .filter(Boolean),
+          )
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setKnownInvoiceNumbers([])
       })
     return () => {
       cancelled = true
@@ -288,6 +334,8 @@ export default function InvoiceCreatePage() {
         const invoice = data as Invoice
         setCompanyId((current) => current || invoice.company_id || '')
         setIssuerCompanyId((current) => current || String(invoice.billing_details?.issuer_company_id || ''))
+        setInvoiceKind(String(invoice.billing_details?.invoice_kind || 'vat'))
+        setInvoiceNumber('')
         setCurrency((current) => (current === 'PLN' ? invoice.currency || current : current))
         setBillingEmail((current) => current || String(invoice.billing_details?.email || ''))
         setNotes((current) => current || String(invoice.notes || ''))
@@ -374,6 +422,8 @@ export default function InvoiceCreatePage() {
         }
         setCompanyId(invoice.company_id || '')
         setIssuerCompanyId(String(invoice.billing_details?.issuer_company_id || ''))
+        setInvoiceKind(String(invoice.billing_details?.invoice_kind || 'vat'))
+        setInvoiceNumber(String(invoice.invoice_number || ''))
         setIssueDate(invoice.issue_date || isoDate(0))
         setDueDate(invoice.due_date || isoDate(14))
         setPaymentTermsDays(String(invoice.billing_details?.payment_terms_days || 14))
@@ -515,6 +565,7 @@ export default function InvoiceCreatePage() {
 
       const payload = {
         company_id: companyId,
+        invoice_number: invoiceNumber.trim() || undefined,
         issue_date: issueDate,
         due_date: dueDate,
         currency,
@@ -524,6 +575,7 @@ export default function InvoiceCreatePage() {
           email: billingEmail.trim() || clientBilling.email,
           tax_id: clientBilling.tax_id,
           address: clientBilling.address,
+          invoice_kind: invoiceKind,
           payment_terms_days: Number.parseInt(paymentTermsDays || '0', 10) || clientBilling.payment_terms_days,
           tax_mode: taxMode,
           issuer_company_id: issuerCompany?.id || undefined,
@@ -660,6 +712,29 @@ export default function InvoiceCreatePage() {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.invoices.kind', { defaultValue: 'Invoice type' })}
+              </span>
+              <select className="input" value={invoiceKind} onChange={(event) => setInvoiceKind(event.target.value)}>
+                <option value="vat">{t('app.invoices.kind_vat', { defaultValue: 'VAT invoice' })}</option>
+                <option value="invoice">{t('app.invoices.kind_invoice', { defaultValue: 'Invoice' })}</option>
+                <option value="proforma">{t('app.invoices.kind_proforma', { defaultValue: 'Proforma' })}</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.invoices.number', { defaultValue: 'Number' })}
+              </span>
+              <input
+                className="input"
+                value={invoiceNumber}
+                onChange={(event) => setInvoiceNumber(event.target.value)}
+                placeholder={buildSuggestedInvoiceNumber(invoiceKind, taxMode, issueDate, knownInvoiceNumbers)}
+              />
             </label>
 
             <label className="flex flex-col gap-1 text-sm">
@@ -815,6 +890,14 @@ export default function InvoiceCreatePage() {
             </p>
           </div>
           <dl className="space-y-3 text-sm">
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.kind', { defaultValue: 'Invoice type' })}</dt>
+              <dd className="mt-1 text-slate-900">{invoiceKind || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.number', { defaultValue: 'Number' })}</dt>
+              <dd className="mt-1 text-slate-900">{invoiceNumber || buildSuggestedInvoiceNumber(invoiceKind, taxMode, issueDate, knownInvoiceNumbers) || '-'}</dd>
+            </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.client', { defaultValue: 'Client' })}</dt>
               <dd className="mt-1 text-slate-900">{companies.find((company) => company.id === companyId)?.name || '-'}</dd>

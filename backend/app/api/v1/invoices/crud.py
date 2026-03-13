@@ -1,7 +1,6 @@
 """CRUD operations for invoices."""
 from __future__ import annotations
 
-import secrets
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, List, Optional
@@ -15,12 +14,37 @@ from backend.app.models.invoice import Invoice, InvoiceItem, Payment, Refund
 from backend.app.models.invoice import InvoiceStatus
 
 
-def _generate_invoice_number(tenant_id: str, year: int) -> str:
-    """Generate unique invoice number: INV/{TENANT}/{YEAR}/{SEQ}."""
-    # In production, this should query the database for the last sequence number
-    # For now, use a random suffix
-    seq = secrets.token_hex(4).upper()
-    return f"INV/{tenant_id[:8].upper()}/{year}/{seq}"
+def _invoice_prefix(invoice_kind: str | None, tax_mode: str | None) -> str:
+    kind = str(invoice_kind or "").strip().lower()
+    if kind == "proforma":
+        return "PRO"
+    if kind == "invoice":
+        return "INV"
+    if kind == "vat" or str(tax_mode or "").strip().lower() == "standard_vat":
+        return "FV"
+    return "INV"
+
+
+async def _generate_invoice_number(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    issue_date: date,
+    invoice_kind: str | None,
+    tax_mode: str | None,
+) -> str:
+    """Generate tenant-local sequential invoice number with prefix."""
+    prefix = _invoice_prefix(invoice_kind, tax_mode)
+    year = issue_date.year
+    month = issue_date.month
+    like_pattern = f"{prefix}/{year}/{month:02d}/%"
+    count_stmt = select(func.count()).select_from(Invoice).where(
+        Invoice.tenant_id == tenant_id,
+        Invoice.invoice_number.like(like_pattern),
+    )
+    count_result = await session.execute(count_stmt)
+    seq = int(count_result.scalar_one() or 0) + 1
+    return f"{prefix}/{year}/{month:02d}/{seq:04d}"
 
 
 def _as_dict(value: Any) -> dict:
@@ -106,10 +130,15 @@ async def create_invoice(
     )
     
     # Generate invoice number if not provided
-    invoice_number = payload.get("invoice_number")
+    invoice_number = _normalized_text(payload.get("invoice_number"))
     if not invoice_number:
-        year = issue_date.year if issue_date else now.year
-        invoice_number = _generate_invoice_number(tenant_id_str, year)
+        invoice_number = await _generate_invoice_number(
+            session,
+            tenant_id=tenant_id_str,
+            issue_date=issue_date or now.date(),
+            invoice_kind=_normalized_text(billing_details.get("invoice_kind")),
+            tax_mode=_normalized_text(billing_details.get("tax_mode")),
+        )
     
     # Create invoice
     invoice = Invoice(
@@ -268,6 +297,8 @@ async def update_invoice(
     next_billing_details = _as_dict(invoice.billing_details)
     if "issue_date" in payload:
         invoice.issue_date = date.fromisoformat(payload["issue_date"]) if isinstance(payload["issue_date"], str) else payload["issue_date"]
+    if "invoice_number" in payload:
+        invoice.invoice_number = _normalized_text(payload["invoice_number"]) or invoice.invoice_number
     if "due_date" in payload:
         invoice.due_date = date.fromisoformat(payload["due_date"]) if isinstance(payload["due_date"], str) else payload["due_date"]
     if "currency" in payload:

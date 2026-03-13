@@ -65,6 +65,7 @@ class InvoiceCreate(BaseModel):
 class InvoiceUpdate(BaseModel):
     """Input schema for updating an invoice."""
 
+    invoice_number: Optional[str] = None
     issue_date: Optional[date] = None
     due_date: Optional[date] = None
     currency: Optional[str] = None
