@@ -261,6 +261,7 @@
       },
       "items": {
         "overview": "Przegląd",
+        "my_company": "Moja firma",
         "candidates": "Kandydaci",
         "clients": "Firmy",
         "do_procesowania": "Procesowani",

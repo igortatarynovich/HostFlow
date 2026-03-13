@@ -261,6 +261,7 @@
       },
       "items": {
         "overview": "Overview",
+        "my_company": "My Company",
         "candidates": "Candidates",
         "clients": "Companies",
         "do_procesowania": "Processed",

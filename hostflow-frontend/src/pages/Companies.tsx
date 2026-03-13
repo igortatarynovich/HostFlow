@@ -1,6 +1,6 @@
 // src/pages/Companies.tsx
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Company, CompanyReadiness } from '../api/types'
 import { listAdminUsers } from '../api/users'
@@ -111,6 +111,7 @@ function getCompanyKindFromAny(company: AnyRecord): 'client' | 'counterparty' {
 
 export default function Companies(){
   const { t } = useI18n()
+  const location = useLocation()
   const untitledNameRef = useRef(t('app.companies.detail.defaults.untitled'))
   useEffect(() => {
     untitledNameRef.current = t('app.companies.detail.defaults.untitled')
@@ -118,6 +119,8 @@ export default function Companies(){
   // router
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const isOperatingProfileRoute = location.pathname.startsWith('/app/my-company')
+  const listBasePath = isOperatingProfileRoute ? '/app/my-company' : '/app/clients'
   const handleCreateClientCompany = useCallback(() => {
     navigate('/app/clients/new')
   }, [navigate])
@@ -1451,7 +1454,7 @@ export default function Companies(){
           company_role: 'client',
         })
         if (cancelled) return
-        navigate(`/app/clients/${data.id}`, { replace: true })
+        navigate(`${listBasePath}/${data.id}`, { replace: true })
       } catch (err) {
         console.error('[Companies] failed to create draft', err)
       }
@@ -1536,7 +1539,7 @@ export default function Companies(){
       return (
         <div className="h-full w-full flex flex-col space-y-4">
           <div className="text-xs text-slate-500 mb-1">
-            <Link className="hover:underline" to="/app/clients">{t('app.companies.actions.back_to_list')}</Link>
+            <Link className="hover:underline" to={listBasePath}>{t('app.companies.actions.back_to_list')}</Link>
           </div>
           <div className="card p-4 text-sm text-slate-500">{t('common.loading')}</div>
         </div>
@@ -1732,7 +1735,7 @@ export default function Companies(){
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="text-xs text-white/80">
-                <Link className="hover:underline" to="/app/clients">{t('app.companies.actions.back_to_list')}</Link>
+                <Link className="hover:underline" to={listBasePath}>{t('app.companies.actions.back_to_list')}</Link>
               </div>
               <h1 className="text-3xl font-semibold">
                 {detailForm.base.name || t('app.companies.detail.header.fallback_name')}

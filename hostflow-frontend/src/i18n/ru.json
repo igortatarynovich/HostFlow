@@ -261,6 +261,7 @@
       },
       "items": {
         "overview": "Обзор",
+        "my_company": "Моя компания",
         "candidates": "Кандидаты",
         "clients": "Компании",
         "do_procesowania": "Процессинг",

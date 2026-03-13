@@ -6,6 +6,7 @@ import Dashboard from '../pages/Dashboard'
 import Candidates from '../pages/Candidates'
 import CandidateCard from '../pages/CandidateCard'
 import Companies from '../pages/Companies'
+import MyCompanyPage from '../pages/MyCompanyPage'
 import Vacancies from '../pages/Vacancies'
 import VacancyDetailRoute from '../pages/VacancyDetailRoute'
 import { ServicesPage } from '../pages/ServicesPage'
@@ -87,6 +88,13 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/app/candidates',
     group: 'people',
     permission: 'candidates.view',
+  },
+  {
+    key: 'my-company',
+    labelKey: 'app.nav.items.my_company',
+    path: '/app/my-company',
+    group: 'account',
+    permission: 'companies.view',
   },
   {
     key: 'clients',
@@ -355,6 +363,9 @@ export type AppRouteConfig = {
 
 export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'overview', path: 'overview', Component: Dashboard },
+  { key: 'my-company', path: 'my-company', Component: MyCompanyPage, permission: 'companies.view' },
+  { key: 'my-company-detail', path: 'my-company/:id', Component: Companies, permission: 'companies.view' },
+  { key: 'my-company-tab', path: 'my-company/:id/:tab', Component: Companies, permission: 'companies.view' },
   { key: 'candidates', path: 'candidates', Component: Candidates, permission: 'candidates.view' },
   { key: 'candidate-detail', path: 'candidates/:id', Component: CandidateCard, permission: 'candidates.view' },
   { key: 'candidate-tab', path: 'candidates/:id/:tab', Component: CandidateCard, permission: 'candidates.view' },
