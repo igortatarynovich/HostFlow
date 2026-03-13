@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { cancelInvoice, createPayment, getInvoicePdf, listInvoices, sendInvoice, updateInvoice } from '../api/client'
+import { cancelInvoice, createPayment, createReminder, getInvoicePdf, listInvoices, sendInvoice, updateInvoice } from '../api/client'
 import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -27,6 +27,15 @@ function formatDate(dateStr: string | null | undefined) {
   if (!dateStr) return '-'
   try {
     return new Date(dateStr).toLocaleDateString('pl-PL')
+  } catch {
+    return dateStr
+  }
+}
+
+function formatDateTime(dateStr: string | null | undefined) {
+  if (!dateStr) return '-'
+  try {
+    return new Date(dateStr).toLocaleString('pl-PL')
   } catch {
     return dateStr
   }
@@ -91,6 +100,24 @@ export default function InvoicesPage() {
       ].filter(Boolean) as Array<{ key: string; label: string }>,
     [companyIdFilter, serviceOrderIdFilter, statusFilter, t],
   )
+  const invoiceSnapshot = useMemo(() => {
+    const staleThreshold = Date.now() - 7 * 24 * 60 * 60 * 1000
+    return invoices.reduce(
+      (acc, invoice) => {
+        const recipient = String(invoice.billing_details?.email || '').trim()
+        const outstanding = Number(invoice.total_amount || 0) - Number(invoice.paid_amount || 0)
+        acc.totalOutstanding += Math.max(0, outstanding)
+        if (!recipient) acc.missingRecipient += 1
+        if (invoice.status === 'overdue') acc.overdue += 1
+        if (invoice.status === 'paid') acc.paid += 1
+        if ((invoice.status === 'sent' || invoice.status === 'issued') && new Date(invoice.updated_at).getTime() <= staleThreshold) {
+          acc.needsFollowUp += 1
+        }
+        return acc
+      },
+      { totalOutstanding: 0, missingRecipient: 0, overdue: 0, paid: 0, needsFollowUp: 0 },
+    )
+  }, [invoices])
 
   useEffect(() => {
     if (urlStatusFilter && urlStatusFilter !== statusFilter) {
@@ -214,6 +241,34 @@ export default function InvoicesPage() {
       window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     })
 
+  const handleRemind = async (invoice: Invoice) =>
+    withInvoiceAction(invoice.id, 'remind', async () => {
+      const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      const remindAt = new Date(Date.now() + 60 * 60 * 1000)
+      await createReminder({
+        title: `Invoice follow-up: ${invoice.invoice_number}`,
+        description: invoice.billing_details?.email
+          ? `Follow up with ${invoice.billing_details.email} about invoice ${invoice.invoice_number}.`
+          : `Follow up on invoice ${invoice.invoice_number}.`,
+        type: 'invoice_followup',
+        entity_type: 'invoice',
+        entity_id: invoice.id,
+        due_at: dueAt.toISOString(),
+        remind_at: remindAt.toISOString(),
+        priority: invoice.status === 'overdue' ? 'high' : 'normal',
+        channel: 'internal',
+        payload: {
+          invoice_id: invoice.id,
+          invoice_number: invoice.invoice_number,
+          company_id: invoice.company_id,
+          service_order_id: invoice.service_order_id,
+          recipient_email: invoice.billing_details?.email || null,
+          status: invoice.status,
+        },
+      })
+      setActionMessage(t('app.invoices.remind_success', { defaultValue: 'Follow-up reminder created.' }))
+    })
+
   const isActionBusy = (invoiceId: string, action: string) => activeInvoiceAction === `${invoiceId}:${action}`
 
   return (
@@ -232,6 +287,39 @@ export default function InvoicesPage() {
       </div>
 
       <div className="app-surface space-y-4 p-6">
+        <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-5">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.invoices.snapshot.outstanding', { defaultValue: 'Outstanding' })}
+            </div>
+            <div className="mt-2 text-xl font-semibold text-slate-900">{formatAmount(invoiceSnapshot.totalOutstanding, '0')}</div>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+              {t('app.invoices.snapshot.follow_up', { defaultValue: 'Needs follow-up' })}
+            </div>
+            <div className="mt-2 text-xl font-semibold text-amber-900">{invoiceSnapshot.needsFollowUp}</div>
+          </div>
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-red-700">
+              {t('app.invoices.snapshot.overdue', { defaultValue: 'Overdue' })}
+            </div>
+            <div className="mt-2 text-xl font-semibold text-red-900">{invoiceSnapshot.overdue}</div>
+          </div>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              {t('app.invoices.snapshot.paid', { defaultValue: 'Paid' })}
+            </div>
+            <div className="mt-2 text-xl font-semibold text-emerald-900">{invoiceSnapshot.paid}</div>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.invoices.snapshot.missing_recipient', { defaultValue: 'Missing recipient' })}
+            </div>
+            <div className="mt-2 text-xl font-semibold text-slate-900">{invoiceSnapshot.missingRecipient}</div>
+          </div>
+        </div>
+
         <div className="flex items-center gap-4">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -344,6 +432,9 @@ export default function InvoicesPage() {
                       >
                         {invoice.invoice_number}
                       </a>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {invoice.billing_details?.email || t('app.invoices.no_recipient', { defaultValue: 'No recipient email' })}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-700">{formatDate(invoice.issue_date)}</td>
                     <td className="py-3 px-4 text-sm text-slate-700">{formatDate(invoice.due_date)}</td>
@@ -362,6 +453,9 @@ export default function InvoicesPage() {
                             {t('app.invoices.open_service_order', { defaultValue: 'Open service order' })}
                           </Link>
                         )}
+                      </div>
+                      <div className="mt-2 text-xs text-slate-500">
+                        {t('app.invoices.last_activity', { defaultValue: 'Last activity' })}: {formatDateTime(invoice.payment_date || invoice.updated_at)}
                       </div>
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-700">{formatAmount(invoice.paid_amount)}</td>
@@ -425,6 +519,18 @@ export default function InvoicesPage() {
                             {isActionBusy(invoice.id, 'cancel')
                               ? t('common.loading', { defaultValue: 'Loading...' })
                               : t('app.invoices.cancel', { defaultValue: 'Cancel' })}
+                          </button>
+                        )}
+                        {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            disabled={isActionBusy(invoice.id, 'remind')}
+                            onClick={() => void handleRemind(invoice)}
+                          >
+                            {isActionBusy(invoice.id, 'remind')
+                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              : t('app.invoices.remind', { defaultValue: 'Remind' })}
                           </button>
                         )}
                         <button
