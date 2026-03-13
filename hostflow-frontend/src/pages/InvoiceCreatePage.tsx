@@ -155,6 +155,12 @@ function buildSuggestedInvoiceNumber(invoiceKind: string, taxMode: string, issue
   return `${prefix}/${year}/${month}/${String(maxSeq + 1).padStart(4, '0')}`
 }
 
+function isManagedIssuerCompany(company: Company, userId: string) {
+  const actor = String(userId || '').trim()
+  if (!actor) return false
+  return [company.owner_user_id, company.manager_user_id].some((value) => String(value || '').trim() === actor)
+}
+
 export default function InvoiceCreatePage() {
   const { t } = useI18n()
   const { me } = useAuth()
@@ -192,6 +198,11 @@ export default function InvoiceCreatePage() {
   const [clientCompany, setClientCompany] = useState<Company | null>(null)
   const [sourceInvoice, setSourceInvoice] = useState<Invoice | null>(null)
   const clientContacts = extractCompanyContacts(clientCompany)
+  const selfId = String((me as any)?.sub || '').trim()
+  const issuerCompanies = useMemo(
+    () => companies.filter((company) => isManagedIssuerCompany(company, selfId)),
+    [companies, selfId],
+  )
   const issuerBankAccounts = extractBankAccounts(issuerCompany)
 
   const draftTotals = useMemo(() => {
@@ -434,14 +445,16 @@ export default function InvoiceCreatePage() {
   }, [issuerCompany])
 
   useEffect(() => {
-    if (!issuerCompanyId && companies.length > 0) {
-      const selfId = String((me as any)?.sub || '').trim()
-      const ownedCompany =
-        (selfId ? companies.find((company) => String(company.owner_user_id || '') === selfId) : null) ||
-        companies[0]
-      setIssuerCompanyId(ownedCompany.id)
+    if (!issuerCompanies.length) {
+      setIssuerCompanyId('')
+      return
     }
-  }, [companies, issuerCompanyId, me])
+    setIssuerCompanyId((current) => {
+      if (current && issuerCompanies.some((company) => company.id === current)) return current
+      const ownerMatch = issuerCompanies.find((company) => String(company.owner_user_id || '').trim() === selfId)
+      return ownerMatch?.id || issuerCompanies[0].id
+    })
+  }, [issuerCompanies, selfId])
 
   useEffect(() => {
     if (!invoiceId) return
@@ -572,7 +585,7 @@ export default function InvoiceCreatePage() {
       const clientBilling = extractCompanyBillingSnapshot(clientCompany)
 
       if (!issuerCompany?.id) {
-        setError(t('app.invoices.issuer_required', { defaultValue: 'Issuer company is required.' }))
+        setError(t('app.invoices.issuer_required', { defaultValue: 'Your own issuer company is required.' }))
         setSaving(false)
         return
       }
@@ -776,13 +789,19 @@ export default function InvoiceCreatePage() {
                 onChange={(event) => setIssuerCompanyId(event.target.value)}
                 disabled={loadingCompanies || loadingInvoice || saving}
               >
-                <option value="">{t('app.invoices.select_issuer', { defaultValue: 'Select issuer' })}</option>
-                {companies.map((company) => (
+                <option value="">{t('app.invoices.select_issuer', { defaultValue: 'Select your company' })}</option>
+                {issuerCompanies.map((company) => (
                   <option key={company.id} value={company.id}>
-                    {[company.legal_name || company.name, String(company.owner_user_id || '') === String((me as any)?.sub || '') ? 'owner' : ''].filter(Boolean).join(' · ')}
+                    {[company.legal_name || company.name, String(company.owner_user_id || '').trim() === selfId ? 'owner' : 'manager'].filter(Boolean).join(' · ')}
                   </option>
                 ))}
               </select>
+              <span className="text-xs text-slate-500">
+                {t(
+                  'app.invoices.issuer_help',
+                  { defaultValue: 'Only your own companies can issue invoices. Client companies are not available here.' },
+                )}
+              </span>
             </label>
 
             <label className="flex flex-col gap-1 text-sm">

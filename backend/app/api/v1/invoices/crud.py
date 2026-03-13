@@ -74,6 +74,69 @@ def _build_company_legal_address(company: Company | None) -> str | None:
     return merged or None
 
 
+def _extract_primary_bank_account(company: Company | None) -> dict | None:
+    if not company:
+        return None
+    extra = _as_dict(getattr(company, "extra", {}) or {})
+    billing = _as_dict(extra.get("billing"))
+    bank_accounts = billing.get("bank_accounts")
+    if not isinstance(bank_accounts, list):
+        return None
+    normalized = [entry for entry in bank_accounts if isinstance(entry, dict)]
+    if not normalized:
+        return None
+    return next((entry for entry in normalized if entry.get("is_primary")), normalized[0])
+
+
+def _merge_issuer_defaults(
+    *,
+    billing_details: dict,
+    issuer_company: Company | None,
+) -> dict:
+    merged = dict(billing_details or {})
+    if not issuer_company:
+        return merged
+    merged["issuer_company_id"] = str(getattr(issuer_company, "id", "") or "") or merged.get("issuer_company_id")
+    merged.setdefault("issuer_name", _normalized_text(getattr(issuer_company, "legal_name", None) or getattr(issuer_company, "name", None)))
+    merged.setdefault("issuer_tax_id", _normalized_text(getattr(issuer_company, "tax_id", None)))
+    merged.setdefault("issuer_address", _build_company_legal_address(issuer_company))
+    issuer_bank = _extract_primary_bank_account(issuer_company)
+    if issuer_bank:
+        merged.setdefault(
+            "issuer_bank_account",
+            {
+                "bank_name": _normalized_text(issuer_bank.get("bank_name")),
+                "iban": _normalized_text(issuer_bank.get("iban")),
+                "swift_bic": _normalized_text(issuer_bank.get("swift_bic") or issuer_bank.get("swift")),
+                "country": _normalized_text(issuer_bank.get("country")),
+                "label": _normalized_text(issuer_bank.get("label")),
+            },
+        )
+    return merged
+
+
+async def _resolve_issuer_company_for_actor(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    issuer_company_id: str | None,
+    actor_id: str | None,
+) -> Company | None:
+    issuer_id = _normalized_text(issuer_company_id)
+    if not issuer_id:
+        return None
+    issuer_company = await session.get(Company, issuer_id)
+    if not issuer_company or str(getattr(issuer_company, "tenant_id", "")) != str(tenant_id):
+        raise ValueError("Issuer company not found")
+    actor = _normalized_text(actor_id)
+    if actor and actor not in {
+        _normalized_text(getattr(issuer_company, "owner_user_id", None)),
+        _normalized_text(getattr(issuer_company, "manager_user_id", None)),
+    }:
+        raise ValueError("Issuer company must be one of your managed companies")
+    return issuer_company
+
+
 def _merge_billing_defaults(
     *,
     billing_details: dict | None,
@@ -132,10 +195,20 @@ async def create_invoice(
         client_company = await session.get(Company, payload.get("company_id"))
         if client_company and str(getattr(client_company, "tenant_id", "")) != tenant_id_str:
             client_company = None
+    payload_billing = _as_dict(payload.get("billing_details"))
+    issuer_company = await _resolve_issuer_company_for_actor(
+        session,
+        tenant_id=tenant_id_str,
+        issuer_company_id=_normalized_text(payload_billing.get("issuer_company_id")),
+        actor_id=created_by,
+    )
     billing_details = _validate_invoice_billing_details(
-        _merge_billing_defaults(
-            billing_details=_as_dict(payload.get("billing_details")),
-            client_company=client_company,
+        _merge_issuer_defaults(
+            billing_details=_merge_billing_defaults(
+                billing_details=payload_billing,
+                client_company=client_company,
+            ),
+            issuer_company=issuer_company,
         )
     )
     
@@ -292,6 +365,7 @@ async def update_invoice(
     tenant_id: str,
     invoice_id: str,
     payload: dict,
+    actor_id: Optional[str] = None,
 ) -> Optional[Invoice]:
     """Update invoice."""
     tenant_id_str = str(tenant_id)
@@ -324,10 +398,19 @@ async def update_invoice(
         client_company = await session.get(Company, invoice.company_id)
         if client_company and str(getattr(client_company, "tenant_id", "")) != tenant_id_str:
             client_company = None
+    issuer_company = await _resolve_issuer_company_for_actor(
+        session,
+        tenant_id=tenant_id_str,
+        issuer_company_id=_normalized_text(next_billing_details.get("issuer_company_id")),
+        actor_id=actor_id,
+    )
     invoice.billing_details = _validate_invoice_billing_details(
-        _merge_billing_defaults(
-            billing_details=next_billing_details,
-            client_company=client_company,
+        _merge_issuer_defaults(
+            billing_details=_merge_billing_defaults(
+                billing_details=next_billing_details,
+                client_company=client_company,
+            ),
+            issuer_company=issuer_company,
         )
     )
     

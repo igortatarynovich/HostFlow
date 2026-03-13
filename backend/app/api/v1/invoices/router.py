@@ -364,6 +364,7 @@ async def update_invoice(
             str(tenant_id),
             invoice_id,
             payload.model_dump(exclude_unset=True),
+            actor_id=current_user.sub,
         )
         if not invoice:
             raise HTTPException(
