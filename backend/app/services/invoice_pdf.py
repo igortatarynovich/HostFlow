@@ -38,6 +38,17 @@ def _format_address(value: object) -> str:
     return ", ".join(str(part).strip() for part in parts if str(part or "").strip())
 
 
+def _invoice_kind_label(value: object) -> str:
+    kind = str(value or "").strip().lower()
+    if kind == "vat":
+        return "VAT Invoice"
+    if kind == "proforma":
+        return "Proforma Invoice"
+    if kind == "correction":
+        return "Correction Invoice"
+    return "Invoice"
+
+
 def generate_invoice_pdf(invoice: Invoice) -> bytes:
     """
     Generate PDF bytes for an invoice.
@@ -62,11 +73,13 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
         textColor=colors.HexColor('#1a1a1a'),
         spaceAfter=10,
     )
-    story.append(Paragraph("INVOICE", title_style))
+    billing_details = _safe_dict(invoice.billing_details)
+    story.append(Paragraph(_invoice_kind_label(billing_details.get("invoice_kind")), title_style))
     story.append(Spacer(1, 5 * mm))
     
     # Invoice details
     details_data = [
+        ['Type:', _invoice_kind_label(billing_details.get("invoice_kind"))],
         ['Invoice Number:', invoice.invoice_number],
         ['Issue Date:', invoice.issue_date.strftime('%Y-%m-%d') if invoice.issue_date else ''],
         ['Due Date:', invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else ''],
@@ -74,6 +87,9 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
         ['Tax Mode:', str(_safe_dict(invoice.billing_details).get('tax_mode') or '')],
         ['Status:', invoice.status.upper()],
     ]
+    correction_of = str(billing_details.get("correction_of_invoice_number") or "").strip()
+    if correction_of:
+        details_data.append(['Correction Of:', correction_of])
     
     details_table = Table(details_data, colWidths=[50 * mm, 100 * mm])
     details_table.setStyle(TableStyle([
@@ -90,15 +106,14 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
     story.append(Spacer(1, 10 * mm))
     
     # Party and payment details
-    billing_details = _safe_dict(invoice.billing_details)
     issuer_bank = _safe_dict(billing_details.get("issuer_bank_account"))
     party_rows = []
 
     bill_to_lines = [
         str(billing_details.get("company_name") or "").strip(),
-        str(billing_details.get("email") or "").strip(),
-        str(billing_details.get("tax_id") or "").strip(),
-        str(billing_details.get("address") or "").strip(),
+        f"Email: {str(billing_details.get('email') or '').strip()}",
+        f"NIP: {str(billing_details.get('tax_id') or '').strip()}",
+        f"Legal address: {str(billing_details.get('address') or '').strip()}",
     ]
     party_rows.append(
         [
@@ -109,8 +124,8 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
 
     issuer_lines = [
         str(billing_details.get("issuer_name") or "").strip(),
-        str(billing_details.get("issuer_tax_id") or "").strip(),
-        _format_address(billing_details.get("issuer_address")),
+        f"NIP: {str(billing_details.get('issuer_tax_id') or '').strip()}",
+        f"Legal address: {_format_address(billing_details.get('issuer_address'))}",
     ]
     party_rows.append(
         [
@@ -121,9 +136,9 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
 
     if any(str(value or "").strip() for value in issuer_bank.values()):
         bank_lines = [
-            str(issuer_bank.get("bank_name") or "").strip(),
-            str(issuer_bank.get("iban") or "").strip(),
-            str(issuer_bank.get("swift_bic") or "").strip(),
+            f"Bank: {str(issuer_bank.get('bank_name') or '').strip()}",
+            f"IBAN: {str(issuer_bank.get('iban') or '').strip()}",
+            f"SWIFT/BIC: {str(issuer_bank.get('swift_bic') or '').strip()}",
             str(issuer_bank.get("label") or "").strip(),
         ]
         party_rows.append(

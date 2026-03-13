@@ -41,6 +41,14 @@ function formatDateTime(dateStr: string | null | undefined) {
   }
 }
 
+function invoiceKindLabel(invoice: Invoice, t: ReturnType<typeof useI18n>['t']) {
+  const kind = String(invoice.billing_details?.invoice_kind || '').trim().toLowerCase()
+  if (kind === 'vat') return t('app.invoices.kind.vat', { defaultValue: 'VAT invoice' })
+  if (kind === 'proforma') return t('app.invoices.kind.proforma', { defaultValue: 'Proforma' })
+  if (kind === 'correction') return t('app.invoices.kind.correction', { defaultValue: 'Correction' })
+  return t('app.invoices.kind.invoice', { defaultValue: 'Invoice' })
+}
+
 function statusBadgeClass(status: InvoiceStatus): string {
   const classes: Record<InvoiceStatus, string> = {
     draft: 'bg-slate-100 text-slate-700',
@@ -617,6 +625,17 @@ export default function InvoicesPage() {
                       >
                         {invoice.invoice_number}
                       </a>
+                      <div className="mt-1 flex flex-wrap gap-2 text-xs">
+                        <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
+                          {invoiceKindLabel(invoice, t)}
+                        </span>
+                        {invoice.billing_details?.correction_of_invoice_number && (
+                          <span className="text-slate-500">
+                            {t('app.invoices.correction_of', { defaultValue: 'Correction of' })}:{' '}
+                            {String(invoice.billing_details?.correction_of_invoice_number)}
+                          </span>
+                        )}
+                      </div>
                       <div className="mt-1 text-xs text-slate-500">
                         {invoice.billing_details?.email || t('app.invoices.no_recipient', { defaultValue: 'No recipient email' })}
                       </div>

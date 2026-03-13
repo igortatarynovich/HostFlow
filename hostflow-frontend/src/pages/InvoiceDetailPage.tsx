@@ -53,6 +53,14 @@ function formatAddress(value: Record<string, any> | null | undefined) {
   return [value.country, value.city, value.street, value.zip].filter(Boolean).join(', ') || '-'
 }
 
+function invoiceKindLabel(invoice: Invoice, t: ReturnType<typeof useI18n>['t']) {
+  const kind = String(invoice.billing_details?.invoice_kind || '').trim().toLowerCase()
+  if (kind === 'vat') return t('app.invoices.kind.vat', { defaultValue: 'VAT invoice' })
+  if (kind === 'proforma') return t('app.invoices.kind.proforma', { defaultValue: 'Proforma' })
+  if (kind === 'correction') return t('app.invoices.kind.correction', { defaultValue: 'Correction' })
+  return t('app.invoices.kind.invoice', { defaultValue: 'Invoice' })
+}
+
 function statusBadgeClass(status: InvoiceStatus): string {
   const classes: Record<InvoiceStatus, string> = {
     draft: 'bg-slate-100 text-slate-700',
@@ -359,6 +367,9 @@ export default function InvoiceDetailPage() {
           </button>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-slate-900">{invoice.invoice_number}</h1>
+            <span className="inline-flex rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+              {invoiceKindLabel(invoice, t)}
+            </span>
             <span className={`inline-flex rounded-md px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(invoice.status)}`}>
               {t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}
             </span>
@@ -502,6 +513,15 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
+      {invoice.status !== 'draft' && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {t(
+            'app.invoices.immutable_notice',
+            { defaultValue: 'Issued and sent invoices stay unchanged for tax reporting. Create a correction to adjust them.' },
+          )}
+        </div>
+      )}
+
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.9fr)]">
         <section className="app-surface space-y-4 p-6">
           <div className="flex items-center justify-between gap-3">
@@ -567,6 +587,10 @@ export default function InvoiceDetailPage() {
               <p className="text-sm text-slate-500">{t('app.invoices.context_subtitle', { defaultValue: 'Related client, service order and billing data.' })}</p>
             </div>
             <dl className="space-y-3 text-sm">
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.type', { defaultValue: 'Type' })}</dt>
+                <dd className="mt-1 text-slate-900">{invoiceKindLabel(invoice, t)}</dd>
+              </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.issue_date', { defaultValue: 'Issue Date' })}</dt>
                 <dd className="mt-1 text-slate-900">{formatDate(invoice.issue_date)}</dd>
