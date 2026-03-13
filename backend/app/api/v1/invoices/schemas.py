@@ -99,6 +99,8 @@ class InvoiceOut(BaseModel):
     latest_delivery_status: Optional[str] = None
     latest_delivery_reason: Optional[str] = None
     latest_delivery_at: Optional[datetime] = None
+    latest_delivery_recipient: Optional[str] = None
+    latest_delivery_subject: Optional[str] = None
     created_by: Optional[str] = None
     notes: Optional[str] = None
     created_at: datetime

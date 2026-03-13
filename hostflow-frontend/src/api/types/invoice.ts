@@ -34,6 +34,8 @@ export interface Invoice {
   latest_delivery_status?: string | null;
   latest_delivery_reason?: string | null;
   latest_delivery_at?: string | null;
+  latest_delivery_recipient?: string | null;
+  latest_delivery_subject?: string | null;
   created_by?: string | null;
   notes?: string | null;
   created_at: string;

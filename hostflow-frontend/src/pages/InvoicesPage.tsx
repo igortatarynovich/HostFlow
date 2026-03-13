@@ -655,6 +655,12 @@ export default function InvoicesPage() {
                           >
                             {invoice.latest_delivery_status}
                           </span>
+                          {invoice.latest_delivery_recipient && (
+                            <div className="text-xs text-slate-700">{invoice.latest_delivery_recipient}</div>
+                          )}
+                          {invoice.latest_delivery_subject && (
+                            <div className="line-clamp-2 text-xs text-slate-500">{invoice.latest_delivery_subject}</div>
+                          )}
                           <div className="text-xs text-slate-500">
                             {invoice.latest_delivery_reason || formatDateTime(invoice.latest_delivery_at)}
                           </div>

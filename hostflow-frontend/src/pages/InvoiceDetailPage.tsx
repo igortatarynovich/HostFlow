@@ -158,10 +158,22 @@ export default function InvoiceDetailPage() {
             : activity.action === 'invoice.reminder_completed'
               ? `${String(activity.payload?.title || '-')} • ${formatDateTime(activity.payload?.completed_at || null)}`
           : activity.action === 'invoice.sent'
-            ? `${String(activity.payload?.recipient_email || invoice.billing_details?.email || '-')} • ${String(activity.payload?.delivery_status || 'sent')}`
+            ? [
+                String(activity.payload?.recipient_email || invoice.billing_details?.email || '-'),
+                String(activity.payload?.subject || '').trim(),
+                String(activity.payload?.delivery_status || 'sent'),
+              ]
+                .filter(Boolean)
+                .join(' • ')
             : activity.action === 'invoice.send_failed'
-              ? `${String(activity.payload?.recipient_email || invoice.billing_details?.email || '-')} • ${String(activity.payload?.reason || 'failed')}`
-            : nextStatus
+              ? [
+                  String(activity.payload?.recipient_email || invoice.billing_details?.email || '-'),
+                  String(activity.payload?.subject || '').trim(),
+                  String(activity.payload?.reason || 'failed'),
+                ]
+                  .filter(Boolean)
+                  .join(' • ')
+              : nextStatus
               ? `${String(activity.payload?.previous_status || '-')} → ${String(nextStatus)}`
               : String(activity.payload?.source || activity.payload?.invoice_number || '').trim() || null
       return {

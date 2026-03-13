@@ -94,6 +94,8 @@ async def _build_delivery_lookup(
             "latest_delivery_status": payload.get("delivery_status") or ("failed" if row.action == "invoice.send_failed" else "sent"),
             "latest_delivery_reason": payload.get("reason"),
             "latest_delivery_at": row.created_at,
+            "latest_delivery_recipient": payload.get("recipient_email"),
+            "latest_delivery_subject": payload.get("subject"),
         }
     return lookup
 
