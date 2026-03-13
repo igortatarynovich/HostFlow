@@ -1408,6 +1408,15 @@ export default function Companies(){
     setCompanyVacanciesFromApi([])
     try{
       const { data } = await api.get(`/companies/${companyId}`)
+      const role = getCompanyRoleFromAny(asRecord(data))
+      if (isOperatingProfileRoute && role !== 'operating') {
+        navigate(`/app/clients/${companyId}`, { replace: true })
+        return
+      }
+      if (!isOperatingProfileRoute && role === 'operating') {
+        navigate(`/app/my-company/${companyId}`, { replace: true })
+        return
+      }
       setCurrent(data)
       if (ENABLE_READINESS) {
         void loadReadiness(companyId)
@@ -1424,7 +1433,7 @@ export default function Companies(){
     } else if (!id) {
       void loadList()
     }
-  }, [id])
+  }, [id, isOperatingProfileRoute, navigate])
 
   useEffect(() => {
     let cancelled = false
