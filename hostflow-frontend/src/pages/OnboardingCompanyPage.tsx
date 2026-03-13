@@ -8,7 +8,7 @@ import {
   readSignupSuccessContextFromSessionStorage,
   SIGNUP_SUCCESS_CONTEXT_KEY,
 } from '../constants/signupContext'
-import { ACTIVATION_PATHS } from '../app/activationRoutes'
+import { ACTIVATION_PATHS, getBusinessHomePath } from '../app/activationRoutes'
 
 type CompanyType = 'agency' | 'employer' | 'services'
 
@@ -90,7 +90,7 @@ export default function OnboardingCompanyPage() {
     setLoading(true)
     try {
       await createCompany({ name: trimmed, company_type: companyType })
-      navigate(ACTIVATION_PATHS.overview, { replace: true })
+      navigate(getBusinessHomePath(companyType), { replace: true })
     } catch (err: any) {
       const msg = err?.response?.data?.detail ?? err?.message ?? t('app.onboarding.company.errors.generic', { defaultValue: 'Не удалось создать компанию' })
       setError(typeof msg === 'string' ? msg : JSON.stringify(msg))

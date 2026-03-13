@@ -40,7 +40,7 @@ import { DEFAULT_VISIBLE_WIDGETS, DEFAULT_VISIBLE_FILTERS, type DashboardFilterI
 import { formatDateInput, calcRange, calcPrevPeriod, formatDelta, normalizeKey, normalizeTotal } from '../modules/dashboard/utils'
 import { getRegionDisplayName } from '../utils/catalogLocale'
 import { toCSV } from '../modules/candidates/candidateUtils'
-import { ACTIVATION_PATHS } from '../app/activationRoutes'
+import { ACTIVATION_PATHS, getRetentionNextPath, getRetentionStepKey } from '../app/activationRoutes'
 
 // StageLabelConfig, normalizeKey are now imported from modules/dashboard
 
@@ -554,37 +554,9 @@ export default function Dashboard() {
     setRetentionDismissed(true)
   }, [retentionDismissKey])
 
-  const typeSpecificStepDone = useMemo(() => {
-    if (!retentionStatus) return false
-    if (retentionStatus.business_type === 'employer') {
-      return Boolean(retentionStatus.steps.first_vacancy_created)
-    }
-    if (retentionStatus.business_type === 'services') {
-      return Boolean(retentionStatus.steps.first_client_created)
-    }
-    return Boolean(retentionStatus.steps.first_client_created)
-  }, [retentionStatus])
+  const retentionNextHref = useMemo(() => getRetentionNextPath(retentionStatus), [retentionStatus])
 
-  const retentionNextHref = useMemo(() => {
-    if (!retentionStatus) return ACTIVATION_PATHS.overview
-    if (!retentionStatus.steps.company_created) return ACTIVATION_PATHS.onboardingCompany
-    if (!typeSpecificStepDone) {
-      return retentionStatus.business_type === 'employer'
-        ? ACTIVATION_PATHS.vacancies
-        : retentionStatus.business_type === 'services'
-          ? ACTIVATION_PATHS.clients
-          : ACTIVATION_PATHS.clients
-    }
-    if (!retentionStatus.steps.next_action_created) return ACTIVATION_PATHS.reminders
-    return ACTIVATION_PATHS.billing
-  }, [retentionStatus, typeSpecificStepDone])
-
-  const retentionStepKey = useMemo(() => {
-    if (!retentionStatus) return 'type_step'
-    if (retentionStatus.business_type === 'employer') return 'vacancy'
-    if (retentionStatus.business_type === 'services') return 'client'
-    return 'client'
-  }, [retentionStatus])
+  const retentionStepKey = useMemo(() => getRetentionStepKey(retentionStatus), [retentionStatus])
 
   const retentionNudge = useMemo(() => {
     if (!isTrialTenant || retentionDay == null || retentionDismissed) return null

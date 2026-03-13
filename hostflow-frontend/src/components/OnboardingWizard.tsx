@@ -4,7 +4,7 @@ import { IconCheck, IconCircle, IconRocket } from '@tabler/icons-react'
 import { useI18n } from '../i18n'
 import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
-import { ACTIVATION_PATHS } from '../app/activationRoutes'
+import { ACTIVATION_PATHS, getBusinessHomePath, getBusinessNextActionPath } from '../app/activationRoutes'
 
 type Props = {
   tenantId: string
@@ -33,6 +33,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
   const steps = useMemo(
     () => {
       const businessType = status?.business_type ?? 'agency'
+      const companyHref = getBusinessHomePath(businessType)
       const typeStep =
         businessType === 'employer'
           ? {
@@ -45,7 +46,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
             ? {
                 id: 'service_order',
                 done: Boolean(status?.steps?.first_service_order_created),
-                href: '/app/services',
+                href: ACTIVATION_PATHS.services,
                 label: t('app.onboarding.first_value.step_service_order', { defaultValue: 'Create first service order' }),
               }
             : {
@@ -58,14 +59,14 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
         {
           id: 'company',
           done: Boolean(status?.steps?.company_created),
-          href: ACTIVATION_PATHS.clients,
+          href: companyHref,
           label: t('app.onboarding.first_value.step_company', { defaultValue: 'Company created' }),
         },
         typeStep,
         {
           id: 'next_action',
           done: Boolean(status?.steps?.next_action_created),
-          href: ACTIVATION_PATHS.reminders,
+          href: getBusinessNextActionPath(businessType),
           label: t('app.onboarding.first_value.step_next_action', { defaultValue: 'Create next action (task/reminder)' }),
         },
       ]

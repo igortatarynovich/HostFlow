@@ -5,7 +5,7 @@ import { useI18n } from '../i18n'
 import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
 import { usePermissions, type Permission } from '../hooks/usePermissions'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
-import { ACTIVATION_PATHS } from '../app/activationRoutes'
+import { ACTIVATION_PATHS, getBusinessHomePath, getBusinessNextActionPath } from '../app/activationRoutes'
 
 type OnboardingStepCard = {
   key: string
@@ -42,6 +42,7 @@ export default function OnboardingGettingStartedPage() {
   const steps = useMemo(
     () => {
       const businessType = status?.business_type ?? 'agency'
+      const companyHref = getBusinessHomePath(businessType)
       const typeStep: OnboardingStepCard =
         businessType === 'employer'
           ? {
@@ -54,18 +55,16 @@ export default function OnboardingGettingStartedPage() {
             }
           : businessType === 'services'
             ? {
-                key: 'first_client',
-                done: Boolean(status?.steps?.first_client_created),
-                title: t('app.onboarding.getting_started.step_services.title_dynamic', {
-                  defaultValue: 'Create first {entity}',
-                  values: { entity: entitySingular.toLowerCase() },
+                key: 'service_order',
+                done: Boolean(status?.steps?.first_service_order_created),
+                title: t('app.onboarding.getting_started.step_services.title', {
+                  defaultValue: 'Create first service order',
                 }),
-                desc: t('app.onboarding.getting_started.step_services.desc_dynamic', {
-                  defaultValue: 'Add your first {entity} to start service operations.',
-                  values: { entity: entitySingular.toLowerCase() },
+                desc: t('app.onboarding.getting_started.step_services.desc', {
+                  defaultValue: 'Create your first paid service workflow and move it toward invoicing.',
                 }),
-                href: ACTIVATION_PATHS.clients,
-                permission: 'companies.view',
+                href: ACTIVATION_PATHS.services,
+                permission: 'services.view',
               }
             : {
                 key: 'first_client',
@@ -87,8 +86,8 @@ export default function OnboardingGettingStartedPage() {
           done: Boolean(status?.steps?.company_created),
           title: t('app.onboarding.getting_started.step0.title', { defaultValue: 'Company created' }),
           desc: t('app.onboarding.getting_started.step0.desc', { defaultValue: 'Workspace company setup is complete.' }),
-          href: ACTIVATION_PATHS.clients,
-          permission: 'companies.view',
+          href: companyHref,
+          permission: businessType === 'employer' ? 'vacancies.view' : 'companies.view',
         },
         typeStep,
         {
@@ -96,8 +95,13 @@ export default function OnboardingGettingStartedPage() {
           done: Boolean(status?.steps?.next_action_created),
           title: t('app.onboarding.getting_started.step3.title', { defaultValue: 'Set next action' }),
           desc: t('app.onboarding.getting_started.step3.desc', { defaultValue: 'Add reminder/task so no lead is lost.' }),
-          href: ACTIVATION_PATHS.reminders,
-          permission: 'notifications.view',
+          href: getBusinessNextActionPath(businessType),
+          permission:
+            businessType === 'services'
+              ? 'services.view'
+              : businessType === 'employer'
+                ? 'vacancies.view'
+                : 'companies.view',
         },
       ]
       return nextSteps.map((step) => {

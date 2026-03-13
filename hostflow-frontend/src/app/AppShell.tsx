@@ -15,7 +15,7 @@ import { TrialStatusBanner } from '../components/TrialStatusBanner'
 import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
 import { useLicenseStatus } from '../hooks/useLicenseStatus'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
-import { ACTIVATION_PATHS } from './activationRoutes'
+import { ACTIVATION_PATHS, getActivationSetupTarget } from './activationRoutes'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -119,11 +119,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const canOpenBilling = role === 'administrator' || role === 'superadmin' || role === 'owner' || role === 'admin'
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
   const guidedTrialWorkspace = Boolean(!isSuperAdmin && role === 'administrator' && isTrialTenant)
-  const setupTarget = onboardingStatus?.onboarding_required
-    ? ACTIVATION_PATHS.onboardingCompany
-    : onboardingStatus?.activation_required
-      ? ACTIVATION_PATHS.onboardingGettingStarted
-      : ACTIVATION_PATHS.overview
+  const setupTarget = getActivationSetupTarget(onboardingStatus)
   const shellNavItems = useMemo(() => {
     if (!guidedTrialWorkspace) return navItems
     return navItems.filter((item) => {
