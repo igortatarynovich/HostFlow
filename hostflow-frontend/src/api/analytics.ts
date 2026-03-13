@@ -64,6 +64,8 @@ export type ServicesAnalyticsOverview = {
   top_items: Array<{ label: string; total: number; pending: number; revenue: number; profit: number }>
   top_clients: Array<{ label: string; revenue: number; profit: number; orders: number }>
   hot_orders: Array<{ order_id: string; label: string; reason: string; owner_kind: string; status: string; updated_at?: string | null }>
+  trends: Array<{ bucket: string; orders: number; delivered: number; revenue: number; profit: number }>
+  slices: Array<{ label: string; orders: number; revenue: number; profit: number }>
 }
 
 export type TrialRetentionEventPayload = {
@@ -137,8 +139,14 @@ export async function getAnalyticsProfileSummary(): Promise<AnalyticsProfileSumm
   return data
 }
 
-export async function getServicesAnalyticsOverview(): Promise<ServicesAnalyticsOverview> {
-  const { data } = await api.get<ServicesAnalyticsOverview>('/analytics/services-overview')
+export async function getServicesAnalyticsOverview(params?: {
+  days?: number
+  trend_bucket?: 'week' | 'month'
+  slice_by?: 'client' | 'item' | 'status' | 'manager'
+}): Promise<ServicesAnalyticsOverview> {
+  const { data } = await api.get<ServicesAnalyticsOverview>('/analytics/services-overview', {
+    params,
+  })
   return data
 }
 

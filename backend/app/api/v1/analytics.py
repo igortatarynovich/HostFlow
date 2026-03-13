@@ -451,6 +451,9 @@ async def profile_summary(
 
 @router.get("/analytics/services-overview", response_model=ServicesAnalyticsOverviewOut)
 async def services_overview(
+    days: int = Query(90, ge=7, le=365),
+    trend_bucket: str = Query("month", pattern="^(week|month)$"),
+    slice_by: str = Query("client", pattern="^(client|item|status|manager)$"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     db, tenant_id = db_tenant
@@ -470,6 +473,7 @@ async def services_overview(
 
     now = datetime.utcnow()
     cutoff = now - timedelta(days=30)
+    trends_cutoff = now - timedelta(days=days)
 
     revenue = 0.0
     estimated_cost = 0.0
@@ -482,6 +486,8 @@ async def services_overview(
     status_counter: TCounter[str] = Counter()
     top_items_map: dict[str, dict[str, float | int | str]] = {}
     top_clients_map: dict[str, dict[str, float | int | str]] = {}
+    trend_map: dict[str, dict[str, float | int | str]] = {}
+    slice_map: dict[str, dict[str, float | int | str]] = {}
     hot_orders: list[ServicesAnalyticsHotOrderOut] = []
     last30_total = 0
     last30_delivered = 0
@@ -495,6 +501,17 @@ async def services_overview(
         if order.vacancy_id:
             return (f"Vacancy {str(order.vacancy_id)[:8]}", "vacancy")
         return ("Unknown", "unknown")
+
+    def manager_label(order: ServiceOrder) -> str:
+        assigned = str(getattr(order, "assigned_to", "") or "").strip()
+        return f"Manager {assigned[:8]}" if assigned else "Unassigned"
+
+    def trend_key(order: ServiceOrder) -> str:
+        dt = order.created_at or now
+        if trend_bucket == "week":
+            iso_year, iso_week, _ = dt.isocalendar()
+            return f"{iso_year}-W{iso_week:02d}"
+        return dt.strftime("%Y-%m")
 
     for order in rows:
         status_value = str(order.status)
@@ -513,6 +530,15 @@ async def services_overview(
                 last30_cancelled += 1
 
         client_label, owner_kind = owner_label_and_kind(order)
+        slice_label = (
+            client_label
+            if slice_by == "client"
+            else manager_label(order)
+            if slice_by == "manager"
+            else status_value
+            if slice_by == "status"
+            else None
+        )
         client_entry = top_clients_map.get(client_label) or {
             "label": client_label,
             "revenue": 0.0,
@@ -525,6 +551,7 @@ async def services_overview(
         has_schedule_issue = False
         has_docs_issue = False
         first_item_label = "Unknown"
+        order_profit = 0.0
         for item in order.items:
             item_revenue = _as_float(item.amount)
             item_estimated_cost = _as_float(getattr(item, "estimated_cost", 0))
@@ -540,6 +567,7 @@ async def services_overview(
                 missing_items += 1
             item_cost = item_actual_cost if raw_actual_cost is not None else item_estimated_cost
             item_profit = item_revenue - item_cost
+            order_profit += item_profit
             client_entry["profit"] = float(client_entry["profit"]) + item_profit
 
             item_label = (
@@ -563,12 +591,42 @@ async def services_overview(
             item_entry["profit"] = float(item_entry["profit"]) + item_profit
             top_items_map[item_label] = item_entry
 
+            if slice_by == "item":
+                slice_label = item_label
+
             has_schedule_issue = has_schedule_issue or len(getattr(item, "schedules", []) or []) == 0
             has_docs_issue = has_docs_issue or (
                 bool(getattr(item, "required_documents", None)) and len(getattr(item, "attachments", []) or []) == 0
             )
 
         top_clients_map[client_label] = client_entry
+
+        if order.created_at and order.created_at >= trends_cutoff:
+            trend_entry = trend_map.get(trend_key(order)) or {
+                "bucket": trend_key(order),
+                "orders": 0,
+                "revenue": 0.0,
+                "profit": 0.0,
+                "delivered": 0,
+            }
+            trend_entry["orders"] = int(trend_entry["orders"]) + 1
+            trend_entry["revenue"] = float(trend_entry["revenue"]) + order_revenue
+            trend_entry["profit"] = float(trend_entry["profit"]) + order_profit
+            if status_value == "delivered":
+                trend_entry["delivered"] = int(trend_entry["delivered"]) + 1
+            trend_map[trend_key(order)] = trend_entry
+
+        if slice_label:
+            slice_entry = slice_map.get(slice_label) or {
+                "label": slice_label,
+                "orders": 0,
+                "revenue": 0.0,
+                "profit": 0.0,
+            }
+            slice_entry["orders"] = int(slice_entry["orders"]) + 1
+            slice_entry["revenue"] = float(slice_entry["revenue"]) + order_revenue
+            slice_entry["profit"] = float(slice_entry["profit"]) + order_profit
+            slice_map[slice_label] = slice_entry
 
         if status_value not in {"delivered", "refunded"} and order.items:
             hot_orders.append(
@@ -637,6 +695,25 @@ async def services_overview(
             for entry in sorted(top_clients_map.values(), key=lambda item: (float(item["profit"]), float(item["revenue"])), reverse=True)[:5]
         ],
         hot_orders=sorted(hot_orders, key=lambda item: item.updated_at or "", reverse=True)[:5],
+        trends=[
+            {
+                "bucket": str(entry["bucket"]),
+                "orders": int(entry["orders"]),
+                "delivered": int(entry["delivered"]),
+                "revenue": round(float(entry["revenue"]), 2),
+                "profit": round(float(entry["profit"]), 2),
+            }
+            for entry in sorted(trend_map.values(), key=lambda item: str(item["bucket"]))
+        ],
+        slices=[
+            {
+                "label": str(entry["label"]),
+                "orders": int(entry["orders"]),
+                "revenue": round(float(entry["revenue"]), 2),
+                "profit": round(float(entry["profit"]), 2),
+            }
+            for entry in sorted(slice_map.values(), key=lambda item: (float(item["profit"]), float(item["revenue"])), reverse=True)[:10]
+        ],
     )
 
 
@@ -1556,6 +1633,8 @@ class ServicesAnalyticsOverviewOut(BaseModel):
     top_items: list[ServicesAnalyticsTopItemOut]
     top_clients: list[ServicesAnalyticsTopClientOut]
     hot_orders: list[ServicesAnalyticsHotOrderOut]
+    trends: list[dict[str, float | int | str]]
+    slices: list[dict[str, float | int | str]]
 
 
 @router.post("/analytics/events")

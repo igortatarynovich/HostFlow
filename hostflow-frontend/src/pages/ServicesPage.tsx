@@ -76,6 +76,9 @@ export function ServicesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [profileSummary, setProfileSummary] = useState<Awaited<ReturnType<typeof getAnalyticsProfileSummary>> | null>(null)
   const [analyticsOverview, setAnalyticsOverview] = useState<ServicesAnalyticsOverview | null>(null)
+  const [analyticsDays, setAnalyticsDays] = useState<30 | 90 | 180>(90)
+  const [analyticsTrendBucket, setAnalyticsTrendBucket] = useState<'week' | 'month'>('month')
+  const [analyticsSliceBy, setAnalyticsSliceBy] = useState<'client' | 'item' | 'status' | 'manager'>('client')
 
   const catalogHook = useAdditionalServiceCatalog(includeInactive)
 
@@ -111,7 +114,7 @@ export function ServicesPage() {
 
   useEffect(() => {
     let active = true
-    getServicesAnalyticsOverview()
+    getServicesAnalyticsOverview({ days: analyticsDays, trend_bucket: analyticsTrendBucket, slice_by: analyticsSliceBy })
       .then((data) => {
         if (active) setAnalyticsOverview(data)
       })
@@ -121,7 +124,7 @@ export function ServicesPage() {
     return () => {
       active = false
     }
-  }, [ordersHook.orders, catalogHook.services])
+  }, [ordersHook.orders, catalogHook.services, analyticsDays, analyticsTrendBucket, analyticsSliceBy])
 
   const handleCreateService = async (event: FormEvent) => {
     event.preventDefault()
@@ -450,6 +453,12 @@ export function ServicesPage() {
         <ServicesAnalyticsTab
           analytics={analyticsOverview}
           profileSummary={profileSummary}
+          analyticsDays={analyticsDays}
+          analyticsTrendBucket={analyticsTrendBucket}
+          analyticsSliceBy={analyticsSliceBy}
+          onAnalyticsDaysChange={setAnalyticsDays}
+          onAnalyticsTrendBucketChange={setAnalyticsTrendBucket}
+          onAnalyticsSliceByChange={setAnalyticsSliceBy}
           formatStatus={(status) => t(`app.services.status.order.${status}`)}
         />
       )}
@@ -1405,12 +1414,28 @@ function OrdersTab({
 type ServicesAnalyticsTabProps = {
   analytics: ServicesAnalyticsOverview | null
   profileSummary: Awaited<ReturnType<typeof getAnalyticsProfileSummary>> | null
+  analyticsDays: 30 | 90 | 180
+  analyticsTrendBucket: 'week' | 'month'
+  analyticsSliceBy: 'client' | 'item' | 'status' | 'manager'
+  onAnalyticsDaysChange: (value: 30 | 90 | 180) => void
+  onAnalyticsTrendBucketChange: (value: 'week' | 'month') => void
+  onAnalyticsSliceByChange: (value: 'client' | 'item' | 'status' | 'manager') => void
   formatStatus: (status: string) => string
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-function ServicesAnalyticsTab({ analytics, profileSummary, formatStatus }: ServicesAnalyticsTabProps) {
+function ServicesAnalyticsTab({
+  analytics,
+  profileSummary,
+  analyticsDays,
+  analyticsTrendBucket,
+  analyticsSliceBy,
+  onAnalyticsDaysChange,
+  onAnalyticsTrendBucketChange,
+  onAnalyticsSliceByChange,
+  formatStatus,
+}: ServicesAnalyticsTabProps) {
   const { t } = useI18n()
 
   const servicesBusinessCards = useMemo(() => {
@@ -1444,6 +1469,32 @@ function ServicesAnalyticsTab({ analytics, profileSummary, formatStatus }: Servi
 
   return (
     <div className="space-y-4">
+      <div className="card p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="text-sm font-semibold">{t('app.services.analytics.controls.title', { defaultValue: 'Analytics view' })}</div>
+            <div className="text-xs text-slate-500">{t('app.services.analytics.controls.subtitle', { defaultValue: 'Change period, trend granularity and slice dimension.' })}</div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <select className="input text-sm" value={analyticsDays} onChange={(e) => onAnalyticsDaysChange(Number(e.target.value) as 30 | 90 | 180)}>
+              <option value={30}>{t('app.services.analytics.controls.days_30', { defaultValue: 'Last 30 days' })}</option>
+              <option value={90}>{t('app.services.analytics.controls.days_90', { defaultValue: 'Last 90 days' })}</option>
+              <option value={180}>{t('app.services.analytics.controls.days_180', { defaultValue: 'Last 180 days' })}</option>
+            </select>
+            <select className="input text-sm" value={analyticsTrendBucket} onChange={(e) => onAnalyticsTrendBucketChange(e.target.value as 'week' | 'month')}>
+              <option value="week">{t('app.services.analytics.controls.trend_week', { defaultValue: 'Trend by week' })}</option>
+              <option value="month">{t('app.services.analytics.controls.trend_month', { defaultValue: 'Trend by month' })}</option>
+            </select>
+            <select className="input text-sm" value={analyticsSliceBy} onChange={(e) => onAnalyticsSliceByChange(e.target.value as 'client' | 'item' | 'status' | 'manager')}>
+              <option value="client">{t('app.services.analytics.controls.slice_client', { defaultValue: 'Slice by client' })}</option>
+              <option value="item">{t('app.services.analytics.controls.slice_item', { defaultValue: 'Slice by item' })}</option>
+              <option value="status">{t('app.services.analytics.controls.slice_status', { defaultValue: 'Slice by status' })}</option>
+              <option value="manager">{t('app.services.analytics.controls.slice_manager', { defaultValue: 'Slice by manager' })}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {servicesBusinessCards.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2">
           {servicesBusinessCards.map((card) => (
@@ -1571,6 +1622,72 @@ function ServicesAnalyticsTab({ analytics, profileSummary, formatStatus }: Servi
             </ul>
           ) : (
             <div className="text-sm text-slate-500">{t('app.services.analytics.top_services.empty')}</div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-semibold">{t('app.services.analytics.trends.title', { defaultValue: 'Trends' })}</div>
+            <div className="text-xs text-slate-500">{t('app.services.analytics.trends.subtitle', { defaultValue: 'Revenue and profit by period bucket' })}</div>
+          </div>
+          {(analytics?.trends.length ?? 0) > 0 ? (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t('app.services.analytics.trends.bucket', { defaultValue: 'Bucket' })}</th>
+                  <th className="text-right">{t('app.services.analytics.trends.orders', { defaultValue: 'Orders' })}</th>
+                  <th className="text-right">{t('app.services.analytics.trends.delivered', { defaultValue: 'Delivered' })}</th>
+                  <th className="text-right">{t('app.services.analytics.trends.revenue', { defaultValue: 'Revenue' })}</th>
+                  <th className="text-right">{t('app.services.analytics.trends.profit', { defaultValue: 'Profit' })}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics?.trends.map((row) => (
+                  <tr key={row.bucket}>
+                    <td>{row.bucket}</td>
+                    <td className="text-right">{row.orders}</td>
+                    <td className="text-right">{row.delivered}</td>
+                    <td className="text-right">{formatAmount(row.revenue)}</td>
+                    <td className="text-right">{formatAmount(row.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="text-sm text-slate-500">{t('app.services.analytics.trends.empty', { defaultValue: 'No trend data yet' })}</div>
+          )}
+        </div>
+
+        <div className="card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="text-sm font-semibold">{t('app.services.analytics.slices.title', { defaultValue: 'Slice view' })}</div>
+            <div className="text-xs text-slate-500">{t('app.services.analytics.slices.subtitle', { defaultValue: 'Pivot-like ranking by selected dimension' })}</div>
+          </div>
+          {(analytics?.slices.length ?? 0) > 0 ? (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>{t('app.services.analytics.slices.dimension', { defaultValue: 'Dimension' })}</th>
+                  <th className="text-right">{t('app.services.analytics.slices.orders', { defaultValue: 'Orders' })}</th>
+                  <th className="text-right">{t('app.services.analytics.slices.revenue', { defaultValue: 'Revenue' })}</th>
+                  <th className="text-right">{t('app.services.analytics.slices.profit', { defaultValue: 'Profit' })}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics?.slices.map((row) => (
+                  <tr key={row.label}>
+                    <td>{row.label}</td>
+                    <td className="text-right">{row.orders}</td>
+                    <td className="text-right">{formatAmount(row.revenue)}</td>
+                    <td className="text-right">{formatAmount(row.profit)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="text-sm text-slate-500">{t('app.services.analytics.slices.empty', { defaultValue: 'No slice data yet' })}</div>
           )}
         </div>
       </div>
