@@ -10,6 +10,7 @@ import Vacancies from '../pages/Vacancies'
 import VacancyDetailRoute from '../pages/VacancyDetailRoute'
 import { ServicesPage } from '../pages/ServicesPage'
 import InvoicesPage from '../pages/InvoicesPage'
+import InvoiceDetailPage from '../pages/InvoiceDetailPage'
 import LeadsPage from '../pages/LeadsPage'
 import ProfilePage from '../pages/ProfilePage'
 import RemindersPage from '../pages/RemindersPage'
@@ -371,6 +372,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'documents', path: 'documents', Component: DocumentsRegistryPage, permission: 'documents.manage' },
   { key: 'services', path: 'services', Component: ServicesPage, permission: 'services.view' },
   { key: 'invoices', path: 'invoices', Component: InvoicesPage, permission: 'admin.users' }, // TODO: Add proper permission
+  { key: 'invoice-detail', path: 'invoices/:id', Component: InvoiceDetailPage, permission: 'admin.users' },
   { key: 'communications-setup', path: 'setup/communications', Component: withCommAnyFeature(CommunicationsSetupPage, ['messages', 'email']), permission: 'notifications.view' },
   { key: 'messages-inbox', path: 'messages', Component: withCommFeature(CommunicationsMessagesPage, 'messages'), permission: 'notifications.view' },
   { key: 'email-inbox', path: 'email', Component: withCommFeature(CommunicationsEmailInboxPage, 'email'), permission: 'notifications.view' },
