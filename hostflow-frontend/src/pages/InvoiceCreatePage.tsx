@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
+import { listAdditionalServices } from '../api/additionalServices'
 import { createInvoice, getCompany, getInvoice, listCompanies, updateInvoice } from '../api/client'
-import type { Company, Invoice } from '../api/types'
+import type { AdditionalService, Company, Invoice } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 
 type InvoiceItemDraft = {
   line_no: number
+  service_id?: string
   description: string
   qty: string
   unit_price: string
@@ -23,6 +25,7 @@ function isoDate(offsetDays = 0) {
 
 const initialItem = (): InvoiceItemDraft => ({
   line_no: 1,
+  service_id: '',
   description: '',
   qty: '1',
   unit_price: '0',
@@ -88,7 +91,9 @@ export default function InvoiceCreatePage() {
   const [searchParams] = useSearchParams()
   const isEditMode = Boolean(invoiceId)
   const [companies, setCompanies] = useState<Company[]>([])
+  const [serviceCatalog, setServiceCatalog] = useState<AdditionalService[]>([])
   const [loadingCompanies, setLoadingCompanies] = useState(true)
+  const [loadingServices, setLoadingServices] = useState(true)
   const [loadingInvoice, setLoadingInvoice] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -118,6 +123,24 @@ export default function InvoiceCreatePage() {
       })
       .finally(() => {
         if (!cancelled) setLoadingCompanies(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    setLoadingServices(true)
+    listAdditionalServices(false)
+      .then((data) => {
+        if (!cancelled) setServiceCatalog(Array.isArray(data) ? data : [])
+      })
+      .catch(() => {
+        if (!cancelled) setServiceCatalog([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingServices(false)
       })
     return () => {
       cancelled = true
@@ -186,6 +209,7 @@ export default function InvoiceCreatePage() {
           setItems(
             invoice.items.map((item, index) => ({
               line_no: index + 1,
+              service_id: '',
               description: String(item.description || ''),
               qty: String((item as any).quantity ?? (item as any).qty ?? 1),
               unit_price: String(item.unit_price ?? 0),
@@ -257,6 +281,7 @@ export default function InvoiceCreatePage() {
           Array.isArray(invoice.items) && invoice.items.length > 0
             ? invoice.items.map((item, index) => ({
                 line_no: index + 1,
+                service_id: '',
                 description: String(item.description || ''),
                 qty: String((item as any).quantity ?? (item as any).qty ?? 1),
                 unit_price: String(item.unit_price ?? 0),
@@ -297,6 +322,21 @@ export default function InvoiceCreatePage() {
         .filter((_, itemIndex) => itemIndex !== index)
         .map((item, itemIndex) => ({ ...item, line_no: itemIndex + 1 })),
     )
+  }
+
+  const applyCatalogService = (index: number, serviceId: string) => {
+    const selected = serviceCatalog.find((entry) => entry.id === serviceId)
+    if (!selected) {
+      updateItem(index, { service_id: '', description: '' })
+      return
+    }
+    updateItem(index, {
+      service_id: selected.id,
+      description: selected.name || selected.code,
+      unit_price: String(selected.base_price ?? 0),
+      vat_rate: String(selected.vat_rate ?? 0),
+    })
+    setCurrency((current) => (current ? current : selected.currency || 'PLN'))
   }
 
   const handleSubmit = async (event: FormEvent) => {
@@ -503,7 +543,20 @@ export default function InvoiceCreatePage() {
             </div>
 
             {items.map((item, index) => (
-              <div key={item.line_no} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1.6fr)_120px_140px_120px_auto]">
+              <div key={item.line_no} className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)_100px_120px_100px_auto]">
+                <select
+                  className="input"
+                  value={item.service_id || ''}
+                  onChange={(event) => applyCatalogService(index, event.target.value)}
+                  disabled={loadingServices}
+                >
+                  <option value="">{t('app.invoices.catalog_item', { defaultValue: 'Catalog item' })}</option>
+                  {serviceCatalog.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.code} · {service.name}
+                    </option>
+                  ))}
+                </select>
                 <input
                   className="input"
                   value={item.description}
@@ -530,6 +583,13 @@ export default function InvoiceCreatePage() {
                 <button type="button" className="btn-secondary btn-sm" onClick={() => removeItem(index)} disabled={items.length === 1}>
                   {t('common.actions.remove', { defaultValue: 'Remove' })}
                 </button>
+                {item.service_id && (
+                  <div className="text-xs text-slate-500 md:col-span-6">
+                    {t('app.invoices.catalog_hint', {
+                      defaultValue: 'Price and VAT were prefilled from the services catalog. You can still override them for this invoice.',
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
