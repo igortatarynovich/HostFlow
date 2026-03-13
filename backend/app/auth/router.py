@@ -27,6 +27,7 @@ from backend.app.services.users import UserServiceError
 router = APIRouter()
 
 DEFAULT_TENANT_ID = "11111111-1111-1111-1111-111111111111"
+TRIAL_DAYS = 7
 
 _user_memberships = sa.table(
     "user_memberships",
@@ -176,9 +177,14 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
         raise HTTPException(status_code=422, detail="Terms and privacy acceptance is required")
 
     async with async_session_maker() as session:
-        existing_user = await session.execute(select(User.id).where(func.lower(User.email) == email).limit(1))
+        existing_user = await session.execute(
+            select(User.id).where(func.lower(User.email) == email).limit(1)
+        )
         if existing_user.scalar_one_or_none() is not None:
-            raise HTTPException(status_code=409, detail="Email already in use")
+            raise HTTPException(
+                status_code=409,
+                detail="Account already exists. Trial can only be activated once per account.",
+            )
 
         tenant_name = await _unique_tenant_name(session, workspace_name)
         tenant_slug = await _unique_slug(session, _slugify_workspace(workspace_name))
@@ -196,7 +202,7 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
         session.add(tenant)
         await session.flush()
 
-        trial_expires_at = (datetime.now(timezone.utc) + timedelta(days=14)).date()
+        trial_expires_at = (datetime.now(timezone.utc) + timedelta(days=TRIAL_DAYS)).date()
         license_entry = TenantLicense(
             tenant_id=tenant.id,
             plan="trial",
@@ -226,6 +232,8 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
             preferences={},
             extra={
                 "signup_plan_code": (payload.plan_code or "").strip() or None,
+                "trial_granted_at": datetime.now(timezone.utc).isoformat(),
+                "trial_days": TRIAL_DAYS,
                 "signup_consents": {
                     "terms": bool(payload.accept_terms),
                     "privacy": bool(payload.accept_privacy),
@@ -266,7 +274,7 @@ async def auth_register(payload: RegisterIn) -> RegisterOut:
             "workspace_label": tenant.workspace_label,
             "status": tenant.status.value if hasattr(tenant.status, "value") else str(tenant.status),
             "trial_ends_at": trial_expires_at.isoformat(),
-            "trial_days": 14,
+            "trial_days": TRIAL_DAYS,
         },
         meta={"welcome_email_sent": False},
     )

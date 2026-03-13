@@ -1192,6 +1192,170 @@
         }
       },
       "billing": {
+        "badge": "Subscription & payments",
+        "title": "Manage subscription",
+        "subtitle": "See whether your plan is paid, which plan is active, when the current period ends, and what you can do next.",
+        "portal": "Open payment settings",
+        "manage_title": "What you can do here",
+        "reactivate": "Resume subscription",
+        "subscribe": "Subscribe",
+        "pay_now": "Pay now",
+        "refresh_status": "Refresh payment status",
+        "manage_in_stripe": "Manage payment settings",
+        "cancel": "Cancel subscription",
+        "active_plan": "Active",
+        "current_plan": "Current plan",
+        "change_in_portal": "Change in payment settings",
+        "subscribe_plan": "Subscribe to this plan",
+        "choose_plan": "Change to this plan",
+        "usage_title": "Included limits",
+        "not_available": "Not available",
+        "not_available_yet": "Not available yet",
+        "load_error": "Failed to load billing subscription.",
+        "checkout_error": "Failed to start checkout.",
+        "popup_blocked_title": "Allow pop-ups to continue",
+        "popup_blocked_hint": "Stripe checkout was created, but the browser blocked the payment tab. Allow pop-ups and try again.",
+        "no_checkout_session": "Start checkout first to simulate outcome.",
+        "simulation_error": "Failed to simulate checkout outcome.",
+        "portal_error": "Failed to open customer portal.",
+        "change_plan_error": "Failed to change plan.",
+        "cancel_error": "Failed to cancel subscription.",
+        "reactivate_error": "Failed to reactivate subscription.",
+        "labels": {
+          "current_plan": "Current plan",
+          "paid_plan": "Paid plan",
+          "subscription_started": "Subscription started",
+          "access_ends": "Access ends",
+          "current_period_ends": "Current period ends",
+          "last_billing_update": "Last billing update"
+        },
+        "status": {
+          "active": {
+            "label": "Active",
+            "description": "Subscription is paid and active."
+          },
+          "trial": {
+            "label": "Trial",
+            "description": "Trial is active. Upgrade before it ends."
+          },
+          "past_due": {
+            "label": "Payment required",
+            "description": "A payment issue needs attention."
+          },
+          "incomplete": {
+            "label": "Payment pending",
+            "description": "Checkout started but payment is not completed yet."
+          },
+          "canceled": {
+            "label": "Canceled",
+            "description": "Subscription is canceled."
+          },
+          "cancel_at_period_end": {
+            "label": "Cancels at period end",
+            "description": "Access remains active until the current billing period ends.",
+            "description_with_date": "Access remains active until {date}."
+          },
+          "unknown": {
+            "label": "Unknown",
+            "description": "Billing state is available below."
+          },
+          "success": "Success",
+          "warning": "Attention",
+          "error": "Action required"
+        },
+        "notice": {
+          "success_title": "Payment confirmed",
+          "success_text": "Subscription is active. Billing period, plan and payment history are shown below.",
+          "cancel_title": "Checkout canceled",
+          "cancel_text": "No charge was completed. You can restart checkout when you are ready.",
+          "error_title": "Payment requires attention",
+          "error_text": "The subscription is not fully paid. Retry payment or open payment settings.",
+          "incomplete_title": "Payment pending",
+          "incomplete_text": "Checkout is created but not completed yet."
+        },
+        "action_notice": {
+          "cancel_title": "Cancellation scheduled",
+          "cancel_text": "Your subscription stays active until {date}. Auto-renew is turned off.",
+          "resume_title": "Subscription resumed",
+          "resume_text": "Auto-renew is active again. Your plan will continue without interruption.",
+          "plan_change_title": "Plan updated",
+          "plan_change_text": "Your subscription was switched to {plan}.",
+          "plan_change_pending_title": "Complete payment to switch plans",
+          "plan_change_pending_text": "We opened Stripe payment for the {plan} plan. Your current plan stays active until payment is completed."
+        },
+        "verification": {
+          "title": "Checking payment status",
+          "text": "We are waiting for payment confirmation. This usually takes a few seconds."
+        },
+        "pending_upgrade": {
+          "title": "Plan change is waiting for payment confirmation",
+          "text": "Your current plan remains {currentPlan}. The {nextPlan} plan will activate only after Stripe confirms payment."
+        },
+        "communication": {
+          "title": "Email updates",
+          "description": "We send confirmation emails when payment is completed, when a plan changes, and when cancellation or renewal status changes."
+        },
+        "actions_help": {
+          "subscribe": "Subscribe starts Stripe checkout for the selected plan.",
+          "manage": "Manage payment settings to change plan, payment method and invoice details.",
+          "cancel": "Cancel subscription schedules cancellation at the period end.",
+          "resume": "Resume subscription removes scheduled cancellation."
+        },
+        "references": {
+          "title": "Support details",
+          "customer_id": "Billing customer ID: {value}",
+          "subscription_id": "Subscription ID: {value}"
+        },
+        "legal": {
+          "title": "Legal"
+        },
+        "usage": {
+          "recruiters": "Recruiters: {used} / {limit}",
+          "supervisors": "Supervisors: {used} / {limit}",
+          "client_managers": "Client managers: {used} / {limit}",
+          "viewers": "Viewers: {used} / {limit}",
+          "storage": "Storage: {used}GB / {limit}GB",
+          "companies": "Companies: limit {limit}"
+        },
+        "plans": {
+          "starter": {
+            "name": "Starter",
+            "price": "EUR 39/mo",
+            "seats": "1 user",
+            "feature": "Core CRM"
+          },
+          "team": {
+            "name": "Team",
+            "price": "EUR 99/mo",
+            "seats": "Up to 5 users",
+            "feature": "Team collaboration"
+          },
+          "pro": {
+            "name": "Pro",
+            "price": "EUR 199/mo",
+            "seats": "15+ users",
+            "feature": "Advanced automations"
+          }
+        },
+        "history": {
+          "title": "Payment history",
+          "empty": "No billing events yet.",
+          "view_invoice": "View invoice",
+          "download_pdf": "Download PDF"
+        },
+        "invoices": {
+          "title": "Invoices",
+          "empty": "No Stripe invoices are available yet.",
+          "open": "Open",
+          "pdf": "PDF",
+          "columns": {
+            "invoice": "Invoice",
+            "status": "Status",
+            "amount": "Amount",
+            "period": "Period",
+            "actions": "Actions"
+          }
+        },
         "trial": {
           "badge": "Trial status",
           "title": "Trial active",

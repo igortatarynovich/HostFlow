@@ -2,16 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   IconBell,
-  IconBuilding,
-  IconCreditCard,
   IconLayoutSidebarLeftExpand,
   IconLogout,
   IconMail,
   IconMenu2,
   IconMessageCircle,
-  IconSettings,
   IconUserCircle,
-  IconUsers,
   IconX,
 } from '@tabler/icons-react'
 import type { TenantSummary, WhoAmI } from '../../api/types'
@@ -741,62 +737,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                     <IconUserCircle size={16} />
                     <span>{t('app.shell.actions.profile')}</span>
                   </button>
-                </div>
-
-                <div className="border-b border-slate-100 px-4 py-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    {t('app.shell.account.company_overview', { defaultValue: 'Company overview' })}
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
-                    onClick={() => {
-                      setMenuOpen(false)
-                      navigate('/app/settings')
-                    }}
-                  >
-                    <IconSettings size={16} />
-                    <span>{t('app.shell.account.company_settings', { defaultValue: 'Company settings' })}</span>
-                  </button>
-                  {(can('admin.users') || can('users.manage') || can('users.view')) && (
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        navigate('/app/settings/users')
-                      }}
-                    >
-                      <IconUsers size={16} />
-                      <span>{t('app.shell.account.manage_users', { defaultValue: 'Manage users' })}</span>
-                    </button>
-                  )}
-                  {can('admin.users') && (
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        navigate('/app/settings/billing')
-                      }}
-                    >
-                      <IconCreditCard size={16} />
-                      <span>{t('app.shell.account.billing', { defaultValue: 'Billing' })}</span>
-                    </button>
-                  )}
-                  {can('admin.metaLeads') && (
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
-                      onClick={() => {
-                        setMenuOpen(false)
-                        navigate('/app/settings/integrations')
-                      }}
-                    >
-                      <IconBuilding size={16} />
-                      <span>{t('app.shell.account.tools_apps', { defaultValue: 'Tools and apps' })}</span>
-                    </button>
-                  )}
                 </div>
 
                 <div className="px-4 py-2">

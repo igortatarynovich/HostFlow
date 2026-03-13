@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { TenantRecord, WhoAmI } from '../api/types'
 import { getCurrentTenant } from '../api/tenants'
 import { getOnboardingStatus, settings, type OnboardingStatus } from '../api/client'
@@ -15,7 +15,7 @@ import { TrialStatusBanner } from '../components/TrialStatusBanner'
 import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
 import { useLicenseStatus } from '../hooks/useLicenseStatus'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
-import { ACTIVATION_PATHS, isActivationRoute } from './activationRoutes'
+import { ACTIVATION_PATHS } from './activationRoutes'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -26,10 +26,12 @@ type AppShellProps = {
 export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   useRobotsMeta({ index: false, follow: false })
   const location = useLocation()
+  const navigate = useNavigate()
   const path = location.pathname
   const isOnboardingPage = location.pathname.startsWith('/app/onboarding/')
   const isSettingsArea = location.pathname.startsWith('/app/settings')
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
 
   const pendingHandoffsCount = usePendingHandoffsCount()
   const { expired: licenseExpired, validUntil } = useLicenseStatus()
@@ -113,20 +115,37 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const currentTenantId = tenant?.id ? String(tenant.id) : (me?.tenant_id ? String(me.tenant_id) : null)
 
   const role = String(me?.role || '').toLowerCase()
-  const enforceActivation = role === 'administrator' || role === 'superadmin'
+  const isSuperAdmin = role === 'superadmin'
   const canOpenBilling = role === 'administrator' || role === 'superadmin' || role === 'owner' || role === 'admin'
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
+  const guidedTrialWorkspace = Boolean(!isSuperAdmin && role === 'administrator' && isTrialTenant)
+  const setupTarget = onboardingStatus?.onboarding_required
+    ? ACTIVATION_PATHS.onboardingCompany
+    : onboardingStatus?.activation_required
+      ? ACTIVATION_PATHS.onboardingGettingStarted
+      : ACTIVATION_PATHS.overview
+  const shellNavItems = useMemo(() => {
+    if (!guidedTrialWorkspace) return navItems
+    return navItems.filter((item) => {
+      if (!item.path) return false
+      if (item.path === '/app/settings' || item.path.startsWith('/app/settings/')) return false
+      return item.group !== 'admin'
+    })
+  }, [guidedTrialWorkspace, navItems])
+
+  useEffect(() => {
+    setTrialBannerDismissed(false)
+  }, [currentTenantId])
+
   if (!isOnboardingPage && onboardingStatus?.onboarding_required === true) {
     return <Navigate to={ACTIVATION_PATHS.onboardingCompany} replace />
   }
   if (
-    !isOnboardingPage &&
-    !isActivationRoute(path) &&
-    enforceActivation &&
-    onboardingStatus?.onboarding_required === false &&
-    onboardingStatus?.activation_required === true
+    guidedTrialWorkspace &&
+    path.startsWith('/app/settings') &&
+    path !== ACTIVATION_PATHS.billing
   ) {
-    return <Navigate to={ACTIVATION_PATHS.onboardingGettingStarted} replace />
+    return <Navigate to={ACTIVATION_PATHS.overview} replace />
   }
 
   return (
@@ -135,7 +154,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
         <div className="flex h-screen bg-slate-50 text-slate-900">
           <Sidebar
             tenant={tenant}
-            items={navItems}
+            items={shellNavItems}
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
             onLogout={onLogout}
@@ -144,7 +163,21 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
 
           <div className="flex flex-1 flex-col overflow-hidden">
             <LicenseExpiredBanner visible={licenseExpired} validUntil={validUntil} />
-            <TrialStatusBanner visible={isTrialTenant && !licenseExpired} validUntil={validUntil} canOpenBilling={canOpenBilling} />
+            <TrialStatusBanner
+              visible={
+                isTrialTenant &&
+                !licenseExpired &&
+                !isOnboardingPage &&
+                !trialBannerDismissed &&
+                !guidedTrialWorkspace
+              }
+              validUntil={validUntil}
+              canOpenBilling={canOpenBilling}
+              onSetupClick={() => {
+                setTrialBannerDismissed(true)
+                if (path !== setupTarget) navigate(setupTarget)
+              }}
+            />
             <Topbar
               me={me}
               tenant={tenant}
@@ -154,7 +187,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
 
             <main className="flex-1 overflow-y-auto">
               <div className="w-full px-6 py-6 lg:px-10">
-                {isSettingsArea && <SettingsChrome pathname={location.pathname} />}
+                {isSettingsArea && <SettingsChrome pathname={location.pathname} compactMode={guidedTrialWorkspace} />}
                 <div className={`app-ui ${isSettingsArea ? 'settings-surface' : ''}`.trim()}>
                   <Outlet />
                 </div>

@@ -4,10 +4,16 @@ export type BillingSubscription = {
   provider: 'mock' | 'stripe'
   status: string
   plan_code: 'starter' | 'team' | 'pro'
+  pending_plan_code: 'starter' | 'team' | 'pro' | null
+  pending_update: boolean
+  pending_invoice_id: string | null
+  pending_invoice_url: string | null
   customer_id: string | null
   subscription_id: string | null
   checkout_session_id: string | null
+  current_period_start: string | null
   current_period_end: string | null
+  activated_at: string | null
   trial_ends_at: string | null
   cancel_at_period_end: boolean
   canceled_at: string | null
@@ -59,11 +65,45 @@ export type BillingPlan = {
   limits: Record<string, number>
 }
 
+export type BillingHistoryItem = {
+  id: string
+  occurred_at: string
+  event_type: string
+  status: string
+  title: string
+  description: string | null
+  source: 'app' | 'stripe'
+  plan_code: string | null
+  amount_minor: number | null
+  currency: string | null
+  invoice_id: string | null
+  hosted_invoice_url: string | null
+  invoice_pdf_url: string | null
+}
+
+export type BillingInvoice = {
+  id: string
+  number: string | null
+  status: string
+  currency: string | null
+  total_minor: number | null
+  amount_paid_minor: number | null
+  amount_due_minor: number | null
+  created_at: string | null
+  paid_at: string | null
+  period_start: string | null
+  period_end: string | null
+  hosted_invoice_url: string | null
+  invoice_pdf_url: string | null
+}
+
 export type BillingSummary = {
   subscription: BillingSubscription
   license: BillingLicense | null
   usage: BillingUsage
   available_plans: BillingPlan[]
+  history: BillingHistoryItem[]
+  invoices: BillingInvoice[]
 }
 
 export async function getBillingSubscription() {
@@ -100,8 +140,12 @@ export async function createBillingPortalLink() {
   return data
 }
 
-export async function changeBillingPlan(plan_code: 'starter' | 'team' | 'pro') {
-  const { data } = await http.post<BillingSummary>('/settings/billing/change-plan', { plan_code })
+export async function changeBillingPlan(payload: {
+  plan_code: 'starter' | 'team' | 'pro'
+  success_url?: string
+  cancel_url?: string
+}) {
+  const { data } = await http.post<BillingSummary>('/settings/billing/change-plan', payload)
   return data
 }
 

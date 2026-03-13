@@ -49,10 +49,10 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
                 label: t('app.onboarding.first_value.step_service_order', { defaultValue: 'Create first service order' }),
               }
             : {
-                id: 'lead',
-                done: Boolean(status?.steps?.first_lead_created),
-                href: ACTIVATION_PATHS.leads,
-                label: t('app.onboarding.first_value.step_lead', { defaultValue: 'Add first lead' }),
+                id: 'first_client',
+                done: Boolean(status?.steps?.first_client_created),
+                href: ACTIVATION_PATHS.clients,
+                label: t('app.onboarding.first_value.step_client', { defaultValue: 'Create first client' }),
               }
       return [
         {

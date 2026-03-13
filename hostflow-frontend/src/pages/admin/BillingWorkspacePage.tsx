@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { IconAlertTriangle, IconCheck, IconCreditCard, IconRefresh } from '@tabler/icons-react'
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconCreditCard,
+  IconExternalLink,
+  IconHistory,
+  IconMail,
+  IconRefresh,
+} from '@tabler/icons-react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
@@ -13,8 +21,10 @@ import {
   reactivateBillingSubscription,
   simulateBillingCheckoutResolution,
   type BillingCheckoutSession,
-  type BillingSummary,
+  type BillingHistoryItem,
+  type BillingInvoice,
   type BillingSubscription,
+  type BillingSummary,
 } from '../../api/billing'
 
 type PlanCode = 'starter' | 'team' | 'pro'
@@ -28,12 +38,147 @@ type PlanDef = {
   featureLabel: string
 }
 
+type ActionNotice = {
+  tone: 'success' | 'warning'
+  title: string
+  text: string
+} | null
+
 const DAY_MS = 24 * 60 * 60 * 1000
 
 function getPlanCode(value: string | null | undefined): PlanCode {
   const plan = (value || '').trim().toLowerCase()
   if (plan === 'team' || plan === 'pro') return plan
   return 'starter'
+}
+
+function formatDate(value: string | null | undefined, fallback: string) {
+  if (!value) return fallback
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return fallback
+  return dt.toLocaleDateString()
+}
+
+function formatDateTime(value: string | null | undefined, fallback: string) {
+  if (!value) return fallback
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return fallback
+  return dt.toLocaleString()
+}
+
+function formatAmount(minor: number | null | undefined, currency: string | null | undefined) {
+  if (minor == null) return 'Not available'
+  const amount = minor / 100
+  const code = (currency || 'EUR').toUpperCase()
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: code,
+      currencyDisplay: 'symbol',
+    }).format(amount)
+  } catch {
+    return `${amount.toFixed(2)} ${code}`
+  }
+}
+
+function normalizeSubscriptionState(subscription: BillingSubscription | null): CheckoutState {
+  const normalized = (subscription?.status || '').toLowerCase()
+  if (normalized === 'active') return 'success'
+  if (normalized === 'canceled') return 'cancel'
+  if (normalized === 'past_due') return 'error'
+  if (normalized === 'incomplete') return 'incomplete'
+  return 'idle'
+}
+
+function getStatusMeta(subscription: BillingSubscription | null, t: (key: string, options?: any) => string, fallback: string) {
+  const normalized = (subscription?.status || '').trim().toLowerCase()
+  if (subscription?.cancel_at_period_end) {
+    return {
+      label: t('app.settings.billing.status.cancel_at_period_end.label', { defaultValue: 'Cancels at period end' }),
+      tone: 'warning',
+      description: subscription.current_period_end
+        ? t('app.settings.billing.status.cancel_at_period_end.description_with_date', {
+            defaultValue: 'Access remains active until {date}.',
+            values: { date: formatDate(subscription.current_period_end, fallback) },
+          })
+        : t('app.settings.billing.status.cancel_at_period_end.description', {
+            defaultValue: 'Access remains active until the current billing period ends.',
+          }),
+    }
+  }
+  switch (normalized) {
+    case 'active':
+      return {
+        label: t('app.settings.billing.status.active.label', { defaultValue: 'Active' }),
+        tone: 'success',
+        description: t('app.settings.billing.status.active.description', {
+          defaultValue: 'Subscription is paid and active.',
+        }),
+      }
+    case 'trial':
+      return {
+        label: t('app.settings.billing.status.trial.label', { defaultValue: 'Trial' }),
+        tone: 'info',
+        description: t('app.settings.billing.status.trial.description', {
+          defaultValue: 'Trial is active. Upgrade before it ends.',
+        }),
+      }
+    case 'past_due':
+      return {
+        label: t('app.settings.billing.status.past_due.label', { defaultValue: 'Payment required' }),
+        tone: 'danger',
+        description: t('app.settings.billing.status.past_due.description', {
+          defaultValue: 'A payment issue needs attention.',
+        }),
+      }
+    case 'incomplete':
+      return {
+        label: t('app.settings.billing.status.incomplete.label', { defaultValue: 'Payment pending' }),
+        tone: 'warning',
+        description: t('app.settings.billing.status.incomplete.description', {
+          defaultValue: 'Checkout started but payment is not completed yet.',
+        }),
+      }
+    case 'canceled':
+      return {
+        label: t('app.settings.billing.status.canceled.label', { defaultValue: 'Canceled' }),
+        tone: 'danger',
+        description: t('app.settings.billing.status.canceled.description', {
+          defaultValue: 'Subscription is canceled.',
+        }),
+      }
+    default:
+      return {
+        label: normalized || t('app.settings.billing.status.unknown.label', { defaultValue: 'Unknown' }),
+        tone: 'info',
+        description: t('app.settings.billing.status.unknown.description', {
+          defaultValue: 'Billing state is available below.',
+        }),
+      }
+  }
+}
+
+function getHistoryToneClasses(status: string) {
+  const normalized = (status || '').toLowerCase()
+  if (normalized === 'success') return 'border-emerald-200 bg-emerald-50 text-emerald-800'
+  if (normalized === 'warning') return 'border-amber-200 bg-amber-50 text-amber-800'
+  if (normalized === 'error') return 'border-rose-200 bg-rose-50 text-rose-800'
+  return 'border-slate-200 bg-slate-50 text-slate-700'
+}
+
+function openCheckoutTab() {
+  if (typeof window === 'undefined') return null
+  const popup = window.open('about:blank', '_blank')
+  if (!popup) return null
+  try {
+    popup.opener = null
+    popup.document.title = 'HostFlow Billing'
+    popup.document.body.innerHTML =
+      '<div style="font-family: sans-serif; padding: 24px; color: #0f172a;">Opening Stripe checkout...</div>'
+  } catch {
+    // Cross-window writes can fail in some browsers; navigation is still enough.
+  }
+  return popup
 }
 
 export default function BillingWorkspacePage() {
@@ -47,15 +192,16 @@ export default function BillingWorkspacePage() {
   const [isMutationLoading, setIsMutationLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [checkoutState, setCheckoutState] = useState<CheckoutState>('idle')
+  const [actionNotice, setActionNotice] = useState<ActionNotice>(null)
+  const [isVerifyingCheckout, setIsVerifyingCheckout] = useState(false)
 
-  const syncCheckoutState = (data: BillingSubscription) => {
-    const normalized = (data.status || '').toLowerCase()
-    if (normalized === 'active') setCheckoutState('success')
-    else if (normalized === 'canceled') setCheckoutState('cancel')
-    else if (normalized === 'past_due') setCheckoutState('error')
-    else if (normalized === 'incomplete') setCheckoutState('incomplete')
-    else setCheckoutState('idle')
-  }
+  const reloadSummary = useCallback(async () => {
+    const data = await getBillingSummary()
+    setSummary(data)
+    setSubscription(data.subscription)
+    setCheckoutState(normalizeSubscriptionState(data.subscription))
+    return data
+  }, [])
 
   useEffect(() => {
     let mounted = true
@@ -63,11 +209,10 @@ export default function BillingWorkspacePage() {
       setIsLoading(true)
       setError(null)
       try {
-        const data = await getBillingSummary()
+        const data = await reloadSummary()
         if (!mounted) return
-        setSummary(data)
-        setSubscription(data.subscription)
-        syncCheckoutState(data.subscription)
+        const urlState = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('checkout') : null
+        setCheckoutState(urlState === 'cancel' ? 'cancel' : normalizeSubscriptionState(data.subscription))
       } catch (err: any) {
         if (!mounted) return
         setError(
@@ -83,33 +228,52 @@ export default function BillingWorkspacePage() {
     return () => {
       mounted = false
     }
-  }, [])
-
-  const reloadSummary = useCallback(async () => {
-    const data = await getBillingSummary()
-    setSummary(data)
-    setSubscription(data.subscription)
-    syncCheckoutState(data.subscription)
-  }, [])
+  }, [reloadSummary, t])
 
   const activePlan = getPlanCode(subscription?.plan_code)
   const isTrial = (subscription?.status || '').trim().toLowerCase() === 'trial'
+  const isStripe = subscription?.provider === 'stripe'
+  const notAvailableLabel = t('app.settings.billing.not_available', { defaultValue: 'Not available' })
+  const statusMeta = getStatusMeta(subscription, t, notAvailableLabel)
   const trialDaysLeft = useMemo(() => {
     if (!subscription?.trial_ends_at) return null
     const dt = new Date(subscription.trial_ends_at)
     if (Number.isNaN(dt.getTime())) return null
     return Math.max(0, Math.ceil((dt.getTime() - Date.now()) / DAY_MS))
   }, [subscription?.trial_ends_at])
-  const trialTone = useMemo<'normal' | 'warning' | 'critical'>(() => {
-    if (trialDaysLeft == null) return 'normal'
-    if (trialDaysLeft <= 2) return 'critical'
-    if (trialDaysLeft <= 7) return 'warning'
-    return 'normal'
-  }, [trialDaysLeft])
+
+  const plans = useMemo<PlanDef[]>(
+    () => [
+      {
+        code: 'starter',
+        name: t('app.settings.billing.plans.starter.name', { defaultValue: 'Starter' }),
+        price: t('app.settings.billing.plans.starter.price', { defaultValue: 'EUR 39/mo' }),
+        seatsLabel: t('app.settings.billing.plans.starter.seats', { defaultValue: '1 user' }),
+        featureLabel: t('app.settings.billing.plans.starter.feature', { defaultValue: 'Core CRM' }),
+      },
+      {
+        code: 'team',
+        name: t('app.settings.billing.plans.team.name', { defaultValue: 'Team' }),
+        price: t('app.settings.billing.plans.team.price', { defaultValue: 'EUR 99/mo' }),
+        seatsLabel: t('app.settings.billing.plans.team.seats', { defaultValue: 'Up to 5 users' }),
+        featureLabel: t('app.settings.billing.plans.team.feature', { defaultValue: 'Team collaboration' }),
+      },
+      {
+        code: 'pro',
+        name: t('app.settings.billing.plans.pro.name', { defaultValue: 'Pro' }),
+        price: t('app.settings.billing.plans.pro.price', { defaultValue: 'EUR 199/mo' }),
+        seatsLabel: t('app.settings.billing.plans.pro.seats', { defaultValue: '15+ users' }),
+        featureLabel: t('app.settings.billing.plans.pro.feature', { defaultValue: 'Advanced automations' }),
+      },
+    ],
+    [t],
+  )
 
   const startCheckout = async (plan: PlanCode) => {
+    const checkoutWindow = openCheckoutTab()
     setIsCheckoutLoading(true)
     setError(null)
+    setActionNotice(null)
     try {
       const origin = typeof window !== 'undefined' ? window.location.origin : ''
       const successUrl = `${origin}/app/settings/billing?checkout=success`
@@ -123,9 +287,19 @@ export default function BillingWorkspacePage() {
       setCheckoutState('incomplete')
       await reloadSummary()
       if (session.provider === 'stripe' && session.checkout_url) {
-        window.location.assign(session.checkout_url)
+        if (checkoutWindow) {
+          checkoutWindow.location.replace(session.checkout_url)
+        } else {
+          setError({
+            title: t('app.settings.billing.popup_blocked_title', { defaultValue: 'Allow pop-ups to continue' }),
+            hint: t('app.settings.billing.popup_blocked_hint', {
+              defaultValue: 'Stripe checkout was created, but the browser blocked the payment tab. Allow pop-ups and try again.',
+            }),
+          })
+        }
       }
     } catch (err: any) {
+      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close()
       setError(
         getFriendlyErrorInfo(
           err,
@@ -148,6 +322,7 @@ export default function BillingWorkspacePage() {
     }
     setIsCheckoutLoading(true)
     setError(null)
+    setActionNotice(null)
     try {
       const next = await simulateBillingCheckoutResolution(sessionId, outcome)
       setSubscription(next)
@@ -168,6 +343,7 @@ export default function BillingWorkspacePage() {
   const openPortal = async () => {
     setIsPortalLoading(true)
     setError(null)
+    setActionNotice(null)
     try {
       const portal = await createBillingPortalLink()
       if (portal.url) window.open(portal.url, '_blank', 'noopener,noreferrer')
@@ -183,41 +359,59 @@ export default function BillingWorkspacePage() {
     }
   }
 
-  const plans = useMemo<PlanDef[]>(
-    () => [
-      {
-        code: 'starter',
-        name: 'Starter',
-        price: '$29/mo',
-        seatsLabel: '1 user',
-        featureLabel: 'Core CRM',
-      },
-      {
-        code: 'team',
-        name: 'Team',
-        price: '$99/mo',
-        seatsLabel: 'Up to 5 users',
-        featureLabel: 'Team collaboration',
-      },
-      {
-        code: 'pro',
-        name: 'Pro',
-        price: '$249/mo',
-        seatsLabel: '15+ users',
-        featureLabel: 'Advanced automations',
-      },
-    ],
-    [],
-  )
-
-  const handleChangePlan = async (plan: PlanCode) => {
+  const handlePlanAction = async (plan: PlanCode) => {
+    if (isTrial || !subscription?.subscription_id || subscription?.status === 'incomplete') {
+      await startCheckout(plan)
+      return
+    }
+    const checkoutWindow = openCheckoutTab()
     setIsMutationLoading(true)
     setError(null)
+    setActionNotice(null)
     try {
-      const data = await changeBillingPlan(plan)
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const data = await changeBillingPlan({
+        plan_code: plan,
+        success_url: `${origin}/app/settings/billing?checkout=success`,
+        cancel_url: `${origin}/app/settings/billing?checkout=cancel`,
+      })
       setSummary(data)
       setSubscription(data.subscription)
-      syncCheckoutState(data.subscription)
+      setCheckoutState(normalizeSubscriptionState(data.subscription))
+      if (data.subscription.pending_update && data.subscription.pending_plan_code === plan) {
+        setActionNotice({
+          tone: 'warning',
+          title: t('app.settings.billing.action_notice.plan_change_pending_title', {
+            defaultValue: 'Complete payment to switch plans',
+          }),
+          text: t('app.settings.billing.action_notice.plan_change_pending_text', {
+            defaultValue: 'We opened Stripe payment for the {plan} plan. Your current plan stays active until payment is completed.',
+            values: { plan: plan.toUpperCase() },
+          }),
+        })
+        if (data.subscription.pending_invoice_url) {
+          if (checkoutWindow) {
+            checkoutWindow.location.replace(data.subscription.pending_invoice_url)
+          } else {
+            setError({
+              title: t('app.settings.billing.popup_blocked_title', { defaultValue: 'Allow pop-ups to continue' }),
+              hint: t('app.settings.billing.popup_blocked_hint', {
+                defaultValue: 'Stripe checkout was created, but the browser blocked the payment tab. Allow pop-ups and try again.',
+              }),
+            })
+          }
+        }
+      } else {
+        if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close()
+        setActionNotice({
+          tone: 'success',
+          title: t('app.settings.billing.action_notice.plan_change_title', { defaultValue: 'Plan updated' }),
+          text: t('app.settings.billing.action_notice.plan_change_text', {
+            defaultValue: 'Your subscription was switched to {plan}.',
+            values: { plan: plan.toUpperCase() },
+          }),
+        })
+      }
     } catch (err: any) {
       setError(
         getFriendlyErrorInfo(
@@ -225,6 +419,7 @@ export default function BillingWorkspacePage() {
           t('app.settings.billing.change_plan_error', { defaultValue: 'Failed to change plan.' }),
         ),
       )
+      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close()
     } finally {
       setIsMutationLoading(false)
     }
@@ -233,11 +428,20 @@ export default function BillingWorkspacePage() {
   const handleCancel = async () => {
     setIsMutationLoading(true)
     setError(null)
+    setActionNotice(null)
     try {
       const data = await cancelBillingSubscription(false)
       setSummary(data)
       setSubscription(data.subscription)
-      syncCheckoutState(data.subscription)
+      setCheckoutState(normalizeSubscriptionState(data.subscription))
+      setActionNotice({
+        tone: 'warning',
+        title: t('app.settings.billing.action_notice.cancel_title', { defaultValue: 'Cancellation scheduled' }),
+        text: t('app.settings.billing.action_notice.cancel_text', {
+          defaultValue: 'Your subscription stays active until {date}. Auto-renew is turned off.',
+          values: { date: formatDate(data.subscription.current_period_end, notAvailableLabel) },
+        }),
+      })
     } catch (err: any) {
       setError(
         getFriendlyErrorInfo(
@@ -253,11 +457,19 @@ export default function BillingWorkspacePage() {
   const handleReactivate = async () => {
     setIsMutationLoading(true)
     setError(null)
+    setActionNotice(null)
     try {
       const data = await reactivateBillingSubscription()
       setSummary(data)
       setSubscription(data.subscription)
-      syncCheckoutState(data.subscription)
+      setCheckoutState(normalizeSubscriptionState(data.subscription))
+      setActionNotice({
+        tone: 'success',
+        title: t('app.settings.billing.action_notice.resume_title', { defaultValue: 'Subscription resumed' }),
+        text: t('app.settings.billing.action_notice.resume_text', {
+          defaultValue: 'Auto-renew is active again. Your plan will continue without interruption.',
+        }),
+      })
     } catch (err: any) {
       setError(
         getFriendlyErrorInfo(
@@ -276,56 +488,123 @@ export default function BillingWorkspacePage() {
     await reloadSummary()
   }
 
+  const checkoutNotice = useMemo(() => {
+    if (checkoutState === 'success') {
+      return {
+        tone: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+        title: t('app.settings.billing.notice.success_title', { defaultValue: 'Payment confirmed' }),
+        text: t('app.settings.billing.notice.success_text', {
+          defaultValue: 'Subscription is active. Billing period, plan and payment history are shown below.',
+        }),
+      }
+    }
+    if (checkoutState === 'cancel') {
+      return {
+        tone: 'border-amber-200 bg-amber-50 text-amber-800',
+        title: t('app.settings.billing.notice.cancel_title', { defaultValue: 'Checkout canceled' }),
+        text: t('app.settings.billing.notice.cancel_text', {
+          defaultValue: 'No charge was completed. You can restart checkout when you are ready.',
+        }),
+      }
+    }
+    if (checkoutState === 'error') {
+      return {
+        tone: 'border-rose-200 bg-rose-50 text-rose-800',
+        title: t('app.settings.billing.notice.error_title', { defaultValue: 'Payment requires attention' }),
+        text: t('app.settings.billing.notice.error_text', {
+          defaultValue: 'The subscription is not fully paid. Retry payment or open payment settings.',
+        }),
+      }
+    }
+    if (checkoutState === 'incomplete') {
+      return {
+        tone: 'border-amber-200 bg-amber-50 text-amber-800',
+        title: t('app.settings.billing.notice.incomplete_title', { defaultValue: 'Payment pending' }),
+        text: t('app.settings.billing.notice.incomplete_text', {
+          defaultValue: 'Checkout is created but not completed yet.',
+        }),
+      }
+    }
+    return null
+  }, [checkoutState, t])
+
+  const history = summary?.history || []
+  const invoices = summary?.invoices || []
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const checkoutFlag = params.get('checkout')
+    if (checkoutFlag !== 'success') return
+    let cancelled = false
+    setIsVerifyingCheckout(true)
+    const run = async () => {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, attempt === 0 ? 0 : 2000))
+        if (cancelled) return
+        try {
+          const data = await reloadSummary()
+          if (cancelled) return
+          const nextState = normalizeSubscriptionState(data.subscription)
+          if (nextState === 'success') {
+            params.delete('checkout')
+            const next = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`
+            window.history.replaceState({}, '', next)
+            setIsVerifyingCheckout(false)
+            return
+          }
+        } catch {
+          // keep retrying; main error banner already handles hard failures
+        }
+      }
+      if (!cancelled) setIsVerifyingCheckout(false)
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [reloadSummary])
+
   return (
     <div className="space-y-4">
       <header className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
           <IconCreditCard size={18} stroke={1.9} />
-          {t('app.settings.billing.badge', { defaultValue: 'Billing & Subscription' })}
+          {t('app.settings.billing.badge', { defaultValue: 'Subscription & payments' })}
         </div>
-        <h1 className="mt-2 text-2xl font-semibold text-slate-900">
-          {t('app.settings.billing.title', { defaultValue: 'Manage subscription' })}
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          {t('app.settings.billing.subtitle', {
-            defaultValue:
-              'Stripe is not connected yet. This screen simulates the checkout flow and validates conversion-critical UX.',
-          })}
-        </p>
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {t('app.settings.billing.title', { defaultValue: 'Manage subscription' })}
+            </h1>
+            <p className="max-w-3xl text-sm text-slate-600">
+              {t('app.settings.billing.subtitle', {
+                defaultValue:
+                  'See whether your plan is paid, which plan is active, when the current period ends, and what you can do next.',
+              })}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-secondary" onClick={() => void reloadSummary()} disabled={isLoading}>
+              <IconRefresh size={15} stroke={1.9} />
+              <span>{t('common.actions.refresh', { defaultValue: 'Refresh' })}</span>
+            </button>
+            <button type="button" className="btn-secondary" onClick={openPortal} disabled={isPortalLoading}>
+              <IconExternalLink size={15} stroke={1.9} />
+              <span>{t('app.settings.billing.portal', { defaultValue: 'Open payment settings' })}</span>
+            </button>
+          </div>
+        </div>
       </header>
 
       {isTrial && (
-        <section
-          className={`rounded-xl border p-4 shadow-sm ${
-            trialTone === 'critical'
-              ? 'border-rose-300 bg-rose-50'
-              : trialTone === 'warning'
-                ? 'border-amber-300 bg-amber-50'
-                : 'border-emerald-300 bg-emerald-50'
-          }`}
-        >
+        <section className="rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
-              <p
-                className={`text-xs font-semibold uppercase tracking-wide ${
-                  trialTone === 'critical'
-                    ? 'text-rose-800'
-                    : trialTone === 'warning'
-                      ? 'text-amber-800'
-                      : 'text-emerald-800'
-                }`}
-              >
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
                 {t('app.settings.billing.trial.badge', { defaultValue: 'Trial status' })}
               </p>
-              <h2
-                className={`text-sm font-semibold ${
-                  trialTone === 'critical'
-                    ? 'text-rose-950'
-                    : trialTone === 'warning'
-                      ? 'text-amber-950'
-                      : 'text-emerald-950'
-                }`}
-              >
+              <h2 className="text-sm font-semibold text-amber-950">
                 {trialDaysLeft != null
                   ? t('app.settings.billing.trial.title_with_days', {
                       defaultValue: 'Trial active: {days} day(s) left',
@@ -333,57 +612,21 @@ export default function BillingWorkspacePage() {
                     })
                   : t('app.settings.billing.trial.title', { defaultValue: 'Trial active' })}
               </h2>
-              <p
-                className={`text-xs ${
-                  trialTone === 'critical'
-                    ? 'text-rose-900/90'
-                    : trialTone === 'warning'
-                      ? 'text-amber-900/90'
-                      : 'text-emerald-900/90'
-                }`}
-              >
+              <p className="text-xs text-amber-950/90">
                 {t('app.settings.billing.trial.subtitle', {
                   defaultValue: 'Choose a paid plan before trial ends to keep uninterrupted access.',
                 })}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => startCheckout(activePlan)}
-                disabled={isCheckoutLoading}
-              >
-                {t('app.settings.billing.trial.cta', { defaultValue: 'Upgrade now' })}
+              <button type="button" className="btn-primary" onClick={() => void startCheckout(activePlan)} disabled={isCheckoutLoading}>
+                {t('app.settings.billing.trial.cta', { defaultValue: 'Subscribe now' })}
               </button>
               <Link to="/app/overview" className="btn-secondary">
                 {t('app.settings.billing.trial.secondary_cta', { defaultValue: 'Continue setup' })}
               </Link>
             </div>
           </div>
-          <p
-            className={`mt-2 text-xs ${
-              trialTone === 'critical'
-                ? 'text-rose-900/90'
-                : trialTone === 'warning'
-                  ? 'text-amber-900/90'
-                  : 'text-emerald-900/90'
-            }`}
-          >
-            {t('app.settings.billing.trial.legal_prefix', { defaultValue: 'Legal:' })}{' '}
-            <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
-              {t('app.settings.billing.trial.legal_terms', { defaultValue: 'Terms' })}
-            </a>
-            {', '}
-            <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
-              {t('app.settings.billing.trial.legal_privacy', { defaultValue: 'Privacy' })}
-            </a>
-            {', '}
-            <a href="/legal/cookies.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
-              {t('app.settings.billing.trial.legal_cookies', { defaultValue: 'Cookies' })}
-            </a>
-            .
-          </p>
         </section>
       )}
 
@@ -393,7 +636,7 @@ export default function BillingWorkspacePage() {
           onRetry={() => void reloadSummary()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
           secondaryTo="/app/settings/billing"
-          secondaryLabel={t('app.settings.billing.badge', { defaultValue: 'Billing & Subscription' })}
+          secondaryLabel={t('app.settings.billing.badge', { defaultValue: 'Subscription & payments' })}
         />
       )}
 
@@ -403,20 +646,232 @@ export default function BillingWorkspacePage() {
         </section>
       ) : null}
 
-      <section className="grid gap-4 md:grid-cols-3">
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</h3>
-          <p className="mt-1 text-lg font-semibold text-slate-900">{subscription?.status || '-'}</p>
+      {checkoutNotice ? (
+        <section className={`rounded-xl border p-4 shadow-sm ${checkoutNotice.tone}`}>
+          <div className="flex items-start gap-2">
+            <IconAlertTriangle size={18} stroke={1.9} />
+            <div>
+              <p className="text-sm font-semibold">{checkoutNotice.title}</p>
+              <p className="mt-1 text-sm">{checkoutNotice.text}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {isVerifyingCheckout ? (
+        <section className="rounded-xl border border-brand-200 bg-brand-50 p-4 shadow-sm text-brand-900">
+          <div className="flex items-start gap-2">
+            <IconRefresh size={18} stroke={1.9} />
+            <div>
+              <p className="text-sm font-semibold">
+                {t('app.settings.billing.verification.title', { defaultValue: 'Checking payment status' })}
+              </p>
+              <p className="mt-1 text-sm">
+                {t('app.settings.billing.verification.text', {
+                  defaultValue: 'We are waiting for payment confirmation. This usually takes a few seconds.',
+                })}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {actionNotice ? (
+        <section
+          className={`rounded-xl border p-4 shadow-sm ${
+            actionNotice.tone === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-amber-200 bg-amber-50 text-amber-800'
+          }`}
+        >
+          <div className="flex items-start gap-2">
+            <IconAlertTriangle size={18} stroke={1.9} />
+            <div>
+              <p className="text-sm font-semibold">{actionNotice.title}</p>
+              <p className="mt-1 text-sm">{actionNotice.text}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {subscription?.pending_update && subscription.pending_plan_code ? (
+        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm text-amber-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">
+                {t('app.settings.billing.pending_upgrade.title', {
+                  defaultValue: 'Plan change is waiting for payment confirmation',
+                })}
+              </p>
+              <p className="mt-1 text-sm">
+                {t('app.settings.billing.pending_upgrade.text', {
+                  defaultValue:
+                    'Your current plan remains {currentPlan}. The {nextPlan} plan will activate only after Stripe confirms payment.',
+                  values: {
+                    currentPlan: String(subscription.plan_code || '').toUpperCase(),
+                    nextPlan: String(subscription.pending_plan_code || '').toUpperCase(),
+                  },
+                })}
+              </p>
+            </div>
+            <button type="button" className="btn-secondary" onClick={() => void reloadSummary()}>
+              {t('app.settings.billing.refresh_status', { defaultValue: 'Refresh payment status' })}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.settings.billing.labels.current_plan', { defaultValue: 'Current plan' })}
+              </p>
+              <h2 className="mt-1 text-2xl font-semibold text-slate-900">{activePlan.toUpperCase()}</h2>
+              <p className="mt-1 text-sm text-slate-600">{statusMeta.description}</p>
+            </div>
+            <span
+              className={`rounded-md px-3 py-1 text-xs font-semibold ${
+                statusMeta.tone === 'success'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : statusMeta.tone === 'warning'
+                    ? 'bg-amber-100 text-amber-800'
+                    : statusMeta.tone === 'danger'
+                      ? 'bg-rose-100 text-rose-800'
+                      : 'bg-slate-100 text-slate-700'
+              }`}
+            >
+              {statusMeta.label}
+            </span>
+          </div>
+
+          <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 p-3">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.settings.billing.labels.paid_plan', { defaultValue: 'Paid plan' })}
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-slate-900">{plans.find((plan) => plan.code === activePlan)?.price || '-'}</dd>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.settings.billing.labels.subscription_started', { defaultValue: 'Subscription started' })}
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-slate-900">
+                {formatDate(subscription?.activated_at || subscription?.current_period_start, notAvailableLabel)}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {subscription?.cancel_at_period_end
+                  ? t('app.settings.billing.labels.access_ends', { defaultValue: 'Access ends' })
+                  : t('app.settings.billing.labels.current_period_ends', { defaultValue: 'Current period ends' })}
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-slate-900">
+                {formatDate(subscription?.current_period_end, notAvailableLabel)}
+              </dd>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3">
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.settings.billing.labels.last_billing_update', { defaultValue: 'Last billing update' })}
+              </dt>
+              <dd className="mt-1 text-sm font-medium text-slate-900">
+                {formatDateTime(subscription?.updated_at, notAvailableLabel)}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {subscription?.cancel_at_period_end ? (
+              <button type="button" className="btn-primary" onClick={handleReactivate} disabled={isMutationLoading}>
+                {t('app.settings.billing.reactivate', { defaultValue: 'Resume subscription' })}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() =>
+                  void (
+                    isTrial || subscription?.status === 'incomplete' || subscription?.status === 'past_due'
+                      ? startCheckout(activePlan)
+                      : openPortal()
+                  )
+                }
+                disabled={isCheckoutLoading || isPortalLoading}
+              >
+                {isTrial || subscription?.status === 'incomplete'
+                  ? t('app.settings.billing.subscribe', { defaultValue: 'Subscribe' })
+                  : subscription?.status === 'past_due'
+                    ? t('app.settings.billing.pay_now', { defaultValue: 'Pay now' })
+                    : t('app.settings.billing.manage_in_stripe', { defaultValue: 'Manage payment settings' })}
+              </button>
+            )}
+            {!subscription?.cancel_at_period_end && subscription?.status !== 'canceled' ? (
+              <button type="button" className="btn-danger" onClick={handleCancel} disabled={isMutationLoading}>
+                {t('app.settings.billing.cancel', { defaultValue: 'Cancel at period end' })}
+              </button>
+            ) : null}
+            {(subscription?.status === 'incomplete' || subscription?.status === 'past_due') && !isVerifyingCheckout ? (
+              <button type="button" className="btn-secondary" onClick={() => void reloadSummary()} disabled={isLoading}>
+                {t('app.settings.billing.refresh_status', { defaultValue: 'Refresh payment status' })}
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+            <p className="font-medium text-slate-900">
+              {t('app.settings.billing.communication.title', { defaultValue: 'Email updates' })}
+            </p>
+            <p className="mt-1">
+              {t('app.settings.billing.communication.description', {
+                defaultValue:
+                  'We send confirmation emails when payment is completed, when a plan changes, and when cancellation or renewal status changes.',
+              })}
+            </p>
+          </div>
         </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Renewal</h3>
-          <p className="mt-1 text-lg font-semibold text-slate-900">
-            {subscription?.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString() : '-'}
-          </p>
-        </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">Plan</h3>
-          <p className="mt-1 text-lg font-semibold text-slate-900">{activePlan.toUpperCase()}</p>
+
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 className="text-base font-semibold text-slate-900">
+            {t('app.settings.billing.manage_title', { defaultValue: 'What you can do here' })}
+          </h3>
+          <ul className="mt-3 space-y-2 text-sm text-slate-600">
+            <li>{t('app.settings.billing.actions_help.subscribe', { defaultValue: 'Subscribe starts Stripe checkout for the selected plan.' })}</li>
+            <li>{t('app.settings.billing.actions_help.manage', { defaultValue: 'Manage payment settings to change plan, payment method and invoice details.' })}</li>
+            <li>{t('app.settings.billing.actions_help.cancel', { defaultValue: 'Cancel subscription schedules cancellation at the period end.' })}</li>
+            <li>{t('app.settings.billing.actions_help.resume', { defaultValue: 'Resume subscription removes scheduled cancellation.' })}</li>
+          </ul>
+          <div className="mt-5 rounded-lg border border-slate-200 p-3 text-sm">
+            <p className="font-medium text-slate-900">
+              {t('app.settings.billing.references.title', { defaultValue: 'Support details' })}
+            </p>
+            <p className="mt-2 text-slate-600">
+              {t('app.settings.billing.references.customer_id', {
+                defaultValue: 'Billing customer ID: {value}',
+                values: { value: subscription?.customer_id || t('app.settings.billing.not_available_yet', { defaultValue: 'Not available yet' }) },
+              })}
+            </p>
+            <p className="mt-1 text-slate-600">
+              {t('app.settings.billing.references.subscription_id', {
+                defaultValue: 'Subscription ID: {value}',
+                values: { value: subscription?.subscription_id || t('app.settings.billing.not_available_yet', { defaultValue: 'Not available yet' }) },
+              })}
+            </p>
+          </div>
+          <div className="mt-4 rounded-lg border border-slate-200 p-3 text-sm">
+            <p className="font-medium text-slate-900">{t('app.settings.billing.legal.title', { defaultValue: 'Legal' })}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">
+                {t('app.settings.billing.trial.legal_terms', { defaultValue: 'Terms' })}
+              </a>
+              <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">
+                {t('app.settings.billing.trial.legal_privacy', { defaultValue: 'Privacy' })}
+              </a>
+              <a href="/legal/cookies.html" target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">
+                {t('app.settings.billing.trial.legal_cookies', { defaultValue: 'Cookies' })}
+              </a>
+            </div>
+          </div>
         </article>
       </section>
 
@@ -427,13 +882,13 @@ export default function BillingWorkspacePage() {
             <article
               key={plan.code}
               className={`rounded-xl border p-5 shadow-sm ${
-                isActive ? 'border-green-300 bg-green-50/40' : 'border-slate-200 bg-white'
+                isActive ? 'border-emerald-300 bg-emerald-50/40' : 'border-slate-200 bg-white'
               }`}
             >
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-slate-900">{plan.name}</h2>
                 {isActive ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
                     <IconCheck size={14} stroke={2} />
                     {t('app.settings.billing.active_plan', { defaultValue: 'Active' })}
                   </span>
@@ -446,13 +901,15 @@ export default function BillingWorkspacePage() {
               </ul>
               <button
                 type="button"
-                className="mt-4 inline-flex w-full items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={isActive || isCheckoutLoading || isMutationLoading}
-                onClick={() => handleChangePlan(plan.code)}
+                className="btn-secondary mt-4 w-full justify-center"
+                disabled={isActive || isCheckoutLoading || isMutationLoading || isPortalLoading}
+                onClick={() => void handlePlanAction(plan.code)}
               >
                 {isActive
                   ? t('app.settings.billing.current_plan', { defaultValue: 'Current plan' })
-                  : t('app.settings.billing.choose_plan', { defaultValue: 'Change to this plan' })}
+                  : isTrial || !subscription?.subscription_id || subscription?.status === 'incomplete'
+                      ? t('app.settings.billing.subscribe_plan', { defaultValue: 'Subscribe to this plan' })
+                      : t('app.settings.billing.choose_plan', { defaultValue: 'Change to this plan' })}
               </button>
             </article>
           )
@@ -461,146 +918,182 @@ export default function BillingWorkspacePage() {
 
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-base font-semibold text-slate-900">
-          {t('app.settings.billing.usage_title', { defaultValue: 'Usage and limits' })}
+          {t('app.settings.billing.usage_title', { defaultValue: 'Included limits' })}
         </h3>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
-            Recruiters: {summary?.usage.recruiter_count ?? 0} / {summary?.license?.max_recruiters ?? 0}
+            {t('app.settings.billing.usage.recruiters', {
+              defaultValue: 'Recruiters: {used} / {limit}',
+              values: { used: summary?.usage.recruiter_count ?? 0, limit: summary?.license?.max_recruiters ?? 0 },
+            })}
           </div>
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
-            Supervisors: {summary?.usage.supervisor_count ?? 0} / {summary?.license?.max_supervisors ?? 0}
+            {t('app.settings.billing.usage.supervisors', {
+              defaultValue: 'Supervisors: {used} / {limit}',
+              values: { used: summary?.usage.supervisor_count ?? 0, limit: summary?.license?.max_supervisors ?? 0 },
+            })}
           </div>
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
-            Client managers: {summary?.usage.client_manager_count ?? 0} / {summary?.license?.max_client_managers ?? 0}
+            {t('app.settings.billing.usage.client_managers', {
+              defaultValue: 'Client managers: {used} / {limit}',
+              values: { used: summary?.usage.client_manager_count ?? 0, limit: summary?.license?.max_client_managers ?? 0 },
+            })}
           </div>
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
-            Viewers: {summary?.usage.viewer_count ?? 0} / {summary?.license?.max_viewers ?? 0}
+            {t('app.settings.billing.usage.viewers', {
+              defaultValue: 'Viewers: {used} / {limit}',
+              values: { used: summary?.usage.viewer_count ?? 0, limit: summary?.license?.max_viewers ?? 0 },
+            })}
           </div>
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
-            Storage: {Math.round(summary?.usage.storage_used_gb ?? 0)}GB / {summary?.license?.max_storage_gb ?? 0}GB
+            {t('app.settings.billing.usage.storage', {
+              defaultValue: 'Storage: {used}GB / {limit}GB',
+              values: { used: Math.round(summary?.usage.storage_used_gb ?? 0), limit: summary?.license?.max_storage_gb ?? 0 },
+            })}
           </div>
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
-            Companies: limit {summary?.license?.max_companies ?? 0}
+            {t('app.settings.billing.usage.companies', {
+              defaultValue: 'Companies: limit {limit}',
+              values: { limit: summary?.license?.max_companies ?? 0 },
+            })}
           </div>
         </div>
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-base font-semibold text-slate-900">
-          {t('app.settings.billing.manage_title', { defaultValue: 'Manage subscription' })}
-        </h3>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={handleCancel}
-            disabled={isMutationLoading}
-          >
-            {t('app.settings.billing.cancel', { defaultValue: 'Cancel at period end' })}
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={handleReactivate}
-            disabled={isMutationLoading}
-          >
-            {t('app.settings.billing.reactivate', { defaultValue: 'Reactivate' })}
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={() => startCheckout(activePlan)}
-            disabled={isCheckoutLoading}
-          >
-            {t('app.settings.billing.renew', { defaultValue: 'Run checkout flow' })}
-          </button>
-        </div>
-      </section>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-base font-semibold text-slate-900">
-          {t('app.settings.billing.checkout_sim.title', { defaultValue: 'Stripe checkout simulation' })}
-        </h3>
-        <p className="mt-1 text-sm text-slate-600">
-          {t('app.settings.billing.checkout_sim.subtitle', {
-            defaultValue: 'Use these controls to test success, cancel, and payment error scenarios.',
-          })}
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-            onClick={() => simulateOutcome('success')}
-            disabled={isCheckoutLoading}
-          >
-            {t('app.settings.billing.checkout_sim.success', { defaultValue: 'Simulate success' })}
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-amber-500 px-3 py-2 text-sm font-medium text-white hover:bg-amber-600"
-            onClick={() => simulateOutcome('cancel')}
-            disabled={isCheckoutLoading}
-          >
-            {t('app.settings.billing.checkout_sim.cancel', { defaultValue: 'Simulate cancel' })}
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-700"
-            onClick={() => simulateOutcome('error')}
-            disabled={isCheckoutLoading}
-          >
-            {t('app.settings.billing.checkout_sim.error', { defaultValue: 'Simulate card error' })}
-          </button>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={clearCheckoutState}
-            disabled={isCheckoutLoading}
-          >
-            <IconRefresh size={15} stroke={1.9} />
-            {t('common.reset', { defaultValue: 'Reset' })}
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            onClick={openPortal}
-            disabled={isPortalLoading}
-          >
-            {t('app.settings.billing.portal', { defaultValue: 'Open billing portal' })}
-          </button>
-        </div>
-
-        {checkoutState !== 'idle' && (
-          <div
-            className={`mt-4 rounded-md border px-4 py-3 text-sm ${
-              checkoutState === 'success'
-                ? 'border-green-200 bg-green-50 text-green-700'
-                : checkoutState === 'cancel'
-                  ? 'border-amber-200 bg-amber-50 text-amber-700'
-                  : 'border-rose-200 bg-rose-50 text-rose-700'
-            }`}
-          >
-            {checkoutState === 'success' && t('app.settings.billing.status.success', { defaultValue: 'Payment succeeded. Subscription is active.' })}
-            {checkoutState === 'cancel' && t('app.settings.billing.status.cancel', { defaultValue: 'Checkout canceled by user. Keep context and offer one-click retry.' })}
-            {(checkoutState === 'error' || checkoutState === 'incomplete') && (
-              <span className="inline-flex items-center gap-1">
-                <IconAlertTriangle size={14} stroke={2} />
-                {checkoutState === 'error'
-                  ? t('app.settings.billing.status.error', { defaultValue: 'Payment failed. Show clear reason and retry action.' })
-                  : t('app.settings.billing.status.incomplete', { defaultValue: 'Checkout created. Complete payment or resolve simulation outcome.' })}
-              </span>
-            )}
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2">
+            <IconHistory size={18} stroke={1.9} />
+            <h3 className="text-base font-semibold text-slate-900">
+              {t('app.settings.billing.history.title', { defaultValue: 'Payment history' })}
+            </h3>
           </div>
-        )}
+          {history.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-500">
+              {t('app.settings.billing.history.empty', { defaultValue: 'No billing events yet.' })}
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {history.map((item: BillingHistoryItem) => (
+                <article key={item.id} className={`rounded-lg border p-4 ${getHistoryToneClasses(item.status)}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold">{item.title}</p>
+                      <p className="mt-1 text-xs opacity-80">{formatDateTime(item.occurred_at, notAvailableLabel)}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {item.plan_code ? <span className="rounded-md bg-white/70 px-2 py-1">{item.plan_code.toUpperCase()}</span> : null}
+                      {item.amount_minor != null ? (
+                        <span className="rounded-md bg-white/70 px-2 py-1">{formatAmount(item.amount_minor, item.currency)}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  {item.description ? <p className="mt-2 text-sm">{item.description}</p> : null}
+                  {(item.invoice_pdf_url || item.hosted_invoice_url) ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {item.hosted_invoice_url ? (
+                          <a href={item.hosted_invoice_url} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">
+                          {t('app.settings.billing.history.view_invoice', { defaultValue: 'View invoice' })}
+                        </a>
+                      ) : null}
+                      {item.invoice_pdf_url ? (
+                        <a href={item.invoice_pdf_url} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">
+                          {t('app.settings.billing.history.download_pdf', { defaultValue: 'Download PDF' })}
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          )}
+        </article>
 
-        <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-slate-600">
-          <li>Select plan and create Stripe Checkout session.</li>
-          <li>Redirect to Stripe Checkout and collect payment method.</li>
-          <li>Receive `checkout.session.completed` webhook.</li>
-          <li>Activate subscription and tenant limits.</li>
-          <li>Redirect user to success page with onboarding checklist.</li>
-        </ol>
+        <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center gap-2">
+            <IconMail size={18} stroke={1.9} />
+            <h3 className="text-base font-semibold text-slate-900">
+              {t('app.settings.billing.invoices.title', { defaultValue: 'Invoices' })}
+            </h3>
+          </div>
+          {invoices.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-500">
+              {t('app.settings.billing.invoices.empty', { defaultValue: 'No Stripe invoices are available yet.' })}
+            </p>
+          ) : (
+            <div className="mt-4 overflow-x-auto">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{t('app.settings.billing.invoices.columns.invoice', { defaultValue: 'Invoice' })}</th>
+                    <th>{t('app.settings.billing.invoices.columns.status', { defaultValue: 'Status' })}</th>
+                    <th>{t('app.settings.billing.invoices.columns.amount', { defaultValue: 'Amount' })}</th>
+                    <th>{t('app.settings.billing.invoices.columns.period', { defaultValue: 'Period' })}</th>
+                    <th>{t('app.settings.billing.invoices.columns.actions', { defaultValue: 'Actions' })}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((invoice: BillingInvoice) => (
+                    <tr key={invoice.id}>
+                      <td>
+                        <div className="font-medium text-slate-900">{invoice.number || invoice.id}</div>
+                        <div className="text-xs text-slate-500">{formatDate(invoice.created_at, notAvailableLabel)}</div>
+                      </td>
+                      <td>{t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}</td>
+                      <td>{formatAmount(invoice.amount_paid_minor ?? invoice.total_minor, invoice.currency)}</td>
+                      <td>
+                        {formatDate(invoice.period_start, notAvailableLabel)} - {formatDate(invoice.period_end, notAvailableLabel)}
+                      </td>
+                      <td>
+                        <div className="flex flex-wrap gap-2">
+                          {invoice.hosted_invoice_url ? (
+                            <a href={invoice.hosted_invoice_url} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-xs">
+                              {t('app.settings.billing.invoices.open', { defaultValue: 'Open' })}
+                            </a>
+                          ) : null}
+                          {invoice.invoice_pdf_url ? (
+                            <a href={invoice.invoice_pdf_url} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-xs">
+                              {t('app.settings.billing.invoices.pdf', { defaultValue: 'PDF' })}
+                            </a>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
       </section>
+
+      {!isStripe ? (
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-base font-semibold text-slate-900">
+            {t('app.settings.billing.checkout_sim.title', { defaultValue: 'Local billing simulation' })}
+          </h3>
+          <p className="mt-1 text-sm text-slate-600">
+            {t('app.settings.billing.checkout_sim.subtitle', {
+              defaultValue: 'These controls are only shown when Stripe is not active for the current tenant.',
+            })}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" className="btn-primary" onClick={() => void simulateOutcome('success')} disabled={isCheckoutLoading}>
+              {t('app.settings.billing.checkout_sim.success', { defaultValue: 'Simulate success' })}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => void simulateOutcome('cancel')} disabled={isCheckoutLoading}>
+              {t('app.settings.billing.checkout_sim.cancel', { defaultValue: 'Simulate cancel' })}
+            </button>
+            <button type="button" className="btn-danger" onClick={() => void simulateOutcome('error')} disabled={isCheckoutLoading}>
+              {t('app.settings.billing.checkout_sim.error', { defaultValue: 'Simulate card error' })}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => void clearCheckoutState()} disabled={isCheckoutLoading}>
+              <IconRefresh size={15} stroke={1.9} />
+              <span>{t('common.reset', { defaultValue: 'Reset' })}</span>
+            </button>
+          </div>
+        </section>
+      ) : null}
     </div>
   )
 }

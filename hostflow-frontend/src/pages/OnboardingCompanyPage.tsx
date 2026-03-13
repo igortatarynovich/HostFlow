@@ -90,7 +90,7 @@ export default function OnboardingCompanyPage() {
     setLoading(true)
     try {
       await createCompany({ name: trimmed, company_type: companyType })
-      navigate(ACTIVATION_PATHS.onboardingGettingStarted, { replace: true })
+      navigate(ACTIVATION_PATHS.overview, { replace: true })
     } catch (err: any) {
       const msg = err?.response?.data?.detail ?? err?.message ?? t('app.onboarding.company.errors.generic', { defaultValue: 'Не удалось создать компанию' })
       setError(typeof msg === 'string' ? msg : JSON.stringify(msg))

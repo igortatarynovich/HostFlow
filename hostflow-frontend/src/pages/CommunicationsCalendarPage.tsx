@@ -1273,17 +1273,17 @@ export default function CommunicationsCalendarPage() {
                         setWeekCursor(startOfWeek(day))
                         setViewMode('day')
                       }}
-                      className={clsx('min-h-[96px] rounded-lg border px-2 py-2 text-left', isSelected ? 'border-brand-500 bg-brand-50' : 'border-slate-200 hover:bg-slate-50', !inMonth && 'opacity-45')}
+                      className={clsx('min-h-[96px] overflow-hidden rounded-lg border px-2 py-2 text-left', isSelected ? 'border-brand-500 bg-brand-50' : 'border-slate-200 hover:bg-slate-50', !inMonth && 'opacity-45')}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className={clsx('text-sm', isToday ? 'font-semibold text-brand-700' : 'text-slate-700')}>{day.getDate()}</span>
                         {dayEvents.length > 0 && <span className="text-[10px] text-slate-500">{dayEvents.length}</span>}
                       </div>
                       <div className="mt-2 space-y-1">
-                        {counts.overdue > 0 && <div className="badge bg-rose-100 text-rose-800">overdue {counts.overdue}</div>}
-                        {counts.timeoff > 0 && <div className="badge bg-rose-50 text-rose-700">time-off {counts.timeoff}</div>}
-                        {counts.reminders > 0 && <div className="badge bg-amber-100 text-amber-800">rem {counts.reminders}</div>}
-                        {counts.planner > 0 && <div className="badge bg-violet-100 text-violet-800">planner {counts.planner}</div>}
+                        {counts.overdue > 0 && <div className="badge max-w-full overflow-hidden bg-rose-100 text-rose-800">overdue {counts.overdue}</div>}
+                        {counts.timeoff > 0 && <div className="badge max-w-full overflow-hidden bg-rose-50 text-rose-700">time-off {counts.timeoff}</div>}
+                        {counts.reminders > 0 && <div className="badge max-w-full overflow-hidden bg-amber-100 text-amber-800">rem {counts.reminders}</div>}
+                        {counts.planner > 0 && <div className="badge max-w-full overflow-hidden bg-violet-100 text-violet-800">planner {counts.planner}</div>}
                       </div>
                     </button>
                   )
@@ -1336,10 +1336,10 @@ export default function CommunicationsCalendarPage() {
                             setSelectedDay(key)
                             setViewMode('day')
                           }}
-                          className={clsx('border-l border-slate-200 px-2 py-2 text-left', key === selectedDay ? 'bg-brand-50' : 'bg-slate-50 hover:bg-slate-100')}
+                          className={clsx('min-w-0 overflow-hidden border-l border-slate-200 px-2 py-2 text-left', key === selectedDay ? 'bg-brand-50' : 'bg-slate-50 hover:bg-slate-100')}
                         >
-                        <div className="text-xs font-semibold text-slate-900">{new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(day)}</div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="truncate text-xs font-semibold text-slate-900">{new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(day)}</div>
+                        <div className="truncate text-[11px] text-slate-500">
                           {formatDayLabel(key)}
                           {key === nowMeta.dayKey && <span className="ml-1 badge bg-rose-100 text-rose-700">now</span>}
                         </div>
@@ -1357,7 +1357,7 @@ export default function CommunicationsCalendarPage() {
                         <div key={`week-all-${key}`} className="min-h-[46px] border-l border-slate-200 px-1 py-1">
                           <div className="space-y-1">
                             {allDayEvents.map((event) => (
-                              <div key={`all-${event.id}`} className={clsx('badge border', plannerKindTone(event.kind))}>
+                              <div key={`all-${event.id}`} className={clsx('badge border', plannerKindTone(event.kind), 'block w-full overflow-hidden')}>
                                 <div className="truncate font-medium">{event.title}</div>
                               </div>
                             ))}
@@ -1421,7 +1421,7 @@ export default function CommunicationsCalendarPage() {
                                         if (event.plannerId) setDragPlannerEvent(event)
                                       }}
                                       onDragEnd={() => setDragPlannerEvent(null)}
-                                      className={clsx('badge border', plannerKindTone(event.kind), event.plannerId ? 'cursor-move' : '')}
+                                      className={clsx('badge border', plannerKindTone(event.kind), 'block w-full overflow-hidden', event.plannerId ? 'cursor-move' : '')}
                                       title={event.plannerId ? 'Drag to another slot' : undefined}
                                     >
                                       <div className="truncate font-medium">{event.title}</div>

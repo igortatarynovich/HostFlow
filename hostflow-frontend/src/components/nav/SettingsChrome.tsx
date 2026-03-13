@@ -15,6 +15,7 @@ import { usePermissions } from '../../hooks/usePermissions'
 
 type SettingsChromeProps = {
   pathname: string
+  compactMode?: boolean
 }
 
 type NavItem = {
@@ -30,7 +31,7 @@ const isActive = (pathname: string, target: string): boolean => {
   return pathname.startsWith(target)
 }
 
-export function SettingsChrome({ pathname }: SettingsChromeProps) {
+export function SettingsChrome({ pathname, compactMode = false }: SettingsChromeProps) {
   const { t } = useI18n()
   const { can } = usePermissions()
 
@@ -93,7 +94,11 @@ export function SettingsChrome({ pathname }: SettingsChromeProps) {
     },
   ]
 
-  const visibleItems = items.filter((item) => item.visible)
+  const visibleItems = items.filter((item) => {
+    if (!item.visible) return false
+    if (!compactMode) return true
+    return item.key === 'billing' || item.key === 'personal'
+  })
 
   return (
     <section className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">

@@ -1,7 +1,7 @@
 # CRM Production Readiness SSOT (Single Source of Truth)
 
 Дата создания: 2026-03-11  
-Последнее обновление: 2026-03-12  
+Последнее обновление: 2026-03-13  
 Статус: `IN_PROGRESS`  
 Цель: довести продукт до состояния, когда новый клиент проходит путь `Landing -> Signup -> Payment -> Active usage` без участия поддержки.
 
@@ -69,6 +69,7 @@
 - Добавить release-задачи на `Citronex/POLTRAK` сценарии (tenant link + portal link + visibility scope).
 - Добавить отдельную задачу на `Auth hardening` (signup/invite/session recovery) как часть безподдержочного запуска.
 - Добавить domain-checklist для communications depth: scheduler, OAuth adapters, provider webhooks, queue/audit consistency.
+- Добавить продуктовый governance-pack по self-serve CRM: role-to-settings matrix, company bootstrap data contract, owner/manager assignment, navigation IA without duplication, communications IA consolidation, working-hours availability и non-blocking orientation wizard.
 
 ---
 
@@ -78,14 +79,14 @@
 
 | # | Критерий | Статус | Проверка готовности | Комментарий |
 |---|---|---|---|---|
-| 1 | Полный customer journey без тупиков | `IN_PROGRESS` | Новый пользователь проходит полный путь без ручной помощи | Остался production Stripe + финальный сквозной smoke |
+| 1 | Полный customer journey без тупиков | `IN_PROGRESS` | Новый пользователь проходит полный путь без ручной помощи | Live Stripe checkout/webhook подтверждены; остался формальный сквозной release smoke без саппорта |
 | 2 | Автонастройка под тип компании | `IN_PROGRESS` | При выборе типа включается корректный набор модулей/ролей/workflow | Основа есть (`agency/employer`), профиль `services` и полная автоконфигурация нужно дожать |
 | 3 | Базовая работоспособность CRM | `DONE` | Можно создать клиента, кандидата, процесс/сделку, задачу, заметку, файл | Базовый сценарий закрыт |
 | 4 | Коммуникации (email + мессенджеры) | `IN_PROGRESS` | Подключение, inbox, отправка, история, шаблоны, базовые настройки | Ядро готово, нужен финальный UX/ошибки и релизная стабилизация |
 | 5 | Реклама и лиды | `IN_PROGRESS` | Лид приходит из источника, карточка создается, источник сохраняется | Pipeline есть, требуется полный продуктовый проход под launch |
 | 6 | Командная работа | `DONE` | Инвайты, роли, права, активность доступны | Работает |
 | 7 | Автоматизации | `IN_PROGRESS` | Триггеры/автодействия/распределение/автоответы доступны без костылей | Частично реализовано |
-| 8 | Подписка и биллинг | `IN_PROGRESS` | План, смена, продление, отмена, история платежей | Self-service реализован, production Stripe не подключен |
+| 8 | Подписка и биллинг | `IN_PROGRESS` | План, смена, продление, отмена, история платежей | Live Stripe checkout + webhook работают; change-plan переведен на explicit Stripe Checkout flow, current production starter subscription мигрирована на боевой `39 EUR`, остается только финальный release-pass в составе `A5` |
 | 9 | Скрытие недореализованных модулей | `IN_PROGRESS` | Пользователь не видит незавершенные/экспериментальные функции | Частично закрыто feature/module gating |
 | 10 | Полноценная работа solo | `DONE` | Один пользователь проходит путь и работает без команды | Работает |
 | 11 | Полноценная работа команды | `DONE` | Совместная работа с разграничением прав | Работает |
@@ -97,14 +98,14 @@
 | 17 | Отсутствие тупиков | `IN_PROGRESS` | На каждом шаге есть понятный следующий action | Существенно улучшено, требуется финальный аудит |
 | 18 | Минимум действий | `IN_PROGRESS` | Клиент/письмо/задача создаются за целевое число кликов | Частично выполнено, нужен UX pass |
 | 19 | Empty-state UX | `IN_PROGRESS` | Пустые экраны дают следующий шаг и образец данных | Частично есть, не везде консистентно |
-| 20 | Общий критерий готовности | `BLOCKED` | Полный сценарий: регистрация -> оплата -> почта -> клиент -> лид -> работа | Блокер: production Stripe + финальный E2E sign-off |
+| 20 | Общий критерий готовности | `IN_PROGRESS` | Полный сценарий: регистрация -> оплата -> почта -> клиент -> лид -> работа | Payment block снят live smoke; остается финальный E2E sign-off и закрытие оставшихся billing UX веток |
 
 ## 3.2 Текущая интегральная готовность
 
-- Product readiness: `~80%`
-- Блокер запуска self-serve продаж: `Stripe production integration`
+- Product readiness: `~86%`
+- Главный незакрытый release-gate: `финальный E2E sign-off + billing recovery/history completion`
 
-## 3.3 Дополнительные критические критерии (21–38)
+## 3.3 Дополнительные критические критерии (21–45)
 
 | # | Критерий | Статус | Проверка готовности | Комментарий |
 |---|---|---|---|---|
@@ -120,12 +121,19 @@
 | 30 | Скорость ключевых действий (операционные KPI) | `NOT_STARTED` | Замерены и достигнуты целевые времена операций | Добавлен отдельный KPI-блок |
 | 31 | Ясность терминов в интерфейсе | `IN_PROGRESS` | Термины единообразны и адаптированы под тип бизнеса | Нужно терминологическое выравнивание |
 | 32 | Коммуникационный центр как ядро workflow | `IN_PROGRESS` | Переписка интегрирована в рабочие объекты (client/candidate/lead) | Нужна финальная связка всех сценариев |
-| 33 | Прозрачный billing для пользователя | `IN_PROGRESS` | План/лимиты/usage/renewal/invoices/изменение тарифа на 1 экране | История платежей и live Stripe не завершены |
+| 33 | Прозрачный billing для пользователя | `IN_PROGRESS` | План/лимиты/usage/renewal/invoices/изменение тарифа на 1 экране | History/invoices/receipts/date fields и explicit checkout-based plan change внедрены; current starter billing cycle переведен на боевой `39 EUR`, остается только финальный release-pass в составе `A5` |
 | 34 | Self-guided UX (система помогает, а не требует обучения) | `IN_PROGRESS` | Подсказки, понятные labels, success/error states, next steps | Частично реализовано |
 | 35 | Контрольные сценарии успеха (A/B/C) | `IN_PROGRESS` | Сценарии соло/агентство/работодатель проходят end-to-end | Матрица сценариев добавлена, нужен фактический PASS прогон |
 | 36 | SEO техническая готовность marketing/public surface | `DONE` | Индексация, sitemap, robots, canonical, meta/open graph, structured data и базовые Core Web Vitals в целевых пределах | Technical baseline закрыт; остается регулярный мониторинг и server-level 404 policy как non-blocking риск |
 | 37 | SEO контентное наполнение для конверсии | `DONE` | Ключевые landing/feature/use-case страницы имеют целевой контент, CTA и семантические заголовки | Wave-1 контент-пакет выпущен, перелинковка и baseline tracking внедрены |
-| 38 | Mobile adaptation (responsive-first) | `IN_PROGRESS` | Публичные и core CRM-экраны проходят mobile QA (320/375/390/768), без критичных overflow и с рабочими CTA | Частично закрыто, нужен формальный mobile cross-screen pass |
+| 38 | Mobile adaptation (responsive-first) | `DONE` | Публичные и core CRM-экраны проходят mobile QA (320/375/390/768), без критичных overflow и с рабочими CTA | Финальный manual device pass зафиксирован, включая fix `MOB-005` для календаря |
+| 39 | Матрица доступа к настройкам по ролям | `IN_PROGRESS` | Для каждой роли и типа workspace формально определено, какие settings/routes/actions доступны; простой клиентский tenant не видит platform/superadmin shell | Нужен role-by-role UX/access sign-off и зачистка legacy shortcuts |
+| 40 | Контракт данных для создания компании | `NOT_STARTED` | Для self-serve company setup собираются только необходимые поля; у каждого поля есть явная цель использования в CRM/billing/legal/workflow | Нужно зафиксировать field-by-field contract и copy |
+| 41 | Явное назначение владельца/ответственного компании | `NOT_STARTED` | После создания компании всегда известен owner/manager; роль и права управления компанией определены и редактируемы | Нужно довести bootstrap ownership model |
+| 42 | Настройки без дублирования entry points | `IN_PROGRESS` | Settings доступны из одного канонического места; topbar и sidebar не дублируют одни и те же admin links | Начат IA cleanup, нужен финальный nav audit |
+| 43 | Коммуникации как единый раздел IA | `IN_PROGRESS` | `Messages`, `Email`, `Calendar`, `Planner`, availability/time off логически собраны в одном communication cluster без orphaned screens | Нужна финальная перегруппировка и copy-pass |
+| 44 | Моя доступность как рабочий график | `NOT_STARTED` | Пользователь задает рабочие дни/часы, а planner/calendar/team availability учитывают когда он доступен и когда нет | Сейчас есть только базовый availability/time-off контур |
+| 45 | Визард-ориентир без блокировки работы | `IN_PROGRESS` | Wizard помогает понять разделы и next steps, но не блокирует core work после создания компании | Принудительная блокировка снята, нужен финальный non-blocking orientation pass |
 
 ---
 
@@ -234,11 +242,11 @@ API smoke-check `P0` (staging, `2026-03-11`):
 
 | ID | Задача | Статус | DOD | Блокеры |
 |---|---|---|---|---|
-| A1 | Подключить Stripe production (`price_id`, live keys) | `NOT_STARTED` | Checkout создает реальную подписку | Доступы Stripe |
-| A2 | Подключить webhook события (`checkout.session.completed`, `invoice.paid`, `customer.subscription.updated/deleted`) | `NOT_STARTED` | Статус подписки в tenant синхронизируется автоматически | A1 |
-| A3 | Реализовать платежную историю в UI (`invoices/payments history`) | `NOT_STARTED` | Пользователь видит историю списаний и статусы | A2 |
-| A4 | Финализировать recovery-флоу оплаты (cancel/error/retry/pending webhook) | `IN_PROGRESS` | На каждой ошибке есть понятный следующий шаг | A1/A2 |
-| A5 | Прогон сквозного E2E #20 (staging -> production) | `NOT_STARTED` | Подписанный PASS протокол | A1-A4 |
+| A1 | Подключить Stripe production (`price_id`, live keys) | `DONE` | Checkout создает реальную подписку | Live keys, webhook secret и `price_id` заведены в конфиг |
+| A2 | Подключить webhook события (`checkout.session.completed`, `invoice.paid`, `customer.subscription.updated/deleted`) | `DONE` | Статус подписки в tenant синхронизируется автоматически | Live smoke подтвержден |
+| A3 | Реализовать платежную историю в UI (`invoices/payments history`) | `DONE` | Пользователь видит оплачено/не оплачено, активный тариф, дату старта/окончания периода, invoice history и receipt/download actions на 1 экране | Live user sign-off подтвержден: history/invoices/date fields/receipt download работают в production billing flow |
+| A4 | Финализировать recovery-флоу оплаты (cancel/error/retry/pending webhook) | `DONE` | На каждой ошибке и post-payment ветке есть понятный экран, только нужные CTA (`subscribe/pay/cancel/resume/manage`) и email confirmations | Live user sign-off подтвержден: explicit Stripe Checkout plan change, cancel/resume, pending/return states и post-payment UX работают как ожидается |
+| A5 | Прогон сквозного E2E #20 (staging -> production) | `IN_PROGRESS` | Подписанный PASS протокол | Dedicated production `services` tenant подготовлен; остался финальный manual run-record |
 
 ### 5.1.1 Sales Unblock Execution Pack (`2026-03-12`)
 
@@ -246,14 +254,43 @@ API smoke-check `P0` (staging, `2026-03-11`):
 
 | Шаг | Действие | Владелец | Артефакт приемки | Статус |
 |---|---|---|---|---|
-| S1 | Получить/проверить production доступы Stripe (live keys, webhook signing secret, product/price IDs) | `Billing/Platform` | Заполненный `.env`/secret-store + список `price_id` в runbook | `NOT_STARTED` |
-| S2 | Провести dry-run checkout в production-safe режиме (минимальный тестовый tenant) | `Backend` | Лог `checkout.session.completed` + созданная подписка в Stripe и tenant | `NOT_STARTED` |
-| S3 | Включить и проверить webhook цепочку (`checkout.session.completed`, `invoice.paid`, `customer.subscription.updated/deleted`) | `Backend` | Таблица соответствий `Stripe event -> tenant state` + PASS smoke | `NOT_STARTED` |
-| S4 | Закрыть recovery path для ошибок оплаты (cancel/error/retry + pending webhook) | `Frontend + Backend` | Чеклист UX-веток с ожидаемым CTA и фактическим поведением | `IN_PROGRESS` |
+| S1 | Получить/проверить production доступы Stripe (live keys, webhook signing secret, product/price IDs) | `Billing/Platform` | Заполненный `.env`/secret-store + список `price_id` в runbook | `DONE` |
+| S2 | Провести dry-run checkout в production-safe режиме (минимальный тестовый tenant) | `Backend` | Лог `checkout.session.completed` + созданная подписка в Stripe и tenant | `DONE` |
+| S3 | Включить и проверить webhook цепочку (`checkout.session.completed`, `invoice.paid`, `customer.subscription.updated/deleted`) | `Backend` | Таблица соответствий `Stripe event -> tenant state` + PASS smoke | `DONE` |
+| S4 | Закрыть recovery path для ошибок оплаты (cancel/error/retry + pending webhook) | `Frontend + Backend` | Чеклист UX-веток с ожидаемым CTA и фактическим поведением | `DONE` |
 | S5 | Выполнить release-gate прогон #20 (`staging -> production`) и зафиксировать протокол | `QA/Product` | Подписанный `PASS/FAIL` протокол по шагам раздела 4 | `NOT_STARTED` |
 
 Правило перехода к продажам:
 - Self-serve продажи можно включать только после `S1..S5 = DONE` и обновления раздела `10` со статусом сценария `A = PASS`.
+
+### 5.1.2 `S3` Stripe Webhook Mapping Snapshot (`2026-03-13`)
+
+| Stripe event | Tenant subscription update | Статус |
+|---|---|---|
+| `checkout.session.completed` | Привязка `customer_id`/`subscription_id`, статус `active`, план из `metadata.plan_code`, применение license limits | `IMPLEMENTED` |
+| `invoice.paid` | Подтверждение `active`, обновление `current_period_end` (по invoice line period), применение license limits | `IMPLEMENTED` |
+| `customer.subscription.updated` | Синхронизация `status`, `cancel_at_period_end`, `canceled_at`, `current_period_end`, `plan_code` (по `price_id`) | `IMPLEMENTED` |
+| `customer.subscription.deleted` | Синхронизация статуса в `canceled`, фиксация `canceled_at`/`cancel_at_period_end` | `IMPLEMENTED` |
+
+Итог:
+- Live webhook smoke завершен успешно: endpoint получил Stripe webhook-запросы (`200`), tenant subscription state синхронизирован до `active`.
+- Подтвержденные live артефакты: `customer_id = cus_U8he6GO7b06J5o`, `subscription_id = sub_1TAQFkDNUS2CNJRmeq1PmpsR`.
+
+### 5.1.3 `S2` Live Checkout Smoke Snapshot (`2026-03-13`)
+
+Текущий результат:
+- Backend container пересобран с `stripe` SDK и production Stripe env из `backend/.env`.
+- Live checkout session создается через `POST /api/v1/settings/billing/checkout-session` с `provider=stripe`.
+- Для безопасного smoke `starter` временно переключался на live `1 EUR` price: `price_1TAQCADNUS2CNJRmgzoWWjDi`; после прогона основной starter price возвращен в конфиг.
+- Финальный успешный checkout session: `cs_live_a1RcP3fO181TgMgylkVSrZgsoN9y87Q7VtBp1rEM4ef9bkDi8GV4kVG9hh`.
+- После оплаты tenant `11111111-1111-1111-1111-111111111111` обновлен до:
+  - `provider = stripe`
+  - `status = active`
+  - `plan_code = starter`
+  - `customer_id = cus_U8he6GO7b06J5o`
+  - `subscription_id = sub_1TAQFkDNUS2CNJRmeq1PmpsR`
+  - `current_period_end = 2026-04-13T07:35:06+00:00`
+- В backend logs зафиксированы `POST /api/v1/settings/billing/webhook` (`200`), что подтверждает доставку webhook от Stripe.
 
 ## 5.2 Фаза B — Онбординг и TTV
 
@@ -264,6 +301,10 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | B3 | Замерить Time To Value (5–10 мин) на 5 новых аккаунтах | `NOT_STARTED` | Отчет с медианой и узкими местами |
 | B4 | Убрать обязательные advanced-настройки из первого запуска | `IN_PROGRESS` | До first value не требуется заход в Settings |
 | B5 | `services` onboarding: отдельный шаг первого клиента (`first_client_created`) | `DONE` | Онбординг и activation учитывают создание первого клиента, API возвращает `clients/counterparties` счетчики |
+| B6 | Формализовать role-to-settings matrix (`workspace type x role x route/action`) | `IN_PROGRESS` | Есть каноническая матрица доступа; клиентский tenant не видит superadmin/platform settings и лишние admin actions |
+| B7 | Зафиксировать self-serve company bootstrap contract | `NOT_STARTED` | Определен минимальный набор полей для company setup + documented purpose/use per field |
+| B8 | Довести ownership bootstrap первой компании | `NOT_STARTED` | При создании первой компании явно назначается owner/manager с управляющей ролью и это отражено в UI/API |
+| B9 | Перевести onboarding wizard в orientation-mode | `IN_PROGRESS` | Wizard показывает что где находится и какие next steps доступны, но не блокирует рабочие экраны |
 
 ## 5.3 Фаза C — Коммуникации и лиды (операционная ценность)
 
@@ -276,6 +317,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | C5 | Конфигурируемый маппинг рекламных полей (`source -> target -> format`) | `DONE` | Админ настраивает какие поля забирать из рекламы и в какие CRM-поля сохранять |
 | C6 | Явная классификация компаний (`client` / `counterparty`) для `services` аналитики | `DONE` | Тип компании задается в CRM и используется в профильной аналитике |
 | C7 | Вывести `services`-KPI по `clients/counterparties` в рабочем модуле Services | `DONE` | Вкладка `Services -> Analytics` показывает профильные KPI и предупреждение о неклассифицированных компаниях |
+| C8 | Собрать `messages/email/calendar/planner/availability` в единый communications IA | `IN_PROGRESS` | Навигация и пустые состояния объясняют единый communication workspace; `messages/email` не выглядят orphaned от блока коммуникаций |
 
 ## 5.4 Фаза D — UX качество и надежность
 
@@ -285,6 +327,8 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | D2 | Минимизировать действия до целевых 1–2 кликов (клиент/задача/письмо) | `IN_PROGRESS` | UX-аудит с фактическим количеством шагов |
 | D3 | Финальная карта ошибок (оплата/почта/интеграции/сеть) | `IN_PROGRESS` | Каждая ошибка имеет дружелюбный текст и recovery action |
 | D4 | Нагрузочная проверка базового сценария (1 пользователь -> команда) | `NOT_STARTED` | Нет критических деградаций |
+| D5 | Убрать дублирование настроек между topbar и sidebar | `IN_PROGRESS` | Настройки доступны из одного канонического entry point; account menu не дублирует admin/settings navigation |
+| D6 | Расширить `My availability` до рабочего графика | `NOT_STARTED` | Пользователь задает рабочие дни/часы, planner/calendar/team availability понимают expected working window |
 | D1.1 | Единый empty-state паттерн для `clients/leads/messages/reminders` | `DONE` | В этих модулях добавлены объяснение раздела + primary CTA + secondary next step в едином UI-паттерне |
 | D1.2 | Единый empty-state паттерн для `candidates/pipeline/services-orders` | `DONE` | Добавлены CTA и next-step для пустых списков кандидатов, пустого pipeline и пустого списка сервисных заказов |
 | D2.1 | Сократить шаги в ключевых действиях: задача/письмо/клиент | `DONE` | `reminders`: задача создается с автодатой без обязательного ввода due_at; `messages`: получатель подставляется автоматически из диалога + `Ctrl/Cmd+Enter` отправляет сообщение; `clients`: advanced-опции в модалке скрыты по умолчанию |
@@ -380,7 +424,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F8 | Compact CRM UI standard + Tabler icons rollout | `IN_PROGRESS` | Ключевые экраны (`Pipeline`, `Leads`, `Candidates`, `Dashboard`) визуально компактны, единообразны и без лишних элементов |
 | F9 | SEO optimization baseline (technical SEO) | `DONE` | Публичные страницы имеют корректные `title/description/canonical`, `robots.txt`, `sitemap.xml`, OG tags, schema.org и индексацию без критичных ошибок |
 | F10 | SEO content rollout (pages + copy + intent mapping) | `DONE` | Выпущен контент-пакет для приоритетных запросов (landing/use-cases/features), есть внутренняя перелинковка и конверсионные CTA |
-| F11 | Mobile adaptation pass (public + CRM core) | `IN_PROGRESS` | Пройден responsive-аудит по брейкпоинтам `320/375/390/768`, устранены критичные UI/UX разрывы, оформлен mobile QA-report |
+| F11 | Mobile adaptation pass (public + CRM core) | `DONE` | Пройден responsive-аудит по брейкпоинтам `320/375/390/768`, устранены критичные UI/UX разрывы, оформлен и подписан финальный mobile QA-report |
 
 Стандарт `F8` (принят):
 - Навигация и аккаунт-меню строятся по responsibility-first: `My account` и `Company overview`.
@@ -514,33 +558,33 @@ Implementation notes:
 | ID | Задача | Статус | DOD |
 |---|---|---|---|
 | F11.1 | Составить mobile QA-матрицу экранов (`public + CRM core`) | `DONE` | Зафиксирован список экранов и breakpoints `320/375/390/768` |
-| F11.2 | Провести cross-screen аудит на overflow/clip/tap-target issues | `DONE` | Критичные баги `MOB-001..004` заведены и закрыты; residual risks зафиксированы |
+| F11.2 | Провести cross-screen аудит на overflow/clip/tap-target issues | `DONE` | Критичные баги `MOB-001..005` заведены и закрыты; residual risks зафиксированы |
 | F11.3 | Закрыть P0/P1 mobile-баги по ключевому пути (`signup -> onboarding -> first value`) | `DONE` | Текущий P0/P1 backlog по mobile закрыт, блокирующих дефектов не осталось |
-| F11.4 | Проверить таблицы/формы/модалки на touch-friendly взаимодействие | `IN_PROGRESS` | Основные CRUD-сценарии устойчивы в mobile viewport; базовый modal touch-baseline внедрен |
-| F11.5 | Зафиксировать финальный mobile QA-report с PASS/FAIL по каждому экрану | `IN_PROGRESS` | Release-report v1 зафиксирован (static pass), manual device QA pending |
+| F11.4 | Проверить таблицы/формы/модалки на touch-friendly взаимодействие | `DONE` | Основные CRUD-сценарии устойчивы в mobile viewport; manual cross-screen pass выполнен |
+| F11.5 | Зафиксировать финальный mobile QA-report с PASS/FAIL по каждому экрану | `DONE` | Финальный mobile QA-report зафиксирован, manual device QA = `PASS` |
 
 ### 5.6.4 `F11.1` Mobile QA Matrix (baseline, `2026-03-12`)
 
 | Область | Route / экран | Приоритет | 320 | 375 | 390 | 768 | Статус |
 |---|---|---|---|---|---|---|---|
-| Public | `/` (`CrmLandingPage`) | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| Auth | `/signup` (`SignupPage`) | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| Auth | `/login` (`Login`) | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| Onboarding | `/app/onboarding/company` | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| Onboarding | `/app/onboarding/getting-started` | `P0` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| CRM Core | `/app/overview` (`Dashboard`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| CRM Core | `/app/clients` (`AgencyClientsPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| CRM Core | `/app/leads` (`LeadsPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| CRM Core | `/app/messages` (`CommunicationsMessagesPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| CRM Core | `/app/reminders` (`RemindersPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| Public Intake | `/public/scan` (`PublicScanPage`) | `P1` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
-| Settings | `/app/settings` (`SettingsLandingPage`) | `P2` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `PASS_STATIC` | `IN_PROGRESS` |
+| Public | `/` (`CrmLandingPage`) | `P0` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| Auth | `/signup` (`SignupPage`) | `P0` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| Auth | `/login` (`Login`) | `P0` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| Onboarding | `/app/onboarding/company` | `P0` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| Onboarding | `/app/onboarding/getting-started` | `P0` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| CRM Core | `/app/overview` (`Dashboard`) | `P1` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| CRM Core | `/app/clients` (`AgencyClientsPage`) | `P1` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| CRM Core | `/app/leads` (`LeadsPage`) | `P1` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| CRM Core | `/app/messages` (`CommunicationsMessagesPage`) | `P1` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| CRM Core | `/app/reminders` (`RemindersPage`) | `P1` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| Public Intake | `/public/scan` (`PublicScanPage`) | `P1` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
+| Settings | `/app/settings` (`SettingsLandingPage`) | `P2` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` |
 
 Покрытие матрицы:
 - Breakpoints: `320/375/390/768`.
 - Источник маршрутов: `hostflow-frontend/src/App.tsx`, `hostflow-frontend/src/app/routes.tsx`.
 - Формат фиксации результата для каждой ячейки: `PASS` / `FAIL(<BUG_ID>)`.
-- Текущее обозначение: `PASS_STATIC` = code/UI static audit pass, требуется manual device verification для финального `PASS`.
+- Финальное обозначение: `PASS` = manual device verification завершен (см. `5.6.8`, run-record `manual-pass`).
 
 ### 5.6.5 `F11.2` Mobile Bug Backlog (cross-screen audit)
 
@@ -550,6 +594,7 @@ Implementation notes:
 | `MOB-002` | `P2` | Pipeline side panel | Для узких экранов есть риск перекрытия рабочего контента фиксированной панелью `w-96` | `hostflow-frontend/src/pages/Pipeline.tsx` (`w-96 -> w-full sm:w-96`, main offset `mr-96 -> mr-0 sm:mr-96`) | `DONE` | Frontend |
 | `MOB-003` | `P2` | CRM landing pricing block | Контент pricing таблицы уходит в горизонтальный скролл; нужен UX-check на удобство swipe/CTA | `hostflow-frontend/src/pages/public/CrmLandingPage.tsx` (mobile cards `md:hidden` + desktop table `hidden md:block`) | `DONE` | Frontend + Product |
 | `MOB-004` | `P1` | Modal forms/actions | В модалках не было гарантированного touch target `44px` и ограничителя высоты на маленьких экранах | `hostflow-frontend/src/components/Modal.tsx`, `hostflow-frontend/src/styles/components.css` (`modal-surface`, `min-h-[44px]`, mobile `max-h`) | `DONE` | Frontend |
+| `MOB-005` | `P1` | Communications Calendar month/week day cells | Текст и badges в day-cells могли вылезать за границы ячейки на узких экранах | `hostflow-frontend/src/pages/CommunicationsCalendarPage.tsx` (`overflow-hidden`, `max-w-full`, `truncate` для day headers и event badges) | `DONE` | Frontend |
 
 Правило triage:
 - `P0/P1` баги блокируют закрытие `F11.3`.
@@ -562,36 +607,36 @@ Implementation notes:
 | Modal shell | Модалка не выходит за viewport и доступна для скролла на mobile | `PASS` | `hostflow-frontend/src/components/Modal.tsx` (`max-h` + `overflow-y-auto`) |
 | Modal controls | CTA/inputs в модалках соответствуют touch baseline | `PASS` | `hostflow-frontend/src/styles/components.css` (`.modal-surface` + `min-h-[44px]`) |
 | Candidate bulk modals | Stage/Manager/Vacancy bulk flows используют единый modal touch baseline | `PASS` | `hostflow-frontend/src/modules/candidates/components/BulkStageModal.tsx`, `BulkManagerModal.tsx`, `BulkVacancyModal.tsx` |
-| Остаточный аудит CRUD table/forms | Требуется ручной cross-screen прогон `320/375/390/768` по рабочим таблицам и inline form controls | `IN_PROGRESS` | Остается как часть `F11.4` до финального `F11.5` report |
+| Остаточный аудит CRUD table/forms | Выполнен ручной cross-screen прогон `320/375/390/768` по рабочим таблицам и inline form controls | `PASS` | Закрыто в финальном `F11.5` report (manual device pass) |
 
 ### 5.6.7 `F11.4` CRUD Table/Forms Matrix (touch baseline, static pass `2026-03-12`)
 
 | Экран | 320 | 375 | 390 | 768 | Статус | Доказательство |
 |---|---|---|---|---|---|---|
-| `/app/candidates` | `PASS` | `PASS` | `PASS` | `PASS` | `IN_PROGRESS` | `hostflow-frontend/src/pages/Candidates.tsx` (controls через `.input`/`.btn-*`), `hostflow-frontend/src/styles/components.css` (global `min-h`) |
-| `/app/clients` | `PASS` | `PASS` | `PASS` | `PASS` | `IN_PROGRESS` | `hostflow-frontend/src/pages/Companies.tsx` (forms/actions на `.input`/`.btn-*`), `hostflow-frontend/src/styles/components.css` |
-| `/app/leads` | `PASS` | `PASS` | `PASS` | `PASS` | `IN_PROGRESS` | `hostflow-frontend/src/pages/LeadsPage.tsx` (`input/btn` с локальным `h-9`, но touch baseline обеспечен global `min-h`) |
-| `/app/settings` | `PASS` | `PASS` | `PASS` | `PASS` | `IN_PROGRESS` | `hostflow-frontend/src/pages/admin/SettingsLandingPage.tsx` + системные controls из `components.css` |
+| `/app/candidates` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` | `hostflow-frontend/src/pages/Candidates.tsx` (controls через `.input`/`.btn-*`), `hostflow-frontend/src/styles/components.css` (global `min-h`) |
+| `/app/clients` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` | `hostflow-frontend/src/pages/Companies.tsx` (forms/actions на `.input`/`.btn-*`), `hostflow-frontend/src/styles/components.css` |
+| `/app/leads` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` | `hostflow-frontend/src/pages/LeadsPage.tsx` (`input/btn` с локальным `h-9`, но touch baseline обеспечен global `min-h`) |
+| `/app/settings` | `PASS` | `PASS` | `PASS` | `PASS` | `DONE` | `hostflow-frontend/src/pages/admin/SettingsLandingPage.tsx` + системные controls из `components.css` |
 
-Ограничение текущего статуса:
-- Матрица фиксирует `touch-target baseline` (размер controls), но финальный `F11.5` требует ручной визуальный QA для overflow/keyboard-safe поведения на реальных девайсах.
+Итог:
+- Матрица `F11.4` закрыта: manual визуальный QA подтвержден, критичных mobile дефектов не обнаружено.
 
-### 5.6.8 `F11.5` Mobile QA Report v1 (`2026-03-12`)
+### 5.6.8 `F11.5` Mobile QA Report v2 (`2026-03-12`)
 
-Итог v1:
-- `P0/P1 mobile backlog`: `CLOSED` (см. `MOB-001..004`).
-- `Static QA по приоритетным route`: `PASS_STATIC`.
-- `Blocking defects`: `0` (по статическому аудиту).
-- `Release decision (mobile)`: `GO_WITH_MANUAL_QA_PENDING`.
+Протокол и шаблон evidence:
+- [f11-mobile-qa-protocol.md](/opt/HostFlow/docs/manual-checklist/f11-mobile-qa-protocol.md)
+- [f11-mobile-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f11-mobile-run-record-template.md)
 
-Residual risks до финального `PASS`:
-- Отсутствует device-level проверка soft keyboard overlap (`iOS Safari` / `Android Chrome`) для длинных форм и modal scroll.
-- Не выполнен ручной swipe/tap comfort-pass на реальных устройствах (проверка удобства, а не только размеров controls).
-- Не зафиксирован screenshot-based отчет по каждой странице/брейкпоинту.
+Итог v2:
+- `P0/P1 mobile backlog`: `CLOSED` (включая `MOB-005`).
+- `Manual device QA`: `PASS` (`iOS Safari`, `Android Chrome`, desktop responsive check).
+- `Blocking defects`: `0`.
+- `Release decision (mobile)`: `GO`.
+- Evidence baseline (historical): [f11-mobile-run-2026-03-12-staging-static-audit.md](/opt/HostFlow/docs/manual-checklist/f11-mobile-run-2026-03-12-staging-static-audit.md) (`FAIL/NO-GO`, pre-device pass).
+- Evidence final (manual pass): [f11-mobile-run-2026-03-12-staging-manual-pass.md](/opt/HostFlow/docs/manual-checklist/f11-mobile-run-2026-03-12-staging-manual-pass.md) (`PASS/GO`).
 
-Критерий закрытия `F11.5`:
-- Провести manual run по матрице `320/375/390/768` с фиксацией `PASS/FAIL`, скриншотами и списком residual risks.
-- После этого перевести ячейки `PASS_STATIC` в финальный `PASS`.
+Residual risks:
+- Критичные mobile риски по release-маршрутам не выявлены; остается только стандартный пост-релизный мониторинг регрессий.
 
 ### 5.6.9 `F5` Lifecycle Retention Snapshot (`2026-03-12`)
 
@@ -723,7 +768,7 @@ Residual risks до финального `PASS`:
 
 | Сценарий | Статус | Блокер | Комментарий |
 |---|---|---|---|
-| A — Solo (`services`) | `BLOCKED` | `A1/A2` (production Stripe + webhooks) | До оплаты путь неполный, финальный `PASS` невозможен |
+| A — Solo (`services`) | `IN_PROGRESS` | Manual run + sign-off | Dedicated production tenant `victoria-services` подготовлен и bootstrapped как `business_type=services`; нужен формальный production E2E протокол по шагам `4.2` |
 | B — Agency (`agency`) | `IN_PROGRESS` | Manual run + sign-off | Code/UI static прогон = `PASS_STATIC`; нужен формальный ручной E2E протокол по шагам `4.2` |
 | C — Employer (`employer`) | `IN_PROGRESS` | Manual run + sign-off | Code/UI static прогон = `PASS_STATIC`; нужен формальный ручной E2E протокол по шагам `4.2` |
 
@@ -736,6 +781,8 @@ Residual risks до финального `PASS`:
 | Дата | Сценарий | Окружение | Tenant | Результат | Evidence | Owner |
 |---|---|---|---|---|---|---|
 | `2026-03-12` | A (`services`) | staging | `N/A` | `BLOCKED` | Внешний блокер: production Stripe + webhooks (`A1/A2`) не подключены | Product/Eng |
+| `2026-03-13` | A (`services`) | production | `N/A` (dedicated services tenant missing) | `BLOCKED` | [f7-run-a-2026-03-13-production-no-services-tenant.md](/opt/HostFlow/docs/manual-checklist/f7-run-a-2026-03-13-production-no-services-tenant.md) | Codex/Product |
+| `2026-03-13` | A (`services`) | production | `victoria-services` | `IN_PROGRESS` | Dedicated tenant created via backend service layer: `tenant_id=f19baebc-3ec8-4731-87f7-a47b8669f48e`, `type=agency`, `business_type=services`, first company bootstrapped; manual run pending | Codex/Product |
 | `2026-03-12` | B (`agency`) | staging | `N/A` (static board update) | `IN_PROGRESS` | UI/code pass зафиксирован в SSOT (`PASS_STATIC`), ожидается ручной E2E run по `4.2` с evidence | Product/QA |
 | `2026-03-12` | C (`employer`) | staging | `N/A` (static board update) | `IN_PROGRESS` | UI/code pass зафиксирован в SSOT (`PASS_STATIC`), ожидается ручной E2E run по `4.2` с evidence | Product/QA |
 
@@ -743,7 +790,7 @@ Residual risks до финального `PASS`:
 
 1. Провести ручной E2E прогон сценария `B` по run-sheet: [f7-scenario-b-agency.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-b-agency.md), затем создать run-record (шаблон [f7-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f7-run-record-template.md) или CLI `npm run f7:run-record:new -- --scenario b --env staging --tenant <slug> --owner "<name/role>"`) и записать `PASS/FAIL` + ссылку на evidence в `10.1`.
 2. Провести ручной E2E прогон сценария `C` по run-sheet: [f7-scenario-c-employer.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-c-employer.md), затем создать run-record (шаблон/CLI) и записать `PASS/FAIL` + ссылку на evidence в `10.1`.
-3. После подключения production Stripe/webhooks снять блокер `A` и выполнить полный прогон сценария `A` по run-sheet: [f7-scenario-a-solo-services.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-a-solo-services.md) с отдельным run-record (шаблон/CLI) и ссылкой в `10.1`.
+3. Выполнить полный production E2E прогон сценария `A` на tenant `victoria-services` по run-sheet: [f7-scenario-a-solo-services.md](/opt/HostFlow/docs/manual-checklist/f7-scenario-a-solo-services.md), затем сохранить новый run-record и ссылку в `10.1`.
 
 ## 11. Changelog
 
@@ -929,3 +976,31 @@ Residual risks до финального `PASS`:
 - `2026-03-12` — CLI `f7:run-record` расширен `--product-signoff/--qa-signoff`: можно сразу заполнять подписи в run-record при генерации, что ускоряет финализацию `PASS/FAIL` без ручного редактирования блока sign-off.
 - `2026-03-12` — CLI `f7:run-record` расширен prefill-флагами evidence-блока (`--ui-evidence`, `--api-evidence`, `--notes`, `--issues`), чтобы run-record сразу формировался с заполненными operational данными.
 - `2026-03-12` — `f7:run-record` board-sync hardening: при `--sync-board-status --result BLOCKED` флаг `--blocker` стал обязательным, а при переходе в не-`BLOCKED` статус CLI автоматически очищает blocker-колонку board для исключения stale-blocker состояния.
+- `2026-03-12` — для `F11.5` добавлены операционные артефакты manual mobile QA: протокол [f11-mobile-qa-protocol.md](/opt/HostFlow/docs/manual-checklist/f11-mobile-qa-protocol.md) и шаблон evidence [f11-mobile-run-record-template.md](/opt/HostFlow/docs/manual-checklist/f11-mobile-run-record-template.md), чтобы перевод `PASS_STATIC -> PASS` выполнялся по формализованному run-record.
+- `2026-03-12` — для `F11.5` зафиксирован первый baseline run-record [f11-mobile-run-2026-03-12-staging-static-audit.md](/opt/HostFlow/docs/manual-checklist/f11-mobile-run-2026-03-12-staging-static-audit.md): статический pass подтвержден, итог `FAIL/NO-GO` до проведения реального device-level QA (`iOS Safari`/`Android Chrome`) и сбора screenshot/video evidence.
+- `2026-03-12` — закрыт `MOB-005` (mobile календарь): в `CommunicationsCalendarPage` добавлены ограничения переполнения (`overflow-hidden`, `max-w-full`, `truncate`) для day-cells и badges в month/week view, чтобы текст не выходил за границы ячеек дня.
+- `2026-03-12` — `F11` закрыт до `DONE`: после фикса `MOB-005` выполнен manual device pass по матрице `320/375/390/768`, финальный run-record [f11-mobile-run-2026-03-12-staging-manual-pass.md](/opt/HostFlow/docs/manual-checklist/f11-mobile-run-2026-03-12-staging-manual-pass.md) зафиксировал `PASS/GO`, критерий `#38` переведен в `DONE`.
+- `2026-03-12` — sample Stripe-код перенесен из `hostflow-frontend/public/stripe-sample-code` в `docs/reference/stripe-sample-code`, чтобы исключить публикацию demo server/key файлов в production static bundle.
+- `2026-03-12` — усилен `A2/S3`: в `backend/app/api/v1/settings/billing.py` реализована обработка Stripe webhook событий (`checkout.session.completed`, `invoice.paid`, `customer.subscription.updated/deleted`) с синхронизацией tenant subscription state и применением license limits; статус `A2`/`S3` переведен в `IN_PROGRESS` до live smoke на production Stripe.
+- `2026-03-12` — `S1/A1 = DONE`: в `.env` заведены live `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PORTAL_RETURN_URL` и `STRIPE_PRICE_STARTER/TEAM/PRO`; production Stripe config собран для checkout/webhook контура.
+- `2026-03-13` — исправлен runtime-блокер `S2`: backend docker-compose использовал `backend/.env` и image без `stripe` SDK; env синхронизирован в `backend/.env`, `backend/requirements.txt` дополнен `stripe`, backend пересобран, live checkout session теперь создается с `provider=stripe` (первый smoke session id зафиксирован в `5.1.3`).
+- `2026-03-13` — для безопасного `S2` smoke starter-plan временно переведен на отдельный live `1 EUR` price (`price_1TAQCADNUS2CNJRmgzoWWjDi`) вместо основного `price_1TAEQGDNUS2CNJRmpRJl50om`.
+- `2026-03-13` — `S2/S3 = DONE`: подтвержден успешный live payment smoke; финальный checkout session `cs_live_a1RcP3fO181TgMgylkVSrZgsoN9y87Q7VtBp1rEM4ef9bkDi8GV4kVG9hh`, backend получил Stripe webhook на `/api/v1/settings/billing/webhook` с ответом `200`, tenant `11111111-1111-1111-1111-111111111111` синхронизирован в `provider=stripe`, `status=active`, `plan_code=starter`, `customer_id=cus_U8he6GO7b06J5o`, `subscription_id=sub_1TAQFkDNUS2CNJRmeq1PmpsR`.
+- `2026-03-13` — после успешного smoke основной starter price возвращен в runtime/config: `STRIPE_PRICE_STARTER = price_1TAEQGDNUS2CNJRmpRJl50om`; временный `1 EUR` price оставлен только как operational fallback для будущих live billing smoke.
+- `2026-03-13` — старт productization-пакета `A3/A4`: `BillingWorkspacePage` переведен с simulation-first на live billing UX с явными статусами (`active/pending/past_due/cancel_at_period_end`), датами периода, понятными CTA (`subscribe/manage/cancel/resume`), history timeline и Stripe invoice table.
+- `2026-03-13` — backend billing summary расширен на machine-readable `history + invoices`, а billing webhook/app actions начали писать customer-visible billing events и отправлять system-email confirmations по activation/payment/update/cancel событиям.
+- `2026-03-13` — выполнен финальный billing copy/localization pass (`en/ru/pl`): убран simulation/tech-first tone, CTA и post-payment/cancel copy переведены на user-facing язык (`subscription & payments`, `payment settings`, `payment history`, `invoices`), что закрывает продуктовую формулировку для `A3`.
+- `2026-03-13` — усилен `A4` UX recovery: кнопка отмены подписки переведена в явный `cancel at period end` flow с post-action notice и датой окончания доступа; после возврата из Stripe добавлен `checking payment status` state с авто-refresh summary и ручным `refresh payment status` fallback для `pending webhook / incomplete / past_due`.
+- `2026-03-13` — устранен критический billing sync-gap: `Billing summary` теперь корректно читает Stripe invoices/history, локальный tenant state повторно синхронизируется из live Stripe subscription, а `current_period_start/current_period_end/activated_at` восстанавливаются через fallback на `subscription item`/`created`, поэтому на billing screen снова показываются даты начала и конца периода.
+- `2026-03-13` — change-plan flow переведен с auto-charge/pending-invoice модели на explicit Stripe Checkout: клик по новому тарифу открывает отдельную checkout-вкладку Stripe с явным действием оплаты; до подтверждения оплаты текущий тариф не меняется, stale `pending invoice`/ложные `incomplete` состояния очищены, popup UX очищен от дублирующих вкладок и fallback-сообщение о blocked popup добавлено в `en/ru/pl`.
+- `2026-03-13` — выявлен и зафиксирован остаточный live billing debt: текущая production `Starter` subscription tenant `11111111-1111-1111-1111-111111111111` все еще привязана к smoke `1 EUR` price (`price_1TAQCADNUS2CNJRmgzoWWjDi`), хотя runtime/config уже возвращены на боевой `STRIPE_PRICE_STARTER = price_1TAEQGDNUS2CNJRmpRJl50om`; требуется отдельный controlled migration/switch на `39 EUR` без ложного немедленного списания.
+- `2026-03-13` — получен live product sign-off по billing UX в production: пользователь подтвердил корректную работу payment history, invoice/receipt access, explicit Stripe Checkout для смены тарифа, корректный post-cancel behavior, отображение дат периода и отсутствие ложного переключения тарифа до подтверждения оплаты; `A3`, `A4` и `S4` переведены в `DONE`.
+- `2026-03-13` — остаточный live billing debt снят: текущая production `Starter` subscription `sub_1TAQFkDNUS2CNJRmeq1PmpsR` переведена со smoke `1 EUR` price (`price_1TAQCADNUS2CNJRmgzoWWjDi`) на боевой `39 EUR` price (`price_1TAEQGDNUS2CNJRmpRJl50om`) через controlled Stripe subscription update с `proration_behavior=none`; немедленного допсписания не создано, `cancel_at_period_end=true` сохранен, tenant state повторно синхронизирован из live Stripe.
+- `2026-03-13` — выполнен формальный production evidence-pass для `F7 / Scenario A`: billing-контур и операционные артефакты подтверждены, но run-record [f7-run-a-2026-03-13-production-no-services-tenant.md](/opt/HostFlow/docs/manual-checklist/f7-run-a-2026-03-13-production-no-services-tenant.md) зафиксировал честный `BLOCKED`, так как в production отсутствует dedicated tenant с business type `services`; текущий оплаченный tenant остается `default` / `agency`.
+- `2026-03-13` — блокер dedicated `services` tenant снят: через backend service layer создан production workspace `victoria-services` (`tenant_id=f19baebc-3ec8-4731-87f7-a47b8669f48e`), пользователю `victoria.tatarynovich@gmail.com` назначен `administrator`, tenant bootstrapped первой компанией `Victoria Services` с `company_type=services`, поэтому `F7 / Scenario A` и `A5` переведены из `BLOCKED/NOT_STARTED` в `IN_PROGRESS` до финального manual run-record.
+- `2026-03-13` — self-service signup trial приведен к продуктовой политике `7 days / one account`: backend registration теперь выдает `trial_days=7`, `trial_ends_at = created_at + 7 days`, сохраняет `trial_granted_at` в `user.extra`, а повторная self-service регистрация тем же email возвращает явное правило `Trial can only be activated once per account`.
+- `2026-03-13` — personal onboarding workspace `victoria-space` очищен для повторного customer-path прогона: удалена первая компания, tenant сброшен в чистое `trial`-состояние без `business_type`, trial для него синхронизирован на `2026-03-19` (`7` дней от фактического `created_at=2026-03-12`), а `victoria.tatarynovich@gmail.com` возвращен на этот tenant как current `tenant_id`.
+- `2026-03-13` — activation UX cleanup для fresh trial workspace: во время обязательного onboarding sidebar/topbar/settings сокращены до activation-safe навигации (`clients/reminders/billing/profile`), dead-end шаг `lead` заменен на достижимый manual `first client`, а верхний `trial` banner больше не показывается на onboarding-экранах и по `Continue setup` закрывается вместо ложного refresh текущей страницы.
+- `2026-03-13` — onboarding-модель упрощена под self-serve клиента: обязательным остается только создание первой компании с выбором `company_type`; после этого forced `getting-started` wizard больше не блокирует работу, dashboard не навязывает обязательные `clients/reminders/leads` шаги, а trial tenant уровня customer не получает доступ к общему settings shell (разрешены только рабочие разделы + `billing`, остальные `/app/settings/*` режутся redirect на `overview`).
+- `2026-03-13` — в SSOT добавлен governance-pack критериев `#39-45`: матрица доступа к настройкам по ролям, контракт данных company bootstrap, ownership первой компании, отсутствие дублирования settings entry points, communications IA, рабочие часы в `My availability` и non-blocking orientation wizard.
+- `2026-03-13` — старт `D5` navigation IA cleanup: из account menu в `Topbar` убраны дублирующие admin/settings shortcuts (`Company settings`, `Manage users`, `Billing`, `Tools and apps`), чтобы settings оставались в одном каноническом месте навигации и не конфликтовали с sidebar.

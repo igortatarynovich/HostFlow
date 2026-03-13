@@ -1192,6 +1192,170 @@
         }
       },
       "billing": {
+        "badge": "Subskrypcja i płatności",
+        "title": "Zarządzanie subskrypcją",
+        "subtitle": "Tutaj ma być od razu jasne, czy plan jest opłacony, który plan jest aktywny, kiedy kończy się okres i co można zrobić dalej.",
+        "portal": "Otwórz ustawienia płatności",
+        "manage_title": "Co możesz zrobić",
+        "reactivate": "Wznów subskrypcję",
+        "subscribe": "Subskrybuj",
+        "pay_now": "Zapłać teraz",
+        "refresh_status": "Odśwież status płatności",
+        "manage_in_stripe": "Zarządzaj płatnością",
+        "cancel": "Anuluj subskrypcję",
+        "active_plan": "Aktywny",
+        "current_plan": "Aktualny plan",
+        "change_in_portal": "Zmień w ustawieniach płatności",
+        "subscribe_plan": "Subskrybuj ten plan",
+        "choose_plan": "Przejdź na ten plan",
+        "usage_title": "Co zawiera plan",
+        "not_available": "Brak danych",
+        "not_available_yet": "Jeszcze niedostępne",
+        "load_error": "Nie udało się załadować danych subskrypcji.",
+        "checkout_error": "Nie udało się uruchomić płatności.",
+        "popup_blocked_title": "Zezwól na wyskakujące okna, aby kontynuować",
+        "popup_blocked_hint": "Strona płatności Stripe została utworzona, ale przeglądarka zablokowała nową kartę. Zezwól na wyskakujące okna i spróbuj ponownie.",
+        "no_checkout_session": "Najpierw uruchom checkout, aby wykonać symulację.",
+        "simulation_error": "Nie udało się wykonać symulacji checkout.",
+        "portal_error": "Nie udało się otworzyć portalu billingowego.",
+        "change_plan_error": "Nie udało się zmienić planu.",
+        "cancel_error": "Nie udało się anulować subskrypcji.",
+        "reactivate_error": "Nie udało się wznowić subskrypcji.",
+        "labels": {
+          "current_plan": "Aktualny plan",
+          "paid_plan": "Opłacony plan",
+          "subscription_started": "Subskrypcja rozpoczęta",
+          "access_ends": "Dostęp kończy się",
+          "current_period_ends": "Bieżący okres kończy się",
+          "last_billing_update": "Ostatnia aktualizacja billingu"
+        },
+        "status": {
+          "active": {
+            "label": "Aktywna",
+            "description": "Subskrypcja jest opłacona i aktywna."
+          },
+          "trial": {
+            "label": "Okres próbny",
+            "description": "Okres próbny jest aktywny. Przejdź na płatny plan przed jego końcem."
+          },
+          "past_due": {
+            "label": "Wymagana płatność",
+            "description": "Wystąpił problem z płatnością i potrzebne jest działanie."
+          },
+          "incomplete": {
+            "label": "Płatność nieukończona",
+            "description": "Checkout został uruchomiony, ale płatność nie została jeszcze zakończona."
+          },
+          "canceled": {
+            "label": "Anulowana",
+            "description": "Subskrypcja została anulowana."
+          },
+          "cancel_at_period_end": {
+            "label": "Anulacja na koniec okresu",
+            "description": "Dostęp pozostanie aktywny do końca bieżącego okresu rozliczeniowego.",
+            "description_with_date": "Dostęp pozostanie aktywny do {date}."
+          },
+          "unknown": {
+            "label": "Nieznany",
+            "description": "Aktualny stan billingu jest pokazany poniżej."
+          },
+          "success": "Sukces",
+          "warning": "Uwaga",
+          "error": "Wymagane działanie"
+        },
+        "notice": {
+          "success_title": "Płatność potwierdzona",
+          "success_text": "Subskrypcja jest aktywna. Poniżej widać okres, plan i historię płatności.",
+          "cancel_title": "Checkout anulowany",
+          "cancel_text": "Obciążenie nie zostało wykonane. Możesz ponownie uruchomić płatność, gdy będziesz gotowy.",
+          "error_title": "Płatność wymaga uwagi",
+          "error_text": "Subskrypcja nie jest w pełni opłacona. Ponów płatność lub otwórz ustawienia płatności.",
+          "incomplete_title": "Płatność oczekuje",
+          "incomplete_text": "Checkout został utworzony, ale nie został jeszcze zakończony."
+        },
+        "action_notice": {
+          "cancel_title": "Anulowanie zaplanowane",
+          "cancel_text": "Subskrypcja pozostanie aktywna do {date}. Automatyczne odnowienie jest wyłączone.",
+          "resume_title": "Subskrypcja wznowiona",
+          "resume_text": "Automatyczne odnowienie jest ponownie aktywne. Plan będzie kontynuowany bez przerwy.",
+          "plan_change_title": "Plan zaktualizowany",
+          "plan_change_text": "Subskrypcja została przełączona na plan {plan}.",
+          "plan_change_pending_title": "Dokończ płatność, aby zmienić plan",
+          "plan_change_pending_text": "Otworzyliśmy Stripe, aby opłacić plan {plan}. Obecny plan pozostanie aktywny, dopóki płatność nie zostanie potwierdzona."
+        },
+        "verification": {
+          "title": "Sprawdzamy status płatności",
+          "text": "Czekamy na potwierdzenie płatności. Zwykle zajmuje to kilka sekund."
+        },
+        "pending_upgrade": {
+          "title": "Zmiana planu oczekuje na potwierdzenie płatności",
+          "text": "Twój obecny plan pozostaje {currentPlan}. Plan {nextPlan} zostanie aktywowany dopiero po potwierdzeniu płatności przez Stripe."
+        },
+        "communication": {
+          "title": "Maile o subskrypcji",
+          "description": "Wysyłamy maile, gdy płatność zostanie potwierdzona, plan się zmieni oraz przy anulowaniu lub wznowieniu subskrypcji."
+        },
+        "actions_help": {
+          "subscribe": "Przycisk „Subskrybuj” uruchamia Stripe Checkout dla wybranego planu.",
+          "manage": "Przycisk „Zarządzaj płatnością” otwiera zmianę planu, metody płatności i danych do faktur.",
+          "cancel": "Przycisk „Anuluj subskrypcję” planuje anulowanie na koniec bieżącego okresu.",
+          "resume": "Przycisk „Wznów subskrypcję” usuwa zaplanowane anulowanie."
+        },
+        "references": {
+          "title": "Dane dla wsparcia",
+          "customer_id": "Billing customer ID: {value}",
+          "subscription_id": "Subscription ID: {value}"
+        },
+        "legal": {
+          "title": "Dokumenty prawne"
+        },
+        "usage": {
+          "recruiters": "Rekruterzy: {used} / {limit}",
+          "supervisors": "Koordynatorzy: {used} / {limit}",
+          "client_managers": "Opiekunowie klienta: {used} / {limit}",
+          "viewers": "Podglądający: {used} / {limit}",
+          "storage": "Pamięć: {used}GB / {limit}GB",
+          "companies": "Firmy: limit {limit}"
+        },
+        "plans": {
+          "starter": {
+            "name": "Starter",
+            "price": "39 EUR/mies.",
+            "seats": "1 użytkownik",
+            "feature": "Podstawowy CRM"
+          },
+          "team": {
+            "name": "Team",
+            "price": "99 EUR/mies.",
+            "seats": "Do 5 użytkowników",
+            "feature": "Współpraca zespołowa"
+          },
+          "pro": {
+            "name": "Pro",
+            "price": "199 EUR/mies.",
+            "seats": "15+ użytkowników",
+            "feature": "Zaawansowane automatyzacje"
+          }
+        },
+        "history": {
+          "title": "Historia płatności",
+          "empty": "Brak zdarzeń billingowych.",
+          "view_invoice": "Otwórz fakturę",
+          "download_pdf": "Pobierz PDF"
+        },
+        "invoices": {
+          "title": "Faktury",
+          "empty": "Faktury Stripe nie są jeszcze dostępne.",
+          "open": "Otwórz",
+          "pdf": "PDF",
+          "columns": {
+            "invoice": "Faktura",
+            "status": "Status",
+            "amount": "Kwota",
+            "period": "Okres",
+            "actions": "Akcje"
+          }
+        },
         "trial": {
           "badge": "Status trial",
           "title": "Okres próbny aktywny",

@@ -68,12 +68,18 @@ export default function OnboardingGettingStartedPage() {
                 permission: 'companies.view',
               }
             : {
-                key: 'lead',
-                done: Boolean(status?.steps?.first_lead_created),
-                title: t('app.onboarding.getting_started.step_agency.title', { defaultValue: 'Add first lead' }),
-                desc: t('app.onboarding.getting_started.step_agency.desc', { defaultValue: 'Capture first lead and assign source/status.' }),
-                href: ACTIVATION_PATHS.leads,
-                permission: 'leads.view',
+                key: 'first_client',
+                done: Boolean(status?.steps?.first_client_created),
+                title: t('app.onboarding.getting_started.step_agency.title_dynamic', {
+                  defaultValue: 'Create first {entity}',
+                  values: { entity: entitySingular.toLowerCase() },
+                }),
+                desc: t('app.onboarding.getting_started.step_agency.desc_dynamic', {
+                  defaultValue: 'Add your first {entity} manually to start working immediately.',
+                  values: { entity: entitySingular.toLowerCase() },
+                }),
+                href: ACTIVATION_PATHS.clients,
+                permission: 'companies.view',
               }
       const nextSteps: OnboardingStepCard[] = [
         {

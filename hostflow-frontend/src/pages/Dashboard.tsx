@@ -562,7 +562,7 @@ export default function Dashboard() {
     if (retentionStatus.business_type === 'services') {
       return Boolean(retentionStatus.steps.first_client_created)
     }
-    return Boolean(retentionStatus.steps.first_lead_created)
+    return Boolean(retentionStatus.steps.first_client_created)
   }, [retentionStatus])
 
   const retentionNextHref = useMemo(() => {
@@ -573,7 +573,7 @@ export default function Dashboard() {
         ? ACTIVATION_PATHS.vacancies
         : retentionStatus.business_type === 'services'
           ? ACTIVATION_PATHS.clients
-          : ACTIVATION_PATHS.leads
+          : ACTIVATION_PATHS.clients
     }
     if (!retentionStatus.steps.next_action_created) return ACTIVATION_PATHS.reminders
     return ACTIVATION_PATHS.billing
@@ -583,7 +583,7 @@ export default function Dashboard() {
     if (!retentionStatus) return 'type_step'
     if (retentionStatus.business_type === 'employer') return 'vacancy'
     if (retentionStatus.business_type === 'services') return 'client'
-    return 'lead'
+    return 'client'
   }, [retentionStatus])
 
   const retentionNudge = useMemo(() => {
@@ -1576,7 +1576,7 @@ export default function Dashboard() {
   return (
     <section className="h-full min-h-0 w-full flex flex-col">
       <div className="flex-1 min-h-0 overflow-auto px-6 py-4 space-y-4">
-        {tenantId && <OnboardingWizard tenantId={tenantId} />}
+        {tenantId && retentionStatus?.onboarding_required === true && <OnboardingWizard tenantId={tenantId} />}
         {retentionNudge && (
           <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">

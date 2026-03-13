@@ -44,5 +44,7 @@
    - Для prefill evidence использовать `--ui-evidence`, `--api-evidence`, `--notes`, `--issues`.
    - `--append-ssot` по умолчанию запускает валидацию `f7:run-log:check` сразу после вставки строки; отключение доступно флагом `--no-validate`.
    - Перед финальным обновлением `10.1` запускать: `npm run f7:run-log:check`.
+   - Для закрытия `F11.5` использовать протокол `docs/manual-checklist/f11-mobile-qa-protocol.md`.
+   - Для каждого manual mobile прогона сохранять отдельный run-record по шаблону `docs/manual-checklist/f11-mobile-run-record-template.md` и ссылаться на него при обновлении секции `5.6.8` в SSOT.
 
 Готово — можно выкатывать 🚀

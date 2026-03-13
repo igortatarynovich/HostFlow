@@ -6,11 +6,12 @@ type Props = {
   visible: boolean
   validUntil: string | null
   canOpenBilling: boolean
+  onSetupClick?: () => void
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-export function TrialStatusBanner({ visible, validUntil, canOpenBilling }: Props) {
+export function TrialStatusBanner({ visible, validUntil, canOpenBilling, onSetupClick }: Props) {
   const { t } = useI18n()
 
   if (!visible) return null
@@ -73,9 +74,9 @@ export function TrialStatusBanner({ visible, validUntil, canOpenBilling }: Props
               {t('app.trial_banner.cta_billing', { defaultValue: 'Open billing' })}
             </Link>
           )}
-          <Link to={ACTIVATION_PATHS.overview} className="btn-secondary btn-sm">
+          <button type="button" className="btn-secondary btn-sm" onClick={onSetupClick}>
             {t('app.trial_banner.cta_setup', { defaultValue: 'Continue setup' })}
-          </Link>
+          </button>
         </div>
       </div>
       <p className={`mx-auto mt-1 max-w-7xl text-xs ${subtextClass}`}>
