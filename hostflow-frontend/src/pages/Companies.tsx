@@ -88,6 +88,15 @@ function normalizeCompanyKind(value: unknown): 'client' | 'counterparty' {
   return 'client'
 }
 
+function getCompanyRoleFromAny(company: AnyRecord): 'operating' | 'client' {
+  const extra = asRecord(company?.extra)
+  const raw =
+    extra.company_role ??
+    extra.role ??
+    extra.entity_role
+  return String(raw ?? '').trim().toLowerCase() === 'operating' ? 'operating' : 'client'
+}
+
 function getCompanyKindFromAny(company: AnyRecord): 'client' | 'counterparty' {
   const extra = asRecord(company?.extra)
   const raw =
@@ -109,8 +118,11 @@ export default function Companies(){
   // router
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const handleCreateCompany = useCallback(() => {
+  const handleCreateClientCompany = useCallback(() => {
     navigate('/app/clients/new')
+  }, [navigate])
+  const handleCreateOperatingCompany = useCallback(() => {
+    navigate('/app/onboarding/company')
   }, [navigate])
 
   // list state
@@ -188,6 +200,7 @@ export default function Companies(){
 
   const filteredItems = useMemo(() => {
     let arr: any[] = Array.isArray(items) ? items : []
+    arr = arr.filter((it: any) => getCompanyRoleFromAny(it) !== 'operating')
     if (!showArchived) arr = arr.filter((it:any) => !it.is_archived)
     if (companyKindFilter !== 'all') {
       arr = arr.filter((it: any) => getCompanyKindFromAny(it) === companyKindFilter)
@@ -3148,8 +3161,11 @@ export default function Companies(){
           <p className="text-sm text-white/80">{t('app.companies.list.insights.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button className="btn-primary bg-white text-brand-700 hover:bg-white/90" onClick={handleCreateCompany}>
-            {t('app.companies.actions.new')}
+          <button className="btn-secondary border-white/60 bg-white/10 text-white hover:bg-white/20" onClick={handleCreateOperatingCompany}>
+            {t('app.companies.actions.new_operating_company', { defaultValue: 'Create my company' })}
+          </button>
+          <button className="btn-primary bg-white text-brand-700 hover:bg-white/90" onClick={handleCreateClientCompany}>
+            {t('app.companies.actions.new_client_company', { defaultValue: 'Add client company' })}
           </button>
         </div>
       </div>
@@ -3212,6 +3228,9 @@ export default function Companies(){
         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
           <span>
             {t('app.companies.list.insights.visible_hint', { values: { count: filteredItems.length } })}
+          </span>
+          <span>
+            {t('app.companies.list.client_only_hint', { defaultValue: 'This workspace shows client companies only.' })}
           </span>
           {(query || showArchived || companyKindFilter !== 'all' || sortBy !== 'name_asc') && (
             <button

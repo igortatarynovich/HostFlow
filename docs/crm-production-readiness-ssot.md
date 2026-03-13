@@ -1351,6 +1351,7 @@ Evidence:
 - Для self-serve launch первый шаг остается минимальным.
 - Все дополнительные поля собираются только если у них есть явная цель и non-blocking точка во flow.
 - Лимит подписки `max_companies` применяется только к `operating companies`, а не к client/counterparty cards.
+- `/app/clients` остается client-only workspace; создание собственной operating company/profile идет отдельным explicit flow.
 
 #### 5.6.11.3 `#45` Orientation-Mode Baseline
 

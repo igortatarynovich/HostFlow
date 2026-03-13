@@ -26,6 +26,7 @@ import {
   type BillingSubscription,
   type BillingSummary,
 } from '../../api/billing'
+import { listCompanies } from '../../api/client'
 
 type PlanCode = 'starter' | 'team' | 'pro'
 type CheckoutState = 'idle' | 'success' | 'cancel' | 'error' | 'incomplete'
@@ -194,6 +195,7 @@ export default function BillingWorkspacePage() {
   const [checkoutState, setCheckoutState] = useState<CheckoutState>('idle')
   const [actionNotice, setActionNotice] = useState<ActionNotice>(null)
   const [isVerifyingCheckout, setIsVerifyingCheckout] = useState(false)
+  const [operatingCompanyCount, setOperatingCompanyCount] = useState(0)
 
   const reloadSummary = useCallback(async () => {
     const data = await getBillingSummary()
@@ -229,6 +231,26 @@ export default function BillingWorkspacePage() {
       mounted = false
     }
   }, [reloadSummary, t])
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const companies = await listCompanies({ limit: 500 })
+        if (!mounted) return
+        const count = (Array.isArray(companies) ? companies : []).filter((company: any) => {
+          const role = String(company?.extra?.company_role || '').trim().toLowerCase()
+          return role === 'operating'
+        }).length
+        setOperatingCompanyCount(count)
+      } catch {
+        if (mounted) setOperatingCompanyCount(0)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const activePlan = getPlanCode(subscription?.plan_code)
   const isTrial = (subscription?.status || '').trim().toLowerCase() === 'trial'
@@ -953,8 +975,8 @@ export default function BillingWorkspacePage() {
           </div>
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
             {t('app.settings.billing.usage.companies', {
-              defaultValue: 'Companies: limit {limit}',
-              values: { limit: summary?.license?.max_companies ?? 0 },
+              defaultValue: 'Operating companies: {used} / {limit}',
+              values: { used: operatingCompanyCount, limit: summary?.license?.max_companies ?? 0 },
             })}
           </div>
         </div>
