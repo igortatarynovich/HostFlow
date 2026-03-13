@@ -745,6 +745,13 @@ export default function InvoicesPage() {
                         <button
                           type="button"
                           className="btn-secondary btn-sm"
+                          onClick={() => navigate(`/app/invoices/new?source_invoice_id=${invoice.id}`)}
+                        >
+                          {t('app.invoices.duplicate', { defaultValue: 'Duplicate' })}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
                           disabled={isActionBusy(invoice.id, 'pdf')}
                           onClick={() => void handleDownloadPdf(invoice)}
                         >

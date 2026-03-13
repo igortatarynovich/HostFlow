@@ -61,6 +61,26 @@ function extractIssuerAddress(company: Company | null) {
   return Object.values(raw).some(Boolean) ? raw : null
 }
 
+function extractCompanyBillingSnapshot(company: Company | null) {
+  const billing = extractBilling(company)
+  const billingAddress = asRecord(billing.billing_address)
+  const address = [
+    billingAddress.country || company?.country || company?.country_code || '',
+    billingAddress.city || company?.city || '',
+    billingAddress.street || company?.address || '',
+    billingAddress.zip || '',
+  ]
+    .filter(Boolean)
+    .join(', ')
+
+  return {
+    company_name: company?.legal_name || company?.name || undefined,
+    email: String(billing.invoice_email || company?.email || '').trim() || undefined,
+    tax_id: company?.tax_id || undefined,
+    address: address || undefined,
+  }
+}
+
 export default function InvoiceCreatePage() {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -82,6 +102,7 @@ export default function InvoiceCreatePage() {
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<InvoiceItemDraft[]>([initialItem()])
   const [issuerCompany, setIssuerCompany] = useState<Company | null>(null)
+  const [clientCompany, setClientCompany] = useState<Company | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -111,6 +132,27 @@ export default function InvoiceCreatePage() {
   }, [companies, companyId])
 
   useEffect(() => {
+    if (!companyId) {
+      setClientCompany(null)
+      return
+    }
+    let cancelled = false
+    getCompany(companyId)
+      .then((company) => {
+        if (!cancelled) setClientCompany(company as Company)
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          setClientCompany(null)
+          setError(err?.response?.data?.detail || err?.message || 'Failed to load client billing details')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [companyId])
+
+  useEffect(() => {
     if (isEditMode || companies.length === 0) return
     const prefCompanyId = String(searchParams.get('company_id') || '').trim()
     const prefBillingEmail = String(searchParams.get('billing_email') || '').trim()
@@ -124,6 +166,46 @@ export default function InvoiceCreatePage() {
       setBillingEmail(prefBillingEmail)
     }
   }, [billingEmail, companies, companyId, isEditMode, searchParams])
+
+  useEffect(() => {
+    if (isEditMode) return
+    const sourceInvoiceId = String(searchParams.get('source_invoice_id') || '').trim()
+    if (!sourceInvoiceId) return
+    let cancelled = false
+    setLoadingInvoice(true)
+    getInvoice(sourceInvoiceId)
+      .then((data) => {
+        if (cancelled) return
+        const invoice = data as Invoice
+        setCompanyId((current) => current || invoice.company_id || '')
+        setIssuerCompanyId((current) => current || String(invoice.billing_details?.issuer_company_id || ''))
+        setCurrency((current) => (current === 'PLN' ? invoice.currency || current : current))
+        setBillingEmail((current) => current || String(invoice.billing_details?.email || ''))
+        setNotes((current) => current || String(invoice.notes || ''))
+        if (Array.isArray(invoice.items) && invoice.items.length > 0) {
+          setItems(
+            invoice.items.map((item, index) => ({
+              line_no: index + 1,
+              description: String(item.description || ''),
+              qty: String((item as any).quantity ?? (item as any).qty ?? 1),
+              unit_price: String(item.unit_price ?? 0),
+              vat_rate: String(item.vat_rate ?? 0),
+            })),
+          )
+        }
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          setError(err?.response?.data?.detail || err?.message || 'Failed to load source invoice')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingInvoice(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isEditMode, searchParams])
 
   useEffect(() => {
     if (!issuerCompanyId) {
@@ -243,6 +325,7 @@ export default function InvoiceCreatePage() {
     try {
       const issuerBankAccount = extractPrimaryBankAccount(issuerCompany)
       const issuerAddress = extractIssuerAddress(issuerCompany)
+      const clientBilling = extractCompanyBillingSnapshot(clientCompany)
       const payload = {
         company_id: companyId,
         issue_date: issueDate,
@@ -250,7 +333,10 @@ export default function InvoiceCreatePage() {
         currency,
         notes: notes.trim() || undefined,
         billing_details: {
-          email: billingEmail.trim() || undefined,
+          company_name: clientBilling.company_name,
+          email: billingEmail.trim() || clientBilling.email,
+          tax_id: clientBilling.tax_id,
+          address: clientBilling.address,
           issuer_company_id: issuerCompany?.id || undefined,
           issuer_name: issuerCompany?.legal_name || issuerCompany?.name || undefined,
           issuer_tax_id: issuerCompany?.tax_id || undefined,

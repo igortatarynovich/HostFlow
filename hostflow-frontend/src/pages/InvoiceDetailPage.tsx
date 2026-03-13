@@ -332,6 +332,13 @@ export default function InvoiceDetailPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => navigate(`/app/invoices/new?source_invoice_id=${invoice.id}`)}
+          >
+            {t('app.invoices.duplicate', { defaultValue: 'Duplicate' })}
+          </button>
           {invoice.status === 'draft' && (
             <button type="button" className="btn-secondary btn-sm" onClick={() => navigate(`/app/invoices/${invoice.id}/edit`)}>
               {t('app.invoices.edit', { defaultValue: 'Edit Draft' })}
