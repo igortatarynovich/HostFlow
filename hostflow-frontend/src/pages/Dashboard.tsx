@@ -2058,7 +2058,7 @@ export default function Dashboard() {
         </div>
 
         {isWidgetVisible('pivotChart') && pivotData.rows.length > 0 && (
-        <div className="card p-4 space-y-3">
+        <div className="card min-w-0 p-4 space-y-3">
           <div>
             <div className="text-sm font-semibold">{t('app.dashboard.pivot.chart_title')}</div>
             <div className="text-xs text-slate-500">
@@ -2066,7 +2066,7 @@ export default function Dashboard() {
               {pivotSecondary !== 'none' && ` × ${secondaryLabel}`}
             </div>
           </div>
-          <div className="w-full" style={{ height: 256, minHeight: 200 }}>
+          <div className="w-full min-w-0 overflow-hidden" style={{ height: 256, minHeight: 200 }}>
             <ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={0}>
               <BarChart
                 data={pivotData.rows.slice(0, 15).map((r) => ({

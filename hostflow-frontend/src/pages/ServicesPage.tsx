@@ -456,6 +456,7 @@ export function ServicesPage() {
           onOrderFormChange={setOrderForm}
           onCreateOrder={handleCreateOrder}
           services={catalogHook.services}
+          openEntityLabel={openEntityLabel}
           drilldown={ordersDrilldown}
           analyticsTrendBucket={analyticsTrendBucket}
           onClearDrilldown={() => setOrdersDrilldown(null)}
@@ -735,6 +736,7 @@ type OrdersTabProps = {
   onOrderFormChange: (value: NewOrderFormState) => void
   onCreateOrder: (event: FormEvent) => void
   services: AdditionalService[]
+  openEntityLabel: string
   drilldown: null | { kind: 'order'; orderId: string } | { kind: 'client'; ownerKind: string; ownerId?: string | null } | { kind: 'item'; serviceId?: string | null; label: string } | { kind: 'manager'; label: string } | { kind: 'status'; status: string } | { kind: 'trend'; bucket: string }
   analyticsTrendBucket: 'week' | 'month'
   onClearDrilldown: () => void
@@ -760,6 +762,7 @@ function OrdersTab({
   onOrderFormChange,
   onCreateOrder,
   services,
+  openEntityLabel,
   drilldown,
   analyticsTrendBucket,
   onClearDrilldown,
