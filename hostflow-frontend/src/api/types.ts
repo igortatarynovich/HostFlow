@@ -669,6 +669,7 @@ export type LeadStatus = 'new' | 'processed' | 'duplicated' | 'failed' | 'needs_
 export interface Lead {
   id: UUID;
   tenant_id: UUID;
+  business_type?: 'agency' | 'employer' | 'services' | null;
   company_id: UUID;
   company_name?: string | null;
   vacancy_id?: UUID | null;
@@ -676,8 +677,12 @@ export interface Lead {
   source: string;
   ad_id?: number | null;
   status: LeadStatus;
+  stage?: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost' | null;
   candidate_id?: UUID | null;
   candidate_name?: string | null;
+  outcome_entity_type?: 'candidate' | 'company' | null;
+  outcome_entity_id?: UUID | null;
+  outcome_entity_name?: string | null;
   recruiter_id?: UUID | null;
   error?: string | null;
   payload: Record<string, any>;

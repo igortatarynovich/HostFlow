@@ -10,7 +10,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.service import create_candidate_full
-from backend.app.models import Candidate, Company, Lead, User, Vacancy
+from backend.app.models import Candidate, Company, Lead, Tenant, User, Vacancy
 from backend.app.models.user import Role
 from backend.app.modules.leads import crud, normalizer
 from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, MetaLeadResponse
@@ -38,6 +38,10 @@ class MetaLeadResult:
     vacancy_id: Optional[str]
     candidate_id: Optional[str]
     recruiter_id: Optional[str]
+    business_type: Optional[str] = None
+    outcome_entity_type: Optional[str] = None
+    outcome_entity_id: Optional[str] = None
+    outcome_entity_name: Optional[str] = None
     error: Optional[str] = None
     is_new: bool = False
 
@@ -48,8 +52,44 @@ class MetaLeadResult:
             vacancy_id=UUID(self.vacancy_id) if self.vacancy_id else None,
             candidate_id=UUID(self.candidate_id) if self.candidate_id else None,
             recruiter_id=UUID(self.recruiter_id) if self.recruiter_id else None,
+            business_type=self.business_type,
+            outcome_entity_type=self.outcome_entity_type,
+            outcome_entity_id=UUID(self.outcome_entity_id) if self.outcome_entity_id else None,
+            outcome_entity_name=self.outcome_entity_name,
             error=self.error,
         )
+
+
+def _normalize_business_type(raw_business_type: Any, tenant_type: Any) -> str:
+    normalized = str(raw_business_type or "").strip().lower()
+    if normalized in {"agency", "employer", "services"}:
+        return normalized
+    tenant_type_value = str(getattr(tenant_type, "value", tenant_type or "")).strip().lower()
+    return "employer" if tenant_type_value == "company" else "agency"
+
+
+async def _load_tenant_business_type(db: AsyncSession, tenant_id: str) -> str:
+    row = (await db.execute(select(Tenant.settings, Tenant.type).where(Tenant.id == tenant_id).limit(1))).first()
+    if not row:
+        return "agency"
+    settings_payload, tenant_type = row
+    settings_dict = settings_payload if isinstance(settings_payload, dict) else {}
+    return _normalize_business_type(settings_dict.get("business_type"), tenant_type)
+
+
+def _build_lead_outcome(
+    *,
+    business_type: str,
+    company_id: Optional[str],
+    company_name: Optional[str],
+    candidate_id: Optional[str],
+    candidate_name: Optional[str],
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    if business_type == "services":
+        return ("company", company_id, company_name or company_id)
+    if candidate_id:
+        return ("candidate", candidate_id, candidate_name or candidate_id)
+    return ("company", company_id, company_name or company_id)
 
 
 async def _emit_lead_event(
@@ -63,14 +103,22 @@ async def _emit_lead_event(
     roles: Optional[List[Role | str]] = None,
     user_ids: Optional[List[str]] = None,
     error: Optional[str] = None,
+    business_type: Optional[str] = None,
+    outcome_entity_type: Optional[str] = None,
+    outcome_entity_id: Optional[str] = None,
+    outcome_entity_name: Optional[str] = None,
 ) -> None:
     payload = {
         "lead_id": lead.id,
         "status": lead.status,
+        "business_type": business_type,
         "company_id": lead.company_id,
         "vacancy_id": lead.vacancy_id,
         "candidate_id": candidate_id,
         "recruiter_id": recruiter_id,
+        "outcome_entity_type": outcome_entity_type,
+        "outcome_entity_id": outcome_entity_id,
+        "outcome_entity_name": outcome_entity_name,
         "error": error,
     }
     audience = EventAudience(
@@ -179,6 +227,7 @@ async def list_leads(
     limit: int = 50,
     offset: int = 0,
 ) -> LeadListResponse:
+    business_type = await _load_tenant_business_type(db, tenant_id)
     filters = [Lead.tenant_id == tenant_id]
     if status:
         filters.append(Lead.status == status)
@@ -224,11 +273,19 @@ async def list_leads(
             candidate_name = f"{cand_first or ''} {cand_last or ''}".strip()
         elif cand_id:
             candidate_name = str(cand_id)
+        outcome_entity_type, outcome_entity_id, outcome_entity_name = _build_lead_outcome(
+            business_type=business_type,
+            company_id=lead.company_id,
+            company_name=company_name,
+            candidate_id=cand_id,
+            candidate_name=candidate_name,
+        )
 
         items.append(
             LeadOut(
                 id=_uuid_or_none(lead.id) or UUID(lead.id),
                 tenant_id=_uuid_or_none(lead.tenant_id) or UUID(lead.tenant_id),
+                business_type=business_type,
                 company_id=_uuid_or_none(lead.company_id) or UUID(lead.company_id),
                 company_name=company_name,
                 vacancy_id=_uuid_or_none(lead.vacancy_id),
@@ -239,6 +296,9 @@ async def list_leads(
                 stage=getattr(lead, "stage", None),
                 candidate_id=_uuid_or_none(cand_id),
                 candidate_name=candidate_name,
+                outcome_entity_type=outcome_entity_type,
+                outcome_entity_id=_uuid_or_none(outcome_entity_id),
+                outcome_entity_name=outcome_entity_name,
                 recruiter_id=_uuid_or_none(cand_recruiter),
                 error=lead.error,
                 payload=lead.payload or {},
@@ -262,6 +322,7 @@ async def process_normalized_lead(
     on_lead_created: Optional[Callable[[Lead], Awaitable[None]]] = None,
 ) -> MetaLeadResult:
     normalized = dict(normalized or {})
+    business_type = await _load_tenant_business_type(db, tenant_id)
     settings_row = await _load_settings(db, tenant_id)
     fallback_company_hint = settings_row.default_company_id
     fallback_recruiter_hint = settings_row.fallback_recruiter_id
@@ -347,6 +408,13 @@ async def process_normalized_lead(
                     if updated:
                         candidate.extra = json.dumps(extra, ensure_ascii=False, separators=(",", ":"))
                         await db.flush()
+            outcome_entity_type, outcome_entity_id, outcome_entity_name = _build_lead_outcome(
+                business_type=business_type,
+                company_id=lead.company_id,
+                company_name=None,
+                candidate_id=candidate_id,
+                candidate_name=None,
+            )
             
             return MetaLeadResult(
                 lead_id=lead.id,
@@ -354,6 +422,10 @@ async def process_normalized_lead(
                 vacancy_id=lead.vacancy_id,
                 candidate_id=candidate_id,
                 recruiter_id=recruiter_id,
+                business_type=business_type,
+                outcome_entity_type=outcome_entity_type,
+                outcome_entity_id=outcome_entity_id,
+                outcome_entity_name=outcome_entity_name,
                 error=lead.error,
                 is_new=False,
             )
@@ -406,6 +478,7 @@ async def process_normalized_lead(
         raise LeadProcessingError("needs_routing", "COMPANY_NOT_RESOLVED")
 
     normalized["resolved_company_id"] = resolved_company_id
+    resolved_company_name = next((hint for hint in company_hints if hint), None)
 
     if lead is None:
         lead = await crud.create_lead(
@@ -458,6 +531,10 @@ async def process_normalized_lead(
             lead=lead,
             event_type="lead.failed",
             roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
             error=diagnostic,
         )
         await db.commit()
@@ -467,6 +544,10 @@ async def process_normalized_lead(
             vacancy_id=lead.vacancy_id,
             candidate_id=None,
             recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
             error=diagnostic,
             is_new=created_new,
         )
@@ -495,6 +576,10 @@ async def process_normalized_lead(
             vacancy_id=lead.vacancy_id or duplicate.vacancy_id,
             candidate_id=str(duplicate.id),
             recruiter_id=getattr(duplicate, "recruiter_id", None),
+            business_type=business_type,
+            outcome_entity_type="company" if business_type == "services" else "candidate",
+            outcome_entity_id=resolved_company_id if business_type == "services" else str(duplicate.id),
+            outcome_entity_name=resolved_company_name if business_type == "services" else None,
             error=None,
             is_new=created_new,
         )
@@ -516,6 +601,10 @@ async def process_normalized_lead(
             lead=lead,
             event_type="lead.needs_routing",
             roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
         )
         await db.commit()
         return MetaLeadResult(
@@ -524,6 +613,10 @@ async def process_normalized_lead(
             vacancy_id=lead.vacancy_id,
             candidate_id=None,
             recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
             error=None,
             is_new=created_new,
         )
@@ -544,6 +637,10 @@ async def process_normalized_lead(
             lead=lead,
             event_type="lead.needs_routing",
             roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
             error="VACANCY_NOT_RESOLVED",
         )
         await db.commit()
@@ -553,6 +650,10 @@ async def process_normalized_lead(
             vacancy_id=None,
             candidate_id=None,
             recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
             error="VACANCY_NOT_RESOLVED",
             is_new=created_new,
         )
@@ -673,6 +774,10 @@ async def process_normalized_lead(
         candidate_id=str(candidate.id),
         recruiter_id=recruiter_id,
         user_ids=recipient_ids,
+        business_type=business_type,
+        outcome_entity_type="company" if business_type == "services" else "candidate",
+        outcome_entity_id=resolved_company_id if business_type == "services" else str(candidate.id),
+        outcome_entity_name=resolved_company_name if business_type == "services" else None,
     )
     await db.commit()
 
@@ -682,6 +787,10 @@ async def process_normalized_lead(
         vacancy_id=candidate.vacancy_id,
         candidate_id=str(candidate.id),
         recruiter_id=recruiter_id,
+        business_type=business_type,
+        outcome_entity_type="company" if business_type == "services" else "candidate",
+        outcome_entity_id=resolved_company_id if business_type == "services" else str(candidate.id),
+        outcome_entity_name=resolved_company_name if business_type == "services" else None,
         error=None,
         is_new=created_new,
     )

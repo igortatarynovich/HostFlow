@@ -59,16 +59,26 @@ async def update_lead_stage_endpoint(
     from uuid import UUID as PyUUID
 
     db, tenant_id = db_tenant
-    lead = await crud.get_lead(db, tenant_id=str(tenant_id), lead_id=lead_id)
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
     await crud.update_lead_stage(db, lead, stage=payload.stage)
     await db.commit()
     await db.refresh(lead)
+    business_type = await service._load_tenant_business_type(db, tenant_id_str)
+    outcome_entity_type, outcome_entity_id, outcome_entity_name = service._build_lead_outcome(
+        business_type=business_type,
+        company_id=lead.company_id,
+        company_name=None,
+        candidate_id=lead.candidate_id,
+        candidate_name=None,
+    )
 
     return LeadOut(
         id=PyUUID(lead.id),
         tenant_id=PyUUID(lead.tenant_id),
+        business_type=business_type,
         company_id=PyUUID(lead.company_id),
         company_name=None,
         vacancy_id=PyUUID(lead.vacancy_id) if lead.vacancy_id else None,
@@ -79,6 +89,9 @@ async def update_lead_stage_endpoint(
         stage=lead.stage,
         candidate_id=PyUUID(lead.candidate_id) if lead.candidate_id else None,
         candidate_name=None,
+        outcome_entity_type=outcome_entity_type,
+        outcome_entity_id=PyUUID(outcome_entity_id) if outcome_entity_id else None,
+        outcome_entity_name=outcome_entity_name,
         recruiter_id=None,
         error=lead.error,
         payload=lead.payload or {},

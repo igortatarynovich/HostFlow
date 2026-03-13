@@ -463,6 +463,7 @@ async def list_unmapped_leads(
     status: str = "needs_routing",
     limit_per_ad: int = 10,
 ) -> UnmappedLeadsResponse:
+    business_type = await service._load_tenant_business_type(db, tenant_id)
     groups_raw = await crud.list_leads_with_unmapped_ad_ids(
         db,
         tenant_id=tenant_id,
@@ -473,10 +474,18 @@ async def list_unmapped_leads(
     for ad_id, leads_list in groups_raw:
         items: List[LeadOut] = []
         for lead in leads_list:
+            outcome_entity_type, outcome_entity_id, outcome_entity_name = service._build_lead_outcome(
+                business_type=business_type,
+                company_id=lead.company_id,
+                company_name=None,
+                candidate_id=lead.candidate_id,
+                candidate_name=None,
+            )
             items.append(
                 LeadOut(
                     id=UUID(lead.id),
                     tenant_id=UUID(lead.tenant_id),
+                    business_type=business_type,
                     company_id=UUID(lead.company_id),
                     company_name=None,
                     vacancy_id=_to_uuid(lead.vacancy_id),
@@ -486,6 +495,9 @@ async def list_unmapped_leads(
                     status=lead.status,  # type: ignore[arg-type]
                     candidate_id=_to_uuid(lead.candidate_id),
                     candidate_name=None,
+                    outcome_entity_type=outcome_entity_type,
+                    outcome_entity_id=_to_uuid(outcome_entity_id),
+                    outcome_entity_name=outcome_entity_name,
                     recruiter_id=None,
                     error=lead.error,
                     payload=lead.payload or {},

@@ -320,8 +320,8 @@ export default function LeadsPage() {
                     <td className="text-slate-700">{lead.source}</td>
                     <td className="text-brand-700">
                       {isServicesTenant ? (
-                        lead.company_id ? (
-                          <Link to={`/app/clients/${lead.company_id}`}>{lead.company_name || lead.company_id}</Link>
+                        lead.outcome_entity_id ? (
+                          <Link to={`/app/clients/${lead.outcome_entity_id}`}>{lead.outcome_entity_name || lead.company_name || lead.outcome_entity_id}</Link>
                         ) : (
                           '—'
                         )

@@ -18,12 +18,17 @@ class MetaLeadResponse(BaseModel):
     vacancy_id: Optional[UUID] = None
     candidate_id: Optional[UUID] = None
     recruiter_id: Optional[UUID] = None
+    business_type: Optional[str] = None
+    outcome_entity_type: Optional[str] = None
+    outcome_entity_id: Optional[UUID] = None
+    outcome_entity_name: Optional[str] = None
     error: Optional[str] = None
 
 
 class LeadOut(BaseModel):
     id: UUID
     tenant_id: UUID
+    business_type: Optional[str] = None
     company_id: UUID
     company_name: Optional[str] = None
     vacancy_id: Optional[UUID] = None
@@ -34,6 +39,9 @@ class LeadOut(BaseModel):
     stage: Optional[str] = None
     candidate_id: Optional[UUID] = None
     candidate_name: Optional[str] = None
+    outcome_entity_type: Optional[str] = None
+    outcome_entity_id: Optional[UUID] = None
+    outcome_entity_name: Optional[str] = None
     recruiter_id: Optional[UUID] = None
     error: Optional[str] = None
     payload: Dict[str, Any]

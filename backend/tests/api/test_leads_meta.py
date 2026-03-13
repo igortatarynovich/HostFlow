@@ -8,6 +8,20 @@ from backend.app.db.session import async_session_maker
 from backend.app.models import Candidate, Lead
 
 
+async def _set_tenant_business_type(session, tenant_id: str, business_type: str) -> None:
+    await session.execute(
+        sa.text(
+            """
+            UPDATE tenants
+            SET settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object('business_type', :business_type)
+            WHERE id = :tenant_id
+            """
+        ),
+        {"tenant_id": tenant_id, "business_type": business_type},
+    )
+    await session.commit()
+
+
 async def _ensure_vacancy(session, tenant_id: str, company_id: str) -> str:
     vacancy_id = str(uuid.uuid4())
     await session.execute(
@@ -153,6 +167,9 @@ async def test_meta_lead_processed(client, manager_headers, recruiter_headers, s
     assert body["status"] == "processed"
     assert body["candidate_id"] is not None
     assert body["lead_id"] is not None
+    assert body["business_type"] == "agency"
+    assert body["outcome_entity_type"] == "candidate"
+    assert body["outcome_entity_id"] == body["candidate_id"]
 
     async with async_session_maker() as session:
         lead_row = await session.get(Lead, body["lead_id"])
@@ -270,6 +287,34 @@ async def test_leads_list_endpoint(client, manager_headers, tenant_id):
     assert data["total"] >= 1
     lead_id = post_resp.json()["lead_id"]
     assert any(item["id"] == lead_id for item in data["items"])
+
+
+@pytest.mark.anyio
+async def test_services_leads_list_returns_company_outcome(client, manager_headers, tenant_id):
+    async with async_session_maker() as session:
+        await _set_tenant_business_type(session, tenant_id, "services")
+        company_id = await _ensure_company(session, tenant_id)
+        vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
+
+    payload = _meta_payload(vacancy_id, email="services@example.com", phone="+48123450000", lead_id="services-lead")
+    post_resp = await client.post(
+        "/api/v1/leads/meta",
+        headers=manager_headers,
+        content=json.dumps(payload),
+    )
+    assert post_resp.status_code == 200, post_resp.text
+    post_body = post_resp.json()
+    assert post_body["business_type"] == "services"
+    assert post_body["outcome_entity_type"] == "company"
+    assert post_body["outcome_entity_id"] == company_id
+
+    resp = await client.get("/api/v1/leads", headers=manager_headers)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    row = next(item for item in data["items"] if item["id"] == post_body["lead_id"])
+    assert row["business_type"] == "services"
+    assert row["outcome_entity_type"] == "company"
+    assert row["outcome_entity_id"] == company_id
 
 
 @pytest.mark.anyio
