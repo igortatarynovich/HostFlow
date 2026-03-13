@@ -52,9 +52,11 @@ def _extra_section(company: Company, key: str) -> dict:
 async def create_company_service(
     db: AsyncSession,
     data: schemas.CompanyCreate,
+    *,
+    actor_user_id: str | None = None,
 ) -> Company:
     try:
-        return await crud.create_company(db, data)
+        return await crud.create_company(db, data, actor_user_id=actor_user_id)
     except ValueError as exc:
         raise _map_value_error(exc) from exc
 

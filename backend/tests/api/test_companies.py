@@ -190,3 +190,23 @@ async def test_company_profile_workflow(
         headers=manager_headers,
     )
     assert delete_contact_resp.status_code == 204
+
+
+@pytest.mark.anyio
+async def test_company_bootstrap_assigns_owner_and_manager(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+) -> None:
+    me_resp = await client.get("/api/v1/users/me", headers=manager_headers)
+    assert me_resp.status_code == 200, me_resp.text
+    me = me_resp.json()
+
+    create_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Ownership Bootstrap Co"},
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    company = create_resp.json()
+    assert company["owner_user_id"] == me["user_id"]
+    assert company["manager_user_id"] == me["user_id"]

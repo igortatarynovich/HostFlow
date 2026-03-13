@@ -3,6 +3,8 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Company, CompanyReadiness } from '../api/types'
+import { listAdminUsers } from '../api/users'
+import type { AdminUser } from '../api/types'
 import { useI18n } from '../i18n'
 import {
   listDocumentPolicies,
@@ -113,6 +115,7 @@ export default function Companies(){
 
   // list state
   const [items, setItems] = useState<Company[]>([])
+  const [companyUsers, setCompanyUsers] = useState<AdminUser[]>([])
 
   // detail state
   const [current, setCurrent] = useState<Company | null>(null)
@@ -427,6 +430,8 @@ export default function Companies(){
     if (!currentAny) return null
     const base = {
       name: (currentAny.name as string) ?? '',
+      owner_user_id: (currentAny.owner_user_id as string) ?? '',
+      manager_user_id: (currentAny.manager_user_id as string) ?? '',
       legal_name: (currentAny.legal_name as string) ?? '',
       company_kind: normalizeCompanyKind(
         extraData.company_kind ??
@@ -1012,6 +1017,8 @@ export default function Companies(){
 
       const payload: AnyRecord = {
         name: detailForm.base.name?.trim() || detailForm.base.name || '',
+        owner_user_id: normalizeString(detailForm.base.owner_user_id),
+        manager_user_id: normalizeString(detailForm.base.manager_user_id),
         legal_name: normalizeString(detailForm.base.legal_name),
         tax_id: normalizeString(detailForm.base.tax_id),
         phone: normalizeString(detailForm.base.phone),
@@ -1403,6 +1410,24 @@ export default function Companies(){
     }
   }, [id])
 
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await listAdminUsers()
+        if (!cancelled) {
+          setCompanyUsers(Array.isArray(data) ? data.filter((user) => user.user_id && user.status !== 'invited') : [])
+        }
+      } catch (err) {
+        console.error('[Companies] failed to load tenant users', err)
+        if (!cancelled) setCompanyUsers([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // auto-create draft on /companies/new and redirect to the real id
   useEffect(() => {
     let cancelled = false
@@ -1503,6 +1528,18 @@ export default function Companies(){
         </div>
       )
     }
+
+    const activeUsers = companyUsers.filter((user) => user.user_id && user.status === 'active')
+    const ownerOptions = activeUsers
+      .filter((user) => ['administrator', 'supervisor', 'superadmin'].includes(String(user.role || '').toLowerCase()))
+      .map((user) => ({
+        value: String(user.user_id),
+        label: user.full_name || user.email || String(user.user_id),
+      }))
+    const managerOptions = activeUsers.map((user) => ({
+      value: String(user.user_id),
+      label: user.full_name || user.email || String(user.user_id),
+    }))
 
     const locationLine = [detailForm.base.country_code, detailForm.base.city].filter(Boolean).join(', ')
 
@@ -1892,10 +1929,27 @@ export default function Companies(){
               value={detailForm.base.name}
               onChange={(value) => updateField('base', 'name', value)}
             />
+            <SelectField
+              label={t('app.companies.detail.fields.owner_user', { defaultValue: 'Owner' })}
+              value={detailForm.base.owner_user_id}
+              onChange={(value) => {
+                updateField('base', 'owner_user_id', value)
+                if (!detailForm.base.manager_user_id) {
+                  updateField('base', 'manager_user_id', value)
+                }
+              }}
+              options={ownerOptions}
+            />
             <TextField
               label={t('app.companies.detail.fields.legal_name')}
               value={detailForm.base.legal_name}
               onChange={(value) => updateField('base', 'legal_name', value)}
+            />
+            <SelectField
+              label={t('app.companies.detail.fields.manager_user', { defaultValue: 'Manager' })}
+              value={detailForm.base.manager_user_id}
+              onChange={(value) => updateField('base', 'manager_user_id', value)}
+              options={managerOptions}
             />
             <SelectField
               label={t('app.companies.detail.fields.company_kind', { defaultValue: 'Company type' })}

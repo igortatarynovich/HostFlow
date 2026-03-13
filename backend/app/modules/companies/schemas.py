@@ -47,6 +47,8 @@ except ImportError:  # pragma: no cover - Pydantic < 2 compatibility
 
 
 class CompanyMutableFields(BaseModel):
+    owner_user_id: Optional[UUID] = None
+    manager_user_id: Optional[UUID] = None
     name: Optional[str] = Field(None, max_length=255)
     legal_name: Optional[str] = Field(None, max_length=255)
     tax_id: Optional[str] = Field(None, max_length=64)
@@ -90,6 +92,8 @@ class CompanyBase(CompanyMutableFields):
 class CompanyOut(CompanyBase):
     id: UUID
     tenant_id: UUID
+    owner_user_id: Optional[UUID] = None
+    manager_user_id: Optional[UUID] = None
     contacts: dict[str, Any] = Field(default_factory=dict)
     extra: dict[str, Any] = Field(default_factory=dict)
     created_at: Optional[datetime] = None

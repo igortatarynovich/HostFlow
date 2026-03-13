@@ -25,6 +25,10 @@ def ensure_companies_schema() -> None:
 
         if "legal_name" not in existing:
             add_column("ALTER TABLE companies ADD COLUMN legal_name TEXT")
+        if "owner_user_id" not in existing:
+            add_column("ALTER TABLE companies ADD COLUMN owner_user_id TEXT")
+        if "manager_user_id" not in existing:
+            add_column("ALTER TABLE companies ADD COLUMN manager_user_id TEXT")
         if "tax_id" not in existing:
             add_column("ALTER TABLE companies ADD COLUMN tax_id TEXT")
         if "phone" not in existing:

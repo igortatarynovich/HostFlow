@@ -8,6 +8,8 @@ import type { UUID } from './common';
 export interface Company {
   id: UUID;
   name: string;
+  owner_user_id?: UUID | null;
+  manager_user_id?: UUID | null;
   legal_name?: string | null;
   reg_no?: string | null;
   tax_id?: string | null;
@@ -72,4 +74,3 @@ export interface CompanyAccessEntry {
   granted_at?: string;
   revoked_at?: string | null;
 }
-

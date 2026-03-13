@@ -14,6 +14,7 @@ from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.tenant import Tenant
 from backend.app.models.tenant import TenantType
 from backend.app.models.tenant import TenantLink
+from backend.app.models.user import Role as UserRole, User
 from .schemas import (
     BillingProfile,
     ComplianceProfile,
@@ -51,6 +52,32 @@ def _tenant_id_from_session(db_like) -> str:
     if isinstance(tenant_id, UUID):
         return str(tenant_id)
     return str(tenant_id) if tenant_id is not None else ""
+
+
+async def _validate_company_user(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    user_id: str | None,
+    allowed_roles: set[str] | None = None,
+) -> str | None:
+    normalized = str(user_id or "").strip()
+    if not normalized:
+        return None
+    user = (
+        await session.execute(select(User).where(User.id == normalized).limit(1))
+    ).scalar_one_or_none()
+    if user is None:
+        raise ValueError("Company owner/manager user not found")
+    if user.tenant_id and str(user.tenant_id) != tenant_id:
+        raise ValueError("Company owner/manager must belong to current tenant")
+    if not bool(getattr(user, "is_active", True)) or getattr(user, "deleted_at", None):
+        raise ValueError("Company owner/manager must be active")
+    if allowed_roles:
+        role_value = str(getattr(getattr(user, "role", None), "value", getattr(user, "role", ""))).strip().lower()
+        if role_value not in allowed_roles:
+            raise ValueError("Company owner must have elevated role")
+    return normalized
 
 
 def _now_utc() -> datetime:
@@ -1118,7 +1145,7 @@ async def get_company(db: AsyncSession, company_id: UUID) -> Optional[Company]:
     return company
 
 
-async def create_company(db: AsyncSession, data) -> Company:
+async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = None) -> Company:
     """
     Создать компанию в пределах текущего tenant.
     Генерируем id сами (uuid4), т.к. в модели/БД нет дефолта.
@@ -1130,6 +1157,8 @@ async def create_company(db: AsyncSession, data) -> Company:
 
     payload = data.model_dump(exclude_unset=True)
     company_type = payload.pop("company_type", None)  # not a Company field
+    owner_user_id_raw = payload.pop("owner_user_id", None)
+    manager_user_id_raw = payload.pop("manager_user_id", None)
 
     # Count companies before create to know if this is the first
     count_result = await session.execute(
@@ -1139,6 +1168,19 @@ async def create_company(db: AsyncSession, data) -> Company:
 
     payload.setdefault("id", str(uuid4()))
     payload["tenant_id"] = tenant_id
+    owner_user_id = await _validate_company_user(
+        session,
+        tenant_id=tenant_id,
+        user_id=str(owner_user_id_raw) if owner_user_id_raw else actor_user_id,
+        allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},
+    )
+    manager_user_id = await _validate_company_user(
+        session,
+        tenant_id=tenant_id,
+        user_id=str(manager_user_id_raw) if manager_user_id_raw else owner_user_id,
+    )
+    payload["owner_user_id"] = owner_user_id
+    payload["manager_user_id"] = manager_user_id
 
     contacts_raw = payload.pop("contacts", None)
     normalized_contacts = (
@@ -1200,6 +1242,10 @@ async def update_company(db: AsyncSession, company_id: UUID, data) -> Optional[C
     payload = data.model_dump(exclude_unset=True)
     payload.pop("tenant_id", None)
     payload.pop("id", None)
+    owner_user_id_present = "owner_user_id" in payload
+    manager_user_id_present = "manager_user_id" in payload
+    owner_user_id_raw = payload.pop("owner_user_id", None)
+    manager_user_id_raw = payload.pop("manager_user_id", None)
 
     contacts_patch = payload.pop("contacts", None)
     extra_patch = payload.pop("extra", None)
@@ -1225,6 +1271,19 @@ async def update_company(db: AsyncSession, company_id: UUID, data) -> Optional[C
 
     for field, value in payload.items():
         setattr(company, field, value)
+    if owner_user_id_present:
+        company.owner_user_id = await _validate_company_user(
+            session,
+            tenant_id=_tenant_id_from_session(session),
+            user_id=str(owner_user_id_raw) if owner_user_id_raw else None,
+            allowed_roles={UserRole.superadmin.value, UserRole.administrator.value, UserRole.supervisor.value},
+        )
+    if manager_user_id_present:
+        company.manager_user_id = await _validate_company_user(
+            session,
+            tenant_id=_tenant_id_from_session(session),
+            user_id=str(manager_user_id_raw) if manager_user_id_raw else (company.owner_user_id if owner_user_id_present else None),
+        )
 
     company.updated_at = _now_utc()
 

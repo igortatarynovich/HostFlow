@@ -457,6 +457,8 @@ export interface TenantBrandingPayload {
 export interface Company {
   id: UUID;
   name: string;
+  owner_user_id?: UUID | null;
+  manager_user_id?: UUID | null;
   legal_name?: string | null;
   reg_no?: string | null;
   tax_id?: string | null;

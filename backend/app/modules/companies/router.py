@@ -88,9 +88,14 @@ async def list_companies(
 async def create_company(
     company_in: schemas.CompanyCreate,
     _role: str = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_with_tenant),
 ):
-    return await create_company_service(db=db, data=company_in)
+    return await create_company_service(
+        db=db,
+        data=company_in,
+        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+    )
 
 
 @router.get(

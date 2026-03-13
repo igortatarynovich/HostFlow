@@ -116,6 +116,8 @@ export interface EInvoiceForm {
 export interface CompanyDetailForm {
   base: {
     name: string;
+    owner_user_id: string;
+    manager_user_id: string;
     legal_name: string;
     company_kind: 'client' | 'counterparty';
     tax_id: string;
