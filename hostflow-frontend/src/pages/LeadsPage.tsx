@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconFilter, IconRefresh, IconTable } from '@tabler/icons-react'
 
-import { createLeadServiceOrder, getOnboardingStatus, listLeads, type OnboardingStatus } from '../api/client'
+import { createInvoiceFromServiceOrder, createLeadServiceOrder, getOnboardingStatus, listLeads, type OnboardingStatus } from '../api/client'
 import type { Lead, LeadListResponse, LeadStatus, LeadStage } from '../api/types'
 import { useI18n } from '../i18n'
 import EmptyStatePanel from '../components/EmptyStatePanel'
@@ -39,6 +39,7 @@ export default function LeadsPage() {
   const [data, setData] = useState<LeadListResponse>({ items: [], total: 0, limit: 20, offset: 0 })
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
   const [creatingOrderLeadId, setCreatingOrderLeadId] = useState<string | null>(null)
+  const [creatingInvoiceOrderId, setCreatingInvoiceOrderId] = useState<string | null>(null)
 
   const limit = 20
   const offset = (page - 1) * limit
@@ -202,6 +203,39 @@ export default function LeadsPage() {
     [loadLeads, notify, offset, t],
   )
 
+  const handleCreateInvoice = useCallback(
+    async (orderId: string) => {
+      setCreatingInvoiceOrderId(orderId)
+      try {
+        const invoice = await createInvoiceFromServiceOrder(orderId)
+        notify({
+          title: t('app.leads.messages.invoice_created', { defaultValue: 'Invoice ready' }),
+          description: t('app.leads.messages.invoice_created_desc', {
+            defaultValue: 'Draft invoice was created and is now available in Invoices.',
+          }),
+          variant: 'success',
+        })
+        window.location.assign(`/app/invoices`)
+        return invoice
+      } catch (err: any) {
+        const detail =
+          err?.response?.data?.detail ??
+          err?.message ??
+          t('app.leads.messages.invoice_create_failed', {
+            defaultValue: 'Failed to create invoice',
+          })
+        notify({
+          title: t('app.leads.messages.invoice_create_failed', { defaultValue: 'Failed to create invoice' }),
+          description: typeof detail === 'string' ? detail : JSON.stringify(detail),
+          variant: 'error',
+        })
+      } finally {
+        setCreatingInvoiceOrderId(null)
+      }
+    },
+    [notify, t],
+  )
+
   return (
     <div className="space-y-3">
       <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -362,12 +396,24 @@ export default function LeadsPage() {
                             <span>—</span>
                           )}
                           {lead.service_order_id ? (
-                            <Link
-                              to={`/app/services?order=${lead.service_order_id}`}
-                              className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
-                            >
-                              {t('app.leads.actions.open_service_order', { defaultValue: 'Open service order' })}
-                            </Link>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Link
+                                to={`/app/services?order=${lead.service_order_id}`}
+                                className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
+                              >
+                                {t('app.leads.actions.open_service_order', { defaultValue: 'Open service order' })}
+                              </Link>
+                              <button
+                                type="button"
+                                className="btn-secondary rounded-lg px-2 py-1 text-[11px]"
+                                disabled={creatingInvoiceOrderId === lead.service_order_id}
+                                onClick={() => void handleCreateInvoice(String(lead.service_order_id))}
+                              >
+                                {creatingInvoiceOrderId === lead.service_order_id
+                                  ? t('common.loading', { defaultValue: 'Loading...' })
+                                  : t('app.leads.actions.create_invoice', { defaultValue: 'Create invoice' })}
+                              </button>
+                            </div>
                           ) : (
                             <button
                               type="button"

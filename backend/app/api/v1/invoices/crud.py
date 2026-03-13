@@ -136,6 +136,7 @@ async def list_invoices(
     *,
     company_id: Optional[str] = None,
     candidate_id: Optional[str] = None,
+    service_order_id: Optional[str] = None,
     status: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
@@ -149,12 +150,33 @@ async def list_invoices(
         stmt = stmt.where(Invoice.company_id == company_id)
     if candidate_id:
         stmt = stmt.where(Invoice.candidate_id == candidate_id)
+    if service_order_id:
+        stmt = stmt.where(Invoice.service_order_id == service_order_id)
     if status:
         stmt = stmt.where(Invoice.status == status)
     
     stmt = stmt.order_by(Invoice.created_at.desc()).limit(limit).offset(offset)
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def get_invoice_by_service_order(
+    session: AsyncSession,
+    tenant_id: str,
+    service_order_id: str,
+) -> Optional[Invoice]:
+    tenant_id_str = str(tenant_id)
+    stmt = (
+        select(Invoice)
+        .where(
+            Invoice.tenant_id == tenant_id_str,
+            Invoice.service_order_id == service_order_id,
+        )
+        .order_by(Invoice.created_at.desc())
+        .limit(1)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
 
 
 async def update_invoice(
@@ -328,4 +350,3 @@ async def create_refund(
     
     await session.refresh(refund)
     return refund
-

@@ -329,6 +329,15 @@ async def test_services_leads_list_returns_company_outcome(client, manager_heade
     updated = next(item for item in resp_after.json()["items"] if item["id"] == post_body["lead_id"])
     assert updated["service_order_id"] == order_body["id"]
 
+    invoice_resp = await client.post(
+        f"/api/v1/invoices/from-service-order/{order_body['id']}",
+        headers=manager_headers,
+    )
+    assert invoice_resp.status_code == 201, invoice_resp.text
+    invoice_body = invoice_resp.json()
+    assert invoice_body["service_order_id"] == order_body["id"]
+    assert invoice_body["company_id"] == company_id
+
 
 @pytest.mark.anyio
 async def test_meta_webhook_verify_challenge(client, tenant_id):

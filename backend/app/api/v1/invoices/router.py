@@ -1,6 +1,7 @@
 """API router for invoices."""
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 import logging
 from typing import List, Optional, Tuple
 from uuid import UUID
@@ -13,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.invoice import Invoice, InvoiceStatus
+from backend.app.models.additional_service import ServiceOrder
+from backend.app.models.company import Company
 from backend.app.services.invoice_pdf import generate_invoice_pdf
 from backend.app.services.notifications import send_webhook
 
@@ -70,6 +73,7 @@ async def list_invoices(
     current_user: UserCtx = Depends(get_current_user),
     company_id: Optional[str] = Query(None),
     candidate_id: Optional[str] = Query(None),
+    service_order_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
@@ -82,12 +86,95 @@ async def list_invoices(
         str(tenant_id),
         company_id=company_id,
         candidate_id=candidate_id,
+        service_order_id=service_order_id,
         status=status,
         limit=limit,
         offset=offset,
     )
     
     return [InvoiceOut.model_validate(inv) for inv in invoices]
+
+
+@router.post("/from-service-order/{order_id}", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
+async def create_invoice_from_service_order(
+    order_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> InvoiceOut:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+
+    if current_user.role not in (Role.manager, Role.admin, Role.superadmin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only managers and admins can create invoices",
+        )
+
+    existing = await crud.get_invoice_by_service_order(db, tenant_id_str, order_id)
+    if existing:
+        return InvoiceOut.model_validate(existing)
+
+    order_stmt = (
+        select(ServiceOrder)
+        .where(ServiceOrder.id == order_id, ServiceOrder.tenant_id == tenant_id_str)
+        .limit(1)
+    )
+    order = (await db.execute(order_stmt)).scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service order not found")
+    if not order.company_id:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Service order must be linked to a company")
+    await db.refresh(order, ["items"])
+    if not order.items:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Service order has no billable items")
+
+    company = await db.get(Company, order.company_id)
+    company_extra = dict(getattr(company, "extra", {}) or {}) if company else {}
+    billing = dict(company_extra.get("billing") or {}) if isinstance(company_extra.get("billing"), dict) else {}
+
+    issue_date = datetime.now().date()
+    due_date = issue_date + timedelta(days=int(billing.get("payment_terms_days") or 14))
+
+    items_payload = []
+    for idx, item in enumerate(order.items, start=1):
+        service_name = getattr(getattr(item, "service", None), "name", None)
+        service_code = getattr(getattr(item, "service", None), "code", None)
+        items_payload.append(
+            {
+                "line_no": idx,
+                "description": service_name or service_code or f"Service item {idx}",
+                "qty": item.qty,
+                "unit_price": item.unit_price,
+                "vat_rate": item.vat_rate,
+            }
+        )
+
+    billing_details = {
+        "company_name": getattr(company, "legal_name", None) or getattr(company, "name", None),
+        "email": billing.get("invoice_email") or getattr(company, "email", None),
+        "tax_id": getattr(company, "tax_id", None),
+        "address": billing.get("billing_address") or getattr(company, "address", None),
+    }
+
+    invoice = await crud.create_invoice(
+        db,
+        tenant_id_str,
+        {
+            "company_id": order.company_id,
+            "service_order_id": order.id,
+            "issue_date": issue_date,
+            "due_date": due_date,
+            "currency": getattr(order, "currency", None) or "PLN",
+            "status": InvoiceStatus.draft.value,
+            "items": items_payload,
+            "billing_details": billing_details,
+            "notes": getattr(order, "notes", None),
+        },
+        created_by=current_user.user_id,
+    )
+    await db.commit()
+    await db.refresh(invoice)
+    return InvoiceOut.model_validate(invoice)
 
 
 @router.get("/{invoice_id}", response_model=InvoiceOut)
@@ -372,4 +459,3 @@ async def cancel_invoice(
     await db.refresh(invoice)
     
     return InvoiceOut.model_validate(invoice)
-

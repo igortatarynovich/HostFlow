@@ -630,6 +630,11 @@ export async function createInvoice(payload: Record<string, any>) {
   return data;
 }
 
+export async function createInvoiceFromServiceOrder(orderId: string) {
+  const { data } = await api.post(`/invoices/from-service-order/${orderId}`);
+  return data;
+}
+
 export async function updateInvoice(id: string, payload: Record<string, any>) {
   const { data } = await api.patch(`/invoices/${id}`, payload);
   return data;
