@@ -96,6 +96,9 @@ class InvoiceOut(BaseModel):
     payment_date: Optional[date] = None
     pdf_file_id: Optional[str] = None
     billing_details: Optional[Dict[str, Any]] = None
+    latest_delivery_status: Optional[str] = None
+    latest_delivery_reason: Optional[str] = None
+    latest_delivery_at: Optional[datetime] = None
     created_by: Optional[str] = None
     notes: Optional[str] = None
     created_at: datetime

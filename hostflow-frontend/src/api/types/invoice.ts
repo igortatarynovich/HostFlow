@@ -31,6 +31,9 @@ export interface Invoice {
   payment_date?: string | null;
   pdf_file_id?: string | null;
   billing_details?: Record<string, any> | null;
+  latest_delivery_status?: string | null;
+  latest_delivery_reason?: string | null;
+  latest_delivery_at?: string | null;
   created_by?: string | null;
   notes?: string | null;
   created_at: string;

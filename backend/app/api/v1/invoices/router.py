@@ -64,6 +64,39 @@ async def _log_invoice_activity(
     )
 
 
+async def _build_delivery_lookup(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    invoice_ids: List[str],
+) -> dict[str, dict]:
+    if not invoice_ids:
+        return {}
+    stmt = (
+        select(ActivityLog)
+        .where(
+            ActivityLog.tenant_id == tenant_id,
+            ActivityLog.target_type == "invoice",
+            ActivityLog.target_id.in_(invoice_ids),
+            ActivityLog.action.in_(["invoice.sent", "invoice.send_failed"]),
+        )
+        .order_by(ActivityLog.created_at.desc())
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    lookup: dict[str, dict] = {}
+    for row in rows:
+        target_id = str(row.target_id or "").strip()
+        if not target_id or target_id in lookup:
+            continue
+        payload = dict(row.payload or {})
+        lookup[target_id] = {
+            "latest_delivery_status": payload.get("delivery_status") or ("failed" if row.action == "invoice.send_failed" else "sent"),
+            "latest_delivery_reason": payload.get("reason"),
+            "latest_delivery_at": row.created_at,
+        }
+    return lookup
+
+
 @router.post("", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)
 async def create_invoice(
     payload: InvoiceCreate,
@@ -129,8 +162,21 @@ async def list_invoices(
         limit=limit,
         offset=offset,
     )
-    
-    return [InvoiceOut.model_validate(inv) for inv in invoices]
+    delivery_lookup = await _build_delivery_lookup(
+        db,
+        tenant_id=str(tenant_id),
+        invoice_ids=[str(inv.id) for inv in invoices],
+    )
+
+    return [
+        InvoiceOut.model_validate(
+            {
+                **InvoiceOut.model_validate(inv).model_dump(),
+                **delivery_lookup.get(str(inv.id), {}),
+            }
+        )
+        for inv in invoices
+    ]
 
 
 @router.post("/from-service-order/{order_id}", response_model=InvoiceOut, status_code=status.HTTP_201_CREATED)

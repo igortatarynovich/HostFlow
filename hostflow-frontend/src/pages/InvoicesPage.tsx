@@ -53,6 +53,19 @@ function statusBadgeClass(status: InvoiceStatus): string {
   return classes[status] || 'bg-slate-100 text-slate-700'
 }
 
+function deliveryBadgeClass(status: string | null | undefined): string {
+  switch (status) {
+    case 'sent':
+      return 'bg-emerald-100 text-emerald-700'
+    case 'skipped':
+      return 'bg-amber-100 text-amber-700'
+    case 'failed':
+      return 'bg-red-100 text-red-700'
+    default:
+      return 'bg-slate-100 text-slate-600'
+  }
+}
+
 export default function InvoicesPage() {
   const { t } = useI18n()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -188,6 +201,7 @@ export default function InvoicesPage() {
     withInvoiceAction(invoice.id, 'issue', async () => {
       const updated = await updateInvoice(invoice.id, { status: 'issued' })
       replaceInvoice(updated as Invoice)
+      setReloadKey((prev) => prev + 1)
       setActionMessage(t('app.invoices.issue_success', { defaultValue: 'Invoice issued.' }))
     })
 
@@ -195,6 +209,7 @@ export default function InvoicesPage() {
     withInvoiceAction(invoice.id, 'send', async () => {
       const updated = await sendInvoice(invoice.id)
       replaceInvoice(updated as Invoice)
+      setReloadKey((prev) => prev + 1)
       setActionMessage(
         t('app.invoices.send_success', {
           defaultValue: invoice.status === 'sent' ? 'Invoice resent.' : 'Invoice sent.',
@@ -218,6 +233,7 @@ export default function InvoicesPage() {
       })
       const updated = await updateInvoice(invoice.id, {})
       replaceInvoice(updated as Invoice)
+      setReloadKey((prev) => prev + 1)
       setActionMessage(t('app.invoices.mark_paid_success', { defaultValue: 'Payment recorded.' }))
     })
 
@@ -225,6 +241,7 @@ export default function InvoicesPage() {
     withInvoiceAction(invoice.id, 'cancel', async () => {
       const updated = await cancelInvoice(invoice.id)
       replaceInvoice(updated as Invoice)
+      setReloadKey((prev) => prev + 1)
       setActionMessage(t('app.invoices.cancel_success', { defaultValue: 'Invoice cancelled.' }))
     })
 
@@ -412,6 +429,9 @@ export default function InvoicesPage() {
                     {t('app.invoices.context', { defaultValue: 'Context' })}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t('app.invoices.delivery', { defaultValue: 'Delivery' })}
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {t('app.invoices.paid', { defaultValue: 'Paid' })}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -457,6 +477,28 @@ export default function InvoicesPage() {
                       <div className="mt-2 text-xs text-slate-500">
                         {t('app.invoices.last_activity', { defaultValue: 'Last activity' })}: {formatDateTime(invoice.payment_date || invoice.updated_at)}
                       </div>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-slate-700">
+                      {invoice.latest_delivery_status ? (
+                        <div className="space-y-1">
+                          <span
+                            className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium ${deliveryBadgeClass(
+                              invoice.latest_delivery_status,
+                            )}`}
+                          >
+                            {invoice.latest_delivery_status}
+                          </span>
+                          <div className="text-xs text-slate-500">
+                            {invoice.latest_delivery_reason || formatDateTime(invoice.latest_delivery_at)}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">
+                          {invoice.billing_details?.email
+                            ? t('app.invoices.delivery_not_sent', { defaultValue: 'Not sent yet' })
+                            : t('app.invoices.delivery_missing_recipient', { defaultValue: 'Recipient missing' })}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-700">{formatAmount(invoice.paid_amount)}</td>
                     <td className="py-3 px-4">
