@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
-import { createInvoice, getCompany, listCompanies } from '../api/client'
-import type { Company } from '../api/types'
+import { createInvoice, getCompany, getInvoice, listCompanies, updateInvoice } from '../api/client'
+import type { Company, Invoice } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 
@@ -64,8 +64,11 @@ function extractIssuerAddress(company: Company | null) {
 export default function InvoiceCreatePage() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const { id: invoiceId } = useParams<{ id?: string }>()
+  const isEditMode = Boolean(invoiceId)
   const [companies, setCompanies] = useState<Company[]>([])
   const [loadingCompanies, setLoadingCompanies] = useState(true)
+  const [loadingInvoice, setLoadingInvoice] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -133,6 +136,50 @@ export default function InvoiceCreatePage() {
     }
   }, [companies, issuerCompanyId])
 
+  useEffect(() => {
+    if (!invoiceId) return
+    let cancelled = false
+    setLoadingInvoice(true)
+    getInvoice(invoiceId)
+      .then((data) => {
+        if (cancelled) return
+        const invoice = data as Invoice
+        if (invoice.status !== 'draft') {
+          setError(t('app.invoices.edit_only_draft', { defaultValue: 'Only draft invoices can be edited.' }))
+          return
+        }
+        setCompanyId(invoice.company_id || '')
+        setIssuerCompanyId(String(invoice.billing_details?.issuer_company_id || ''))
+        setIssueDate(invoice.issue_date || isoDate(0))
+        setDueDate(invoice.due_date || isoDate(14))
+        setCurrency(invoice.currency || 'PLN')
+        setBillingEmail(String(invoice.billing_details?.email || ''))
+        setNotes(String(invoice.notes || ''))
+        setItems(
+          Array.isArray(invoice.items) && invoice.items.length > 0
+            ? invoice.items.map((item, index) => ({
+                line_no: index + 1,
+                description: String(item.description || ''),
+                qty: String((item as any).quantity ?? (item as any).qty ?? 1),
+                unit_price: String(item.unit_price ?? 0),
+                vat_rate: String(item.vat_rate ?? 0),
+              }))
+            : [initialItem()],
+        )
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          setError(err?.response?.data?.detail || err?.message || 'Failed to load invoice')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingInvoice(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [invoiceId, t])
+
   const updateItem = (index: number, patch: Partial<InvoiceItemDraft>) => {
     setItems((current) =>
       current.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)).map((item, itemIndex) => ({
@@ -180,7 +227,7 @@ export default function InvoiceCreatePage() {
     try {
       const issuerBankAccount = extractPrimaryBankAccount(issuerCompany)
       const issuerAddress = extractIssuerAddress(issuerCompany)
-      const invoice = await createInvoice({
+      const payload = {
         company_id: companyId,
         issue_date: issueDate,
         due_date: dueDate,
@@ -204,10 +251,15 @@ export default function InvoiceCreatePage() {
         },
         items: normalizedItems,
         status: 'draft',
-      })
+      }
+      const invoice = isEditMode && invoiceId ? await updateInvoice(invoiceId, payload) : await createInvoice(payload)
       navigate(`/app/invoices/${invoice.id}`)
     } catch (err: any) {
-      setError(err?.response?.data?.detail || err?.message || 'Failed to create invoice')
+      setError(
+        err?.response?.data?.detail ||
+          err?.message ||
+          (isEditMode ? 'Failed to update invoice' : 'Failed to create invoice'),
+      )
     } finally {
       setSaving(false)
     }
@@ -219,11 +271,19 @@ export default function InvoiceCreatePage() {
         <button type="button" className="text-sm text-brand-700 hover:underline" onClick={() => navigate('/app/invoices')}>
           {t('app.invoices.back', { defaultValue: 'Back to invoices' })}
         </button>
-        <h1 className="text-2xl font-bold text-slate-900">{t('app.invoices.create', { defaultValue: 'Create Invoice' })}</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {isEditMode
+            ? t('app.invoices.edit', { defaultValue: 'Edit Draft Invoice' })
+            : t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+        </h1>
         <p className="text-sm text-slate-500">
-          {t('app.invoices.create_subtitle', {
-            defaultValue: 'Create a draft invoice with client, billing recipient and line items.',
-          })}
+          {isEditMode
+            ? t('app.invoices.edit_subtitle', {
+                defaultValue: 'Update draft invoice details, issuer information and line items.',
+              })
+            : t('app.invoices.create_subtitle', {
+                defaultValue: 'Create a draft invoice with client, billing recipient and line items.',
+              })}
         </p>
       </div>
 
@@ -238,6 +298,12 @@ export default function InvoiceCreatePage() {
         />
       )}
 
+      {(loadingCompanies || loadingInvoice) && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          {t('common.loading', { defaultValue: 'Loading...' })}
+        </div>
+      )}
+
       <form className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_360px]" onSubmit={handleSubmit}>
         <section className="app-surface space-y-4 p-6">
           <div className="grid gap-4 md:grid-cols-2">
@@ -249,7 +315,7 @@ export default function InvoiceCreatePage() {
                 className="input"
                 value={companyId}
                 onChange={(event) => setCompanyId(event.target.value)}
-                disabled={loadingCompanies || saving}
+                disabled={loadingCompanies || loadingInvoice || saving}
               >
                 <option value="">{t('app.invoices.select_client', { defaultValue: 'Select client' })}</option>
                 {companies.map((company) => (
@@ -268,7 +334,7 @@ export default function InvoiceCreatePage() {
                 className="input"
                 value={issuerCompanyId}
                 onChange={(event) => setIssuerCompanyId(event.target.value)}
-                disabled={loadingCompanies || saving}
+                disabled={loadingCompanies || loadingInvoice || saving}
               >
                 <option value="">{t('app.invoices.select_issuer', { defaultValue: 'Select issuer' })}</option>
                 {companies.map((company) => (
@@ -400,7 +466,11 @@ export default function InvoiceCreatePage() {
           </dl>
           <div className="flex flex-col gap-2">
             <button type="submit" className="btn-primary" disabled={saving || loadingCompanies}>
-              {saving ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+              {saving
+                ? t('common.loading', { defaultValue: 'Loading...' })
+                : isEditMode
+                  ? t('app.invoices.save_draft', { defaultValue: 'Save Draft' })
+                  : t('app.invoices.create', { defaultValue: 'Create Invoice' })}
             </button>
             <button type="button" className="btn-secondary" onClick={() => navigate('/app/invoices')}>
               {t('common.actions.cancel', { defaultValue: 'Cancel' })}

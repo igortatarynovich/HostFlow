@@ -333,6 +333,11 @@ export default function InvoiceDetailPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {invoice.status === 'draft' && (
+            <button type="button" className="btn-secondary btn-sm" onClick={() => navigate(`/app/invoices/${invoice.id}/edit`)}>
+              {t('app.invoices.edit', { defaultValue: 'Edit Draft' })}
+            </button>
+          )}
+          {invoice.status === 'draft' && (
             <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'issue'} onClick={() => void handleIssue()}>
               {busyAction === 'issue' ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.invoices.issue', { defaultValue: 'Issue' })}
             </button>
