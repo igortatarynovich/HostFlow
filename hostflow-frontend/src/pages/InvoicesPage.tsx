@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { cancelInvoice, createPayment, createReminder, getInvoicePdf, listInvoices, sendInvoice, updateInvoice } from '../api/client'
 import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
@@ -68,6 +68,7 @@ function deliveryBadgeClass(status: string | null | undefined): string {
 
 export default function InvoicesPage() {
   const { t } = useI18n()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(false)
@@ -366,10 +367,7 @@ export default function InvoicesPage() {
         <h1 className="text-2xl font-bold text-slate-900">{t('app.invoices.title', { defaultValue: 'Invoices' })}</h1>
         <button
           className="btn-primary"
-          onClick={() => {
-            // TODO: Open create invoice form
-            alert('Create invoice form - coming soon')
-          }}
+          onClick={() => navigate('/app/invoices/new')}
         >
           {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
         </button>
