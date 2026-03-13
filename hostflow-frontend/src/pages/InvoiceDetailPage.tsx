@@ -371,9 +371,18 @@ export default function InvoiceDetailPage() {
           <button
             type="button"
             className="btn-secondary btn-sm"
-            onClick={() => navigate(`/app/invoices/new?source_invoice_id=${invoice.id}`)}
+            onClick={() =>
+              navigate(
+                invoice.status === 'draft'
+                  ? `/app/invoices/new?source_invoice_id=${invoice.id}`
+                  : `/app/invoices/new?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`,
+              )
+            }
           >
-            {t('app.invoices.duplicate', { defaultValue: 'Duplicate' })}
+            {t(
+              invoice.status === 'draft' ? 'app.invoices.duplicate' : 'app.invoices.create_correction',
+              { defaultValue: invoice.status === 'draft' ? 'Duplicate' : 'Create correction' },
+            )}
           </button>
           {invoice.status === 'draft' && (
             <button type="button" className="btn-secondary btn-sm" onClick={() => navigate(`/app/invoices/${invoice.id}/edit`)}>
@@ -593,6 +602,10 @@ export default function InvoiceDetailPage() {
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.tax_mode', { defaultValue: 'Tax mode' })}</dt>
                 <dd className="mt-1 text-slate-900">{String(invoice.billing_details?.tax_mode || '-')}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.correction_of', { defaultValue: 'Correction of' })}</dt>
+                <dd className="mt-1 text-slate-900">{String(invoice.billing_details?.correction_of_invoice_number || '-')}</dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.bank_account', { defaultValue: 'Bank account' })}</dt>

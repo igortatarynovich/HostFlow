@@ -269,8 +269,6 @@ export default function InvoicesPage() {
         method: 'bank_transfer',
         status: 'confirmed',
       })
-      const updated = await updateInvoice(invoice.id, {})
-      replaceInvoice(updated as Invoice)
       setReloadKey((prev) => prev + 1)
       setActionMessage(t('app.invoices.mark_paid_success', { defaultValue: 'Payment recorded.' }))
     })
@@ -751,9 +749,18 @@ export default function InvoicesPage() {
                         <button
                           type="button"
                           className="btn-secondary btn-sm"
-                          onClick={() => navigate(`/app/invoices/new?source_invoice_id=${invoice.id}`)}
+                          onClick={() =>
+                            navigate(
+                              invoice.status === 'draft'
+                                ? `/app/invoices/new?source_invoice_id=${invoice.id}`
+                                : `/app/invoices/new?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`,
+                            )
+                          }
                         >
-                          {t('app.invoices.duplicate', { defaultValue: 'Duplicate' })}
+                          {t(
+                            invoice.status === 'draft' ? 'app.invoices.duplicate' : 'app.invoices.create_correction',
+                            { defaultValue: invoice.status === 'draft' ? 'Duplicate' : 'Create correction' },
+                          )}
                         </button>
                         <button
                           type="button"

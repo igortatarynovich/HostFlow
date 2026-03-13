@@ -16,6 +16,8 @@ from backend.app.models.invoice import InvoiceStatus
 
 def _invoice_prefix(invoice_kind: str | None, tax_mode: str | None) -> str:
     kind = str(invoice_kind or "").strip().lower()
+    if kind == "correction":
+        return "KOR"
     if kind == "proforma":
         return "PRO"
     if kind == "invoice":
@@ -289,9 +291,8 @@ async def update_invoice(
     if not invoice:
         return None
     
-    # Don't allow updates to paid invoices
-    if invoice.status == InvoiceStatus.paid.value:
-        raise ValueError("Cannot update paid invoice")
+    if invoice.status != InvoiceStatus.draft.value:
+        raise ValueError("Only draft invoices can be edited. Create a correction invoice instead.")
     
     # Update fields
     next_billing_details = _as_dict(invoice.billing_details)

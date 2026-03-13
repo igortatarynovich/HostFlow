@@ -132,6 +132,7 @@ function addDays(isoValue: string, days: number) {
 }
 
 function invoicePrefix(invoiceKind: string, taxMode: string) {
+  if (invoiceKind === 'correction') return 'KOR'
   if (invoiceKind === 'proforma') return 'PRO'
   if (invoiceKind === 'invoice') return 'INV'
   if (invoiceKind === 'vat' || taxMode === 'standard_vat') return 'FV'
@@ -161,6 +162,8 @@ export default function InvoiceCreatePage() {
   const { id: invoiceId } = useParams<{ id?: string }>()
   const [searchParams] = useSearchParams()
   const isEditMode = Boolean(invoiceId)
+  const correctionOfInvoiceId = String(searchParams.get('correction_of_invoice_id') || '').trim()
+  const correctionOfInvoiceNumber = String(searchParams.get('correction_of_invoice_number') || '').trim()
   const [companies, setCompanies] = useState<Company[]>([])
   const [serviceCatalog, setServiceCatalog] = useState<AdditionalService[]>([])
   const [loadingCompanies, setLoadingCompanies] = useState(true)
@@ -311,6 +314,7 @@ export default function InvoiceCreatePage() {
     if (isEditMode || companies.length === 0) return
     const prefCompanyId = String(searchParams.get('company_id') || '').trim()
     const prefBillingEmail = String(searchParams.get('billing_email') || '').trim()
+    const prefInvoiceKind = String(searchParams.get('invoice_kind') || '').trim()
     if (prefCompanyId && !companyId) {
       const matchedCompany = companies.find((entry) => entry.id === prefCompanyId)
       if (matchedCompany) {
@@ -320,11 +324,15 @@ export default function InvoiceCreatePage() {
     if (prefBillingEmail && !billingEmail) {
       setBillingEmail(prefBillingEmail)
     }
-  }, [billingEmail, companies, companyId, isEditMode, searchParams])
+    if (prefInvoiceKind && invoiceKind !== prefInvoiceKind) {
+      setInvoiceKind(prefInvoiceKind)
+    }
+  }, [billingEmail, companies, companyId, invoiceKind, isEditMode, searchParams])
 
   useEffect(() => {
     if (isEditMode) return
     const sourceInvoiceId = String(searchParams.get('source_invoice_id') || '').trim()
+    const prefInvoiceKind = String(searchParams.get('invoice_kind') || '').trim()
     if (!sourceInvoiceId) return
     let cancelled = false
     setLoadingInvoice(true)
@@ -334,11 +342,16 @@ export default function InvoiceCreatePage() {
         const invoice = data as Invoice
         setCompanyId((current) => current || invoice.company_id || '')
         setIssuerCompanyId((current) => current || String(invoice.billing_details?.issuer_company_id || ''))
-        setInvoiceKind(String(invoice.billing_details?.invoice_kind || 'vat'))
+        setInvoiceKind(prefInvoiceKind || String(invoice.billing_details?.invoice_kind || 'vat'))
         setInvoiceNumber('')
         setCurrency((current) => (current === 'PLN' ? invoice.currency || current : current))
         setBillingEmail((current) => current || String(invoice.billing_details?.email || ''))
-        setNotes((current) => current || String(invoice.notes || ''))
+        setNotes((current) =>
+          current ||
+          (prefInvoiceKind === 'correction'
+            ? `Correction for invoice ${invoice.invoice_number}\n${String(invoice.notes || '').trim()}`.trim()
+            : String(invoice.notes || '')),
+        )
         if (Array.isArray(invoice.items) && invoice.items.length > 0) {
           setItems(
             invoice.items.map((item, index) => ({
@@ -576,6 +589,8 @@ export default function InvoiceCreatePage() {
           tax_id: clientBilling.tax_id,
           address: clientBilling.address,
           invoice_kind: invoiceKind,
+          correction_of_invoice_id: correctionOfInvoiceId || undefined,
+          correction_of_invoice_number: correctionOfInvoiceNumber || undefined,
           payment_terms_days: Number.parseInt(paymentTermsDays || '0', 10) || clientBilling.payment_terms_days,
           tax_mode: taxMode,
           issuer_company_id: issuerCompany?.id || undefined,
@@ -722,6 +737,7 @@ export default function InvoiceCreatePage() {
                 <option value="vat">{t('app.invoices.kind_vat', { defaultValue: 'VAT invoice' })}</option>
                 <option value="invoice">{t('app.invoices.kind_invoice', { defaultValue: 'Invoice' })}</option>
                 <option value="proforma">{t('app.invoices.kind_proforma', { defaultValue: 'Proforma' })}</option>
+                <option value="correction">{t('app.invoices.kind_correction', { defaultValue: 'Correction invoice' })}</option>
               </select>
             </label>
 
@@ -897,6 +913,10 @@ export default function InvoiceCreatePage() {
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.number', { defaultValue: 'Number' })}</dt>
               <dd className="mt-1 text-slate-900">{invoiceNumber || buildSuggestedInvoiceNumber(invoiceKind, taxMode, issueDate, knownInvoiceNumbers) || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.correction_of', { defaultValue: 'Correction of' })}</dt>
+              <dd className="mt-1 text-slate-900">{correctionOfInvoiceNumber || '-'}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.client', { defaultValue: 'Client' })}</dt>
