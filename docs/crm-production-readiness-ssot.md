@@ -965,6 +965,12 @@ Data contract rule:
 - если actual cost неизвестен, система должна честно показывать `estimated`/`missing cost basis`, а не рисовать ложную прибыль;
 - multi-currency baseline требует snapshot currency on order/invoice item и понятное правило conversion/reporting currency.
 
+Cost basis contract:
+- `service/product` catalog может хранить default `estimated_cost` и `cost_currency`, но фактическая profitability должна опираться на snapshot в `service item`.
+- `service item` обязан поддерживать `estimated_cost`, `actual_cost`, `cost_source`, `cost_status` (`missing`, `estimated`, `confirmed`).
+- order/invoice-level profit агрегируется из item-level cost snapshots, а не из текущего состояния catalog.
+- если часть items без `confirmed` cost, aggregate margin должна показывать coverage/quality marker, а не притворяться полностью точной.
+
 Views baseline:
 - `Overview`: KPI cards + alerts (`overdue`, `low margin`, `missing cost basis`)
 - `Trends`: time-series по leads/orders/invoices/paid/profit

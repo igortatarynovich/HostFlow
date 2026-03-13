@@ -71,6 +71,11 @@ service_id UUID NOT NULL REFERENCES services(id),
 service_snapshot JSONB,
 qty NUMERIC(10,2) DEFAULT 1,
 unit_price NUMERIC(12,2),
+estimated_cost NUMERIC(12,2),
+actual_cost NUMERIC(12,2),
+cost_currency CHAR(3),
+cost_source TEXT,
+cost_status TEXT DEFAULT 'missing',
 vat_rate NUMERIC(4,2),
 amount NUMERIC(12,2),
 status ENUM('pending','scheduled','in_progress','delivered','cancelled') DEFAULT 'pending',
@@ -102,6 +107,7 @@ created_at TIMESTAMPTZ
 - Услуга может требовать документы, кандидата или запись (schedule).
 - Переход `draft → approved` фиксирует цену и ставку НДС.
 - При добавлении позиции в заказ сохраняется snapshot (`name`, `kind`, `sku/code`, `unit`, `currency`, `tax_mode`, `vat_rate`, `unit_price`), чтобы дальнейшие изменения в каталоге не переписывали исторический заказ.
+- Для profitability analytics позиция также должна хранить snapshot cost basis: `estimated_cost`, `actual_cost`, `cost_currency`, `cost_source`, `cost_status`.
 - Нельзя перевести в `scheduled`, если не закрыты все `required_documents`.
 - Если `ServiceItem.result_document_type` заполнен, при `deliver` создаётся или обновляется соответствующий документ кандидата.
 - При `meta.blocking=true` услуга блокирует этап кандидата до завершения (например, ADR-тренинг до рейса).
@@ -237,3 +243,10 @@ POST /service-items/{id}/deliver
 - Profitability without explicit cost basis must be marked as `estimated` or `missing`, not silently treated as exact.
 - Multi-currency analytics requires source snapshots on `service_items` and `invoices` plus a clear reporting-currency policy.
 - Export is allowed as secondary action, but core trend/slice analysis must remain usable inside the product.
+
+### Cost basis contract
+
+- `Service` catalog may provide default `estimated_cost`, but it is only a seed for order creation.
+- Canonical profitability source is `ServiceItem` snapshot, not mutable catalog data.
+- `cost_status` must distinguish at least `missing`, `estimated`, `confirmed`.
+- Aggregate profit/margin in order, invoice and analytics views must expose cost coverage when some items are not `confirmed`.
