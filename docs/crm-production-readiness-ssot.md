@@ -575,6 +575,67 @@ Acceptance rule:
 - `agency` и `employer` не получают service-order-first navigation по умолчанию;
 - section visibility и CTA priorities управляются preset contract, а не разъезжаются между страницами вручную.
 
+#### 5.2.4.6 Navigation And Onboarding Routing Contract
+
+Business type должен определять не только presets данных, но и default route-map после signup, company bootstrap и первых retention nudges.
+
+Канонические routing decision points:
+- post-signup redirect
+- post-company-bootstrap redirect
+- dashboard primary CTA
+- empty-state CTA в primary module
+- orientation-mode next-step cards
+
+Routing baseline v1:
+
+| Business type | Post-signup required step | First working route after company bootstrap | Dashboard primary CTA | Primary nav focus | Empty-state primary CTA |
+|---|---|---|---|---|---|
+| `agency` | `create first company` | `/app/candidates` or `/app/vacancies` | `Create candidate` / `Open vacancies` | `Candidates`, `Vacancies`, `Clients` | `Add candidate`, `Create vacancy`, `Add client` |
+| `employer` | `create first company` | `/app/vacancies` or `/app/candidates` | `Create vacancy` | `Vacancies`, `Candidates`, `Company` | `Create vacancy`, `Add candidate` |
+| `services` | `create first company` | `/app/clients` | `Create client` / `Create service order` | `Clients`, `Invoices`, `Messages` | `Create client`, `Create service order`, `Create invoice` |
+
+Routing rules:
+- signup завершает только authentication + trial bootstrap; до первой компании пользователь идет в `/app/onboarding/company`.
+- после создания первой компании forced wizard не должен блокировать рабочий модуль; дальше работает orientation-mode.
+- `services` после company bootstrap не должен редиректиться в `Candidates`, `Vacancies` или recruiting dashboard variant.
+- `agency` и `employer` не должны стартовать с `/app/invoices` как primary route.
+
+Dashboard contract:
+- `agency` dashboard показывает candidate/vacancy throughput, recent clients, recruiting reminders.
+- `employer` dashboard показывает hiring pipeline, open vacancies, upcoming interviews/onboarding.
+- `services` dashboard показывает new clients/leads, active service orders, unpaid invoices, communication queue.
+
+Orientation-mode next-step contract:
+- `agency`:
+  - `Create first candidate`
+  - `Create first vacancy`
+  - `Add client company`
+- `employer`:
+  - `Create first vacancy`
+  - `Add candidate`
+  - `Complete company profile`
+- `services`:
+  - `Create first client`
+  - `Create first service order`
+  - `Create first invoice`
+
+Navigation visibility baseline:
+- `agency`:
+  - primary nav: `Candidates`, `Vacancies`, `Clients`, `Messages`
+  - secondary nav: `Invoices`, `Documents`, `Settings`
+- `employer`:
+  - primary nav: `Vacancies`, `Candidates`, `Messages`
+  - secondary nav: `Clients`, `Invoices`, `Settings`
+- `services`:
+  - primary nav: `Clients`, `Invoices`, `Messages`
+  - secondary nav: `Orders/Services`, `Calendar`, `Settings`
+  - recruiting modules допускаются только как optional enabled surfaces, не как top priority
+
+Acceptance rule:
+- default route-map, dashboard CTA и empty-states совпадают с `business_type`;
+- onboarding completion не зависит от посещения нерелевантных модулей;
+- retention nudges и deep-links не приводят `services` пользователя в recruiting-first screens без явной причины.
+
 ## 5.3 Фаза C — Коммуникации и лиды (операционная ценность)
 
 | ID | Задача | Статус | DOD |
