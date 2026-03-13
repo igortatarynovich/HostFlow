@@ -91,6 +91,12 @@ Secondary sections:
 - secondary sections допустимы, но не должны занимать первичную рабочую поверхность карточки по умолчанию.
 - для `services` business type карточка компании/клиента становится одной из главных operational surfaces.
 
+### Business-type preset rule
+
+- `agency`: company/client card по умолчанию поддерживает recruiting customer workflow (`vacancies`, `contacts`, `contracts`, `communications`).
+- `employer`: company card по умолчанию ближе к own-company profile и hiring operations; external client-management не должен доминировать.
+- `services`: company/client card обязана быть primary CRM surface с акцентом на `orders`, `billing`, `contracts`, `communications`, `invoice actions`.
+
 ---
 
 ## События

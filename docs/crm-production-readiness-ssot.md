@@ -406,6 +406,175 @@ Acceptance rule:
 - navigation/CTA priorities per business type;
 - migration rule для существующих tenants, где preset сейчас recruiting-first независимо от business type.
 
+#### 5.2.4.4 Funnel Preset JSON Contract
+
+Дефолтный preset должен храниться как явный data-contract, а не как набор разрозненных UI assumptions.
+
+Минимальная каноническая форма:
+
+```json
+{
+  "preset_code": "agency_recruiting_v1",
+  "business_type": "agency",
+  "entity_type": "candidate",
+  "primary": true,
+  "stages": [
+    {
+      "code": "new",
+      "label": "New",
+      "kind": "open",
+      "order": 10,
+      "entry": true,
+      "terminal": false,
+      "sla_policy": null,
+      "allowed_next": ["contacted", "rejected"]
+    }
+  ],
+  "reason_groups": {
+    "rejected": ["not_qualified", "no_response", "client_declined"]
+  },
+  "default_views": ["board", "list"],
+  "default_filters": ["owner", "status", "source", "updated_at"],
+  "automation_defaults": {
+    "notify_on_create": true,
+    "notify_on_stage_change": true,
+    "create_follow_up_task": false
+  }
+}
+```
+
+Обязательные поля:
+- `preset_code`
+- `business_type`
+- `entity_type`
+- `primary`
+- `stages[]`
+- `reason_groups`
+- `default_views`
+- `default_filters`
+- `automation_defaults`
+
+Правила:
+- у tenant должен быть ровно один `primary` funnel preset для default first-value flow;
+- `business_type` и `entity_type` не могут расходиться по смыслу;
+- preset должен поддерживать stable `code`, чтобы migrations/UI/api ссылались на один и тот же contract;
+- terminal stages обязаны быть помечены явно, без UI-only эвристик.
+
+Preset baseline v1:
+
+| Business type | `preset_code` | `entity_type` | Canonical stages | Terminal stages | Default automation baseline |
+|---|---|---|---|---|---|
+| `agency` | `agency_recruiting_v1` | `candidate` | `new -> contacted -> screening -> documents -> client_submission -> interview -> offer -> hired/rejected` | `hired`, `rejected` | notify recruiter on create/stage change, optional doc reminder |
+| `employer` | `employer_hiring_v1` | `candidate` | `new -> screened -> interview -> offer -> onboarding -> hired/rejected` | `hired`, `rejected` | notify hiring owner on create/stage change, onboarding follow-up |
+| `services` | `services_sales_v1` | `client_lead` | `new_lead -> qualified -> discovery -> quote_prepared -> agreed -> invoice_sent -> active_service/closed_lost` | `active_service`, `closed_lost` | notify owner on new lead, create follow-up task on `qualified`, invoice reminders on `invoice_sent` |
+
+Preset-specific constraints:
+- `agency_recruiting_v1`:
+  - reasons and transitions ориентированы на candidate + client handoff;
+  - documents/work-permit readiness допустимы как first-class stage signals.
+- `employer_hiring_v1`:
+  - stages короче и без agency-specific client submission/handoff;
+  - onboarding stage обязателен как bridge между offer и hired.
+- `services_sales_v1`:
+  - default entity не кандидат, а `client_lead`;
+  - invoice milestone входит в канонический path;
+  - pipeline должен уметь запускать service-order creation automation после `agreed` или `invoice_sent`.
+
+Migration rule v1:
+- новые tenants получают preset строго по `business_type` во время onboarding/bootstrap;
+- существующие tenants не должны молча переключаться на новый preset без explicit migration record;
+- если `services` tenant сейчас живет на recruiting preset, это должно фиксироваться как migration debt, а не считаться нормой.
+
+Acceptance rule:
+- API, UI и automation используют один и тот же preset contract;
+- tenant `services` после bootstrap не получает candidate-first stages по умолчанию;
+- смена `business_type` требует либо явной preset migration, либо explicit “keep current presets” decision.
+
+#### 5.2.4.5 Card Preset Section Matrix
+
+Card preset должен описывать не только набор полей, но и иерархию surface:
+- `primary` = видно сразу в first screen / default tab;
+- `secondary` = доступно без отдельного settings module, но не доминирует;
+- `hidden_by_default` = открывается только по запросу;
+- `not_applicable` = не показывается в default product mode для данного business type.
+
+Секции-кандидаты для матрицы:
+- `overview`
+- `pipeline/status`
+- `contacts`
+- `documents`
+- `vacancies/jobs`
+- `orders/service_orders`
+- `contracts`
+- `billing/invoice_data`
+- `activity/communications`
+- `automation/log`
+- `legal/compliance`
+
+##### Candidate card preset matrix
+
+| Section | `agency` | `employer` | `services` |
+|---|---|---|---|
+| `overview` | `primary` | `primary` | `hidden_by_default` |
+| `pipeline/status` | `primary` | `primary` | `hidden_by_default` |
+| `contacts` | `primary` | `primary` | `hidden_by_default` |
+| `documents` | `primary` | `secondary` | `not_applicable` |
+| `vacancies/jobs` | `primary` | `primary` | `not_applicable` |
+| `orders/service_orders` | `not_applicable` | `not_applicable` | `not_applicable` |
+| `contracts` | `hidden_by_default` | `hidden_by_default` | `not_applicable` |
+| `billing/invoice_data` | `not_applicable` | `not_applicable` | `not_applicable` |
+| `activity/communications` | `secondary` | `secondary` | `hidden_by_default` |
+| `automation/log` | `secondary` | `secondary` | `hidden_by_default` |
+| `legal/compliance` | `secondary` | `secondary` | `not_applicable` |
+
+##### Client/company card preset matrix
+
+| Section | `agency` | `employer` | `services` |
+|---|---|---|---|
+| `overview` | `primary` | `primary` | `primary` |
+| `pipeline/status` | `secondary` | `hidden_by_default` | `primary` |
+| `contacts` | `primary` | `secondary` | `primary` |
+| `documents` | `hidden_by_default` | `hidden_by_default` | `hidden_by_default` |
+| `vacancies/jobs` | `primary` | `secondary` | `not_applicable` |
+| `orders/service_orders` | `secondary` | `hidden_by_default` | `primary` |
+| `contracts` | `primary` | `secondary` | `primary` |
+| `billing/invoice_data` | `secondary` | `secondary` | `primary` |
+| `activity/communications` | `primary` | `secondary` | `primary` |
+| `automation/log` | `secondary` | `hidden_by_default` | `secondary` |
+| `legal/compliance` | `hidden_by_default` | `secondary` | `secondary` |
+
+##### Service order card preset matrix
+
+| Section | `agency` | `employer` | `services` |
+|---|---|---|---|
+| `overview` | `hidden_by_default` | `not_applicable` | `primary` |
+| `pipeline/status` | `hidden_by_default` | `not_applicable` | `primary` |
+| `contacts` | `secondary` | `not_applicable` | `primary` |
+| `documents` | `not_applicable` | `not_applicable` | `hidden_by_default` |
+| `vacancies/jobs` | `not_applicable` | `not_applicable` | `not_applicable` |
+| `orders/service_orders` | `secondary` | `not_applicable` | `primary` |
+| `contracts` | `secondary` | `not_applicable` | `primary` |
+| `billing/invoice_data` | `secondary` | `not_applicable` | `primary` |
+| `activity/communications` | `secondary` | `not_applicable` | `primary` |
+| `automation/log` | `hidden_by_default` | `not_applicable` | `secondary` |
+| `legal/compliance` | `hidden_by_default` | `not_applicable` | `secondary` |
+
+CTA priority baseline:
+- `agency`:
+  - candidate card: `Move stage`, `Attach to vacancy`, `Request documents`
+  - client card: `Open vacancies`, `Add contact`, `Create contract`
+- `employer`:
+  - candidate card: `Schedule interview`, `Prepare offer`, `Start onboarding`
+  - company card: `Edit legal profile`, `Open vacancies`, `Manage contacts`
+- `services`:
+  - client card: `Create service order`, `Create invoice`, `Send message`
+  - service order card: `Advance stage`, `Generate invoice`, `Create follow-up task`
+
+Acceptance rule:
+- `services` mode не открывает candidate card как центральный workspace без явного включения recruiting use case;
+- `agency` и `employer` не получают service-order-first navigation по умолчанию;
+- section visibility и CTA priorities управляются preset contract, а не разъезжаются между страницами вручную.
+
 ## 5.3 Фаза C — Коммуникации и лиды (операционная ценность)
 
 | ID | Задача | Статус | DOD |
