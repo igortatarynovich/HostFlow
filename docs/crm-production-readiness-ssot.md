@@ -933,6 +933,48 @@ UI contract:
 Acceptance rule:
 - service-led tenant может ответить прямо в системе, без Excel: что дает прибыль, кто лучший клиент, какие позиции проседают, где растет/падает спрос и где зависает дебиторка.
 
+#### 5.5.4.5 Services Analytics Implementation Contract
+
+Минимальные metric families:
+- `pipeline`: new leads, qualified leads, agreed deals, conversion to order, conversion to invoice, conversion to paid
+- `commercial`: quoted amount, invoiced amount, paid amount, outstanding amount, overdue amount
+- `profitability`: estimated cost, actual cost, gross profit, gross margin
+- `catalog`: top services/products by revenue, qty, profit, margin
+- `clients`: top clients by revenue, profit, overdue exposure, repeat rate
+- `operations`: active orders, delivered orders, cancelled/refunded orders, average cycle time
+
+Canonical dimensions and filters:
+- period: day, week, month, quarter, custom date range
+- client/company
+- company classification (`client`, `counterparty`, etc.)
+- service/product item
+- category
+- manager/owner
+- lead source
+- status/stage
+- currency
+- tax mode
+
+Pivot/slice baseline:
+- rows: `client`, `item`, `manager`, `month`
+- columns: `status`, `currency`, `tax_mode`, `category`
+- values: `revenue`, `paid`, `profit`, `margin`, `qty`, `invoice_count`, `order_count`
+
+Data contract rule:
+- все profitability-метрики должны строиться из explicit source fields, а не из UI-only derived labels;
+- если actual cost неизвестен, система должна честно показывать `estimated`/`missing cost basis`, а не рисовать ложную прибыль;
+- multi-currency baseline требует snapshot currency on order/invoice item и понятное правило conversion/reporting currency.
+
+Views baseline:
+- `Overview`: KPI cards + alerts (`overdue`, `low margin`, `missing cost basis`)
+- `Trends`: time-series по leads/orders/invoices/paid/profit
+- `Clients`: ranked table + drill-down
+- `Items`: ranked table + drill-down
+- `Pivot`: configurable slice/pivot workspace with export as secondary action, not primary dependency
+
+Release gate:
+- `C15` не может считаться `DONE`, пока `Services -> Analytics` не позволяет делать trend and pivot analysis внутри продукта, без обязательной выгрузки в spreadsheet.
+
 ### 5.5.5 Vacancy Document Policy Decision Contract (`2026-03-13`)
 
 Вопрос:

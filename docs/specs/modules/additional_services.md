@@ -210,3 +210,30 @@ POST /service-items/{id}/deliver
   - slices by manager, client, item, currency, tax mode, status
 - Важное правило: любая сводная метрика должна иметь drill-down в underlying `service_orders`, `service_items`, `invoices`, `payments`.
 - Если tenant продает услуги, отсутствие profitability analytics считается product gap, даже если создание заказов и счетов уже работает.
+
+### Canonical analytics dimensions
+
+- `period`
+- `client/company`
+- `company_classification`
+- `service/product`
+- `category`
+- `manager/owner`
+- `lead_source`
+- `status/stage`
+- `currency`
+- `tax_mode`
+
+### Canonical analytics views
+
+- `Overview` — KPI cards, overdue alerts, low-margin alerts, missing cost basis alerts
+- `Trends` — day/week/month time-series for leads, orders, invoices, paid, profit
+- `Clients` — ranked client profitability/revenue table
+- `Items` — ranked service/product profitability/revenue table
+- `Pivot` — slice/pivot workspace on top of the same source metrics
+
+### Data quality rules
+
+- Profitability without explicit cost basis must be marked as `estimated` or `missing`, not silently treated as exact.
+- Multi-currency analytics requires source snapshots on `service_items` and `invoices` plus a clear reporting-currency policy.
+- Export is allowed as secondary action, but core trend/slice analysis must remain usable inside the product.
