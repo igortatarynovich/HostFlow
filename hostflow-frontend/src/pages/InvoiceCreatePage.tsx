@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { createInvoice, getCompany, getInvoice, listCompanies, updateInvoice } from '../api/client'
 import type { Company, Invoice } from '../api/types'
@@ -65,6 +65,7 @@ export default function InvoiceCreatePage() {
   const { t } = useI18n()
   const navigate = useNavigate()
   const { id: invoiceId } = useParams<{ id?: string }>()
+  const [searchParams] = useSearchParams()
   const isEditMode = Boolean(invoiceId)
   const [companies, setCompanies] = useState<Company[]>([])
   const [loadingCompanies, setLoadingCompanies] = useState(true)
@@ -108,6 +109,21 @@ export default function InvoiceCreatePage() {
     if (!company) return
     setBillingEmail((current) => current || String(company.email || ''))
   }, [companies, companyId])
+
+  useEffect(() => {
+    if (isEditMode || companies.length === 0) return
+    const prefCompanyId = String(searchParams.get('company_id') || '').trim()
+    const prefBillingEmail = String(searchParams.get('billing_email') || '').trim()
+    if (prefCompanyId && !companyId) {
+      const matchedCompany = companies.find((entry) => entry.id === prefCompanyId)
+      if (matchedCompany) {
+        setCompanyId(matchedCompany.id)
+      }
+    }
+    if (prefBillingEmail && !billingEmail) {
+      setBillingEmail(prefBillingEmail)
+    }
+  }, [billingEmail, companies, companyId, isEditMode, searchParams])
 
   useEffect(() => {
     if (!issuerCompanyId) {
