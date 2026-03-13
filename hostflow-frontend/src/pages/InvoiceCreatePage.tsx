@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { createInvoice, listCompanies } from '../api/client'
+import { createInvoice, getCompany, listCompanies } from '../api/client'
 import type { Company } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -29,6 +29,38 @@ const initialItem = (): InvoiceItemDraft => ({
   vat_rate: '23',
 })
 
+function asRecord(value: unknown): Record<string, any> {
+  return value && typeof value === 'object' ? (value as Record<string, any>) : {}
+}
+
+function asArray(value: unknown): any[] {
+  return Array.isArray(value) ? value : []
+}
+
+function extractBilling(company: Company | null) {
+  const extra = asRecord(company?.extra)
+  const billing = asRecord(extra.billing)
+  return billing
+}
+
+function extractPrimaryBankAccount(company: Company | null) {
+  const billing = extractBilling(company)
+  const accounts = asArray(billing.bank_accounts).map((entry) => asRecord(entry))
+  return accounts.find((account) => Boolean(account.is_primary)) || accounts[0] || null
+}
+
+function extractIssuerAddress(company: Company | null) {
+  const billing = extractBilling(company)
+  const billingAddress = asRecord(billing.billing_address)
+  const raw = {
+    country: billingAddress.country || company?.country || company?.country_code || '',
+    city: billingAddress.city || company?.city || '',
+    street: billingAddress.street || company?.address || '',
+    zip: billingAddress.zip || '',
+  }
+  return Object.values(raw).some(Boolean) ? raw : null
+}
+
 export default function InvoiceCreatePage() {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -38,12 +70,14 @@ export default function InvoiceCreatePage() {
   const [saving, setSaving] = useState(false)
 
   const [companyId, setCompanyId] = useState('')
+  const [issuerCompanyId, setIssuerCompanyId] = useState('')
   const [issueDate, setIssueDate] = useState(isoDate(0))
   const [dueDate, setDueDate] = useState(isoDate(14))
   const [currency, setCurrency] = useState('PLN')
   const [billingEmail, setBillingEmail] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<InvoiceItemDraft[]>([initialItem()])
+  const [issuerCompany, setIssuerCompany] = useState<Company | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -71,6 +105,33 @@ export default function InvoiceCreatePage() {
     if (!company) return
     setBillingEmail((current) => current || String(company.email || ''))
   }, [companies, companyId])
+
+  useEffect(() => {
+    if (!issuerCompanyId) {
+      setIssuerCompany(null)
+      return
+    }
+    let cancelled = false
+    getCompany(issuerCompanyId)
+      .then((company) => {
+        if (!cancelled) setIssuerCompany(company as Company)
+      })
+      .catch((err: any) => {
+        if (!cancelled) {
+          setIssuerCompany(null)
+          setError(err?.response?.data?.detail || err?.message || 'Failed to load issuer details')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [issuerCompanyId])
+
+  useEffect(() => {
+    if (!issuerCompanyId && companies.length > 0) {
+      setIssuerCompanyId(companies[0].id)
+    }
+  }, [companies, issuerCompanyId])
 
   const updateItem = (index: number, patch: Partial<InvoiceItemDraft>) => {
     setItems((current) =>
@@ -117,6 +178,8 @@ export default function InvoiceCreatePage() {
 
     setSaving(true)
     try {
+      const issuerBankAccount = extractPrimaryBankAccount(issuerCompany)
+      const issuerAddress = extractIssuerAddress(issuerCompany)
       const invoice = await createInvoice({
         company_id: companyId,
         issue_date: issueDate,
@@ -125,6 +188,19 @@ export default function InvoiceCreatePage() {
         notes: notes.trim() || undefined,
         billing_details: {
           email: billingEmail.trim() || undefined,
+          issuer_company_id: issuerCompany?.id || undefined,
+          issuer_name: issuerCompany?.legal_name || issuerCompany?.name || undefined,
+          issuer_tax_id: issuerCompany?.tax_id || undefined,
+          issuer_address: issuerAddress || undefined,
+          issuer_bank_account: issuerBankAccount
+            ? {
+                bank_name: issuerBankAccount.bank_name || undefined,
+                iban: issuerBankAccount.iban || undefined,
+                swift_bic: issuerBankAccount.swift_bic || issuerBankAccount.swift || undefined,
+                country: issuerBankAccount.country || undefined,
+                label: issuerBankAccount.label || undefined,
+              }
+            : undefined,
         },
         items: normalizedItems,
         status: 'draft',
@@ -179,6 +255,25 @@ export default function InvoiceCreatePage() {
                 {companies.map((company) => (
                   <option key={company.id} value={company.id}>
                     {company.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.invoices.issuer', { defaultValue: 'Issuer company' })}
+              </span>
+              <select
+                className="input"
+                value={issuerCompanyId}
+                onChange={(event) => setIssuerCompanyId(event.target.value)}
+                disabled={loadingCompanies || saving}
+              >
+                <option value="">{t('app.invoices.select_issuer', { defaultValue: 'Select issuer' })}</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.legal_name || company.name}
                   </option>
                 ))}
               </select>
@@ -285,8 +380,18 @@ export default function InvoiceCreatePage() {
               <dd className="mt-1 text-slate-900">{companies.find((company) => company.id === companyId)?.name || '-'}</dd>
             </div>
             <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.issuer', { defaultValue: 'Issuer company' })}</dt>
+              <dd className="mt-1 text-slate-900">{issuerCompany?.legal_name || issuerCompany?.name || '-'}</dd>
+            </div>
+            <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.recipient', { defaultValue: 'Recipient' })}</dt>
               <dd className="mt-1 text-slate-900">{billingEmail || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.bank_account', { defaultValue: 'Bank account' })}</dt>
+              <dd className="mt-1 text-slate-900">
+                {extractPrimaryBankAccount(issuerCompany)?.iban || t('app.invoices.bank_account_missing', { defaultValue: 'No primary bank account' })}
+              </dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.items', { defaultValue: 'Items' })}</dt>

@@ -47,6 +47,11 @@ function formatDateTime(value: string | null | undefined) {
   }
 }
 
+function formatAddress(value: Record<string, any> | null | undefined) {
+  if (!value) return '-'
+  return [value.country, value.city, value.street, value.zip].filter(Boolean).join(', ') || '-'
+}
+
 function statusBadgeClass(status: InvoiceStatus): string {
   const classes: Record<InvoiceStatus, string> = {
     draft: 'bg-slate-100 text-slate-700',
@@ -475,12 +480,42 @@ export default function InvoiceDetailPage() {
                 <dd className="mt-1 text-slate-900">{formatDate(invoice.due_date)}</dd>
               </div>
               <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.issuer', { defaultValue: 'Issuer company' })}</dt>
+                <dd className="mt-1 text-slate-900">{String(invoice.billing_details?.issuer_name || '-')}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.issuer_tax_id', { defaultValue: 'Issuer tax ID' })}</dt>
+                <dd className="mt-1 text-slate-900">{String(invoice.billing_details?.issuer_tax_id || '-')}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.issuer_address', { defaultValue: 'Issuer address' })}</dt>
+                <dd className="mt-1 text-slate-900">{formatAddress((invoice.billing_details?.issuer_address as Record<string, any> | null | undefined) || null)}</dd>
+              </div>
+              <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.recipient', { defaultValue: 'Recipient' })}</dt>
                 <dd className="mt-1 text-slate-900">{invoice.billing_details?.email || '-'}</dd>
               </div>
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.currency', { defaultValue: 'Currency' })}</dt>
                 <dd className="mt-1 text-slate-900">{invoice.currency || '-'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.bank_account', { defaultValue: 'Bank account' })}</dt>
+                <dd className="mt-1 text-slate-900">
+                  {String((invoice.billing_details?.issuer_bank_account as Record<string, any> | undefined)?.iban || '-')}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.bank_name', { defaultValue: 'Bank name' })}</dt>
+                <dd className="mt-1 text-slate-900">
+                  {String((invoice.billing_details?.issuer_bank_account as Record<string, any> | undefined)?.bank_name || '-')}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.swift', { defaultValue: 'SWIFT/BIC' })}</dt>
+                <dd className="mt-1 text-slate-900">
+                  {String((invoice.billing_details?.issuer_bank_account as Record<string, any> | undefined)?.swift_bic || '-')}
+                </dd>
               </div>
             </dl>
             <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
