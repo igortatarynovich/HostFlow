@@ -603,6 +603,11 @@ export async function updateLeadStage(leadId: string, payload: { stage?: string 
   return data;
 }
 
+export async function createLeadServiceOrder(leadId: string) {
+  const { data } = await api.post(`/leads/${leadId}/service-order`);
+  return data;
+}
+
 // Invoices ---------------------------------------------------------------
 export async function listInvoices(opts?: { company_id?: string; candidate_id?: string; status?: string; limit?: number; offset?: number }) {
   const params: Record<string, any> = {};

@@ -683,6 +683,7 @@ export interface Lead {
   outcome_entity_type?: 'candidate' | 'company' | null;
   outcome_entity_id?: UUID | null;
   outcome_entity_name?: string | null;
+  service_order_id?: UUID | null;
   recruiter_id?: UUID | null;
   error?: string | null;
   payload: Record<string, any>;

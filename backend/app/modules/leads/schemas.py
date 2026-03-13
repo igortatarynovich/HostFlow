@@ -42,6 +42,7 @@ class LeadOut(BaseModel):
     outcome_entity_type: Optional[str] = None
     outcome_entity_id: Optional[UUID] = None
     outcome_entity_name: Optional[str] = None
+    service_order_id: Optional[UUID] = None
     recruiter_id: Optional[UUID] = None
     error: Optional[str] = None
     payload: Dict[str, Any]

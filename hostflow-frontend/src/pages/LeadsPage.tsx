@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconFilter, IconRefresh, IconTable } from '@tabler/icons-react'
 
-import { getOnboardingStatus, listLeads, type OnboardingStatus } from '../api/client'
+import { createLeadServiceOrder, getOnboardingStatus, listLeads, type OnboardingStatus } from '../api/client'
 import type { Lead, LeadListResponse, LeadStatus, LeadStage } from '../api/types'
 import { useI18n } from '../i18n'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { useToast } from '../components/Toast'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
@@ -28,6 +29,7 @@ const LOCALE_TO_DATE = {
 
 export default function LeadsPage() {
   const { t, locale } = useI18n()
+  const { notify } = useToast()
   const { entitySingular, openEntityLabel } = useBusinessTerminology()
   const [status, setStatus] = useState<'' | LeadStatus>('')
   const [stage, setStage] = useState<'' | LeadStage>('')
@@ -36,6 +38,7 @@ export default function LeadsPage() {
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [data, setData] = useState<LeadListResponse>({ items: [], total: 0, limit: 20, offset: 0 })
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
+  const [creatingOrderLeadId, setCreatingOrderLeadId] = useState<string | null>(null)
 
   const limit = 20
   const offset = (page - 1) * limit
@@ -166,6 +169,38 @@ export default function LeadsPage() {
       return value
     }
   }
+
+  const handleCreateServiceOrder = useCallback(
+    async (leadId: string) => {
+      setCreatingOrderLeadId(leadId)
+      try {
+        await createLeadServiceOrder(leadId)
+        await loadLeads(offset)
+        notify({
+          title: t('app.leads.messages.service_order_created', { defaultValue: 'Service order created' }),
+          description: t('app.leads.messages.service_order_created_desc', {
+            defaultValue: 'Draft service order was created from this lead.',
+          }),
+          variant: 'success',
+        })
+      } catch (err: any) {
+        const detail =
+          err?.response?.data?.detail ??
+          err?.message ??
+          t('app.leads.messages.service_order_create_failed', {
+            defaultValue: 'Failed to create service order',
+          })
+        notify({
+          title: t('app.leads.messages.service_order_create_failed', { defaultValue: 'Failed to create service order' }),
+          description: typeof detail === 'string' ? detail : JSON.stringify(detail),
+          variant: 'error',
+        })
+      } finally {
+        setCreatingOrderLeadId(null)
+      }
+    },
+    [loadLeads, notify, offset, t],
+  )
 
   return (
     <div className="space-y-3">
@@ -320,11 +355,32 @@ export default function LeadsPage() {
                     <td className="text-slate-700">{lead.source}</td>
                     <td className="text-brand-700">
                       {isServicesTenant ? (
-                        lead.outcome_entity_id ? (
-                          <Link to={`/app/clients/${lead.outcome_entity_id}`}>{lead.outcome_entity_name || lead.company_name || lead.outcome_entity_id}</Link>
-                        ) : (
-                          '—'
-                        )
+                        <div className="flex flex-col items-start gap-1">
+                          {lead.outcome_entity_id ? (
+                            <Link to={`/app/clients/${lead.outcome_entity_id}`}>{lead.outcome_entity_name || lead.company_name || lead.outcome_entity_id}</Link>
+                          ) : (
+                            <span>—</span>
+                          )}
+                          {lead.service_order_id ? (
+                            <Link
+                              to={`/app/services?order=${lead.service_order_id}`}
+                              className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
+                            >
+                              {t('app.leads.actions.open_service_order', { defaultValue: 'Open service order' })}
+                            </Link>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-secondary rounded-lg px-2 py-1 text-[11px]"
+                              disabled={creatingOrderLeadId === lead.id}
+                              onClick={() => void handleCreateServiceOrder(lead.id)}
+                            >
+                              {creatingOrderLeadId === lead.id
+                                ? t('common.loading', { defaultValue: 'Loading...' })
+                                : t('app.leads.actions.create_service_order', { defaultValue: 'Create service order' })}
+                            </button>
+                          )}
+                        </div>
                       ) : lead.candidate_id ? (
                         <Link to={`/app/candidates/${lead.candidate_id}`}>{lead.candidate_name || lead.candidate_id}</Link>
                       ) : (

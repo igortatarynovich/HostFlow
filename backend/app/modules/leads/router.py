@@ -8,10 +8,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import Role, require_roles
+from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.schemas.additional_services import ServiceOrderOut
 from backend.app.modules.leads import admin_service, service
 from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, LeadStageUpdate, MetaLeadResponse
+from backend.app.services.additional_services import AdditionalServicesService
 
 
 router = APIRouter(prefix="/leads", tags=["leads"])
@@ -92,6 +94,7 @@ async def update_lead_stage_endpoint(
         outcome_entity_type=outcome_entity_type,
         outcome_entity_id=PyUUID(outcome_entity_id) if outcome_entity_id else None,
         outcome_entity_name=outcome_entity_name,
+        service_order_id=PyUUID(str((lead.normalized or {}).get("service_order_id"))) if isinstance(lead.normalized, dict) and (lead.normalized or {}).get("service_order_id") else None,
         recruiter_id=None,
         error=lead.error,
         payload=lead.payload or {},
@@ -99,6 +102,73 @@ async def update_lead_stage_endpoint(
         created_at=lead.created_at,
         last_routed_at=lead.last_routed_at,
     )
+
+
+@router.post("/{lead_id}/service-order", response_model=ServiceOrderOut)
+async def create_service_order_from_lead(
+    lead_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+):
+    from backend.app.modules.leads import crud
+
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    business_type = await service._load_tenant_business_type(db, tenant_id_str)
+    if business_type != "services":
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Service order conversion is only available for services tenants")
+
+    normalized = dict(lead.normalized or {}) if isinstance(lead.normalized, dict) else {}
+    existing_order_id = str(normalized.get("service_order_id") or "").strip() or None
+    svc = AdditionalServicesService(db, tenant_id_str)
+    if existing_order_id:
+        order = await svc.get_order(existing_order_id)
+        return ServiceOrderOut.model_validate(order, from_attributes=True)
+
+    if not lead.company_id:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lead company is not resolved")
+
+    contact_bits = [
+        str(normalized.get("full_name") or "").strip(),
+        str(normalized.get("email") or "").strip(),
+        str(normalized.get("phone") or "").strip(),
+    ]
+    note_lines = [
+        "Created from services lead",
+        f"Lead ID: {lead.id}",
+        f"Source: {lead.source}",
+    ]
+    compact_contact = " · ".join([value for value in contact_bits if value])
+    if compact_contact:
+        note_lines.append(f"Contact: {compact_contact}")
+
+    order = await svc.create_order(
+        {
+            "company_id": lead.company_id,
+            "currency": "PLN",
+            "notes": "\n".join(note_lines),
+            "requested_by": str(getattr(current_user, "sub", "") or ""),
+            "audit": {
+                "source": "lead_conversion",
+                "lead_id": lead.id,
+                "lead_status": lead.status,
+                "lead_stage": lead.stage,
+            },
+        },
+        [],
+    )
+
+    normalized["service_order_id"] = order.id
+    normalized["service_order_created_at"] = order.created_at.isoformat() if getattr(order, "created_at", None) else None
+    lead.normalized = normalized
+    await db.commit()
+    order = await svc.get_order(order.id)
+    return ServiceOrderOut.model_validate(order, from_attributes=True)
 
 
 @router.post("/meta", response_model=MetaLeadResponse)

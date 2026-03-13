@@ -316,6 +316,19 @@ async def test_services_leads_list_returns_company_outcome(client, manager_heade
     assert row["outcome_entity_type"] == "company"
     assert row["outcome_entity_id"] == company_id
 
+    convert_resp = await client.post(
+        f"/api/v1/leads/{post_body['lead_id']}/service-order",
+        headers=manager_headers,
+    )
+    assert convert_resp.status_code == 200, convert_resp.text
+    order_body = convert_resp.json()
+    assert order_body["company_id"] == company_id
+
+    resp_after = await client.get("/api/v1/leads", headers=manager_headers)
+    assert resp_after.status_code == 200, resp_after.text
+    updated = next(item for item in resp_after.json()["items"] if item["id"] == post_body["lead_id"])
+    assert updated["service_order_id"] == order_body["id"]
+
 
 @pytest.mark.anyio
 async def test_meta_webhook_verify_challenge(client, tenant_id):

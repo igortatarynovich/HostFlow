@@ -299,6 +299,7 @@ async def list_leads(
                 outcome_entity_type=outcome_entity_type,
                 outcome_entity_id=_uuid_or_none(outcome_entity_id),
                 outcome_entity_name=outcome_entity_name,
+                service_order_id=_uuid_or_none((lead.normalized or {}).get("service_order_id") if isinstance(lead.normalized, dict) else None),
                 recruiter_id=_uuid_or_none(cand_recruiter),
                 error=lead.error,
                 payload=lead.payload or {},
