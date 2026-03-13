@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { IconFilter, IconRefresh, IconTable } from '@tabler/icons-react'
 
-import { listLeads } from '../api/client'
+import { getOnboardingStatus, listLeads, type OnboardingStatus } from '../api/client'
 import type { Lead, LeadListResponse, LeadStatus, LeadStage } from '../api/types'
 import { useI18n } from '../i18n'
 import EmptyStatePanel from '../components/EmptyStatePanel'
@@ -35,6 +35,7 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [data, setData] = useState<LeadListResponse>({ items: [], total: 0, limit: 20, offset: 0 })
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
 
   const limit = 20
   const offset = (page - 1) * limit
@@ -58,6 +59,55 @@ export default function LeadsPage() {
   useEffect(() => {
     void loadLeads(offset)
   }, [loadLeads, offset])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const payload = await getOnboardingStatus()
+        if (!cancelled) setOnboardingStatus(payload)
+      } catch {
+        if (!cancelled) setOnboardingStatus(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const businessType = onboardingStatus?.business_type ?? 'agency'
+  const isServicesTenant = businessType === 'services'
+  const isEmployerTenant = businessType === 'employer'
+  const leadWorkspaceTitle = isServicesTenant
+    ? t('app.leads.title_services', { defaultValue: 'Client Leads' })
+    : t('app.leads.title')
+  const leadWorkspaceSubtitle = isServicesTenant
+    ? t('app.leads.subtitle_services', {
+        defaultValue: 'Track potential clients from first contact to qualification, service order, and invoicing.',
+      })
+    : t('app.leads.subtitle')
+  const ownerColumnLabel = isServicesTenant
+    ? t('app.leads.table.client', { defaultValue: 'Client' })
+    : t('app.leads.table.candidate')
+  const companyColumnLabel = isEmployerTenant
+    ? t('app.dashboard.terms.companies_singular', { defaultValue: 'Company' })
+    : entitySingular
+  const vacancyColumnLabel = isServicesTenant
+    ? t('app.leads.table.service_order', { defaultValue: 'Service order' })
+    : t('app.leads.table.vacancy')
+  const emptyTitle = isServicesTenant
+    ? t('app.leads.states.empty_title_services', { defaultValue: 'No client leads yet' })
+    : t('app.leads.states.empty_title', { defaultValue: 'No leads yet' })
+  const emptyDescription = isServicesTenant
+    ? t('app.leads.states.empty_desc_services', {
+        defaultValue: 'Connect lead sources or add your first client to start service sales and follow-up.',
+      })
+    : t('app.leads.states.empty_desc', {
+        defaultValue: 'Connect ad sources or import leads to start routing and assignment.',
+      })
+  const secondaryEmptyLabel = isServicesTenant
+    ? t('app.leads.states.empty_cta_clients', { defaultValue: 'Open clients' })
+    : openEntityLabel
 
   const totalPages = useMemo(() => {
     if (!data.limit) return 1
@@ -122,8 +172,8 @@ export default function LeadsPage() {
       <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">{t('app.leads.title')}</h1>
-            <p className="text-xs text-slate-500">{t('app.leads.subtitle')}</p>
+            <h1 className="text-xl font-semibold text-slate-900">{leadWorkspaceTitle}</h1>
+            <p className="text-xs text-slate-500">{leadWorkspaceSubtitle}</p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
             <IconTable size={14} />
@@ -189,11 +239,11 @@ export default function LeadsPage() {
                 <th>{t('app.leads.table.created')}</th>
                 <th>{t('app.leads.table.status')}</th>
                 <th>{t('app.leads.table.stage', { defaultValue: 'Stage' })}</th>
-                <th>{entitySingular}</th>
-                <th>{t('app.leads.table.vacancy')}</th>
+                <th>{companyColumnLabel}</th>
+                <th>{vacancyColumnLabel}</th>
                 <th>{t('app.leads.table.contact')}</th>
                 <th>{t('app.leads.table.source')}</th>
-                <th>{t('app.leads.table.candidate')}</th>
+                <th>{ownerColumnLabel}</th>
                 <th>{t('app.leads.table.error')}</th>
               </tr>
             </thead>
@@ -224,17 +274,14 @@ export default function LeadsPage() {
                   <td colSpan={9} className="px-3 py-6">
                     <EmptyStatePanel
                       compact
-                      title={t('app.leads.states.empty_title', { defaultValue: 'No leads yet' })}
-                      description={t('app.leads.states.empty_desc', {
-                        defaultValue:
-                          'Connect ad sources or import leads to start routing and assignment.',
-                      })}
+                      title={emptyTitle}
+                      description={emptyDescription}
                       primaryAction={{
                         label: t('app.leads.states.empty_cta_connect', { defaultValue: 'Connect sources' }),
                         to: '/app/settings/leads',
                       }}
                       secondaryAction={{
-                        label: openEntityLabel,
+                        label: secondaryEmptyLabel,
                         to: '/app/clients',
                       }}
                     />
@@ -272,7 +319,13 @@ export default function LeadsPage() {
                     </td>
                     <td className="text-slate-700">{lead.source}</td>
                     <td className="text-brand-700">
-                      {lead.candidate_id ? (
+                      {isServicesTenant ? (
+                        lead.company_id ? (
+                          <Link to={`/app/clients/${lead.company_id}`}>{lead.company_name || lead.company_id}</Link>
+                        ) : (
+                          '—'
+                        )
+                      ) : lead.candidate_id ? (
                         <Link to={`/app/candidates/${lead.candidate_id}`}>{lead.candidate_name || lead.candidate_id}</Link>
                       ) : (
                         '—'
