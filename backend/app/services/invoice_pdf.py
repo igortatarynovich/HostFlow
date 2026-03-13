@@ -28,6 +28,16 @@ from backend.app.models.invoice import Invoice, InvoiceItem
 logger = logging.getLogger(__name__)
 
 
+def _safe_dict(value: object) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _format_address(value: object) -> str:
+    data = _safe_dict(value)
+    parts = [data.get("country"), data.get("city"), data.get("street"), data.get("zip")]
+    return ", ".join(str(part).strip() for part in parts if str(part or "").strip())
+
+
 def generate_invoice_pdf(invoice: Invoice) -> bytes:
     """
     Generate PDF bytes for an invoice.
@@ -77,11 +87,62 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
     story.append(details_table)
     story.append(Spacer(1, 10 * mm))
     
-    # Billing details
-    if invoice.billing_details:
-        story.append(Paragraph("<b>Bill To:</b>", styles['Heading2']))
-        billing_text = "<br/>".join([f"{k}: {v}" for k, v in invoice.billing_details.items() if v])
-        story.append(Paragraph(billing_text, styles['Normal']))
+    # Party and payment details
+    billing_details = _safe_dict(invoice.billing_details)
+    issuer_bank = _safe_dict(billing_details.get("issuer_bank_account"))
+    party_rows = []
+
+    bill_to_lines = [
+        str(billing_details.get("company_name") or "").strip(),
+        str(billing_details.get("email") or "").strip(),
+        str(billing_details.get("tax_id") or "").strip(),
+        str(billing_details.get("address") or "").strip(),
+    ]
+    party_rows.append(
+        [
+            Paragraph("<b>Bill To</b>", styles["Heading3"]),
+            Paragraph("<br/>".join([line for line in bill_to_lines if line]), styles["Normal"]),
+        ]
+    )
+
+    issuer_lines = [
+        str(billing_details.get("issuer_name") or "").strip(),
+        str(billing_details.get("issuer_tax_id") or "").strip(),
+        _format_address(billing_details.get("issuer_address")),
+    ]
+    party_rows.append(
+        [
+            Paragraph("<b>Issued By</b>", styles["Heading3"]),
+            Paragraph("<br/>".join([line for line in issuer_lines if line]), styles["Normal"]),
+        ]
+    )
+
+    if any(str(value or "").strip() for value in issuer_bank.values()):
+        bank_lines = [
+            str(issuer_bank.get("bank_name") or "").strip(),
+            str(issuer_bank.get("iban") or "").strip(),
+            str(issuer_bank.get("swift_bic") or "").strip(),
+            str(issuer_bank.get("label") or "").strip(),
+        ]
+        party_rows.append(
+            [
+                Paragraph("<b>Payment Details</b>", styles["Heading3"]),
+                Paragraph("<br/>".join([line for line in bank_lines if line]), styles["Normal"]),
+            ]
+        )
+
+    if party_rows:
+        parties_table = Table(party_rows, colWidths=[45 * mm, 105 * mm])
+        parties_table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                    ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        story.append(parties_table)
         story.append(Spacer(1, 10 * mm))
     
     # Items table
@@ -149,4 +210,3 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
     doc.build(story)
     buffer.seek(0)
     return buffer.read()
-
