@@ -17,6 +17,15 @@ type InvoiceItemDraft = {
   vat_rate: string
 }
 
+type CompanyContact = {
+  id: string
+  full_name?: string
+  email?: string
+  phone?: string
+  role?: string
+  is_primary?: boolean
+}
+
 function isoDate(offsetDays = 0) {
   const dt = new Date()
   dt.setDate(dt.getDate() + offsetDays)
@@ -50,6 +59,35 @@ function extractPrimaryBankAccount(company: Company | null) {
   const billing = extractBilling(company)
   const accounts = asArray(billing.bank_accounts).map((entry) => asRecord(entry))
   return accounts.find((account) => Boolean(account.is_primary)) || accounts[0] || null
+}
+
+function extractBankAccounts(company: Company | null) {
+  const billing = extractBilling(company)
+  return asArray(billing.bank_accounts).map((entry) => asRecord(entry)).filter((entry) => Object.keys(entry).length > 0)
+}
+
+function extractCompanyContacts(company: Company | null): CompanyContact[] {
+  const contactsRaw = asRecord(company?.contacts)
+  const entries = Object.entries(contactsRaw)
+    .map(([id, value]) => {
+      const data = asRecord(value)
+      return {
+        id,
+        full_name: String(data.full_name || '').trim() || undefined,
+        email: String(data.email || '').trim() || undefined,
+        phone: String(data.phone || '').trim() || undefined,
+        role: String(data.role || '').trim() || undefined,
+        is_primary: Boolean(data.is_primary),
+      }
+    })
+    .filter((entry) => entry.email || entry.phone || entry.full_name)
+  entries.sort((left, right) => Number(Boolean(right.is_primary)) - Number(Boolean(left.is_primary)))
+  return entries
+}
+
+function bankAccountKey(account: Record<string, any> | null | undefined) {
+  if (!account) return ''
+  return String(account.id || account.iban || account.label || '').trim()
 }
 
 function extractIssuerAddress(company: Company | null) {
@@ -104,10 +142,14 @@ export default function InvoiceCreatePage() {
   const [dueDate, setDueDate] = useState(isoDate(14))
   const [currency, setCurrency] = useState('PLN')
   const [billingEmail, setBillingEmail] = useState('')
+  const [recipientContactId, setRecipientContactId] = useState('')
+  const [issuerBankAccountKey, setIssuerBankAccountKey] = useState('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<InvoiceItemDraft[]>([initialItem()])
   const [issuerCompany, setIssuerCompany] = useState<Company | null>(null)
   const [clientCompany, setClientCompany] = useState<Company | null>(null)
+  const clientContacts = extractCompanyContacts(clientCompany)
+  const issuerBankAccounts = extractBankAccounts(issuerCompany)
 
   useEffect(() => {
     let cancelled = false
@@ -153,6 +195,25 @@ export default function InvoiceCreatePage() {
     if (!company) return
     setBillingEmail((current) => current || String(company.email || ''))
   }, [companies, companyId])
+
+  useEffect(() => {
+    const contacts = extractCompanyContacts(clientCompany)
+    if (!contacts.length) {
+      setRecipientContactId('')
+      return
+    }
+    setRecipientContactId((current) => {
+      if (current && contacts.some((entry) => entry.id === current)) return current
+      return contacts.find((entry) => entry.is_primary)?.id || contacts[0].id
+    })
+  }, [clientCompany])
+
+  useEffect(() => {
+    if (!recipientContactId) return
+    const contact = extractCompanyContacts(clientCompany).find((entry) => entry.id === recipientContactId)
+    if (!contact?.email) return
+    setBillingEmail(contact.email)
+  }, [clientCompany, recipientContactId])
 
   useEffect(() => {
     if (!companyId) {
@@ -253,6 +314,18 @@ export default function InvoiceCreatePage() {
   }, [issuerCompanyId])
 
   useEffect(() => {
+    const accounts = extractBankAccounts(issuerCompany)
+    if (!accounts.length) {
+      setIssuerBankAccountKey('')
+      return
+    }
+    setIssuerBankAccountKey((current) => {
+      if (current && accounts.some((entry) => bankAccountKey(entry) === current)) return current
+      return bankAccountKey(extractPrimaryBankAccount(issuerCompany)) || bankAccountKey(accounts[0])
+    })
+  }, [issuerCompany])
+
+  useEffect(() => {
     if (!issuerCompanyId && companies.length > 0) {
       setIssuerCompanyId(companies[0].id)
     }
@@ -276,6 +349,9 @@ export default function InvoiceCreatePage() {
         setDueDate(invoice.due_date || isoDate(14))
         setCurrency(invoice.currency || 'PLN')
         setBillingEmail(String(invoice.billing_details?.email || ''))
+        setIssuerBankAccountKey(
+          bankAccountKey((invoice.billing_details?.issuer_bank_account as Record<string, any> | undefined) || null),
+        )
         setNotes(String(invoice.notes || ''))
         setItems(
           Array.isArray(invoice.items) && invoice.items.length > 0
@@ -364,6 +440,9 @@ export default function InvoiceCreatePage() {
     setSaving(true)
     try {
       const issuerBankAccount = extractPrimaryBankAccount(issuerCompany)
+      const selectedIssuerBankAccount =
+        extractBankAccounts(issuerCompany).find((entry) => bankAccountKey(entry) === issuerBankAccountKey) ||
+        issuerBankAccount
       const issuerAddress = extractIssuerAddress(issuerCompany)
       const clientBilling = extractCompanyBillingSnapshot(clientCompany)
       const payload = {
@@ -381,13 +460,13 @@ export default function InvoiceCreatePage() {
           issuer_name: issuerCompany?.legal_name || issuerCompany?.name || undefined,
           issuer_tax_id: issuerCompany?.tax_id || undefined,
           issuer_address: issuerAddress || undefined,
-          issuer_bank_account: issuerBankAccount
+          issuer_bank_account: selectedIssuerBankAccount
             ? {
-                bank_name: issuerBankAccount.bank_name || undefined,
-                iban: issuerBankAccount.iban || undefined,
-                swift_bic: issuerBankAccount.swift_bic || issuerBankAccount.swift || undefined,
-                country: issuerBankAccount.country || undefined,
-                label: issuerBankAccount.label || undefined,
+                bank_name: selectedIssuerBankAccount.bank_name || undefined,
+                iban: selectedIssuerBankAccount.iban || undefined,
+                swift_bic: selectedIssuerBankAccount.swift_bic || selectedIssuerBankAccount.swift || undefined,
+                country: selectedIssuerBankAccount.country || undefined,
+                label: selectedIssuerBankAccount.label || undefined,
               }
             : undefined,
         },
@@ -496,6 +575,25 @@ export default function InvoiceCreatePage() {
 
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.invoices.recipient_contact', { defaultValue: 'Recipient contact' })}
+              </span>
+              <select
+                className="input"
+                value={recipientContactId}
+                onChange={(event) => setRecipientContactId(event.target.value)}
+                disabled={!clientContacts.length}
+              >
+                <option value="">{t('app.invoices.recipient_contact_none', { defaultValue: 'Manual recipient' })}</option>
+                {clientContacts.map((contact) => (
+                  <option key={contact.id} value={contact.id}>
+                    {[contact.full_name, contact.role, contact.email].filter(Boolean).join(' · ')}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t('app.invoices.issue_date', { defaultValue: 'Issue Date' })}
               </span>
               <input className="input" type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} />
@@ -516,6 +614,25 @@ export default function InvoiceCreatePage() {
                 {['PLN', 'EUR', 'USD', 'GBP'].map((entry) => (
                   <option key={entry} value={entry}>
                     {entry}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.invoices.bank_account', { defaultValue: 'Bank account' })}
+              </span>
+              <select
+                className="input"
+                value={issuerBankAccountKey}
+                onChange={(event) => setIssuerBankAccountKey(event.target.value)}
+                disabled={!issuerBankAccounts.length}
+              >
+                <option value="">{t('app.invoices.bank_account_missing', { defaultValue: 'No primary bank account' })}</option>
+                {issuerBankAccounts.map((account) => (
+                  <option key={bankAccountKey(account)} value={bankAccountKey(account)}>
+                    {[account.label, account.bank_name, account.iban].filter(Boolean).join(' · ')}
                   </option>
                 ))}
               </select>
@@ -616,9 +733,19 @@ export default function InvoiceCreatePage() {
               <dd className="mt-1 text-slate-900">{billingEmail || '-'}</dd>
             </div>
             <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.recipient_contact', { defaultValue: 'Recipient contact' })}</dt>
+              <dd className="mt-1 text-slate-900">
+                {clientContacts.find((contact) => contact.id === recipientContactId)?.full_name ||
+                  clientContacts.find((contact) => contact.id === recipientContactId)?.email ||
+                  '-'}
+              </dd>
+            </div>
+            <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.bank_account', { defaultValue: 'Bank account' })}</dt>
               <dd className="mt-1 text-slate-900">
-                {extractPrimaryBankAccount(issuerCompany)?.iban || t('app.invoices.bank_account_missing', { defaultValue: 'No primary bank account' })}
+                {issuerBankAccounts.find((account) => bankAccountKey(account) === issuerBankAccountKey)?.iban ||
+                  extractPrimaryBankAccount(issuerCompany)?.iban ||
+                  t('app.invoices.bank_account_missing', { defaultValue: 'No primary bank account' })}
               </dd>
             </div>
             <div>
