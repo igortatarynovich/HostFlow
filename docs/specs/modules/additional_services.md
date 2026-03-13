@@ -7,7 +7,7 @@
 Дать возможность продавать и исполнять дополнительные услуги, связанные с трудоустройством кандидатов и обслуживанием клиентов: медосмотр, психотест, Code 95/ADR, оформление виз/ŚK/разрешений, переводы, проживание, трансфер, обучение и т.д.
 
 ## Основные сущности
-- **Service** — элемент каталога услуг, который можно заказать.
+- **Service** — элемент каталога услуг/товаров, который можно заказать и затем переиспользовать в фактуре.
 - **ServiceOrder** — заказ на услугу (привязан к кандидату, вакансии или компании).
 - **ServiceItem** — конкретная позиция в заказе (одна услуга).
 - **ServiceSchedule** — запись или бронь на выполнение услуги (если требуется).
@@ -18,6 +18,7 @@
 - `ServiceItem.service_id → Service`.
 - `ServiceItem` может иметь поле `required_documents` (список типов документов, которые должны быть одобрены до исполнения).
 - Услуга может порождать новый документ (`result_document_type`), например результат медосмотра.
+- Каталог `Service` выступает source of truth для billable items в `service order` и как reusable selector в invoicing flow.
 
 ## Структура таблиц
 
@@ -29,10 +30,13 @@ code TEXT UNIQUE,
 name TEXT NOT NULL,
 description TEXT,
 category TEXT,
+kind ENUM('service','product') NOT NULL DEFAULT 'service',
 unit ENUM('piece','person','hour','package') NOT NULL,
+tax_mode TEXT DEFAULT 'standard_vat',
 base_price NUMERIC(12,2) DEFAULT 0,
 currency CHAR(3) DEFAULT 'PLN',
 vat_rate NUMERIC(4,2) DEFAULT 23.00,
+sku TEXT,
 requires_schedule BOOLEAN DEFAULT false,
 requires_candidate BOOLEAN DEFAULT false,
 requires_documents JSONB,
@@ -50,6 +54,7 @@ company_id UUID NULL,
 status ENUM('draft','quoted','approved','scheduled','in_progress','delivered','cancelled','refunded') DEFAULT 'draft',
 total_amount NUMERIC(12,2) DEFAULT 0,
 currency CHAR(3) DEFAULT 'PLN',
+tax_mode TEXT DEFAULT 'standard_vat',
 vat_total NUMERIC(12,2) DEFAULT 0,
 requested_by UUID NOT NULL,
 assigned_to UUID NULL,
@@ -63,6 +68,7 @@ id UUID PK,
 tenant_id UUID NOT NULL,
 order_id UUID NOT NULL REFERENCES service_orders(id) ON DELETE CASCADE,
 service_id UUID NOT NULL REFERENCES services(id),
+service_snapshot JSONB,
 qty NUMERIC(10,2) DEFAULT 1,
 unit_price NUMERIC(12,2),
 vat_rate NUMERIC(4,2),
@@ -95,10 +101,12 @@ created_at TIMESTAMPTZ
 ## Правила и поведение
 - Услуга может требовать документы, кандидата или запись (schedule).
 - Переход `draft → approved` фиксирует цену и ставку НДС.
+- При добавлении позиции в заказ сохраняется snapshot (`name`, `kind`, `sku/code`, `unit`, `currency`, `tax_mode`, `vat_rate`, `unit_price`), чтобы дальнейшие изменения в каталоге не переписывали исторический заказ.
 - Нельзя перевести в `scheduled`, если не закрыты все `required_documents`.
 - Если `ServiceItem.result_document_type` заполнен, при `deliver` создаётся или обновляется соответствующий документ кандидата.
 - При `meta.blocking=true` услуга блокирует этап кандидата до завершения (например, ADR-тренинг до рейса).
 - `cancelled` и `refunded` требуют указания причины (логируется в `audit`).
+- `tax_mode` должен быть явным бизнес-выбором (`standard_vat`, `reverse_charge`, `vat_exempt` и локальные эквиваленты), а не неявно выводиться только из `vat_rate`.
 
 ## Расчёт суммы
 `order.total_amount = SUM(item.amount)`  
@@ -129,6 +137,7 @@ POST /service-orders
 {
   "candidate_id": "…",
   "currency": "PLN",
+  "tax_mode": "standard_vat",
   "items": [
     {"service_code":"medical","qty":1},
     {"service_code":"psychotest","qty":1}
@@ -181,3 +190,10 @@ POST /service-items/{id}/deliver
 - **Сиды**: `backend/app/db/seeds/dev_full_seed.py` заполняет каталог 10 услугами и создаёт 3 демонстрационных заказа с расписаниями и вложениями.
 - **Тесты**: `backend/tests/test_additional_services.py` покрывает базовый сценарий каталога, создания заказа, назначения расписания и завершения услуги (с проверкой документов).
 - **Фронтенд**: добавлена страница `/services` (`ServicesPage.tsx`) с табами «Заказы» и «Каталог», поддержкой создания услуг/заказов, обновлением статусов и работой с расписанием/доставкой. Навигация обновлена (`Layout.tsx`). Хуки `useAdditionalServices` и API-клиент `api/additionalServices.ts` обеспечивают загрузку данных. В карточке кандидата отображается раздел «Дополнительные услуги» с заказами.
+
+## Release contract additions (`2026-03-13`)
+
+- Каталог должен поддерживать как услуги, так и товары (`kind=service/product`), чтобы tenant мог выставлять счета не только за worklog, но и за продаваемые позиции.
+- Для каждой позиции в каталоге обязательны reusable billing defaults: `currency`, `tax_mode`, `vat_rate`, `unit`, `base_price`, `sku/code`, `is_active`.
+- `ServiceOrder` должен позволять выбирать эти позиции из каталога и сохранять snapshot на уровне `ServiceItem`.
+- Дальнейший invoicing flow обязан уметь переиспользовать `ServiceItem` как основу invoice line items без ручного повторного ввода.

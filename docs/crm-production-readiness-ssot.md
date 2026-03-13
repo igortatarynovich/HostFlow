@@ -781,6 +781,7 @@ Release gate:
 - client card остается операционным workspace для `orders`, `contacts`, `contracts`, `invoice data`.
 - customer invoices должны жить как из client card, так и из общего `/app/invoices` без расхождения сценариев.
 - vacancy-level document policy разрешена только если она реально задает vacancy-specific requirement layer поверх documents template, а не дублирует те же поля/правила второй раз.
+- `services` contour обязан поддерживать reusable catalog of billable `services/products`, выбор currency/tax mode и прямую отправку фактуры получателю из системы.
 
 ### 5.5.3 Client Card Contract v1 (`2026-03-13`)
 
@@ -806,6 +807,7 @@ Release gate:
   - upcoming deadlines
   - assigned owner
   - quick create / quick open
+  - reusable billable items selected from catalog (`service/product`, qty, unit, tax, price snapshot)
 - `Contracts`
   - current contract status
   - start/end
@@ -815,6 +817,8 @@ Release gate:
   - payment terms
   - billing address
   - tax/legal fields required for invoicing
+  - taxation mode / VAT handling
+  - preferred invoice currency
   - linked invoices summary
 - `Activity / Communications`
   - latest messages/email
@@ -866,11 +870,13 @@ Customer invoicing должен поддерживать:
 - draft -> issued/sent -> paid/partially_paid/overdue/cancelled
 - line items
 - currency
+- taxation mode / VAT treatment
 - payment terms / due date
 - invoice recipient data
 - linked client
 - linked order/service order
 - invoice history / status timeline
+- direct send-to-recipient flow from the system with resend/audit trail
 
 #### 5.5.4.2 Source-of-truth rule
 
@@ -891,6 +897,9 @@ Customer invoicing должен поддерживать:
 - invoice должен естественно привязываться к `service order` / paid service;
 - lead -> qualified -> service agreed -> invoice created должен быть каноническим path;
 - reminders/notifications/automations могут запускаться от invoice milestones.
+- service order должен собираться из reusable catalog entries (`service/product`) с сохранением snapshot цены/валюты/налога в момент заказа.
+- invoice line items должны переиспользовать тот же catalog contract, но позволять точечный override description/qty/price без разрушения source-of-truth.
+- отправка фактуры клиенту из системы обязательна как operational action, а не как внешний manual step.
 
 Acceptance rule:
 - пользователь может из client card выставить фактуру клиенту, потом открыть `/app/invoices` и увидеть тот же документ, тот же статус и ту же историю без потери данных.
