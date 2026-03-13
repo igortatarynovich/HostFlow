@@ -90,6 +90,9 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
     correction_of = str(billing_details.get("correction_of_invoice_number") or "").strip()
     if correction_of:
         details_data.append(['Correction Of:', correction_of])
+    correction_reason = str(billing_details.get("correction_reason") or "").strip()
+    if correction_reason:
+        details_data.append(['Correction Reason:', correction_reason])
     
     details_table = Table(details_data, colWidths=[50 * mm, 100 * mm])
     details_table.setStyle(TableStyle([

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
@@ -186,11 +186,30 @@ export default function InvoiceCreatePage() {
   const [recipientContactId, setRecipientContactId] = useState('')
   const [issuerBankAccountKey, setIssuerBankAccountKey] = useState('')
   const [notes, setNotes] = useState('')
+  const [correctionReason, setCorrectionReason] = useState('')
   const [items, setItems] = useState<InvoiceItemDraft[]>([initialItem()])
   const [issuerCompany, setIssuerCompany] = useState<Company | null>(null)
   const [clientCompany, setClientCompany] = useState<Company | null>(null)
+  const [sourceInvoice, setSourceInvoice] = useState<Invoice | null>(null)
   const clientContacts = extractCompanyContacts(clientCompany)
   const issuerBankAccounts = extractBankAccounts(issuerCompany)
+
+  const draftTotals = useMemo(() => {
+    const subtotal = items.reduce((sum, item) => {
+      const qty = Number.parseFloat(item.qty || '0')
+      const unitPrice = Number.parseFloat(item.unit_price || '0')
+      if (!Number.isFinite(qty) || !Number.isFinite(unitPrice)) return sum
+      return sum + qty * unitPrice
+    }, 0)
+    const vatTotal = items.reduce((sum, item) => {
+      const qty = Number.parseFloat(item.qty || '0')
+      const unitPrice = Number.parseFloat(item.unit_price || '0')
+      const vatRate = Number.parseFloat(item.vat_rate || '0')
+      if (!Number.isFinite(qty) || !Number.isFinite(unitPrice) || !Number.isFinite(vatRate)) return sum
+      return sum + qty * unitPrice * (vatRate / 100)
+    }, 0)
+    return { subtotal, vatTotal, total: subtotal + vatTotal }
+  }, [items])
 
   useEffect(() => {
     let cancelled = false
@@ -340,12 +359,14 @@ export default function InvoiceCreatePage() {
       .then((data) => {
         if (cancelled) return
         const invoice = data as Invoice
+        setSourceInvoice(invoice)
         setCompanyId((current) => current || invoice.company_id || '')
         setIssuerCompanyId((current) => current || String(invoice.billing_details?.issuer_company_id || ''))
         setInvoiceKind(prefInvoiceKind || String(invoice.billing_details?.invoice_kind || 'vat'))
         setInvoiceNumber('')
         setCurrency((current) => (current === 'PLN' ? invoice.currency || current : current))
         setBillingEmail((current) => current || String(invoice.billing_details?.email || ''))
+        setCorrectionReason((current) => current || String(invoice.billing_details?.correction_reason || ''))
         setNotes((current) =>
           current ||
           (prefInvoiceKind === 'correction'
@@ -367,6 +388,7 @@ export default function InvoiceCreatePage() {
       })
       .catch((err: any) => {
         if (!cancelled) {
+          setSourceInvoice(null)
           setError(err?.response?.data?.detail || err?.message || 'Failed to load source invoice')
         }
       })
@@ -443,6 +465,7 @@ export default function InvoiceCreatePage() {
         setTaxMode(String(invoice.billing_details?.tax_mode || 'standard_vat'))
         setCurrency(invoice.currency || 'PLN')
         setBillingEmail(String(invoice.billing_details?.email || ''))
+        setCorrectionReason(String(invoice.billing_details?.correction_reason || ''))
         setIssuerBankAccountKey(
           bankAccountKey((invoice.billing_details?.issuer_bank_account as Record<string, any> | undefined) || null),
         )
@@ -530,6 +553,14 @@ export default function InvoiceCreatePage() {
       setError(t('app.invoices.create_items_required', { defaultValue: 'Add at least one valid invoice item.' }))
       return
     }
+    if (invoiceKind === 'correction' && !correctionOfInvoiceId) {
+      setError(t('app.invoices.correction_original_required', { defaultValue: 'Correction invoice must reference the original invoice.' }))
+      return
+    }
+    if (invoiceKind === 'correction' && !correctionReason.trim()) {
+      setError(t('app.invoices.correction_reason_required', { defaultValue: 'Correction reason is required.' }))
+      return
+    }
 
     setSaving(true)
     try {
@@ -591,6 +622,7 @@ export default function InvoiceCreatePage() {
           invoice_kind: invoiceKind,
           correction_of_invoice_id: correctionOfInvoiceId || undefined,
           correction_of_invoice_number: correctionOfInvoiceNumber || undefined,
+          correction_reason: correctionReason.trim() || undefined,
           payment_terms_days: Number.parseInt(paymentTermsDays || '0', 10) || clientBilling.payment_terms_days,
           tax_mode: taxMode,
           issuer_company_id: issuerCompany?.id || undefined,
@@ -639,6 +671,10 @@ export default function InvoiceCreatePage() {
             ? t('app.invoices.edit_subtitle', {
                 defaultValue: 'Update draft invoice details, issuer information and line items.',
               })
+            : invoiceKind === 'correction'
+              ? t('app.invoices.create_correction_subtitle', {
+                  defaultValue: 'Create a correction invoice linked to the original tax document.',
+                })
             : t('app.invoices.create_subtitle', {
                 defaultValue: 'Create a draft invoice with client, billing recipient and line items.',
               })}
@@ -662,8 +698,54 @@ export default function InvoiceCreatePage() {
         </div>
       )}
 
+      {invoiceKind === 'correction' && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {t(
+            'app.invoices.correction_notice',
+            { defaultValue: 'Correction invoices preserve the original document. Adjust only the fields that must change for tax reporting.' },
+          )}
+        </div>
+      )}
+
       <form className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_360px]" onSubmit={handleSubmit}>
         <section className="app-surface space-y-4 p-6">
+          {invoiceKind === 'correction' && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                {t('app.invoices.correction_context', { defaultValue: 'Correction context' })}
+              </div>
+              <div className="mt-2 grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-amber-200 bg-white px-3 py-2">
+                  <div className="text-xs uppercase tracking-wide text-slate-500">
+                    {t('app.invoices.correction_of', { defaultValue: 'Correction of' })}
+                  </div>
+                  <div className="mt-1 font-medium text-slate-900">{correctionOfInvoiceNumber || sourceInvoice?.invoice_number || '-'}</div>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-white px-3 py-2">
+                  <div className="text-xs uppercase tracking-wide text-slate-500">
+                    {t('app.invoices.original_total', { defaultValue: 'Original total' })}
+                  </div>
+                  <div className="mt-1 font-medium text-slate-900">
+                    {sourceInvoice ? `${Number(sourceInvoice.total_amount || 0).toFixed(2)} ${sourceInvoice.currency || currency}` : '-'}
+                  </div>
+                </div>
+              </div>
+              <label className="mt-3 flex flex-col gap-1 text-sm">
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('app.invoices.correction_reason', { defaultValue: 'Correction reason' })}
+                </span>
+                <textarea
+                  className="input min-h-24"
+                  value={correctionReason}
+                  onChange={(event) => setCorrectionReason(event.target.value)}
+                  placeholder={t('app.invoices.correction_reason_placeholder', {
+                    defaultValue: 'Example: corrected NIP, legal address, quantity or billed amount.',
+                  })}
+                />
+              </label>
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -916,7 +998,11 @@ export default function InvoiceCreatePage() {
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.correction_of', { defaultValue: 'Correction of' })}</dt>
-              <dd className="mt-1 text-slate-900">{correctionOfInvoiceNumber || '-'}</dd>
+              <dd className="mt-1 text-slate-900">{correctionOfInvoiceNumber || sourceInvoice?.invoice_number || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.correction_reason', { defaultValue: 'Correction reason' })}</dt>
+              <dd className="mt-1 text-slate-900">{correctionReason.trim() || '-'}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.client', { defaultValue: 'Client' })}</dt>
@@ -964,6 +1050,16 @@ export default function InvoiceCreatePage() {
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.items', { defaultValue: 'Items' })}</dt>
               <dd className="mt-1 text-slate-900">{items.length}</dd>
             </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.total', { defaultValue: 'Total' })}</dt>
+              <dd className="mt-1 text-slate-900">{draftTotals.total.toFixed(2)} {currency}</dd>
+            </div>
+            {invoiceKind === 'correction' && sourceInvoice && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.delta_total', { defaultValue: 'Delta vs original' })}</dt>
+                <dd className="mt-1 text-slate-900">{(draftTotals.total - Number(sourceInvoice.total_amount || 0)).toFixed(2)} {currency}</dd>
+              </div>
+            )}
           </dl>
           <div className="flex flex-col gap-2">
             <button type="submit" className="btn-primary" disabled={saving || loadingCompanies}>

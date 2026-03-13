@@ -632,6 +632,10 @@ export default function InvoiceDetailPage() {
                 <dd className="mt-1 text-slate-900">{String(invoice.billing_details?.correction_of_invoice_number || '-')}</dd>
               </div>
               <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.correction_reason', { defaultValue: 'Correction reason' })}</dt>
+                <dd className="mt-1 text-slate-900">{String(invoice.billing_details?.correction_reason || '-')}</dd>
+              </div>
+              <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.bank_account', { defaultValue: 'Bank account' })}</dt>
                 <dd className="mt-1 text-slate-900">
                   {String((invoice.billing_details?.issuer_bank_account as Record<string, any> | undefined)?.iban || '-')}

@@ -90,6 +90,7 @@ def _merge_billing_defaults(
 def _validate_invoice_billing_details(billing_details: dict | None) -> dict:
     details = dict(billing_details or {})
     issuer_bank = _as_dict(details.get("issuer_bank_account"))
+    invoice_kind = _normalized_text(details.get("invoice_kind")) or "invoice"
     required_checks = [
         ("company_name", "Client legal name is required for invoices"),
         ("tax_id", "Client tax ID/NIP is required for invoices"),
@@ -103,6 +104,13 @@ def _validate_invoice_billing_details(billing_details: dict | None) -> dict:
             raise ValueError(message)
     if not _normalized_text(issuer_bank.get("iban")):
         raise ValueError("Issuer bank account is required for invoices")
+    if invoice_kind == "correction":
+        if not _normalized_text(details.get("correction_of_invoice_id")):
+            raise ValueError("Correction invoice must reference the original invoice")
+        if not _normalized_text(details.get("correction_of_invoice_number")):
+            raise ValueError("Correction invoice must include the original invoice number")
+        if not _normalized_text(details.get("correction_reason")):
+            raise ValueError("Correction invoice reason is required")
     return details
 
 
