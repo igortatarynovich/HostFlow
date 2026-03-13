@@ -656,6 +656,11 @@ export async function sendInvoice(invoiceId: string) {
   return data;
 }
 
+export async function cancelInvoice(invoiceId: string) {
+  const { data } = await api.post(`/invoices/${invoiceId}/cancel`);
+  return data;
+}
+
 export async function getInvoicePdf(invoiceId: string): Promise<Blob> {
   const { data } = await api.get(`/invoices/${invoiceId}/pdf`, { responseType: 'blob' });
   return data;

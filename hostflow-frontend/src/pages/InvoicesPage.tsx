@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { listInvoices } from '../api/client'
+import { cancelInvoice, createPayment, getInvoicePdf, listInvoices, sendInvoice, updateInvoice } from '../api/client'
 import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -50,6 +50,9 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [activeInvoiceAction, setActiveInvoiceAction] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('')
   const [reloadKey, setReloadKey] = useState(0)
   const companyIdFilter = searchParams.get('company_id') || ''
@@ -137,6 +140,82 @@ export default function InvoicesPage() {
     setSearchParams(new URLSearchParams())
   }
 
+  const replaceInvoice = (nextInvoice: Invoice) => {
+    setInvoices((current) => current.map((invoice) => (invoice.id === nextInvoice.id ? nextInvoice : invoice)))
+  }
+
+  const withInvoiceAction = async (invoiceId: string, action: string, fn: () => Promise<void>) => {
+    setActiveInvoiceAction(`${invoiceId}:${action}`)
+    setActionError(null)
+    setActionMessage(null)
+    try {
+      await fn()
+    } catch (err: any) {
+      setActionError(err?.response?.data?.detail || err?.message || 'Invoice action failed')
+    } finally {
+      setActiveInvoiceAction(null)
+    }
+  }
+
+  const handleIssue = async (invoice: Invoice) =>
+    withInvoiceAction(invoice.id, 'issue', async () => {
+      const updated = await updateInvoice(invoice.id, { status: 'issued' })
+      replaceInvoice(updated as Invoice)
+      setActionMessage(t('app.invoices.issue_success', { defaultValue: 'Invoice issued.' }))
+    })
+
+  const handleSend = async (invoice: Invoice) =>
+    withInvoiceAction(invoice.id, 'send', async () => {
+      const updated = await sendInvoice(invoice.id)
+      replaceInvoice(updated as Invoice)
+      setActionMessage(
+        t('app.invoices.send_success', {
+          defaultValue: invoice.status === 'sent' ? 'Invoice resent.' : 'Invoice sent.',
+        }),
+      )
+    })
+
+  const handleMarkPaid = async (invoice: Invoice) =>
+    withInvoiceAction(invoice.id, 'mark-paid', async () => {
+      const outstanding = Number(invoice.total_amount || 0) - Number(invoice.paid_amount || 0)
+      if (outstanding <= 0) {
+        setActionMessage(t('app.invoices.already_paid', { defaultValue: 'Invoice is already fully paid.' }))
+        return
+      }
+      await createPayment(invoice.id, {
+        amount: outstanding,
+        currency: invoice.currency || 'PLN',
+        payment_date: new Date().toISOString().slice(0, 10),
+        method: 'bank_transfer',
+        status: 'confirmed',
+      })
+      const updated = await updateInvoice(invoice.id, {})
+      replaceInvoice(updated as Invoice)
+      setActionMessage(t('app.invoices.mark_paid_success', { defaultValue: 'Payment recorded.' }))
+    })
+
+  const handleCancel = async (invoice: Invoice) =>
+    withInvoiceAction(invoice.id, 'cancel', async () => {
+      const updated = await cancelInvoice(invoice.id)
+      replaceInvoice(updated as Invoice)
+      setActionMessage(t('app.invoices.cancel_success', { defaultValue: 'Invoice cancelled.' }))
+    })
+
+  const handleDownloadPdf = async (invoice: Invoice) =>
+    withInvoiceAction(invoice.id, 'pdf', async () => {
+      const blob = await getInvoicePdf(invoice.id)
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${invoice.invoice_number || 'invoice'}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    })
+
+  const isActionBusy = (invoiceId: string, action: string) => activeInvoiceAction === `${invoiceId}:${action}`
+
   return (
     <div className="h-full w-full flex flex-col space-y-4 p-6">
       <div className="flex items-center justify-between">
@@ -200,6 +279,24 @@ export default function InvoicesPage() {
           />
         )}
 
+        {actionError && (
+          <ErrorRecoveryBanner
+            info={{
+              title: actionError,
+              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+            }}
+            onRetry={() => setActionError(null)}
+            retryLabel={t('common.actions.dismiss', { defaultValue: 'Dismiss' })}
+            compact
+          />
+        )}
+
+        {actionMessage && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {actionMessage}
+          </div>
+        )}
+
         {loading ? (
           <div className="text-center py-8 text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
         ) : invoices.length === 0 ? (
@@ -231,6 +328,9 @@ export default function InvoicesPage() {
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {t('app.invoices.status', { defaultValue: 'Status' })}
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t('app.invoices.actions', { defaultValue: 'Actions' })}
                   </th>
                 </tr>
               </thead>
@@ -273,6 +373,71 @@ export default function InvoicesPage() {
                       >
                         {t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}
                       </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex flex-wrap gap-2">
+                        {invoice.status === 'draft' && (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            disabled={isActionBusy(invoice.id, 'issue')}
+                            onClick={() => void handleIssue(invoice)}
+                          >
+                            {isActionBusy(invoice.id, 'issue')
+                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              : t('app.invoices.issue', { defaultValue: 'Issue' })}
+                          </button>
+                        )}
+                        {(invoice.status === 'issued' || invoice.status === 'sent') && (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            disabled={isActionBusy(invoice.id, 'send')}
+                            onClick={() => void handleSend(invoice)}
+                          >
+                            {isActionBusy(invoice.id, 'send')
+                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              : t(
+                                  invoice.status === 'sent' ? 'app.invoices.resend' : 'app.invoices.send',
+                                  { defaultValue: invoice.status === 'sent' ? 'Resend' : 'Send' },
+                                )}
+                          </button>
+                        )}
+                        {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            disabled={isActionBusy(invoice.id, 'mark-paid')}
+                            onClick={() => void handleMarkPaid(invoice)}
+                          >
+                            {isActionBusy(invoice.id, 'mark-paid')
+                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              : t('app.invoices.mark_paid', { defaultValue: 'Mark paid' })}
+                          </button>
+                        )}
+                        {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                          <button
+                            type="button"
+                            className="btn-secondary btn-sm"
+                            disabled={isActionBusy(invoice.id, 'cancel')}
+                            onClick={() => void handleCancel(invoice)}
+                          >
+                            {isActionBusy(invoice.id, 'cancel')
+                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              : t('app.invoices.cancel', { defaultValue: 'Cancel' })}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm"
+                          disabled={isActionBusy(invoice.id, 'pdf')}
+                          onClick={() => void handleDownloadPdf(invoice)}
+                        >
+                          {isActionBusy(invoice.id, 'pdf')
+                            ? t('common.loading', { defaultValue: 'Loading...' })
+                            : t('app.invoices.pdf', { defaultValue: 'PDF' })}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
