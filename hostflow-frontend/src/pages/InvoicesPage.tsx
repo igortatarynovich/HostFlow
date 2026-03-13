@@ -76,6 +76,8 @@ export default function InvoicesPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [activeInvoiceAction, setActiveInvoiceAction] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('')
+  const [queueFilter, setQueueFilter] = useState<'all' | 'delivery_failed' | 'missing_recipient' | 'overdue_unpaid'>('all')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [reloadKey, setReloadKey] = useState(0)
   const companyIdFilter = searchParams.get('company_id') || ''
   const serviceOrderIdFilter = searchParams.get('service_order_id') || ''
@@ -131,6 +133,24 @@ export default function InvoicesPage() {
       { totalOutstanding: 0, missingRecipient: 0, overdue: 0, paid: 0, needsFollowUp: 0 },
     )
   }, [invoices])
+  const visibleInvoices = useMemo(() => {
+    return invoices.filter((invoice) => {
+      if (queueFilter === 'delivery_failed') {
+        return invoice.latest_delivery_status === 'failed'
+      }
+      if (queueFilter === 'missing_recipient') {
+        return !String(invoice.billing_details?.email || '').trim()
+      }
+      if (queueFilter === 'overdue_unpaid') {
+        return invoice.status === 'overdue' && Number(invoice.total_amount || 0) > Number(invoice.paid_amount || 0)
+      }
+      return true
+    })
+  }, [invoices, queueFilter])
+  const allVisibleSelected = useMemo(
+    () => visibleInvoices.length > 0 && visibleInvoices.every((invoice) => selectedIds.includes(invoice.id)),
+    [selectedIds, visibleInvoices],
+  )
 
   useEffect(() => {
     if (urlStatusFilter && urlStatusFilter !== statusFilter) {
@@ -166,6 +186,10 @@ export default function InvoicesPage() {
     }
   }, [companyIdFilter, serviceOrderIdFilter, statusFilter, reloadKey])
 
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => visibleInvoices.some((invoice) => invoice.id === id)))
+  }, [visibleInvoices])
+
   const clearFilter = (key: 'company_id' | 'service_order_id' | 'status') => {
     const next = new URLSearchParams(searchParams)
     next.delete(key)
@@ -177,7 +201,20 @@ export default function InvoicesPage() {
 
   const clearAllFilters = () => {
     setStatusFilter('')
+    setQueueFilter('all')
     setSearchParams(new URLSearchParams())
+  }
+
+  const toggleOne = (invoiceId: string) => {
+    setSelectedIds((current) => (current.includes(invoiceId) ? current.filter((id) => id !== invoiceId) : [...current, invoiceId]))
+  }
+
+  const toggleAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedIds((current) => current.filter((id) => !visibleInvoices.some((invoice) => invoice.id === id)))
+      return
+    }
+    setSelectedIds((current) => Array.from(new Set([...current, ...visibleInvoices.map((invoice) => invoice.id)])))
   }
 
   const replaceInvoice = (nextInvoice: Invoice) => {
@@ -288,6 +325,41 @@ export default function InvoicesPage() {
 
   const isActionBusy = (invoiceId: string, action: string) => activeInvoiceAction === `${invoiceId}:${action}`
 
+  const runBulkAction = async (
+    actionKey: string,
+    predicate: (invoice: Invoice) => boolean,
+    runner: (invoice: Invoice) => Promise<void>,
+    successMessage: string,
+  ) => {
+    const selectedInvoices = visibleInvoices.filter((invoice) => selectedIds.includes(invoice.id)).filter(predicate)
+    if (selectedInvoices.length === 0) {
+      setActionError(t('app.invoices.bulk_none', { defaultValue: 'No matching invoices selected for this action.' }))
+      return
+    }
+    setActiveInvoiceAction(`bulk:${actionKey}`)
+    setActionError(null)
+    setActionMessage(null)
+    const results = await Promise.allSettled(selectedInvoices.map((invoice) => runner(invoice)))
+    const failed = results.filter((result) => result.status === 'rejected').length
+    setActiveInvoiceAction(null)
+    setReloadKey((prev) => prev + 1)
+    if (failed > 0) {
+      setActionError(
+        t('app.invoices.bulk_partial_error', {
+          defaultValue: 'Some bulk actions failed ({{failed}} of {{total}}).',
+          values: { failed, total: selectedInvoices.length },
+        }),
+      )
+    } else {
+      setActionMessage(
+        t('app.invoices.bulk_success', {
+          defaultValue: '{{message}} ({{count}})',
+          values: { message: successMessage, count: selectedInvoices.length },
+        }),
+      )
+    }
+  }
+
   return (
     <div className="h-full w-full flex flex-col space-y-4 p-6">
       <div className="flex items-center justify-between">
@@ -372,6 +444,97 @@ export default function InvoicesPage() {
           )}
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { key: 'all', label: t('app.invoices.queue.all', { defaultValue: 'All queue' }) },
+            { key: 'delivery_failed', label: t('app.invoices.queue.delivery_failed', { defaultValue: 'Delivery failed' }) },
+            { key: 'missing_recipient', label: t('app.invoices.queue.missing_recipient', { defaultValue: 'Missing recipient' }) },
+            { key: 'overdue_unpaid', label: t('app.invoices.queue.overdue_unpaid', { defaultValue: 'Overdue unpaid' }) },
+          ].map((item) => {
+            const active = queueFilter === item.key
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={active ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+                onClick={() => setQueueFilter(item.key as typeof queueFilter)}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {selectedIds.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <span>
+              {t('app.invoices.bulk_selected', {
+                defaultValue: 'Selected: {{count}}',
+                values: { count: selectedIds.length },
+              })}
+            </span>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              disabled={activeInvoiceAction === 'bulk:send'}
+              onClick={() =>
+                void runBulkAction(
+                  'send',
+                  (invoice) => invoice.status === 'issued' || invoice.status === 'sent',
+                  async (invoice) => {
+                    await sendInvoice(invoice.id)
+                  },
+                  t('app.invoices.bulk_send_success', { defaultValue: 'Invoices sent' }),
+                )
+              }
+            >
+              {t('app.invoices.bulk_send', { defaultValue: 'Bulk send' })}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              disabled={activeInvoiceAction === 'bulk:remind'}
+              onClick={() =>
+                void runBulkAction(
+                  'remind',
+                  (invoice) => invoice.status !== 'paid' && invoice.status !== 'cancelled',
+                  async (invoice) => {
+                    const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+                    const remindAt = new Date(Date.now() + 60 * 60 * 1000)
+                    await createReminder({
+                      title: `Invoice follow-up: ${invoice.invoice_number}`,
+                      description: invoice.billing_details?.email
+                        ? `Follow up with ${invoice.billing_details.email} about invoice ${invoice.invoice_number}.`
+                        : `Follow up on invoice ${invoice.invoice_number}.`,
+                      type: 'invoice_followup',
+                      entity_type: 'invoice',
+                      entity_id: invoice.id,
+                      due_at: dueAt.toISOString(),
+                      remind_at: remindAt.toISOString(),
+                      priority: invoice.status === 'overdue' ? 'high' : 'normal',
+                      channel: 'internal',
+                      payload: {
+                        invoice_id: invoice.id,
+                        invoice_number: invoice.invoice_number,
+                        company_id: invoice.company_id,
+                        service_order_id: invoice.service_order_id,
+                        recipient_email: invoice.billing_details?.email || null,
+                        status: invoice.status,
+                      },
+                    })
+                  },
+                  t('app.invoices.bulk_remind_success', { defaultValue: 'Reminders created' }),
+                )
+              }
+            >
+              {t('app.invoices.bulk_remind', { defaultValue: 'Bulk remind' })}
+            </button>
+            <button type="button" className="btn-secondary btn-sm" onClick={() => setSelectedIds([])}>
+              {t('common.actions.clear', { defaultValue: 'Clear' })}
+            </button>
+          </div>
+        )}
+
         {error && (
           <ErrorRecoveryBanner
             info={{
@@ -404,7 +567,7 @@ export default function InvoicesPage() {
 
         {loading ? (
           <div className="text-center py-8 text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
-        ) : invoices.length === 0 ? (
+        ) : visibleInvoices.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             {t('app.invoices.empty', { defaultValue: 'No invoices found' })}
           </div>
@@ -413,6 +576,9 @@ export default function InvoicesPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-slate-200">
+                  <th className="py-3 px-4">
+                    <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} />
+                  </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {t('app.invoices.number', { defaultValue: 'Number' })}
                   </th>
@@ -443,8 +609,11 @@ export default function InvoicesPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((invoice) => (
+                {visibleInvoices.map((invoice) => (
                   <tr key={invoice.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="py-3 px-4">
+                      <input type="checkbox" checked={selectedIds.includes(invoice.id)} onChange={() => toggleOne(invoice.id)} />
+                    </td>
                     <td className="py-3 px-4">
                       <a
                         href={`/app/invoices/${invoice.id}`}
