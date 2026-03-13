@@ -89,7 +89,7 @@ export default function OnboardingCompanyPage() {
     }
     setLoading(true)
     try {
-      await createCompany({ name: trimmed, company_type: companyType })
+      await createCompany({ name: trimmed, company_type: companyType, company_role: 'operating' })
       navigate(getBusinessHomePath(companyType), { replace: true })
     } catch (err: any) {
       const msg = err?.response?.data?.detail ?? err?.message ?? t('app.onboarding.company.errors.generic', { defaultValue: 'Не удалось создать компанию' })

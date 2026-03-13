@@ -15,6 +15,7 @@ from backend.app.models.tenant import Tenant
 from backend.app.models.tenant import TenantType
 from backend.app.models.tenant import TenantLink
 from backend.app.models.user import Role as UserRole, User
+from backend.app.services.tenant_limits import get_tenant_limits
 from .schemas import (
     BillingProfile,
     ComplianceProfile,
@@ -88,6 +89,18 @@ def _ensure_dict(value: Any) -> Dict[str, Any]:
     if isinstance(value, dict):
         return dict(value)
     return {}
+
+
+def _normalize_company_role(value: Any, *, default: str = "client") -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"operating", "client"}:
+        return normalized
+    return default
+
+
+def _company_role_from_company(company: Company) -> str:
+    extra = _ensure_dict(getattr(company, "extra", None))
+    return _normalize_company_role(extra.get("company_role"), default="client")
 
 
 def _deep_merge(base: Dict[str, Any], extra: Dict[str, Any]) -> Dict[str, Any]:
@@ -1165,6 +1178,10 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
         select(func.count()).select_from(Company).where(Company.tenant_id == tenant_id)
     )
     company_count_before = int(count_result.scalar_one() or 0)
+    company_role = _normalize_company_role(
+        payload.pop("company_role", None),
+        default="operating" if company_count_before == 0 else "client",
+    )
 
     payload.setdefault("id", str(uuid4()))
     payload["tenant_id"] = tenant_id
@@ -1190,6 +1207,9 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
     )
 
     extra_payload = _ensure_dict(payload.pop("extra", None))
+    extra_payload["company_role"] = company_role
+    if company_type in ("agency", "employer", "services"):
+        extra_payload["company_type"] = company_type
     extra_normalized = _apply_extra_patch({}, extra_payload)
     if normalized_contacts:
         extra_normalized = _deep_merge(extra_normalized, {"contacts": normalized_contacts})
@@ -1197,12 +1217,21 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
     payload["contacts"] = normalized_contacts
     payload["extra"] = extra_normalized
 
+    if company_role == "operating":
+        tenant_limits = await get_tenant_limits(session, tenant_id)
+        current_companies = (
+            await session.execute(select(Company).where(Company.tenant_id == tenant_id))
+        ).scalars().all()
+        current_operating_count = sum(1 for company in current_companies if _company_role_from_company(company) == "operating")
+        if tenant_limits.max_companies > 0 and current_operating_count >= tenant_limits.max_companies:
+            raise ValueError("Operating company limit reached for current subscription")
+
     obj = Company(**payload)
     _sync_contacts_extra(obj)
     session.add(obj)
     await session.flush()
 
-    if company_count_before == 0 and company_type in ("agency", "employer", "services"):
+    if company_count_before == 0 and company_role == "operating" and company_type in ("agency", "employer", "services"):
         tenant = (
             await session.execute(
                 select(Tenant).where(Tenant.id == tenant_id).limit(1)

@@ -6,11 +6,15 @@
 
 После входа пользователь должен пройти онбординг, если у его тенанта ещё нет ни одной компании.
 
-- **Проверка:** `GET /api/v1/onboarding/status` возвращает `{ "onboarding_required": true }`, если у тенанта нет компаний (счёт по `Company` по `tenant_id`).
-- **Действие:** при `onboarding_required === true` фронт редиректит на `/app/onboarding/company`. Пользователь заполняет форму: название компании и тип компании — **Агентство** или **Прямой работодатель**. Отправка `POST /api/v1/companies` с полями `name` и `company_type` (`agency` | `employer`). Бэкенд при создании первой компании выставляет `Tenant.type` = `agency` или `company` соответственно.
+- **Проверка:** `GET /api/v1/onboarding/status` возвращает `{ "onboarding_required": true }`, если у тенанта нет ни одной **operating company** (первого собственного профиля tenant).
+- **Действие:** при `onboarding_required === true` фронт редиректит на `/app/onboarding/company`. Пользователь заполняет форму: название своей компании и тип компании — **Агентство**, **Прямой работодатель** или **Услуги**. Отправка `POST /api/v1/companies` с полями `name`, `company_type` и `company_role='operating'`. Бэкенд при создании первой operating company выставляет `Tenant.type` и business profile tenant.
 - После успешного создания компании редирект в основное приложение (например `/app/overview`); онбординг считается пройденным (при следующем запросе status у тенанта уже есть компании, `onboarding_required: false`).
 
-Связанный код: `backend.app.api.v1.onboarding` (GET status), `backend.app.modules.companies.crud.create_company` (company_type, обновление Tenant.type), фронт: экран онбординга компании и редирект в AppShell по статусу.
+Правило лицензии:
+- лимит подписки применяется к количеству **operating companies** tenant;
+- client companies не считаются собственными профилями tenant и не должны расходовать этот лимит.
+
+Связанный код: `backend.app.api.v1.onboarding` (GET status), `backend.app.modules.companies.crud.create_company` (`company_role`, `company_type`, license limit, обновление Tenant.type), фронт: экран онбординга компании и редирект в AppShell по статусу.
 
 ---
 

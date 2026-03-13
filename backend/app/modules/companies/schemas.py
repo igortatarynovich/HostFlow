@@ -5,6 +5,7 @@ from typing import Any, ClassVar, Dict, List, Literal, Optional, Set
 from uuid import UUID, uuid4
 
 CompanyTypeLiteral = Literal["agency", "employer", "services"]
+CompanyRoleLiteral = Literal["operating", "client"]
 
 try:
     from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -77,6 +78,10 @@ class CompanyCreate(CompanyMutableFields):
     company_type: Optional[CompanyTypeLiteral] = Field(
         None,
         description="For onboarding: agency, employer, or services. Sets tenant bootstrap profile when creating first company.",
+    )
+    company_role: Optional[CompanyRoleLiteral] = Field(
+        None,
+        description="Operating = tenant's own managed company/profile. Client = customer/counterparty company.",
     )
 
 

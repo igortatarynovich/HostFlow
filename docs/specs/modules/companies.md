@@ -1,13 +1,16 @@
 # Module: Companies
 
 ## Назначение
-Учёт транспортных компаний (клиентов), их контактов, статуса активности и связанных вакансий.  
-Модуль обеспечивает связь между кандидатами и работодателями, формируя базу активных партнёров tenant.
+Модуль хранит два разных класса компаний tenant:
+- **Operating Company** — собственная компания/профиль tenant, от лица которой совершаются действия, выставляются счета, подписываются договоры, работают RODO/legal templates и branding.
+- **Client Company** — клиент/контрагент tenant, с которым ведётся CRM- и delivery-работа.
+
+Эти классы не должны смешиваться ни в billing, ни в onboarding, ни в subscription limits.
 
 ---
 
 ## Сущности
-- **Company** (`id`, `tenant_id`, `name`, `legal_name`, `tax_id`, `phone`, `email`, `website`, `country_code`, `country`, `city`, `address`, `notes`, `is_archived`, `contacts{}`, `extra{}` — блоки `legal`, `billing`, `operations`, `compliance`, `client_portal`, `integrations`, `contracts[]`, `company_orders[]`)
+- **Company** (`id`, `tenant_id`, `name`, `legal_name`, `tax_id`, `phone`, `email`, `website`, `country_code`, `country`, `city`, `address`, `notes`, `is_archived`, `contacts{}`, `extra{}` — блоки `company_role`, `company_type`, `legal`, `billing`, `operations`, `compliance`, `client_portal`, `integrations`, `contracts[]`, `company_orders[]`)
 - **Vacancy** (см. модуль Vacancies)
 - **Contact** (вложенный объект: имя, должность, телефон, email)
 
@@ -39,6 +42,22 @@
 - `?country=PL`
 - `?include_archived=true`
 - `?q=trakt`
+
+### Company role contract
+
+- `extra.company_role = operating`
+  - собственная компания tenant;
+  - участвует в onboarding bootstrap;
+  - может быть `issuer company` в invoicing;
+  - считается в license limit `tenant_licenses.max_companies`.
+- `extra.company_role = client`
+  - клиент/контрагент;
+  - не считается в лимит operating profiles;
+  - не может использоваться как issuer company.
+
+Правило default creation:
+- onboarding создаёт `operating company`;
+- workspace `/app/clients` по умолчанию создаёт `client company`.
 
 ---
 

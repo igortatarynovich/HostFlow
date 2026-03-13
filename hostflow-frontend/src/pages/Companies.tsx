@@ -1435,6 +1435,7 @@ export default function Companies(){
       try {
         const { data } = await api.post('/companies/', {
           name: untitledNameRef.current,
+          company_role: 'client',
         })
         if (cancelled) return
         navigate(`/app/clients/${data.id}`, { replace: true })

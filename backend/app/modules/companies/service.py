@@ -35,6 +35,8 @@ def _map_value_error(exc: ValueError) -> HTTPException:
         return HTTPException(status_code=409, detail="CONTACT-PRIMARY")
     if "Only one bank account can be marked as primary" in message:
         return HTTPException(status_code=409, detail="BANK-PRIMARY-EXISTS")
+    if "Operating company limit reached" in message:
+        return HTTPException(status_code=402, detail="OPERATING-COMPANY-LIMIT")
     if "IBAN" in message:
         return HTTPException(status_code=422, detail="IBAN-CHECK")
     return HTTPException(status_code=422, detail=message)

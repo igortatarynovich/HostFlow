@@ -158,6 +158,8 @@ function buildSuggestedInvoiceNumber(invoiceKind: string, taxMode: string, issue
 function isManagedIssuerCompany(company: Company, userId: string) {
   const actor = String(userId || '').trim()
   if (!actor) return false
+  const companyRole = String((company.extra as Record<string, any> | undefined)?.company_role || '').trim().toLowerCase()
+  if (companyRole !== 'operating') return false
   return [company.owner_user_id, company.manager_user_id].some((value) => String(value || '').trim() === actor)
 }
 

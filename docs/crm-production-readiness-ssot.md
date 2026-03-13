@@ -315,6 +315,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 Текущий baseline:
 - `B6`: static settings-permission baseline уже зафиксирован в [f3-permission-role-matrix-static.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix-static.md); governance checklist добавляет обязательный ручной sign-off по navigation IA и anti-duplication.
 - `B7`: текущий self-serve bootstrap-contract формализован как минимальный `name + company_type`; остальные поля считаются `DEFERRED` до явной продуктовой цели и non-blocking точки во flow.
+- `B7`: в термине `company` зафиксировано разделение на `operating company` (собственный профиль tenant) и `client company` (контрагент); onboarding создает только `operating company`.
 - `B8`: explicit ownership model реализована через `companies.owner_user_id` и `companies.manager_user_id`; при bootstrap owner/manager по умолчанию назначаются на текущего elevated actor, а дальнейшее делегирование доступно через company profile и `user_company_access`.
 
 Что требуется для закрытия пакета:
@@ -1338,6 +1339,7 @@ Evidence:
 |---|---|---|---|
 | `name` | `REQUIRED` | Базовая идентификация первой компании в CRM | Единственное текстовое поле bootstrap-формы |
 | `company_type` = `agency/employer/services` | `REQUIRED` | Выбор продуктового профиля и модульного baseline | Определяет первичный workflow и copy |
+| `company_role` = `operating` | `REQUIRED_BY_FLOW` | Явно помечает, что это собственная tenant company/profile | Client company не может подменять operating profile в onboarding/billing |
 | Остальные юридические/операционные поля | `DEFERRED` | Не мешают first value на первом шаге | Пока не собраны в явный post-bootstrap contract |
 
 Незакрытые пробелы:
@@ -1348,6 +1350,7 @@ Evidence:
 Принятое направление:
 - Для self-serve launch первый шаг остается минимальным.
 - Все дополнительные поля собираются только если у них есть явная цель и non-blocking точка во flow.
+- Лимит подписки `max_companies` применяется только к `operating companies`, а не к client/counterparty cards.
 
 #### 5.6.11.3 `#45` Orientation-Mode Baseline
 

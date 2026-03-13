@@ -88,6 +88,14 @@ def _extract_primary_bank_account(company: Company | None) -> dict | None:
     return next((entry for entry in normalized if entry.get("is_primary")), normalized[0])
 
 
+def _company_role(company: Company | None) -> str | None:
+    if not company:
+        return None
+    extra = _as_dict(getattr(company, "extra", {}) or {})
+    role = _normalized_text(extra.get("company_role"))
+    return role.lower() if role else None
+
+
 def _merge_issuer_defaults(
     *,
     billing_details: dict,
@@ -128,6 +136,8 @@ async def _resolve_issuer_company_for_actor(
     issuer_company = await session.get(Company, issuer_id)
     if not issuer_company or str(getattr(issuer_company, "tenant_id", "")) != str(tenant_id):
         raise ValueError("Issuer company not found")
+    if _company_role(issuer_company) != "operating":
+        raise ValueError("Issuer company must be an operating company")
     actor = _normalized_text(actor_id)
     if actor and actor not in {
         _normalized_text(getattr(issuer_company, "owner_user_id", None)),

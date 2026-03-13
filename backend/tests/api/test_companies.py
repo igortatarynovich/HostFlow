@@ -210,3 +210,35 @@ async def test_company_bootstrap_assigns_owner_and_manager(
     company = create_resp.json()
     assert company["owner_user_id"] == me["user_id"]
     assert company["manager_user_id"] == me["user_id"]
+
+
+@pytest.mark.anyio
+async def test_company_limit_applies_only_to_operating_profiles(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+) -> None:
+    operating_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Primary Operating Co", "company_type": "services", "company_role": "operating"},
+    )
+    assert operating_resp.status_code == 200, operating_resp.text
+    operating_company = operating_resp.json()
+    assert operating_company["extra"]["company_role"] == "operating"
+
+    second_operating_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Second Operating Co", "company_type": "services", "company_role": "operating"},
+    )
+    assert second_operating_resp.status_code == 402, second_operating_resp.text
+    assert second_operating_resp.json()["detail"] == "OPERATING-COMPANY-LIMIT"
+
+    client_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Client Counterparty", "company_role": "client"},
+    )
+    assert client_resp.status_code == 200, client_resp.text
+    client_company = client_resp.json()
+    assert client_company["extra"]["company_role"] == "client"

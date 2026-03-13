@@ -28,17 +28,17 @@ class OnboardingStatusOut(BaseModel):
     steps: dict[str, bool]
 
 
-def _normalize_company_kind(extra: object) -> str | None:
+def _normalize_company_role(extra: object) -> str | None:
     if not isinstance(extra, dict):
         return None
     raw = (
-        extra.get("company_kind")
-        or extra.get("company_type")
+        extra.get("company_role")
+        or extra.get("company_kind")
         or extra.get("kind")
         or extra.get("entity_type")
     )
     normalized = str(raw or "").strip().lower()
-    if normalized in {"client", "counterparty"}:
+    if normalized in {"operating", "client", "counterparty"}:
         return normalized
     return None
 
@@ -77,19 +77,24 @@ async def get_onboarding_status(
         select(func.count()).select_from(Reminder).where(Reminder.tenant_id == tenant_id)
     )
 
-    companies_count = int(company_count_row.scalar_one() or 0)
+    total_companies_count = int(company_count_row.scalar_one() or 0)
+    operating_companies_count = 0
     clients_count = 0
     counterparties_count = 0
     for extra in company_extra_rows.scalars().all():
-        kind = _normalize_company_kind(extra)
-        if kind == "client":
+        kind = _normalize_company_role(extra)
+        if kind == "operating":
+            operating_companies_count += 1
+        elif kind == "client":
             clients_count += 1
         elif kind == "counterparty":
             counterparties_count += 1
 
-    # Backward compatibility for tenants created before explicit company_kind classification.
-    if clients_count == 0 and counterparties_count == 0 and companies_count > 1:
-        clients_count = companies_count - 1
+    # Backward compatibility for tenants created before explicit company_role classification.
+    if operating_companies_count == 0 and total_companies_count > 0:
+        operating_companies_count = 1
+        if clients_count == 0 and counterparties_count == 0 and total_companies_count > 1:
+            clients_count = total_companies_count - 1
 
     leads_count = int(lead_count_row.scalar_one() or 0)
     vacancies_count = int(vacancy_count_row.scalar_one() or 0)
@@ -109,9 +114,9 @@ async def get_onboarding_status(
         else:
             business_type = "agency"
 
-    onboarding_required = companies_count == 0
+    onboarding_required = operating_companies_count == 0
     steps = {
-        "company_created": companies_count > 0,
+        "company_created": operating_companies_count > 0,
         "first_lead_created": leads_count > 0,
         "first_vacancy_created": vacancies_count > 0,
         "first_service_order_created": service_orders_count > 0,
@@ -132,7 +137,7 @@ async def get_onboarding_status(
         business_type=business_type,
         onboarding_required=onboarding_required,
         activation_required=activation_required,
-        companies_count=companies_count,
+        companies_count=operating_companies_count,
         leads_count=leads_count,
         vacancies_count=vacancies_count,
         service_orders_count=service_orders_count,
