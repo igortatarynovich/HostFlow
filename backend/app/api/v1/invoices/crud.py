@@ -4,12 +4,13 @@ from __future__ import annotations
 import secrets
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import List, Optional
+from typing import Any, List, Optional
 from uuid import uuid4
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.models.company import Company
 from backend.app.models.invoice import Invoice, InvoiceItem, Payment, Refund
 from backend.app.models.invoice import InvoiceStatus
 
@@ -20,6 +21,63 @@ def _generate_invoice_number(tenant_id: str, year: int) -> str:
     # For now, use a random suffix
     seq = secrets.token_hex(4).upper()
     return f"INV/{tenant_id[:8].upper()}/{year}/{seq}"
+
+
+def _as_dict(value: Any) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _normalized_text(value: Any) -> str | None:
+    text = str(value or "").strip()
+    return text or None
+
+
+def _build_company_legal_address(company: Company | None) -> str | None:
+    if not company:
+        return None
+    extra = _as_dict(getattr(company, "extra", {}) or {})
+    billing = _as_dict(extra.get("billing"))
+    billing_address = _as_dict(billing.get("billing_address"))
+    parts = [
+        _normalized_text(billing_address.get("country") or getattr(company, "country", None) or getattr(company, "country_code", None)),
+        _normalized_text(billing_address.get("city") or getattr(company, "city", None)),
+        _normalized_text(billing_address.get("street") or getattr(company, "address", None)),
+        _normalized_text(billing_address.get("zip")),
+    ]
+    merged = ", ".join(part for part in parts if part)
+    return merged or None
+
+
+def _merge_billing_defaults(
+    *,
+    billing_details: dict | None,
+    client_company: Company | None,
+) -> dict:
+    merged = dict(billing_details or {})
+    if client_company:
+        merged.setdefault("company_name", _normalized_text(getattr(client_company, "legal_name", None) or getattr(client_company, "name", None)))
+        merged.setdefault("tax_id", _normalized_text(getattr(client_company, "tax_id", None)))
+        merged.setdefault("address", _build_company_legal_address(client_company))
+    return merged
+
+
+def _validate_invoice_billing_details(billing_details: dict | None) -> dict:
+    details = dict(billing_details or {})
+    issuer_bank = _as_dict(details.get("issuer_bank_account"))
+    required_checks = [
+        ("company_name", "Client legal name is required for invoices"),
+        ("tax_id", "Client tax ID/NIP is required for invoices"),
+        ("address", "Client legal address is required for invoices"),
+        ("issuer_name", "Issuer legal name is required for invoices"),
+        ("issuer_tax_id", "Issuer tax ID/NIP is required for invoices"),
+        ("issuer_address", "Issuer legal address is required for invoices"),
+    ]
+    for key, message in required_checks:
+        if not _normalized_text(details.get(key)):
+            raise ValueError(message)
+    if not _normalized_text(issuer_bank.get("iban")):
+        raise ValueError("Issuer bank account is required for invoices")
+    return details
 
 
 async def create_invoice(
@@ -35,6 +93,17 @@ async def create_invoice(
         issue_date = date.fromisoformat(issue_date)
     
     tenant_id_str = str(tenant_id)
+    client_company: Company | None = None
+    if payload.get("company_id"):
+        client_company = await session.get(Company, payload.get("company_id"))
+        if client_company and str(getattr(client_company, "tenant_id", "")) != tenant_id_str:
+            client_company = None
+    billing_details = _validate_invoice_billing_details(
+        _merge_billing_defaults(
+            billing_details=_as_dict(payload.get("billing_details")),
+            client_company=client_company,
+        )
+    )
     
     # Generate invoice number if not provided
     invoice_number = payload.get("invoice_number")
@@ -56,7 +125,7 @@ async def create_invoice(
         due_date=date.fromisoformat(payload["due_date"]) if isinstance(payload.get("due_date"), str) else payload.get("due_date"),
         currency=payload.get("currency", "PLN"),
         status=payload.get("status", InvoiceStatus.draft.value),
-        billing_details=payload.get("billing_details"),
+        billing_details=billing_details,
         notes=payload.get("notes"),
         created_by=created_by,
         created_at=now,
@@ -196,6 +265,7 @@ async def update_invoice(
         raise ValueError("Cannot update paid invoice")
     
     # Update fields
+    next_billing_details = _as_dict(invoice.billing_details)
     if "issue_date" in payload:
         invoice.issue_date = date.fromisoformat(payload["issue_date"]) if isinstance(payload["issue_date"], str) else payload["issue_date"]
     if "due_date" in payload:
@@ -203,11 +273,23 @@ async def update_invoice(
     if "currency" in payload:
         invoice.currency = payload["currency"]
     if "billing_details" in payload:
-        invoice.billing_details = payload["billing_details"]
+        next_billing_details = _as_dict(payload["billing_details"])
     if "notes" in payload:
         invoice.notes = payload["notes"]
     if "status" in payload:
         invoice.status = payload["status"]
+
+    client_company: Company | None = None
+    if invoice.company_id:
+        client_company = await session.get(Company, invoice.company_id)
+        if client_company and str(getattr(client_company, "tenant_id", "")) != tenant_id_str:
+            client_company = None
+    invoice.billing_details = _validate_invoice_billing_details(
+        _merge_billing_defaults(
+            billing_details=next_billing_details,
+            client_company=client_company,
+        )
+    )
     
     # Update items if provided
     if "items" in payload:
