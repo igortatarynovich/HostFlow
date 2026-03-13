@@ -527,8 +527,22 @@ async def send_invoice(
         recipient_email = None
         if invoice.billing_details:
             recipient_email = invoice.billing_details.get("email")
+        if not recipient_email:
+            await _log_invoice_activity(
+                db,
+                tenant_id=str(tenant_id),
+                invoice=invoice,
+                action="invoice.send_failed",
+                actor_id=current_user.user_id,
+                payload={"delivery_status": "failed", "reason": "missing_recipient_email"},
+            )
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invoice recipient email is required",
+            )
         
-        await send_webhook(
+        delivery = await send_webhook(
             "invoice.sent",
             {
                 "invoice_id": invoice.id,
@@ -540,6 +554,28 @@ async def send_invoice(
                 "pdf_base64": None,  # In production, encode PDF as base64 or provide download URL
             }
         )
+        delivery_status = str(delivery.get("delivery_status") or "failed")
+        delivery_reason = delivery.get("reason")
+        http_status = delivery.get("http_status")
+        if delivery_status == "failed":
+            await _log_invoice_activity(
+                db,
+                tenant_id=str(tenant_id),
+                invoice=invoice,
+                action="invoice.send_failed",
+                actor_id=current_user.user_id,
+                payload={
+                    "recipient_email": recipient_email,
+                    "delivery_status": delivery_status,
+                    "reason": delivery_reason,
+                    "http_status": http_status,
+                },
+            )
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to deliver invoice",
+            )
         
         # Update status to 'sent'
         invoice.status = InvoiceStatus.sent.value
@@ -549,7 +585,12 @@ async def send_invoice(
             invoice=invoice,
             action="invoice.sent",
             actor_id=current_user.user_id,
-            payload={"recipient_email": recipient_email},
+            payload={
+                "recipient_email": recipient_email,
+                "delivery_status": delivery_status,
+                "reason": delivery_reason,
+                "http_status": http_status,
+            },
         )
         await db.commit()
         await db.refresh(invoice)

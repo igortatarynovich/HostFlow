@@ -76,6 +76,8 @@ function invoiceActionMeta(action: string, t: ReturnType<typeof useI18n>['t']): 
       return { title: t('app.invoices.timeline.issued', { defaultValue: 'Invoice issued' }), tone: 'default' }
     case 'invoice.sent':
       return { title: t('app.invoices.timeline.sent', { defaultValue: 'Invoice sent' }), tone: 'default' }
+    case 'invoice.send_failed':
+      return { title: t('app.invoices.timeline.send_failed', { defaultValue: 'Invoice delivery failed' }), tone: 'warning' }
     case 'invoice.payment_recorded':
       return { title: t('app.invoices.timeline.paid', { defaultValue: 'Payment recorded' }), tone: 'success' }
     case 'invoice.reminder_created':
@@ -146,7 +148,9 @@ export default function InvoiceDetailPage() {
             : activity.action === 'invoice.reminder_completed'
               ? `${String(activity.payload?.title || '-')} • ${formatDateTime(activity.payload?.completed_at || null)}`
           : activity.action === 'invoice.sent'
-            ? String(activity.payload?.recipient_email || invoice.billing_details?.email || '-')
+            ? `${String(activity.payload?.recipient_email || invoice.billing_details?.email || '-')} • ${String(activity.payload?.delivery_status || 'sent')}`
+            : activity.action === 'invoice.send_failed'
+              ? `${String(activity.payload?.recipient_email || invoice.billing_details?.email || '-')} • ${String(activity.payload?.reason || 'failed')}`
             : nextStatus
               ? `${String(activity.payload?.previous_status || '-')} → ${String(nextStatus)}`
               : String(activity.payload?.source || activity.payload?.invoice_number || '').trim() || null
