@@ -61,11 +61,11 @@ export type ServicesAnalyticsOverview = {
     missing_items: number
   }
   status_breakdown: Array<{ status: string; count: number }>
-  top_items: Array<{ label: string; total: number; pending: number; revenue: number; profit: number }>
-  top_clients: Array<{ label: string; revenue: number; profit: number; orders: number }>
+  top_items: Array<{ service_id?: string | null; label: string; total: number; pending: number; revenue: number; profit: number }>
+  top_clients: Array<{ owner_kind: string; owner_id?: string | null; label: string; revenue: number; profit: number; orders: number }>
   hot_orders: Array<{ order_id: string; label: string; reason: string; owner_kind: string; status: string; updated_at?: string | null }>
   trends: Array<{ bucket: string; orders: number; delivered: number; revenue: number; profit: number }>
-  slices: Array<{ label: string; orders: number; revenue: number; profit: number }>
+  slices: Array<{ label: string; slice_kind?: string | null; slice_value?: string | null; owner_kind?: string | null; orders: number; revenue: number; profit: number }>
 }
 
 export type TrialRetentionEventPayload = {

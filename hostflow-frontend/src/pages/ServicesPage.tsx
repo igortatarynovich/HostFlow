@@ -79,6 +79,15 @@ export function ServicesPage() {
   const [analyticsDays, setAnalyticsDays] = useState<30 | 90 | 180>(90)
   const [analyticsTrendBucket, setAnalyticsTrendBucket] = useState<'week' | 'month'>('month')
   const [analyticsSliceBy, setAnalyticsSliceBy] = useState<'client' | 'item' | 'status' | 'manager'>('client')
+  const [ordersDrilldown, setOrdersDrilldown] = useState<
+    | null
+    | { kind: 'order'; orderId: string }
+    | { kind: 'client'; ownerKind: string; ownerId?: string | null }
+    | { kind: 'item'; serviceId?: string | null; label: string }
+    | { kind: 'manager'; label: string }
+    | { kind: 'status'; status: string }
+    | { kind: 'trend'; bucket: string }
+  >(null)
 
   const catalogHook = useAdditionalServiceCatalog(includeInactive)
 
@@ -447,6 +456,9 @@ export function ServicesPage() {
           onOrderFormChange={setOrderForm}
           onCreateOrder={handleCreateOrder}
           services={catalogHook.services}
+          drilldown={ordersDrilldown}
+          analyticsTrendBucket={analyticsTrendBucket}
+          onClearDrilldown={() => setOrdersDrilldown(null)}
         />
       )}
       {tab === 'analytics' && (
@@ -459,6 +471,20 @@ export function ServicesPage() {
           onAnalyticsDaysChange={setAnalyticsDays}
           onAnalyticsTrendBucketChange={setAnalyticsTrendBucket}
           onAnalyticsSliceByChange={setAnalyticsSliceBy}
+          onDrilldown={(next) => {
+            setOrdersDrilldown(next)
+            if (next.kind === 'status') {
+              setStatusFilter(next.status)
+            } else {
+              setStatusFilter('all')
+            }
+            if (next.kind === 'order') {
+              setSelectedOrderId(next.orderId)
+            } else {
+              setSelectedOrderId(null)
+            }
+            setTab('orders')
+          }}
           formatStatus={(status) => t(`app.services.status.order.${status}`)}
         />
       )}
@@ -709,6 +735,9 @@ type OrdersTabProps = {
   onOrderFormChange: (value: NewOrderFormState) => void
   onCreateOrder: (event: FormEvent) => void
   services: AdditionalService[]
+  drilldown: null | { kind: 'order'; orderId: string } | { kind: 'client'; ownerKind: string; ownerId?: string | null } | { kind: 'item'; serviceId?: string | null; label: string } | { kind: 'manager'; label: string } | { kind: 'status'; status: string } | { kind: 'trend'; bucket: string }
+  analyticsTrendBucket: 'week' | 'month'
+  onClearDrilldown: () => void
 }
 
 type OrderOwnerChoice = 'candidate' | 'vacancy' | 'company'
@@ -731,6 +760,9 @@ function OrdersTab({
   onOrderFormChange,
   onCreateOrder,
   services,
+  drilldown,
+  analyticsTrendBucket,
+  onClearDrilldown,
 }: OrdersTabProps) {
   const { t } = useI18n()
   const orderStatusLabels = useMemo(() => {
@@ -986,6 +1018,44 @@ function OrdersTab({
   }
 
   const showCompanyResults = ownerChoice === 'company' && companyQuery.trim().length >= 2
+
+  const trendBucketForDate = (value: string) => {
+    const dt = new Date(value)
+    if (Number.isNaN(dt.getTime())) return ''
+    if (analyticsTrendBucket === 'week') {
+      const tmp = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()))
+      const dayNum = tmp.getUTCDay() || 7
+      tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum)
+      const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1))
+      const weekNo = Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+      return `${tmp.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`
+    }
+    return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}`
+  }
+
+  const managerLabelForOrder = (order: AdditionalServiceOrder) => {
+    return order.assigned_to ? `Manager ${order.assigned_to.slice(0, 8)}` : 'Unassigned'
+  }
+
+  const visibleOrders = useMemo(() => {
+    if (!drilldown) return orders
+    return orders.filter((order) => {
+      if (drilldown.kind === 'order') return order.id === drilldown.orderId
+      if (drilldown.kind === 'client') {
+        if (drilldown.ownerKind === 'company') return order.company_id === drilldown.ownerId
+        if (drilldown.ownerKind === 'candidate') return order.candidate_id === drilldown.ownerId
+        if (drilldown.ownerKind === 'vacancy') return order.vacancy_id === drilldown.ownerId
+        return false
+      }
+      if (drilldown.kind === 'item') {
+        return order.items.some((item) => (drilldown.serviceId ? item.service_id === drilldown.serviceId : (item.service?.name || item.service?.code) === drilldown.label))
+      }
+      if (drilldown.kind === 'manager') return managerLabelForOrder(order) === drilldown.label
+      if (drilldown.kind === 'status') return order.status === drilldown.status
+      if (drilldown.kind === 'trend') return trendBucketForDate(order.created_at) === drilldown.bucket
+      return true
+    })
+  }, [orders, drilldown, analyticsTrendBucket])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
@@ -1317,21 +1387,33 @@ function OrdersTab({
         <div className="app-surface p-0 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
             <h2 className="text-lg font-semibold">{t('app.services.orders.list.title')}</h2>
-            <select
-              className="input w-auto py-1 text-sm"
-              value={statusFilter}
-              onChange={(e) => onStatusFilterChange(e.target.value)}
-            >
-              <option value="all">{t('app.services.orders.filters.status_all')}</option>
-              {ORDER_STATUSES.map((status) => (
-                <option key={status} value={status}>{orderStatusLabels[status] ?? status}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              {drilldown && (
+                <button type="button" className="btn-secondary btn-xs" onClick={onClearDrilldown}>
+                  {t('app.services.analytics.drilldown.clear', { defaultValue: 'Clear drilldown' })}
+                </button>
+              )}
+              <select
+                className="input w-auto py-1 text-sm"
+                value={statusFilter}
+                onChange={(e) => onStatusFilterChange(e.target.value)}
+              >
+                <option value="all">{t('app.services.orders.filters.status_all')}</option>
+                {ORDER_STATUSES.map((status) => (
+                  <option key={status} value={status}>{orderStatusLabels[status] ?? status}</option>
+                ))}
+              </select>
+            </div>
           </div>
+          {drilldown && (
+            <div className="border-b border-slate-200 bg-brand-50 px-4 py-2 text-xs text-brand-800">
+              {t('app.services.analytics.drilldown.active', { defaultValue: 'Analytics drilldown is active. Orders list is scoped to the selected metric.' })}
+            </div>
+          )}
           <div className="max-h-[420px] overflow-auto px-4 py-3">
             {loading ? (
               <div className="px-4 py-6 text-center text-sm text-slate-500">{t('app.services.orders.list.loading')}</div>
-            ) : orders.length === 0 ? (
+            ) : visibleOrders.length === 0 ? (
               <div className="px-2 py-4">
                 <EmptyStatePanel
                   compact
@@ -1351,7 +1433,7 @@ function OrdersTab({
               </div>
             ) : (
               <ul className="space-y-3">
-                {orders.map((ord) => (
+                {visibleOrders.map((ord) => (
                   <li key={ord.id}>
                     <button
                       type="button"
@@ -1420,6 +1502,14 @@ type ServicesAnalyticsTabProps = {
   onAnalyticsDaysChange: (value: 30 | 90 | 180) => void
   onAnalyticsTrendBucketChange: (value: 'week' | 'month') => void
   onAnalyticsSliceByChange: (value: 'client' | 'item' | 'status' | 'manager') => void
+  onDrilldown: (value:
+    | { kind: 'order'; orderId: string }
+    | { kind: 'client'; ownerKind: string; ownerId?: string | null }
+    | { kind: 'item'; serviceId?: string | null; label: string }
+    | { kind: 'manager'; label: string }
+    | { kind: 'status'; status: string }
+    | { kind: 'trend'; bucket: string }
+  ) => void
   formatStatus: (status: string) => string
 }
 
@@ -1434,6 +1524,7 @@ function ServicesAnalyticsTab({
   onAnalyticsDaysChange,
   onAnalyticsTrendBucketChange,
   onAnalyticsSliceByChange,
+  onDrilldown,
   formatStatus,
 }: ServicesAnalyticsTabProps) {
   const { t } = useI18n()
@@ -1590,7 +1681,7 @@ function ServicesAnalyticsTab({
               </thead>
               <tbody>
                 {analytics?.status_breakdown.map((row) => (
-                  <tr key={row.status}>
+                  <tr key={row.status} className="cursor-pointer hover:bg-brand-50/40" onClick={() => onDrilldown({ kind: 'status', status: row.status })}>
                     <td>{formatStatus(row.status)}</td>
                     <td className="text-right font-medium">{row.count}</td>
                   </tr>
@@ -1609,7 +1700,12 @@ function ServicesAnalyticsTab({
           {(analytics?.top_items.length ?? 0) > 0 ? (
             <ul className="space-y-2 text-sm">
               {analytics?.top_items.map((service) => (
-                <li key={service.label} className="flex items-center justify-between gap-2">
+                <li key={service.label}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1 text-left hover:bg-brand-50/40"
+                    onClick={() => onDrilldown({ kind: 'item', serviceId: service.service_id, label: service.label })}
+                  >
                   <div>
                     <p className="font-medium">{service.label}</p>
                     <p className="text-xs text-slate-500">
@@ -1617,6 +1713,7 @@ function ServicesAnalyticsTab({
                     </p>
                   </div>
                   <span className="text-sm font-semibold">{service.total}</span>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -1644,8 +1741,8 @@ function ServicesAnalyticsTab({
                 </tr>
               </thead>
               <tbody>
-                {analytics?.trends.map((row) => (
-                  <tr key={row.bucket}>
+              {analytics?.trends.map((row) => (
+                  <tr key={row.bucket} className="cursor-pointer hover:bg-brand-50/40" onClick={() => onDrilldown({ kind: 'trend', bucket: row.bucket })}>
                     <td>{row.bucket}</td>
                     <td className="text-right">{row.orders}</td>
                     <td className="text-right">{row.delivered}</td>
@@ -1676,8 +1773,17 @@ function ServicesAnalyticsTab({
                 </tr>
               </thead>
               <tbody>
-                {analytics?.slices.map((row) => (
-                  <tr key={row.label}>
+              {analytics?.slices.map((row) => (
+                  <tr
+                    key={row.label}
+                    className="cursor-pointer hover:bg-brand-50/40"
+                    onClick={() => {
+                      if (row.slice_kind === 'item') onDrilldown({ kind: 'item', label: row.label })
+                      else if (row.slice_kind === 'status' && row.slice_value) onDrilldown({ kind: 'status', status: row.slice_value })
+                      else if (row.slice_kind === 'manager') onDrilldown({ kind: 'manager', label: row.label })
+                      else onDrilldown({ kind: 'client', ownerKind: row.owner_kind || 'company', ownerId: row.slice_value })
+                    }}
+                  >
                     <td>{row.label}</td>
                     <td className="text-right">{row.orders}</td>
                     <td className="text-right">{formatAmount(row.revenue)}</td>
@@ -1709,7 +1815,11 @@ function ServicesAnalyticsTab({
             </thead>
             <tbody>
               {analytics?.top_clients.map((client) => (
-                <tr key={client.label}>
+                <tr
+                  key={client.label}
+                  className="cursor-pointer hover:bg-brand-50/40"
+                  onClick={() => onDrilldown({ kind: 'client', ownerKind: client.owner_kind, ownerId: client.owner_id })}
+                >
                   <td>{client.label}</td>
                   <td className="text-right">{client.orders}</td>
                   <td className="text-right">{formatAmount(client.revenue)}</td>
@@ -1731,7 +1841,12 @@ function ServicesAnalyticsTab({
         {(analytics?.hot_orders.length ?? 0) > 0 ? (
           <ul className="divide-y divide-slate-100 text-sm">
             {analytics?.hot_orders.map((entry) => (
-              <li key={entry.order_id} className="flex flex-col gap-1 py-3">
+              <li key={entry.order_id}>
+                <button
+                  type="button"
+                  className="flex w-full flex-col gap-1 rounded-lg py-3 text-left hover:bg-brand-50/40"
+                  onClick={() => onDrilldown({ kind: 'order', orderId: entry.order_id })}
+                >
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{entry.label}</span>
                   <span className="text-xs text-slate-500">{formatStatus(entry.status)}</span>
@@ -1739,6 +1854,7 @@ function ServicesAnalyticsTab({
                 <div className="text-xs text-slate-500">
                   {t(`app.services.analytics.hot_services.reason.${entry.reason}`)} · {describeOwner(entry.owner_kind)}
                 </div>
+                </button>
               </li>
             ))}
           </ul>

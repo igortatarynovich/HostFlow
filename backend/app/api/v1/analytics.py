@@ -484,8 +484,8 @@ async def services_overview(
     estimated_items = 0
     missing_items = 0
     status_counter: TCounter[str] = Counter()
-    top_items_map: dict[str, dict[str, float | int | str]] = {}
-    top_clients_map: dict[str, dict[str, float | int | str]] = {}
+    top_items_map: dict[str, dict[str, float | int | str | None]] = {}
+    top_clients_map: dict[str, dict[str, float | int | str | None]] = {}
     trend_map: dict[str, dict[str, float | int | str]] = {}
     slice_map: dict[str, dict[str, float | int | str]] = {}
     hot_orders: list[ServicesAnalyticsHotOrderOut] = []
@@ -530,6 +530,7 @@ async def services_overview(
                 last30_cancelled += 1
 
         client_label, owner_kind = owner_label_and_kind(order)
+        owner_id = str(order.company_id or order.candidate_id or order.vacancy_id or "") or None
         slice_label = (
             client_label
             if slice_by == "client"
@@ -541,6 +542,8 @@ async def services_overview(
         )
         client_entry = top_clients_map.get(client_label) or {
             "label": client_label,
+            "owner_kind": owner_kind,
+            "owner_id": owner_id,
             "revenue": 0.0,
             "profit": 0.0,
             "orders": 0,
@@ -578,6 +581,7 @@ async def services_overview(
             if first_item_label == "Unknown":
                 first_item_label = item_label
             item_entry = top_items_map.get(item_label) or {
+                "service_id": str(getattr(item, "service_id", "") or "") or None,
                 "label": item_label,
                 "total": 0,
                 "pending": 0,
@@ -619,6 +623,9 @@ async def services_overview(
         if slice_label:
             slice_entry = slice_map.get(slice_label) or {
                 "label": slice_label,
+                "slice_kind": slice_by,
+                "slice_value": owner_id if slice_by == "client" else slice_label,
+                "owner_kind": owner_kind if slice_by == "client" else None,
                 "orders": 0,
                 "revenue": 0.0,
                 "profit": 0.0,
@@ -677,6 +684,7 @@ async def services_overview(
         ],
         top_items=[
             ServicesAnalyticsTopItemOut(
+                service_id=str(entry["service_id"]) if entry.get("service_id") else None,
                 label=str(entry["label"]),
                 total=int(entry["total"]),
                 pending=int(entry["pending"]),
@@ -687,6 +695,8 @@ async def services_overview(
         ],
         top_clients=[
             ServicesAnalyticsTopClientOut(
+                owner_kind=str(entry["owner_kind"]),
+                owner_id=str(entry["owner_id"]) if entry.get("owner_id") else None,
                 label=str(entry["label"]),
                 revenue=round(float(entry["revenue"]), 2),
                 profit=round(float(entry["profit"]), 2),
@@ -708,6 +718,9 @@ async def services_overview(
         slices=[
             {
                 "label": str(entry["label"]),
+                "slice_kind": entry.get("slice_kind"),
+                "slice_value": entry.get("slice_value"),
+                "owner_kind": entry.get("owner_kind"),
                 "orders": int(entry["orders"]),
                 "revenue": round(float(entry["revenue"]), 2),
                 "profit": round(float(entry["profit"]), 2),
@@ -1601,6 +1614,7 @@ class ServicesAnalyticsStatusRowOut(BaseModel):
 
 
 class ServicesAnalyticsTopItemOut(BaseModel):
+    service_id: Optional[str] = None
     label: str
     total: int
     pending: int
@@ -1609,6 +1623,8 @@ class ServicesAnalyticsTopItemOut(BaseModel):
 
 
 class ServicesAnalyticsTopClientOut(BaseModel):
+    owner_kind: str
+    owner_id: Optional[str] = None
     label: str
     revenue: float
     profit: float
@@ -1634,7 +1650,7 @@ class ServicesAnalyticsOverviewOut(BaseModel):
     top_clients: list[ServicesAnalyticsTopClientOut]
     hot_orders: list[ServicesAnalyticsHotOrderOut]
     trends: list[dict[str, float | int | str]]
-    slices: list[dict[str, float | int | str]]
+    slices: list[dict[str, float | int | str | None]]
 
 
 @router.post("/analytics/events")
