@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { listInvoices } from '../api/client'
 import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
@@ -46,7 +46,7 @@ function statusBadgeClass(status: InvoiceStatus): string {
 
 export default function InvoicesPage() {
   const { t } = useI18n()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,6 +55,39 @@ export default function InvoicesPage() {
   const companyIdFilter = searchParams.get('company_id') || ''
   const serviceOrderIdFilter = searchParams.get('service_order_id') || ''
   const urlStatusFilter = (searchParams.get('status') || '') as InvoiceStatus | ''
+  const activeFilterChips = useMemo(
+    () =>
+      [
+        companyIdFilter
+          ? {
+              key: 'company_id',
+              label: t('app.invoices.drilldown.company', {
+                defaultValue: 'Client: {{id}}',
+                values: { id: companyIdFilter.slice(0, 8) },
+              }),
+            }
+          : null,
+        serviceOrderIdFilter
+          ? {
+              key: 'service_order_id',
+              label: t('app.invoices.drilldown.service_order', {
+                defaultValue: 'Service order: {{id}}',
+                values: { id: serviceOrderIdFilter.slice(0, 8) },
+              }),
+            }
+          : null,
+        statusFilter
+          ? {
+              key: 'status',
+              label: t('app.invoices.drilldown.status', {
+                defaultValue: 'Status: {{status}}',
+                values: { status: statusFilter },
+              }),
+            }
+          : null,
+      ].filter(Boolean) as Array<{ key: string; label: string }>,
+    [companyIdFilter, serviceOrderIdFilter, statusFilter, t],
+  )
 
   useEffect(() => {
     if (urlStatusFilter && urlStatusFilter !== statusFilter) {
@@ -90,6 +123,20 @@ export default function InvoicesPage() {
     }
   }, [companyIdFilter, serviceOrderIdFilter, statusFilter, reloadKey])
 
+  const clearFilter = (key: 'company_id' | 'service_order_id' | 'status') => {
+    const next = new URLSearchParams(searchParams)
+    next.delete(key)
+    if (key === 'status') {
+      setStatusFilter('')
+    }
+    setSearchParams(next)
+  }
+
+  const clearAllFilters = () => {
+    setStatusFilter('')
+    setSearchParams(new URLSearchParams())
+  }
+
   return (
     <div className="h-full w-full flex flex-col space-y-4 p-6">
       <div className="flex items-center justify-between">
@@ -124,17 +171,19 @@ export default function InvoicesPage() {
               ))}
             </select>
           </label>
-          {(companyIdFilter || serviceOrderIdFilter) && (
-            <div className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs text-brand-800">
-              {companyIdFilter
-                ? t('app.invoices.drilldown.company', {
-                    defaultValue: 'Filtered by client: {{id}}',
-                    values: { id: companyIdFilter.slice(0, 8) },
-                  })
-                : t('app.invoices.drilldown.service_order', {
-                    defaultValue: 'Filtered by service order: {{id}}',
-                    values: { id: serviceOrderIdFilter.slice(0, 8) },
-                  })}
+          {activeFilterChips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {activeFilterChips.map((chip) => (
+                <span key={chip.key} className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs text-brand-800">
+                  {chip.label}
+                  <button type="button" className="btn-secondary btn-xs" onClick={() => clearFilter(chip.key as 'company_id' | 'service_order_id' | 'status')}>
+                    {t('common.actions.clear', { defaultValue: 'Clear' })}
+                  </button>
+                </span>
+              ))}
+              <button type="button" className="btn-secondary btn-sm" onClick={clearAllFilters}>
+                {t('app.invoices.clear_filters', { defaultValue: 'Clear filters' })}
+              </button>
             </div>
           )}
         </div>
@@ -175,6 +224,9 @@ export default function InvoicesPage() {
                     {t('app.invoices.total', { defaultValue: 'Total' })}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t('app.invoices.context', { defaultValue: 'Context' })}
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {t('app.invoices.paid', { defaultValue: 'Paid' })}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -197,6 +249,20 @@ export default function InvoicesPage() {
                     <td className="py-3 px-4 text-sm text-slate-700">{formatDate(invoice.due_date)}</td>
                     <td className="py-3 px-4 text-sm font-semibold text-slate-900">
                       {formatAmount(invoice.total_amount)}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-slate-700">
+                      <div className="flex flex-wrap gap-2">
+                        {invoice.company_id && (
+                          <Link to={`/app/clients/${invoice.company_id}`} className="text-brand-700 hover:underline">
+                            {t('app.invoices.open_client', { defaultValue: 'Open client' })}
+                          </Link>
+                        )}
+                        {invoice.service_order_id && (
+                          <Link to={`/app/services?order=${invoice.service_order_id}`} className="text-brand-700 hover:underline">
+                            {t('app.invoices.open_service_order', { defaultValue: 'Open service order' })}
+                          </Link>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-700">{formatAmount(invoice.paid_amount)}</td>
                     <td className="py-3 px-4">
