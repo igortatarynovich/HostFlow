@@ -78,6 +78,10 @@ function invoiceActionMeta(action: string, t: ReturnType<typeof useI18n>['t']): 
       return { title: t('app.invoices.timeline.sent', { defaultValue: 'Invoice sent' }), tone: 'default' }
     case 'invoice.payment_recorded':
       return { title: t('app.invoices.timeline.paid', { defaultValue: 'Payment recorded' }), tone: 'success' }
+    case 'invoice.reminder_created':
+      return { title: t('app.invoices.timeline.reminder', { defaultValue: 'Follow-up reminder' }), tone: 'default' }
+    case 'invoice.reminder_completed':
+      return { title: t('app.invoices.timeline.reminder_completed', { defaultValue: 'Reminder completed' }), tone: 'success' }
     case 'invoice.cancelled':
       return { title: t('app.invoices.timeline.cancelled', { defaultValue: 'Invoice cancelled' }), tone: 'warning' }
     case 'invoice.status_changed':
@@ -137,6 +141,10 @@ export default function InvoiceDetailPage() {
       const detail =
         activity.action === 'invoice.payment_recorded'
           ? `${formatAmount(Number(activity.payload?.amount || 0))} • ${String(activity.payload?.method || '-')}`
+          : activity.action === 'invoice.reminder_created'
+            ? `${String(activity.payload?.title || '-')} • due ${formatDateTime(activity.payload?.due_at || null)}`
+            : activity.action === 'invoice.reminder_completed'
+              ? `${String(activity.payload?.title || '-')} • ${formatDateTime(activity.payload?.completed_at || null)}`
           : activity.action === 'invoice.sent'
             ? String(activity.payload?.recipient_email || invoice.billing_details?.email || '-')
             : nextStatus
@@ -150,17 +158,8 @@ export default function InvoiceDetailPage() {
         tone: meta.tone,
       }
     })
-    reminders.forEach((reminder) => {
-      items.push({
-        key: `reminder:${reminder.id}`,
-        ts: reminder.created_at || reminder.updated_at || reminder.due_at,
-        title: t('app.invoices.timeline.reminder', { defaultValue: 'Follow-up reminder' }),
-        detail: `${reminder.title || '-'} • ${reminder.status}`,
-        tone: reminder.status === 'done' ? 'success' : reminder.status === 'overdue' ? 'warning' : 'default',
-      })
-    })
     return items.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime())
-  }, [activities, invoice, reminders, t])
+  }, [activities, invoice, t])
 
   const outstandingAmount = useMemo(() => {
     if (!invoice) return 0

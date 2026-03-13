@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.reminder_event import ReminderEvent
+from backend.app.services.audit import log_activity
 from backend.app.services.user_notifications import create_notification
 
 DEFAULT_REMIND_OFFSET_MINUTES = 15
@@ -48,6 +49,34 @@ def _log_event(
     )
     db.add(event)
     return event
+
+
+async def _log_invoice_reminder_activity(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    reminder: Reminder,
+    actor_id: Optional[str],
+    action: str,
+    payload: Optional[dict] = None,
+) -> None:
+    if reminder.entity_type != "invoice" or not reminder.entity_id:
+        return
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action=action,
+        target_type="invoice",
+        target_id=reminder.entity_id,
+        payload={
+            "invoice_id": reminder.entity_id,
+            "reminder_id": reminder.id,
+            "title": reminder.title,
+            "status": reminder.status,
+            **(payload or {}),
+        },
+    )
 
 
 def _normalize_remind_at(
@@ -113,6 +142,14 @@ async def create_reminder(
         tenant_id=tenant_id,
         event_type="created",
         payload={"actor_id": actor_id},
+    )
+    await _log_invoice_reminder_activity(
+        db,
+        tenant_id=tenant_id,
+        reminder=reminder,
+        actor_id=actor_id,
+        action="invoice.reminder_created",
+        payload={"due_at": reminder.due_at.isoformat(), "remind_at": reminder.remind_at.isoformat() if reminder.remind_at else None},
     )
     return reminder
 
@@ -318,6 +355,14 @@ async def complete_reminder(
         tenant_id=tenant_id,
         event_type="completed",
         payload={"actor_id": actor_id, "completed_at": ts.isoformat()},
+    )
+    await _log_invoice_reminder_activity(
+        db,
+        tenant_id=tenant_id,
+        reminder=reminder,
+        actor_id=actor_id,
+        action="invoice.reminder_completed",
+        payload={"completed_at": ts.isoformat()},
     )
     await _spawn_next_recurrence(db, tenant_id=tenant_id, actor_id=actor_id, reminder=reminder)
     return reminder
