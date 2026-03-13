@@ -6,6 +6,7 @@ import { listAdditionalServices } from '../api/additionalServices'
 import { createInvoice, getCompany, getInvoice, listCompanies, updateInvoice } from '../api/client'
 import type { AdditionalService, Company, Invoice } from '../api/types'
 import { useI18n } from '../i18n'
+import { useAuth } from '../store/useAuth'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 
 type InvoiceItemDraft = {
@@ -132,6 +133,7 @@ function addDays(isoValue: string, days: number) {
 
 export default function InvoiceCreatePage() {
   const { t } = useI18n()
+  const { me } = useAuth()
   const navigate = useNavigate()
   const { id: invoiceId } = useParams<{ id?: string }>()
   const [searchParams] = useSearchParams()
@@ -350,9 +352,13 @@ export default function InvoiceCreatePage() {
 
   useEffect(() => {
     if (!issuerCompanyId && companies.length > 0) {
-      setIssuerCompanyId(companies[0].id)
+      const selfId = String((me as any)?.sub || '').trim()
+      const ownedCompany =
+        (selfId ? companies.find((company) => String(company.owner_user_id || '') === selfId) : null) ||
+        companies[0]
+      setIssuerCompanyId(ownedCompany.id)
     }
-  }, [companies, issuerCompanyId])
+  }, [companies, issuerCompanyId, me])
 
   useEffect(() => {
     if (!invoiceId) return
@@ -470,6 +476,43 @@ export default function InvoiceCreatePage() {
         issuerBankAccount
       const issuerAddress = extractIssuerAddress(issuerCompany)
       const clientBilling = extractCompanyBillingSnapshot(clientCompany)
+
+      if (!issuerCompany?.id) {
+        setError(t('app.invoices.issuer_required', { defaultValue: 'Issuer company is required.' }))
+        setSaving(false)
+        return
+      }
+      if (!issuerCompany?.tax_id) {
+        setError(t('app.invoices.issuer_tax_id_required', { defaultValue: 'Issuer tax ID/NIP is required for invoices.' }))
+        setSaving(false)
+        return
+      }
+      if (!issuerAddress) {
+        setError(t('app.invoices.issuer_address_required', { defaultValue: 'Issuer legal address is required for invoices.' }))
+        setSaving(false)
+        return
+      }
+      if (!selectedIssuerBankAccount?.iban) {
+        setError(t('app.invoices.issuer_bank_required', { defaultValue: 'Issuer bank account is required for invoices.' }))
+        setSaving(false)
+        return
+      }
+      if (!clientBilling.company_name) {
+        setError(t('app.invoices.client_legal_name_required', { defaultValue: 'Client legal name is required for invoices.' }))
+        setSaving(false)
+        return
+      }
+      if (!clientBilling.tax_id) {
+        setError(t('app.invoices.client_tax_id_required', { defaultValue: 'Client tax ID/NIP is required for invoices.' }))
+        setSaving(false)
+        return
+      }
+      if (!clientBilling.address) {
+        setError(t('app.invoices.client_address_required', { defaultValue: 'Client legal address is required for invoices.' }))
+        setSaving(false)
+        return
+      }
+
       const payload = {
         company_id: companyId,
         issue_date: issueDate,
@@ -587,7 +630,7 @@ export default function InvoiceCreatePage() {
                 <option value="">{t('app.invoices.select_issuer', { defaultValue: 'Select issuer' })}</option>
                 {companies.map((company) => (
                   <option key={company.id} value={company.id}>
-                    {company.legal_name || company.name}
+                    {[company.legal_name || company.name, String(company.owner_user_id || '') === String((me as any)?.sub || '') ? 'owner' : ''].filter(Boolean).join(' · ')}
                   </option>
                 ))}
               </select>
@@ -775,10 +818,16 @@ export default function InvoiceCreatePage() {
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.client', { defaultValue: 'Client' })}</dt>
               <dd className="mt-1 text-slate-900">{companies.find((company) => company.id === companyId)?.name || '-'}</dd>
+              <div className="mt-1 text-xs text-slate-500">
+                {extractCompanyBillingSnapshot(clientCompany).tax_id || t('app.invoices.client_tax_id_required', { defaultValue: 'Client tax ID/NIP is required for invoices.' })}
+              </div>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.issuer', { defaultValue: 'Issuer company' })}</dt>
               <dd className="mt-1 text-slate-900">{issuerCompany?.legal_name || issuerCompany?.name || '-'}</dd>
+              <div className="mt-1 text-xs text-slate-500">
+                {issuerCompany?.tax_id || t('app.invoices.issuer_tax_id_required', { defaultValue: 'Issuer tax ID/NIP is required for invoices.' })}
+              </div>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.recipient', { defaultValue: 'Recipient' })}</dt>
