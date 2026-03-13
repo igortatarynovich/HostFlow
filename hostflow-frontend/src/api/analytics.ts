@@ -36,6 +36,36 @@ export type AnalyticsProfileSummary = {
   }
 }
 
+export type ServicesAnalyticsOverview = {
+  generated_at: string
+  totals: {
+    orders_total: number
+    delivered_orders: number
+    cancelled_orders: number
+    revenue: number
+    estimated_cost: number
+    actual_cost: number
+    gross_profit: number
+    gross_margin: number
+    cost_coverage: number
+  }
+  last30: {
+    total: number
+    delivered: number
+    cancelled: number
+    cancellation_rate: number
+  }
+  data_quality: {
+    confirmed_items: number
+    estimated_items: number
+    missing_items: number
+  }
+  status_breakdown: Array<{ status: string; count: number }>
+  top_items: Array<{ label: string; total: number; pending: number; revenue: number; profit: number }>
+  top_clients: Array<{ label: string; revenue: number; profit: number; orders: number }>
+  hot_orders: Array<{ order_id: string; label: string; reason: string; owner_kind: string; status: string; updated_at?: string | null }>
+}
+
 export type TrialRetentionEventPayload = {
   event: 'trial_retention_nudge'
   action: 'impression' | 'cta_click' | 'dismiss'
@@ -104,6 +134,11 @@ export async function getDocumentStats(params?: {
 
 export async function getAnalyticsProfileSummary(): Promise<AnalyticsProfileSummary> {
   const { data } = await api.get<AnalyticsProfileSummary>('/analytics/profile-summary')
+  return data
+}
+
+export async function getServicesAnalyticsOverview(): Promise<ServicesAnalyticsOverview> {
+  const { data } = await api.get<ServicesAnalyticsOverview>('/analytics/services-overview')
   return data
 }
 

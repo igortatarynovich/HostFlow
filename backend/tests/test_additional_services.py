@@ -196,6 +196,16 @@ async def test_additional_services_end_to_end():
             summary = summary_resp.json()
             assert summary["missing_documents"] == {}
 
+            analytics_resp = await client.get(
+                "/api/v1/analytics/services-overview",
+                headers=headers,
+            )
+            assert analytics_resp.status_code == 200, analytics_resp.text
+            analytics_body = analytics_resp.json()
+            assert float(analytics_body["totals"]["revenue"]) >= 320.0
+            assert float(analytics_body["totals"]["estimated_cost"]) >= 190.0
+            assert analytics_body["data_quality"]["estimated_items"] >= 1
+
             docs_resp = await client.get(
                 "/api/v1/documents",
                 headers=headers,

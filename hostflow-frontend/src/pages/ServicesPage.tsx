@@ -26,7 +26,7 @@ import { usePermissions } from '../hooks/usePermissions'
 import { searchCandidates } from '../api/candidates'
 import { listCompanies } from '../api/client'
 import { listVacancies } from '../api/vacancies'
-import { getAnalyticsProfileSummary } from '../api/analytics'
+import { getAnalyticsProfileSummary, getServicesAnalyticsOverview, type ServicesAnalyticsOverview } from '../api/analytics'
 import { useI18n } from '../i18n'
 import { ORDER_STATUSES, SCHEDULE_STATUSES, ITEM_STATUSES, DOCUMENT_STATUSES } from '../modules/services/constants'
 import type { NewServiceFormState, NewOrderFormState } from '../modules/services/types'
@@ -75,6 +75,7 @@ export function ServicesPage() {
   const [orderForm, setOrderForm] = useState<NewOrderFormState>(initialOrderState)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [profileSummary, setProfileSummary] = useState<Awaited<ReturnType<typeof getAnalyticsProfileSummary>> | null>(null)
+  const [analyticsOverview, setAnalyticsOverview] = useState<ServicesAnalyticsOverview | null>(null)
 
   const catalogHook = useAdditionalServiceCatalog(includeInactive)
 
@@ -107,6 +108,20 @@ export function ServicesPage() {
       active = false
     }
   }, [])
+
+  useEffect(() => {
+    let active = true
+    getServicesAnalyticsOverview()
+      .then((data) => {
+        if (active) setAnalyticsOverview(data)
+      })
+      .catch(() => {
+        if (active) setAnalyticsOverview(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [ordersHook.orders, catalogHook.services])
 
   const handleCreateService = async (event: FormEvent) => {
     event.preventDefault()
@@ -433,8 +448,7 @@ export function ServicesPage() {
       )}
       {tab === 'analytics' && (
         <ServicesAnalyticsTab
-          orders={ordersHook.orders}
-          services={catalogHook.services}
+          analytics={analyticsOverview}
           profileSummary={profileSummary}
           formatStatus={(status) => t(`app.services.status.order.${status}`)}
         />
@@ -1389,146 +1403,15 @@ function OrdersTab({
 }
 
 type ServicesAnalyticsTabProps = {
-  orders: AdditionalServiceOrder[]
-  services: AdditionalService[]
+  analytics: ServicesAnalyticsOverview | null
   profileSummary: Awaited<ReturnType<typeof getAnalyticsProfileSummary>> | null
-  formatStatus: (status: ServiceOrderStatus) => string
+  formatStatus: (status: string) => string
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }: ServicesAnalyticsTabProps) {
+function ServicesAnalyticsTab({ analytics, profileSummary, formatStatus }: ServicesAnalyticsTabProps) {
   const { t } = useI18n()
-  const [nowTs, setNowTs] = useState(() => Date.now())
-
-  useEffect(() => {
-    setNowTs(Date.now())
-  }, [orders])
-  const statusRows = useMemo(() => {
-    const counts = new Map<ServiceOrderStatus, number>()
-    orders.forEach((order) => {
-      counts.set(order.status, (counts.get(order.status) ?? 0) + 1)
-    })
-    return Array.from(counts.entries())
-      .map(([status, count]) => ({ status, count }))
-      .sort((a, b) => b.count - a.count)
-  }, [orders])
-
-  const profitabilitySummary = useMemo(() => {
-    let revenue = 0
-    let estimatedCost = 0
-    let actualCost = 0
-    let confirmedItems = 0
-    let estimatedItems = 0
-    let missingItems = 0
-    orders.forEach((order) => {
-      revenue += Number(order.total_amount ?? 0)
-      order.items.forEach((item) => {
-        const estimated = Number(item.estimated_cost ?? 0)
-        const actual = typeof item.actual_cost === 'number' ? Number(item.actual_cost) : null
-        estimatedCost += estimated
-        if (actual !== null) {
-          actualCost += actual
-          confirmedItems += 1
-        } else if ((item.cost_status || 'missing') === 'estimated' || estimated > 0) {
-          estimatedItems += 1
-        } else {
-          missingItems += 1
-        }
-      })
-    })
-    const costBase = actualCost || estimatedCost
-    const grossProfit = revenue - costBase
-    const grossMargin = revenue > 0 ? Math.round((grossProfit / revenue) * 100) : 0
-    const totalItems = confirmedItems + estimatedItems + missingItems
-    const coverage = totalItems ? Math.round((confirmedItems / totalItems) * 100) : 0
-    return { revenue, estimatedCost, actualCost, grossProfit, grossMargin, confirmedItems, estimatedItems, missingItems, coverage }
-  }, [orders])
-
-  const topClients = useMemo(() => {
-    const stats = new Map<string, { label: string; revenue: number; profit: number; orders: number }>()
-    orders.forEach((order) => {
-      const label = order.company_id
-        ? `${t('app.services.analytics.owner.company', { defaultValue: 'Company' })} ${order.company_id.slice(0, 8)}`
-        : order.candidate_id
-        ? `${t('app.services.analytics.owner.candidate', { defaultValue: 'Candidate' })} ${order.candidate_id.slice(0, 8)}`
-        : order.vacancy_id
-        ? `${t('app.services.analytics.owner.vacancy', { defaultValue: 'Vacancy' })} ${order.vacancy_id.slice(0, 8)}`
-        : t('app.services.analytics.owner.unknown')
-      const entry = stats.get(label) ?? { label, revenue: 0, profit: 0, orders: 0 }
-      entry.revenue += Number(order.total_amount ?? 0)
-      entry.orders += 1
-      order.items.forEach((item) => {
-        const itemRevenue = Number(item.amount ?? 0)
-        const itemCost =
-          typeof item.actual_cost === 'number'
-            ? Number(item.actual_cost)
-            : Number(item.estimated_cost ?? 0)
-        entry.profit += itemRevenue - itemCost
-      })
-      stats.set(label, entry)
-    })
-    return Array.from(stats.values())
-      .sort((a, b) => b.profit - a.profit || b.revenue - a.revenue)
-      .slice(0, 5)
-  }, [orders, t])
-
-  const topServices = useMemo(() => {
-    const stats = new Map<string, { label: string; total: number; pending: number }>()
-    orders.forEach((order) => {
-      order.items.forEach((item) => {
-        const label = item.service?.name || item.service?.code || t('app.services.analytics.top_services.unknown')
-        const entry = stats.get(label) ?? { label, total: 0, pending: 0 }
-        entry.total += 1
-        if (item.status !== 'delivered') entry.pending += 1
-        stats.set(label, entry)
-      })
-    })
-    if (stats.size === 0 && services.length) {
-      services.slice(0, 5).forEach((svc) => {
-        stats.set(svc.name, { label: svc.name, total: 0, pending: 0 })
-      })
-    }
-    return Array.from(stats.values())
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5)
-  }, [orders, services, t])
-
-  const hotOrders = useMemo(() => {
-    const flagged = orders
-      .filter((order) => order.status !== 'delivered' && order.status !== 'refunded')
-      .map((order) => {
-        const hasScheduleIssue = order.items.some((item) => (item.schedules?.length ?? 0) === 0)
-        const hasDocsIssue = order.items.some(
-          (item) => (item.required_documents?.length ?? 0) > 0 && (item.attachments?.length ?? 0) === 0,
-        )
-        const reason = hasDocsIssue ? 'documents' : hasScheduleIssue ? 'schedule' : 'status'
-        const firstItem = order.items[0]
-        return {
-          order,
-          reason,
-          label: firstItem?.service?.name || firstItem?.service?.code || t('app.services.analytics.hot_services.unknown'),
-        }
-      })
-      .filter((entry) => entry.order.items.length > 0)
-      .sort((a, b) => {
-        const aTime = Date.parse(a.order.updated_at)
-        const bTime = Date.parse(b.order.updated_at)
-        return bTime - aTime
-      })
-      .slice(0, 5)
-    return flagged
-  }, [orders, t])
-
-  const last30Days = useMemo(() => {
-    const cutoff = nowTs - 30 * DAY_MS
-    const slice = orders.filter((order) => Date.parse(order.created_at) >= cutoff)
-    const total = slice.length
-    const delivered = slice.filter((order) => order.status === 'delivered').length
-    const cancelled = slice.filter((order) => order.status === 'cancelled' || order.status === 'refunded').length
-    const cancellationRate = total ? Math.round((cancelled / total) * 100) : 0
-    return { total, delivered, cancelled, cancellationRate }
-  }, [orders, nowTs])
 
   const servicesBusinessCards = useMemo(() => {
     if (!profileSummary || profileSummary.business_type !== 'services') return []
@@ -1552,10 +1435,10 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
     return Number(profileSummary.datasets?.unknown_company_classification || 0)
   }, [profileSummary])
 
-  const describeOwner = (order: AdditionalServiceOrder) => {
-    if (order.candidate_id) return t('app.services.analytics.owner.candidate')
-    if (order.vacancy_id) return t('app.services.analytics.owner.vacancy')
-    if (order.company_id) return t('app.services.analytics.owner.company')
+  const describeOwner = (ownerKind: string) => {
+    if (ownerKind === 'candidate') return t('app.services.analytics.owner.candidate')
+    if (ownerKind === 'vacancy') return t('app.services.analytics.owner.vacancy')
+    if (ownerKind === 'company') return t('app.services.analytics.owner.company')
     return t('app.services.analytics.owner.unknown')
   }
 
@@ -1582,42 +1465,42 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
       <div className="grid gap-4 md:grid-cols-4">
         <div className="card p-4">
           <div className="text-sm font-semibold">{t('app.services.analytics.last30.title')}</div>
-          <div className="mt-2 text-3xl font-semibold">{last30Days.total}</div>
+          <div className="mt-2 text-3xl font-semibold">{analytics?.last30.total ?? 0}</div>
           <p className="text-xs text-slate-500">{t('app.services.analytics.last30.subtitle')}</p>
           <dl className="mt-4 space-y-1 text-sm text-slate-600">
             <div className="flex justify-between">
               <dt>{t('app.services.analytics.last30.delivered')}</dt>
-              <dd className="font-medium">{last30Days.delivered}</dd>
+              <dd className="font-medium">{analytics?.last30.delivered ?? 0}</dd>
             </div>
             <div className="flex justify-between">
               <dt>{t('app.services.analytics.last30.cancelled')}</dt>
-              <dd className="font-medium">{last30Days.cancelled}</dd>
+              <dd className="font-medium">{analytics?.last30.cancelled ?? 0}</dd>
             </div>
             <div className="flex justify-between">
               <dt>{t('app.services.analytics.last30.rate')}</dt>
-              <dd className="font-medium">{last30Days.cancellationRate}%</dd>
+              <dd className="font-medium">{analytics?.last30.cancellation_rate ?? 0}%</dd>
             </div>
           </dl>
         </div>
         <div className="card p-4">
           <div className="text-sm font-semibold">{t('app.services.analytics.profitability.gross_profit', { defaultValue: 'Gross profit' })}</div>
-          <div className="mt-2 text-3xl font-semibold">{formatAmount(profitabilitySummary.grossProfit)}</div>
+          <div className="mt-2 text-3xl font-semibold">{formatAmount(analytics?.totals.gross_profit ?? 0)}</div>
           <p className="text-xs text-slate-500">
             {t('app.services.analytics.profitability.gross_margin', {
               defaultValue: 'Margin {{margin}}%',
-              values: { margin: profitabilitySummary.grossMargin },
+              values: { margin: analytics?.totals.gross_margin ?? 0 },
             })}
           </p>
         </div>
         <div className="card p-4">
           <div className="text-sm font-semibold">{t('app.services.analytics.profitability.cost_basis', { defaultValue: 'Cost basis' })}</div>
           <div className="mt-2 text-3xl font-semibold">
-            {formatAmount(profitabilitySummary.actualCost || profitabilitySummary.estimatedCost)}
+            {formatAmount((analytics?.totals.actual_cost || 0) || (analytics?.totals.estimated_cost || 0))}
           </div>
           <p className="text-xs text-slate-500">
             {t('app.services.analytics.profitability.coverage', {
               defaultValue: 'Confirmed cost coverage {{coverage}}%',
-              values: { coverage: profitabilitySummary.coverage },
+              values: { coverage: analytics?.totals.cost_coverage ?? 0 },
             })}
           </p>
         </div>
@@ -1626,15 +1509,15 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
           <dl className="mt-4 space-y-1 text-sm text-slate-600">
             <div className="flex justify-between">
               <dt>{t('app.services.analytics.profitability.confirmed', { defaultValue: 'Confirmed' })}</dt>
-              <dd className="font-medium">{profitabilitySummary.confirmedItems}</dd>
+              <dd className="font-medium">{analytics?.data_quality.confirmed_items ?? 0}</dd>
             </div>
             <div className="flex justify-between">
               <dt>{t('app.services.analytics.profitability.estimated', { defaultValue: 'Estimated' })}</dt>
-              <dd className="font-medium">{profitabilitySummary.estimatedItems}</dd>
+              <dd className="font-medium">{analytics?.data_quality.estimated_items ?? 0}</dd>
             </div>
             <div className="flex justify-between">
               <dt>{t('app.services.analytics.profitability.missing', { defaultValue: 'Missing' })}</dt>
-              <dd className="font-medium">{profitabilitySummary.missingItems}</dd>
+              <dd className="font-medium">{analytics?.data_quality.missing_items ?? 0}</dd>
             </div>
           </dl>
         </div>
@@ -1646,7 +1529,7 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
             <div className="text-sm font-semibold">{t('app.services.analytics.status_breakdown.title')}</div>
             <div className="text-xs text-slate-500">{t('app.services.analytics.status_breakdown.subtitle')}</div>
           </div>
-          {statusRows.length ? (
+          {(analytics?.status_breakdown.length ?? 0) > 0 ? (
             <table className="table">
               <thead>
                 <tr>
@@ -1655,7 +1538,7 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
                 </tr>
               </thead>
               <tbody>
-                {statusRows.map((row) => (
+                {analytics?.status_breakdown.map((row) => (
                   <tr key={row.status}>
                     <td>{formatStatus(row.status)}</td>
                     <td className="text-right font-medium">{row.count}</td>
@@ -1672,14 +1555,14 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
             <div className="text-sm font-semibold">{t('app.services.analytics.top_services.title')}</div>
             <div className="text-xs text-slate-500">{t('app.services.analytics.top_services.subtitle')}</div>
           </div>
-          {topServices.length ? (
+          {(analytics?.top_items.length ?? 0) > 0 ? (
             <ul className="space-y-2 text-sm">
-              {topServices.map((service) => (
+              {analytics?.top_items.map((service) => (
                 <li key={service.label} className="flex items-center justify-between gap-2">
                   <div>
                     <p className="font-medium">{service.label}</p>
                     <p className="text-xs text-slate-500">
-                      {t('app.services.analytics.top_services.pending', { values: { count: service.pending } })}
+                      {t('app.services.analytics.top_services.pending', { values: { count: service.pending } })} · {formatAmount(service.profit)}
                     </p>
                   </div>
                   <span className="text-sm font-semibold">{service.total}</span>
@@ -1697,7 +1580,7 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
           <div className="text-sm font-semibold">{t('app.services.analytics.top_clients.title', { defaultValue: 'Top clients' })}</div>
           <div className="text-xs text-slate-500">{t('app.services.analytics.top_clients.subtitle', { defaultValue: 'Ranked by profit and revenue' })}</div>
         </div>
-        {topClients.length ? (
+        {(analytics?.top_clients.length ?? 0) > 0 ? (
           <table className="table">
             <thead>
               <tr>
@@ -1708,7 +1591,7 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
               </tr>
             </thead>
             <tbody>
-              {topClients.map((client) => (
+              {analytics?.top_clients.map((client) => (
                 <tr key={client.label}>
                   <td>{client.label}</td>
                   <td className="text-right">{client.orders}</td>
@@ -1728,16 +1611,16 @@ function ServicesAnalyticsTab({ orders, services, profileSummary, formatStatus }
           <div className="text-sm font-semibold">{t('app.services.analytics.hot_services.title')}</div>
           <div className="text-xs text-slate-500">{t('app.services.analytics.hot_services.subtitle')}</div>
         </div>
-        {hotOrders.length ? (
+        {(analytics?.hot_orders.length ?? 0) > 0 ? (
           <ul className="divide-y divide-slate-100 text-sm">
-            {hotOrders.map((entry) => (
-              <li key={entry.order.id} className="flex flex-col gap-1 py-3">
+            {analytics?.hot_orders.map((entry) => (
+              <li key={entry.order_id} className="flex flex-col gap-1 py-3">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{entry.label}</span>
-                  <span className="text-xs text-slate-500">{formatStatus(entry.order.status)}</span>
+                  <span className="text-xs text-slate-500">{formatStatus(entry.status)}</span>
                 </div>
                 <div className="text-xs text-slate-500">
-                  {t(`app.services.analytics.hot_services.reason.${entry.reason}`)} · {describeOwner(entry.order)}
+                  {t(`app.services.analytics.hot_services.reason.${entry.reason}`)} · {describeOwner(entry.owner_kind)}
                 </div>
               </li>
             ))}

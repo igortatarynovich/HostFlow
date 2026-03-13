@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select, or_, and_, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 from uuid import UUID
 
 from backend.app.core.cache import cache_get, cache_set
@@ -30,6 +30,7 @@ from backend.app.models import (
     User,
     Vacancy,
 )
+from backend.app.models.additional_service import Service, ServiceItem
 from backend.app.models.tenant import TenantLink
 from backend.app.services.handoff import is_client_tenant_for_list
 from backend.app.models.enums import CandidateStage
@@ -446,6 +447,197 @@ async def profile_summary(
         }
 
     return profile
+
+
+@router.get("/analytics/services-overview", response_model=ServicesAnalyticsOverviewOut)
+async def services_overview(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+):
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    rows = (
+        await db.execute(
+            select(ServiceOrder)
+            .where(ServiceOrder.tenant_id == tenant_id_str)
+            .options(
+                selectinload(ServiceOrder.items).selectinload(ServiceItem.service),
+                selectinload(ServiceOrder.items).selectinload(ServiceItem.schedules),
+                selectinload(ServiceOrder.items).selectinload(ServiceItem.attachments),
+            )
+            .order_by(ServiceOrder.updated_at.desc())
+        )
+    ).scalars().all()
+
+    now = datetime.utcnow()
+    cutoff = now - timedelta(days=30)
+
+    revenue = 0.0
+    estimated_cost = 0.0
+    actual_cost = 0.0
+    delivered_orders = 0
+    cancelled_orders = 0
+    confirmed_items = 0
+    estimated_items = 0
+    missing_items = 0
+    status_counter: TCounter[str] = Counter()
+    top_items_map: dict[str, dict[str, float | int | str]] = {}
+    top_clients_map: dict[str, dict[str, float | int | str]] = {}
+    hot_orders: list[ServicesAnalyticsHotOrderOut] = []
+    last30_total = 0
+    last30_delivered = 0
+    last30_cancelled = 0
+
+    def owner_label_and_kind(order: ServiceOrder) -> tuple[str, str]:
+        if order.company_id:
+            return (f"Company {str(order.company_id)[:8]}", "company")
+        if order.candidate_id:
+            return (f"Candidate {str(order.candidate_id)[:8]}", "candidate")
+        if order.vacancy_id:
+            return (f"Vacancy {str(order.vacancy_id)[:8]}", "vacancy")
+        return ("Unknown", "unknown")
+
+    for order in rows:
+        status_value = str(order.status)
+        status_counter[status_value] += 1
+        order_revenue = _as_float(order.total_amount)
+        revenue += order_revenue
+        if status_value == "delivered":
+            delivered_orders += 1
+        if status_value in {"cancelled", "refunded"}:
+            cancelled_orders += 1
+        if order.created_at and order.created_at >= cutoff:
+            last30_total += 1
+            if status_value == "delivered":
+                last30_delivered += 1
+            if status_value in {"cancelled", "refunded"}:
+                last30_cancelled += 1
+
+        client_label, owner_kind = owner_label_and_kind(order)
+        client_entry = top_clients_map.get(client_label) or {
+            "label": client_label,
+            "revenue": 0.0,
+            "profit": 0.0,
+            "orders": 0,
+        }
+        client_entry["revenue"] = float(client_entry["revenue"]) + order_revenue
+        client_entry["orders"] = int(client_entry["orders"]) + 1
+
+        has_schedule_issue = False
+        has_docs_issue = False
+        first_item_label = "Unknown"
+        for item in order.items:
+            item_revenue = _as_float(item.amount)
+            item_estimated_cost = _as_float(getattr(item, "estimated_cost", 0))
+            raw_actual_cost = getattr(item, "actual_cost", None)
+            item_actual_cost = _as_float(raw_actual_cost) if raw_actual_cost is not None else 0.0
+            estimated_cost += item_estimated_cost
+            if raw_actual_cost is not None:
+                actual_cost += item_actual_cost
+                confirmed_items += 1
+            elif str(getattr(item, "cost_status", "missing")) == "estimated" or item_estimated_cost > 0:
+                estimated_items += 1
+            else:
+                missing_items += 1
+            item_cost = item_actual_cost if raw_actual_cost is not None else item_estimated_cost
+            item_profit = item_revenue - item_cost
+            client_entry["profit"] = float(client_entry["profit"]) + item_profit
+
+            item_label = (
+                str(getattr(getattr(item, "service", None), "name", None) or "")
+                or str(getattr(getattr(item, "service", None), "code", None) or "")
+                or "Unknown"
+            )
+            if first_item_label == "Unknown":
+                first_item_label = item_label
+            item_entry = top_items_map.get(item_label) or {
+                "label": item_label,
+                "total": 0,
+                "pending": 0,
+                "revenue": 0.0,
+                "profit": 0.0,
+            }
+            item_entry["total"] = int(item_entry["total"]) + 1
+            if str(item.status) != "delivered":
+                item_entry["pending"] = int(item_entry["pending"]) + 1
+            item_entry["revenue"] = float(item_entry["revenue"]) + item_revenue
+            item_entry["profit"] = float(item_entry["profit"]) + item_profit
+            top_items_map[item_label] = item_entry
+
+            has_schedule_issue = has_schedule_issue or len(getattr(item, "schedules", []) or []) == 0
+            has_docs_issue = has_docs_issue or (
+                bool(getattr(item, "required_documents", None)) and len(getattr(item, "attachments", []) or []) == 0
+            )
+
+        top_clients_map[client_label] = client_entry
+
+        if status_value not in {"delivered", "refunded"} and order.items:
+            hot_orders.append(
+                ServicesAnalyticsHotOrderOut(
+                    order_id=str(order.id),
+                    label=first_item_label,
+                    reason="documents" if has_docs_issue else "schedule" if has_schedule_issue else "status",
+                    owner_kind=owner_kind,
+                    status=status_value,
+                    updated_at=order.updated_at.isoformat() if order.updated_at else None,
+                )
+            )
+
+    cost_base = actual_cost or estimated_cost
+    gross_profit = revenue - cost_base
+    gross_margin = round((gross_profit / revenue) * 100) if revenue > 0 else 0
+    total_cost_items = confirmed_items + estimated_items + missing_items
+    coverage = round((confirmed_items / total_cost_items) * 100) if total_cost_items else 0
+    last30_rate = round((last30_cancelled / last30_total) * 100) if last30_total else 0
+
+    return ServicesAnalyticsOverviewOut(
+        generated_at=now.isoformat(),
+        totals={
+            "orders_total": len(rows),
+            "delivered_orders": delivered_orders,
+            "cancelled_orders": cancelled_orders,
+            "revenue": round(revenue, 2),
+            "estimated_cost": round(estimated_cost, 2),
+            "actual_cost": round(actual_cost, 2),
+            "gross_profit": round(gross_profit, 2),
+            "gross_margin": gross_margin,
+            "cost_coverage": coverage,
+        },
+        last30={
+            "total": last30_total,
+            "delivered": last30_delivered,
+            "cancelled": last30_cancelled,
+            "cancellation_rate": last30_rate,
+        },
+        data_quality={
+            "confirmed_items": confirmed_items,
+            "estimated_items": estimated_items,
+            "missing_items": missing_items,
+        },
+        status_breakdown=[
+            ServicesAnalyticsStatusRowOut(status=status, count=count)
+            for status, count in sorted(status_counter.items(), key=lambda item: item[1], reverse=True)
+        ],
+        top_items=[
+            ServicesAnalyticsTopItemOut(
+                label=str(entry["label"]),
+                total=int(entry["total"]),
+                pending=int(entry["pending"]),
+                revenue=round(float(entry["revenue"]), 2),
+                profit=round(float(entry["profit"]), 2),
+            )
+            for entry in sorted(top_items_map.values(), key=lambda item: (float(item["profit"]), float(item["revenue"])), reverse=True)[:5]
+        ],
+        top_clients=[
+            ServicesAnalyticsTopClientOut(
+                label=str(entry["label"]),
+                revenue=round(float(entry["revenue"]), 2),
+                profit=round(float(entry["profit"]), 2),
+                orders=int(entry["orders"]),
+            )
+            for entry in sorted(top_clients_map.values(), key=lambda item: (float(item["profit"]), float(item["revenue"])), reverse=True)[:5]
+        ],
+        hot_orders=sorted(hot_orders, key=lambda item: item.updated_at or "", reverse=True)[:5],
+    )
 
 
 # ------- /funnel -------
@@ -1324,6 +1516,46 @@ class TrialRetentionReportOut(BaseModel):
     period: dict[str, Optional[str]]
     totals: dict[str, float | int]
     buckets: list[TrialRetentionBucketOut]
+
+
+class ServicesAnalyticsStatusRowOut(BaseModel):
+    status: str
+    count: int
+
+
+class ServicesAnalyticsTopItemOut(BaseModel):
+    label: str
+    total: int
+    pending: int
+    revenue: float
+    profit: float
+
+
+class ServicesAnalyticsTopClientOut(BaseModel):
+    label: str
+    revenue: float
+    profit: float
+    orders: int
+
+
+class ServicesAnalyticsHotOrderOut(BaseModel):
+    order_id: str
+    label: str
+    reason: str
+    owner_kind: str
+    status: str
+    updated_at: Optional[str] = None
+
+
+class ServicesAnalyticsOverviewOut(BaseModel):
+    generated_at: str
+    totals: dict[str, float | int]
+    last30: dict[str, int]
+    data_quality: dict[str, int]
+    status_breakdown: list[ServicesAnalyticsStatusRowOut]
+    top_items: list[ServicesAnalyticsTopItemOut]
+    top_clients: list[ServicesAnalyticsTopClientOut]
+    hot_orders: list[ServicesAnalyticsHotOrderOut]
 
 
 @router.post("/analytics/events")
