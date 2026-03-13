@@ -54,7 +54,7 @@
 | `docs/crm-e2e-test-report.md` | `FULL` | 20 критериев, путь E2E и блокеры перенесены |
 | `docs/communications-program-status.md` | `PARTIAL` | Ключевые блоки учтены, но часть domain-detail пока агрегирована |
 | `docs/communications-test-matrix.md` | `FULL` | Прямо включено задачей `C1` |
-| `docs/CLIENT_AND_ONBOARDING_REDESIGN_PLAN.md` | `PARTIAL` | Основная логика учтена, но сценарии Citronex/POLTRAK требуют явных release-задач |
+| `docs/CLIENT_AND_ONBOARDING_REDESIGN_PLAN.md` | `PARTIAL` | Основная логика учтена, но сценарии tenant-backed/portal-only client требуют явных release-задач |
 | `docs/specs/architecture/client_and_subscription_model.md` | `FULL` | Учтено в разделе customer journey и billing path |
 | `docs/specs/modules/onboarding.md` | `FULL` | Учтено в фазе B + release gate |
 | `docs/specs/modules/payments.md` | `FULL` | Учтено в фазе A (Stripe + webhooks + billing lifecycle) |
@@ -66,7 +66,7 @@
 
 ## 2.2 Что добавлено после сверки (чтобы закрыть пробелы)
 
-- Добавить release-задачи на `Citronex/POLTRAK` сценарии (tenant link + portal link + visibility scope).
+- Добавить release-задачи на сценарии `tenant-backed client / portal-only client` (tenant link + portal link + visibility scope).
 - Добавить отдельную задачу на `Auth hardening` (signup/invite/session recovery) как часть безподдержочного запуска.
 - Добавить domain-checklist для communications depth: scheduler, OAuth adapters, provider webhooks, queue/audit consistency.
 - Добавить продуктовый governance-pack по self-serve CRM: role-to-settings matrix, company bootstrap data contract, owner/manager assignment, navigation IA without duplication, communications IA consolidation, working-hours availability и non-blocking orientation wizard.
@@ -80,9 +80,9 @@
 | # | Критерий | Статус | Проверка готовности | Комментарий |
 |---|---|---|---|---|
 | 1 | Полный customer journey без тупиков | `IN_PROGRESS` | Новый пользователь проходит полный путь без ручной помощи | Live Stripe checkout/webhook подтверждены; остался формальный сквозной release smoke без саппорта |
-| 2 | Автонастройка под тип компании | `IN_PROGRESS` | При выборе типа включается корректный набор модулей/ролей/workflow | Основа есть (`agency/employer`), профиль `services` и полная автоконфигурация нужно дожать |
+| 2 | Автонастройка под тип компании | `IN_PROGRESS` | При выборе типа включается корректный набор модулей/ролей/workflow | Основа есть (`agency/employer`), но value-contract и operational semantics для `services` нужно формализовать и довести до продукта |
 | 3 | Базовая работоспособность CRM | `DONE` | Можно создать клиента, кандидата, процесс/сделку, задачу, заметку, файл | Базовый сценарий закрыт |
-| 4 | Коммуникации (email + мессенджеры) | `IN_PROGRESS` | Подключение, inbox, отправка, история, шаблоны, базовые настройки | Ядро готово, нужен финальный UX/ошибки и релизная стабилизация |
+| 4 | Коммуникации (email + мессенджеры) | `IN_PROGRESS` | Подключение, inbox, отправка, история, шаблоны, базовые настройки | Ядро готово, но есть активный regression backlog: входящие email отображаются нестабильно, а `Messages/Email` требуют chat-first UX и mobile re-pass |
 | 5 | Реклама и лиды | `IN_PROGRESS` | Лид приходит из источника, карточка создается, источник сохраняется | Pipeline есть, требуется полный продуктовый проход под launch |
 | 6 | Командная работа | `DONE` | Инвайты, роли, права, активность доступны | Работает |
 | 7 | Автоматизации | `IN_PROGRESS` | Триггеры/автодействия/распределение/автоответы доступны без костылей | Частично реализовано |
@@ -114,7 +114,7 @@
 | 23 | Permission Integrity (роль/тариф/тип бизнеса/готовность модуля) | `IN_PROGRESS` | Нет утечек видимости для неподходящих ролей и тарифов | Нужен формальный role-by-role прогон |
 | 24 | Failure Recovery (ошибки без потери пути) | `IN_PROGRESS` | Ошибки объясняются, прогресс не теряется, есть безопасный retry | Частично закрыто, не полностью |
 | 25 | Lifecycle Retention (день 2/3/7) | `DONE` | Пользователь понимает зачем возвращаться и что делать дальше | Внедрены in-app retention nudges D1/D2/D3/D7 + day-level metrics/report в Trial Center |
-| 26 | Модульность по типу бизнеса (`agency/employer/services`) | `IN_PROGRESS` | Тип бизнеса меняет модули, термины, роли, шаблоны, onboarding | `services` профиль нужно завершить |
+| 26 | Модульность по типу бизнеса (`agency/employer/services`) | `IN_PROGRESS` | Тип бизнеса меняет модули, термины, роли, шаблоны, onboarding | `services` профиль нужно завершить: зафиксировать что такое lead/client/order/service automation в этом режиме |
 | 27 | Progressive onboarding (обязательное сейчас / остальное потом) | `IN_PROGRESS` | Можно начать работу до полной настройки всех модулей | Сильный прогресс, нужен финальный UX pass |
 | 28 | Solo-логика не хуже командной | `IN_PROGRESS` | В solo не показываются лишние командные ветки | Нужен финальный UI-аудит |
 | 29 | Управление видимостью модулей | `IN_PROGRESS` | Неготовые модули скрыты полностью, платные видны как upgrade-path | Частично реализовано |
@@ -126,7 +126,7 @@
 | 35 | Контрольные сценарии успеха (A/B/C) | `IN_PROGRESS` | Сценарии соло/агентство/работодатель проходят end-to-end | Матрица сценариев добавлена, нужен фактический PASS прогон |
 | 36 | SEO техническая готовность marketing/public surface | `DONE` | Индексация, sitemap, robots, canonical, meta/open graph, structured data и базовые Core Web Vitals в целевых пределах | Technical baseline закрыт; остается регулярный мониторинг и server-level 404 policy как non-blocking риск |
 | 37 | SEO контентное наполнение для конверсии | `DONE` | Ключевые landing/feature/use-case страницы имеют целевой контент, CTA и семантические заголовки | Wave-1 контент-пакет выпущен, перелинковка и baseline tracking внедрены |
-| 38 | Mobile adaptation (responsive-first) | `DONE` | Публичные и core CRM-экраны проходят mobile QA (320/375/390/768), без критичных overflow и с рабочими CTA | Финальный manual device pass зафиксирован, включая fix `MOB-005` для календаря |
+| 38 | Mobile adaptation (responsive-first) | `IN_PROGRESS` | Публичные и core CRM-экраны проходят mobile QA (320/375/390/768), без критичных overflow и с рабочими CTA | Historical pass был закрыт, но communications screens reopened из-за `MOB-006..008`; нужен повторный device-level sign-off |
 | 39 | Матрица доступа к настройкам по ролям | `IN_PROGRESS` | Для каждой роли и типа workspace формально определено, какие settings/routes/actions доступны; простой клиентский tenant не видит platform/superadmin shell | Нужен role-by-role UX/access sign-off и зачистка legacy shortcuts |
 | 40 | Контракт данных для создания компании | `NOT_STARTED` | Для self-serve company setup собираются только необходимые поля; у каждого поля есть явная цель использования в CRM/billing/legal/workflow | Нужно зафиксировать field-by-field contract и copy |
 | 41 | Явное назначение владельца/ответственного компании | `NOT_STARTED` | После создания компании всегда известен owner/manager; роль и права управления компанией определены и редактируемы | Нужно довести bootstrap ownership model |
@@ -297,14 +297,114 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | ID | Задача | Статус | DOD |
 |---|---|---|---|
 | B1 | Автопрофиль для типа `services` (модули/workflow/роли по умолчанию) | `IN_PROGRESS` | Новый tenant `services` стартует без ручных настроек |
-| B2 | Доработать пресеты `agency/employer/services` (статусы, роли, подсказки) | `IN_PROGRESS` | 3 профиля создаются консистентно |
+| B2 | Доработать пресеты `agency/employer/services` (статусы, роли, подсказки, funnel/card presets) | `IN_PROGRESS` | 3 профиля создаются консистентно, включая разные funnel presets и разные card presets для primary entities |
 | B3 | Замерить Time To Value (5–10 мин) на 5 новых аккаунтах | `NOT_STARTED` | Отчет с медианой и узкими местами |
 | B4 | Убрать обязательные advanced-настройки из первого запуска | `IN_PROGRESS` | До first value не требуется заход в Settings |
 | B5 | `services` onboarding: отдельный шаг первого клиента (`first_client_created`) | `DONE` | Онбординг и activation учитывают создание первого клиента, API возвращает `clients/counterparties` счетчики |
 | B6 | Формализовать role-to-settings matrix (`workspace type x role x route/action`) | `IN_PROGRESS` | Есть каноническая матрица доступа; клиентский tenant не видит superadmin/platform settings и лишние admin actions |
-| B7 | Зафиксировать self-serve company bootstrap contract | `NOT_STARTED` | Определен минимальный набор полей для company setup + documented purpose/use per field |
-| B8 | Довести ownership bootstrap первой компании | `NOT_STARTED` | При создании первой компании явно назначается owner/manager с управляющей ролью и это отражено в UI/API |
+| B7 | Зафиксировать self-serve company bootstrap contract | `IN_PROGRESS` | Определен минимальный набор полей для company setup + documented purpose/use per field |
+| B8 | Довести ownership bootstrap первой компании | `IN_PROGRESS` | Для первой компании определен канонический ownership contract; UI/API не создают двусмысленности, а делегирование прав отражено явно |
 | B9 | Перевести onboarding wizard в orientation-mode | `IN_PROGRESS` | Wizard показывает что где находится и какие next steps доступны, но не блокирует рабочие экраны |
+| B2.1 | Формализовать product contract для `agency / employer / services` | `IN_PROGRESS` | Для каждого business type описаны primary object, primary lead, monetization/workflow model, notifications baseline, funnel presets, card presets и first-value path |
+
+### 5.2.1 `B6/B7/B8` Governance Execution Pack (`2026-03-13`)
+
+Протокол:
+- [b6-b8-governance-checklist.md](/opt/HostFlow/docs/manual-checklist/b6-b8-governance-checklist.md)
+
+Текущий baseline:
+- `B6`: static settings-permission baseline уже зафиксирован в [f3-permission-role-matrix-static.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix-static.md); governance checklist добавляет обязательный ручной sign-off по navigation IA и anti-duplication.
+- `B7`: текущий self-serve bootstrap-contract формализован как минимальный `name + company_type`; остальные поля считаются `DEFERRED` до явной продуктовой цели и non-blocking точки во flow.
+- `B8`: explicit ownership model реализована через `companies.owner_user_id` и `companies.manager_user_id`; при bootstrap owner/manager по умолчанию назначаются на текущего elevated actor, а дальнейшее делегирование доступно через company profile и `user_company_access`.
+
+Что требуется для закрытия пакета:
+- Прогнать checklist на реальном tenant (`staging`/`production-safe`) и приложить evidence.
+- Закрыть остаточные navigation leaks, если любой onboarding/empty-state/deep-link обходит канонический settings IA.
+
+### 5.2.2 `B6/B7/B8` Static Baseline Audit (`2026-03-13`)
+
+Evidence:
+- [b6-b8-governance-2026-03-13-static-baseline.md](/opt/HostFlow/docs/manual-checklist/b6-b8-governance-2026-03-13-static-baseline.md)
+
+Итог:
+- `B6 = PASS_STATIC`
+- `B7 = PASS_STATIC`
+- `B8 = PASS_STATIC_WITH_GAP`
+
+Вывод:
+- Settings IA, route permissions и anti-duplication baseline выглядят консистентно на уровне code/static audit.
+- Self-serve company bootstrap уже минимален и соответствует целевому first-value contract (`name + company_type`).
+- Ownership первой компании больше не остается только governance-правилом: explicit `owner/manager` model реализована, но `B8` остается `IN_PROGRESS` до manual tenant-level sign-off.
+
+### 5.2.3 Business Type Value-Contract Gaps (`2026-03-13`)
+
+Незакрытые вопросы, которые влияют на `B2/B2.1`, критерии `#2/#26` и сценарий `A (services)`:
+- `agency`: primary lead обычно = кандидат; client card = работодатель/заказчик; automation ориентирована на recruiting flow.
+- `employer`: primary lead все еще может быть кандидат, но client graph и external-customer semantics минимальны.
+- `services`: primary lead должен трактоваться как потенциальный клиент/заказчик услуги, а не как кандидат; дальше нужны service order, paid service, invoice, notifications и automation contract.
+
+Что должно быть формально зафиксировано:
+- Что именно означает выбор `agency / employer / services` в терминах primary object, first value и default modules.
+- Какие сущности становятся primary в каждом режиме (`candidate`, `client`, `service order`, `invoice`).
+- Какие уведомления и автоматизации включаются по умолчанию для каждого business type.
+- Какие funnel presets используются по умолчанию для каждого business type.
+- Какие card presets используются по умолчанию для primary entities (`candidate card`, `client/company card`, позже `service order card` если применимо).
+- Какие экраны и copy меняются, чтобы пользователь не видел recruiting-first модель в `services` workspace.
+
+Минимальный ожидаемый preset contract:
+- `agency`: recruiting-first candidate funnel + candidate card, client card как заказчик/работодатель, service/invoice blocks вторичны.
+- `employer`: hiring-first candidate funnel + employer-specific client/company card, меньше agency/client-management шума.
+- `services`: client/lead/order-first presets; candidate-first funnel/card не должны быть default surface, если primary workflow строится вокруг клиентов и услуг.
+
+### 5.2.4 Business Type Preset Matrix v1 (`2026-03-13`)
+
+Это минимальный продуктовый baseline, от которого дальше раскладываются UI/API/default data presets.
+
+| Business type | Primary object | Primary lead | Default funnel preset | Default card presets | First value | Secondary by default |
+|---|---|---|---|---|---|---|
+| `agency` | `candidate` | кандидат | recruiting pipeline (`new -> contact -> docs -> visa/work-permit -> hired/rejected`) | `candidate card = full recruiting`, `client/company card = customer/employer`, `vacancy card = active` | создать кандидата и привязать к вакансии/клиенту | invoices/services blocks, если не используются |
+| `employer` | `candidate` | кандидат | hiring pipeline (`new -> screened -> interview -> offer -> onboarding -> hired/rejected`) | `candidate card = hiring`, `company card = own legal/ops entity`, `client card = minimal or hidden` | создать вакансию и довести кандидата до найма | agency-style client management, service sales flow |
+| `services` | `client` / `service lead` | потенциальный клиент | service-sales pipeline (`new lead -> qualified -> offer/service quote -> agreed -> invoiced -> active service/closed`) | `client card = operations+billing`, `service order card = primary`, `candidate card = hidden/non-default` | получить нового клиента, создать услугу/заказ, выставить фактуру | recruiting-first candidate pipeline и candidate-heavy forms |
+
+#### 5.2.4.1 Funnel Preset Contract
+
+Что должно отличаться по умолчанию:
+- `agency`: рекрутинговые этапы и причины отказа ориентированы на кандидата и работодателя.
+- `employer`: этапы короче и ближе к внутреннему найму, без agency handoff semantics по умолчанию.
+- `services`: дефолтная воронка не должна быть candidate funnel; это должна быть client/service pipeline с этапами квалификации, оффера, услуги и фактуры.
+
+Acceptance rule:
+- после выбора business type tenant не стартует с чужим по смыслу pipeline preset;
+- пользователь видит именно ту воронку, которая соответствует его primary workflow;
+- смена business type не должна молча оставлять старый recruiting-first preset в `services`.
+
+#### 5.2.4.2 Card Preset Contract
+
+Что должно отличаться по умолчанию:
+- `agency candidate card`: документы, статусы, handoff, vacancy link, recruiter workflow.
+- `employer candidate card`: hiring/onboarding focus, меньше agency-service полей и client graph complexity.
+- `services client card`: `orders`, `contacts`, `contracts`, `invoice data`, activity/communications; лишние recruiting blocks скрыты.
+- `services service-order card`:
+  - scope: paid service, status, owner, dates, linked invoice(s), notes, automation hooks;
+  - не заменяется candidate card или vacancy card.
+
+Acceptance rule:
+- primary card для каждого business type открывается без лишних секций, не относящихся к first-value workflow;
+- secondary entities не исчезают совсем, но не доминируют в навигации и CTA;
+- `services` tenant не должен видеть candidate-heavy card как default CRM center.
+
+#### 5.2.4.3 Implementation Decomposition
+
+Связанные workstreams:
+- `B1/B2/B2.1`: default presets, onboarding copy, first-value routing.
+- `C9/C10/C11/C12/C14`: client card, invoicing, services semantics, paid services, automations.
+- `F6`: terminology and copy by business type.
+
+Что разложить следующим слоем:
+- default funnel JSON / stage presets per business type;
+- default card section visibility per business type;
+- navigation/CTA priorities per business type;
+- migration rule для существующих tenants, где preset сейчас recruiting-first независимо от business type.
 
 ## 5.3 Фаза C — Коммуникации и лиды (операционная ценность)
 
@@ -318,6 +418,15 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | C6 | Явная классификация компаний (`client` / `counterparty`) для `services` аналитики | `DONE` | Тип компании задается в CRM и используется в профильной аналитике |
 | C7 | Вывести `services`-KPI по `clients/counterparties` в рабочем модуле Services | `DONE` | Вкладка `Services -> Analytics` показывает профильные KPI и предупреждение о неклассифицированных компаниях |
 | C8 | Собрать `messages/email/calendar/planner/availability` в единый communications IA | `IN_PROGRESS` | Навигация и пустые состояния объясняют единый communication workspace; `messages/email` не выглядят orphaned от блока коммуникаций |
+| C2.1 | Исправить regression показа входящих email в Email Inbox | `IN_PROGRESS` | Новые inbound письма реально появляются в inbox без ручного refresh/debug, а при сбое есть явный diagnostics path |
+| C8.1 | Перевести `Messages` и `Email` в chat-first / thread-first workspace | `IN_PROGRESS` | Переписка занимает основную рабочую площадь; вторичные actions, filters и routing controls убраны в compact toolbar/drawers/dropdowns |
+| C8.2 | Ужать иерархию controls в communications workspace (desktop + mobile) | `IN_PROGRESS` | Header/toolbars/filters не съедают контентную высоту; пользователь сначала видит список диалогов и timeline, а не control surface |
+| C9 | Сузить client/company card до операционного ядра | `IN_PROGRESS` | В карточке клиента остаются только `orders`, `contacts`, `contracts`, `billing/invoice data`; вторичные/редкие блоки не перегружают primary workflow |
+| C10 | Довести operational invoicing для клиентских фактур | `IN_PROGRESS` | Пользователь может выставить фактуру как из client card, так и из `/app/invoices`; draft/send/status/history работают консистентно |
+| C11 | Зафиксировать `services` semantics: lead = potential client, не candidate | `IN_PROGRESS` | Для `services` mode lead routing, labels, automations и conversion path работают вокруг клиентов/услуг, а не кандидатов |
+| C12 | Ввести paid services workflow для `services` клиентов | `NOT_STARTED` | Для service-clients можно создать и отследить платную услугу/заказ с привязкой к фактуре и automation hooks |
+| C13 | Настраиваемые Telegram notifications для CRM событий | `IN_PROGRESS` | Пользователь сам выбирает Telegram-уведомления по событиям (`new lead`, `status changed`, etc.), особенно для `services` lead/client flows |
+| C14 | Автоматизации для `services` lead/client lifecycle | `NOT_STARTED` | Новые service-leads/clients можно автоматически маршрутизировать, уведомлять, создавать задачи/услуги и доводить до счета |
 
 ## 5.4 Фаза D — UX качество и надежность
 
@@ -329,6 +438,8 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | D4 | Нагрузочная проверка базового сценария (1 пользователь -> команда) | `NOT_STARTED` | Нет критических деградаций |
 | D5 | Убрать дублирование настроек между topbar и sidebar | `IN_PROGRESS` | Настройки доступны из одного канонического entry point; account menu не дублирует admin/settings navigation |
 | D6 | Расширить `My availability` до рабочего графика | `NOT_STARTED` | Пользователь задает рабочие дни/часы, planner/calendar/team availability понимают expected working window |
+| D2.2 | Снизить визуальный шум в `Messages/Email`: secondary actions only on demand | `IN_PROGRESS` | manager/tags/SLA/filters/templates/actions доступны без потери thread focus и без крупных пустых зон |
+| D7 | Проверить необходимость `Document policies` в `Vacancies` и убрать дублирование с documents module | `IN_PROGRESS` | Ясно зафиксировано: либо блок нужен и не дублирует documents workflow, либо переносится/упрощается без двойной модели требований |
 | D1.1 | Единый empty-state паттерн для `clients/leads/messages/reminders` | `DONE` | В этих модулях добавлены объяснение раздела + primary CTA + secondary next step в едином UI-паттерне |
 | D1.2 | Единый empty-state паттерн для `candidates/pipeline/services-orders` | `DONE` | Добавлены CTA и next-step для пустых списков кандидатов, пустого pipeline и пустого списка сервисных заказов |
 | D2.1 | Сократить шаги в ключевых действиях: задача/письмо/клиент | `DONE` | `reminders`: задача создается с автодатой без обязательного ввода due_at; `messages`: получатель подставляется автоматически из диалога + `Ctrl/Cmd+Enter` отправляет сообщение; `clients`: advanced-опции в модалке скрыты по умолчанию |
@@ -404,11 +515,42 @@ API smoke-check `P0` (staging, `2026-03-11`):
 
 | ID | Задача | Статус | DOD |
 |---|---|---|---|
-| E1 | Citronex flow: tenant-linked client visibility (vacancies/candidates scope) | `NOT_STARTED` | Tenant с лицензией видит корректный скоуп без ручных правок |
-| E2 | POLTRAK flow: portal-link access for client without tenant | `NOT_STARTED` | Клиент без лицензии проходит сценарий только по защищенной ссылке |
+| E1 | Tenant-linked client flow: visibility scope for vacancies/candidates | `NOT_STARTED` | Tenant с лицензией видит корректный скоуп без ручных правок |
+| E2 | Portal-only client flow: link-based access without tenant | `NOT_STARTED` | Клиент без лицензии проходит сценарий только по защищенной ссылке |
 | E3 | Tenant links policy hardening (handoff/visibility/audit) | `NOT_STARTED` | Настройки и видимость формально проверены в E2E |
 | E4 | Auth hardening for self-serve launch (signup/invite/session recovery) | `DONE` | Нет тупиков в auth-сценариях, recovery покрыт |
 | E5 | Communications depth checklist (scheduler/OAuth/webhooks/audit consistency) | `IN_PROGRESS` | Все обязательные domain-checks имеют PASS статус |
+
+### 5.5.1 `E1/E2/E3` Tenant-Link Execution Pack (`2026-03-13`)
+
+Протокол:
+- [e1-e3-tenant-link-release-checklist.md](/opt/HostFlow/docs/manual-checklist/e1-e3-tenant-link-release-checklist.md)
+
+Что именно должен доказать release-pass:
+- `E1`: `tenant-backed client` видит корректный candidate scope по `tenant_links.client_tenant_id + handoff_include_company_id`, а masking/reduced-profile работают предсказуемо.
+- `E2`: `portal-only client` получает доступ только по link-token, без tenant login и без CRM shell leakage.
+- `E3`: `tenant_links` управляются только agency-side elevated users, payload contract не допускает двусмысленных связей, а portal-link / visibility changes можно проследить в evidence.
+
+Минимальный evidence set:
+- UI pass для agency-side client management.
+- API/header pass для client candidate list (`X-Client-View`, `X-Masked-Count` где ожидается).
+- Portal-link lifecycle pass (`create -> open -> revoke`).
+- Краткая data-note по `tenant_links` coverage для linked vacancy companies.
+
+Release gate:
+- Пока нет отдельного manual run-record по этому checklist, `E1/E2/E3` не переводятся в `DONE`.
+
+### 5.5.2 Client Workspace Scope Gaps (`2026-03-13`)
+
+Текущий незакрытый product scope по `Companies / Invoices / Vacancies`:
+- client/company card сейчас рискует быть слишком широкой и смешивать operational ядро с вторичными блоками.
+- operational invoicing для клиентов нужно отделить от SaaS subscription billing и довести как самостоятельный CRM contour.
+- блок `Document policies` в vacancy flow требует ревизии на предмет пользы, пересечения с templates/documents module и cognitive overhead.
+
+Принятое направление:
+- client card остается операционным workspace для `orders`, `contacts`, `contracts`, `invoice data`.
+- customer invoices должны жить как из client card, так и из общего `/app/invoices` без расхождения сценариев.
+- vacancy-level document policy разрешена только если она реально задает vacancy-specific requirement layer поверх documents template, а не дублирует те же поля/правила второй раз.
 
 ## 5.6 Фаза F — UX целостность и retention (новые критические критерии)
 
@@ -424,7 +566,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | F8 | Compact CRM UI standard + Tabler icons rollout | `IN_PROGRESS` | Ключевые экраны (`Pipeline`, `Leads`, `Candidates`, `Dashboard`) визуально компактны, единообразны и без лишних элементов |
 | F9 | SEO optimization baseline (technical SEO) | `DONE` | Публичные страницы имеют корректные `title/description/canonical`, `robots.txt`, `sitemap.xml`, OG tags, schema.org и индексацию без критичных ошибок |
 | F10 | SEO content rollout (pages + copy + intent mapping) | `DONE` | Выпущен контент-пакет для приоритетных запросов (landing/use-cases/features), есть внутренняя перелинковка и конверсионные CTA |
-| F11 | Mobile adaptation pass (public + CRM core) | `DONE` | Пройден responsive-аудит по брейкпоинтам `320/375/390/768`, устранены критичные UI/UX разрывы, оформлен и подписан финальный mobile QA-report |
+| F11 | Mobile adaptation pass (public + CRM core) | `IN_PROGRESS` | Пройден responsive-аудит по брейкпоинтам `320/375/390/768`, устранены критичные UI/UX разрывы, оформлен и подписан финальный mobile QA-report | reopened: communications regressions in `/app/messages` and `/app/email` require re-pass |
 
 Стандарт `F8` (принят):
 - Навигация и аккаунт-меню строятся по responsibility-first: `My account` и `Company overview`.
@@ -562,6 +704,7 @@ Implementation notes:
 | F11.3 | Закрыть P0/P1 mobile-баги по ключевому пути (`signup -> onboarding -> first value`) | `DONE` | Текущий P0/P1 backlog по mobile закрыт, блокирующих дефектов не осталось |
 | F11.4 | Проверить таблицы/формы/модалки на touch-friendly взаимодействие | `DONE` | Основные CRUD-сценарии устойчивы в mobile viewport; manual cross-screen pass выполнен |
 | F11.5 | Зафиксировать финальный mobile QA-report с PASS/FAIL по каждому экрану | `DONE` | Финальный mobile QA-report зафиксирован, manual device QA = `PASS` |
+| F11.6 | Reopen communications mobile pass (`/app/messages`, `/app/email`) под chat-first UX | `IN_PROGRESS` | На mobile thread list, timeline и composer остаются primary content; bulky filters/actions не занимают большую часть viewport |
 
 ### 5.6.4 `F11.1` Mobile QA Matrix (baseline, `2026-03-12`)
 
@@ -638,6 +781,19 @@ Implementation notes:
 Residual risks:
 - Критичные mobile риски по release-маршрутам не выявлены; остается только стандартный пост-релизный мониторинг регрессий.
 
+### 5.6.8.1 `F11.6` Reopened Communications Mobile Regression Backlog (`2026-03-13`)
+
+| Bug ID | Severity | Область | Симптом | Статус | Владелец |
+|---|---|---|---|---|---|
+| `MOB-006` | `P1` | `/app/messages` | Верхние actions/filters и служебные controls занимают непропорционально большую часть viewport; thread timeline не является основной зоной экрана | `OPEN` | Frontend + Product |
+| `MOB-007` | `P1` | `/app/email` | Inbox header/filters/commands panel слишком массивны, из-за чего список писем и preview уезжают ниже fold; mobile thread-first поведение отсутствует | `OPEN` | Frontend + Product |
+| `MOB-008` | `P1` | `/app/email`, inbound email reliability | Пользователь не видит ожидаемые входящие письма в рабочем inbox, несмотря на ожидание реального inbound workflow | `OPEN` | Backend + Frontend |
+
+Принятая продуктовая цель:
+- `Messages` и `Email` должны вести себя как мессенджер/work inbox, где переписка — primary surface.
+- Все вторичные опции (`manager`, `tags`, `SLA`, `candidate`, filters, command templates, bulk actions) должны открываться on demand: compact toolbar, drawer, dropdown, sheet.
+- На mobile first screen должен показывать либо thread list, либо active conversation, а не stack из кнопок и control blocks.
+
 ### 5.6.9 `F5` Lifecycle Retention Snapshot (`2026-03-12`)
 
 Что внедрено:
@@ -683,6 +839,103 @@ Residual risks:
 
 Текущий статус:
 - `F6`: `DONE` (dashboard + nav/topbar/breadcrumb + onboarding + secondary screens выровнены по business-aware `client/company` терминологии).
+
+### 5.6.11 Governance Pack Snapshot (`2026-03-13`, критерии `#39-45`)
+
+| Критерий | Связанные задачи | Текущий baseline | Что еще нужно для `DONE` |
+|---|---|---|---|
+| `#39` Матрица доступа к настройкам по ролям | `B6`, `F3`, `D5` | Есть статическая матрица `default/client-tenant`, `mismatches=0`; route/nav permissions синхронизированы | Нужен ручной role-by-role sign-off и финальная зачистка legacy shortcuts |
+| `#40` Контракт данных для создания компании | `B7` | Self-serve flow уже минимален: собираются только `company name` + `company_type` | Нужно формально зафиксировать purpose/use per field и правила отложенного сбора остальных данных |
+| `#41` Ownership первой компании | `B8` | Первая компания создается в bootstrap flow, но ownership contract явно не описан в UI/API acceptance | Нужно явное правило `owner/manager` и подтверждение редактируемости после bootstrap |
+| `#42` Настройки без дублирования entry points | `D5`, `B6` | Topbar account menu очищен от дублей admin/settings shortcuts | Нужен финальный nav audit по sidebar/topbar/empty-state CTA/deep links |
+| `#43` Коммуникации как единый раздел IA | `C8`, `E5` | Есть research-целевая IA и уже выделены `Messages / Email / Calendar / Planner / Availability` | Нужен финальный copy-pass и явный “one workspace” path для пользователя |
+| `#44` Моя доступность как рабочий график | `D6`, `C8` | Есть employee self-service контур `My Availability` + `Time-off`, но без formal working-hours model | Нужно добавить рабочие дни/часы и использование этого окна в planner/calendar/queue availability |
+| `#45` Wizard-ориентир без блокировки | `B9`, `F1`, activation guard | Обязательным остался только шаг создания компании; getting-started работает как guide, а не как жесткий блокер | Нужен финальный pass на отсутствие redirect-loop/dead-end и понятный post-company next-step |
+
+#### 5.6.11.1 `#39/#42` Settings Access + Navigation IA Baseline
+
+Evidence:
+- Static matrix: [f3-permission-role-matrix-static.md](/opt/HostFlow/docs/manual-checklist/f3-permission-role-matrix-static.md)
+- Navigation cleanup artifact: `hostflow-frontend/src/components/nav/Topbar.tsx`
+
+Текущее состояние:
+- Для `default-tenant` и `client-tenant` зафиксирован статический baseline `mismatches=0`.
+- `settings` доступны только `superadmin`, `owner/admin`, `supervisor`; `recruiter` и `viewer` получают `DENY`.
+- `settings/users` и `settings/company-access` также закрыты для `recruiter/viewer`.
+- `settings/communications` остаются admin-only зоной.
+- Из `Topbar` убраны дублирующие shortcuts `Company settings`, `Manage users`, `Billing`, `Tools and apps`, чтобы settings оставались в одном каноническом entry point.
+
+Release gate для закрытия:
+- Ручной role-by-role прогон по `superadmin / owner-admin / supervisor / recruiter / viewer`.
+- Отдельный pass для `default` и `client` tenant-контекстов.
+- Проверка, что ни один onboarding/empty-state/deep-link не возвращает скрытые settings entry points в обход sidebar IA.
+
+#### 5.6.11.2 `#40/#41` Company Bootstrap Contract Baseline
+
+Evidence:
+- `hostflow-frontend/src/pages/OnboardingCompanyPage.tsx`
+- Production bootstrap note в `10.1`: tenant `victoria-services`
+
+Фактически реализованный self-serve contract на сегодня:
+
+| Поле / шаг | Статус | Назначение сейчас | Комментарий |
+|---|---|---|---|
+| `name` | `REQUIRED` | Базовая идентификация первой компании в CRM | Единственное текстовое поле bootstrap-формы |
+| `company_type` = `agency/employer/services` | `REQUIRED` | Выбор продуктового профиля и модульного baseline | Определяет первичный workflow и copy |
+| Остальные юридические/операционные поля | `DEFERRED` | Не мешают first value на первом шаге | Пока не собраны в явный post-bootstrap contract |
+
+Незакрытые пробелы:
+- Не зафиксировано, какие поля обязательны позже для `CRM / billing / legal / workflow`.
+- Не описано в SSOT, кто становится canonical owner/manager первой компании сразу после bootstrap.
+- Нет формального acceptance-критерия, как owner меняется/подтверждается после создания первой компании.
+
+Принятое направление:
+- Для self-serve launch первый шаг остается минимальным.
+- Все дополнительные поля собираются только если у них есть явная цель и non-blocking точка во flow.
+
+#### 5.6.11.3 `#45` Orientation-Mode Baseline
+
+Evidence:
+- `hostflow-frontend/src/pages/OnboardingCompanyPage.tsx`
+- `hostflow-frontend/src/pages/OnboardingGettingStartedPage.tsx`
+- `hostflow-frontend/src/app/activationRoutes.ts`
+
+Текущее состояние:
+- Обязательным gate до начала работы остается только `company_created`.
+- После создания компании пользователь больше не запирается в advanced settings и не обязан проходить длинный wizard.
+- `OnboardingGettingStartedPage` показывает 3 понятных шага (`company`, type-specific first value, `next action`) и ведет в рабочие разделы.
+- При отсутствии permission CTA деградирует в безопасный `Open dashboard`, чтобы не создавать ложный тупик.
+
+Что еще нужно проверить вручную:
+- Нет redirect-loop между `overview`, `onboarding/company`, `onboarding/getting-started`.
+- `Continue setup` ведет к следующему полезному действию, а не обновляет текущий экран.
+- Для `agency / employer / services` type-specific шаг действительно совпадает с first-value path.
+
+#### 5.6.11.4 `#43/#44` Communications IA + Availability Baseline
+
+Evidence:
+- [communications-workspace-research.md](/opt/HostFlow/docs/specs/workflows/communications-workspace-research.md)
+- `hostflow-frontend/src/pages/MyAvailabilityPage.tsx`
+
+Целевая IA уже зафиксирована:
+- `Messages Inbox`
+- `Email Inbox`
+- `Planner`
+- `Calendar`
+- `Team Availability`
+- `My Availability`
+- `Time-off Requests`
+- `Quick Setup` как единая стартовая точка, advanced diagnostics только в settings
+
+Текущее состояние:
+- Информационная архитектура для communications описана явно, включая разделение user workspace vs admin/setup zone.
+- `My Availability` уже работает как employee self-service экран: создание `time-off` заявок, partial day/time window, просмотр своих запросов, переходы в `Time-off Requests` и `Team availability`.
+- Это еще не полноценный рабочий график: в UI нет явной модели `working days / working hours`, а значит planner/calendar/allocator не получают стабильное expected availability window.
+
+Release gap:
+- Ввести канонический weekly schedule contract.
+- Подключить его к planner/calendar/team availability/queue allocator.
+- Убедиться, что communications entry path объясняет, с чего начинать новому пользователю, без ухода в технические diagnostics.
 
 ---
 
@@ -1004,3 +1257,9 @@ Residual risks:
 - `2026-03-13` — onboarding-модель упрощена под self-serve клиента: обязательным остается только создание первой компании с выбором `company_type`; после этого forced `getting-started` wizard больше не блокирует работу, dashboard не навязывает обязательные `clients/reminders/leads` шаги, а trial tenant уровня customer не получает доступ к общему settings shell (разрешены только рабочие разделы + `billing`, остальные `/app/settings/*` режутся redirect на `overview`).
 - `2026-03-13` — в SSOT добавлен governance-pack критериев `#39-45`: матрица доступа к настройкам по ролям, контракт данных company bootstrap, ownership первой компании, отсутствие дублирования settings entry points, communications IA, рабочие часы в `My availability` и non-blocking orientation wizard.
 - `2026-03-13` — старт `D5` navigation IA cleanup: из account menu в `Topbar` убраны дублирующие admin/settings shortcuts (`Company settings`, `Manage users`, `Billing`, `Tools and apps`), чтобы settings оставались в одном каноническом месте навигации и не конфликтовали с sidebar.
+- `2026-03-13` — governance-pack `#39-45` формализован в SSOT как отдельный baseline snapshot: добавлены acceptance gaps по settings access matrix, company bootstrap contract, ownership первой компании, navigation IA, communications cluster и orientation-mode onboarding.
+- `2026-03-13` — для `B6/B7/B8` добавлен отдельный operational checklist [b6-b8-governance-checklist.md](/opt/HostFlow/docs/manual-checklist/b6-b8-governance-checklist.md); статусы `B7/B8` переведены в `IN_PROGRESS`, а текущий bootstrap/ownership baseline зафиксирован как проверяемый governance execution pack.
+- `2026-03-13` — выполнен первый static evidence-pass по `B6/B7/B8`: оформлен run-record [b6-b8-governance-2026-03-13-static-baseline.md](/opt/HostFlow/docs/manual-checklist/b6-b8-governance-2026-03-13-static-baseline.md), который подтвердил `PASS_STATIC` для settings IA и bootstrap contract и честно оставил `B8` в `PASS_STATIC_WITH_GAP` из-за отсутствия dedicated company owner field.
+- `2026-03-13` — `B8-GAP-001` закрыт implementation-level: в backend добавлены persisted поля `companies.owner_user_id` и `companies.manager_user_id` (schema + migration + API validation), bootstrap первой компании теперь автозаполняет ownership текущим elevated actor, а `Companies` detail UI получил явные selectors `Owner / Manager`; frontend production build и backend `py_compile` проходят, manual tenant sign-off остается pending.
+- `2026-03-13` — communications workspace reopened as active regression track: в SSOT добавлены задачи `C2.1`, `C8.1`, `C8.2`, `D2.2`, reopened mobile pass `F11.6` и backlog `MOB-006..008` после product feedback о слишком массивных panels/filters в `Email` и `Messages`, отсутствии chat-first priority и нестабильной видимости входящих email.
+- `2026-03-13` — в backlog добавлен новый product pack по operational CRM scope: `C9/C10/C11/C12/C13/C14`, `D7`, `B2.1`, а также секции `5.2.3` и `5.5.2`; он фиксирует сужение client card до операционного ядра, доведение customer invoicing, ревизию `Document policies` в vacancies, value-contract для `agency/employer/services` и настраиваемые Telegram notifications/automations для service-led workflow.
