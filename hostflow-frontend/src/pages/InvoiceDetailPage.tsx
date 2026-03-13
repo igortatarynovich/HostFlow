@@ -14,6 +14,7 @@ import {
 import type { Invoice, InvoiceActivity, InvoiceStatus, ReminderRecord } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { Modal } from '../components/Modal'
 
 const currencyFormatter = new Intl.NumberFormat('pl-PL', {
   style: 'currency',
@@ -111,6 +112,10 @@ export default function InvoiceDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
+  const [sendComposerOpen, setSendComposerOpen] = useState(false)
+  const [sendRecipient, setSendRecipient] = useState('')
+  const [sendSubject, setSendSubject] = useState('')
+  const [sendBody, setSendBody] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -213,9 +218,14 @@ export default function InvoiceDetailPage() {
   const handleSend = async () => {
     if (!invoice) return
     await withAction('send', async () => {
-      const updated = await sendInvoice(invoice.id)
+      const updated = await sendInvoice(invoice.id, {
+        recipient_email: sendRecipient.trim() || undefined,
+        subject: sendSubject.trim() || undefined,
+        body: sendBody.trim() || undefined,
+      })
       setInvoice(updated as Invoice)
       await refreshInvoice()
+      setSendComposerOpen(false)
       setActionMessage(
         t('app.invoices.send_success', {
           defaultValue: invoice.status === 'sent' ? 'Invoice resent.' : 'Invoice sent.',
@@ -314,6 +324,20 @@ export default function InvoiceDetailPage() {
     )
   }
 
+  const openSendComposer = () => {
+    if (!invoice) return
+    setSendRecipient(String(invoice.billing_details?.email || ''))
+    setSendSubject(`Invoice ${invoice.invoice_number} from HostFlow`)
+    setSendBody(
+      [
+        `Please find invoice ${invoice.invoice_number} attached.`,
+        `Total: ${formatAmount(Number(invoice.total_amount || 0))}`,
+        `Due date: ${formatDate(invoice.due_date)}`,
+      ].join('\n'),
+    )
+    setSendComposerOpen(true)
+  }
+
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -350,11 +374,11 @@ export default function InvoiceDetailPage() {
             </button>
           )}
           {(invoice.status === 'issued' || invoice.status === 'sent') && (
-            <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'send'} onClick={() => void handleSend()}>
+            <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'send'} onClick={openSendComposer}>
               {busyAction === 'send'
                 ? t('common.loading', { defaultValue: 'Loading...' })
-                : t(invoice.status === 'sent' ? 'app.invoices.resend' : 'app.invoices.send', {
-                    defaultValue: invoice.status === 'sent' ? 'Resend' : 'Send',
+                : t('app.invoices.compose_send', {
+                    defaultValue: invoice.status === 'sent' ? 'Resend with note' : 'Compose & send',
                   })}
             </button>
           )}
@@ -398,6 +422,45 @@ export default function InvoiceDetailPage() {
       )}
 
       {actionMessage && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{actionMessage}</div>}
+
+      <Modal
+        open={sendComposerOpen}
+        onClose={() => setSendComposerOpen(false)}
+        title={t('app.invoices.compose_send', { defaultValue: 'Compose & send invoice' })}
+      >
+        <div className="space-y-4">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.invoices.recipient', { defaultValue: 'Recipient' })}
+            </span>
+            <input className="input" value={sendRecipient} onChange={(event) => setSendRecipient(event.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.invoices.subject', { defaultValue: 'Subject' })}
+            </span>
+            <input className="input" value={sendSubject} onChange={(event) => setSendSubject(event.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.invoices.message', { defaultValue: 'Message' })}
+            </span>
+            <textarea className="input min-h-40" value={sendBody} onChange={(event) => setSendBody(event.target.value)} />
+          </label>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary" onClick={() => setSendComposerOpen(false)}>
+              {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+            </button>
+            <button type="button" className="btn-primary" disabled={busyAction === 'send'} onClick={() => void handleSend()}>
+              {busyAction === 'send'
+                ? t('common.loading', { defaultValue: 'Loading...' })
+                : t(invoice.status === 'sent' ? 'app.invoices.resend' : 'app.invoices.send', {
+                    defaultValue: invoice.status === 'sent' ? 'Resend' : 'Send',
+                  })}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <div className="grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-4">

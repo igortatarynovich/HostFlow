@@ -26,6 +26,7 @@ from .schemas import (
     InvoiceActivityOut,
     InvoiceCreate,
     InvoiceOut,
+    InvoiceSendRequest,
     InvoiceUpdate,
     PaymentCreate,
     PaymentOut,
@@ -528,6 +529,7 @@ async def get_invoice_pdf(
 @router.post("/{invoice_id}/send", response_model=InvoiceOut)
 async def send_invoice(
     invoice_id: str,
+    payload: InvoiceSendRequest | None = None,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> InvoiceOut:
@@ -570,9 +572,10 @@ async def send_invoice(
     
     # Send via webhook (email service will handle actual email sending)
     try:
-        recipient_email = None
+        send_payload = payload.model_dump(exclude_none=True) if payload else {}
+        recipient_email = send_payload.get("recipient_email")
         if invoice.billing_details:
-            recipient_email = invoice.billing_details.get("email")
+            recipient_email = recipient_email or invoice.billing_details.get("email")
         if not recipient_email:
             await _log_invoice_activity(
                 db,
@@ -587,7 +590,21 @@ async def send_invoice(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Invoice recipient email is required",
             )
-        
+
+        if invoice.billing_details is None:
+            invoice.billing_details = {}
+        invoice.billing_details["email"] = recipient_email
+
+        subject = str(send_payload.get("subject") or f"Invoice {invoice.invoice_number} from HostFlow").strip()
+        body = str(
+            send_payload.get("body")
+            or (
+                f"Please find invoice {invoice.invoice_number} attached.\n"
+                f"Total: {invoice.total_amount} {invoice.currency}\n"
+                f"Due date: {invoice.due_date}"
+            )
+        ).strip()
+
         delivery = await send_webhook(
             "invoice.sent",
             {
@@ -595,6 +612,8 @@ async def send_invoice(
                 "invoice_number": invoice.invoice_number,
                 "tenant_id": str(tenant_id),
                 "recipient_email": recipient_email,
+                "subject": subject,
+                "body": body,
                 "total_amount": str(invoice.total_amount),
                 "currency": invoice.currency,
                 "pdf_base64": None,  # In production, encode PDF as base64 or provide download URL
@@ -612,6 +631,8 @@ async def send_invoice(
                 actor_id=current_user.sub,
                 payload={
                     "recipient_email": recipient_email,
+                    "subject": subject,
+                    "body": body,
                     "delivery_status": delivery_status,
                     "reason": delivery_reason,
                     "http_status": http_status,
@@ -633,6 +654,8 @@ async def send_invoice(
             actor_id=current_user.sub,
             payload={
                 "recipient_email": recipient_email,
+                "subject": subject,
+                "body": body,
                 "delivery_status": delivery_status,
                 "reason": delivery_reason,
                 "http_status": http_status,
@@ -642,6 +665,8 @@ async def send_invoice(
         await db.refresh(invoice)
         
         return InvoiceOut.model_validate(invoice)
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to send invoice {invoice_id}: {e}", exc_info=True)
         raise HTTPException(

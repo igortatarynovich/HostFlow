@@ -658,8 +658,8 @@ export async function createRefund(paymentId: string, payload: Record<string, an
   return data;
 }
 
-export async function sendInvoice(invoiceId: string) {
-  const { data } = await api.post(`/invoices/${invoiceId}/send`);
+export async function sendInvoice(invoiceId: string, payload?: { recipient_email?: string; subject?: string; body?: string }) {
+  const { data } = await api.post(`/invoices/${invoiceId}/send`, payload ?? {});
   return data;
 }
 

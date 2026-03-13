@@ -108,6 +108,14 @@ class InvoiceOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class InvoiceSendRequest(BaseModel):
+    """Optional send composer payload for invoice delivery."""
+
+    recipient_email: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+
+
 class PaymentCreate(BaseModel):
     """Input schema for creating a payment."""
 
