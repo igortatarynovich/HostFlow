@@ -44,7 +44,7 @@
 
 ## UI
 - **CompanyList** — таблица всех компаний с фильтрами (статус, страна, активность).  
-- **CompanyCard** — карточка компании: основные сведения + список вакансий.  
+- **CompanyCard** — операционная карточка компании/клиента: primary focus на `contacts`, `orders`, `contracts`, `billing/invoice data`, `activity/communications`; не должна превращаться в dump всех secondary sections.  
 - **CompanyForm** — форма редактирования; блок «Документы (сводка)» **не показывается**.  
 - При архивации компании (`is_archived=true`) — вакансии остаются в текущем статусе, регулирование выполняется вручную по бизнес-правилам.  
 
@@ -70,6 +70,26 @@
 1. Обновляет скалярные поля компании.
 2. Выполняет глубокое слияние (`deep_merge`) текущего `extra` с payload, чтобы не потерять существующие блоки.
 3. При наличии `contacts` в payload обновляет колонку `contacts` и зеркалирует их в `extra.contacts`.
+
+### Operational card priority
+
+Primary sections:
+- `contacts`
+- `company_orders`
+- `contracts`
+- `billing` (как customer invoicing data, не SaaS subscription settings)
+- `activity/communications`
+
+Secondary sections:
+- `legal`
+- `operations`
+- `compliance`
+- `client_portal`
+- `integrations`
+
+Правило:
+- secondary sections допустимы, но не должны занимать первичную рабочую поверхность карточки по умолчанию.
+- для `services` business type карточка компании/клиента становится одной из главных operational surfaces.
 
 ---
 

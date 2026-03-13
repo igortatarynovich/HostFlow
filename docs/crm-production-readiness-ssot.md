@@ -552,6 +552,146 @@ Release gate:
 - customer invoices должны жить как из client card, так и из общего `/app/invoices` без расхождения сценариев.
 - vacancy-level document policy разрешена только если она реально задает vacancy-specific requirement layer поверх documents template, а не дублирует те же поля/правила второй раз.
 
+### 5.5.3 Client Card Contract v1 (`2026-03-13`)
+
+Целевой принцип:
+- client/company card не должна быть “свалкой всего”.
+- primary card показывает только то, что нужно для ежедневной работы с клиентом.
+- редкие, технические и integration-heavy блоки не должны доминировать над основным workflow.
+
+#### 5.5.3.1 Primary sections that stay
+
+Во всех business types, где `client/company card` реально участвует в workflow, primary baseline:
+- `Overview`
+  - name
+  - status
+  - owner / manager
+  - company kind / classification (`client`, `counterparty`, etc. where applicable)
+- `Contacts`
+  - primary contacts
+  - roles
+  - phone/email/messenger
+- `Orders / Service Orders`
+  - active orders
+  - upcoming deadlines
+  - assigned owner
+  - quick create / quick open
+- `Contracts`
+  - current contract status
+  - start/end
+  - reference/code
+- `Billing / Invoice Data`
+  - invoice email
+  - payment terms
+  - billing address
+  - tax/legal fields required for invoicing
+  - linked invoices summary
+- `Activity / Communications`
+  - latest messages/email
+  - notes
+  - reminders / next action
+
+#### 5.5.3.2 Sections that must not be primary
+
+Не должны быть top-level default surface без явной причины:
+- raw integrations/webhook/provider config
+- document-summary duplicates
+- broad operations/legal/compliance dumps
+- niche portal/admin settings unrelated to daily client work
+- analytics/reporting blocks, если они не ведут к immediate action
+
+Правило:
+- secondary sections допустимы через “More”, settings, expandable subsections или dedicated subpages.
+- если section не помогает выполнить `contact -> order/service -> contract -> invoice -> communication`, она не должна съедать верхнюю часть карточки.
+
+#### 5.5.3.3 Business-type adaptation
+
+- `agency`:
+  - client card = заказчик/работодатель для вакансий и кандидатов;
+  - `orders`, `contacts`, `contracts`, `communications` primary;
+  - billing/invoicing visible if agency bills the client.
+- `employer`:
+  - company card больше про own company profile;
+  - external client-management не должен навязываться как primary flow.
+- `services`:
+  - client card = основной CRM workspace;
+  - `orders/services`, `billing`, `communications`, `contracts` — обязательное ядро;
+  - recruiting-specific blocks не должны быть default sections.
+
+Acceptance rule:
+- пользователь открывает client card и за 1 screen понимает: кто клиент, кто контакт, какие активные заказы, какой договор, можно ли выставить фактуру и что делать дальше.
+
+### 5.5.4 Operational Invoicing Contract v1 (`2026-03-13`)
+
+Важно:
+- SaaS billing HostFlow subscription и customer invoicing — это два разных контура.
+- `Billing` в settings отвечает за подписку на HostFlow.
+- `Invoices` / client invoicing отвечает за фактуры клиентам tenant.
+
+#### 5.5.4.1 Customer invoicing contour
+
+Customer invoicing должен поддерживать:
+- create invoice from client card
+- create invoice from `/app/invoices`
+- draft -> issued/sent -> paid/partially_paid/overdue/cancelled
+- line items
+- currency
+- payment terms / due date
+- invoice recipient data
+- linked client
+- linked order/service order
+- invoice history / status timeline
+
+#### 5.5.4.2 Source-of-truth rule
+
+- client card:
+  - operational entry point for a specific client;
+  - показывает invoice summary и CTA `Create invoice`.
+- `/app/invoices`:
+  - global workspace для списка, фильтров, статусов, batch follow-up.
+
+Оба entry points обязаны работать на одном и том же invoice model/pipeline.
+Недопустимо:
+- чтобы client card создавала “облегченный invoice draft”, который не виден/ломается в `/app/invoices`;
+- чтобы `/app/invoices` и client card использовали разный status model или разный набор обязательных billing fields.
+
+#### 5.5.4.3 Services-specific rule
+
+Для `services`:
+- invoice должен естественно привязываться к `service order` / paid service;
+- lead -> qualified -> service agreed -> invoice created должен быть каноническим path;
+- reminders/notifications/automations могут запускаться от invoice milestones.
+
+Acceptance rule:
+- пользователь может из client card выставить фактуру клиенту, потом открыть `/app/invoices` и увидеть тот же документ, тот же статус и ту же историю без потери данных.
+
+### 5.5.5 Vacancy Document Policy Decision Contract (`2026-03-13`)
+
+Вопрос:
+- нужен ли блок `Document policies` в `Vacancies`, или он дублирует `Documents templates / checklist generation`.
+
+Принятое правило:
+- vacancy-level document policy разрешена только как override-layer над documents template.
+- documents module остается source of truth для:
+  - document types
+  - workflow/status
+  - template composition
+  - readiness logic
+- vacancy flow может задавать только:
+  - какой template применяется по умолчанию;
+  - какие документы обязательны именно для этой вакансии сверх базового template;
+  - vacancy-specific constraints/exceptions.
+
+Недопустимо:
+- второй независимый редактор тех же document requirements внутри vacancy card;
+- дублирующие поля/списки, которые пользователь должен поддерживать и в vacancy, и в documents module.
+
+Decision test:
+- если vacancy block нельзя объяснить как `template selector + vacancy-specific override`, его надо убрать или перенести в documents settings.
+
+Acceptance rule:
+- пользователь не поддерживает один и тот же набор документных требований в двух разных местах.
+
 ## 5.6 Фаза F — UX целостность и retention (новые критические критерии)
 
 | ID | Задача | Статус | DOD |
