@@ -512,6 +512,14 @@ export default function InvoiceDetailPage() {
                 <dd className="mt-1 text-slate-900">{invoice.currency || '-'}</dd>
               </div>
               <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.payment_terms', { defaultValue: 'Payment terms (days)' })}</dt>
+                <dd className="mt-1 text-slate-900">{String(invoice.billing_details?.payment_terms_days || '-')}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.tax_mode', { defaultValue: 'Tax mode' })}</dt>
+                <dd className="mt-1 text-slate-900">{String(invoice.billing_details?.tax_mode || '-')}</dd>
+              </div>
+              <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.bank_account', { defaultValue: 'Bank account' })}</dt>
                 <dd className="mt-1 text-slate-900">
                   {String((invoice.billing_details?.issuer_bank_account as Record<string, any> | undefined)?.iban || '-')}

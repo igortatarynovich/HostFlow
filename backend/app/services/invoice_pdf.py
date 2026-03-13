@@ -70,6 +70,8 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
         ['Invoice Number:', invoice.invoice_number],
         ['Issue Date:', invoice.issue_date.strftime('%Y-%m-%d') if invoice.issue_date else ''],
         ['Due Date:', invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else ''],
+        ['Payment Terms:', str(_safe_dict(invoice.billing_details).get('payment_terms_days') or '')],
+        ['Tax Mode:', str(_safe_dict(invoice.billing_details).get('tax_mode') or '')],
         ['Status:', invoice.status.upper()],
     ]
     

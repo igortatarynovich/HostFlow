@@ -119,7 +119,15 @@ function extractCompanyBillingSnapshot(company: Company | null) {
     email: String(billing.invoice_email || company?.email || '').trim() || undefined,
     tax_id: company?.tax_id || undefined,
     address: address || undefined,
+    payment_terms_days: Number(billing.payment_terms_days || 0) || undefined,
   }
+}
+
+function addDays(isoValue: string, days: number) {
+  const dt = new Date(isoValue)
+  if (Number.isNaN(dt.getTime())) return isoValue
+  dt.setDate(dt.getDate() + days)
+  return dt.toISOString().slice(0, 10)
 }
 
 export default function InvoiceCreatePage() {
@@ -140,6 +148,8 @@ export default function InvoiceCreatePage() {
   const [issuerCompanyId, setIssuerCompanyId] = useState('')
   const [issueDate, setIssueDate] = useState(isoDate(0))
   const [dueDate, setDueDate] = useState(isoDate(14))
+  const [paymentTermsDays, setPaymentTermsDays] = useState('14')
+  const [taxMode, setTaxMode] = useState('standard_vat')
   const [currency, setCurrency] = useState('PLN')
   const [billingEmail, setBillingEmail] = useState('')
   const [recipientContactId, setRecipientContactId] = useState('')
@@ -235,6 +245,19 @@ export default function InvoiceCreatePage() {
       cancelled = true
     }
   }, [companyId])
+
+  useEffect(() => {
+    const billing = extractCompanyBillingSnapshot(clientCompany)
+    if (!billing.payment_terms_days) return
+    setPaymentTermsDays(String(billing.payment_terms_days))
+  }, [clientCompany])
+
+  useEffect(() => {
+    const days = Number.parseInt(paymentTermsDays || '0', 10)
+    if (days > 0) {
+      setDueDate(addDays(issueDate, days))
+    }
+  }, [issueDate, paymentTermsDays])
 
   useEffect(() => {
     if (isEditMode || companies.length === 0) return
@@ -347,6 +370,8 @@ export default function InvoiceCreatePage() {
         setIssuerCompanyId(String(invoice.billing_details?.issuer_company_id || ''))
         setIssueDate(invoice.issue_date || isoDate(0))
         setDueDate(invoice.due_date || isoDate(14))
+        setPaymentTermsDays(String(invoice.billing_details?.payment_terms_days || 14))
+        setTaxMode(String(invoice.billing_details?.tax_mode || 'standard_vat'))
         setCurrency(invoice.currency || 'PLN')
         setBillingEmail(String(invoice.billing_details?.email || ''))
         setIssuerBankAccountKey(
@@ -456,6 +481,8 @@ export default function InvoiceCreatePage() {
           email: billingEmail.trim() || clientBilling.email,
           tax_id: clientBilling.tax_id,
           address: clientBilling.address,
+          payment_terms_days: Number.parseInt(paymentTermsDays || '0', 10) || clientBilling.payment_terms_days,
+          tax_mode: taxMode,
           issuer_company_id: issuerCompany?.id || undefined,
           issuer_name: issuerCompany?.legal_name || issuerCompany?.name || undefined,
           issuer_tax_id: issuerCompany?.tax_id || undefined,
@@ -608,6 +635,20 @@ export default function InvoiceCreatePage() {
 
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.invoices.payment_terms', { defaultValue: 'Payment terms (days)' })}
+              </span>
+              <input
+                className="input"
+                type="number"
+                min="1"
+                max="120"
+                value={paymentTermsDays}
+                onChange={(event) => setPaymentTermsDays(event.target.value)}
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t('app.invoices.currency', { defaultValue: 'Currency' })}
               </span>
               <select className="input" value={currency} onChange={(event) => setCurrency(event.target.value)}>
@@ -616,6 +657,17 @@ export default function InvoiceCreatePage() {
                     {entry}
                   </option>
                 ))}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.invoices.tax_mode', { defaultValue: 'Tax mode' })}
+              </span>
+              <select className="input" value={taxMode} onChange={(event) => setTaxMode(event.target.value)}>
+                <option value="standard_vat">{t('app.invoices.tax_mode_standard', { defaultValue: 'Standard VAT' })}</option>
+                <option value="reverse_charge">{t('app.invoices.tax_mode_reverse', { defaultValue: 'Reverse charge' })}</option>
+                <option value="vat_exempt">{t('app.invoices.tax_mode_exempt', { defaultValue: 'VAT exempt' })}</option>
               </select>
             </label>
 
@@ -747,6 +799,14 @@ export default function InvoiceCreatePage() {
                   extractPrimaryBankAccount(issuerCompany)?.iban ||
                   t('app.invoices.bank_account_missing', { defaultValue: 'No primary bank account' })}
               </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.payment_terms', { defaultValue: 'Payment terms (days)' })}</dt>
+              <dd className="mt-1 text-slate-900">{paymentTermsDays || '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.tax_mode', { defaultValue: 'Tax mode' })}</dt>
+              <dd className="mt-1 text-slate-900">{taxMode || '-'}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.items', { defaultValue: 'Items' })}</dt>
