@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { createCompany } from '../api/client'
+import { getBillingSummary } from '../api/billing'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import {
@@ -21,6 +22,8 @@ export default function OnboardingCompanyPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
+  const [hasAvailableOperatingSlots, setHasAvailableOperatingSlots] = useState(true)
+  const [slotGuardLoading, setSlotGuardLoading] = useState(true)
   const signupContext = useMemo(
     () => readSignupSuccessContextFromSearch(searchParams) ?? readSignupSuccessContextFromSessionStorage(),
     [searchParams],
@@ -34,6 +37,26 @@ export default function OnboardingCompanyPage() {
     if (Number.isNaN(dt.getTime())) return null
     return dt.toLocaleDateString()
   }, [trialEndsAt])
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const billing = await getBillingSummary()
+        if (!mounted) return
+        const unlimited = Boolean(billing?.company_slots?.unlimited)
+        const available = Number(billing?.company_slots?.available ?? 0)
+        setHasAvailableOperatingSlots(unlimited || available > 0)
+      } catch {
+        if (mounted) setHasAvailableOperatingSlots(true)
+      } finally {
+        if (mounted) setSlotGuardLoading(false)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
   useEffect(() => {
     if (!signupSuccess || typeof window === 'undefined') return
     try {
@@ -87,6 +110,15 @@ export default function OnboardingCompanyPage() {
     const trimmed = name.trim()
     if (!trimmed) {
       setError(t('app.onboarding.company.errors.name_required', { defaultValue: 'Введите название компании' }))
+      return
+    }
+    if (!hasAvailableOperatingSlots) {
+      setLimitReached(true)
+      setError(
+        t('app.onboarding.company.errors.operating_limit', {
+          defaultValue: 'Достигнут лимит operating-компаний для текущей подписки.',
+        }),
+      )
       return
     }
     setLoading(true)
@@ -183,6 +215,25 @@ export default function OnboardingCompanyPage() {
           </div>
         )}
         <form onSubmit={onSubmit} className="mt-6 space-y-5">
+          {!slotGuardLoading && !hasAvailableOperatingSlots ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <p className="font-medium">
+                {t('app.onboarding.company.slot_guard.title', {
+                  defaultValue: 'Нет доступных operating slots',
+                })}
+              </p>
+              <p className="mt-1">
+                {t('app.onboarding.company.slot_guard.text', {
+                  defaultValue: 'Чтобы создать новую operating-компанию, добавьте дополнительный slot в Billing.',
+                })}
+              </p>
+              <div className="mt-2">
+                <Link to={ACTIVATION_PATHS.billing} className="btn-secondary btn-sm">
+                  {t('app.onboarding.company.signup_success_billing', { defaultValue: 'Open billing' })}
+                </Link>
+              </div>
+            </div>
+          ) : null}
           <div>
             <label htmlFor="onboarding-company-name" className="block text-sm font-medium text-slate-700">
               {t('app.onboarding.company.name_label', { defaultValue: 'Название компании' })}
@@ -249,7 +300,7 @@ export default function OnboardingCompanyPage() {
           )}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (!slotGuardLoading && !hasAvailableOperatingSlots)}
             className="btn-primary w-full rounded-lg px-4 py-2 font-medium disabled:opacity-50"
           >
             {loading
