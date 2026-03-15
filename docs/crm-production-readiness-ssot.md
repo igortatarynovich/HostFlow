@@ -247,6 +247,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | A3 | Реализовать платежную историю в UI (`invoices/payments history`) | `DONE` | Пользователь видит оплачено/не оплачено, активный тариф, дату старта/окончания периода, invoice history и receipt/download actions на 1 экране | Live user sign-off подтвержден: history/invoices/date fields/receipt download работают в production billing flow |
 | A4 | Финализировать recovery-флоу оплаты (cancel/error/retry/pending webhook) | `DONE` | На каждой ошибке и post-payment ветке есть понятный экран, только нужные CTA (`subscribe/pay/cancel/resume/manage`) и email confirmations | Live user sign-off подтвержден: explicit Stripe Checkout plan change, cancel/resume, pending/return states и post-payment UX работают как ожидается |
 | A5 | Прогон сквозного E2E #20 (staging -> production) | `IN_PROGRESS` | Подписанный PASS протокол | Dedicated production `services` tenant подготовлен; остался финальный manual run-record |
+| A6 | Productize `operating company slots` monetization (plan includes + paid add-on slots) | `NOT_STARTED` | Явный контракт: сколько operating-companies включено в каждый план и как считается доплата за каждую следующую | Нужно утвердить pricing/limits и реализовать entitlements + billing UX |
 
 ### 5.1.1 Sales Unblock Execution Pack (`2026-03-12`)
 
@@ -1342,6 +1343,12 @@ Evidence:
 | `company_role` = `operating` | `REQUIRED_BY_FLOW` | Явно помечает, что это собственная tenant company/profile | Client company не может подменять operating profile в onboarding/billing |
 | Остальные юридические/операционные поля | `DEFERRED` | Не мешают first value на первом шаге | Пока не собраны в явный post-bootstrap contract |
 
+Канонический продуктовый контракт (уточнение):
+- Каждый новый подписчик создает минимум одну `operating company` и работает от ее лица.
+- `company_type` (`agency` / `employer` / `services`) влияет на пресеты, воронки, терминологию, аналитику, lead/client semantics и first-value маршруты.
+- `operating company` — это корневой workspace tenant: к ней привязаны команда и права (`owner/admin/supervisor/recruiter`), рабочие сущности (`clients`, `leads`, `candidates`, `vacancies`, `orders`, `invoices`), а также шаблоны/автоматизации.
+- Юридические/банковские реквизиты могут быть дозаполнены позже, но без них недоступен production-grade invoicing.
+
 Незакрытые пробелы:
 - Не зафиксировано, какие поля обязательны позже для `CRM / billing / legal / workflow`.
 - Не описано в SSOT, кто становится canonical owner/manager первой компании сразу после bootstrap.
@@ -1352,6 +1359,7 @@ Evidence:
 - Все дополнительные поля собираются только если у них есть явная цель и non-blocking точка во flow.
 - Лимит подписки `max_companies` применяется только к `operating companies`, а не к client/counterparty cards.
 - `/app/clients` остается client-only workspace; создание собственной operating company/profile идет отдельным explicit flow.
+- Monetization next step: в плане фиксируется число включенных operating-company slots (напр. `Starter=1`, `Pro=2`), а каждое следующее operating-company место продается как add-on.
 
 #### 5.6.11.3 `#45` Orientation-Mode Baseline
 
@@ -1725,3 +1733,4 @@ Release gap:
 - `2026-03-13` — в backlog добавлен новый product pack по operational CRM scope: `C9/C10/C11/C12/C13/C14`, `D7`, `B2.1`, а также секции `5.2.3` и `5.5.2`; он фиксирует сужение client card до операционного ядра, доведение customer invoicing, ревизию `Document policies` в vacancies, value-contract для `agency/employer/services` и настраиваемые Telegram notifications/automations для service-led workflow.
 - `2026-03-15` — `My Company` detail workspace выровнен под operating-profile semantics: для `operating` компаний в `Companies` detail заменены клиентские KPI/CTA (candidate/vacancy-first) на owner-profile блоки (`readiness`, `bank accounts`, `contracts`, `invoice email`) и действия `Create invoice` + `Open billing`; блок обзора вакансий в этом режиме заменен на invoicing workspace entry.
 - `2026-03-15` — `My Company` upgraded до owner-profile landing: убран auto-redirect при единственной operating-company, добавлен top-level action strip (`Legal`, `Billing`, `Bank Accounts`, `Branding`), а detail-экран `Companies` поддерживает deep-link `?section=...` со скроллом и auto-open нужных collapsible секций.
+- `2026-03-15` — уточнен канонический `operating company` контракт: подписчик обязательно создает собственный профиль компании и выбирает `company_type` (`agency/employer/services`), который управляет presets/funnels/analytics/workflow semantics; лимит operating-компаний остается plan-based, а monetization доп. слотов выделен в новый backlog task `A6`.

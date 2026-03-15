@@ -10,6 +10,11 @@
 - **Действие:** при `onboarding_required === true` фронт редиректит на `/app/onboarding/company`. Пользователь заполняет форму: название своей компании и тип компании — **Агентство**, **Прямой работодатель** или **Услуги**. Отправка `POST /api/v1/companies` с полями `name`, `company_type` и `company_role='operating'`. Бэкенд при создании первой operating company выставляет `Tenant.type` и business profile tenant.
 - После успешного создания компании редирект в основное приложение (например `/app/overview`); онбординг считается пройденным (при следующем запросе status у тенанта уже есть компании, `onboarding_required: false`).
 
+Каноническая интерпретация:
+- Этот шаг создает **рабочий профиль компании подписчика** (issuer/acting company), от лица которой пользователь и его команда выполняют операции в CRM.
+- Выбор `company_type` обязателен и определяет базовую модель продукта: presets, funnels, labels, analytics baseline, first-value path и lead/client semantics.
+- Дополнительные реквизиты (legal/billing/bank/branding) можно заполнить позже в `My Company`, но для фактур обязательны как минимум налоговый номер (NIP/Tax ID), юридический адрес и банковский счет отправителя.
+
 Правило лицензии:
 - лимит подписки применяется к количеству **operating companies** tenant;
 - client companies не считаются собственными профилями tenant и не должны расходовать этот лимит.

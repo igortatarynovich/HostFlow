@@ -59,6 +59,16 @@
 - onboarding создаёт `operating company`;
 - workspace `/app/clients` по умолчанию создаёт `client company`.
 
+### Operating company ownership scope
+
+`Operating company` — это основной профиль подписчика и source-of-truth для действий "от лица компании":
+- issuer data для invoicing (название, NIP/Tax ID, юридический адрес, банковский счет);
+- team ownership (`owner_user_id`, `manager_user_id`) и делегирование доступа;
+- привязка рабочих сущностей tenant (`clients`, `leads`, `candidates`, `vacancies`, `service orders`, `invoices`, `presets/automations`).
+
+Важное правило:
+- отсутствие части реквизитов не блокирует сам CRM, но блокирует полноценное выставление фактур до заполнения обязательных issuer-полей.
+
 ---
 
 ## UI
