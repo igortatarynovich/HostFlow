@@ -976,8 +976,24 @@ export default function BillingWorkspacePage() {
           <div className="rounded-lg border border-slate-200 p-3 text-sm">
             {t('app.settings.billing.usage.companies', {
               defaultValue: 'Operating companies: {used} / {limit}',
-              values: { used: operatingCompanyCount, limit: summary?.license?.max_companies ?? 0 },
+              values: {
+                used: summary?.company_slots?.used ?? operatingCompanyCount,
+                limit: summary?.company_slots?.unlimited
+                  ? '∞'
+                  : (summary?.company_slots?.effective_limit ?? summary?.license?.max_companies ?? 0),
+              },
             })}
+            {(summary?.company_slots?.extra_slots ?? 0) > 0 ? (
+              <div className="mt-1 text-xs text-slate-500">
+                {t('app.settings.billing.usage.companies_addon', {
+                  defaultValue: 'Includes {included} plan slots + {addon} add-on slots',
+                  values: {
+                    included: summary?.company_slots?.included_limit ?? summary?.license?.max_companies ?? 0,
+                    addon: summary?.company_slots?.extra_slots ?? 0,
+                  },
+                })}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

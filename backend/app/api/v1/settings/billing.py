@@ -15,6 +15,7 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db, get_db_with_tenant
 from backend.app.models.tenant import Tenant, TenantLicense
+from backend.app.services.operating_company_slots import get_operating_company_slots
 from backend.app.services.system_email import send_system_email
 
 try:  # pragma: no cover - optional dependency
@@ -159,9 +160,32 @@ class BillingSummaryOut(BaseModel):
     subscription: BillingSubscriptionOut
     license: platform_schemas.TenantLicenseOut | None = None
     usage: platform_schemas.TenantUsageOut
+    company_slots: dict[str, int | bool] | None = None
     available_plans: list[BillingPlanOut]
     history: list[BillingHistoryItemOut] = []
     invoices: list[BillingInvoiceOut] = []
+
+
+async def _company_slots_payload(
+    db: AsyncSession,
+    *,
+    tenant: Tenant,
+    license_entry: TenantLicense | None,
+) -> dict[str, int | bool]:
+    slots = await get_operating_company_slots(
+        db,
+        str(tenant.id),
+        preloaded_tenant=tenant,
+        preloaded_license=license_entry,
+    )
+    return {
+        "included_limit": int(slots.included_limit),
+        "extra_slots": int(slots.extra_slots),
+        "effective_limit": int(slots.effective_limit),
+        "used": int(slots.used),
+        "available": int(slots.available),
+        "unlimited": bool(slots.unlimited),
+    }
 
 
 class BillingChangePlanIn(BaseModel):
@@ -1018,10 +1042,12 @@ async def get_billing_summary(
     subscription = _subscription_out(tenant)
     invoices = _list_stripe_invoices(_subscription_payload(tenant))
     history = _merge_history_with_invoices(_history_out(tenant), invoices)
+    company_slots = await _company_slots_payload(db, tenant=tenant, license_entry=license_entry)
     return BillingSummaryOut(
         subscription=subscription,
         license=platform_schemas.TenantLicenseOut.model_validate(license_entry) if license_entry else None,
         usage=platform_schemas.TenantUsageOut(**usage),
+        company_slots=company_slots,
         available_plans=_available_plans(),
         history=history,
         invoices=invoices,
@@ -1224,10 +1250,12 @@ async def change_plan(
         if plan_code == current_plan_code:
             license_entry = await tenant_service.get_tenant_license(db, tenant_id)
             usage = await tenant_service.get_usage_snapshot(db, tenant_id)
+            company_slots = await _company_slots_payload(db, tenant=tenant, license_entry=license_entry)
             return BillingSummaryOut(
                 subscription=_subscription_out(tenant),
                 license=platform_schemas.TenantLicenseOut.model_validate(license_entry) if license_entry else None,
                 usage=platform_schemas.TenantUsageOut(**usage),
+                company_slots=company_slots,
                 available_plans=_available_plans(),
                 history=_history_out(tenant),
                 invoices=_list_stripe_invoices(_subscription_payload(tenant)),
@@ -1313,10 +1341,12 @@ async def change_plan(
             )
             license_entry = await tenant_service.get_tenant_license(db, tenant_id)
             usage = await tenant_service.get_usage_snapshot(db, tenant_id)
+            company_slots = await _company_slots_payload(db, tenant=tenant, license_entry=license_entry)
             return BillingSummaryOut(
                 subscription=BillingSubscriptionOut(**response_subscription),
                 license=platform_schemas.TenantLicenseOut.model_validate(license_entry) if license_entry else None,
                 usage=platform_schemas.TenantUsageOut(**usage),
+                company_slots=company_slots,
                 available_plans=_available_plans(),
                 history=_merge_history_with_invoices(_history_out(tenant), _list_stripe_invoices(_subscription_payload(tenant))),
                 invoices=_list_stripe_invoices(_subscription_payload(tenant)),
@@ -1367,10 +1397,12 @@ async def change_plan(
         effective_subscription = _subscription_out(tenant)
     license_entry = await tenant_service.get_tenant_license(db, tenant_id)
     usage = await tenant_service.get_usage_snapshot(db, tenant_id)
+    company_slots = await _company_slots_payload(db, tenant=tenant, license_entry=license_entry)
     return BillingSummaryOut(
         subscription=effective_subscription,
         license=platform_schemas.TenantLicenseOut.model_validate(license_entry) if license_entry else None,
         usage=platform_schemas.TenantUsageOut(**usage),
+        company_slots=company_slots,
         available_plans=_available_plans(),
         history=_history_out(tenant),
         invoices=_list_stripe_invoices(_subscription_payload(tenant)),
@@ -1433,10 +1465,12 @@ async def cancel_subscription(
     license_entry = await tenant_service.get_tenant_license(db, tenant_id)
     usage = await tenant_service.get_usage_snapshot(db, tenant_id)
     tenant = await db.get(Tenant, tenant_id)
+    company_slots = await _company_slots_payload(db, tenant=tenant, license_entry=license_entry)
     return BillingSummaryOut(
         subscription=_subscription_out(tenant),
         license=platform_schemas.TenantLicenseOut.model_validate(license_entry) if license_entry else None,
         usage=platform_schemas.TenantUsageOut(**usage),
+        company_slots=company_slots,
         available_plans=_available_plans(),
         history=_history_out(tenant),
         invoices=_list_stripe_invoices(_subscription_payload(tenant)),
@@ -1494,10 +1528,12 @@ async def reactivate_subscription(
     license_entry = await tenant_service.get_tenant_license(db, tenant_id)
     usage = await tenant_service.get_usage_snapshot(db, tenant_id)
     tenant = await db.get(Tenant, tenant_id)
+    company_slots = await _company_slots_payload(db, tenant=tenant, license_entry=license_entry)
     return BillingSummaryOut(
         subscription=_subscription_out(tenant),
         license=platform_schemas.TenantLicenseOut.model_validate(license_entry) if license_entry else None,
         usage=platform_schemas.TenantUsageOut(**usage),
+        company_slots=company_slots,
         available_plans=_available_plans(),
         history=_history_out(tenant),
         invoices=_list_stripe_invoices(_subscription_payload(tenant)),

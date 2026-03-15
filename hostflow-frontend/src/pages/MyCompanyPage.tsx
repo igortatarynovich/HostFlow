@@ -58,6 +58,10 @@ export default function MyCompanyPage() {
   }, [companies, me])
 
   const primaryCompanyId = managedOperatingCompanies[0]?.id || ''
+  const effectiveOperatingLimit = billing?.company_slots?.effective_limit ?? billing?.license?.max_companies ?? 0
+  const availableOperatingSlots = billing?.company_slots?.unlimited
+    ? 0
+    : Math.max((billing?.company_slots?.available ?? effectiveOperatingLimit - managedOperatingCompanies.length), 0)
 
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
@@ -83,13 +87,11 @@ export default function MyCompanyPage() {
           </div>
           <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
             <div className="text-sm text-white/80">{t('app.my_company.cards.limit', { defaultValue: 'Plan limit' })}</div>
-            <div className="text-3xl font-semibold">{billing?.license?.max_companies ?? 0}</div>
+            <div className="text-3xl font-semibold">{billing?.company_slots?.unlimited ? '∞' : effectiveOperatingLimit}</div>
           </div>
           <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
             <div className="text-sm text-white/80">{t('app.my_company.cards.available', { defaultValue: 'Available slots' })}</div>
-            <div className="text-3xl font-semibold">
-              {Math.max((billing?.license?.max_companies ?? 0) - managedOperatingCompanies.length, 0)}
-            </div>
+            <div className="text-3xl font-semibold">{billing?.company_slots?.unlimited ? '∞' : availableOperatingSlots}</div>
           </div>
         </div>
       </section>

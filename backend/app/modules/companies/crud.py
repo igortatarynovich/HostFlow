@@ -15,7 +15,7 @@ from backend.app.models.tenant import Tenant
 from backend.app.models.tenant import TenantType
 from backend.app.models.tenant import TenantLink
 from backend.app.models.user import Role as UserRole, User
-from backend.app.services.tenant_limits import get_tenant_limits
+from backend.app.services.operating_company_slots import get_operating_company_slots
 from .schemas import (
     BillingProfile,
     ComplianceProfile,
@@ -1218,12 +1218,8 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
     payload["extra"] = extra_normalized
 
     if company_role == "operating":
-        tenant_limits = await get_tenant_limits(session, tenant_id)
-        current_companies = (
-            await session.execute(select(Company).where(Company.tenant_id == tenant_id))
-        ).scalars().all()
-        current_operating_count = sum(1 for company in current_companies if _company_role_from_company(company) == "operating")
-        if tenant_limits.max_companies > 0 and current_operating_count >= tenant_limits.max_companies:
+        slots = await get_operating_company_slots(session, tenant_id)
+        if slots.effective_limit > 0 and slots.used >= slots.effective_limit:
             raise ValueError("Operating company limit reached for current subscription")
 
     obj = Company(**payload)

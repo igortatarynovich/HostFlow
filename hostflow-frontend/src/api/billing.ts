@@ -101,6 +101,14 @@ export type BillingSummary = {
   subscription: BillingSubscription
   license: BillingLicense | null
   usage: BillingUsage
+  company_slots?: {
+    included_limit: number
+    extra_slots: number
+    effective_limit: number
+    used: number
+    available: number
+    unlimited: boolean
+  } | null
   available_plans: BillingPlan[]
   history: BillingHistoryItem[]
   invoices: BillingInvoice[]
