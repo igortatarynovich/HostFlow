@@ -249,22 +249,33 @@ async def create_invoice_from_service_order(
         "address": billing.get("billing_address") or getattr(company, "address", None),
     }
 
-    invoice = await crud.create_invoice(
-        db,
-        tenant_id_str,
-        {
-            "company_id": order.company_id,
-            "service_order_id": order.id,
-            "issue_date": issue_date,
-            "due_date": due_date,
-            "currency": getattr(order, "currency", None) or "PLN",
-            "status": InvoiceStatus.draft.value,
-            "items": items_payload,
-            "billing_details": billing_details,
-            "notes": getattr(order, "notes", None),
-        },
-        created_by=current_user.sub,
-    )
+    try:
+        invoice = await crud.create_invoice(
+            db,
+            tenant_id_str,
+            {
+                "company_id": order.company_id,
+                "service_order_id": order.id,
+                "issue_date": issue_date,
+                "due_date": due_date,
+                "currency": getattr(order, "currency", None) or "PLN",
+                "status": InvoiceStatus.draft.value,
+                "items": items_payload,
+                "billing_details": billing_details,
+                "notes": getattr(order, "notes", None),
+            },
+            created_by=current_user.sub,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    except IntegrityError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invoice number already exists. Please use a different number.",
+        ) from e
     await _log_invoice_activity(
         db,
         tenant_id=tenant_id_str,
