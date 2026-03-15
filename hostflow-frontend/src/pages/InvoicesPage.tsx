@@ -138,13 +138,31 @@ export default function InvoicesPage() {
         if (!recipient) acc.missingRecipient += 1
         if (invoice.status === 'overdue') acc.overdue += 1
         if (invoice.status === 'paid') acc.paid += 1
+        if (isLockedForCompliance(invoice.status)) acc.locked += 1
         if ((invoice.status === 'sent' || invoice.status === 'issued') && new Date(invoice.updated_at).getTime() <= staleThreshold) {
           acc.needsFollowUp += 1
         }
         return acc
       },
-      { totalOutstanding: 0, missingRecipient: 0, overdue: 0, paid: 0, needsFollowUp: 0 },
+      { totalOutstanding: 0, missingRecipient: 0, overdue: 0, paid: 0, locked: 0, needsFollowUp: 0 },
     )
+  }, [invoices])
+
+  const queueCounts = useMemo(() => {
+    const counts = {
+      all: invoices.length,
+      delivery_failed: 0,
+      missing_recipient: 0,
+      overdue_unpaid: 0,
+      needs_correction: 0,
+    }
+    for (const invoice of invoices) {
+      if (invoice.latest_delivery_status === 'failed') counts.delivery_failed += 1
+      if (!String(invoice.billing_details?.email || '').trim()) counts.missing_recipient += 1
+      if (invoice.status === 'overdue' && Number(invoice.total_amount || 0) > Number(invoice.paid_amount || 0)) counts.overdue_unpaid += 1
+      if (isLockedForCompliance(invoice.status)) counts.needs_correction += 1
+    }
+    return counts
   }, [invoices])
   const visibleInvoices = useMemo(() => {
     return invoices.filter((invoice) => {
@@ -387,7 +405,7 @@ export default function InvoicesPage() {
       </div>
 
       <div className="app-surface space-y-4 p-6">
-        <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-6">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t('app.invoices.snapshot.outstanding', { defaultValue: 'Outstanding' })}
@@ -417,6 +435,12 @@ export default function InvoicesPage() {
               {t('app.invoices.snapshot.missing_recipient', { defaultValue: 'Missing recipient' })}
             </div>
             <div className="mt-2 text-xl font-semibold text-slate-900">{invoiceSnapshot.missingRecipient}</div>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+              {t('app.invoices.snapshot.locked', { defaultValue: 'Locked' })}
+            </div>
+            <div className="mt-2 text-xl font-semibold text-amber-900">{invoiceSnapshot.locked}</div>
           </div>
         </div>
 
@@ -471,7 +495,7 @@ export default function InvoicesPage() {
                 className={active ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
                 onClick={() => setQueueFilter(item.key as typeof queueFilter)}
               >
-                {item.label}
+                {item.label} ({queueCounts[item.key as keyof typeof queueCounts]})
               </button>
             )
           })}
