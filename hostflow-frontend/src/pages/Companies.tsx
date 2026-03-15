@@ -1569,32 +1569,61 @@ export default function Companies(){
 
     const locationLine = [detailForm.base.country_code, detailForm.base.city].filter(Boolean).join(', ')
 
-    const companyKpis = [
-      {
-        key: 'candidates_total',
-        label: t('app.companies.detail.kpis.candidates_total'),
-        value: currentAny?.candidates_total ?? 0,
-        hint: t('app.companies.detail.kpis.candidates_total_hint'),
-      },
-      {
-        key: 'candidates_pipeline',
-        label: t('app.companies.detail.kpis.candidates_pipeline'),
-        value: currentAny?.candidates_pipeline ?? 0,
-        hint: t('app.companies.detail.kpis.candidates_pipeline_hint'),
-      },
-      {
-        key: 'candidates_docs',
-        label: t('app.companies.detail.kpis.candidates_docs'),
-        value: currentAny?.candidates_docs ?? 0,
-        hint: t('app.companies.detail.kpis.candidates_docs_hint'),
-      },
-      {
-        key: 'vacancies',
-        label: t('app.companies.detail.kpis.vacancies_active'),
-        value: currentAny?.vacancies_active ?? vacancyAnalytics.total ?? 0,
-        hint: t('app.companies.detail.kpis.vacancies_active_hint'),
-      },
-    ]
+    const isOperatingCompany = getCompanyRoleFromAny(currentAny) === 'operating'
+
+    const companyKpis = isOperatingCompany
+      ? [
+          {
+            key: 'readiness',
+            label: t('app.companies.readiness.score', { defaultValue: 'Readiness score' }),
+            value: readinessScoreLabel ?? '—',
+            hint: t('app.companies.detail.kpis.readiness_hint', { defaultValue: 'Legal + billing readiness of your issuer profile' }),
+          },
+          {
+            key: 'bank_accounts',
+            label: t('app.companies.detail.kpis.bank_accounts', { defaultValue: 'Bank accounts' }),
+            value: detailForm.billing.bank_accounts.filter((account) => Boolean((account.iban || '').trim())).length,
+            hint: t('app.companies.detail.kpis.bank_accounts_hint', { defaultValue: 'Configured payout accounts for invoices' }),
+          },
+          {
+            key: 'contracts_total',
+            label: t('app.companies.detail.kpis.contracts_total', { defaultValue: 'Contracts' }),
+            value: detailForm.contracts.length,
+            hint: t('app.companies.detail.kpis.contracts_total_hint', { defaultValue: 'Templates and active agreements in this profile' }),
+          },
+          {
+            key: 'invoice_email',
+            label: t('app.companies.detail.kpis.invoice_email', { defaultValue: 'Invoice email' }),
+            value: detailForm.billing.invoice_email ? t('common.words.yes') : t('common.words.no'),
+            hint: t('app.companies.detail.kpis.invoice_email_hint', { defaultValue: 'Recipient address used for invoice communications' }),
+          },
+        ]
+      : [
+          {
+            key: 'candidates_total',
+            label: t('app.companies.detail.kpis.candidates_total'),
+            value: currentAny?.candidates_total ?? 0,
+            hint: t('app.companies.detail.kpis.candidates_total_hint'),
+          },
+          {
+            key: 'candidates_pipeline',
+            label: t('app.companies.detail.kpis.candidates_pipeline'),
+            value: currentAny?.candidates_pipeline ?? 0,
+            hint: t('app.companies.detail.kpis.candidates_pipeline_hint'),
+          },
+          {
+            key: 'candidates_docs',
+            label: t('app.companies.detail.kpis.candidates_docs'),
+            value: currentAny?.candidates_docs ?? 0,
+            hint: t('app.companies.detail.kpis.candidates_docs_hint'),
+          },
+          {
+            key: 'vacancies',
+            label: t('app.companies.detail.kpis.vacancies_active'),
+            value: currentAny?.vacancies_active ?? vacancyAnalytics.total ?? 0,
+            hint: t('app.companies.detail.kpis.vacancies_active_hint'),
+          },
+        ]
 
     const numeric = (value: string | number | null | undefined) => {
       if (value === null || value === undefined) return 0
@@ -1703,21 +1732,42 @@ export default function Companies(){
           <p className="text-sm text-slate-500">{t('app.companies.detail.overview.contracts.empty')}</p>
         ),
       },
-      {
-        key: 'vacancies_overview',
-        title: t('app.companies.detail.widgets.vacancies.title'),
-        content: vacancyAnalytics.total > 0 ? (
-          <div className="space-y-1">
-            <p className="text-2xl font-semibold text-slate-900">{vacancyAnalytics.total}</p>
-            <p className="text-xs text-slate-500">{t('app.companies.detail.widgets.vacancies.subtitle')}</p>
-            <Link to={`/app/vacancies?company=${currentAny?.id ?? ''}`} className="text-sm text-brand-600 hover:underline">
-              {t('app.companies.detail.overview.vacancies_link', { defaultValue: 'Перейти к вакансиям' })}
-            </Link>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
-        ),
-      },
+      ...(isOperatingCompany
+        ? [
+            {
+              key: 'invoice_workspace',
+              title: t('app.companies.detail.overview.invoice_workspace.title', { defaultValue: 'Invoicing workspace' }),
+              content: (
+                <div className="space-y-1">
+                  <p className="text-sm text-slate-600">
+                    {t('app.companies.detail.overview.invoice_workspace.subtitle', {
+                      defaultValue: 'Create and manage invoices issued from this operating profile.',
+                    })}
+                  </p>
+                  <Link to="/app/invoices" className="text-sm text-brand-600 hover:underline">
+                    {t('app.my_company.open_invoices', { defaultValue: 'Open invoices' })}
+                  </Link>
+                </div>
+              ),
+            },
+          ]
+        : [
+            {
+              key: 'vacancies_overview',
+              title: t('app.companies.detail.widgets.vacancies.title'),
+              content: vacancyAnalytics.total > 0 ? (
+                <div className="space-y-1">
+                  <p className="text-2xl font-semibold text-slate-900">{vacancyAnalytics.total}</p>
+                  <p className="text-xs text-slate-500">{t('app.companies.detail.widgets.vacancies.subtitle')}</p>
+                  <Link to={`/app/vacancies?company=${currentAny?.id ?? ''}`} className="text-sm text-brand-600 hover:underline">
+                    {t('app.companies.detail.overview.vacancies_link', { defaultValue: 'Перейти к вакансиям' })}
+                  </Link>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
+              ),
+            },
+          ]),
       ...(hasTransportOrders
         ? [
             {
@@ -1756,12 +1806,29 @@ export default function Companies(){
             </div>
             <div className="flex flex-col gap-2 text-sm text-white/80">
               <div className="flex flex-wrap gap-2">
-                <Link
-                  to={`/app/vacancies/new?company=${currentAny?.id ?? ''}`}
-                  className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
-                >
-                  {t('app.companies.detail.actions.add_vacancy')}
-                </Link>
+                {isOperatingCompany ? (
+                  <>
+                    <Link
+                      to="/app/invoices/new"
+                      className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
+                    >
+                      {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+                    </Link>
+                    <Link
+                      to="/app/settings/billing"
+                      className="btn-secondary border-white/40 bg-white/10 text-white hover:bg-white/20"
+                    >
+                      {t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
+                    </Link>
+                  </>
+                ) : (
+                  <Link
+                    to={`/app/vacancies/new?company=${currentAny?.id ?? ''}`}
+                    className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
+                  >
+                    {t('app.companies.detail.actions.add_vacancy')}
+                  </Link>
+                )}
                 <button
                   className="btn-primary bg-white text-brand-700 hover:bg-white/90"
                   type="button"
