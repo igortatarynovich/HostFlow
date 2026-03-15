@@ -313,7 +313,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | Шаг | Действие | Owner | Артефакт приемки | Статус |
 |---|---|---|---|---|
 | A6-S1 | Утвердить pricing/limits matrix по планам (`starter/team/pro`) и unit-price add-on slot | Product + Billing | Таблица `plan -> included slots -> add-on price` в runbook + ссылка в SSOT | `IN_PROGRESS` |
-| A6-S2 | Зафиксировать data contract в tenant/license модели (`included`, `extra`, `max`) | Backend | Schema/API contract + migration notes | `NOT_STARTED` |
+| A6-S2 | Зафиксировать data contract в tenant/license модели (`included`, `extra`, `max`) | Backend | Schema/API contract + migration notes | `IN_PROGRESS` |
 | A6-S3 | Реализовать checkout/update flow для покупки/изменения add-on slots | Backend + Frontend | Рабочий UI/API path `increase/decrease slots` с понятными CTA и pending/retry states | `IN_PROGRESS` |
 | A6-S4 | Встроить sync из Stripe webhook в tenant entitlements (`invoice.paid`, `subscription.updated/deleted`) | Backend | Mapping `Stripe items -> tenant slots` + live webhook smoke | `IN_PROGRESS` |
 | A6-S5 | Добавить guardrails в operating company creation flow | Backend + Frontend | При достижении лимита показывается upgrade/add-slot path, без технических ошибок и тупиков | `IN_PROGRESS` |
@@ -1817,3 +1817,4 @@ Release gap:
 - `2026-03-15` — `A6-S5` стартовал implementation-level (frontend guardrails): `OnboardingCompanyPage` теперь отдельно обрабатывает `OPERATING-COMPANY-LIMIT` и ведет пользователя в Billing (`Open billing` CTA), а `My Company` при исчерпанных slots переключает primary CTA на Billing вместо тупикового create-action.
 - `2026-03-15` — `A6-S6` переведен в `IN_PROGRESS`: добавлен migration/rollback playbook [a6-s6-operating-slots-migration-playbook.md](/opt/HostFlow/docs/manual-checklist/a6-s6-operating-slots-migration-playbook.md) и выполнен фактический dry-run аудит [a6-s6-operating-slots-dry-run-2026-03-15.md](/opt/HostFlow/docs/manual-checklist/a6-s6-operating-slots-dry-run-2026-03-15.md) (`4 tenants`, `0 overflow`, `0 legacy keys`, `1 tenant without license row`).
 - `2026-03-15` — `A6-S7` переведен в `IN_PROGRESS`: создан run-record kickoff [a6-s7-operating-slots-e2e-run-record-2026-03-15.md](/opt/HostFlow/docs/manual-checklist/a6-s7-operating-slots-e2e-run-record-2026-03-15.md) с обязательным evidence-pack для финального `PASS/FAIL` (`slot add -> create operating company -> downgrade/edge cases`).
+- `2026-03-15` — `A6-S2` стартовал implementation-level: в billing API `company_slots` переведен из ad-hoc `dict` в явный schema-contract (`included_limit`, `extra_slots`, `effective_limit`, `used`, `available`, `unlimited`), чтобы устранить двусмысленность payload для frontend и release-checks.

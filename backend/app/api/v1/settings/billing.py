@@ -163,10 +163,19 @@ class BillingSummaryOut(BaseModel):
     subscription: BillingSubscriptionOut
     license: platform_schemas.TenantLicenseOut | None = None
     usage: platform_schemas.TenantUsageOut
-    company_slots: dict[str, int | bool] | None = None
+    company_slots: "BillingCompanySlotsOut" | None = None
     available_plans: list[BillingPlanOut]
     history: list[BillingHistoryItemOut] = []
     invoices: list[BillingInvoiceOut] = []
+
+
+class BillingCompanySlotsOut(BaseModel):
+    included_limit: int
+    extra_slots: int
+    effective_limit: int
+    used: int
+    available: int
+    unlimited: bool
 
 
 async def _company_slots_payload(
@@ -174,21 +183,21 @@ async def _company_slots_payload(
     *,
     tenant: Tenant,
     license_entry: TenantLicense | None,
-) -> dict[str, int | bool]:
+) -> BillingCompanySlotsOut:
     slots = await get_operating_company_slots(
         db,
         str(tenant.id),
         preloaded_tenant=tenant,
         preloaded_license=license_entry,
     )
-    return {
-        "included_limit": int(slots.included_limit),
-        "extra_slots": int(slots.extra_slots),
-        "effective_limit": int(slots.effective_limit),
-        "used": int(slots.used),
-        "available": int(slots.available),
-        "unlimited": bool(slots.unlimited),
-    }
+    return BillingCompanySlotsOut(
+        included_limit=int(slots.included_limit),
+        extra_slots=int(slots.extra_slots),
+        effective_limit=int(slots.effective_limit),
+        used=int(slots.used),
+        available=int(slots.available),
+        unlimited=bool(slots.unlimited),
+    )
 
 
 class BillingChangePlanIn(BaseModel):
