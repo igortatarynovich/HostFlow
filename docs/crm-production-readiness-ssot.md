@@ -1,7 +1,7 @@
 # CRM Production Readiness SSOT (Single Source of Truth)
 
 Дата создания: 2026-03-11  
-Последнее обновление: 2026-03-13  
+Последнее обновление: 2026-03-15  
 Статус: `IN_PROGRESS`  
 Цель: довести продукт до состояния, когда новый клиент проходит путь `Landing -> Signup -> Payment -> Active usage` без участия поддержки.
 
@@ -247,7 +247,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | A3 | Реализовать платежную историю в UI (`invoices/payments history`) | `DONE` | Пользователь видит оплачено/не оплачено, активный тариф, дату старта/окончания периода, invoice history и receipt/download actions на 1 экране | Live user sign-off подтвержден: history/invoices/date fields/receipt download работают в production billing flow |
 | A4 | Финализировать recovery-флоу оплаты (cancel/error/retry/pending webhook) | `DONE` | На каждой ошибке и post-payment ветке есть понятный экран, только нужные CTA (`subscribe/pay/cancel/resume/manage`) и email confirmations | Live user sign-off подтвержден: explicit Stripe Checkout plan change, cancel/resume, pending/return states и post-payment UX работают как ожидается |
 | A5 | Прогон сквозного E2E #20 (staging -> production) | `IN_PROGRESS` | Подписанный PASS протокол | Dedicated production `services` tenant подготовлен; остался финальный manual run-record |
-| A6 | Productize `operating company slots` monetization (plan includes + paid add-on slots) | `NOT_STARTED` | Явный контракт: сколько operating-companies включено в каждый план и как считается доплата за каждую следующую | Нужно утвердить pricing/limits и реализовать entitlements + billing UX |
+| A6 | Productize `operating company slots` monetization (plan includes + paid add-on slots) | `IN_PROGRESS` | Явный контракт: сколько operating-companies включено в каждый план и как считается доплата за каждую следующую | `A6-S1` запущен: baseline pricing/limits matrix зафиксирован, остается Product/Billing sign-off по unit-price add-on slot |
 
 ### 5.1.1 Sales Unblock Execution Pack (`2026-03-12`)
 
@@ -292,6 +292,61 @@ API smoke-check `P0` (staging, `2026-03-11`):
   - `subscription_id = sub_1TAQFkDNUS2CNJRmeq1PmpsR`
   - `current_period_end = 2026-04-13T07:35:06+00:00`
 - В backend logs зафиксированы `POST /api/v1/settings/billing/webhook` (`200`), что подтверждает доставку webhook от Stripe.
+
+### 5.1.4 `A6` Operating Company Slots Monetization Execution Pack (`2026-03-15`)
+
+Цель:
+- productize лимиты operating-компаний как часть тарифа + платный add-on за каждый дополнительный слот без ручных операций поддержки.
+
+Что должно быть зафиксировано до реализации:
+- Канонический entitlement contract:
+  - `plan_included_operating_companies` (сколько включено в тариф).
+  - `extra_operating_company_slots` (сколько куплено дополнительно).
+  - `max_operating_companies = included + extra`.
+- Канонический billing contract:
+  - add-on биллится как отдельная recurring line item в Stripe subscription.
+  - изменение количества слотов идет через explicit checkout/update flow с предсказуемой proration-policy.
+  - downgrade количества слотов не может привести к silent data-loss.
+
+Декомпозиция `A6`:
+
+| Шаг | Действие | Owner | Артефакт приемки | Статус |
+|---|---|---|---|---|
+| A6-S1 | Утвердить pricing/limits matrix по планам (`starter/team/pro`) и unit-price add-on slot | Product + Billing | Таблица `plan -> included slots -> add-on price` в runbook + ссылка в SSOT | `IN_PROGRESS` |
+| A6-S2 | Зафиксировать data contract в tenant/license модели (`included`, `extra`, `max`) | Backend | Schema/API contract + migration notes | `NOT_STARTED` |
+| A6-S3 | Реализовать checkout/update flow для покупки/изменения add-on slots | Backend + Frontend | Рабочий UI/API path `increase/decrease slots` с понятными CTA и pending/retry states | `IN_PROGRESS` |
+| A6-S4 | Встроить sync из Stripe webhook в tenant entitlements (`invoice.paid`, `subscription.updated/deleted`) | Backend | Mapping `Stripe items -> tenant slots` + live webhook smoke | `NOT_STARTED` |
+| A6-S5 | Добавить guardrails в operating company creation flow | Backend + Frontend | При достижении лимита показывается upgrade/add-slot path, без технических ошибок и тупиков | `NOT_STARTED` |
+| A6-S6 | Подготовить migration/transition для текущих tenants и manual rollback playbook | Backend + Product | Controlled migration plan + dry-run report | `NOT_STARTED` |
+| A6-S7 | Выполнить E2E release pass (`buy slot -> create company -> downgrade/edge cases`) | QA + Product | Подписанный `PASS/FAIL` протокол с evidence | `NOT_STARTED` |
+
+Acceptance rules для `A6`:
+- Пользователь видит текущий лимит и usage operating-компаний в billing UI без обращения в поддержку.
+- При превышении лимита система не ломает onboarding/companies flow, а ведет в понятный upgrade/add-slot сценарий.
+- После оплаты add-on slot entitlement применяется автоматически webhook-цепочкой без ручного SQL.
+- При отмене/downgrade add-on сохраняется data-integrity: лишние operating-компании не удаляются, но создание новых блокируется до соответствия лимиту.
+
+#### 5.1.4.1 `A6-S1` Pricing/Limits Matrix Baseline v0 (`2026-03-15`)
+
+Source-of-truth для текущего runtime baseline:
+- `backend/app/api/v1/settings/billing.py`:
+  - `_available_plans()`: `starter=39`, `team=99`, `pro=199` (EUR monthly baseline в текущем billing UX API).
+  - `PLAN_LICENSE_LIMITS.*.max_companies`: `starter=1`, `team=10`, `pro=100`.
+
+Принятое рабочее правило для `A6-S1`:
+- до запуска add-on механики используем `max_companies` как baseline included operating slots;
+- коммерческий `add-on slot unit price` фиксируется отдельно Product/Billing sign-off и затем переносится в Stripe price catalog + runtime config.
+
+| Plan code | Base monthly price (EUR) | Included operating slots (baseline) | Add-on slot unit price (EUR / month) | Статус |
+|---|---|---|---|---|
+| `starter` | `39` | `1` | `TBD (Product/Billing sign-off)` | `BASELINE_LOCKED` |
+| `team` | `99` | `10` | `TBD (Product/Billing sign-off)` | `BASELINE_LOCKED` |
+| `pro` | `199` | `100` | `TBD (Product/Billing sign-off)` | `BASELINE_LOCKED` |
+
+Что считается закрытием `A6-S1`:
+- В таблице выше заполнен `Add-on slot unit price` для `starter/team/pro` (или единый `all-plans` unit price).
+- Значения согласованы с фактическими Stripe recurring prices (product/price IDs задокументированы).
+- В runbook есть явная proration policy для `increase/decrease slots` без неожиданных списаний.
 
 ## 5.2 Фаза B — Онбординг и TTV
 
@@ -1734,3 +1789,6 @@ Release gap:
 - `2026-03-15` — `My Company` detail workspace выровнен под operating-profile semantics: для `operating` компаний в `Companies` detail заменены клиентские KPI/CTA (candidate/vacancy-first) на owner-profile блоки (`readiness`, `bank accounts`, `contracts`, `invoice email`) и действия `Create invoice` + `Open billing`; блок обзора вакансий в этом режиме заменен на invoicing workspace entry.
 - `2026-03-15` — `My Company` upgraded до owner-profile landing: убран auto-redirect при единственной operating-company, добавлен top-level action strip (`Legal`, `Billing`, `Bank Accounts`, `Branding`), а detail-экран `Companies` поддерживает deep-link `?section=...` со скроллом и auto-open нужных collapsible секций.
 - `2026-03-15` — уточнен канонический `operating company` контракт: подписчик обязательно создает собственный профиль компании и выбирает `company_type` (`agency/employer/services`), который управляет presets/funnels/analytics/workflow semantics; лимит operating-компаний остается plan-based, а monetization доп. слотов выделен в новый backlog task `A6`.
+- `2026-03-15` — для `A6` добавлен детализированный execution pack (`5.1.4`): зафиксированы entitlement/billing contract для operating company slots, шаги `A6-S1..A6-S7`, release-gates и data-integrity правила для upgrade/downgrade без ручной поддержки.
+- `2026-03-15` — `A6-S1` переведен в `IN_PROGRESS`: в `5.1.4.1` зафиксирован baseline pricing/limits matrix из runtime source-of-truth (`starter/team/pro = 39/99/199 EUR`, included operating slots baseline = `1/10/100`), оставлен explicit `TBD` на unit-price add-on slot до Product/Billing sign-off.
+- `2026-03-15` — `A6-S3` стартовал implementation-level: добавлен API `POST /api/v1/settings/billing/company-slots` для изменения `extra_operating_company_slots`, в billing workspace добавлены `- / + / Save` controls для add-on slot count и runtime card usage считает effective operating company limit (`included + extra`).

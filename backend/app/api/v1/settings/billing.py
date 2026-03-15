@@ -15,7 +15,10 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db, get_db_with_tenant
 from backend.app.models.tenant import Tenant, TenantLicense
-from backend.app.services.operating_company_slots import get_operating_company_slots
+from backend.app.services.operating_company_slots import (
+    extract_extra_operating_company_slots,
+    get_operating_company_slots,
+)
 from backend.app.services.system_email import send_system_email
 
 try:  # pragma: no cover - optional dependency
@@ -198,6 +201,10 @@ class BillingCancelIn(BaseModel):
     immediate: bool = False
 
 
+class BillingCompanySlotsUpdateIn(BaseModel):
+    extra_slots: int = Field(default=0, ge=0, le=1000)
+
+
 def _now_utc() -> datetime:
     return datetime.now(UTC)
 
@@ -283,6 +290,20 @@ def _plan_price_id(plan_code: str) -> str | None:
         "pro": (settings.stripe_price_pro or "").strip(),
     }
     return mapping.get(plan_code) or None
+
+
+def _operating_slot_addon_price_id() -> str | None:
+    return (settings.stripe_price_operating_company_slot or "").strip() or None
+
+
+def _set_extra_operating_slots(payload: dict[str, Any], extra_slots: int) -> dict[str, Any]:
+    value = max(0, int(extra_slots or 0))
+    updated = dict(payload)
+    updated["extra_operating_company_slots"] = value
+    for legacy_key in ("additional_operating_company_slots", "operating_company_addon_slots"):
+        if legacy_key in updated:
+            del updated[legacy_key]
+    return updated
 
 
 def _plan_code_by_price_id(price_id: str | None) -> str | None:
@@ -628,6 +649,22 @@ def _extract_subscription_price_id(sub_obj: dict[str, Any]) -> str | None:
     if not price:
         return None
     return str(price.get("id") or "").strip() or None
+
+
+def _find_subscription_item_by_price_id(sub_obj: dict[str, Any], price_id: str) -> dict[str, Any] | None:
+    target = (price_id or "").strip()
+    if not target:
+        return None
+    items = sub_obj.get("items")
+    item_data = []
+    if isinstance(items, dict) and isinstance(items.get("data"), list):
+        item_data = items.get("data") or []
+    for item in item_data:
+        item_dict = _stripe_obj_to_dict(item)
+        price = _stripe_obj_to_dict(item_dict.get("price"))
+        if str(price.get("id") or "").strip() == target:
+            return item_dict
+    return None
 
 
 def _extract_subscription_period(sub_obj: dict[str, Any]) -> tuple[str | None, str | None]:
@@ -1400,6 +1437,112 @@ async def change_plan(
     company_slots = await _company_slots_payload(db, tenant=tenant, license_entry=license_entry)
     return BillingSummaryOut(
         subscription=effective_subscription,
+        license=platform_schemas.TenantLicenseOut.model_validate(license_entry) if license_entry else None,
+        usage=platform_schemas.TenantUsageOut(**usage),
+        company_slots=company_slots,
+        available_plans=_available_plans(),
+        history=_history_out(tenant),
+        invoices=_list_stripe_invoices(_subscription_payload(tenant)),
+    )
+
+
+@router.post(
+    "/company-slots",
+    response_model=BillingSummaryOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def update_company_slots(
+    payload: BillingCompanySlotsUpdateIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> BillingSummaryOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant_access(ctx, tenant_id)
+    tenant = await db.get(Tenant, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+
+    current = _subscription_payload(tenant)
+    old_extra_slots = extract_extra_operating_company_slots(current)
+    new_extra_slots = max(0, int(payload.extra_slots or 0))
+
+    provider = str(current.get("provider") or "").strip().lower()
+    subscription_id = str(current.get("subscription_id") or "").strip()
+    addon_price_id = _operating_slot_addon_price_id()
+    if (
+        _stripe_ready()
+        and provider == "stripe"
+        and subscription_id
+        and addon_price_id
+        and new_extra_slots != old_extra_slots
+    ):
+        stripe.api_key = settings.stripe_secret_key
+        try:
+            stripe_sub = _stripe_obj_to_dict(stripe.Subscription.retrieve(subscription_id, expand=["items.data.price"]))  # type: ignore[union-attr]
+            existing_addon_item = _find_subscription_item_by_price_id(stripe_sub, addon_price_id)
+            item_id = str((existing_addon_item or {}).get("id") or "").strip()
+            if new_extra_slots <= 0 and item_id:
+                updated_stripe = _stripe_obj_to_dict(
+                    stripe.Subscription.modify(  # type: ignore[union-attr]
+                        subscription_id,
+                        items=[{"id": item_id, "deleted": True}],
+                    )
+                )
+                await _handle_subscription_event(db, updated_stripe, deleted=False)
+            elif new_extra_slots > 0 and item_id:
+                updated_stripe = _stripe_obj_to_dict(
+                    stripe.Subscription.modify(  # type: ignore[union-attr]
+                        subscription_id,
+                        items=[{"id": item_id, "quantity": new_extra_slots}],
+                    )
+                )
+                await _handle_subscription_event(db, updated_stripe, deleted=False)
+            elif new_extra_slots > 0 and not item_id:
+                updated_stripe = _stripe_obj_to_dict(
+                    stripe.Subscription.modify(  # type: ignore[union-attr]
+                        subscription_id,
+                        items=[{"price": addon_price_id, "quantity": new_extra_slots}],
+                    )
+                )
+                await _handle_subscription_event(db, updated_stripe, deleted=False)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=409, detail=f"Failed to update Stripe add-on slots: {exc}") from exc
+        tenant = await db.get(Tenant, tenant_id)
+        if tenant is None:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+        current = _subscription_payload(tenant)
+
+    if new_extra_slots != old_extra_slots:
+        now = _now_utc()
+        await _store_subscription(
+            db,
+            tenant,
+            {
+                **_set_extra_operating_slots(current, new_extra_slots),
+                "updated_at": now.isoformat(),
+            },
+            history_entry=_history_entry(
+                event_type="subscription.company_slots_updated",
+                status="success",
+                title="Operating company slots updated",
+                description=f"Add-on slots changed from {old_extra_slots} to {new_extra_slots}.",
+                source="app",
+                plan_code=str(current.get("plan_code") or "starter"),
+                dedupe_key=f"app:{tenant_id}:company-slots:{old_extra_slots}:{new_extra_slots}:{now.isoformat()}",
+            ),
+        )
+        tenant = await db.get(Tenant, tenant_id)
+        if tenant is None:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+
+    license_entry = await tenant_service.get_tenant_license(db, tenant_id)
+    usage = await tenant_service.get_usage_snapshot(db, tenant_id)
+    company_slots = await _company_slots_payload(db, tenant=tenant, license_entry=license_entry)
+    return BillingSummaryOut(
+        subscription=_subscription_out(tenant),
         license=platform_schemas.TenantLicenseOut.model_validate(license_entry) if license_entry else None,
         usage=platform_schemas.TenantUsageOut(**usage),
         company_slots=company_slots,

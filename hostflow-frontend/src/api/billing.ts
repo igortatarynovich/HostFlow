@@ -166,3 +166,8 @@ export async function reactivateBillingSubscription() {
   const { data } = await http.post<BillingSummary>('/settings/billing/reactivate')
   return data
 }
+
+export async function updateBillingCompanySlots(payload: { extra_slots: number }) {
+  const { data } = await http.post<BillingSummary>('/settings/billing/company-slots', payload)
+  return data
+}

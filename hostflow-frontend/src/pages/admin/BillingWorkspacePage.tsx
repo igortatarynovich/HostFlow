@@ -20,6 +20,7 @@ import {
   getBillingSummary,
   reactivateBillingSubscription,
   simulateBillingCheckoutResolution,
+  updateBillingCompanySlots,
   type BillingCheckoutSession,
   type BillingHistoryItem,
   type BillingInvoice,
@@ -196,6 +197,7 @@ export default function BillingWorkspacePage() {
   const [actionNotice, setActionNotice] = useState<ActionNotice>(null)
   const [isVerifyingCheckout, setIsVerifyingCheckout] = useState(false)
   const [operatingCompanyCount, setOperatingCompanyCount] = useState(0)
+  const [companySlotsInput, setCompanySlotsInput] = useState('0')
 
   const reloadSummary = useCallback(async () => {
     const data = await getBillingSummary()
@@ -251,6 +253,11 @@ export default function BillingWorkspacePage() {
       mounted = false
     }
   }, [])
+
+  useEffect(() => {
+    const next = String(summary?.company_slots?.extra_slots ?? 0)
+    setCompanySlotsInput(next)
+  }, [summary?.company_slots?.extra_slots])
 
   const activePlan = getPlanCode(subscription?.plan_code)
   const isTrial = (subscription?.status || '').trim().toLowerCase() === 'trial'
@@ -504,6 +511,37 @@ export default function BillingWorkspacePage() {
     }
   }
 
+  const handleUpdateCompanySlots = async () => {
+    const parsed = Number.parseInt(companySlotsInput, 10)
+    const desired = Number.isFinite(parsed) ? Math.min(1000, Math.max(0, parsed)) : 0
+    setIsMutationLoading(true)
+    setError(null)
+    setActionNotice(null)
+    try {
+      const data = await updateBillingCompanySlots({ extra_slots: desired })
+      setSummary(data)
+      setSubscription(data.subscription)
+      setCompanySlotsInput(String(data.company_slots?.extra_slots ?? desired))
+      setActionNotice({
+        tone: 'success',
+        title: t('app.settings.billing.action_notice.company_slots_title', { defaultValue: 'Company slots updated' }),
+        text: t('app.settings.billing.action_notice.company_slots_text', {
+          defaultValue: 'Add-on operating company slots were set to {count}.',
+          values: { count: String(data.company_slots?.extra_slots ?? desired) },
+        }),
+      })
+    } catch (err: any) {
+      setError(
+        getFriendlyErrorInfo(
+          err,
+          t('app.settings.billing.company_slots_error', { defaultValue: 'Failed to update operating company slots.' }),
+        ),
+      )
+    } finally {
+      setIsMutationLoading(false)
+    }
+  }
+
   const clearCheckoutState = async () => {
     setCheckoutState('idle')
     setLastCheckout(null)
@@ -552,6 +590,12 @@ export default function BillingWorkspacePage() {
 
   const history = summary?.history || []
   const invoices = summary?.invoices || []
+  const parsedCompanySlotsInput = Number.parseInt(companySlotsInput, 10)
+  const normalizedCompanySlotsInput = Number.isFinite(parsedCompanySlotsInput)
+    ? Math.min(1000, Math.max(0, parsedCompanySlotsInput))
+    : 0
+  const currentExtraSlots = summary?.company_slots?.extra_slots ?? 0
+  const canSaveCompanySlots = normalizedCompanySlotsInput !== currentExtraSlots && !isMutationLoading
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -994,6 +1038,42 @@ export default function BillingWorkspacePage() {
                 })}
               </div>
             ) : null}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="btn-secondary btn-xs"
+                onClick={() => setCompanySlotsInput(String(Math.max(0, normalizedCompanySlotsInput - 1)))}
+                disabled={isMutationLoading}
+              >
+                -
+              </button>
+              <input
+                type="number"
+                min={0}
+                max={1000}
+                step={1}
+                value={companySlotsInput}
+                onChange={(event) => setCompanySlotsInput(event.target.value)}
+                className="input h-8 w-24"
+                aria-label={t('app.settings.billing.usage.extra_company_slots', { defaultValue: 'Extra operating company slots' })}
+              />
+              <button
+                type="button"
+                className="btn-secondary btn-xs"
+                onClick={() => setCompanySlotsInput(String(Math.min(1000, normalizedCompanySlotsInput + 1)))}
+                disabled={isMutationLoading}
+              >
+                +
+              </button>
+              <button type="button" className="btn-secondary btn-xs" onClick={() => void handleUpdateCompanySlots()} disabled={!canSaveCompanySlots}>
+                {t('common.actions.save', { defaultValue: 'Save' })}
+              </button>
+            </div>
+            <div className="mt-1 text-xs text-slate-500">
+              {t('app.settings.billing.usage.extra_company_slots_hint', {
+                defaultValue: 'Add-on slots extend your plan limit for operating companies.',
+              })}
+            </div>
           </div>
         </div>
       </section>

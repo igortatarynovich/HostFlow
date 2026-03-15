@@ -117,6 +117,7 @@ class Settings(BaseSettings):
     stripe_price_starter: Optional[str] = None
     stripe_price_team: Optional[str] = None
     stripe_price_pro: Optional[str] = None
+    stripe_price_operating_company_slot: Optional[str] = None
     stripe_portal_return_url: Optional[str] = None
 
     if PYDANTIC_V2:
