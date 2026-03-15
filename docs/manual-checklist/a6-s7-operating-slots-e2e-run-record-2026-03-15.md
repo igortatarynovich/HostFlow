@@ -6,6 +6,8 @@ Owner: `Codex/Product`
 Result: `IN_PROGRESS`  
 Blocker (if any): `Manual product/QA click-path run and Stripe-side payment confirmation evidence are pending.`
 
+Manual execution protocol: [a6-s7-manual-evidence-checklist.md](/opt/HostFlow/docs/manual-checklist/a6-s7-manual-evidence-checklist.md)
+
 ## Scope
 - Validate end-to-end operating company slots flow:
   1. buy/add slot,
@@ -35,6 +37,12 @@ Blocker (if any): `Manual product/QA click-path run and Stripe-side payment conf
 - Proof of blocked creation at limit with billing recovery path.
 - Webhook event log snippet (`customer.subscription.updated` / `invoice.paid`) showing entitlement sync.
 - Downgrade edge-case proof: existing companies intact, new creation blocked until limits match.
+
+## Collected Manual Baseline Artifacts
+
+- Real-tenant baseline snapshot (`victoria-space`, before manual click-path):  
+  [a6-s7-slots-snapshot-2026-03-15-victoria-space-before-manual.md](/opt/HostFlow/docs/manual-checklist/a6-s7-slots-snapshot-2026-03-15-victoria-space-before-manual.md),  
+  [a6-s7-slots-snapshot-2026-03-15-victoria-space-before-manual.json](/opt/HostFlow/docs/manual-checklist/a6-s7-slots-snapshot-2026-03-15-victoria-space-before-manual.json)
 
 ## Sign-off
 - Product: `PENDING`
