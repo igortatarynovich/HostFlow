@@ -123,6 +123,7 @@ export default function InvoiceDetailPage() {
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [sendComposerOpen, setSendComposerOpen] = useState(false)
+  const [sendErrorComposerPrefilled, setSendErrorComposerPrefilled] = useState(false)
   const [sendRecipient, setSendRecipient] = useState('')
   const [sendSubject, setSendSubject] = useState('')
   const [sendBody, setSendBody] = useState('')
@@ -293,6 +294,11 @@ export default function InvoiceDetailPage() {
       setInvoice(updated as Invoice)
       await refreshInvoice()
       setSendComposerOpen(false)
+      if (hasSendErrorNotice) {
+        const next = new URLSearchParams(searchParams)
+        next.delete('send_error')
+        setSearchParams(next, { replace: true })
+      }
       setActionMessage(
         t('app.invoices.send_success', {
           defaultValue: invoice.status === 'sent' ? 'Invoice resent.' : 'Invoice sent.',
@@ -404,6 +410,12 @@ export default function InvoiceDetailPage() {
     )
     setSendComposerOpen(true)
   }
+
+  useEffect(() => {
+    if (!invoice || !hasSendErrorNotice || sendErrorComposerPrefilled) return
+    openSendComposer()
+    setSendErrorComposerPrefilled(true)
+  }, [hasSendErrorNotice, invoice, sendErrorComposerPrefilled])
 
   const isLockedForCompliance = invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue'
   const correctionPath = `/app/invoices/new?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`
