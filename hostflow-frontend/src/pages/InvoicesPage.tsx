@@ -74,6 +74,10 @@ function deliveryBadgeClass(status: string | null | undefined): string {
   }
 }
 
+function isLockedForCompliance(status: InvoiceStatus): boolean {
+  return status === 'sent' || status === 'paid' || status === 'overdue'
+}
+
 export default function InvoicesPage() {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -85,7 +89,7 @@ export default function InvoicesPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [activeInvoiceAction, setActiveInvoiceAction] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('')
-  const [queueFilter, setQueueFilter] = useState<'all' | 'delivery_failed' | 'missing_recipient' | 'overdue_unpaid'>('all')
+  const [queueFilter, setQueueFilter] = useState<'all' | 'delivery_failed' | 'missing_recipient' | 'overdue_unpaid' | 'needs_correction'>('all')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [reloadKey, setReloadKey] = useState(0)
   const companyIdFilter = searchParams.get('company_id') || ''
@@ -152,6 +156,9 @@ export default function InvoicesPage() {
       }
       if (queueFilter === 'overdue_unpaid') {
         return invoice.status === 'overdue' && Number(invoice.total_amount || 0) > Number(invoice.paid_amount || 0)
+      }
+      if (queueFilter === 'needs_correction') {
+        return isLockedForCompliance(invoice.status)
       }
       return true
     })
@@ -454,6 +461,7 @@ export default function InvoicesPage() {
             { key: 'delivery_failed', label: t('app.invoices.queue.delivery_failed', { defaultValue: 'Delivery failed' }) },
             { key: 'missing_recipient', label: t('app.invoices.queue.missing_recipient', { defaultValue: 'Missing recipient' }) },
             { key: 'overdue_unpaid', label: t('app.invoices.queue.overdue_unpaid', { defaultValue: 'Overdue unpaid' }) },
+            { key: 'needs_correction', label: t('app.invoices.queue.needs_correction', { defaultValue: 'Needs correction' }) },
           ].map((item) => {
             const active = queueFilter === item.key
             return (
@@ -692,13 +700,20 @@ export default function InvoicesPage() {
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-700">{formatAmount(invoice.paid_amount)}</td>
                     <td className="py-3 px-4">
-                      <span
-                        className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(
-                          invoice.status
-                        )}`}
-                      >
-                        {t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span
+                          className={`inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(
+                            invoice.status
+                          )}`}
+                        >
+                          {t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}
+                        </span>
+                        {isLockedForCompliance(invoice.status) && (
+                          <span className="inline-flex items-center rounded-md bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                            {t('app.invoices.locked', { defaultValue: 'LOCKED' })}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-wrap gap-2">
@@ -741,7 +756,7 @@ export default function InvoicesPage() {
                               : t('app.invoices.mark_paid', { defaultValue: 'Mark paid' })}
                           </button>
                         )}
-                        {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                        {invoice.status !== 'paid' && invoice.status !== 'cancelled' && !isLockedForCompliance(invoice.status) && (
                           <button
                             type="button"
                             className="btn-secondary btn-sm"
