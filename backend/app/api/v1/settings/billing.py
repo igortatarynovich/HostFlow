@@ -159,16 +159,6 @@ class BillingInvoiceOut(BaseModel):
     invoice_pdf_url: str | None = None
 
 
-class BillingSummaryOut(BaseModel):
-    subscription: BillingSubscriptionOut
-    license: platform_schemas.TenantLicenseOut | None = None
-    usage: platform_schemas.TenantUsageOut
-    company_slots: "BillingCompanySlotsOut" | None = None
-    available_plans: list[BillingPlanOut]
-    history: list[BillingHistoryItemOut] = []
-    invoices: list[BillingInvoiceOut] = []
-
-
 class BillingCompanySlotsOut(BaseModel):
     included_limit: int
     extra_slots: int
@@ -176,6 +166,16 @@ class BillingCompanySlotsOut(BaseModel):
     used: int
     available: int
     unlimited: bool
+
+
+class BillingSummaryOut(BaseModel):
+    subscription: BillingSubscriptionOut
+    license: platform_schemas.TenantLicenseOut | None = None
+    usage: platform_schemas.TenantUsageOut
+    company_slots: BillingCompanySlotsOut | None = None
+    available_plans: list[BillingPlanOut]
+    history: list[BillingHistoryItemOut] = []
+    invoices: list[BillingInvoiceOut] = []
 
 
 async def _company_slots_payload(
