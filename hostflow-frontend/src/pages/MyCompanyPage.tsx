@@ -63,6 +63,7 @@ export default function MyCompanyPage() {
     ? 0
     : Math.max((billing?.company_slots?.available ?? effectiveOperatingLimit - managedOperatingCompanies.length), 0)
   const hasAvailableOperatingSlots = Boolean(billing?.company_slots?.unlimited) || availableOperatingSlots > 0
+  const billingCompanySlotsPath = '/app/settings/billing?focus=company-slots&recommended_extra_slots=1'
 
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
@@ -79,7 +80,7 @@ export default function MyCompanyPage() {
           </div>
           <button
             className="btn-primary bg-white text-slate-900 hover:bg-white/90"
-            onClick={() => navigate(hasAvailableOperatingSlots ? '/app/onboarding/company' : '/app/settings/billing')}
+            onClick={() => navigate(hasAvailableOperatingSlots ? '/app/onboarding/company' : billingCompanySlotsPath)}
           >
             {hasAvailableOperatingSlots
               ? t('app.my_company.create', { defaultValue: 'Create my company' })
@@ -159,7 +160,7 @@ export default function MyCompanyPage() {
                 {t('app.my_company.create', { defaultValue: 'Create my company' })}
               </button>
             ) : null}
-            <Link className="btn-secondary" to="/app/settings/billing">
+            <Link className="btn-secondary" to={billingCompanySlotsPath}>
               {t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
             </Link>
           </div>
