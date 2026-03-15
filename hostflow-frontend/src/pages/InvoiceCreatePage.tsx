@@ -159,11 +159,20 @@ function buildSuggestedInvoiceNumber(invoiceKind: string, taxMode: string, issue
   return `${prefix}/${year}/${month}/${String(maxSeq + 1).padStart(4, '0')}`
 }
 
+function companyRole(company: Company | null | undefined) {
+  return String((company?.extra as Record<string, any> | undefined)?.company_role || '')
+    .trim()
+    .toLowerCase()
+}
+
+function isOperatingCompany(company: Company | null | undefined) {
+  return companyRole(company) === 'operating'
+}
+
 function isManagedIssuerCompany(company: Company, userId: string) {
   const actor = String(userId || '').trim()
   if (!actor) return false
-  const companyRole = String((company.extra as Record<string, any> | undefined)?.company_role || '').trim().toLowerCase()
-  if (companyRole !== 'operating') return false
+  if (!isOperatingCompany(company)) return false
   return [company.owner_user_id, company.manager_user_id].some((value) => String(value || '').trim() === actor)
 }
 
@@ -205,6 +214,13 @@ export default function InvoiceCreatePage() {
   const [sourceInvoice, setSourceInvoice] = useState<Invoice | null>(null)
   const clientContacts = extractCompanyContacts(clientCompany)
   const selfId = String((me as any)?.sub || '').trim()
+  const clientCompanies = useMemo(() => {
+    const eligible = companies.filter((company) => !isOperatingCompany(company))
+    if (!companyId) return eligible
+    if (eligible.some((company) => company.id === companyId)) return eligible
+    const selected = companies.find((company) => company.id === companyId)
+    return selected ? [selected, ...eligible] : eligible
+  }, [companies, companyId])
   const issuerCompanies = useMemo(
     () => companies.filter((company) => isManagedIssuerCompany(company, selfId)),
     [companies, selfId],
@@ -561,6 +577,15 @@ export default function InvoiceCreatePage() {
       setError(t('app.invoices.create_company_required', { defaultValue: 'Client is required.' }))
       return
     }
+    const selectedClient = companies.find((company) => company.id === companyId) || null
+    if (selectedClient && isOperatingCompany(selectedClient)) {
+      setError(
+        t('app.invoices.client_operating_not_allowed', {
+          defaultValue: 'Recipient must be a client company. Your operating company cannot be selected as invoice client.',
+        }),
+      )
+      return
+    }
     const normalizedItems = items
       .map((item, index) => ({
         line_no: index + 1,
@@ -806,12 +831,17 @@ export default function InvoiceCreatePage() {
                 disabled={loadingCompanies || loadingInvoice || saving}
               >
                 <option value="">{t('app.invoices.select_client', { defaultValue: 'Select client' })}</option>
-                {companies.map((company) => (
+                {clientCompanies.map((company) => (
                   <option key={company.id} value={company.id}>
                     {company.name}
                   </option>
                 ))}
               </select>
+              <span className="text-xs text-slate-500">
+                {t('app.invoices.client_help', {
+                  defaultValue: 'Only client companies are available here. Use issuer field for your operating company.',
+                })}
+              </span>
             </label>
 
             <label className="flex flex-col gap-1 text-sm">
