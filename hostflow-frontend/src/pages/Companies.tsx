@@ -24,7 +24,6 @@ import {
   CONTACT_ROLE_OPTIONS,
   WORK_MODE_OPTIONS,
   TRAILER_TYPE_KEYS,
-  OPERATIONAL_PROFILE_OPTIONS,
 } from '../modules/companies/constants'
 import type {
   AnyRecord,
@@ -88,6 +87,13 @@ function normalizeCompanyKind(value: unknown): 'client' | 'counterparty' {
   return 'client'
 }
 
+function normalizeOperatingCompanyType(value: unknown): 'agency' | 'employer' | 'services' {
+  const raw = String(value ?? '').trim().toLowerCase()
+  if (raw === 'employer') return 'employer'
+  if (raw === 'services') return 'services'
+  return 'agency'
+}
+
 function getCompanyRoleFromAny(company: AnyRecord): 'operating' | 'client' {
   const extra = asRecord(company?.extra)
   const raw =
@@ -123,6 +129,13 @@ export default function Companies(){
   const isOperatingProfileRoute = location.pathname.startsWith('/app/my-company')
   const listBasePath = isOperatingProfileRoute ? '/app/my-company' : '/app/clients'
   const sectionFocus = String(searchParams.get('section') || '').trim().toLowerCase()
+  const showExtendedSections = String(searchParams.get('extended') || '').trim() === '1'
+  const toggleExtendedSections = useCallback(() => {
+    const next = new URLSearchParams(searchParams)
+    if (showExtendedSections) next.delete('extended')
+    else next.set('extended', '1')
+    navigate(`${location.pathname}?${next.toString()}`, { replace: true })
+  }, [location.pathname, navigate, searchParams, showExtendedSections])
   const handleCreateClientCompany = useCallback(() => {
     navigate('/app/clients/new')
   }, [navigate])
@@ -1576,29 +1589,31 @@ export default function Companies(){
       )
     }
 
-    const activeUsers = companyUsers.filter((user) => user.user_id && user.status === 'active')
-    const ownerOptions = activeUsers
-      .filter((user) => ['administrator', 'supervisor', 'superadmin'].includes(String(user.role || '').toLowerCase()))
-      .map((user) => ({
-        value: String(user.user_id),
-        label: user.full_name || user.email || String(user.user_id),
-      }))
-    const managerOptions = activeUsers.map((user) => ({
-      value: String(user.user_id),
-      label: user.full_name || user.email || String(user.user_id),
-    }))
-
     const locationLine = [detailForm.base.country_code, detailForm.base.city].filter(Boolean).join(', ')
 
     const isOperatingCompany = getCompanyRoleFromAny(currentAny) === 'operating'
 
+    const clientContactsCount = detailForm.contacts.filter((contact) =>
+      Boolean((contact.full_name || contact.email || contact.phone).trim()),
+    ).length
+    const clientOrdersCount = detailForm.orders.filter((order) =>
+      Boolean((order.title || order.client_reference || order.status).trim()),
+    ).length
+    const clientContractsCount = detailForm.contracts.filter((contract) =>
+      Boolean((contract.title || contract.reference || contract.status).trim()),
+    ).length
+
+    const operatingCompanyType = normalizeOperatingCompanyType(
+      detailForm.rawExtra?.company_type ?? detailForm.rawExtra?.company_kind,
+    )
+
     const companyKpis = isOperatingCompany
       ? [
           {
-            key: 'readiness',
-            label: t('app.companies.readiness.score', { defaultValue: 'Readiness score' }),
-            value: readinessScoreLabel ?? '—',
-            hint: t('app.companies.detail.kpis.readiness_hint', { defaultValue: 'Legal + billing readiness of your issuer profile' }),
+            key: 'company_type',
+            label: t('app.my_company.company_type', { defaultValue: 'Company type' }),
+            value: operatingCompanyType,
+            hint: t('app.my_company.company_type_hint', { defaultValue: 'Defines funnels, presets and analytics for this workspace' }),
           },
           {
             key: 'bank_accounts',
@@ -1607,42 +1622,36 @@ export default function Companies(){
             hint: t('app.companies.detail.kpis.bank_accounts_hint', { defaultValue: 'Configured payout accounts for invoices' }),
           },
           {
+            key: 'invoice_email',
+            label: t('app.companies.detail.kpis.invoice_email', { defaultValue: 'Invoice email' }),
+            value: detailForm.billing.invoice_email ? t('common.words.yes') : t('common.words.no'),
+            hint: t('app.companies.detail.kpis.invoice_email_hint', { defaultValue: 'Sender/finance mailbox used for invoices' }),
+          },
+        ]
+      : [
+          {
+            key: 'contacts_total',
+            label: t('app.companies.detail.kpis.contacts_total', { defaultValue: 'Contacts' }),
+            value: clientContactsCount,
+            hint: t('app.companies.detail.kpis.contacts_total_hint', { defaultValue: 'Client contact persons and channels' }),
+          },
+          {
             key: 'contracts_total',
             label: t('app.companies.detail.kpis.contracts_total', { defaultValue: 'Contracts' }),
-            value: detailForm.contracts.length,
-            hint: t('app.companies.detail.kpis.contracts_total_hint', { defaultValue: 'Templates and active agreements in this profile' }),
+            value: clientContractsCount,
+            hint: t('app.companies.detail.kpis.contracts_total_hint', { defaultValue: 'Signed contracts and upcoming renewals' }),
+          },
+          {
+            key: 'orders_total',
+            label: t('app.companies.detail.kpis.orders_total', { defaultValue: 'Orders' }),
+            value: clientOrdersCount,
+            hint: t('app.companies.detail.kpis.orders_total_hint', { defaultValue: 'Active and historical service orders' }),
           },
           {
             key: 'invoice_email',
             label: t('app.companies.detail.kpis.invoice_email', { defaultValue: 'Invoice email' }),
             value: detailForm.billing.invoice_email ? t('common.words.yes') : t('common.words.no'),
-            hint: t('app.companies.detail.kpis.invoice_email_hint', { defaultValue: 'Recipient address used for invoice communications' }),
-          },
-        ]
-      : [
-          {
-            key: 'candidates_total',
-            label: t('app.companies.detail.kpis.candidates_total'),
-            value: currentAny?.candidates_total ?? 0,
-            hint: t('app.companies.detail.kpis.candidates_total_hint'),
-          },
-          {
-            key: 'candidates_pipeline',
-            label: t('app.companies.detail.kpis.candidates_pipeline'),
-            value: currentAny?.candidates_pipeline ?? 0,
-            hint: t('app.companies.detail.kpis.candidates_pipeline_hint'),
-          },
-          {
-            key: 'candidates_docs',
-            label: t('app.companies.detail.kpis.candidates_docs'),
-            value: currentAny?.candidates_docs ?? 0,
-            hint: t('app.companies.detail.kpis.candidates_docs_hint'),
-          },
-          {
-            key: 'vacancies',
-            label: t('app.companies.detail.kpis.vacancies_active'),
-            value: currentAny?.vacancies_active ?? vacancyAnalytics.total ?? 0,
-            hint: t('app.companies.detail.kpis.vacancies_active_hint'),
+            hint: t('app.companies.detail.kpis.invoice_email_hint', { defaultValue: 'Recipient address used for invoice delivery' }),
           },
         ]
 
@@ -1774,18 +1783,39 @@ export default function Companies(){
           ]
         : [
             {
-              key: 'vacancies_overview',
-              title: t('app.companies.detail.widgets.vacancies.title'),
-              content: vacancyAnalytics.total > 0 ? (
+              key: 'orders_workspace',
+              title: t('app.companies.detail.overview.orders_workspace.title', { defaultValue: 'Orders workspace' }),
+              content: clientOrdersCount > 0 ? (
                 <div className="space-y-1">
-                  <p className="text-2xl font-semibold text-slate-900">{vacancyAnalytics.total}</p>
-                  <p className="text-xs text-slate-500">{t('app.companies.detail.widgets.vacancies.subtitle')}</p>
-                  <Link to={`/app/vacancies?company=${currentAny?.id ?? ''}`} className="text-sm text-brand-600 hover:underline">
-                    {t('app.companies.detail.overview.vacancies_link', { defaultValue: 'Перейти к вакансиям' })}
-                  </Link>
+                  <p className="text-2xl font-semibold text-slate-900">{clientOrdersCount}</p>
+                  <p className="text-xs text-slate-500">
+                    {t('app.companies.detail.overview.orders_workspace.subtitle', {
+                      defaultValue: 'Orders, contracts and invoices are managed in this card.',
+                    })}
+                  </p>
+                  <a href="#section-orders" className="text-sm text-brand-600 hover:underline">
+                    {t('app.companies.detail.overview.orders_workspace.link', { defaultValue: 'Open orders section' })}
+                  </a>
+                  <div>
+                    <Link
+                      to={`/app/invoices/new?company_id=${currentAny?.id ?? ''}`}
+                      className="text-sm text-brand-600 hover:underline"
+                    >
+                      {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+                    </Link>
+                  </div>
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
+                <div className="space-y-1">
+                  <p className="text-sm text-slate-500">
+                    {t('app.companies.detail.overview.orders_workspace.empty', {
+                      defaultValue: 'No orders yet. Add order details below and issue first invoice.',
+                    })}
+                  </p>
+                  <a href="#section-orders" className="text-sm text-brand-600 hover:underline">
+                    {t('app.companies.detail.overview.orders_workspace.link', { defaultValue: 'Open orders section' })}
+                  </a>
+                </div>
               ),
             },
           ]),
@@ -1844,10 +1874,10 @@ export default function Companies(){
                   </>
                 ) : (
                   <Link
-                    to={`/app/vacancies/new?company=${currentAny?.id ?? ''}`}
+                    to={`/app/invoices/new?company_id=${currentAny?.id ?? ''}`}
                     className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
                   >
-                    {t('app.companies.detail.actions.add_vacancy')}
+                    {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
                   </Link>
                 )}
                 <button
@@ -1882,24 +1912,28 @@ export default function Companies(){
           </div>
         </section>
 
-        <SectionCard
-          title={t('app.companies.detail.overview.title')}
-          description={t('app.companies.detail.overview.subtitle')}
-        >
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {overviewCards.map((card) => (
-              <div
-                key={card.key}
-                className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{card.title}</p>
-                <div className="mt-2 text-sm text-slate-600">{card.content}</div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
+        {!isOperatingCompany && (
+          <SectionCard
+            title={t('app.companies.detail.overview.title')}
+            description={t('app.companies.detail.overview.subtitle')}
+          >
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {overviewCards.map((card) => (
+                <div
+                  key={card.key}
+                  className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{card.title}</p>
+                  <div className="mt-2 text-sm text-slate-600">{card.content}</div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}
 
+        {!isOperatingCompany && (
         <div className="grid gap-4 lg:grid-cols-2">
+          {isOperatingCompany && (
           <SectionCard title={t('app.companies.detail.widgets.vacancies.title')} description={t('app.companies.detail.widgets.vacancies.subtitle')}>
             <div className="flex items-baseline justify-between">
               <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.total')}</p>
@@ -1964,6 +1998,7 @@ export default function Companies(){
               </div>
             )}
           </SectionCard>
+          )}
 
           {blockingOrders.length > 0 && (
             <SectionCard title={t('app.companies.detail.widgets.blockers.title')} description={t('app.companies.detail.widgets.blockers.subtitle')} collapsible defaultOpen={true}>
@@ -1993,15 +2028,18 @@ export default function Companies(){
             </SectionCard>
           )}
         </div>
+        )}
 
-        <section className="card p-4">
-          <ClientInvoicesBlock
-            companyId={currentAny?.id ?? ''}
-            companyName={detailForm.base.name || t('app.companies.detail.defaults.untitled')}
-          />
-        </section>
+        {!isOperatingCompany && (
+          <section className="card p-4">
+            <ClientInvoicesBlock
+              companyId={currentAny?.id ?? ''}
+              companyName={detailForm.base.name || t('app.companies.detail.defaults.untitled')}
+            />
+          </section>
+        )}
 
-        {ENABLE_READINESS && (
+        {ENABLE_READINESS && showExtendedSections && !isOperatingCompany && (
           <SectionCard title={t('app.companies.readiness.title')}>
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="space-y-2 text-sm text-slate-600">
@@ -2037,43 +2075,55 @@ export default function Companies(){
         )}
 
         <SectionCard title={t('app.companies.detail.sections.base.title')}>
+          <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+            {isOperatingCompany
+              ? t('app.my_company.compact_hint', {
+                  defaultValue:
+                    'Operating profile: only company type, invoice/legal data and bank/payment details. Leads, ads, team, clients and candidates belong to this company.',
+                })
+              : t('app.companies.detail.compact_hint', {
+                  defaultValue:
+                    'Только базовые данные для фактуры, договора и контактов. Дополнительные поля скрыты в расширенных разделах.',
+                })}
+          </div>
           <FieldGrid cols={2}>
             <TextField
               label={t('app.companies.detail.fields.name')}
               value={detailForm.base.name}
               onChange={(value) => updateField('base', 'name', value)}
             />
-            <SelectField
-              label={t('app.companies.detail.fields.owner_user', { defaultValue: 'Owner' })}
-              value={detailForm.base.owner_user_id}
-              onChange={(value) => {
-                updateField('base', 'owner_user_id', value)
-                if (!detailForm.base.manager_user_id) {
-                  updateField('base', 'manager_user_id', value)
-                }
-              }}
-              options={ownerOptions}
-            />
             <TextField
               label={t('app.companies.detail.fields.legal_name')}
               value={detailForm.base.legal_name}
               onChange={(value) => updateField('base', 'legal_name', value)}
             />
-            <SelectField
-              label={t('app.companies.detail.fields.manager_user', { defaultValue: 'Manager' })}
-              value={detailForm.base.manager_user_id}
-              onChange={(value) => updateField('base', 'manager_user_id', value)}
-              options={managerOptions}
-            />
-            <SelectField
-              label={t('app.companies.detail.fields.company_kind', { defaultValue: 'Company type' })}
-              value={detailForm.base.company_kind}
-              onChange={(value) => updateField('base', 'company_kind', normalizeCompanyKind(value))}
-              options={[
-                { value: 'client', label: t('app.companies.list.kind_client', { defaultValue: 'Client' }) },
-                { value: 'counterparty', label: t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' }) },
-              ]}
-            />
+            {isOperatingCompany ? (
+              <SelectField
+                label={t('app.my_company.company_type', { defaultValue: 'Company type' })}
+                value={normalizeOperatingCompanyType(detailForm.rawExtra?.company_type ?? detailForm.rawExtra?.company_kind)}
+                onChange={(value) =>
+                  updateFormState('rawExtra', (prev) => ({
+                    ...prev,
+                    company_type: normalizeOperatingCompanyType(value),
+                  }))
+                }
+                options={[
+                  { value: 'agency', label: t('app.onboarding.company_type.agency', { defaultValue: 'Agency' }) },
+                  { value: 'employer', label: t('app.onboarding.company_type.employer', { defaultValue: 'Employer' }) },
+                  { value: 'services', label: t('app.onboarding.company_type.services', { defaultValue: 'Services' }) },
+                ]}
+              />
+            ) : (
+              <SelectField
+                label={t('app.companies.detail.fields.company_kind', { defaultValue: 'Company type' })}
+                value={detailForm.base.company_kind}
+                onChange={(value) => updateField('base', 'company_kind', normalizeCompanyKind(value))}
+                options={[
+                  { value: 'client', label: t('app.companies.list.kind_client', { defaultValue: 'Client' }) },
+                  { value: 'counterparty', label: t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' }) },
+                ]}
+              />
+            )}
             <TextField
               label={t('app.companies.detail.fields.tax_id')}
               value={detailForm.base.tax_id}
@@ -2095,45 +2145,29 @@ export default function Companies(){
               value={detailForm.base.website}
               onChange={(value) => updateField('base', 'website', value)}
             />
-            <TextField
-              label={t('app.companies.detail.fields.country_code')}
-              value={detailForm.base.country_code}
-              onChange={(value) => updateField('base', 'country_code', value.toUpperCase())}
-            />
-            <TextField
-              label={t('app.companies.detail.fields.city')}
-              value={detailForm.base.city}
-              onChange={(value) => updateField('base', 'city', value)}
-            />
-            <TextField
-              label={t('app.companies.detail.fields.address')}
-              value={detailForm.base.address}
-              onChange={(value) => updateField('base', 'address', value)}
-            />
-            <CheckboxField
-              label={t('app.companies.detail.fields.archived')}
-              checked={detailForm.base.is_archived}
-              onChange={(value) => updateField('base', 'is_archived', value)}
-            />
-            <SelectField
-              label={t('app.companies.detail.fields.operations_profile_type')}
-              value={detailForm.rawExtra?.operational_profile_type ?? 'transport'}
-              onChange={(value) =>
-                updateFormState('rawExtra', (prev) => ({ ...prev, operational_profile_type: value }))
-              }
-              options={OPERATIONAL_PROFILE_OPTIONS.map((opt) => ({
-                value: opt.value,
-                label: t(opt.labelKey),
-              }))}
-            />
           </FieldGrid>
           <TextareaField
-            label={t('app.companies.detail.fields.notes')}
+            label={t('app.companies.detail.fields.notes', { defaultValue: 'Описание компании' })}
             value={detailForm.base.notes}
             onChange={(value) => updateField('base', 'notes', value)}
             rows={4}
           />
         </SectionCard>
+
+        {!isOperatingCompany && (
+          <SectionCard
+            title={t('app.companies.detail.sections.advanced_toggle.title', { defaultValue: 'Расширенные разделы' })}
+            description={t('app.companies.detail.sections.advanced_toggle.description', {
+              defaultValue: 'Operations, compliance, portal, integrations, document policies и system fields.',
+            })}
+          >
+            <button className="btn-secondary" type="button" onClick={toggleExtendedSections}>
+              {showExtendedSections
+                ? t('app.companies.detail.sections.advanced_toggle.hide', { defaultValue: 'Скрыть расширенные разделы' })
+                : t('app.companies.detail.sections.advanced_toggle.show', { defaultValue: 'Показать расширенные разделы' })}
+            </button>
+          </SectionCard>
+        )}
 
         <div id="section-billing">
         <SectionCard title={t('app.companies.detail.sections.billing.title')}>
@@ -2271,7 +2305,7 @@ export default function Companies(){
         </SectionCard>
         </div>
 
-        <SectionCard title={t('app.companies.detail.sections.contacts.title')}>
+        {!isOperatingCompany && <SectionCard title={t('app.companies.detail.sections.contacts.title')}>
           <div className="space-y-3">
             {detailForm.contacts.map((contact, index) => (
               <div key={`contact-${index}`} className="grid grid-cols-1 gap-2 lg:grid-cols-6">
@@ -2319,9 +2353,9 @@ export default function Companies(){
               {t('app.companies.detail.actions.add_contact')}
             </button>
           </div>
-        </SectionCard>
+        </SectionCard>}
 
-        <div id="section-legal">
+        {!isOperatingCompany && <div id="section-legal">
         <SectionCard title={t('app.companies.detail.sections.legal.title')} collapsible defaultOpen={sectionFocus === 'legal'}>
           <FieldGrid cols={3}>
             <TextField
@@ -2492,9 +2526,9 @@ export default function Companies(){
             </div>
           </div>
         </SectionCard>
-        </div>
+        </div>}
 
-        {(detailForm.rawExtra?.operational_profile_type ?? 'transport') !== 'none' && (
+        {!isOperatingCompany && showExtendedSections && (detailForm.rawExtra?.operational_profile_type ?? 'transport') !== 'none' && (
         <SectionCard
           title={t('app.companies.detail.sections.operations.title')}
           collapsible
@@ -2678,7 +2712,7 @@ export default function Companies(){
         </SectionCard>
         )}
 
-        <SectionCard
+        {!isOperatingCompany && showExtendedSections && <SectionCard
           title={t('app.companies.detail.sections.advanced.title', { defaultValue: 'Расширенные настройки' })}
           description={t('app.companies.detail.sections.advanced.description', { defaultValue: 'Комплаенс, портал клиента, интеграции' })}
           collapsible
@@ -2846,9 +2880,9 @@ export default function Companies(){
           </div>
             </div>
           </div>
-        </SectionCard>
+        </SectionCard>}
 
-        <SectionCard
+        {!isOperatingCompany && <SectionCard
           title={t('app.companies.detail.sections.contracts.title')}
           collapsible
           defaultOpen={false}
@@ -2892,8 +2926,9 @@ export default function Companies(){
               {t('app.companies.detail.actions.add_contract')}
             </button>
           </div>
-        </SectionCard>
+        </SectionCard>}
 
+        {!isOperatingCompany && <div id="section-orders">
         <SectionCard
           title={t('app.companies.detail.sections.orders.title')}
           collapsible
@@ -2994,8 +3029,9 @@ export default function Companies(){
             </button>
           </div>
         </SectionCard>
+        </div>}
 
-        <SectionCard
+        {!isOperatingCompany && showExtendedSections && <SectionCard
           title={t('app.companies.detail.sections.document_policies.title', { defaultValue: 'Document Policies' })}
           description={t('app.companies.detail.sections.document_policies.description', { defaultValue: 'Configure document requirements for this client' })}
           collapsible
@@ -3142,15 +3178,15 @@ export default function Companies(){
               )}
             </div>
           )}
-        </SectionCard>
+        </SectionCard>}
 
-        <SectionCard title={t('app.companies.detail.sections.system.title')}>
+        {!isOperatingCompany && showExtendedSections && <SectionCard title={t('app.companies.detail.sections.system.title')}>
           <FieldGrid cols={3}>
             <InfoItem label={t('app.companies.detail.fields.id')} value={(currentAny?.id as string | undefined) || '—'} mono />
             <InfoItem label={t('app.companies.detail.fields.created_at')} value={fmtDateTime(currentAny?.created_at as string | undefined)} />
             <InfoItem label={t('app.companies.detail.fields.updated_at')} value={fmtDateTime(currentAny?.updated_at as string | undefined)} />
           </FieldGrid>
-        </SectionCard>
+        </SectionCard>}
 
       </div>
     )
