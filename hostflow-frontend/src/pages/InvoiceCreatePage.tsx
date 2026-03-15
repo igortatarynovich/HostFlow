@@ -585,6 +585,7 @@ export default function InvoiceCreatePage() {
     }
 
     setSaving(true)
+    let persistedInvoiceId: string | null = null
     try {
       const issuerBankAccount = extractPrimaryBankAccount(issuerCompany)
       const selectedIssuerBankAccount =
@@ -676,9 +677,11 @@ export default function InvoiceCreatePage() {
         status: 'draft',
       }
       let invoice = (isEditMode && invoiceId ? await updateInvoice(invoiceId, payload) : await createInvoice(payload)) as Invoice
+      persistedInvoiceId = String(invoice.id || '').trim() || null
       if (submitMode === 'save_and_send') {
         if (String(invoice.status || '').toLowerCase() === 'draft') {
           invoice = (await updateInvoice(invoice.id, { status: 'issued' })) as Invoice
+          persistedInvoiceId = String(invoice.id || '').trim() || persistedInvoiceId
         }
         await sendInvoice(invoice.id, {
           recipient_email: normalizedRecipientEmail || undefined,
@@ -686,6 +689,10 @@ export default function InvoiceCreatePage() {
       }
       navigate(`/app/invoices/${invoice.id}`)
     } catch (err: any) {
+      if (submitMode === 'save_and_send' && persistedInvoiceId) {
+        navigate(`/app/invoices/${persistedInvoiceId}?send_error=1`)
+        return
+      }
       setError(
         err?.response?.data?.detail ||
           err?.message ||

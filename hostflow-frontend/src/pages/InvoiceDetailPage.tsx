@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   cancelInvoice,
   createPayment,
@@ -112,6 +112,7 @@ export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { t } = useI18n()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [activities, setActivities] = useState<InvoiceActivity[]>([])
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
@@ -502,6 +503,26 @@ export default function InvoiceDetailPage() {
       )}
 
       {actionMessage && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{actionMessage}</div>}
+      {hasSendErrorNotice && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>
+            {t('app.invoices.send_failed_after_save', {
+              defaultValue: 'Invoice was saved, but sending failed. Open compose/send and retry.',
+            })}
+          </span>
+          <button
+            type="button"
+            className="btn-secondary btn-xs"
+            onClick={() => {
+              const next = new URLSearchParams(searchParams)
+              next.delete('send_error')
+              setSearchParams(next, { replace: true })
+            }}
+          >
+            {t('common.actions.dismiss', { defaultValue: 'Dismiss' })}
+          </button>
+        </div>
+      )}
 
       <Modal
         open={sendComposerOpen}
@@ -784,3 +805,4 @@ export default function InvoiceDetailPage() {
     </div>
   )
 }
+  const hasSendErrorNotice = searchParams.get('send_error') === '1'
