@@ -896,6 +896,16 @@ async def _handle_invoice_paid(db: AsyncSession, obj: dict[str, Any]) -> str:
     tenant_id = str(tenant.id)
     current = _subscription_payload(tenant)
     plan_code = _normalize_plan_code(str(current.get("plan_code") or "starter"))
+    synced_extra_slots: int | None = None
+    if _stripe_ready():
+        subscription_id_raw = str(obj.get("subscription") or current.get("subscription_id") or "").strip()
+        if subscription_id_raw:
+            stripe.api_key = settings.stripe_secret_key
+            try:
+                sub_obj = _stripe_obj_to_dict(stripe.Subscription.retrieve(subscription_id_raw, expand=["items.data.price"]))  # type: ignore[union-attr]
+                synced_extra_slots = _extract_operating_slot_addon_quantity(sub_obj)
+            except Exception:
+                synced_extra_slots = None
     lines = obj.get("lines") if isinstance(obj.get("lines"), dict) else {}
     line_items = lines.get("data") if isinstance(lines.get("data"), list) else []
     period_end: str | None = None
@@ -945,6 +955,8 @@ async def _handle_invoice_paid(db: AsyncSession, obj: dict[str, Any]) -> str:
         "canceled_at": None,
         "updated_at": now.isoformat(),
     }
+    if synced_extra_slots is not None:
+        updated = _set_extra_operating_slots(updated, synced_extra_slots)
     await _store_subscription(db, tenant, updated, history_entry=history_entry)
     await _apply_license_limits(db, tenant_id, plan_code)
     if history_entry:
