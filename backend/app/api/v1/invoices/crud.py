@@ -284,6 +284,23 @@ def _validate_invoice_billing_details(billing_details: dict | None) -> dict:
     return details
 
 
+async def _ensure_invoice_number_available(
+    session: AsyncSession,
+    *,
+    invoice_number: str | None,
+    exclude_invoice_id: str | None = None,
+) -> None:
+    normalized = _normalized_text(invoice_number)
+    if not normalized:
+        return
+    stmt = select(Invoice.id).where(Invoice.invoice_number == normalized)
+    if exclude_invoice_id:
+        stmt = stmt.where(Invoice.id != str(exclude_invoice_id))
+    exists = (await session.execute(stmt.limit(1))).scalar_one_or_none()
+    if exists:
+        raise ValueError("Invoice number already exists. Please use a different number.")
+
+
 async def create_invoice(
     session: AsyncSession,
     tenant_id: str,
@@ -338,6 +355,7 @@ async def create_invoice(
             invoice_kind=_normalized_text(billing_details.get("invoice_kind")),
             tax_mode=_normalized_text(billing_details.get("tax_mode")),
         )
+    await _ensure_invoice_number_available(session, invoice_number=invoice_number)
     
     # Create invoice
     invoice = Invoice(
@@ -528,7 +546,14 @@ async def update_invoice(
     if "issue_date" in payload:
         invoice.issue_date = date.fromisoformat(payload["issue_date"]) if isinstance(payload["issue_date"], str) else payload["issue_date"]
     if "invoice_number" in payload:
-        invoice.invoice_number = _normalized_text(payload["invoice_number"]) or invoice.invoice_number
+        requested_invoice_number = _normalized_text(payload["invoice_number"])
+        if requested_invoice_number and requested_invoice_number != invoice.invoice_number:
+            await _ensure_invoice_number_available(
+                session,
+                invoice_number=requested_invoice_number,
+                exclude_invoice_id=invoice.id,
+            )
+            invoice.invoice_number = requested_invoice_number
     if "due_date" in payload:
         invoice.due_date = date.fromisoformat(payload["due_date"]) if isinstance(payload["due_date"], str) else payload["due_date"]
     if "currency" in payload:

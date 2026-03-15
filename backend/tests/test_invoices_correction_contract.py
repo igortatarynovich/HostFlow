@@ -227,3 +227,31 @@ async def test_get_invoice_correction_chain_returns_original_and_corrections(db)
     assert str(correction_1.id) in ids_original
     assert str(correction_2.id) in ids_original
     assert ids_original == ids_correction
+
+
+@pytest.mark.anyio
+async def test_invoice_number_must_be_unique(db) -> None:
+    issuer = await _create_company(db, role="operating", with_bank=True, name="Issuer Number Test", tax_id="PL7777777777")
+    client = await _create_company(db, role="client", with_bank=False, name="Client Number Test", tax_id="PL8888888888")
+
+    first = await crud.create_invoice(
+        db,
+        TENANT_ID,
+        {
+            **_base_payload(company_id=client.id, issuer_company_id=issuer.id, status="issued"),
+            "invoice_number": "FV/2026/03/0099",
+        },
+        created_by=None,
+    )
+    assert first.invoice_number == "FV/2026/03/0099"
+
+    with pytest.raises(ValueError, match="Invoice number already exists"):
+        await crud.create_invoice(
+            db,
+            TENANT_ID,
+            {
+                **_base_payload(company_id=client.id, issuer_company_id=issuer.id, status="issued"),
+                "invoice_number": "FV/2026/03/0099",
+            },
+            created_by=None,
+        )
