@@ -144,10 +144,65 @@ export async function getServicesAnalyticsOverview(params?: {
   trend_bucket?: 'week' | 'month'
   slice_by?: 'client' | 'item' | 'status' | 'manager'
 }): Promise<ServicesAnalyticsOverview> {
-  const { data } = await api.get<ServicesAnalyticsOverview>('/analytics/services-overview', {
-    params,
-  })
-  return data
+  try {
+    const { data } = await api.get<ServicesAnalyticsOverview>('/analytics/services-overview', {
+      params,
+    })
+    return data
+  } catch (err: any) {
+    if (err?.response?.status !== 404) throw err
+    const { data } = await api.get<{
+      totals?: { count?: number; sum?: number }
+      by_status?: Record<string, number>
+      by_code?: Array<{ service_code?: string; count?: number; sum?: number }>
+    }>('/services-summary')
+    const generatedAt = new Date().toISOString()
+    const statusBreakdown = Object.entries(data?.by_status || {}).map(([status, count]) => ({
+      status,
+      count: Number(count || 0),
+    }))
+    const topItems = (Array.isArray(data?.by_code) ? data.by_code : [])
+      .slice(0, 8)
+      .map((row) => ({
+        service_id: row?.service_code || null,
+        label: row?.service_code || 'Service',
+        total: Number(row?.count || 0),
+        pending: 0,
+        revenue: Number(row?.sum || 0),
+        profit: 0,
+      }))
+    return {
+      generated_at: generatedAt,
+      totals: {
+        orders_total: Number(data?.totals?.count || 0),
+        delivered_orders: 0,
+        cancelled_orders: 0,
+        revenue: Number(data?.totals?.sum || 0),
+        estimated_cost: 0,
+        actual_cost: 0,
+        gross_profit: 0,
+        gross_margin: 0,
+        cost_coverage: 0,
+      },
+      last30: {
+        total: 0,
+        delivered: 0,
+        cancelled: 0,
+        cancellation_rate: 0,
+      },
+      data_quality: {
+        confirmed_items: 0,
+        estimated_items: 0,
+        missing_items: 0,
+      },
+      status_breakdown: statusBreakdown,
+      top_items: topItems,
+      top_clients: [],
+      hot_orders: [],
+      trends: [],
+      slices: [],
+    }
+  }
 }
 
 export async function recordTrialRetentionEvent(payload: TrialRetentionEventPayload): Promise<void> {
