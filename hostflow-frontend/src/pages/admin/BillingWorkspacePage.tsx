@@ -268,6 +268,7 @@ export default function BillingWorkspacePage() {
     const raw = String(params.get('recommended_extra_slots') || params.get('extra_slots') || '').trim()
     const parsed = Number.parseInt(raw, 10)
     const recommended = Number.isFinite(parsed) ? Math.min(1000, Math.max(0, parsed)) : 0
+    let consumedRecoveryParams = false
     if (recommended > 0) {
       setRecommendedFromQuery(recommended)
       setCompanySlotsInput((prev) => {
@@ -287,6 +288,7 @@ export default function BillingWorkspacePage() {
           }),
         },
       )
+      consumedRecoveryParams = true
     }
     if (focus === 'company-slots') {
       setCompanySlotsRecoveryFocus(true)
@@ -294,6 +296,15 @@ export default function BillingWorkspacePage() {
         const node = document.getElementById('company-slots-usage-card')
         if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }, 80)
+      consumedRecoveryParams = true
+    }
+    if (consumedRecoveryParams) {
+      params.delete('focus')
+      params.delete('recommended_extra_slots')
+      params.delete('extra_slots')
+      const nextSearch = params.toString()
+      const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`
+      window.history.replaceState({}, '', nextUrl)
     }
   }, [t])
 
