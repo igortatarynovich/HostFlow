@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { listCompanies } from '../api/client'
 import { getBillingSummary, type BillingSummary } from '../api/billing'
 import type { Company } from '../api/types'
@@ -57,9 +57,7 @@ export default function MyCompanyPage() {
     return companies.filter((company) => isOperatingCompany(company) && isManagedByUser(company, userId))
   }, [companies, me])
 
-  if (!loading && !error && managedOperatingCompanies.length === 1) {
-    return <Navigate to={`/app/my-company/${managedOperatingCompanies[0].id}`} replace />
-  }
+  const primaryCompanyId = managedOperatingCompanies[0]?.id || ''
 
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
@@ -111,6 +109,33 @@ export default function MyCompanyPage() {
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
           {t('common.loading', { defaultValue: 'Loading...' })}
         </div>
+      ) : managedOperatingCompanies.length > 0 ? (
+        <section className="app-surface space-y-3 p-6">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              {t('app.my_company.workspace.title', { defaultValue: 'Owner profile workspace' })}
+            </h2>
+            <p className="text-sm text-slate-500">
+              {t('app.my_company.workspace.subtitle', {
+                defaultValue: 'Quick actions for legal entity data, billing setup, bank details and branding.',
+              })}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link className="btn-primary" to={`/app/my-company/${primaryCompanyId}?section=legal`}>
+              {t('app.my_company.workspace.legal', { defaultValue: 'Legal' })}
+            </Link>
+            <Link className="btn-secondary" to={`/app/my-company/${primaryCompanyId}?section=billing`}>
+              {t('app.my_company.workspace.billing', { defaultValue: 'Billing' })}
+            </Link>
+            <Link className="btn-secondary" to={`/app/my-company/${primaryCompanyId}?section=bank_accounts`}>
+              {t('app.my_company.workspace.bank_accounts', { defaultValue: 'Bank Accounts' })}
+            </Link>
+            <Link className="btn-secondary" to={`/app/my-company/${primaryCompanyId}?section=branding`}>
+              {t('app.my_company.workspace.branding', { defaultValue: 'Branding' })}
+            </Link>
+          </div>
+        </section>
       ) : managedOperatingCompanies.length === 0 ? (
         <section className="app-surface space-y-3 p-6">
           <h2 className="text-lg font-semibold text-slate-900">{t('app.my_company.empty.title', { defaultValue: 'No operating company yet' })}</h2>

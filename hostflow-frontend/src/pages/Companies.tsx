@@ -1,6 +1,6 @@
 // src/pages/Companies.tsx
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Company, CompanyReadiness } from '../api/types'
 import { listAdminUsers } from '../api/users'
@@ -118,9 +118,11 @@ export default function Companies(){
   }, [t])
   // router
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const isOperatingProfileRoute = location.pathname.startsWith('/app/my-company')
   const listBasePath = isOperatingProfileRoute ? '/app/my-company' : '/app/clients'
+  const sectionFocus = String(searchParams.get('section') || '').trim().toLowerCase()
   const handleCreateClientCompany = useCallback(() => {
     navigate('/app/clients/new')
   }, [navigate])
@@ -1491,6 +1493,25 @@ export default function Companies(){
     }
   }, [id, currentAny, buildDetailForm])
 
+  useEffect(() => {
+    if (!id || id === 'new' || !detailForm || !sectionFocus) return
+    const sectionToNodeId: Record<string, string> = {
+      legal: 'section-legal',
+      billing: 'section-billing',
+      bank_accounts: 'section-bank-accounts',
+      branding: 'section-branding',
+    }
+    const nodeId = sectionToNodeId[sectionFocus]
+    if (!nodeId) return
+    const timer = window.setTimeout(() => {
+      const element = document.getElementById(nodeId)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 60)
+    return () => window.clearTimeout(timer)
+  }, [id, detailForm, sectionFocus])
+
 
   const pageContent = useMemo(() => {
   if (id){
@@ -2114,6 +2135,7 @@ export default function Companies(){
           />
         </SectionCard>
 
+        <div id="section-billing">
         <SectionCard title={t('app.companies.detail.sections.billing.title')}>
           <FieldGrid cols={3}>
             <SelectField
@@ -2200,7 +2222,7 @@ export default function Companies(){
               }
             />
           </FieldGrid>
-          <div className="space-y-3">
+          <div id="section-bank-accounts" className="space-y-3">
             {detailForm.billing.bank_accounts.map((account, index) => (
               <div key={`bank-${index}`} className="grid grid-cols-1 gap-2 md:grid-cols-6">
                 <TextField
@@ -2247,6 +2269,7 @@ export default function Companies(){
             </button>
           </div>
         </SectionCard>
+        </div>
 
         <SectionCard title={t('app.companies.detail.sections.contacts.title')}>
           <div className="space-y-3">
@@ -2298,7 +2321,8 @@ export default function Companies(){
           </div>
         </SectionCard>
 
-        <SectionCard title={t('app.companies.detail.sections.legal.title')} collapsible defaultOpen={false}>
+        <div id="section-legal">
+        <SectionCard title={t('app.companies.detail.sections.legal.title')} collapsible defaultOpen={sectionFocus === 'legal'}>
           <FieldGrid cols={3}>
             <TextField
               label={t('app.companies.detail.fields.reg_no')}
@@ -2468,6 +2492,7 @@ export default function Companies(){
             </div>
           </div>
         </SectionCard>
+        </div>
 
         {(detailForm.rawExtra?.operational_profile_type ?? 'transport') !== 'none' && (
         <SectionCard
@@ -2657,7 +2682,7 @@ export default function Companies(){
           title={t('app.companies.detail.sections.advanced.title', { defaultValue: 'Расширенные настройки' })}
           description={t('app.companies.detail.sections.advanced.description', { defaultValue: 'Комплаенс, портал клиента, интеграции' })}
           collapsible
-          defaultOpen={false}
+          defaultOpen={sectionFocus === 'branding'}
         >
           <div className="space-y-4">
             <div>
@@ -2763,7 +2788,7 @@ export default function Companies(){
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100">
+            <div id="section-branding" className="pt-4 border-t border-slate-100">
               <h3 className="text-sm font-semibold text-slate-700 mb-3">{t('app.companies.detail.sections.integrations.title')}</h3>
           <ArrayInputField
             label={t('app.companies.detail.fields.provider_ids')}
