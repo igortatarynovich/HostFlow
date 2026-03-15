@@ -32,6 +32,15 @@ from .schemas import (
 
 # --- helpers ---------------------------------------------------------------
 
+
+class OperatingCompanyLimitReached(ValueError):
+    def __init__(self, *, included_limit: int, extra_slots: int, effective_limit: int, used: int) -> None:
+        super().__init__("Operating company limit reached for current subscription")
+        self.included_limit = int(included_limit)
+        self.extra_slots = int(extra_slots)
+        self.effective_limit = int(effective_limit)
+        self.used = int(used)
+
 def _extract_session(db_like) -> AsyncSession:
     """
     В create_company в параметр 'db' может прилетать кортеж из зависимостей
@@ -1220,7 +1229,12 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
     if company_role == "operating":
         slots = await get_operating_company_slots(session, tenant_id)
         if slots.effective_limit > 0 and slots.used >= slots.effective_limit:
-            raise ValueError("Operating company limit reached for current subscription")
+            raise OperatingCompanyLimitReached(
+                included_limit=slots.included_limit,
+                extra_slots=slots.extra_slots,
+                effective_limit=slots.effective_limit,
+                used=slots.used,
+            )
 
     obj = Company(**payload)
     _sync_contacts_extra(obj)

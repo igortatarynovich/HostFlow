@@ -94,8 +94,15 @@ export default function OnboardingCompanyPage() {
       await createCompany({ name: trimmed, company_type: companyType, company_role: 'operating' })
       navigate(getBusinessHomePath(companyType), { replace: true })
     } catch (err: any) {
-      const detail = String(err?.response?.data?.detail || '').trim().toUpperCase()
-      if (detail === 'OPERATING-COMPANY-LIMIT') {
+      const detailPayload = err?.response?.data?.detail
+      const detailCode = String(
+        (typeof detailPayload === 'object' && detailPayload && (detailPayload.code || detailPayload.error_code)) ||
+          detailPayload ||
+          '',
+      )
+        .trim()
+        .toUpperCase()
+      if (detailCode === 'OPERATING-COMPANY-LIMIT') {
         setLimitReached(true)
         setError(
           t('app.onboarding.company.errors.operating_limit', {
@@ -103,7 +110,11 @@ export default function OnboardingCompanyPage() {
           }),
         )
       } else {
-        const msg = err?.response?.data?.detail ?? err?.message ?? t('app.onboarding.company.errors.generic', { defaultValue: 'Не удалось создать компанию' })
+        const msg =
+          (typeof detailPayload === 'object' && detailPayload?.message) ||
+          err?.response?.data?.detail ||
+          err?.message ||
+          t('app.onboarding.company.errors.generic', { defaultValue: 'Не удалось создать компанию' })
         setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
       }
     } finally {

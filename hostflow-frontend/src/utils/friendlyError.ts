@@ -14,8 +14,16 @@ function pickDetail(err: any): string | undefined {
       .join('; ')
     return msg || undefined
   }
-  if (detail && typeof detail === 'object' && typeof detail.msg === 'string') {
-    return detail.msg.trim() || undefined
+  if (detail && typeof detail === 'object') {
+    if (typeof detail.message === 'string' && detail.message.trim()) {
+      return detail.message.trim()
+    }
+    if (typeof detail.code === 'string' && detail.code.trim()) {
+      return detail.code.trim()
+    }
+    if (typeof detail.msg === 'string' && detail.msg.trim()) {
+      return detail.msg.trim()
+    }
   }
   const message = typeof err?.message === 'string' ? err.message.trim() : ''
   return message || undefined
@@ -25,7 +33,12 @@ export function getFriendlyErrorInfo(err: any, fallbackTitle: string): FriendlyE
   const status = Number(err?.response?.status || 0)
   const code = String(err?.code || '').trim().toUpperCase()
   const detail = pickDetail(err)
-  const detailCode = String(detail || '').trim().toUpperCase()
+  const detailPayload = err?.response?.data?.detail
+  const detailCode = String(
+    (typeof detailPayload === 'object' && detailPayload && (detailPayload.code || detailPayload.error_code)) || detail || '',
+  )
+    .trim()
+    .toUpperCase()
   const offline = typeof navigator !== 'undefined' && navigator?.onLine === false
 
   if (offline || code === 'ERR_NETWORK') {

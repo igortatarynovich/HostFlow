@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import crud, schemas
+from .crud import OperatingCompanyLimitReached
 
 
 async def get_company_or_404(db: AsyncSession, company_id: UUID) -> Company:
@@ -30,6 +31,23 @@ async def list_companies_service(
 
 
 def _map_value_error(exc: ValueError) -> HTTPException:
+    if isinstance(exc, OperatingCompanyLimitReached):
+        return HTTPException(
+            status_code=402,
+            detail={
+                "code": "OPERATING-COMPANY-LIMIT",
+                "message": "Operating company limit reached for current subscription",
+                "billing_path": "/app/settings/billing",
+                "slots": {
+                    "included_limit": exc.included_limit,
+                    "extra_slots": exc.extra_slots,
+                    "effective_limit": exc.effective_limit,
+                    "used": exc.used,
+                    "available": max(0, exc.effective_limit - exc.used) if exc.effective_limit > 0 else 0,
+                    "unlimited": exc.effective_limit == 0,
+                },
+            },
+        )
     message = str(exc)
     if "Multiple contacts marked as primary" in message:
         return HTTPException(status_code=409, detail="CONTACT-PRIMARY")
