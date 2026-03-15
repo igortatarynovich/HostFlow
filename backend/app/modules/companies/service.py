@@ -32,12 +32,14 @@ async def list_companies_service(
 
 def _map_value_error(exc: ValueError) -> HTTPException:
     if isinstance(exc, OperatingCompanyLimitReached):
+        missing_slots = max(1, exc.used - exc.effective_limit + 1) if exc.effective_limit > 0 else 1
         return HTTPException(
             status_code=402,
             detail={
                 "code": "OPERATING-COMPANY-LIMIT",
                 "message": "Operating company limit reached for current subscription",
                 "billing_path": "/app/settings/billing",
+                "recommended_extra_slots": missing_slots,
                 "slots": {
                     "included_limit": exc.included_limit,
                     "extra_slots": exc.extra_slots,

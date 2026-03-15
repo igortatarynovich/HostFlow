@@ -103,11 +103,21 @@ export default function OnboardingCompanyPage() {
         .trim()
         .toUpperCase()
       if (detailCode === 'OPERATING-COMPANY-LIMIT') {
+        const recommendedExtraSlots =
+          typeof detailPayload === 'object' && detailPayload
+            ? Number((detailPayload as Record<string, any>).recommended_extra_slots || 0)
+            : 0
         setLimitReached(true)
         setError(
-          t('app.onboarding.company.errors.operating_limit', {
-            defaultValue: 'Достигнут лимит operating-компаний для текущей подписки.',
-          }),
+          recommendedExtraSlots > 0
+            ? t('app.onboarding.company.errors.operating_limit_with_slots', {
+                defaultValue:
+                  'Достигнут лимит operating-компаний. Добавьте минимум {count} доп. слот(ов) в Billing.',
+                values: { count: recommendedExtraSlots },
+              })
+            : t('app.onboarding.company.errors.operating_limit', {
+                defaultValue: 'Достигнут лимит operating-компаний для текущей подписки.',
+              }),
         )
       } else {
         const msg =
