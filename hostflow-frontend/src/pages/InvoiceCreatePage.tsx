@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { listAdditionalServices } from '../api/additionalServices'
-import { createInvoice, getCompany, getInvoice, listCompanies, listInvoices, updateInvoice } from '../api/client'
+import { createInvoice, getCompany, getInvoice, listCompanies, listInvoices, sendInvoice, updateInvoice } from '../api/client'
 import type { AdditionalService, Company, Invoice } from '../api/types'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
@@ -547,8 +547,11 @@ export default function InvoiceCreatePage() {
     setCurrency((current) => (current ? current : selected.currency || 'PLN'))
   }
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    const nativeEvent = event.nativeEvent as SubmitEvent | undefined
+    const submitter = nativeEvent?.submitter as HTMLButtonElement | null
+    const submitMode = submitter?.value === 'save_and_send' ? 'save_and_send' : 'save_draft'
     setError(null)
     if (!companyId) {
       setError(t('app.invoices.create_company_required', { defaultValue: 'Client is required.' }))
@@ -657,7 +660,15 @@ export default function InvoiceCreatePage() {
         items: normalizedItems,
         status: 'draft',
       }
-      const invoice = isEditMode && invoiceId ? await updateInvoice(invoiceId, payload) : await createInvoice(payload)
+      let invoice = (isEditMode && invoiceId ? await updateInvoice(invoiceId, payload) : await createInvoice(payload)) as Invoice
+      if (submitMode === 'save_and_send') {
+        if (String(invoice.status || '').toLowerCase() === 'draft') {
+          invoice = (await updateInvoice(invoice.id, { status: 'issued' })) as Invoice
+        }
+        await sendInvoice(invoice.id, {
+          recipient_email: String(payload.billing_details?.email || '').trim() || undefined,
+        })
+      }
       navigate(`/app/invoices/${invoice.id}`)
     } catch (err: any) {
       setError(
@@ -1083,12 +1094,17 @@ export default function InvoiceCreatePage() {
             )}
           </dl>
           <div className="flex flex-col gap-2">
-            <button type="submit" className="btn-primary" disabled={saving || loadingCompanies}>
+            <button type="submit" value="save_draft" className="btn-primary" disabled={saving || loadingCompanies}>
               {saving
                 ? t('common.loading', { defaultValue: 'Loading...' })
                 : isEditMode
                   ? t('app.invoices.save_draft', { defaultValue: 'Save Draft' })
                   : t('app.invoices.create', { defaultValue: 'Create Invoice' })}
+            </button>
+            <button type="submit" value="save_and_send" className="btn-secondary" disabled={saving || loadingCompanies}>
+              {saving
+                ? t('common.loading', { defaultValue: 'Loading...' })
+                : t('app.invoices.save_and_send', { defaultValue: 'Save and send' })}
             </button>
             <button type="button" className="btn-secondary" onClick={() => navigate('/app/invoices')}>
               {t('common.actions.cancel', { defaultValue: 'Cancel' })}
