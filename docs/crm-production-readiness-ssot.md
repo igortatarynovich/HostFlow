@@ -318,7 +318,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | A6-S4 | Встроить sync из Stripe webhook в tenant entitlements (`invoice.paid`, `subscription.updated/deleted`) | Backend | Mapping `Stripe items -> tenant slots` + live webhook smoke | `IN_PROGRESS` |
 | A6-S5 | Добавить guardrails в operating company creation flow | Backend + Frontend | При достижении лимита показывается upgrade/add-slot path, без технических ошибок и тупиков | `IN_PROGRESS` |
 | A6-S6 | Подготовить migration/transition для текущих tenants и manual rollback playbook | Backend + Product | Controlled migration plan + dry-run report | `IN_PROGRESS` |
-| A6-S7 | Выполнить E2E release pass (`buy slot -> create company -> downgrade/edge cases`) | QA + Product | Подписанный `PASS/FAIL` протокол с evidence | `NOT_STARTED` |
+| A6-S7 | Выполнить E2E release pass (`buy slot -> create company -> downgrade/edge cases`) | QA + Product | Подписанный `PASS/FAIL` протокол с evidence | `IN_PROGRESS` |
 
 Acceptance rules для `A6`:
 - Пользователь видит текущий лимит и usage operating-компаний в billing UI без обращения в поддержку.
@@ -360,6 +360,14 @@ Source-of-truth для текущего runtime baseline:
 - overflow tenants (`used > effective_limit`): `0`;
 - tenants with legacy alias keys: `0`;
 - tenants without `tenant_licenses` row: `1` (фиксируется как отдельный operational follow-up, без data-loss риска по slots).
+
+#### 5.1.4.3 `A6-S7` E2E Release Pass Kickoff (`2026-03-15`)
+
+Артефакт:
+- Run record: [a6-s7-operating-slots-e2e-run-record-2026-03-15.md](/opt/HostFlow/docs/manual-checklist/a6-s7-operating-slots-e2e-run-record-2026-03-15.md)
+
+Текущий статус:
+- `IN_PROGRESS` — implementation-level контур готов, но финальный manual evidence-pack (UI/API/webhook/downgrade edge-case) еще не собран.
 
 ## 5.2 Фаза B — Онбординг и TTV
 
@@ -1808,3 +1816,4 @@ Release gap:
 - `2026-03-15` — `A6-S4` стартовал implementation-level: webhook обработчик `customer.subscription.updated/deleted` теперь синхронизирует `extra_operating_company_slots` из Stripe subscription add-on item quantity (по `STRIPE_PRICE_OPERATING_COMPANY_SLOT`) и пишет entitlement напрямую в tenant billing subscription payload.
 - `2026-03-15` — `A6-S5` стартовал implementation-level (frontend guardrails): `OnboardingCompanyPage` теперь отдельно обрабатывает `OPERATING-COMPANY-LIMIT` и ведет пользователя в Billing (`Open billing` CTA), а `My Company` при исчерпанных slots переключает primary CTA на Billing вместо тупикового create-action.
 - `2026-03-15` — `A6-S6` переведен в `IN_PROGRESS`: добавлен migration/rollback playbook [a6-s6-operating-slots-migration-playbook.md](/opt/HostFlow/docs/manual-checklist/a6-s6-operating-slots-migration-playbook.md) и выполнен фактический dry-run аудит [a6-s6-operating-slots-dry-run-2026-03-15.md](/opt/HostFlow/docs/manual-checklist/a6-s6-operating-slots-dry-run-2026-03-15.md) (`4 tenants`, `0 overflow`, `0 legacy keys`, `1 tenant without license row`).
+- `2026-03-15` — `A6-S7` переведен в `IN_PROGRESS`: создан run-record kickoff [a6-s7-operating-slots-e2e-run-record-2026-03-15.md](/opt/HostFlow/docs/manual-checklist/a6-s7-operating-slots-e2e-run-record-2026-03-15.md) с обязательным evidence-pack для финального `PASS/FAIL` (`slot add -> create operating company -> downgrade/edge cases`).
