@@ -198,6 +198,7 @@ export default function BillingWorkspacePage() {
   const [isVerifyingCheckout, setIsVerifyingCheckout] = useState(false)
   const [operatingCompanyCount, setOperatingCompanyCount] = useState(0)
   const [companySlotsInput, setCompanySlotsInput] = useState('0')
+  const [recommendedFromQuery, setRecommendedFromQuery] = useState<number>(0)
 
   const reloadSummary = useCallback(async () => {
     const data = await getBillingSummary()
@@ -258,6 +259,41 @@ export default function BillingWorkspacePage() {
     const next = String(summary?.company_slots?.extra_slots ?? 0)
     setCompanySlotsInput(next)
   }, [summary?.company_slots?.extra_slots])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const focus = String(params.get('focus') || '').trim().toLowerCase()
+    const raw = String(params.get('recommended_extra_slots') || params.get('extra_slots') || '').trim()
+    const parsed = Number.parseInt(raw, 10)
+    const recommended = Number.isFinite(parsed) ? Math.min(1000, Math.max(0, parsed)) : 0
+    if (recommended > 0) {
+      setRecommendedFromQuery(recommended)
+      setCompanySlotsInput((prev) => {
+        const current = Number.parseInt(prev, 10)
+        const normalized = Number.isFinite(current) ? Math.min(1000, Math.max(0, current)) : 0
+        return String(Math.max(normalized, recommended))
+      })
+      setActionNotice((prev) =>
+        prev ?? {
+          tone: 'warning',
+          title: t('app.settings.billing.action_notice.company_slots_recommended_title', {
+            defaultValue: 'Recommended extra slots applied',
+          }),
+          text: t('app.settings.billing.action_notice.company_slots_recommended_text', {
+            defaultValue: 'We prefilled {count} extra operating slot(s) based on your previous action.',
+            values: { count: recommended },
+          }),
+        },
+      )
+    }
+    if (focus === 'company-slots') {
+      window.setTimeout(() => {
+        const node = document.getElementById('company-slots-usage-card')
+        if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 80)
+    }
+  }, [t])
 
   const activePlan = getPlanCode(subscription?.plan_code)
   const isTrial = (subscription?.status || '').trim().toLowerCase() === 'trial'
@@ -987,7 +1023,7 @@ export default function BillingWorkspacePage() {
           {t('app.settings.billing.usage_title', { defaultValue: 'Included limits' })}
         </h3>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
-          <div className="rounded-lg border border-slate-200 p-3 text-sm">
+          <div id="company-slots-usage-card" className="rounded-lg border border-slate-200 p-3 text-sm">
             {t('app.settings.billing.usage.recruiters', {
               defaultValue: 'Recruiters: {used} / {limit}',
               values: { used: summary?.usage.recruiter_count ?? 0, limit: summary?.license?.max_recruiters ?? 0 },
@@ -1074,6 +1110,14 @@ export default function BillingWorkspacePage() {
                 defaultValue: 'Add-on slots extend your plan limit for operating companies.',
               })}
             </div>
+            {recommendedFromQuery > 0 ? (
+              <div className="mt-1 text-xs text-amber-700">
+                {t('app.settings.billing.usage.extra_company_slots_recommended', {
+                  defaultValue: 'Recommended by recovery flow: +{count} slot(s).',
+                  values: { count: recommendedFromQuery },
+                })}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

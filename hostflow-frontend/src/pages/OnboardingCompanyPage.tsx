@@ -22,6 +22,7 @@ export default function OnboardingCompanyPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [limitReached, setLimitReached] = useState(false)
+  const [recommendedExtraSlots, setRecommendedExtraSlots] = useState<number | null>(null)
   const [hasAvailableOperatingSlots, setHasAvailableOperatingSlots] = useState(true)
   const [slotGuardLoading, setSlotGuardLoading] = useState(true)
   const signupContext = useMemo(
@@ -107,6 +108,7 @@ export default function OnboardingCompanyPage() {
     e.preventDefault()
     setError(null)
     setLimitReached(false)
+    setRecommendedExtraSlots(null)
     const trimmed = name.trim()
     if (!trimmed) {
       setError(t('app.onboarding.company.errors.name_required', { defaultValue: 'Введите название компании' }))
@@ -114,6 +116,7 @@ export default function OnboardingCompanyPage() {
     }
     if (!hasAvailableOperatingSlots) {
       setLimitReached(true)
+      setRecommendedExtraSlots(1)
       setError(
         t('app.onboarding.company.errors.operating_limit', {
           defaultValue: 'Достигнут лимит operating-компаний для текущей подписки.',
@@ -140,6 +143,7 @@ export default function OnboardingCompanyPage() {
             ? Number((detailPayload as Record<string, any>).recommended_extra_slots || 0)
             : 0
         setLimitReached(true)
+        setRecommendedExtraSlots(recommendedExtraSlots > 0 ? recommendedExtraSlots : 1)
         setError(
           recommendedExtraSlots > 0
             ? t('app.onboarding.company.errors.operating_limit_with_slots', {
@@ -228,7 +232,10 @@ export default function OnboardingCompanyPage() {
                 })}
               </p>
               <div className="mt-2">
-                <Link to={ACTIVATION_PATHS.billing} className="btn-secondary btn-sm">
+                <Link
+                  to={`${ACTIVATION_PATHS.billing}?focus=company-slots&recommended_extra_slots=1`}
+                  className="btn-secondary btn-sm"
+                >
                   {t('app.onboarding.company.signup_success_billing', { defaultValue: 'Open billing' })}
                 </Link>
               </div>
@@ -293,7 +300,11 @@ export default function OnboardingCompanyPage() {
               }}
               onRetry={() => setError(null)}
               retryLabel={t('common.actions.close', { defaultValue: 'Close' })}
-              secondaryTo={limitReached ? ACTIVATION_PATHS.billing : undefined}
+              secondaryTo={
+                limitReached
+                  ? `${ACTIVATION_PATHS.billing}?focus=company-slots&recommended_extra_slots=${recommendedExtraSlots ?? 1}`
+                  : undefined
+              }
               secondaryLabel={limitReached ? t('app.onboarding.company.signup_success_billing', { defaultValue: 'Open billing' }) : undefined}
               compact
             />
