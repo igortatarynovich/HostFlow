@@ -571,14 +571,32 @@ export default function BillingWorkspacePage() {
       setSummary(data)
       setSubscription(data.subscription)
       setCompanySlotsInput(String(data.company_slots?.extra_slots ?? desired))
-      setActionNotice({
-        tone: 'success',
-        title: t('app.settings.billing.action_notice.company_slots_title', { defaultValue: 'Company slots updated' }),
-        text: t('app.settings.billing.action_notice.company_slots_text', {
-          defaultValue: 'Add-on operating company slots were set to {count}.',
-          values: { count: String(data.company_slots?.extra_slots ?? desired) },
-        }),
-      })
+      const used = Number(data.company_slots?.used ?? 0)
+      const effective = Number(data.company_slots?.effective_limit ?? 0)
+      const overflow = effective > 0 && used > effective
+      if (overflow) {
+        const missing = Math.max(1, used - effective)
+        setActionNotice({
+          tone: 'warning',
+          title: t('app.settings.billing.action_notice.company_slots_overflow_title', {
+            defaultValue: 'Slots updated, but you are over the limit',
+          }),
+          text: t('app.settings.billing.action_notice.company_slots_overflow_text', {
+            defaultValue:
+              'Existing operating companies were kept. Creation of new operating companies is blocked until you add at least {count} slot(s).',
+            values: { count: missing },
+          }),
+        })
+      } else {
+        setActionNotice({
+          tone: 'success',
+          title: t('app.settings.billing.action_notice.company_slots_title', { defaultValue: 'Company slots updated' }),
+          text: t('app.settings.billing.action_notice.company_slots_text', {
+            defaultValue: 'Add-on operating company slots were set to {count}.',
+            values: { count: String(data.company_slots?.extra_slots ?? desired) },
+          }),
+        })
+      }
     } catch (err: any) {
       setError(
         getFriendlyErrorInfo(
@@ -647,6 +665,10 @@ export default function BillingWorkspacePage() {
   const canSaveCompanySlots = normalizedCompanySlotsInput !== currentExtraSlots && !isMutationLoading
   const hasOperatingSlotCapacity =
     Boolean(summary?.company_slots?.unlimited) || Number(summary?.company_slots?.available ?? 0) > 0
+  const usedOperatingSlots = Number(summary?.company_slots?.used ?? operatingCompanyCount)
+  const effectiveOperatingSlots = Number(summary?.company_slots?.effective_limit ?? summary?.license?.max_companies ?? 0)
+  const operatingSlotsOverflow = effectiveOperatingSlots > 0 && usedOperatingSlots > effectiveOperatingSlots
+  const operatingSlotsMissing = operatingSlotsOverflow ? Math.max(1, usedOperatingSlots - effectiveOperatingSlots) : 0
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1130,6 +1152,15 @@ export default function BillingWorkspacePage() {
                 {t('app.settings.billing.usage.extra_company_slots_recommended', {
                   defaultValue: 'Recommended by recovery flow: +{count} slot(s).',
                   values: { count: recommendedFromQuery },
+                })}
+              </div>
+            ) : null}
+            {operatingSlotsOverflow ? (
+              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
+                {t('app.settings.billing.usage.companies_overflow', {
+                  defaultValue:
+                    'You currently have more operating companies than your active limit. Existing data is preserved, but creating new operating companies is blocked until you add at least {count} slot(s).',
+                  values: { count: operatingSlotsMissing },
                 })}
               </div>
             ) : null}
