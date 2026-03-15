@@ -191,6 +191,23 @@ async def _resolve_issuer_company_for_actor(
     return issuer_company
 
 
+async def _resolve_invoice_client_company(
+    session: AsyncSession,
+    *,
+    tenant_id: str,
+    company_id: str | None,
+) -> Company | None:
+    company_ref = _normalized_text(company_id)
+    if not company_ref:
+        return None
+    client_company = await session.get(Company, company_ref)
+    if not client_company or str(getattr(client_company, "tenant_id", "")) != str(tenant_id):
+        raise ValueError("Client company not found")
+    if _company_role(client_company) == "operating":
+        raise ValueError("Invoice recipient must be a client company, not an operating company")
+    return client_company
+
+
 async def _enforce_correction_contract(
     session: AsyncSession,
     *,
@@ -314,11 +331,11 @@ async def create_invoice(
         issue_date = date.fromisoformat(issue_date)
     
     tenant_id_str = str(tenant_id)
-    client_company: Company | None = None
-    if payload.get("company_id"):
-        client_company = await session.get(Company, payload.get("company_id"))
-        if client_company and str(getattr(client_company, "tenant_id", "")) != tenant_id_str:
-            client_company = None
+    client_company: Company | None = await _resolve_invoice_client_company(
+        session,
+        tenant_id=tenant_id_str,
+        company_id=_normalized_text(payload.get("company_id")),
+    )
     payload_billing = _as_dict(payload.get("billing_details"))
     issuer_company = await _resolve_issuer_company_for_actor(
         session,
@@ -343,6 +360,16 @@ async def create_invoice(
     payload_company_id = _normalized_text(payload.get("company_id")) or _normalized_text(merged_billing_details.get("company_id"))
     if payload_company_id:
         payload["company_id"] = payload_company_id
+    if payload_company_id and (not client_company or str(client_company.id) != payload_company_id):
+        client_company = await _resolve_invoice_client_company(
+            session,
+            tenant_id=tenant_id_str,
+            company_id=payload_company_id,
+        )
+        merged_billing_details = _merge_billing_defaults(
+            billing_details=merged_billing_details,
+            client_company=client_company,
+        )
     billing_details = _validate_invoice_billing_details(merged_billing_details)
     
     # Generate invoice number if not provided
@@ -560,17 +587,23 @@ async def update_invoice(
         invoice.currency = payload["currency"]
     if "billing_details" in payload:
         next_billing_details = _as_dict(payload["billing_details"])
-    next_company_id = _normalized_text(payload.get("company_id")) or _normalized_text(invoice.company_id)
+    requested_company_id = (
+        _normalized_text(payload.get("company_id"))
+        if "company_id" in payload
+        else _normalized_text(invoice.company_id)
+    )
+    client_company: Company | None = await _resolve_invoice_client_company(
+        session,
+        tenant_id=tenant_id_str,
+        company_id=requested_company_id,
+    )
+    if "company_id" in payload:
+        invoice.company_id = requested_company_id
+    next_company_id = _normalized_text(invoice.company_id)
     if "notes" in payload:
         invoice.notes = payload["notes"]
     if "status" in payload:
         invoice.status = payload["status"]
-
-    client_company: Company | None = None
-    if invoice.company_id:
-        client_company = await session.get(Company, invoice.company_id)
-        if client_company and str(getattr(client_company, "tenant_id", "")) != tenant_id_str:
-            client_company = None
     issuer_company = await _resolve_issuer_company_for_actor(
         session,
         tenant_id=tenant_id_str,

@@ -199,3 +199,37 @@ async def test_update_guardrails_block_non_draft_invoices(
         )
         assert patch_resp.status_code == 400, patch_resp.text
         assert "Only draft invoices can be edited" in str(patch_resp.text)
+
+
+@pytest.mark.anyio
+async def test_create_guardrails_block_operating_company_as_recipient(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_headers: dict[str, str],
+) -> None:
+    admin_stmt = sa.select(User).where(sa.func.lower(User.email) == ADMIN_EMAIL.lower()).limit(1)
+    admin = (await db.execute(admin_stmt)).scalar_one()
+
+    issuer = Company(
+        id=str(uuid4()),
+        tenant_id=TENANT_ID,
+        owner_user_id=str(admin.id),
+        manager_user_id=str(admin.id),
+        name="Issuer Recipient Guardrail Sp. z o.o.",
+        legal_name="Issuer Recipient Guardrail Sp. z o.o.",
+        tax_id="PL6677889900",
+        country="PL",
+        city="Warsaw",
+        address="Main 99",
+        extra=_operating_extra(),
+    )
+    db.add(issuer)
+    await db.commit()
+
+    create_resp = await client.post(
+        "/api/v1/invoices",
+        headers=manager_headers,
+        json=_invoice_payload(client_id=str(issuer.id), issuer_id=str(issuer.id), status="draft"),
+    )
+    assert create_resp.status_code == 400, create_resp.text
+    assert "client company" in str(create_resp.text).lower()
