@@ -626,6 +626,11 @@ export async function getInvoice(id: string) {
   return data;
 }
 
+export async function getInvoiceCorrectionChain(id: string) {
+  const { data } = await api.get(`/invoices/${id}/chain`);
+  return data;
+}
+
 export async function getInvoiceActivity(id: string, opts?: { limit?: number }) {
   const params: Record<string, any> = {};
   if (opts?.limit != null) params.limit = opts.limit;

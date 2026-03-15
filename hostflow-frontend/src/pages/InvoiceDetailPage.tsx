@@ -5,6 +5,7 @@ import {
   createPayment,
   createReminder,
   getInvoiceActivity,
+  getInvoiceCorrectionChain,
   getInvoice,
   getInvoicePdf,
   listReminders,
@@ -124,6 +125,9 @@ export default function InvoiceDetailPage() {
   const [sendRecipient, setSendRecipient] = useState('')
   const [sendSubject, setSendSubject] = useState('')
   const [sendBody, setSendBody] = useState('')
+  const [correctionChain, setCorrectionChain] = useState<Invoice[]>([])
+  const [correctionChainLoading, setCorrectionChainLoading] = useState(false)
+  const [correctionChainError, setCorrectionChainError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -198,6 +202,44 @@ export default function InvoiceDetailPage() {
   const outstandingAmount = useMemo(() => {
     if (!invoice) return 0
     return Math.max(0, Number(invoice.total_amount || 0) - Number(invoice.paid_amount || 0))
+  }, [invoice])
+
+  useEffect(() => {
+    if (!invoice) {
+      setCorrectionChain([])
+      return
+    }
+    let cancelled = false
+    setCorrectionChainLoading(true)
+    setCorrectionChainError(null)
+    const loadChain = async () => {
+      try {
+        const scope = (await getInvoiceCorrectionChain(invoice.id)) as Invoice[]
+        if (cancelled) return
+        const rows = Array.isArray(scope) ? scope : []
+        const uniq = new Map<string, Invoice>()
+        for (const row of rows) uniq.set(String(row.id), row)
+        uniq.set(String(invoice.id), invoice)
+        const chain = Array.from(uniq.values()).sort((a, b) => {
+          const ad = new Date(a.issue_date || a.created_at || 0).getTime()
+          const bd = new Date(b.issue_date || b.created_at || 0).getTime()
+          if (ad !== bd) return ad - bd
+          return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+        })
+        setCorrectionChain(chain)
+      } catch (err: any) {
+        if (!cancelled) {
+          setCorrectionChainError(err?.response?.data?.detail || err?.message || 'Failed to load correction chain')
+          setCorrectionChain([invoice])
+        }
+      } finally {
+        if (!cancelled) setCorrectionChainLoading(false)
+      }
+    }
+    void loadChain()
+    return () => {
+      cancelled = true
+    }
   }, [invoice])
 
   const withAction = async (action: string, fn: () => Promise<void>) => {
@@ -358,6 +400,9 @@ export default function InvoiceDetailPage() {
     setSendComposerOpen(true)
   }
 
+  const isLockedForCompliance = invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue'
+  const correctionPath = `/app/invoices/new?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`
+
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -373,6 +418,11 @@ export default function InvoiceDetailPage() {
             <span className={`inline-flex rounded-md px-2.5 py-0.5 text-xs font-medium ${statusBadgeClass(invoice.status)}`}>
               {t(`app.invoices.status.${invoice.status}`, { defaultValue: invoice.status })}
             </span>
+            {isLockedForCompliance && (
+              <span className="inline-flex rounded-md bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                {t('app.invoices.locked', { defaultValue: 'LOCKED' })}
+              </span>
+            )}
           </div>
           <p className="text-sm text-slate-500">
             {invoice.billing_details?.email || t('app.invoices.no_recipient', { defaultValue: 'No recipient email' })}
@@ -382,13 +432,7 @@ export default function InvoiceDetailPage() {
           <button
             type="button"
             className="btn-secondary btn-sm"
-            onClick={() =>
-              navigate(
-                invoice.status === 'draft'
-                  ? `/app/invoices/new?source_invoice_id=${invoice.id}`
-                  : `/app/invoices/new?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`,
-              )
-            }
+            onClick={() => navigate(invoice.status === 'draft' ? `/app/invoices/new?source_invoice_id=${invoice.id}` : correctionPath)}
           >
             {t(
               invoice.status === 'draft' ? 'app.invoices.duplicate' : 'app.invoices.create_correction',
@@ -428,7 +472,7 @@ export default function InvoiceDetailPage() {
                 : t('app.invoices.remind', { defaultValue: 'Remind' })}
             </button>
           )}
-          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && !isLockedForCompliance && (
             <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'cancel'} onClick={() => void handleCancel()}>
               {busyAction === 'cancel'
                 ? t('common.loading', { defaultValue: 'Loading...' })
@@ -515,9 +559,18 @@ export default function InvoiceDetailPage() {
 
       {invoice.status !== 'draft' && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {t(
-            'app.invoices.immutable_notice',
-            { defaultValue: 'Issued and sent invoices stay unchanged for tax reporting. Create a correction to adjust them.' },
+          <div>
+            {t(
+              'app.invoices.immutable_notice',
+              { defaultValue: 'Issued and sent invoices stay unchanged for tax reporting. Create a correction to adjust them.' },
+            )}
+          </div>
+          {isLockedForCompliance && (
+            <div className="mt-2">
+              <button type="button" className="btn-secondary btn-sm" onClick={() => navigate(correctionPath)}>
+                {t('app.invoices.create_correction', { defaultValue: 'Create correction' })}
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -666,6 +719,61 @@ export default function InvoiceDetailPage() {
                 </Link>
               )}
             </div>
+          </section>
+
+          <section className="app-surface space-y-4 p-6">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">{t('app.invoices.correction_chain', { defaultValue: 'Correction chain' })}</h2>
+              <p className="text-sm text-slate-500">
+                {t('app.invoices.correction_chain_subtitle', {
+                  defaultValue: 'Original invoice and every correction linked for audit trail.',
+                })}
+              </p>
+            </div>
+            {correctionChainLoading && (
+              <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
+            )}
+            {correctionChainError && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{correctionChainError}</div>
+            )}
+            {!correctionChainLoading && correctionChain.length > 0 && (
+              <div className="space-y-2">
+                {correctionChain.map((entry) => {
+                  const entryCorrectionOfId = String(entry.billing_details?.correction_of_invoice_id || '').trim()
+                  const isOriginal = !entryCorrectionOfId
+                  const isCurrent = entry.id === invoice.id
+                  return (
+                    <Link
+                      key={entry.id}
+                      to={`/app/invoices/${entry.id}`}
+                      className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${
+                        isCurrent ? 'border-brand-300 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-slate-900">{entry.invoice_number}</div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                          <span>{formatDate(entry.issue_date)}</span>
+                          <span>•</span>
+                          <span>{invoiceKindLabel(entry, t)}</span>
+                          {isCurrent && <span>• current</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 pl-3">
+                        <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-medium ${statusBadgeClass(entry.status)}`}>
+                          {t(`app.invoices.status.${entry.status}`, { defaultValue: entry.status })}
+                        </span>
+                        <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                          {isOriginal
+                            ? t('app.invoices.original', { defaultValue: 'Original' })
+                            : t('app.invoices.correction', { defaultValue: 'Correction' })}
+                        </span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
           </section>
         </aside>
       </div>

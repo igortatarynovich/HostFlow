@@ -291,6 +291,23 @@ async def get_invoice(
     return InvoiceOut.model_validate(invoice)
 
 
+@router.get("/{invoice_id}/chain", response_model=List[InvoiceOut])
+async def get_invoice_correction_chain(
+    invoice_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> List[InvoiceOut]:
+    db, tenant_id = db_tenant
+    invoice = await crud.get_invoice(db, str(tenant_id), invoice_id)
+    if not invoice:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invoice not found",
+        )
+    chain = await crud.get_invoice_correction_chain(db, str(tenant_id), invoice_id)
+    return [InvoiceOut.model_validate(item) for item in chain]
+
+
 @router.get("/{invoice_id}/activity", response_model=List[InvoiceActivityOut])
 async def get_invoice_activity(
     invoice_id: str,
@@ -701,11 +718,16 @@ async def cancel_invoice(
             detail="Invoice not found",
         )
     
-    # Cannot cancel paid invoices
-    if invoice.status == InvoiceStatus.paid.value:
+    # Legal lock: after delivery lifecycle starts, invoice must remain immutable
+    # and be adjusted via correction invoice, not cancellation.
+    if invoice.status in {
+        InvoiceStatus.sent.value,
+        InvoiceStatus.paid.value,
+        InvoiceStatus.overdue.value,
+    }:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot cancel paid invoice",
+            detail="Sent/paid/overdue invoices cannot be cancelled. Create a correction invoice instead.",
         )
     
     # Update status to cancelled
