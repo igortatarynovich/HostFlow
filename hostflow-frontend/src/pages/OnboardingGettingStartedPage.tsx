@@ -23,6 +23,7 @@ export default function OnboardingGettingStartedPage() {
   const navigate = useNavigate()
   const { can } = usePermissions()
   const [status, setStatus] = useState<OnboardingStatus | null>(null)
+  const businessType = status?.business_type ?? 'agency'
 
   useEffect(() => {
     let cancelled = false
@@ -41,7 +42,6 @@ export default function OnboardingGettingStartedPage() {
 
   const steps = useMemo(
     () => {
-      const businessType = status?.business_type ?? 'agency'
       const companyHref = getBusinessHomePath(businessType)
       const typeStep: OnboardingStepCard =
         businessType === 'employer'
@@ -55,16 +55,17 @@ export default function OnboardingGettingStartedPage() {
             }
           : businessType === 'services'
             ? {
-                key: 'service_order',
-                done: Boolean(status?.steps?.first_service_order_created),
-                title: t('app.onboarding.getting_started.step_services.title', {
-                  defaultValue: 'Create first service order',
+                key: 'first_client_services',
+                done: Boolean(status?.steps?.first_client_created || status?.steps?.first_lead_created),
+                title: t('app.onboarding.getting_started.step_services_client.title', {
+                  defaultValue: 'Create first client or capture lead',
                 }),
-                desc: t('app.onboarding.getting_started.step_services.desc', {
-                  defaultValue: 'Create your first paid service workflow and move it toward invoicing.',
+                desc: t('app.onboarding.getting_started.step_services_client.desc', {
+                  defaultValue:
+                    'For services mode, core entity is client. Leads from ads are potential clients and also count as first value.',
                 }),
-                href: ACTIVATION_PATHS.services,
-                permission: 'services.view',
+                href: ACTIVATION_PATHS.clients,
+                permission: 'companies.view',
               }
             : {
                 key: 'first_client',
@@ -94,11 +95,18 @@ export default function OnboardingGettingStartedPage() {
           key: 'action',
           done: Boolean(status?.steps?.next_action_created),
           title: t('app.onboarding.getting_started.step3.title', { defaultValue: 'Set next action' }),
-          desc: t('app.onboarding.getting_started.step3.desc', { defaultValue: 'Add reminder/task so no lead is lost.' }),
-          href: getBusinessNextActionPath(businessType),
+          desc:
+            businessType === 'services'
+              ? t('app.onboarding.getting_started.step3_services.desc', {
+                  defaultValue: 'Open Leads to process incoming ad leads (potential clients) and create follow-up tasks.',
+                })
+              : t('app.onboarding.getting_started.step3.desc', {
+                  defaultValue: 'Add reminder/task so no lead is lost.',
+                }),
+          href: businessType === 'services' ? ACTIVATION_PATHS.leads : getBusinessNextActionPath(businessType),
           permission:
             businessType === 'services'
-              ? 'services.view'
+              ? 'leads.view'
               : businessType === 'employer'
                 ? 'vacancies.view'
                 : 'companies.view',
@@ -117,8 +125,43 @@ export default function OnboardingGettingStartedPage() {
         }
       })
     },
-    [status, t, can, entitySingular, openEntityLabel],
+    [status, businessType, t, can, entitySingular, openEntityLabel],
   )
+
+  const primaryLaunchAction = useMemo(() => {
+    if (businessType === 'employer') {
+      return {
+        href: ACTIVATION_PATHS.vacancies,
+        title: t('app.onboarding.getting_started.primary_cta_employer.title', {
+          defaultValue: 'Create first vacancy',
+        }),
+        desc: t('app.onboarding.getting_started.primary_cta_employer.desc', {
+          defaultValue: 'Publish first position and assign manager to start hiring flow.',
+        }),
+      }
+    }
+    if (businessType === 'services') {
+      return {
+        href: ACTIVATION_PATHS.leads,
+        title: t('app.onboarding.getting_started.primary_cta_services.title', {
+          defaultValue: 'Open client leads',
+        }),
+        desc: t('app.onboarding.getting_started.primary_cta_services.desc', {
+          defaultValue: 'Process incoming ad leads as potential clients and convert them into paid work.',
+        }),
+      }
+    }
+    return {
+      href: ACTIVATION_PATHS.clients,
+      title: t('app.onboarding.getting_started.primary_cta_agency.title', {
+        defaultValue: 'Create first client',
+      }),
+      desc: t('app.onboarding.getting_started.primary_cta_agency.desc', {
+        defaultValue: 'Start with client record, then continue with candidates and communication.',
+      }),
+    }
+  }, [businessType, t])
+
   const doneCount = steps.filter((step) => step.done).length
   const totalCount = steps.length
   const completed = doneCount >= totalCount
@@ -158,6 +201,19 @@ export default function OnboardingGettingStartedPage() {
             values: { done: doneCount, total: totalCount },
           })}
         </p>
+        <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50/70 p-4">
+          <div className="text-sm font-semibold text-slate-900">{primaryLaunchAction.title}</div>
+          <div className="mt-1 text-xs text-slate-600">{primaryLaunchAction.desc}</div>
+          <div className="mt-3">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => navigate(primaryLaunchAction.href)}
+            >
+              {t('app.onboarding.getting_started.primary_cta_launch', { defaultValue: 'Start now' })}
+            </button>
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
