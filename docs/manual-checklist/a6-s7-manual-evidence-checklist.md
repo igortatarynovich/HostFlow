@@ -27,6 +27,18 @@ If `/app/docs` in your container maps to `backend/docs` in host workspace, move 
 - `docs/manual-checklist/a6-s7-slots-snapshot-<date>-<tenant-slug>-before.md`
 - `docs/manual-checklist/a6-s7-slots-snapshot-<date>-<tenant-slug>-before.json`
 
+3. Capture extended evidence bundle:
+
+```bash
+docker compose exec -T backend python backend/scripts/a6_operating_slots_evidence_bundle.py \
+  --tenant-slug <tenant-slug> \
+  --label pre-manual \
+  --report /app/docs/manual-checklist/a6-s7-evidence-bundle-$(date +%F)-<tenant-slug>-pre-manual.md \
+  --json /app/docs/manual-checklist/a6-s7-evidence-bundle-$(date +%F)-<tenant-slug>-pre-manual.json
+```
+
+4. If bundle reports `has_stripe_customer` / `has_subscription_id` as `MISSING/NO`, mark Stripe proof as `BLOCKED` in run-record and continue with UI-only evidence collection.
+
 ## 3. Manual UI Path (Slot Add + Create)
 
 1. Open `/app/settings/billing?focus=company-slots`.

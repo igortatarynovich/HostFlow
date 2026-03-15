@@ -43,6 +43,10 @@ Manual execution protocol: [a6-s7-manual-evidence-checklist.md](/opt/HostFlow/do
 - Real-tenant baseline snapshot (`victoria-space`, before manual click-path):  
   [a6-s7-slots-snapshot-2026-03-15-victoria-space-before-manual.md](/opt/HostFlow/docs/manual-checklist/a6-s7-slots-snapshot-2026-03-15-victoria-space-before-manual.md),  
   [a6-s7-slots-snapshot-2026-03-15-victoria-space-before-manual.json](/opt/HostFlow/docs/manual-checklist/a6-s7-slots-snapshot-2026-03-15-victoria-space-before-manual.json)
+- Real-tenant evidence bundle (`victoria-space`, pre-manual):  
+  [a6-s7-evidence-bundle-2026-03-15-victoria-space-pre-manual.md](/opt/HostFlow/docs/manual-checklist/a6-s7-evidence-bundle-2026-03-15-victoria-space-pre-manual.md),  
+  [a6-s7-evidence-bundle-2026-03-15-victoria-space-pre-manual.json](/opt/HostFlow/docs/manual-checklist/a6-s7-evidence-bundle-2026-03-15-victoria-space-pre-manual.json)  
+  (`Stripe customer/subscription ids` and billing history are currently absent for this tenant, so Stripe-proof sub-step remains pending/possibly blocked until billing activation on target workspace).
 
 ## Sign-off
 - Product: `PENDING`
