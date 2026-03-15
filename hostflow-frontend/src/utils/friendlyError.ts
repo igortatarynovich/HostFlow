@@ -25,6 +25,7 @@ export function getFriendlyErrorInfo(err: any, fallbackTitle: string): FriendlyE
   const status = Number(err?.response?.status || 0)
   const code = String(err?.code || '').trim().toUpperCase()
   const detail = pickDetail(err)
+  const detailCode = String(detail || '').trim().toUpperCase()
   const offline = typeof navigator !== 'undefined' && navigator?.onLine === false
 
   if (offline || code === 'ERR_NETWORK') {
@@ -52,6 +53,13 @@ export function getFriendlyErrorInfo(err: any, fallbackTitle: string): FriendlyE
   }
 
   if (status === 402) {
+    if (detailCode === 'OPERATING-COMPANY-LIMIT') {
+      return {
+        title: 'Operating company limit reached',
+        detail,
+        hint: 'Open Billing and add an extra operating company slot.',
+      }
+    }
     return {
       title: 'Payment required to continue',
       detail,
