@@ -667,6 +667,23 @@ def _find_subscription_item_by_price_id(sub_obj: dict[str, Any], price_id: str) 
     return None
 
 
+def _extract_operating_slot_addon_quantity(sub_obj: dict[str, Any]) -> int | None:
+    addon_price_id = _operating_slot_addon_price_id()
+    if not addon_price_id:
+        return None
+    addon_item = _find_subscription_item_by_price_id(sub_obj, addon_price_id)
+    if addon_item is None:
+        return 0
+    raw_quantity = addon_item.get("quantity")
+    if raw_quantity is None:
+        return 1
+    try:
+        quantity = int(raw_quantity)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, quantity)
+
+
 def _extract_subscription_period(sub_obj: dict[str, Any]) -> tuple[str | None, str | None]:
     start_iso = _unix_to_iso(sub_obj.get("current_period_start"))
     end_iso = _unix_to_iso(sub_obj.get("current_period_end"))
@@ -948,8 +965,10 @@ async def _handle_subscription_event(db: AsyncSession, obj: dict[str, Any], *, d
     tenant_id = str(tenant.id)
     current = _subscription_payload(tenant)
     current_plan_code = str(current.get("plan_code") or "starter")
+    current_extra_slots = extract_extra_operating_company_slots(current)
     price_id = _extract_subscription_price_id(obj)
     plan_code = _normalize_plan_code(_plan_code_by_price_id(price_id) or current_plan_code)
+    next_extra_slots = _extract_operating_slot_addon_quantity(obj)
     pending_plan_code = _extract_pending_update_plan_code(obj)
     pending_invoice_id, pending_invoice_url = _extract_pending_invoice_details(obj)
     has_pending_update = bool(_extract_pending_update(obj)) and pending_plan_code is not None and pending_plan_code != plan_code
@@ -958,7 +977,12 @@ async def _handle_subscription_event(db: AsyncSession, obj: dict[str, Any], *, d
     now = _now_utc()
     status_value = "canceled" if deleted else _normalize_stripe_subscription_status(obj.get("status"))
     cancel_at_period_end = bool(obj.get("cancel_at_period_end"))
-    dedupe_key = f"stripe:{str(obj.get('id') or '').strip()}:{'customer.subscription.deleted' if deleted else 'customer.subscription.updated'}:{status_value}:{int(cancel_at_period_end)}:{pending_plan_code or '-'}"
+    dedupe_key = (
+        f"stripe:{str(obj.get('id') or '').strip()}:"
+        f"{'customer.subscription.deleted' if deleted else 'customer.subscription.updated'}:"
+        f"{status_value}:{int(cancel_at_period_end)}:{pending_plan_code or '-'}:"
+        f"slots:{next_extra_slots if next_extra_slots is not None else 'na'}"
+    )
     history_title = "Subscription updated"
     history_status = "info"
     history_description = f"Plan {plan_code.upper()} remains active."
@@ -977,6 +1001,9 @@ async def _handle_subscription_event(db: AsyncSession, obj: dict[str, Any], *, d
     elif plan_code != current_plan_code:
         history_title = "Plan changed"
         history_description = f"Subscription moved from {current_plan_code.upper()} to {plan_code.upper()}."
+    elif next_extra_slots is not None and next_extra_slots != current_extra_slots:
+        history_title = "Operating company slots updated"
+        history_description = f"Add-on operating company slots changed from {current_extra_slots} to {next_extra_slots}."
     history_entry = None if _history_contains(tenant, dedupe_key) else _history_entry(
         event_type="customer.subscription.deleted" if deleted else "customer.subscription.updated",
         status=history_status,
@@ -1005,6 +1032,8 @@ async def _handle_subscription_event(db: AsyncSession, obj: dict[str, Any], *, d
         "canceled_at": _unix_to_iso(obj.get("canceled_at")) if (deleted or obj.get("canceled_at")) else None,
         "updated_at": now.isoformat(),
     }
+    if next_extra_slots is not None:
+        updated = _set_extra_operating_slots(updated, next_extra_slots)
     await _store_subscription(db, tenant, updated, history_entry=history_entry)
     if status_value in {"active", "trial"}:
         await _apply_license_limits(db, tenant_id, plan_code)
