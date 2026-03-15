@@ -127,6 +127,7 @@ export default function InvoiceDetailPage() {
   const [sendRecipient, setSendRecipient] = useState('')
   const [sendSubject, setSendSubject] = useState('')
   const [sendBody, setSendBody] = useState('')
+  const hasSendErrorNotice = searchParams.get('send_error') === '1'
   const [correctionChain, setCorrectionChain] = useState<Invoice[]>([])
   const [correctionChainLoading, setCorrectionChainLoading] = useState(false)
   const [correctionChainError, setCorrectionChainError] = useState<string | null>(null)
@@ -378,25 +379,6 @@ export default function InvoiceDetailPage() {
     })
   }
 
-  if (loading) {
-    return <div className="p-6 text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
-  }
-
-  if (error || !invoice) {
-    return (
-      <div className="p-6">
-        <ErrorRecoveryBanner
-          info={{
-            title: error || t('app.invoices.not_found', { defaultValue: 'Invoice not found' }),
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
-          onRetry={() => setReloadKey((prev) => prev + 1)}
-          retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
-        />
-      </div>
-    )
-  }
-
   const openSendComposer = () => {
     if (!invoice) return
     setSendRecipient(String(invoice.billing_details?.email || ''))
@@ -416,6 +398,25 @@ export default function InvoiceDetailPage() {
     openSendComposer()
     setSendErrorComposerPrefilled(true)
   }, [hasSendErrorNotice, invoice, sendErrorComposerPrefilled])
+
+  if (loading) {
+    return <div className="p-6 text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
+  }
+
+  if (error || !invoice) {
+    return (
+      <div className="p-6">
+        <ErrorRecoveryBanner
+          info={{
+            title: error || t('app.invoices.not_found', { defaultValue: 'Invoice not found' }),
+            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+          }}
+          onRetry={() => setReloadKey((prev) => prev + 1)}
+          retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+        />
+      </div>
+    )
+  }
 
   const isLockedForCompliance = invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue'
   const correctionPath = `/app/invoices/new?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`
@@ -817,4 +818,3 @@ export default function InvoiceDetailPage() {
     </div>
   )
 }
-  const hasSendErrorNotice = searchParams.get('send_error') === '1'
