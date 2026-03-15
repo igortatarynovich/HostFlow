@@ -199,6 +199,7 @@ export default function BillingWorkspacePage() {
   const [operatingCompanyCount, setOperatingCompanyCount] = useState(0)
   const [companySlotsInput, setCompanySlotsInput] = useState('0')
   const [recommendedFromQuery, setRecommendedFromQuery] = useState<number>(0)
+  const [companySlotsRecoveryFocus, setCompanySlotsRecoveryFocus] = useState(false)
 
   const reloadSummary = useCallback(async () => {
     const data = await getBillingSummary()
@@ -288,6 +289,7 @@ export default function BillingWorkspacePage() {
       )
     }
     if (focus === 'company-slots') {
+      setCompanySlotsRecoveryFocus(true)
       window.setTimeout(() => {
         const node = document.getElementById('company-slots-usage-card')
         if (node) node.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -632,6 +634,8 @@ export default function BillingWorkspacePage() {
     : 0
   const currentExtraSlots = summary?.company_slots?.extra_slots ?? 0
   const canSaveCompanySlots = normalizedCompanySlotsInput !== currentExtraSlots && !isMutationLoading
+  const hasOperatingSlotCapacity =
+    Boolean(summary?.company_slots?.unlimited) || Number(summary?.company_slots?.available ?? 0) > 0
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1116,6 +1120,21 @@ export default function BillingWorkspacePage() {
                   defaultValue: 'Recommended by recovery flow: +{count} slot(s).',
                   values: { count: recommendedFromQuery },
                 })}
+              </div>
+            ) : null}
+            {companySlotsRecoveryFocus ? (
+              <div className="mt-2">
+                {hasOperatingSlotCapacity ? (
+                  <Link to="/app/onboarding/company" className="btn-primary btn-xs">
+                    {t('app.settings.billing.usage.back_to_onboarding', { defaultValue: 'Create operating company now' })}
+                  </Link>
+                ) : (
+                  <div className="text-xs text-slate-500">
+                    {t('app.settings.billing.usage.back_to_onboarding_hint', {
+                      defaultValue: 'Save add-on slots first, then return to company onboarding.',
+                    })}
+                  </div>
+                )}
               </div>
             ) : null}
           </div>
