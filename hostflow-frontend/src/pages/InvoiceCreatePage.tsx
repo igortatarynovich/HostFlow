@@ -867,6 +867,20 @@ export default function InvoiceCreatePage() {
                   { defaultValue: 'Only your own companies can issue invoices. Client companies are not available here.' },
                 )}
               </span>
+              {!issuerCompanies.length && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  {t('app.invoices.issuer_missing_hint', {
+                    defaultValue: 'No operating company is available for issuing invoices. Add legal/bank data in My Company.',
+                  })}{' '}
+                  <button
+                    type="button"
+                    className="font-semibold underline"
+                    onClick={() => navigate('/app/companies?role=operating&section=billing')}
+                  >
+                    {t('app.companies.my_company.open_billing', { defaultValue: 'Open billing' })}
+                  </button>
+                </div>
+              )}
             </label>
 
             <label className="flex flex-col gap-1 text-sm">
