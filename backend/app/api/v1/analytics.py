@@ -449,6 +449,51 @@ async def profile_summary(
     return profile
 
 
+class ServicesAnalyticsStatusRowOut(BaseModel):
+    status: str
+    count: int
+
+
+class ServicesAnalyticsTopItemOut(BaseModel):
+    service_id: Optional[str] = None
+    label: str
+    total: int
+    pending: int
+    revenue: float
+    profit: float
+
+
+class ServicesAnalyticsTopClientOut(BaseModel):
+    owner_kind: str
+    owner_id: Optional[str] = None
+    label: str
+    revenue: float
+    profit: float
+    orders: int
+
+
+class ServicesAnalyticsHotOrderOut(BaseModel):
+    order_id: str
+    label: str
+    reason: str
+    owner_kind: str
+    status: str
+    updated_at: Optional[str] = None
+
+
+class ServicesAnalyticsOverviewOut(BaseModel):
+    generated_at: str
+    totals: dict[str, float | int]
+    last30: dict[str, int]
+    data_quality: dict[str, int]
+    status_breakdown: list[ServicesAnalyticsStatusRowOut]
+    top_items: list[ServicesAnalyticsTopItemOut]
+    top_clients: list[ServicesAnalyticsTopClientOut]
+    hot_orders: list[ServicesAnalyticsHotOrderOut]
+    trends: list[dict[str, float | int | str]]
+    slices: list[dict[str, float | int | str | None]]
+
+
 @router.get("/analytics/services-overview", response_model=ServicesAnalyticsOverviewOut)
 async def services_overview(
     days: int = Query(90, ge=7, le=365),
@@ -1606,51 +1651,6 @@ class TrialRetentionReportOut(BaseModel):
     period: dict[str, Optional[str]]
     totals: dict[str, float | int]
     buckets: list[TrialRetentionBucketOut]
-
-
-class ServicesAnalyticsStatusRowOut(BaseModel):
-    status: str
-    count: int
-
-
-class ServicesAnalyticsTopItemOut(BaseModel):
-    service_id: Optional[str] = None
-    label: str
-    total: int
-    pending: int
-    revenue: float
-    profit: float
-
-
-class ServicesAnalyticsTopClientOut(BaseModel):
-    owner_kind: str
-    owner_id: Optional[str] = None
-    label: str
-    revenue: float
-    profit: float
-    orders: int
-
-
-class ServicesAnalyticsHotOrderOut(BaseModel):
-    order_id: str
-    label: str
-    reason: str
-    owner_kind: str
-    status: str
-    updated_at: Optional[str] = None
-
-
-class ServicesAnalyticsOverviewOut(BaseModel):
-    generated_at: str
-    totals: dict[str, float | int]
-    last30: dict[str, int]
-    data_quality: dict[str, int]
-    status_breakdown: list[ServicesAnalyticsStatusRowOut]
-    top_items: list[ServicesAnalyticsTopItemOut]
-    top_clients: list[ServicesAnalyticsTopClientOut]
-    hot_orders: list[ServicesAnalyticsHotOrderOut]
-    trends: list[dict[str, float | int | str]]
-    slices: list[dict[str, float | int | str | None]]
 
 
 @router.post("/analytics/events")
