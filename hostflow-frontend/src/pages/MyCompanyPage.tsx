@@ -66,6 +66,8 @@ export default function MyCompanyPage() {
   const usedOperatingSlots = Number(billing?.company_slots?.used ?? managedOperatingCompanies.length)
   const recommendedExtraSlots = Math.max(1, usedOperatingSlots - effectiveOperatingLimit + 1)
   const billingCompanySlotsPath = `/app/settings/billing?focus=company-slots&recommended_extra_slots=${recommendedExtraSlots}`
+  const operatingSlotsOverflow = !Boolean(billing?.company_slots?.unlimited) && effectiveOperatingLimit > 0 && usedOperatingSlots > effectiveOperatingLimit
+  const operatingSlotsMissing = operatingSlotsOverflow ? Math.max(1, usedOperatingSlots - effectiveOperatingLimit) : 0
 
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
@@ -103,6 +105,27 @@ export default function MyCompanyPage() {
             <div className="text-3xl font-semibold">{billing?.company_slots?.unlimited ? '∞' : availableOperatingSlots}</div>
           </div>
         </div>
+        {operatingSlotsOverflow ? (
+          <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-medium">
+              {t('app.my_company.cards.overflow_title', {
+                defaultValue: 'Operating companies are over your active slot limit',
+              })}
+            </p>
+            <p className="mt-1">
+              {t('app.my_company.cards.overflow_text', {
+                defaultValue:
+                  'Existing data is preserved, but creating new operating companies is blocked until you add at least {count} slot(s).',
+                values: { count: operatingSlotsMissing },
+              })}
+            </p>
+            <div className="mt-2">
+              <Link className="btn-secondary btn-sm" to={billingCompanySlotsPath}>
+                {t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
+              </Link>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       {error && (
