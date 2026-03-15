@@ -229,7 +229,11 @@ export default function InvoiceDetailPage() {
         setCorrectionChain(chain)
       } catch (err: any) {
         if (!cancelled) {
-          setCorrectionChainError(err?.response?.data?.detail || err?.message || 'Failed to load correction chain')
+          setCorrectionChainError(
+            err?.response?.data?.detail ||
+              err?.message ||
+              t('app.invoices.correction_chain_error', { defaultValue: 'Failed to load correction chain' }),
+          )
           setCorrectionChain([invoice])
         }
       } finally {
@@ -240,7 +244,7 @@ export default function InvoiceDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [invoice])
+  }, [invoice, t])
 
   const withAction = async (action: string, fn: () => Promise<void>) => {
     setBusyAction(action)
@@ -756,7 +760,7 @@ export default function InvoiceDetailPage() {
                           <span>{formatDate(entry.issue_date)}</span>
                           <span>•</span>
                           <span>{invoiceKindLabel(entry, t)}</span>
-                          {isCurrent && <span>• current</span>}
+                          {isCurrent && <span>• {t('app.invoices.current', { defaultValue: 'Current' })}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 pl-3">
