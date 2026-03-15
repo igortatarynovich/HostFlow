@@ -124,6 +124,10 @@ function extractCompanyBillingSnapshot(company: Company | null) {
   }
 }
 
+function isEmailLike(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+}
+
 function addDays(isoValue: string, days: number) {
   const dt = new Date(isoValue)
   if (Number.isNaN(dt.getTime())) return isoValue
@@ -624,6 +628,17 @@ export default function InvoiceCreatePage() {
         setSaving(false)
         return
       }
+      const normalizedRecipientEmail = String(billingEmail || clientBilling.email || '').trim()
+      if (submitMode === 'save_and_send' && !normalizedRecipientEmail) {
+        setError(t('app.invoices.recipient_required_for_send', { defaultValue: 'Recipient email is required to send invoice.' }))
+        setSaving(false)
+        return
+      }
+      if (submitMode === 'save_and_send' && normalizedRecipientEmail && !isEmailLike(normalizedRecipientEmail)) {
+        setError(t('app.invoices.recipient_invalid_for_send', { defaultValue: 'Recipient email has invalid format.' }))
+        setSaving(false)
+        return
+      }
 
       const payload = {
         company_id: companyId,
@@ -634,7 +649,7 @@ export default function InvoiceCreatePage() {
         notes: notes.trim() || undefined,
         billing_details: {
           company_name: clientBilling.company_name,
-          email: billingEmail.trim() || clientBilling.email,
+          email: normalizedRecipientEmail || undefined,
           tax_id: clientBilling.tax_id,
           address: clientBilling.address,
           invoice_kind: invoiceKind,
@@ -666,7 +681,7 @@ export default function InvoiceCreatePage() {
           invoice = (await updateInvoice(invoice.id, { status: 'issued' })) as Invoice
         }
         await sendInvoice(invoice.id, {
-          recipient_email: String(payload.billing_details?.email || '').trim() || undefined,
+          recipient_email: normalizedRecipientEmail || undefined,
         })
       }
       navigate(`/app/invoices/${invoice.id}`)
