@@ -18,14 +18,14 @@ Blocker (if any): `Manual product/QA click-path run and Stripe-side payment conf
 |---|---|---|---|---|
 | 1 | Billing shows `included + extra = effective` slots correctly. | Runtime implementation present in Billing and My Company pages; manual visual verification pending for target tenant. | `IN_PROGRESS` | Code: `BillingWorkspacePage`, `MyCompanyPage`; pending screenshot/log evidence. |
 | 2 | Increase add-on slots from Billing (`- / + / Save`) succeeds. | Automated API coverage passed (`test_operating_company_slots`, `test_billing_operating_slot_sync`); manual click-path evidence pending. | `IN_PROGRESS` | `pytest tests/test_operating_company_slots.py tests/api/test_billing_operating_slot_sync.py` (`PASS`, `2026-03-15`). |
-| 3 | New operating company can be created when slot is available. | Guardrails implemented; positive path manual run pending. | `IN_PROGRESS` | Pending onboarding/my-company create proof. |
+| 3 | New operating company can be created when slot is available. | Automated end-to-end scenario passed: first create blocked at limit, succeeds after add-on slot, then remains persisted after downgrade. | `IN_PROGRESS` | `pytest tests/test_operating_company_slots_e2e.py` (`PASS`, `2026-03-15`); manual UI proof pending. |
 | 4 | At limit, creation is blocked with clear upgrade/add-slot CTA (no dead-end). | Automated guardrail/error-mapping coverage passed; manual UX screenshot evidence pending. | `IN_PROGRESS` | `pytest tests/modules/test_companies_error_mapping.py` (`PASS`, `2026-03-15`) + frontend code path (`OnboardingCompanyPage`, `MyCompanyPage`, `friendlyError`). |
 | 5 | Stripe webhook sync updates `extra_operating_company_slots` from subscription item quantity. | Automated webhook/invoice sync coverage passed; live Stripe event proof pending. | `IN_PROGRESS` | `pytest tests/api/test_billing_operating_slot_sync.py` (`PASS`, `2026-03-15`), pending production webhook log snippet. |
-| 6 | Downgrade/remove add-on slot does not delete companies; only creation of new ones is blocked if over limit. | Enforcement model implemented; explicit downgrade edge-case manual pass pending. | `IN_PROGRESS` | Pending controlled downgrade run evidence. |
+| 6 | Downgrade/remove add-on slot does not delete companies; only creation of new ones is blocked if over limit. | Automated downgrade edge-case passed: existing operating companies preserved, new create blocked after downgrade below usage. | `IN_PROGRESS` | `pytest tests/test_operating_company_slots_e2e.py` (`PASS`, `2026-03-15`); manual billing UI proof pending. |
 
 ## Required Evidence to Close `A6-S7`
-- Automated regression baseline (`2026-03-15`): `9 passed` for slot-flow suite  
-  `pytest tests/test_operating_company_slots.py tests/api/test_billing_operating_slot_sync.py tests/modules/test_companies_error_mapping.py -q`
+- Automated regression baseline (`2026-03-15`): `10 passed` for slot-flow suite  
+  `pytest tests/test_operating_company_slots.py tests/test_operating_company_slots_e2e.py tests/api/test_billing_operating_slot_sync.py tests/modules/test_companies_error_mapping.py -q`
 - Billing UI screenshots before/after slot change.
 - API evidence for slot update (`200`) and expected payload values.
 - Proof of successful operating company creation after slot increase.

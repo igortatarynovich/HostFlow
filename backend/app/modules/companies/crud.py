@@ -484,6 +484,16 @@ def _apply_extra_patch(current: Dict[str, Any], patch: Dict[str, Any]) -> Dict[s
         else:
             extra.pop("company_orders", None)
 
+    # Preserve top-level metadata keys (for example company_role/company_type)
+    # that are not represented by structured profile sections above.
+    for key, value in patch.items():
+        if key in PROFILE_SECTIONS:
+            continue
+        if value in (None, "", [], {}):
+            extra.pop(key, None)
+            continue
+        extra[key] = deepcopy(value)
+
     return extra
 
 
