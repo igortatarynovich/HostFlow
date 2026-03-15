@@ -25,6 +25,7 @@ export default function OnboardingCompanyPage() {
   const [recommendedExtraSlots, setRecommendedExtraSlots] = useState<number | null>(null)
   const [hasAvailableOperatingSlots, setHasAvailableOperatingSlots] = useState(true)
   const [slotGuardLoading, setSlotGuardLoading] = useState(true)
+  const [precheckRecommendedExtraSlots, setPrecheckRecommendedExtraSlots] = useState(1)
   const signupContext = useMemo(
     () => readSignupSuccessContextFromSearch(searchParams) ?? readSignupSuccessContextFromSessionStorage(),
     [searchParams],
@@ -45,6 +46,10 @@ export default function OnboardingCompanyPage() {
         const billing = await getBillingSummary()
         if (!mounted) return
         const unlimited = Boolean(billing?.company_slots?.unlimited)
+        const used = Number(billing?.company_slots?.used ?? 0)
+        const effective = Number(billing?.company_slots?.effective_limit ?? 0)
+        const computedRecommended = Math.max(1, used - effective + 1)
+        setPrecheckRecommendedExtraSlots(computedRecommended)
         const available = Number(billing?.company_slots?.available ?? 0)
         setHasAvailableOperatingSlots(unlimited || available > 0)
       } catch {
@@ -116,7 +121,7 @@ export default function OnboardingCompanyPage() {
     }
     if (!hasAvailableOperatingSlots) {
       setLimitReached(true)
-      setRecommendedExtraSlots(1)
+      setRecommendedExtraSlots(precheckRecommendedExtraSlots)
       setError(
         t('app.onboarding.company.errors.operating_limit', {
           defaultValue: 'Достигнут лимит operating-компаний для текущей подписки.',
@@ -233,7 +238,7 @@ export default function OnboardingCompanyPage() {
               </p>
               <div className="mt-2">
                 <Link
-                  to={`${ACTIVATION_PATHS.billing}?focus=company-slots&recommended_extra_slots=1`}
+                  to={`${ACTIVATION_PATHS.billing}?focus=company-slots&recommended_extra_slots=${precheckRecommendedExtraSlots}`}
                   className="btn-secondary btn-sm"
                 >
                   {t('app.onboarding.company.signup_success_billing', { defaultValue: 'Open billing' })}
