@@ -145,3 +145,57 @@ async def test_cancel_guardrails_block_sent_overdue_and_paid(
         assert cancel_resp.status_code == 400, cancel_resp.text
         assert "Create a correction invoice instead" in str(cancel_resp.text)
 
+
+@pytest.mark.anyio
+async def test_update_guardrails_block_non_draft_invoices(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_headers: dict[str, str],
+) -> None:
+    admin_stmt = sa.select(User).where(sa.func.lower(User.email) == ADMIN_EMAIL.lower()).limit(1)
+    admin = (await db.execute(admin_stmt)).scalar_one()
+
+    issuer = Company(
+        id=str(uuid4()),
+        tenant_id=TENANT_ID,
+        owner_user_id=str(admin.id),
+        manager_user_id=str(admin.id),
+        name="Issuer Update Guardrail Sp. z o.o.",
+        legal_name="Issuer Update Guardrail Sp. z o.o.",
+        tax_id="PL1122334455",
+        country="PL",
+        city="Warsaw",
+        address="Main 11",
+        extra=_operating_extra(),
+    )
+    client_company = Company(
+        id=str(uuid4()),
+        tenant_id=TENANT_ID,
+        name="Client Update Guardrail Sp. z o.o.",
+        legal_name="Client Update Guardrail Sp. z o.o.",
+        tax_id="PL5544332211",
+        country="PL",
+        city="Gdansk",
+        address="Client 11",
+        extra=_client_extra(),
+    )
+    db.add(issuer)
+    db.add(client_company)
+    await db.commit()
+
+    for status in ("issued", "sent", "overdue", "paid"):
+        create_resp = await client.post(
+            "/api/v1/invoices",
+            headers=manager_headers,
+            json=_invoice_payload(client_id=str(client_company.id), issuer_id=str(issuer.id), status=status),
+        )
+        assert create_resp.status_code == 201, create_resp.text
+        invoice_id = str(create_resp.json()["id"])
+
+        patch_resp = await client.patch(
+            f"/api/v1/invoices/{invoice_id}",
+            headers=manager_headers,
+            json={"notes": f"updated for status={status}"},
+        )
+        assert patch_resp.status_code == 400, patch_resp.text
+        assert "Only draft invoices can be edited" in str(patch_resp.text)
