@@ -316,7 +316,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | A6-S2 | Зафиксировать data contract в tenant/license модели (`included`, `extra`, `max`) | Backend | Schema/API contract + migration notes | `NOT_STARTED` |
 | A6-S3 | Реализовать checkout/update flow для покупки/изменения add-on slots | Backend + Frontend | Рабочий UI/API path `increase/decrease slots` с понятными CTA и pending/retry states | `IN_PROGRESS` |
 | A6-S4 | Встроить sync из Stripe webhook в tenant entitlements (`invoice.paid`, `subscription.updated/deleted`) | Backend | Mapping `Stripe items -> tenant slots` + live webhook smoke | `IN_PROGRESS` |
-| A6-S5 | Добавить guardrails в operating company creation flow | Backend + Frontend | При достижении лимита показывается upgrade/add-slot path, без технических ошибок и тупиков | `NOT_STARTED` |
+| A6-S5 | Добавить guardrails в operating company creation flow | Backend + Frontend | При достижении лимита показывается upgrade/add-slot path, без технических ошибок и тупиков | `IN_PROGRESS` |
 | A6-S6 | Подготовить migration/transition для текущих tenants и manual rollback playbook | Backend + Product | Controlled migration plan + dry-run report | `NOT_STARTED` |
 | A6-S7 | Выполнить E2E release pass (`buy slot -> create company -> downgrade/edge cases`) | QA + Product | Подписанный `PASS/FAIL` протокол с evidence | `NOT_STARTED` |
 
@@ -1793,3 +1793,4 @@ Release gap:
 - `2026-03-15` — `A6-S1` переведен в `IN_PROGRESS`: в `5.1.4.1` зафиксирован baseline pricing/limits matrix из runtime source-of-truth (`starter/team/pro = 39/99/199 EUR`, included operating slots baseline = `1/10/100`), оставлен explicit `TBD` на unit-price add-on slot до Product/Billing sign-off.
 - `2026-03-15` — `A6-S3` стартовал implementation-level: добавлен API `POST /api/v1/settings/billing/company-slots` для изменения `extra_operating_company_slots`, в billing workspace добавлены `- / + / Save` controls для add-on slot count и runtime card usage считает effective operating company limit (`included + extra`).
 - `2026-03-15` — `A6-S4` стартовал implementation-level: webhook обработчик `customer.subscription.updated/deleted` теперь синхронизирует `extra_operating_company_slots` из Stripe subscription add-on item quantity (по `STRIPE_PRICE_OPERATING_COMPANY_SLOT`) и пишет entitlement напрямую в tenant billing subscription payload.
+- `2026-03-15` — `A6-S5` стартовал implementation-level (frontend guardrails): `OnboardingCompanyPage` теперь отдельно обрабатывает `OPERATING-COMPANY-LIMIT` и ведет пользователя в Billing (`Open billing` CTA), а `My Company` при исчерпанных slots переключает primary CTA на Billing вместо тупикового create-action.

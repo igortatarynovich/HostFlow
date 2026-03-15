@@ -20,6 +20,7 @@ export default function OnboardingCompanyPage() {
   const [companyType, setCompanyType] = useState<CompanyType>('agency')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [limitReached, setLimitReached] = useState(false)
   const signupContext = useMemo(
     () => readSignupSuccessContextFromSearch(searchParams) ?? readSignupSuccessContextFromSessionStorage(),
     [searchParams],
@@ -82,6 +83,7 @@ export default function OnboardingCompanyPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setLimitReached(false)
     const trimmed = name.trim()
     if (!trimmed) {
       setError(t('app.onboarding.company.errors.name_required', { defaultValue: 'Введите название компании' }))
@@ -92,8 +94,18 @@ export default function OnboardingCompanyPage() {
       await createCompany({ name: trimmed, company_type: companyType, company_role: 'operating' })
       navigate(getBusinessHomePath(companyType), { replace: true })
     } catch (err: any) {
-      const msg = err?.response?.data?.detail ?? err?.message ?? t('app.onboarding.company.errors.generic', { defaultValue: 'Не удалось создать компанию' })
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
+      const detail = String(err?.response?.data?.detail || '').trim().toUpperCase()
+      if (detail === 'OPERATING-COMPANY-LIMIT') {
+        setLimitReached(true)
+        setError(
+          t('app.onboarding.company.errors.operating_limit', {
+            defaultValue: 'Достигнут лимит operating-компаний для текущей подписки.',
+          }),
+        )
+      } else {
+        const msg = err?.response?.data?.detail ?? err?.message ?? t('app.onboarding.company.errors.generic', { defaultValue: 'Не удалось создать компанию' })
+        setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
+      }
     } finally {
       setLoading(false)
     }
@@ -201,10 +213,16 @@ export default function OnboardingCompanyPage() {
             <ErrorRecoveryBanner
               info={{
                 title: error,
-                hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+                hint: limitReached
+                  ? t('app.onboarding.company.errors.operating_limit_hint', {
+                      defaultValue: 'Откройте Billing и добавьте дополнительный slot operating-компании.',
+                    })
+                  : t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
               }}
               onRetry={() => setError(null)}
               retryLabel={t('common.actions.close', { defaultValue: 'Close' })}
+              secondaryTo={limitReached ? ACTIVATION_PATHS.billing : undefined}
+              secondaryLabel={limitReached ? t('app.onboarding.company.signup_success_billing', { defaultValue: 'Open billing' }) : undefined}
               compact
             />
           )}

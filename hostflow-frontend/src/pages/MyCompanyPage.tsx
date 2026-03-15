@@ -62,6 +62,7 @@ export default function MyCompanyPage() {
   const availableOperatingSlots = billing?.company_slots?.unlimited
     ? 0
     : Math.max((billing?.company_slots?.available ?? effectiveOperatingLimit - managedOperatingCompanies.length), 0)
+  const hasAvailableOperatingSlots = Boolean(billing?.company_slots?.unlimited) || availableOperatingSlots > 0
 
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
@@ -76,8 +77,13 @@ export default function MyCompanyPage() {
               )}
             </p>
           </div>
-          <button className="btn-primary bg-white text-slate-900 hover:bg-white/90" onClick={() => navigate('/app/onboarding/company')}>
-            {t('app.my_company.create', { defaultValue: 'Create my company' })}
+          <button
+            className="btn-primary bg-white text-slate-900 hover:bg-white/90"
+            onClick={() => navigate(hasAvailableOperatingSlots ? '/app/onboarding/company' : '/app/settings/billing')}
+          >
+            {hasAvailableOperatingSlots
+              ? t('app.my_company.create', { defaultValue: 'Create my company' })
+              : t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
           </button>
         </div>
         <div className="mt-6 grid gap-3 md:grid-cols-3">
@@ -148,13 +154,22 @@ export default function MyCompanyPage() {
             )}
           </p>
           <div className="flex flex-wrap gap-2">
-            <button className="btn-primary" onClick={() => navigate('/app/onboarding/company')}>
-              {t('app.my_company.create', { defaultValue: 'Create my company' })}
-            </button>
+            {hasAvailableOperatingSlots ? (
+              <button className="btn-primary" onClick={() => navigate('/app/onboarding/company')}>
+                {t('app.my_company.create', { defaultValue: 'Create my company' })}
+              </button>
+            ) : null}
             <Link className="btn-secondary" to="/app/settings/billing">
               {t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
             </Link>
           </div>
+          {!hasAvailableOperatingSlots ? (
+            <p className="text-xs text-amber-700">
+              {t('app.my_company.empty.limit_reached', {
+                defaultValue: 'Operating company slots are fully used. Add an extra slot in Billing to create another company.',
+              })}
+            </p>
+          ) : null}
         </section>
       ) : (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
