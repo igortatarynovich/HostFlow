@@ -317,7 +317,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | A6-S3 | Реализовать checkout/update flow для покупки/изменения add-on slots | Backend + Frontend | Рабочий UI/API path `increase/decrease slots` с понятными CTA и pending/retry states | `IN_PROGRESS` |
 | A6-S4 | Встроить sync из Stripe webhook в tenant entitlements (`invoice.paid`, `subscription.updated/deleted`) | Backend | Mapping `Stripe items -> tenant slots` + live webhook smoke | `IN_PROGRESS` |
 | A6-S5 | Добавить guardrails в operating company creation flow | Backend + Frontend | При достижении лимита показывается upgrade/add-slot path, без технических ошибок и тупиков | `IN_PROGRESS` |
-| A6-S6 | Подготовить migration/transition для текущих tenants и manual rollback playbook | Backend + Product | Controlled migration plan + dry-run report | `NOT_STARTED` |
+| A6-S6 | Подготовить migration/transition для текущих tenants и manual rollback playbook | Backend + Product | Controlled migration plan + dry-run report | `IN_PROGRESS` |
 | A6-S7 | Выполнить E2E release pass (`buy slot -> create company -> downgrade/edge cases`) | QA + Product | Подписанный `PASS/FAIL` протокол с evidence | `NOT_STARTED` |
 
 Acceptance rules для `A6`:
@@ -347,6 +347,19 @@ Source-of-truth для текущего runtime baseline:
 - В таблице выше заполнен `Add-on slot unit price` для `starter/team/pro` (или единый `all-plans` unit price).
 - Значения согласованы с фактическими Stripe recurring prices (product/price IDs задокументированы).
 - В runbook есть явная proration policy для `increase/decrease slots` без неожиданных списаний.
+
+#### 5.1.4.2 `A6-S6` Migration/Transition Baseline (`2026-03-15`)
+
+Артефакты:
+- Playbook: [a6-s6-operating-slots-migration-playbook.md](/opt/HostFlow/docs/manual-checklist/a6-s6-operating-slots-migration-playbook.md)
+- Dry-run report (markdown): [a6-s6-operating-slots-dry-run-2026-03-15.md](/opt/HostFlow/docs/manual-checklist/a6-s6-operating-slots-dry-run-2026-03-15.md)
+- Dry-run report (json): [a6-s6-operating-slots-dry-run-2026-03-15.json](/opt/HostFlow/docs/manual-checklist/a6-s6-operating-slots-dry-run-2026-03-15.json)
+
+Итоги dry-run:
+- audited tenants: `4`;
+- overflow tenants (`used > effective_limit`): `0`;
+- tenants with legacy alias keys: `0`;
+- tenants without `tenant_licenses` row: `1` (фиксируется как отдельный operational follow-up, без data-loss риска по slots).
 
 ## 5.2 Фаза B — Онбординг и TTV
 
@@ -1794,3 +1807,4 @@ Release gap:
 - `2026-03-15` — `A6-S3` стартовал implementation-level: добавлен API `POST /api/v1/settings/billing/company-slots` для изменения `extra_operating_company_slots`, в billing workspace добавлены `- / + / Save` controls для add-on slot count и runtime card usage считает effective operating company limit (`included + extra`).
 - `2026-03-15` — `A6-S4` стартовал implementation-level: webhook обработчик `customer.subscription.updated/deleted` теперь синхронизирует `extra_operating_company_slots` из Stripe subscription add-on item quantity (по `STRIPE_PRICE_OPERATING_COMPANY_SLOT`) и пишет entitlement напрямую в tenant billing subscription payload.
 - `2026-03-15` — `A6-S5` стартовал implementation-level (frontend guardrails): `OnboardingCompanyPage` теперь отдельно обрабатывает `OPERATING-COMPANY-LIMIT` и ведет пользователя в Billing (`Open billing` CTA), а `My Company` при исчерпанных slots переключает primary CTA на Billing вместо тупикового create-action.
+- `2026-03-15` — `A6-S6` переведен в `IN_PROGRESS`: добавлен migration/rollback playbook [a6-s6-operating-slots-migration-playbook.md](/opt/HostFlow/docs/manual-checklist/a6-s6-operating-slots-migration-playbook.md) и выполнен фактический dry-run аудит [a6-s6-operating-slots-dry-run-2026-03-15.md](/opt/HostFlow/docs/manual-checklist/a6-s6-operating-slots-dry-run-2026-03-15.md) (`4 tenants`, `0 overflow`, `0 legacy keys`, `1 tenant without license row`).
