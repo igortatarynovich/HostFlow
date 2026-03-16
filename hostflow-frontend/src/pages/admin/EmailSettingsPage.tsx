@@ -4,6 +4,7 @@ import { getEmailConfig, sendTestEmail, upsertEmailConfig, type EmailConfig, typ
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useToast } from '../../components/Toast'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { recordTtvStepCompleted } from '../../api/analytics'
 
 export default function EmailSettingsPage() {
   const { t } = useI18n()
@@ -91,6 +92,10 @@ export default function EmailSettingsPage() {
       setConfig(updated)
       setSmtpPassword('')
       notify({ title: t('admin.email.saved', { defaultValue: 'Ustawienia zapisane' }), variant: 'success' })
+      // Если email был неактивен и стал активен — считаем шаг email_connected завершённым для TTV.
+      if (!config?.is_active && updated.is_active) {
+        void recordTtvStepCompleted({ event: 'ttv_step', action: 'completed', step_key: 'email_connected' })
+      }
     } catch (e: any) {
       setPageError(
         getFriendlyErrorInfo(
