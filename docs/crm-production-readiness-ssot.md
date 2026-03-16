@@ -422,8 +422,8 @@ Source-of-truth для текущего runtime baseline:
 | B4 | Убрать обязательные advanced-настройки из первого запуска | `IN_PROGRESS` | До first value не требуется заход в Settings |
 | B5 | `services` onboarding: отдельный шаг первого клиента (`first_client_created`) | `DONE` | Онбординг и activation учитывают создание первого клиента, API возвращает `clients/counterparties` счетчики |
 | B6 | Формализовать role-to-settings matrix (`workspace type x role x route/action`) | `IN_PROGRESS` | Есть каноническая матрица доступа; клиентский tenant не видит superadmin/platform settings и лишние admin actions |
-| B7 | Зафиксировать self-serve company bootstrap contract | `IN_PROGRESS` | Определен минимальный набор полей для company setup + documented purpose/use per field |
-| B8 | Довести ownership bootstrap первой компании | `IN_PROGRESS` | Для первой компании определен канонический ownership contract; UI/API не создают двусмысленности, а делегирование прав отражено явно |
+| B7 | Зафиксировать self-serve company bootstrap contract | `DONE` | Минимальный набор полей (`name + company_type`) реализован в UI/API и задокументирован как bootstrap contract |
+| B8 | Довести ownership bootstrap первой компании | `DONE` | Для первой компании реализован канонический ownership contract (`owner_user_id` + `manager_user_id`), bootstrap и UI не создают двусмысленности, делегирование прав отражено явно |
 | B9 | Перевести onboarding wizard в orientation-mode | `IN_PROGRESS` | Wizard показывает что где находится и какие next steps доступны, но не блокирует рабочие экраны |
 | B2.1 | Формализовать product contract для `agency / employer / services` | `IN_PROGRESS` | Для каждого business type описаны primary object, primary lead, monetization/workflow model, notifications baseline, funnel presets, card presets и first-value path |
 
