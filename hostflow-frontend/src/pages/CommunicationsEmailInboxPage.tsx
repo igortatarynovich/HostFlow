@@ -871,6 +871,14 @@ export default function CommunicationsEmailInboxPage() {
                   rows={6}
                   value={composeBody}
                   onChange={(e) => setComposeBody(e.target.value)}
+                  onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                      e.preventDefault()
+                      if (!busy && composeBody.trim()) {
+                        void sendReplyOrForward('reply')
+                      }
+                    }
+                  }}
                   className="textarea"
                   placeholder="Write your message"
                 />
