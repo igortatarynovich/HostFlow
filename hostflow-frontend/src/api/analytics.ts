@@ -110,6 +110,21 @@ export type TrialRetentionReport = {
   }>
 }
 
+export type TtvReportStep = {
+  step_key: TtvStep
+  samples: number
+  p50_seconds: number
+  p90_seconds: number
+  min_seconds: number
+  max_seconds: number
+}
+
+export type TtvReport = {
+  period: { from: string | null; to: string | null }
+  actors: number
+  steps: TtvReportStep[]
+}
+
 export async function getHandoffStats(params?: {
   from?: string
   to?: string
@@ -232,6 +247,15 @@ export async function getTrialRetentionReport(params?: { days?: number }): Promi
   const q: Record<string, string> = {}
   if (params?.days != null) q.days = String(params.days)
   const { data } = await api.get<TrialRetentionReport>('/analytics/trial-retention', {
+    params: Object.keys(q).length ? q : undefined,
+  })
+  return data
+}
+
+export async function getTtvReport(params?: { days?: number }): Promise<TtvReport> {
+  const q: Record<string, string> = {}
+  if (params?.days != null) q.days = String(params.days)
+  const { data } = await api.get<TtvReport>('/analytics/ttv-report', {
     params: Object.keys(q).length ? q : undefined,
   })
   return data

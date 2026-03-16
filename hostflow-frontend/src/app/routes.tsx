@@ -33,6 +33,7 @@ import RulesetVersionsPage from '../pages/admin/RulesetVersionsPage'
 import MetaLeadsAdminPage from '../pages/admin/MetaLeadsAdminPage'
 import DeletionRequestsPage from '../pages/admin/DeletionRequestsPage'
 import AuditLogPage from '../pages/admin/AuditLogPage'
+import TtvReportPage from '../pages/admin/TtvReportPage'
 import DocumentsRegistryPage from '../pages/DocumentsRegistryPage'
 import SettingsLandingPage from '../pages/admin/SettingsLandingPage'
 import DocumentTypesPage from '../pages/admin/DocumentTypesPage'
@@ -421,6 +422,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'settings-ruleset', path: 'settings/ruleset', Component: RulesetVersionsPage, permission: 'admin.ruleset' },
   { key: 'settings-audit', path: 'settings/audit', Component: AuditLogPage, permission: 'admin.deletionQueue' },
   { key: 'settings-company-access', path: 'settings/company-access', Component: CompanyAccessPage, permission: 'admin.companyAcl' },
+  { key: 'settings-ttv-report', path: 'settings/ttv-report', Component: TtvReportPage, permission: 'admin.users' },
   { key: 'profile', path: 'profile', Component: ProfilePage },
   { key: 'not-found', path: '*', Component: NotFoundRedirect },
 ]
