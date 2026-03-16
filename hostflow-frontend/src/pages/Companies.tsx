@@ -1,7 +1,8 @@
 // src/pages/Companies.tsx
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { api } from '../api/client'
+import { api, getOnboardingStatus } from '../api/client'
+import { recordTtvStepCompleted } from '../api/analytics'
 import type { Company, CompanyReadiness } from '../api/types'
 import { listAdminUsers } from '../api/users'
 import type { AdminUser } from '../api/types'
@@ -1484,7 +1485,20 @@ export default function Companies(){
       }
     }
     if (id === 'new') {
-      void createDraft()
+      void createDraft().then(async () => {
+        try {
+          const status = await getOnboardingStatus()
+          if (!status.steps.first_client_created) {
+            void recordTtvStepCompleted({
+              event: 'ttv_step',
+              action: 'completed',
+              step_key: 'first_client_created',
+            })
+          }
+        } catch {
+          // ignore onboarding/TTV errors
+        }
+      })
     }
     return () => {
       cancelled = true

@@ -488,6 +488,12 @@ export async function createCompany(payload: Record<string, any>) {
   return data;
 }
 
+export async function createClientCompany(payload: Record<string, any>) {
+  const body = { ...payload, company_role: payload.company_role ?? 'client' };
+  const { data } = await api.post(`/companies/`, body);
+  return data;
+}
+
 export type OnboardingStatus = {
   business_type: 'agency' | 'employer' | 'services'
   onboarding_required: boolean

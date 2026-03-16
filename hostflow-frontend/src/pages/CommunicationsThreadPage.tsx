@@ -12,6 +12,7 @@ import {
   type CommunicationMessage,
   type CommunicationThread,
 } from '../api/communications'
+import { recordTtvStepCompleted } from '../api/analytics'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 
@@ -63,6 +64,7 @@ export default function CommunicationsThreadPage() {
   const [internalNote, setInternalNote] = useState(false)
   const [sendImmediately, setSendImmediately] = useState(true)
   const threadListPath = String(thread?.channel || '').toLowerCase() === 'email' ? '/app/email' : '/app/messages'
+  const firstEmailTtvSentRef = useRef(false)
 
   const load = useCallback(async () => {
     if (!threadId) return
@@ -175,6 +177,14 @@ export default function CommunicationsThreadPage() {
           const dispatched = await dispatchCommunicationMessage(msg.id, { mark_delivered: true })
           finalMsg = dispatched.message
           setThread(dispatched.thread)
+          if (!firstEmailTtvSentRef.current && String(thread.channel || '').toLowerCase() === 'email') {
+            firstEmailTtvSentRef.current = true
+            void recordTtvStepCompleted({
+              event: 'ttv_step',
+              action: 'completed',
+              step_key: 'first_email_sent',
+            })
+          }
         } catch {
           // Keep queued message visible; user can dispatch later manually.
         }
@@ -224,6 +234,17 @@ export default function CommunicationsThreadPage() {
       setMessages((prev) => prev.map((m) => (m.id === messageId ? result.message : m)))
       setThread(result.thread)
       setErrorText(null)
+      if (
+        !firstEmailTtvSentRef.current &&
+        String(result.thread.channel || '').toLowerCase() === 'email'
+      ) {
+        firstEmailTtvSentRef.current = true
+        void recordTtvStepCompleted({
+          event: 'ttv_step',
+          action: 'completed',
+          step_key: 'first_email_sent',
+        })
+      }
     } catch (err: any) {
       setErrorText(errorTextFrom(err, t('app.communications.errors.load', { defaultValue: 'Failed to dispatch message' })))
     } finally {
