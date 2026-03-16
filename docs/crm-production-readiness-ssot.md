@@ -171,8 +171,8 @@ Definition of success:
 | 37 | SEO контентное наполнение для конверсии | `DONE` | Ключевые landing/feature/use-case страницы имеют целевой контент, CTA и семантические заголовки | Wave-1 контент-пакет выпущен, перелинковка и baseline tracking внедрены |
 | 38 | Mobile adaptation (responsive-first) | `IN_PROGRESS` | Публичные и core CRM-экраны проходят mobile QA (320/375/390/768), без критичных overflow и с рабочими CTA | Historical pass был закрыт, но communications screens reopened из-за `MOB-006..008`; нужен повторный device-level sign-off |
 | 39 | Матрица доступа к настройкам по ролям | `IN_PROGRESS` | Для каждой роли и типа workspace формально определено, какие settings/routes/actions доступны; простой клиентский tenant не видит platform/superadmin shell | Нужен role-by-role UX/access sign-off и зачистка legacy shortcuts |
-| 40 | Контракт данных для создания компании | `NOT_STARTED` | Для self-serve company setup собираются только необходимые поля; у каждого поля есть явная цель использования в CRM/billing/legal/workflow | Нужно зафиксировать field-by-field contract и copy |
-| 41 | Явное назначение владельца/ответственного компании | `NOT_STARTED` | После создания компании всегда известен owner/manager; роль и права управления компанией определены и редактируемы | Нужно довести bootstrap ownership model |
+| 40 | Контракт данных для создания компании | `DONE` | Для self-serve company setup собираются только необходимые поля; у каждого поля есть явная цель использования в CRM/billing/legal/workflow | Company bootstrap data contract зафиксирован в разделе `5.6.11.2` (`name`, `company_type`, `company_role=operating`, deferred fields + purpose/use per field) |
+| 41 | Явное назначение владельца/ответственного компании | `IN_PROGRESS` | После создания компании всегда известен owner/manager; роль и права управления компанией определены и редактируемы | Ownership bootstrap model реализован на backend (`owner_user_id/manager_user_id` + forced `operating` для первой компании), требуется финальный UX-pass и governance sign-off |
 | 42 | Настройки без дублирования entry points | `IN_PROGRESS` | Settings доступны из одного канонического места; topbar и sidebar не дублируют одни и те же admin links | Начат IA cleanup, нужен финальный nav audit |
 | 43 | Коммуникации как единый раздел IA | `IN_PROGRESS` | `Messages`, `Email`, `Calendar`, `Planner`, availability/time off логически собраны в одном communication cluster без orphaned screens | Нужна финальная перегруппировка и copy-pass |
 | 44 | Моя доступность как рабочий график | `NOT_STARTED` | Пользователь задает рабочие дни/часы, а planner/calendar/team availability учитывают когда он доступен и когда нет | Сейчас есть только базовый availability/time-off контур |
@@ -290,7 +290,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | A3 | Реализовать платежную историю в UI (`invoices/payments history`) | `DONE` | Пользователь видит оплачено/не оплачено, активный тариф, дату старта/окончания периода, invoice history и receipt/download actions на 1 экране | Live user sign-off подтвержден: history/invoices/date fields/receipt download работают в production billing flow |
 | A4 | Финализировать recovery-флоу оплаты (cancel/error/retry/pending webhook) | `DONE` | На каждой ошибке и post-payment ветке есть понятный экран, только нужные CTA (`subscribe/pay/cancel/resume/manage`) и email confirmations | Live user sign-off подтвержден: explicit Stripe Checkout plan change, cancel/resume, pending/return states и post-payment UX работают как ожидается |
 | A5 | Прогон сквозного E2E #20 (staging -> production) | `IN_PROGRESS` | Подписанный PASS протокол | Dedicated production `services` tenant подготовлен; остался финальный manual run-record |
-| A6 | Productize `operating company slots` monetization (plan includes + paid add-on slots) | `IN_PROGRESS` | Явный контракт: сколько operating-companies включено в каждый план и как считается доплата за каждую следующую | `A6-S1` закрыт (baseline + unit-price 29 EUR), `A6-S2..S7` в работе |
+| A6 | Productize `operating company slots` monetization (plan includes + paid add-on slots) | `IN_PROGRESS` | Явный контракт: сколько operating-companies включено в каждый план и как считается доплата за каждую следующую | `A6-S1` зафиксировал baseline matrix из runtime pricing, unit-price add-on slot в статусе `TBD`; `A6-S2..S7` в работе |
 
 ### 5.1.1 Sales Unblock Execution Pack (`2026-03-12`)
 
@@ -355,7 +355,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 
 | Шаг | Действие | Owner | Артефакт приемки | Статус |
 |---|---|---|---|---|
-| A6-S1 | Утвердить pricing/limits matrix по планам (`starter/team/pro`) и unit-price add-on slot | Product + Billing | Таблица `plan -> included slots -> add-on price` в runbook + ссылка в SSOT | `DONE` |
+| A6-S1 | Утвердить pricing/limits matrix по планам (`starter/team/pro`) и unit-price add-on slot | Product + Billing | Таблица `plan -> included slots -> add-on price` в runbook + ссылка в SSOT | `IN_PROGRESS` |
 | A6-S2 | Зафиксировать data contract в tenant/license модели (`included`, `extra`, `max`) | Backend | Schema/API contract + migration notes | `IN_PROGRESS` |
 | A6-S3 | Реализовать checkout/update flow для покупки/изменения add-on slots | Backend + Frontend | Рабочий UI/API path `increase/decrease slots` с понятными CTA и pending/retry states | `IN_PROGRESS` |
 | A6-S4 | Встроить sync из Stripe webhook в tenant entitlements (`invoice.paid`, `subscription.updated/deleted`) | Backend | Mapping `Stripe items -> tenant slots` + live webhook smoke | `IN_PROGRESS` |
@@ -382,9 +382,9 @@ Source-of-truth для текущего runtime baseline:
 
 | Plan code | Base monthly price (EUR) | Included operating slots (baseline) | Add-on slot unit price (EUR / month) | Статус |
 |---|---|---|---|---|
-| `starter` | `39` | `1` | `29` | `BASELINE_LOCKED` |
-| `team` | `99` | `10` | `29` | `BASELINE_LOCKED` |
-| `pro` | `199` | `100` | `29` | `BASELINE_LOCKED` |
+| `starter` | `39` | `1` | `TBD` | `PENDING` |
+| `team` | `99` | `10` | `TBD` | `PENDING` |
+| `pro` | `199` | `100` | `TBD` | `PENDING` |
 
 Что считается закрытием `A6-S1`:
 - В таблице выше заполнен `Add-on slot unit price` для `starter/team/pro` (или единый `all-plans` unit price).
@@ -1422,8 +1422,8 @@ Residual risks:
 | Критерий | Связанные задачи | Текущий baseline | Что еще нужно для `DONE` |
 |---|---|---|---|
 | `#39` Матрица доступа к настройкам по ролям | `B6`, `F3`, `D5` | Есть статическая матрица `default/client-tenant`, `mismatches=0`; route/nav permissions синхронизированы | Нужен ручной role-by-role sign-off и финальная зачистка legacy shortcuts |
-| `#40` Контракт данных для создания компании | `B7` | Self-serve flow уже минимален: собираются только `company name` + `company_type` | Нужно формально зафиксировать purpose/use per field и правила отложенного сбора остальных данных |
-| `#41` Ownership первой компании | `B8` | Первая компания создается в bootstrap flow, но ownership contract явно не описан в UI/API acceptance | Нужно явное правило `owner/manager` и подтверждение редактируемости после bootstrap |
+| `#40` Контракт данных для создания компании | `B7` | Self-serve flow минимален (`name` + `company_type` + implicit `company_role=operating`); в `5.6.11.2` зафиксирован field-by-field contract и правила отложенного сбора остальных данных | Для `DONE` требуется только поддерживать контракт при дальнейших изменениях (governance контроль) |
+| `#41` Ownership первой компании | `B8` | Первая компания создается в bootstrap flow как `operating`; backend принудительно проставляет `owner_user_id` и `manager_user_id` + есть API-регрессия | Нужно явное UX-отражение owner/manager и подтверждение редактируемости/смены через governance-pack приемку |
 | `#42` Настройки без дублирования entry points | `D5`, `B6` | Topbar account menu очищен от дублей admin/settings shortcuts | Нужен финальный nav audit по sidebar/topbar/empty-state CTA/deep links |
 | `#43` Коммуникации как единый раздел IA | `C8`, `E5` | Есть research-целевая IA и уже выделены `Messages / Email / Calendar / Planner / Availability` | Нужен финальный copy-pass и явный “one workspace” path для пользователя |
 | `#44` Моя доступность как рабочий график | `D6`, `C8` | Есть employee self-service контур `My Availability` + `Time-off`, но без formal working-hours model | Нужно добавить рабочие дни/часы и использование этого окна в planner/calendar/queue availability |

@@ -1630,9 +1630,19 @@ async def candidate_slices(
 
 
 class AnalyticsEventIn(BaseModel):
-    event: Literal["trial_retention_nudge"]
-    action: Literal["impression", "cta_click", "dismiss"]
-    day_bucket: Literal["d1", "d2", "d3", "d7"]
+    # Тип события:
+    # - trial_retention_nudge: существующий трек для D1/D2/D3/D7 подсказок
+    # - ttv_step: новый трек для замеров Time To Value (ключевые шаги онбординга)
+    event: Literal["trial_retention_nudge", "ttv_step"]
+    # Действие над событием:
+    # - impression/cta_click/dismiss — как раньше
+    # - completed — новый action для фиксации завершения шага TTV
+    action: Literal["impression", "cta_click", "dismiss", "completed"]
+    # Для trial_retention_nudge:
+    day_bucket: Optional[Literal["d1", "d2", "d3", "d7"]] = None
+    # Для ttv_step:
+    #   signup, plan_selected, company_created, first_client_created,
+    #   first_candidate_created, email_connected, first_email_sent
     step_key: Optional[str] = None
     target_href: Optional[str] = None
     activation_done: Optional[bool] = None
@@ -1653,6 +1663,21 @@ class TrialRetentionReportOut(BaseModel):
     buckets: list[TrialRetentionBucketOut]
 
 
+class TtvStepDurationsOut(BaseModel):
+    step_key: str
+    samples: int
+    p50_seconds: float
+    p90_seconds: float
+    min_seconds: float
+    max_seconds: float
+
+
+class TtvReportOut(BaseModel):
+    period: dict[str, Optional[str]]
+    actors: int
+    steps: list[TtvStepDurationsOut]
+
+
 @router.post("/analytics/events")
 async def post_analytics_event(
     payload: AnalyticsEventIn,
@@ -1663,19 +1688,26 @@ async def post_analytics_event(
     tenant_id = str(tenant_uuid)
     if str(user.tenant_id or "").strip() != tenant_id:
         return {"ok": False, "reason": "tenant_mismatch"}
+
+    # Унифицированный action для ActivityLog
+    action = f"analytics.{payload.event}.{payload.action}"
+    event_payload: dict[str, Any] = {
+        "event": payload.event,
+        "action": payload.action,
+        "day_bucket": payload.day_bucket,
+        "step_key": payload.step_key,
+        "target_href": payload.target_href,
+        "activation_done": payload.activation_done,
+    }
+
     await log_activity(
         db,
         tenant_id=tenant_id,
         actor_id=str(user.sub or "").strip() or None,
-        action=f"analytics.{payload.event}.{payload.action}",
+        action=action,
         target_type="analytics",
         payload={
-            "event": payload.event,
-            "action": payload.action,
-            "day_bucket": payload.day_bucket,
-            "step_key": payload.step_key,
-            "target_href": payload.target_href,
-            "activation_done": payload.activation_done,
+            **event_payload,
         },
     )
     await db.commit()
@@ -1771,4 +1803,105 @@ async def get_trial_retention_report(
             "ctr_percent": totals_ctr,
         },
         buckets=buckets,
+    )
+
+
+@router.get("/analytics/ttv-report", response_model=TtvReportOut)
+async def get_ttv_report(
+    days: int = Query(30, ge=1, le=180),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    """
+    Отчет по Time To Value на основе событий analytics.ttv_step.completed.
+
+    Для каждого пользователя (actor_id) ищем времена завершения шагов TTV (step_key),
+    затем считаем дельты в секундах от момента signup до каждого шага и агрегируем
+    по всему tenant: p50/p90/min/max и количество сэмплов.
+    """
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    now = datetime.utcnow()
+    since = now - timedelta(days=days)
+
+    rows = (
+        await db.execute(
+            select(
+                ActivityLog.actor_id,
+                ActivityLog.action,
+                ActivityLog.payload,
+                ActivityLog.created_at,
+            )
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.action == "analytics.ttv_step.completed",
+                ActivityLog.created_at >= since,
+            )
+            .order_by(ActivityLog.created_at.asc())
+        )
+    ).all()
+
+    # actor_id -> step_key -> first completed timestamp
+    per_actor_steps: dict[str, dict[str, datetime]] = {}
+    for actor_id, _action, raw_payload, created_at in rows:
+        if not actor_id:
+            continue
+        payload_dict = _safe_dict(raw_payload)
+        step_key = str(payload_dict.get("step_key") or "").strip()
+        if not step_key:
+            continue
+        actor_key = str(actor_id)
+        actor_map = per_actor_steps.setdefault(actor_key, {})
+        # сохраняем самое раннее время завершения шага
+        if step_key not in actor_map or created_at < actor_map[step_key]:
+            actor_map[step_key] = created_at
+
+    # считаем дельты от signup до каждого шага
+    durations_by_step: dict[str, list[float]] = {}
+    for _actor, steps in per_actor_steps.items():
+        signup_at = steps.get("signup")
+        if not signup_at:
+            continue
+        for step_key, ts in steps.items():
+            if step_key == "signup":
+                continue
+            delta = max((ts - signup_at).total_seconds(), 0.0)
+            durations_by_step.setdefault(step_key, []).append(delta)
+
+    def _percentile(values: list[float], p: float) -> float:
+        if not values:
+            return 0.0
+        sorted_vals = sorted(values)
+        if len(sorted_vals) == 1:
+            return float(sorted_vals[0])
+        k = (len(sorted_vals) - 1) * p
+        f = int(k)
+        c = min(f + 1, len(sorted_vals) - 1)
+        if f == c:
+            return float(sorted_vals[f])
+        d0 = sorted_vals[f] * (c - k)
+        d1 = sorted_vals[c] * (k - f)
+        return float(d0 + d1)
+
+    steps_out: list[TtvStepDurationsOut] = []
+    for step_key, values in sorted(durations_by_step.items()):
+        if not values:
+            continue
+        steps_out.append(
+            TtvStepDurationsOut(
+                step_key=step_key,
+                samples=len(values),
+                p50_seconds=round(_percentile(values, 0.5), 2),
+                p90_seconds=round(_percentile(values, 0.9), 2),
+                min_seconds=round(min(values), 2),
+                max_seconds=round(max(values), 2),
+            )
+        )
+
+    return TtvReportOut(
+        period={
+            "from": since.isoformat(),
+            "to": now.isoformat(),
+        },
+        actors=len(per_actor_steps),
+        steps=steps_out,
     )

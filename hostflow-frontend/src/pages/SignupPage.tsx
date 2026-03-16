@@ -11,6 +11,7 @@ import {
   SIGNUP_SUCCESS_CONTEXT_KEY,
   signupContextToSearchParams,
 } from '../constants/signupContext'
+import { recordTtvStepCompleted } from '../api/analytics'
 
 export default function SignupPage() {
   const { t } = useI18n()
@@ -81,6 +82,7 @@ export default function SignupPage() {
           // ignore storage errors
         }
       }
+      void recordTtvStepCompleted({ event: 'ttv_step', action: 'completed', step_key: 'signup' })
       await login(email.trim(), password)
       const params = signupContextToSearchParams(signupContext)
       navigate(`/app/onboarding/company?${params.toString()}`, { replace: true })

@@ -77,6 +77,21 @@ export type TrialRetentionEventPayload = {
   activation_done?: boolean | null
 }
 
+export type TtvStep =
+  | 'signup'
+  | 'plan_selected'
+  | 'company_created'
+  | 'first_client_created'
+  | 'first_candidate_created'
+  | 'email_connected'
+  | 'first_email_sent'
+
+export type TtvStepEventPayload = {
+  event: 'ttv_step'
+  action: 'completed'
+  step_key: TtvStep
+}
+
 export type TrialRetentionReport = {
   period: { from: string | null; to: string | null }
   totals: {
@@ -206,6 +221,10 @@ export async function getServicesAnalyticsOverview(params?: {
 }
 
 export async function recordTrialRetentionEvent(payload: TrialRetentionEventPayload): Promise<void> {
+  await api.post('/analytics/events', payload)
+}
+
+export async function recordTtvStepCompleted(payload: TtvStepEventPayload): Promise<void> {
   await api.post('/analytics/events', payload)
 }
 

@@ -10,6 +10,7 @@ import {
   SIGNUP_SUCCESS_CONTEXT_KEY,
 } from '../constants/signupContext'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
+import { recordTtvStepCompleted } from '../api/analytics'
 
 type CompanyType = 'agency' | 'employer' | 'services'
 
@@ -132,6 +133,7 @@ export default function OnboardingCompanyPage() {
     setLoading(true)
     try {
       await createCompany({ name: trimmed, company_type: companyType, company_role: 'operating' })
+      void recordTtvStepCompleted({ event: 'ttv_step', action: 'completed', step_key: 'company_created' })
       navigate(ACTIVATION_PATHS.onboardingGettingStarted, { replace: true })
     } catch (err: any) {
       const detailPayload = err?.response?.data?.detail
