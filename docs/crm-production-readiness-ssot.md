@@ -290,7 +290,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 | A3 | Реализовать платежную историю в UI (`invoices/payments history`) | `DONE` | Пользователь видит оплачено/не оплачено, активный тариф, дату старта/окончания периода, invoice history и receipt/download actions на 1 экране | Live user sign-off подтвержден: history/invoices/date fields/receipt download работают в production billing flow |
 | A4 | Финализировать recovery-флоу оплаты (cancel/error/retry/pending webhook) | `DONE` | На каждой ошибке и post-payment ветке есть понятный экран, только нужные CTA (`subscribe/pay/cancel/resume/manage`) и email confirmations | Live user sign-off подтвержден: explicit Stripe Checkout plan change, cancel/resume, pending/return states и post-payment UX работают как ожидается |
 | A5 | Прогон сквозного E2E #20 (staging -> production) | `IN_PROGRESS` | Подписанный PASS протокол | Dedicated production `services` tenant подготовлен; остался финальный manual run-record |
-| A6 | Productize `operating company slots` monetization (plan includes + paid add-on slots) | `IN_PROGRESS` | Явный контракт: сколько operating-companies включено в каждый план и как считается доплата за каждую следующую | `A6-S1` запущен: baseline pricing/limits matrix зафиксирован, остается Product/Billing sign-off по unit-price add-on slot |
+| A6 | Productize `operating company slots` monetization (plan includes + paid add-on slots) | `IN_PROGRESS` | Явный контракт: сколько operating-companies включено в каждый план и как считается доплата за каждую следующую | `A6-S1` закрыт (baseline + unit-price 29 EUR), `A6-S2..S7` в работе |
 
 ### 5.1.1 Sales Unblock Execution Pack (`2026-03-12`)
 
@@ -355,7 +355,7 @@ API smoke-check `P0` (staging, `2026-03-11`):
 
 | Шаг | Действие | Owner | Артефакт приемки | Статус |
 |---|---|---|---|---|
-| A6-S1 | Утвердить pricing/limits matrix по планам (`starter/team/pro`) и unit-price add-on slot | Product + Billing | Таблица `plan -> included slots -> add-on price` в runbook + ссылка в SSOT | `IN_PROGRESS` |
+| A6-S1 | Утвердить pricing/limits matrix по планам (`starter/team/pro`) и unit-price add-on slot | Product + Billing | Таблица `plan -> included slots -> add-on price` в runbook + ссылка в SSOT | `DONE` |
 | A6-S2 | Зафиксировать data contract в tenant/license модели (`included`, `extra`, `max`) | Backend | Schema/API contract + migration notes | `IN_PROGRESS` |
 | A6-S3 | Реализовать checkout/update flow для покупки/изменения add-on slots | Backend + Frontend | Рабочий UI/API path `increase/decrease slots` с понятными CTA и pending/retry states | `IN_PROGRESS` |
 | A6-S4 | Встроить sync из Stripe webhook в tenant entitlements (`invoice.paid`, `subscription.updated/deleted`) | Backend | Mapping `Stripe items -> tenant slots` + live webhook smoke | `IN_PROGRESS` |
