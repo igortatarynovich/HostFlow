@@ -780,7 +780,23 @@ export default function InvoiceCreatePage() {
         </div>
       )}
 
-      <form className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_360px]" onSubmit={handleSubmit}>
+      <form
+        className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_360px]"
+        onSubmit={handleSubmit}
+        onKeyDown={(event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            const target = event.target as HTMLElement | null
+            const tag = (target?.tagName || '').toUpperCase()
+            if (tag === 'TEXTAREA' || tag === 'INPUT') {
+              event.preventDefault()
+              const submit = (event.currentTarget as HTMLFormElement).elements.namedItem('save_and_send') as HTMLButtonElement | null
+              if (submit && !submit.disabled) {
+                submit.click()
+              }
+            }
+          }
+        }}
+      >
         <section className="app-surface space-y-4 p-6">
           {invoiceKind === 'correction' && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -1167,7 +1183,7 @@ export default function InvoiceCreatePage() {
                   ? t('app.invoices.save_draft', { defaultValue: 'Save Draft' })
                   : t('app.invoices.create', { defaultValue: 'Create Invoice' })}
             </button>
-            <button type="submit" value="save_and_send" className="btn-secondary" disabled={saving || loadingCompanies}>
+            <button type="submit" name="save_and_send" value="save_and_send" className="btn-secondary" disabled={saving || loadingCompanies}>
               {saving
                 ? t('common.loading', { defaultValue: 'Loading...' })
                 : t('app.invoices.save_and_send', { defaultValue: 'Save and send' })}
