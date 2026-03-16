@@ -41,6 +41,7 @@ export type ActivationStatusLike = {
   activation_required: boolean
   steps: {
     company_created: boolean
+    first_lead_created?: boolean
     first_client_created: boolean
     first_vacancy_created: boolean
     first_service_order_created: boolean
@@ -61,7 +62,7 @@ export function getBusinessPrimaryEntityPath(businessType: ActivationBusinessTyp
 }
 
 export function getBusinessNextActionPath(businessType: ActivationBusinessType): string {
-  if (businessType === 'services') return ACTIVATION_PATHS.services
+  if (businessType === 'services') return ACTIVATION_PATHS.leads
   if (businessType === 'employer') return ACTIVATION_PATHS.vacancies
   return ACTIVATION_PATHS.clients
 }
@@ -75,7 +76,9 @@ export function getActivationSetupTarget(status: ActivationStatusLike | null | u
 
 export function isBusinessPrimaryStepDone(status: ActivationStatusLike | null | undefined): boolean {
   if (!status) return false
-  if (status.business_type === 'services') return Boolean(status.steps.first_client_created)
+  if (status.business_type === 'services') {
+    return Boolean(status.steps.first_client_created || status.steps.first_lead_created)
+  }
   if (status.business_type === 'employer') return Boolean(status.steps.first_vacancy_created)
   return Boolean(status.steps.first_client_created)
 }
@@ -90,7 +93,7 @@ export function getRetentionNextPath(status: ActivationStatusLike | null | undef
 
 export function getRetentionStepKey(status: ActivationStatusLike | null | undefined): 'client' | 'vacancy' | 'service_order' | 'type_step' {
   if (!status) return 'type_step'
-  if (status.business_type === 'services') return 'service_order'
+  if (status.business_type === 'services') return 'client'
   if (status.business_type === 'employer') return 'vacancy'
   return 'client'
 }

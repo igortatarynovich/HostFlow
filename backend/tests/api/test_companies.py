@@ -213,6 +213,21 @@ async def test_company_bootstrap_assigns_owner_and_manager(
 
 
 @pytest.mark.anyio
+async def test_first_company_forces_operating_role(
+    client: AsyncClient,
+    manager_headers: Dict[str, str],
+) -> None:
+    create_resp = await client.post(
+        f"{COMPANY_BASE_URL}/",
+        headers=manager_headers,
+        json={"name": "Forced Operating Co", "company_role": "client"},
+    )
+    assert create_resp.status_code == 200, create_resp.text
+    company = create_resp.json()
+    assert company["extra"]["company_role"] == "operating"
+
+
+@pytest.mark.anyio
 async def test_company_limit_applies_only_to_operating_profiles(
     client: AsyncClient,
     manager_headers: Dict[str, str],

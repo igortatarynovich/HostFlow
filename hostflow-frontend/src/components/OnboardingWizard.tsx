@@ -44,10 +44,10 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
             }
           : businessType === 'services'
             ? {
-                id: 'service_order',
-                done: Boolean(status?.steps?.first_service_order_created),
-                href: ACTIVATION_PATHS.services,
-                label: t('app.onboarding.first_value.step_service_order', { defaultValue: 'Create first service order' }),
+                id: 'first_client_services',
+                done: Boolean(status?.steps?.first_client_created || status?.steps?.first_lead_created),
+                href: ACTIVATION_PATHS.clients,
+                label: t('app.onboarding.first_value.step_services_client', { defaultValue: 'Create first client or capture lead (services mode)' }),
               }
             : {
                 id: 'first_client',
@@ -66,8 +66,13 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
         {
           id: 'next_action',
           done: Boolean(status?.steps?.next_action_created),
-          href: getBusinessNextActionPath(businessType),
-          label: t('app.onboarding.first_value.step_next_action', { defaultValue: 'Create next action (task/reminder)' }),
+          href: businessType === 'services' ? ACTIVATION_PATHS.leads : getBusinessNextActionPath(businessType),
+          label:
+            businessType === 'services'
+              ? t('app.onboarding.first_value.step_services_leads', {
+                  defaultValue: 'Process ad leads (potential clients)',
+                })
+              : t('app.onboarding.first_value.step_next_action', { defaultValue: 'Create next action (task/reminder)' }),
         },
       ]
     },

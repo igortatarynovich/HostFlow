@@ -1201,6 +1201,9 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
         payload.pop("company_role", None),
         default="operating" if company_count_before == 0 else "client",
     )
+    # First company in a tenant is always the operating profile.
+    if company_count_before == 0:
+        company_role = "operating"
 
     payload.setdefault("id", str(uuid4()))
     payload["tenant_id"] = tenant_id
@@ -1217,6 +1220,8 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
     )
     payload["owner_user_id"] = owner_user_id
     payload["manager_user_id"] = manager_user_id
+    if company_role == "operating" and (not owner_user_id or not manager_user_id):
+        raise ValueError("Operating company must have explicit owner and manager")
 
     contacts_raw = payload.pop("contacts", None)
     normalized_contacts = (

@@ -6,6 +6,7 @@ import sqlalchemy as sa
 
 from backend.app.db.session import async_session_maker
 from backend.app.models import Candidate, Lead
+from backend.app.models.company import Company
 
 
 async def _set_tenant_business_type(session, tenant_id: str, business_type: str) -> None:
@@ -337,6 +338,18 @@ async def test_services_leads_list_returns_company_outcome(client, manager_heade
     invoice_body = invoice_resp.json()
     assert invoice_body["service_order_id"] == order_body["id"]
     assert invoice_body["company_id"] == company_id
+    billing_details = invoice_body.get("billing_details") or {}
+    issuer_company_id = str(billing_details.get("issuer_company_id") or "").strip()
+    assert issuer_company_id
+    assert str(billing_details.get("issuer_name") or "").strip()
+    assert str(billing_details.get("issuer_tax_id") or "").strip()
+    assert isinstance(billing_details.get("issuer_bank_account"), dict)
+    assert str((billing_details.get("issuer_bank_account") or {}).get("iban") or "").strip()
+    async with async_session_maker() as session:
+        issuer_company = await session.get(Company, issuer_company_id)
+        assert issuer_company is not None
+        extra = issuer_company.extra if isinstance(issuer_company.extra, dict) else {}
+        assert str(extra.get("company_role") or "").strip().lower() == "operating"
 
 
 @pytest.mark.anyio

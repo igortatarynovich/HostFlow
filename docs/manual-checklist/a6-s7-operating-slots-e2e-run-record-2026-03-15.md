@@ -47,6 +47,14 @@ Manual execution protocol: [a6-s7-manual-evidence-checklist.md](/opt/HostFlow/do
   [a6-s7-evidence-bundle-2026-03-15-victoria-space-pre-manual.md](/opt/HostFlow/docs/manual-checklist/a6-s7-evidence-bundle-2026-03-15-victoria-space-pre-manual.md),  
   [a6-s7-evidence-bundle-2026-03-15-victoria-space-pre-manual.json](/opt/HostFlow/docs/manual-checklist/a6-s7-evidence-bundle-2026-03-15-victoria-space-pre-manual.json)  
   (`Stripe customer/subscription ids` and billing history are currently absent for this tenant, so Stripe-proof sub-step remains pending/possibly blocked until billing activation on target workspace).
+- Real-tenant evidence bundle (`victoria-space`, post-reset onboarding baseline):  
+  [a6-s7-evidence-bundle-2026-03-15-victoria-space-post-reset-baseline.md](/opt/HostFlow/docs/manual-checklist/a6-s7-evidence-bundle-2026-03-15-victoria-space-post-reset-baseline.md),  
+  [a6-s7-evidence-bundle-2026-03-15-victoria-space-post-reset-baseline.json](/opt/HostFlow/docs/manual-checklist/a6-s7-evidence-bundle-2026-03-15-victoria-space-post-reset-baseline.json)  
+  (`used slots = 0`, `operating companies = 0`, `baseline ready` for repeated manual click-path from first onboarding step).
+- Real-tenant evidence bundle (`victoria-space`, post-login checkpoint after onboarding company creation):  
+  [a6-s7-evidence-bundle-2026-03-15-victoria-space-post-login-check.md](/opt/HostFlow/docs/manual-checklist/a6-s7-evidence-bundle-2026-03-15-victoria-space-post-login-check.md),  
+  [a6-s7-evidence-bundle-2026-03-15-victoria-space-post-login-check.json](/opt/HostFlow/docs/manual-checklist/a6-s7-evidence-bundle-2026-03-15-victoria-space-post-login-check.json)  
+  (`included/effective/used/available = 1/1/1/0`, первая operating company создана, add-on slots пока не покупались).
 
 ## Sign-off
 - Product: `PENDING`

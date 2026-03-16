@@ -572,20 +572,24 @@ export default function CommunicationsEmailInboxPage() {
               ? t('app.communications.email.poll.loading', { defaultValue: 'Fetching…' })
               : t('app.communications.email.poll.cta', { defaultValue: 'Fetch incoming' })}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setFolder('all')
-              setQ('')
-              setSelectedIds([])
-            }}
-            className="btn-secondary"
-          >
-            Reset view
-          </button>
-          <Link to="/app/setup/communications" className="btn-secondary">
-            {t('app.nav.items.communications_setup', { defaultValue: 'Comms setup' })}
-          </Link>
+          {!isMobile && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setFolder('all')
+                  setQ('')
+                  setSelectedIds([])
+                }}
+                className="btn-secondary"
+              >
+                Reset view
+              </button>
+              <Link to="/app/setup/communications" className="btn-secondary">
+                {t('app.nav.items.communications_setup', { defaultValue: 'Comms setup' })}
+              </Link>
+            </>
+          )}
         </div>
       </header>
 

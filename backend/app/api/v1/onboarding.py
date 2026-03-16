@@ -126,7 +126,9 @@ async def get_onboarding_status(
     if business_type == "employer":
         type_specific_ready = steps["first_vacancy_created"]
     elif business_type == "services":
-        type_specific_ready = steps["first_client_created"]
+        # Services tenants can get first value either by creating first client manually
+        # or by receiving first ad lead (potential client) into Leads inbox.
+        type_specific_ready = steps["first_client_created"] or steps["first_lead_created"]
     else:
         type_specific_ready = steps["first_lead_created"]
     activation_required = steps["company_created"] and not (

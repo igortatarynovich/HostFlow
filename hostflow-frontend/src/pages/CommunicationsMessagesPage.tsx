@@ -273,7 +273,11 @@ export default function CommunicationsMessagesPage() {
   const markReadLastCallAtRef = useRef<Record<string, number>>({})
   const [isMobile, setIsMobile] = useState(false)
   const [mobilePane, setMobilePane] = useState<'list' | 'chat'>('list')
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [openActionMenu, setOpenActionMenu] = useState<null | 'workflow' | 'sla' | 'more'>(null)
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false)
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false)
+  const [showRecipientField, setShowRecipientField] = useState(false)
   const workflowMenuRef = useRef<HTMLDivElement | null>(null)
   const slaMenuRef = useRef<HTMLDivElement | null>(null)
   const moreMenuRef = useRef<HTMLDivElement | null>(null)
@@ -1194,7 +1198,12 @@ export default function CommunicationsMessagesPage() {
     const next = new URLSearchParams(searchParams)
     next.set('threadId', threadId)
     setSearchParams(next, { replace: true })
-    if (isMobile) setMobilePane('chat')
+    if (isMobile) {
+      setMobilePane('chat')
+      setMobileToolsOpen(false)
+      setQuickRepliesOpen(false)
+      setShowRecipientField(false)
+    }
   }
 
   const patchThreadMeta = async (thread: CommunicationThread, patch: Record<string, any>) => {
@@ -1252,21 +1261,25 @@ export default function CommunicationsMessagesPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-center justify-end gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setTagManagerOpen(true)}
-            className="btn-secondary"
-          >
-            {t('app.communications_messages.tags.manager')}
-          </button>
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="input"
+            className="w-full input"
             placeholder={t('app.communications_messages.search.placeholder')}
           />
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {!isMobile && (
+            <button
+              type="button"
+              onClick={() => setTagManagerOpen(true)}
+              className="btn-secondary"
+            >
+              {t('app.communications_messages.tags.manager')}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void loadThreads()}
@@ -1308,25 +1321,43 @@ export default function CommunicationsMessagesPage() {
       <div className="grid gap-4 xl:grid-cols-[340px_minmax(600px,1fr)]">
         <section className={clsx('rounded-lg border border-slate-200 bg-white', isMobile && mobilePane === 'chat' && 'hidden')}>
           <div className="border-b border-slate-100 px-4 py-3">
-            <div className="text-sm font-semibold text-slate-900">{t('app.communications_messages.dialogs.title')}</div>
-            <div className="mt-2 flex flex-wrap gap-1">
-              {(['all', 'in_work', 'later', 'no_reply_needed', 'escalated'] as OpsModeFilter[]).map((mode) => (
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold text-slate-900">{t('app.communications_messages.dialogs.title')}</div>
+              {isMobile && (
                 <button
-                  key={mode}
                   type="button"
-                  onClick={() => setOpsModeFilter(mode)}
-                  className={clsx(
-                    'btn-secondary btn-xs',
-                    opsModeFilter === mode && 'border-brand-600 bg-brand-50 text-brand-800',
-                  )}
+                  onClick={() => setShowMobileFilters((prev) => !prev)}
+                  className="btn-secondary btn-xs"
                 >
-                  {mode === 'all'
-                    ? t('app.communications_messages.ops.all_modes')
-                    : opsModeText(mode)}
+                  {showMobileFilters
+                    ? t('common.actions.hide', { defaultValue: 'Hide' })
+                    : t('common.actions.show', { defaultValue: 'Show' })}{' '}
+                  {t('app.communications_messages.dialogs.filters_label', { defaultValue: 'filters' })}
                 </button>
-              ))}
+              )}
             </div>
-            <div className="mt-1 text-[11px] text-slate-500">{t('app.communications_messages.dialogs.reorder_hint')}</div>
+            {(!isMobile || showMobileFilters) && (
+              <>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {(['all', 'in_work', 'later', 'no_reply_needed', 'escalated'] as OpsModeFilter[]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setOpsModeFilter(mode)}
+                      className={clsx(
+                        'btn-secondary btn-xs',
+                        opsModeFilter === mode && 'border-brand-600 bg-brand-50 text-brand-800',
+                      )}
+                    >
+                      {mode === 'all'
+                        ? t('app.communications_messages.ops.all_modes')
+                        : opsModeText(mode)}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-1 text-[11px] text-slate-500">{t('app.communications_messages.dialogs.reorder_hint')}</div>
+              </>
+            )}
           </div>
           {loading && <div className="px-4 py-4 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
           {!loading && filtered.length === 0 && (
@@ -1486,6 +1517,22 @@ export default function CommunicationsMessagesPage() {
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-start gap-2">
+                  {isMobile && (
+                    <button
+                      type="button"
+                      onClick={() => setMobileToolsOpen((prev) => !prev)}
+                      className="btn-secondary btn-sm"
+                    >
+                      {mobileToolsOpen
+                        ? t('common.actions.hide', { defaultValue: 'Hide' })
+                        : t('common.actions.show', { defaultValue: 'Show' })}{' '}
+                      tools
+                    </button>
+                  )}
+                </div>
+
+                {(!isMobile || mobileToolsOpen) && (
+                  <div className="mt-2 flex flex-wrap items-start gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -1729,9 +1776,10 @@ export default function CommunicationsMessagesPage() {
                       </div>
                     )}
                   </div>
-                </div>
+                  </div>
+                )}
 
-                {activeToolsPanel === 'manager' && (
+                {(!isMobile || mobileToolsOpen) && activeToolsPanel === 'manager' && (
                   <div className="mt-1 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-slate-50 p-2">
                     <select value={assigneeDraft} onChange={(e) => setAssigneeDraft(e.target.value)} className="input">
                       <option value="">{t('app.communications_messages.manager.unassigned')}</option>
@@ -1743,7 +1791,7 @@ export default function CommunicationsMessagesPage() {
                   </div>
                 )}
 
-                {activeToolsPanel === 'tags' && (
+                {(!isMobile || mobileToolsOpen) && activeToolsPanel === 'tags' && (
                   <div className="mt-1 flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-slate-50 p-2">
                     <select value={tagPick} onChange={(e) => setTagPick(e.target.value)} className="input">
                       <option value="">{t('app.communications_messages.tags.select')}</option>
@@ -1758,7 +1806,7 @@ export default function CommunicationsMessagesPage() {
                   </div>
                 )}
 
-                {activeToolsPanel === 'candidate' && (
+                {(!isMobile || mobileToolsOpen) && activeToolsPanel === 'candidate' && (
                   <div className="mt-1 rounded border border-slate-200 bg-slate-50 p-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <input
@@ -1814,7 +1862,7 @@ export default function CommunicationsMessagesPage() {
                   </div>
                 )}
 
-                <div className="mt-1 flex flex-wrap gap-2">
+                <div className={clsx('mt-1 flex flex-wrap gap-2', isMobile && !mobileToolsOpen && 'hidden')}>
                   {tagsOf(selectedThread).map((tag) => (
                     <button
                       key={tag}
@@ -1872,7 +1920,7 @@ export default function CommunicationsMessagesPage() {
               </div>
 
               <div className="border-t border-slate-100 p-3">
-                <div className="mb-2 flex flex-wrap gap-1">
+                <div className="mb-2 flex flex-wrap items-center gap-1">
                   {QUICK_EMOJIS.map((token) => (
                     <button
                       key={token}
@@ -1883,7 +1931,7 @@ export default function CommunicationsMessagesPage() {
                       {token}
                     </button>
                   ))}
-                  {quickTemplates.map((tpl) => (
+                  {!isMobile && quickTemplates.map((tpl) => (
                     <button
                       key={tpl}
                       type="button"
@@ -1893,16 +1941,42 @@ export default function CommunicationsMessagesPage() {
                       {maybeTranslateKey(tpl)}
                     </button>
                   ))}
+                  {isMobile && (
+                    <button type="button" onClick={() => setQuickRepliesOpen((prev) => !prev)} className="btn-secondary btn-xs">
+                      {quickRepliesOpen ? 'Hide quick replies' : 'Quick replies'}
+                    </button>
+                  )}
+                  {isMobile && (
+                    <button type="button" onClick={() => setShowRecipientField((prev) => !prev)} className="btn-secondary btn-xs">
+                      {showRecipientField ? 'Hide recipient' : 'Recipient'}
+                    </button>
+                  )}
                 </div>
-                <input
-                  value={replyRecipient}
-                  onChange={(e) => setReplyRecipient(e.target.value)}
-                  className="mb-2 w-full input"
-                  placeholder={t('app.communications_messages.compose.recipient_placeholder')}
-                />
+                {isMobile && quickRepliesOpen && (
+                  <div className="mb-2 flex flex-wrap gap-1">
+                    {quickTemplates.map((tpl) => (
+                      <button
+                        key={tpl}
+                        type="button"
+                        onClick={() => setReplyText(tpl)}
+                        className="btn-secondary btn-xs"
+                      >
+                        {maybeTranslateKey(tpl)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {(!isMobile || showRecipientField) && (
+                  <input
+                    value={replyRecipient}
+                    onChange={(e) => setReplyRecipient(e.target.value)}
+                    className="mb-2 w-full input"
+                    placeholder={t('app.communications_messages.compose.recipient_placeholder')}
+                  />
+                )}
                 <div className="flex gap-2">
                   <textarea
-                    rows={3}
+                    rows={isMobile ? 2 : 3}
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     onKeyDown={(e) => {

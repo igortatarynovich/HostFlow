@@ -9,7 +9,7 @@ import {
   readSignupSuccessContextFromSessionStorage,
   SIGNUP_SUCCESS_CONTEXT_KEY,
 } from '../constants/signupContext'
-import { ACTIVATION_PATHS, getBusinessHomePath } from '../app/activationRoutes'
+import { ACTIVATION_PATHS } from '../app/activationRoutes'
 
 type CompanyType = 'agency' | 'employer' | 'services'
 
@@ -101,10 +101,10 @@ export default function OnboardingCompanyPage() {
       value: 'services',
       label: t('app.onboarding.company.type_services', { defaultValue: 'Услуги' }),
       description: t('app.onboarding.company.type_services_desc', {
-        defaultValue: 'Клиенты, сделки/лиды и сервисные задачи без HR-лишнего.',
+        defaultValue: 'Клиенты и потенциальные клиенты из рекламы (leads), услуги, счета и аналитика.',
       }),
       profile: t('app.onboarding.company.type_services_profile', {
-        defaultValue: 'Модули: Clients, Leads, Services, Documents',
+        defaultValue: 'Модули: Clients, Leads (как потенциальные клиенты), Services, Invoices',
       }),
     },
   ]
@@ -132,7 +132,7 @@ export default function OnboardingCompanyPage() {
     setLoading(true)
     try {
       await createCompany({ name: trimmed, company_type: companyType, company_role: 'operating' })
-      navigate(getBusinessHomePath(companyType), { replace: true })
+      navigate(ACTIVATION_PATHS.onboardingGettingStarted, { replace: true })
     } catch (err: any) {
       const detailPayload = err?.response?.data?.detail
       const detailCode = String(
@@ -180,8 +180,22 @@ export default function OnboardingCompanyPage() {
           {t('app.onboarding.company.title', { defaultValue: 'Создайте компанию' })}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          {t('app.onboarding.company.subtitle', { defaultValue: 'После этого шага вы сразу перейдете к быстрому запуску CRM.' })}
+          {t('app.onboarding.company.subtitle', {
+            defaultValue:
+              'Это ваш operating-профиль. Все действия в CRM выполняются от лица этой компании: команда, календари, реклама, кандидаты/клиенты, услуги и счета.',
+          })}
         </p>
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+          <p className="font-medium text-slate-900">
+            {t('app.onboarding.company.why_title', { defaultValue: 'Зачем выбирать профиль компании' })}
+          </p>
+          <p className="mt-1">
+            {t('app.onboarding.company.why_text', {
+              defaultValue:
+                'Тип компании включает нужные пресеты, воронки, аналитику и термины. Для services leads трактуются как потенциальные клиенты, а не кандидаты.',
+            })}
+          </p>
+        </div>
         {signupSuccess && (
           <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
             {trialEndsText

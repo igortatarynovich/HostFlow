@@ -31,10 +31,15 @@ def _as_list(value: Any) -> list[Any]:
 
 def _resolve_docs_root() -> Path:
     candidates = [
-        Path("/app/docs"),
+        Path("/opt/HostFlow/docs"),
         REPO_ROOT.parent / "docs",
         Path.cwd() / "docs",
+        Path("/app/docs"),
     ]
+    marker = Path("manual-checklist") / "a6-s7-manual-evidence-checklist.md"
+    for candidate in candidates:
+        if (candidate / marker).exists():
+            return candidate
     for candidate in candidates:
         if candidate.exists():
             return candidate
@@ -225,6 +230,7 @@ async def main() -> int:
     parser.add_argument("--tenant-id", default="", help="Tenant id.")
     parser.add_argument("--history-limit", type=int, default=15, help="Number of history/invoice entries in tail.")
     parser.add_argument("--label", default="", help="Optional label suffix (before/after).")
+    parser.add_argument("--docs-root", default="", help="Override docs root path.")
     parser.add_argument("--report", default="", help="Markdown report path.")
     parser.add_argument("--json", default="", help="JSON path.")
     args = parser.parse_args()
@@ -235,7 +241,7 @@ async def main() -> int:
         print("ERROR: provide --tenant-slug or --tenant-id")
         return 2
 
-    docs_root = _resolve_docs_root()
+    docs_root = Path(str(args.docs_root).strip()) if str(args.docs_root).strip() else _resolve_docs_root()
     today = date.today().isoformat()
     tenant_alias = tenant_slug or (tenant_id or "tenant")
     safe_alias = tenant_alias.replace("/", "-").replace(" ", "-")

@@ -11,15 +11,6 @@ import { useI18n } from '../../i18n'
 import { EMPLOYMENT_TYPES, createVacancy, getVacancy, updateVacancy } from '../../api/vacancies'
 import type { EmploymentType } from '../../api/vacancies'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
-import {
-  listDocumentPolicies,
-  createDocumentPolicy,
-  updateDocumentPolicy,
-  deleteDocumentPolicy,
-  type DocumentPolicy,
-} from '../../api/documents/policies'
-import { getDocumentTypes, type DocType } from '../../api/documents/catalog'
-import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 
 const primaryBtn = 'btn-primary'
 const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
@@ -130,7 +121,7 @@ function toFormDefaults(source: any | null): VacancyFormValues {
   }
 }
 
-type TabKey = 'info' | 'candidates' | 'notes' | 'policies'
+type TabKey = 'info' | 'candidates' | 'notes'
 
 function StatPill({ stageCode, value }:{ stageCode: string; value: React.ReactNode }){
   return (
@@ -190,12 +181,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const [pipeCounts, setPipeCounts] = useState<Record<string, number>>({})
   const [pipeLoading, setPipeLoading] = useState(false)
   const [candidateProfiles, setCandidateProfiles] = useState<CandidateProfile[]>([])
-  const [documentPolicies, setDocumentPolicies] = useState<DocumentPolicy[]>([])
-  const [documentTypes, setDocumentTypes] = useState<DocType[]>([])
-  const [policiesLoading, setPoliciesLoading] = useState(false)
-  const [policiesError, setPoliciesError] = useState<string | null>(null)
-  const [editingPolicy, setEditingPolicy] = useState<DocumentPolicy | null>(null)
-  const [newPolicyMode, setNewPolicyMode] = useState(false)
 
   const {
     control,
@@ -291,23 +276,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
     }
   }, [])
 
-  const loadDocumentPolicies = useCallback(async (vacancyId: string) => {
-    setPoliciesLoading(true)
-    try {
-      const [policies, types] = await Promise.all([
-        listDocumentPolicies({ scope: 'VACANCY', scope_id: vacancyId }),
-        getDocumentTypes(),
-      ])
-      setDocumentPolicies(policies)
-      setDocumentTypes(types)
-    } catch (err: any) {
-      console.error('[VacancyDetail] failed to load document policies', err)
-      setPoliciesError(err?.message || 'Failed to load document policies')
-    } finally {
-      setPoliciesLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
     const companyId = watch('company_id')
     if (companyId) {
@@ -316,12 +284,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       loadCandidateProfiles()
     }
   }, [watch('company_id'), loadCandidateProfiles])
-
-  useEffect(() => {
-    if (tab === 'policies' && model?.id) {
-      loadDocumentPolicies(model.id)
-    }
-  }, [tab, model?.id, loadDocumentPolicies])
 
   useEffect(() => {
     if (item) {
@@ -563,7 +525,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       </section>
 
       <div className="flex items-center gap-2 border-b border-slate-200">
-        {(['info','candidates','notes','policies'] as TabKey[]).map(key => (
+        {(['info','candidates','notes'] as TabKey[]).map(key => (
           <button
             key={key}
             type="button"
@@ -577,9 +539,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               ? t('app.vacancies.detail.tabs.info', { defaultValue: 'Инфо' })
               : key === 'candidates'
                 ? `${t('app.vacancies.detail.tabs.candidates', { defaultValue: 'Кандидаты' })}${candItems.length ? ` (${candItems.length})` : ''}`
-                : key === 'notes'
-                  ? t('app.vacancies.detail.tabs.notes', { defaultValue: 'Заметки' })
-                  : t('app.vacancies.detail.tabs.policies', { defaultValue: 'Политики документов' })}
+                : t('app.vacancies.detail.tabs.notes', { defaultValue: 'Заметки' })}
           </button>
         ))}
       </div>
@@ -746,260 +706,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         </SectionCard>
       )}
 
-      {tab === 'policies' && (
-        <SectionCard title={t('app.vacancies.detail.tabs.policies', { defaultValue: 'Политики документов' })}>
-          {policiesError && (
-            <div className="mb-4">
-              <ErrorRecoveryBanner
-                info={{ title: policiesError, hint: 'Повторите действие или обновите страницу.' }}
-                compact
-              />
-            </div>
-          )}
-          {policiesLoading ? (
-            <div className="text-sm text-slate-500">Загрузка...</div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-slate-600">
-                  Настроено политик: {documentPolicies.length}
-                </p>
-                <button
-                  className="btn-primary text-sm"
-                  type="button"
-                  onClick={() => {
-                    setNewPolicyMode(true)
-                    setEditingPolicy(null)
-                  }}
-                >
-                  Добавить политику
-                </button>
-              </div>
-              {newPolicyMode && (
-                <PolicyForm
-                  documentTypes={documentTypes}
-                  onSave={async (payload) => {
-                    if (!model?.id) return
-                    try {
-                      setPoliciesError(null)
-                      await createDocumentPolicy({
-                        ...payload,
-                        scope: 'VACANCY',
-                        scope_id: model.id,
-                      })
-                      await loadDocumentPolicies(model.id)
-                      setNewPolicyMode(false)
-                    } catch (err: any) {
-                      setPoliciesError(err?.message || 'Не удалось создать политику')
-                    }
-                  }}
-                  onCancel={() => setNewPolicyMode(false)}
-                  t={(key: string, opts?: { defaultValue?: string }) => opts?.defaultValue || key}
-                />
-              )}
-              {editingPolicy && (
-                <PolicyForm
-                  documentTypes={documentTypes}
-                  policy={editingPolicy}
-                  onSave={async (payload) => {
-                    if (!model?.id) return
-                    try {
-                      setPoliciesError(null)
-                      await updateDocumentPolicy(editingPolicy.id, payload)
-                      await loadDocumentPolicies(model.id)
-                      setEditingPolicy(null)
-                    } catch (err: any) {
-                      setPoliciesError(err?.message || 'Не удалось обновить политику')
-                    }
-                  }}
-                  onCancel={() => setEditingPolicy(null)}
-                  t={(key: string, opts?: { defaultValue?: string }) => opts?.defaultValue || key}
-                />
-              )}
-              {!newPolicyMode && !editingPolicy && documentPolicies.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  Политики документов не настроены. Нажмите "Добавить политику" для создания.
-                </p>
-              ) : null}
-              {!newPolicyMode && !editingPolicy && documentPolicies.length > 0 ? (
-                <div className="space-y-3">
-                  {documentPolicies.map((policy) => {
-                    const docType = documentTypes.find((dt) => (dt.id || dt.code) === policy.document_type_id)
-                    const docTypeName = docType?.name || docType?.code || policy.document_type_id
-                    return (
-                      <div key={policy.id} className="rounded-lg border border-slate-200 bg-white p-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-slate-900">{docTypeName}</span>
-                              {policy.required && (
-                                <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                                  Обязательно
-                                </span>
-                              )}
-                              {!policy.enabled && (
-                                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                  Отключено
-                                </span>
-                              )}
-                            </div>
-                            {policy.alert_days_before_expiry && (
-                              <p className="text-xs text-slate-500">
-                                Уведомление за {policy.alert_days_before_expiry} дней до истечения
-                              </p>
-                            )}
-                            {policy.notes && (
-                              <p className="text-xs text-slate-500">{policy.notes}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              className="btn-secondary btn-sm"
-                              type="button"
-                              onClick={() => setEditingPolicy(policy)}
-                            >
-                              Редактировать
-                            </button>
-                            <button
-                              className="btn-danger btn-sm"
-                              type="button"
-                              onClick={async () => {
-                                if (!model?.id || !confirm('Удалить эту политику?')) return
-                                try {
-                                  setPoliciesError(null)
-                                  await deleteDocumentPolicy(policy.id)
-                                  await loadDocumentPolicies(model.id)
-                                } catch (err: any) {
-                                  setPoliciesError(err?.message || 'Не удалось удалить политику')
-                                }
-                              }}
-                            >
-                              Удалить
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : null}
-            </div>
-          )}
-        </SectionCard>
-      )}
-    </div>
-  )
-}
-
-// PolicyForm component
-function PolicyForm({
-  documentTypes,
-  policy,
-  onSave,
-  onCancel,
-  t,
-}: {
-  documentTypes: DocType[];
-  policy?: DocumentPolicy | null;
-  onSave: (payload: Omit<import('../../api/documents/policies').DocumentPolicyCreate, 'scope' | 'scope_id'>) => Promise<void>;
-  onCancel: () => void;
-  t: (key: string, opts?: { defaultValue?: string }) => string;
-}) {
-  const [documentTypeId, setDocumentTypeId] = useState(policy?.document_type_id || '')
-  const [enabled, setEnabled] = useState(policy?.enabled ?? true)
-  const [required, setRequired] = useState(policy?.required ?? false)
-  const [alertDays, setAlertDays] = useState(policy?.alert_days_before_expiry?.toString() || '')
-  const [notes, setNotes] = useState(policy?.notes || '')
-
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <h3 className="mb-3 text-sm font-semibold text-slate-900">
-        {policy ? t('edit_policy', { defaultValue: 'Редактировать политику' }) : t('create_policy', { defaultValue: 'Создать политику' })}
-      </h3>
-      <div className="space-y-3">
-        <label className="block">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('document_type', { defaultValue: 'Тип документа' })}
-          </div>
-          <select
-            className="input w-full"
-            value={documentTypeId}
-            onChange={(e) => setDocumentTypeId(e.target.value)}
-            disabled={!!policy}
-          >
-            <option value="">{t('select_document_type', { defaultValue: 'Выберите тип документа...' })}</option>
-            {documentTypes.map((dt) => (
-              <option key={dt.id || dt.code} value={dt.id || dt.code || ''}>
-                {dt.name || dt.code || dt.id}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-            className="rounded border-slate-300"
-          />
-          <span className="text-sm text-slate-700">{t('enabled', { defaultValue: 'Включено' })}</span>
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={required}
-            onChange={(e) => setRequired(e.target.checked)}
-            className="rounded border-slate-300"
-          />
-          <span className="text-sm text-slate-700">{t('required', { defaultValue: 'Обязательно' })}</span>
-        </label>
-        <label className="block">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('alert_days', { defaultValue: 'Дней до истечения для уведомления' })}
-          </div>
-          <input
-            type="number"
-            className="input w-full"
-            value={alertDays}
-            onChange={(e) => setAlertDays(e.target.value)}
-            placeholder="30"
-          />
-        </label>
-        <label className="block">
-          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('notes', { defaultValue: 'Заметки' })}
-          </div>
-          <textarea
-            className="input w-full min-h-[80px]"
-            rows={3}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder={t('notes_placeholder', { defaultValue: 'Внутренние заметки...' })}
-          />
-        </label>
-        <div className="flex items-center gap-2">
-          <button
-            className="btn-primary text-sm"
-            type="button"
-            onClick={async () => {
-              if (!documentTypeId) return
-              await onSave({
-                document_type_id: documentTypeId,
-                enabled,
-                required,
-                alert_days_before_expiry: alertDays ? parseInt(alertDays, 10) : null,
-                notes: notes || null,
-              })
-            }}
-            disabled={!documentTypeId}
-          >
-            {t('save', { defaultValue: 'Сохранить' })}
-          </button>
-          <button className="btn-secondary btn-sm" type="button" onClick={onCancel}>
-            {t('cancel', { defaultValue: 'Отмена' })}
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

@@ -363,6 +363,8 @@ export default function Dashboard() {
   const [prevPeriodTotal, setPrevPeriodTotal] = useState<number | null>(null)
   const [prevHandoffStats, setPrevHandoffStats] = useState<Awaited<ReturnType<typeof getHandoffStats>> | null>(null)
   const [savedPreset, setSavedPreset] = useState<Record<string, unknown> | null>(null)
+  const pivotChartContainerRef = useRef<HTMLDivElement | null>(null)
+  const [isPivotChartContainerReady, setIsPivotChartContainerReady] = useState(false)
 
   useEffect(() => {
     if (!isTrialTenant || !canManageBilling) {
@@ -1234,6 +1236,41 @@ export default function Dashboard() {
     return { rows, secondaryKeys }
   }, [getDimensionValues, pivotPrimary, pivotSecondary, slices?.snapshot, notAvailableLabel])
 
+  useEffect(() => {
+    if (!isWidgetVisible('pivotChart') || pivotData.rows.length === 0) {
+      setIsPivotChartContainerReady(false)
+      return
+    }
+    const node = pivotChartContainerRef.current
+    if (!node) {
+      setIsPivotChartContainerReady(false)
+      return
+    }
+
+    let rafId = 0
+    const updateReadyState = () => {
+      const rect = node.getBoundingClientRect()
+      setIsPivotChartContainerReady(rect.width > 0 && rect.height > 0)
+    }
+
+    updateReadyState()
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => {
+        cancelAnimationFrame(rafId)
+        rafId = requestAnimationFrame(updateReadyState)
+      })
+      observer.observe(node)
+      return () => {
+        cancelAnimationFrame(rafId)
+        observer.disconnect()
+      }
+    }
+
+    const intervalId = window.setInterval(updateReadyState, 200)
+    return () => window.clearInterval(intervalId)
+  }, [isWidgetVisible, pivotData.rows.length])
+
   const sourceStageRows = useMemo(() => {
     if (!slices?.snapshot?.length) return []
     const grouped = new Map<string, { label: string; total: number; byStage: Record<string, number> }>()
@@ -2066,34 +2103,40 @@ export default function Dashboard() {
               {pivotSecondary !== 'none' && ` × ${secondaryLabel}`}
             </div>
           </div>
-          <div className="w-full min-w-0 overflow-hidden" style={{ height: 256, minHeight: 200 }}>
-            <ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={0}>
-              <BarChart
-                data={pivotData.rows.slice(0, 15).map((r) => ({
-                  name: r.key.length > 20 ? r.key.slice(0, 18) + '…' : r.key,
-                  total: r.total,
-                  ...(pivotSecondary !== 'none' && pivotData.secondaryKeys.length > 0
-                    ? Object.fromEntries(
-                        pivotData.secondaryKeys.slice(0, 5).map((k) => [k, r.breakdown[k] ?? 0]),
-                      )
-                    : {}),
-                }))}
-                margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={(v) => (v?.length > 12 ? v.slice(0, 10) + '…' : v)} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number) => formatNumber(v)} />
-                {pivotSecondary === 'none' ? (
-                  <Bar dataKey="total" fill="rgb(99 102 241)" radius={[4, 4, 0, 0]} />
-                ) : (
-                  pivotData.secondaryKeys.slice(0, 5).map((key, i) => {
-                    const colors = ['rgb(99 102 241)', 'rgb(34 197 94)', 'rgb(234 179 8)', 'rgb(239 68 68)', 'rgb(168 85 247)']
-                    return <Bar key={key} dataKey={key} fill={colors[i % colors.length]} stackId="stack" radius={i === pivotData.secondaryKeys.length - 1 ? [4, 4, 0, 0] : 0} />
-                  })
-                )}
-              </BarChart>
-            </ResponsiveContainer>
+          <div ref={pivotChartContainerRef} className="w-full min-w-0 overflow-hidden" style={{ height: 256, minHeight: 200 }}>
+            {isPivotChartContainerReady ? (
+              <ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={0}>
+                <BarChart
+                  data={pivotData.rows.slice(0, 15).map((r) => ({
+                    name: r.key.length > 20 ? r.key.slice(0, 18) + '…' : r.key,
+                    total: r.total,
+                    ...(pivotSecondary !== 'none' && pivotData.secondaryKeys.length > 0
+                      ? Object.fromEntries(
+                          pivotData.secondaryKeys.slice(0, 5).map((k) => [k, r.breakdown[k] ?? 0]),
+                        )
+                      : {}),
+                  }))}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} tickFormatter={(v) => (v?.length > 12 ? v.slice(0, 10) + '…' : v)} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number) => formatNumber(v)} />
+                  {pivotSecondary === 'none' ? (
+                    <Bar dataKey="total" fill="rgb(99 102 241)" radius={[4, 4, 0, 0]} />
+                  ) : (
+                    pivotData.secondaryKeys.slice(0, 5).map((key, i) => {
+                      const colors = ['rgb(99 102 241)', 'rgb(34 197 94)', 'rgb(234 179 8)', 'rgb(239 68 68)', 'rgb(168 85 247)']
+                      return <Bar key={key} dataKey={key} fill={colors[i % colors.length]} stackId="stack" radius={i === pivotData.secondaryKeys.length - 1 ? [4, 4, 0, 0] : 0} />
+                    })
+                  )}
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-slate-500">
+                {t('common.loading')}
+              </div>
+            )}
           </div>
         </div>
         )}

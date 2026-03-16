@@ -30,6 +30,8 @@ const NOTIFICATION_ITEMS = [
   { code: 'candidate.stage_changed', key: 'candidate_stage_changed' },
   { code: 'documents.deadline', key: 'documents_deadline' },
   { code: 'mentions.direct', key: 'mentions_direct' },
+  { code: 'lead.new.telegram', key: 'lead_new_telegram' },
+  { code: 'lead.status_changed.telegram', key: 'lead_status_changed_telegram' },
 ] as const
 
 type NotificationItemKey = (typeof NOTIFICATION_ITEMS)[number]['key']
@@ -129,11 +131,39 @@ export default function ProfilePage() {
       candidate_stage_changed: { title: '', description: '' },
       documents_deadline: { title: '', description: '' },
       mentions_direct: { title: '', description: '' },
+      lead_new_telegram: { title: '', description: '' },
+      lead_status_changed_telegram: { title: '', description: '' },
+    }
+    const defaults: Record<NotificationItemKey, { title: string; description: string }> = {
+      candidate_new_assignment: {
+        title: 'New candidate assignment',
+        description: 'Receive notification when a candidate is assigned to you.',
+      },
+      candidate_stage_changed: {
+        title: 'Candidate stage changed',
+        description: 'Receive notification when candidate stage is updated.',
+      },
+      documents_deadline: {
+        title: 'Document deadline',
+        description: 'Receive reminder before document deadline.',
+      },
+      mentions_direct: {
+        title: 'Direct mentions',
+        description: 'Receive notification when someone mentions you.',
+      },
+      lead_new_telegram: {
+        title: 'Telegram: new lead',
+        description: 'Send Telegram alert when a new lead is created (especially for services flow).',
+      },
+      lead_status_changed_telegram: {
+        title: 'Telegram: lead status changed',
+        description: 'Send Telegram alert when lead status changes.',
+      },
     }
     NOTIFICATION_ITEMS.forEach((item) => {
       entries[item.key] = {
-        title: t(`app.profile.notifications.items.${item.key}.title`),
-        description: t(`app.profile.notifications.items.${item.key}.description`),
+        title: t(`app.profile.notifications.items.${item.key}.title`, { defaultValue: defaults[item.key].title }),
+        description: t(`app.profile.notifications.items.${item.key}.description`, { defaultValue: defaults[item.key].description }),
       }
     })
     return entries

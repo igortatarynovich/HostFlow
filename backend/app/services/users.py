@@ -63,6 +63,8 @@ DEFAULT_NOTIFICATION_EVENTS = {
     "candidate.stage_changed": {"enabled": True, "mode": "immediate"},
     "documents.deadline": {"enabled": True, "mode": "immediate"},
     "mentions.direct": {"enabled": True, "mode": "immediate"},
+    "lead.new.telegram": {"enabled": True, "mode": "immediate"},
+    "lead.status_changed.telegram": {"enabled": True, "mode": "immediate"},
 }
 
 DEFAULT_UI_PREFERENCES = {
