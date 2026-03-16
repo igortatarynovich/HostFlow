@@ -382,9 +382,9 @@ Source-of-truth для текущего runtime baseline:
 
 | Plan code | Base monthly price (EUR) | Included operating slots (baseline) | Add-on slot unit price (EUR / month) | Статус |
 |---|---|---|---|---|
-| `starter` | `39` | `1` | `TBD (Product/Billing sign-off)` | `BASELINE_LOCKED` |
-| `team` | `99` | `10` | `TBD (Product/Billing sign-off)` | `BASELINE_LOCKED` |
-| `pro` | `199` | `100` | `TBD (Product/Billing sign-off)` | `BASELINE_LOCKED` |
+| `starter` | `39` | `1` | `29` | `BASELINE_LOCKED` |
+| `team` | `99` | `10` | `29` | `BASELINE_LOCKED` |
+| `pro` | `199` | `100` | `29` | `BASELINE_LOCKED` |
 
 Что считается закрытием `A6-S1`:
 - В таблице выше заполнен `Add-on slot unit price` для `starter/team/pro` (или единый `all-plans` unit price).
