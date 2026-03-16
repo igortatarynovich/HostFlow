@@ -28,6 +28,7 @@ import {
   type BillingSummary,
 } from '../../api/billing'
 import { listCompanies } from '../../api/client'
+import { recordTtvStepCompleted } from '../../api/analytics'
 
 type PlanCode = 'starter' | 'team' | 'pro'
 type CheckoutState = 'idle' | 'success' | 'cancel' | 'error' | 'incomplete'
@@ -364,6 +365,8 @@ export default function BillingWorkspacePage() {
       setLastCheckout(session)
       setCheckoutState('incomplete')
       await reloadSummary()
+      // Фиксируем TTV-шаг: пользователь выбрал план и запустил checkout.
+      void recordTtvStepCompleted({ event: 'ttv_step', action: 'completed', step_key: 'plan_selected' })
       if (session.provider === 'stripe' && session.checkout_url) {
         if (checkoutWindow) {
           checkoutWindow.location.replace(session.checkout_url)
