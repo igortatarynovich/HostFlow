@@ -54,6 +54,7 @@ Definition of success:
 - `docs/communications-program-status.md`
 - `docs/communications-test-matrix.md`
 - `docs/CLIENT_AND_ONBOARDING_REDESIGN_PLAN.md`
+- `docs/pipe.md`
 - `docs/specs/architecture/client_and_subscription_model.md`
 - `docs/specs/modules/onboarding.md`
 - `docs/specs/modules/payments.md`
@@ -71,6 +72,7 @@ Definition of success:
 | `docs/communications-program-status.md` | `PARTIAL` | Ключевые блоки учтены, но часть domain-detail пока агрегирована |
 | `docs/communications-test-matrix.md` | `FULL` | Прямо включено задачей `C1` |
 | `docs/CLIENT_AND_ONBOARDING_REDESIGN_PLAN.md` | `PARTIAL` | Основная логика учтена, но сценарии tenant-backed/portal-only client требуют явных release-задач |
+| `docs/pipe.md` | `FULL` | Pipedrive-based CRM blueprint учтен в критериях `#1/#13/#18/#21` и плане фаз `B/C/F` (pipeline, candidates, dashboard, automation) |
 | `docs/specs/architecture/client_and_subscription_model.md` | `FULL` | Учтено в разделе customer journey и billing path |
 | `docs/specs/modules/onboarding.md` | `FULL` | Учтено в фазе B + release gate |
 | `docs/specs/modules/payments.md` | `FULL` | Учтено в фазе A (Stripe + webhooks + billing lifecycle) |
@@ -86,6 +88,31 @@ Definition of success:
 - Добавить отдельную задачу на `Auth hardening` (signup/invite/session recovery) как часть безподдержочного запуска.
 - Добавить domain-checklist для communications depth: scheduler, OAuth adapters, provider webhooks, queue/audit consistency.
 - Добавить продуктовый governance-pack по self-serve CRM: role-to-settings matrix, company bootstrap data contract, owner/manager assignment, navigation IA without duplication, communications IA consolidation, working-hours availability и non-blocking orientation wizard.
+
+## 2.3 Интеграция Pipedrive blueprint (`docs/pipe.md`)
+
+Документ `pipe.md` зафиксирован как **product blueprint на основе Pipedrive** и интегрирован в SSOT не как отдельный roadmap, а как набор принципов, которые уже разложены по критериям готовности и плану фаз:
+
+- **Product/UX философия**:
+  - принцип `process-first CRM` (pipeline как основной артефакт, видимость стадий и next action) отражен в критериях `#1`, `#17`, `#18`, `#21` и в блоке `5.0 P0` (системные стадии, skeleton pipeline);
+  - правило `one screen = one purpose`, `visible next action`, `minimal clicks` встроено в критерии `#13`, `#18`, `#22`, `#34` и будет проверяться в фазе `B` (онбординг/TTV) через UX-проход по ключевым экранам (`candidates`, `leads`, `dashboard`, `company`).
+
+- **Интерфейсная архитектура**:
+  - трёхслойный layout (`Topbar/Sidebar/Workspace`), sidebar-модули (`Dashboard/Candidates/Vacancies/Companies/Documents/Activities/Reports/Settings`) и дисциплинированные системы цветов/типографики/spacing/buttons из `pipe.md` уже реализованы в текущем frontend и попадают под критерии `#13`, `#19`, `#38`;
+  - дополнительные UX-требования (8 px grid, 6–8 dashboard widgets, единый primary action color) учитываются как часть `F8/F11` и не дублируются отдельными задачами, но используются как baseline при UI-проходах.
+
+- **Data model и workflow**:
+  - mapping `Pipedrive: Lead/Deal/Activities -> HostFlow: Lead source/Candidate/Vacancy/Documents/Activities` из `pipe.md` наложен на module-спеки (`leads/candidates/companies/documents`) и отражен в фазах `B` и `C` (candidate-first pipeline, document intelligence, compliance events);
+  - правило `candidate card = source of truth` закреплено в SSOT через приоритет candidate-экрана и критерии `#3`, `#21`, `#26` (business-type value-contract).
+
+- **Automation & reminders**:
+  - event-driven automation (`candidate created`, `stage changed`, `document uploaded/expiring`, `candidate stuck`) и smart reminders перенесены в направление `C` (communications/automations) и критерий `#7`; конкретные триггеры и задачи прописываются в `C2/C3/C4/C9/C10` и не дублируются в этом разделе.
+
+- **Пайплайн и candidates UI**:
+  - требования к визуализации pipeline (stage counts, среднее время, клик по стадии = фильтр таблицы) и структуре экрана кандидатов (header + pipeline summary + filters + table + quick preview/timeline) включены в фазу `B` (особенно `B2/B2.1` и раздел `5.2.3`);
+  - критерии `#2`, `#21`, `#26` и сценарии `A/B/C` используются как приемка для того, что pipeline/таблицы реально ведут пользователя по пути, описанному в `pipe.md`, а не являются только справочной аналитикой.
+
+Таким образом, `pipe.md` выступает **идеологическим слоем** (что такое хороший operational CRM/Pipedrive-style порядок работы), а этот SSOT — **исполнительным слоем**, где эти принципы закреплены метриками (`TTV`, `клики`, `скорость`), критериями `#1–#21`, сценариями `A/B/C` и планом фаз `A/B/C/F`.
 
 ---
 

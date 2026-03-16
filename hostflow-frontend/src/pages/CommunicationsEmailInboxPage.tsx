@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import {
   createCommunicationCommandAuditBatch,
   getCommunicationsSettings,
+  runCommunicationEmailPollWorker,
   type CommunicationCommandAction,
   type CommunicationCommandTemplate,
   createCommunicationMessage,
@@ -19,6 +20,7 @@ import { useCommunicationsSetupStatus } from '../hooks/useCommunicationsSetupSta
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 
 const LS_KEY = 'hf:email-workspace:v2'
+const LS_POLL_KEY = 'hf:email-workspace:last-poll-at'
 const FOLDER_TAG_PREFIX = 'folder:'
 
 type SystemFolder = 'inbox' | 'unread' | 'sent' | 'assigned' | 'archive' | 'trash' | 'all'
@@ -59,6 +61,17 @@ function formatDateTime(value?: string | null): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(ts))
+}
+
+function nowIso(): string {
+  return new Date().toISOString()
+}
+
+function shouldAutoPoll(lastPollAt: string | null, minMinutes: number): boolean {
+  if (!lastPollAt) return true
+  const last = dt(lastPollAt)
+  if (!last) return true
+  return Date.now() - last > minMinutes * 60_000
 }
 
 function tagsOf(th: CommunicationThread): string[] {
@@ -104,6 +117,15 @@ export default function CommunicationsEmailInboxPage() {
     }
   }, [])
 
+  const savedLastPollAt = useMemo(() => {
+    try {
+      const raw = window.localStorage.getItem(LS_POLL_KEY)
+      return raw ? String(raw) : null
+    } catch {
+      return null
+    }
+  }, [])
+
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
@@ -125,6 +147,15 @@ export default function CommunicationsEmailInboxPage() {
   const [composeRecipient, setComposeRecipient] = useState('')
   const [composeSubject, setComposeSubject] = useState('')
   const [composeBody, setComposeBody] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobilePane, setMobilePane] = useState<'list' | 'preview'>('list')
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [pollBusy, setPollBusy] = useState(false)
+  const [pollNote, setPollNote] = useState<string | null>(null)
+  const [pollDetails, setPollDetails] = useState<Array<Record<string, any>>>([])
+  const [lastPollAt, setLastPollAt] = useState<string | null>(savedLastPollAt)
+  const pollInFlightRef = useRef(false)
+  const mountedRef = useRef(true)
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true)
@@ -146,7 +177,11 @@ export default function CommunicationsEmailInboxPage() {
   }
 
   useEffect(() => {
+    mountedRef.current = true
     void load()
+    return () => {
+      mountedRef.current = false
+    }
   }, [])
 
   useEffect(() => {
@@ -157,12 +192,33 @@ export default function CommunicationsEmailInboxPage() {
   }, [])
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const apply = () => {
+      const nextMobile = mq.matches
+      setIsMobile(nextMobile)
+      if (!nextMobile) setMobilePane('list')
+    }
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(LS_KEY, JSON.stringify({ folder, q, customFolders }))
     } catch {
       // ignore storage errors
     }
   }, [customFolders, folder, q])
+
+  useEffect(() => {
+    try {
+      if (lastPollAt) window.localStorage.setItem(LS_POLL_KEY, lastPollAt)
+    } catch {
+      // ignore
+    }
+  }, [lastPollAt])
 
   const allCustomFolders = useMemo(() => {
     const fromThreads = threads.map((th) => customFolderNameOf(th)).filter(Boolean) as string[]
@@ -226,6 +282,11 @@ export default function CommunicationsEmailInboxPage() {
     if (!selectedThread) return
     setComposeSubject((prev) => prev || `Re: ${selectedThread.subject || titleOf(selectedThread)}`)
   }, [selectedThread])
+
+  useEffect(() => {
+    if (!isMobile || !selectedThreadId) return
+    setMobilePane('preview')
+  }, [isMobile, selectedThreadId])
 
   const applyToSelected = async (worker: (id: string) => Promise<void>) => {
     if (!selectedIds.length) return
@@ -407,6 +468,62 @@ export default function CommunicationsEmailInboxPage() {
     }
   }
 
+  const fetchInboundNow = async (opts?: { reason?: string; silent?: boolean }) => {
+    if (pollInFlightRef.current) return
+    pollInFlightRef.current = true
+    setPollBusy(true)
+    setPollNote(null)
+    setPollDetails([])
+    setErrorText(null)
+    try {
+      const res = await runCommunicationEmailPollWorker({ limit_per_account: 50 })
+      if (!mountedRef.current) return
+      setPollNote(
+        `${t('app.communications.email.poll.summary', { defaultValue: 'Fetched' })}: ${Number(res.ingested_messages || 0)}, ${t(
+          'app.communications.email.poll.new_threads',
+          { defaultValue: 'new threads' },
+        )}: ${Number(res.created_threads || 0)}, ${t('app.communications.email.poll.skipped', { defaultValue: 'skipped' })}: ${Number(
+          res.skipped_messages || 0,
+        )}${opts?.reason ? ` (${opts.reason})` : ''}`,
+      )
+      setPollDetails(Array.isArray(res.items) ? res.items : [])
+      setLastPollAt(nowIso())
+      await load(Boolean(opts?.silent))
+    } catch (err: any) {
+      setErrorText(errorTextFrom(err, 'Failed to fetch inbound email'))
+    } finally {
+      setPollBusy(false)
+      pollInFlightRef.current = false
+    }
+  }
+
+  // Auto-poll inbound email to reduce “missing inbound email” incidents (MOB-008/C2.1).
+  useEffect(() => {
+    if (loading) return
+    if (pollBusy || busy) return
+    if (commSetup.loading || !commSetup.isComplete) return
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+    if (threads.length > 0) return
+    if (!shouldAutoPoll(lastPollAt, 2)) return
+    void fetchInboundNow({ reason: 'auto', silent: true })
+  }, [busy, commSetup.isComplete, commSetup.loading, lastPollAt, loading, pollBusy, threads.length])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (pollBusy || busy) return
+      if (commSetup.loading || !commSetup.isComplete) return
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      if (!shouldAutoPoll(lastPollAt, 5)) return
+      void fetchInboundNow({ reason: 'auto', silent: true })
+    }, 60_000)
+    return () => window.clearInterval(timer)
+  }, [busy, commSetup.isComplete, commSetup.loading, lastPollAt, pollBusy])
+
+  const openThread = (threadId: string) => {
+    setSelectedThreadId(threadId)
+    if (isMobile) setMobilePane('preview')
+  }
+
   return (
     <div className="space-y-4">
       <WorkspaceTopNav active="email" />
@@ -447,6 +564,16 @@ export default function CommunicationsEmailInboxPage() {
           </button>
           <button
             type="button"
+            onClick={() => void fetchInboundNow()}
+            disabled={pollBusy || busy}
+            className="btn-secondary disabled:opacity-50"
+          >
+            {pollBusy
+              ? t('app.communications.email.poll.loading', { defaultValue: 'Fetching…' })
+              : t('app.communications.email.poll.cta', { defaultValue: 'Fetch incoming' })}
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setFolder('all')
               setQ('')
@@ -462,80 +589,132 @@ export default function CommunicationsEmailInboxPage() {
         </div>
       </header>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-semibold uppercase text-slate-500">Commands</span>
-          <select
-            value={bulkCommand}
-            onChange={(e) => setBulkCommand(e.target.value as BulkCommand)}
-            className="input"
-          >
-            <option value="mark_read">Mark read</option>
-            <option value="archive">Archive</option>
-            <option value="unarchive">Unarchive</option>
-            <option value="delete">Delete</option>
-            <option value="restore">Restore</option>
-            <option value="priority_high">Priority high</option>
-            <option value="priority_normal">Priority normal</option>
-          </select>
-          <button
-            type="button"
-            onClick={() => void runBulkCommand()}
-            disabled={busy || selectedIds.length === 0}
-            className="btn-secondary btn-sm disabled:opacity-50"
-          >
-            Run for selected ({selectedIds.length})
-          </button>
-          <select
-            value={commandId}
-            onChange={(e) => setCommandId(e.target.value)}
-            className="input"
-          >
-            <option value="">Quick command…</option>
-            {commandTemplates.map((cmd) => (
-              <option key={cmd.id} value={cmd.id}>{cmd.label}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => void runCommandTemplate()}
-            disabled={busy || !selectedIds.length || !commandId}
-            className="btn-secondary btn-sm disabled:opacity-50"
-          >
-            Run template
-          </button>
-
-          <span className="ml-3 text-xs text-slate-500">Move to</span>
-          <select
-            value={moveTarget}
-            onChange={(e) => setMoveTarget(e.target.value as FolderKey)}
-            className="input"
-          >
-            <option value="inbox">Inbox</option>
-            <option value="archive">Archive</option>
-            <option value="trash">Deleted</option>
-            {allCustomFolders.map((name) => (
-              <option key={name} value={`custom:${name}`}>{name}</option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => void moveSelectedToFolder()}
-            disabled={busy || selectedIds.length === 0}
-            className="btn-secondary btn-sm disabled:opacity-50"
-          >
-            Move
-          </button>
-
-          <input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            placeholder="tag"
-            className="input ml-3"
-          />
-          <button type="button" onClick={() => void mutateTag('add')} disabled={busy || !selectedIds.length} className="btn-secondary btn-sm disabled:opacity-50">+Tag</button>
-          <button type="button" onClick={() => void mutateTag('remove')} disabled={busy || !selectedIds.length} className="btn-secondary btn-sm disabled:opacity-50">-Tag</button>
+      {(pollNote || lastPollAt) && (
+        <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="space-y-0.5">
+              {pollNote ? <div className="font-medium">{pollNote}</div> : null}
+              <div className="text-xs text-slate-500">
+                {t('app.communications.email.poll.last', { defaultValue: 'Last fetch' })}: {formatDateTime(lastPollAt)}
+              </div>
+            </div>
+            <Link to="/app/setup/communications" className="btn-secondary btn-xs">
+              {t('app.communications.email.poll.diagnostics', { defaultValue: 'Diagnostics' })}
+            </Link>
+          </div>
+          {!!pollDetails.length && (
+            <div className="mt-2 space-y-1 text-xs text-slate-600">
+              {pollDetails.slice(0, 5).map((row, idx) => (
+                <div key={`${row?.account_id || idx}`} className="flex flex-wrap items-center gap-2">
+                  <span className="badge">{String(row?.provider || 'email')}</span>
+                  <span className="font-medium">{String(row?.account_label || row?.account_id || 'account')}</span>
+                  <span className={clsx('badge', String(row?.status || '').includes('error') ? 'badge-danger' : 'badge-secondary')}>
+                    {String(row?.status || 'ok')}
+                  </span>
+                  {row?.error ? <span className="text-rose-700">{String(row.error)}</span> : null}
+                </div>
+              ))}
+              {pollDetails.length > 5 ? (
+                <div className="text-slate-500">{t('app.communications.email.poll.more_accounts', { defaultValue: 'More accounts…' })}</div>
+              ) : null}
+            </div>
+          )}
         </div>
+      )}
+
+      <section className="rounded-lg border border-slate-200 bg-white p-3">
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((prev) => !prev)}
+          className="btn-secondary btn-sm"
+        >
+          {advancedOpen ? 'Hide filters & commands' : 'Show filters & commands'}
+        </button>
+        {advancedOpen && (
+          <div className="mt-3 space-y-3">
+            {isMobile && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs text-slate-500">Folder</span>
+                <select value={folder} onChange={(e) => setFolder(e.target.value as FolderKey)} className="input">
+                  {folderItems.map((item) => (
+                    <option key={item.key} value={item.key}>{item.label} ({item.count})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-slate-500">Commands</span>
+              <select
+                value={bulkCommand}
+                onChange={(e) => setBulkCommand(e.target.value as BulkCommand)}
+                className="input"
+              >
+                <option value="mark_read">Mark read</option>
+                <option value="archive">Archive</option>
+                <option value="unarchive">Unarchive</option>
+                <option value="delete">Delete</option>
+                <option value="restore">Restore</option>
+                <option value="priority_high">Priority high</option>
+                <option value="priority_normal">Priority normal</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => void runBulkCommand()}
+                disabled={busy || selectedIds.length === 0}
+                className="btn-secondary btn-sm disabled:opacity-50"
+              >
+                Run for selected ({selectedIds.length})
+              </button>
+              <select
+                value={commandId}
+                onChange={(e) => setCommandId(e.target.value)}
+                className="input"
+              >
+                <option value="">Quick command…</option>
+                {commandTemplates.map((cmd) => (
+                  <option key={cmd.id} value={cmd.id}>{cmd.label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void runCommandTemplate()}
+                disabled={busy || !selectedIds.length || !commandId}
+                className="btn-secondary btn-sm disabled:opacity-50"
+              >
+                Run template
+              </button>
+              <span className="ml-3 text-xs text-slate-500">Move to</span>
+              <select
+                value={moveTarget}
+                onChange={(e) => setMoveTarget(e.target.value as FolderKey)}
+                className="input"
+              >
+                <option value="inbox">Inbox</option>
+                <option value="archive">Archive</option>
+                <option value="trash">Deleted</option>
+                {allCustomFolders.map((name) => (
+                  <option key={name} value={`custom:${name}`}>{name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void moveSelectedToFolder()}
+                disabled={busy || selectedIds.length === 0}
+                className="btn-secondary btn-sm disabled:opacity-50"
+              >
+                Move
+              </button>
+              <input
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                placeholder="tag"
+                className="input ml-3"
+              />
+              <button type="button" onClick={() => void mutateTag('add')} disabled={busy || !selectedIds.length} className="btn-secondary btn-sm disabled:opacity-50">+Tag</button>
+              <button type="button" onClick={() => void mutateTag('remove')} disabled={busy || !selectedIds.length} className="btn-secondary btn-sm disabled:opacity-50">-Tag</button>
+            </div>
+          </div>
+        )}
       </section>
 
       {errorText && (
@@ -551,9 +730,8 @@ export default function CommunicationsEmailInboxPage() {
           compact
         />
       )}
-
       <div className="grid gap-4 xl:grid-cols-[230px_minmax(420px,1fr)_minmax(360px,460px)]">
-        <aside className="rounded-lg border border-slate-200 bg-white p-3">
+        <aside className={clsx('rounded-lg border border-slate-200 bg-white p-3', isMobile && 'hidden')}>
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Folders</div>
           <div className="space-y-1">
             {folderItems.map((item) => (
@@ -580,7 +758,7 @@ export default function CommunicationsEmailInboxPage() {
           </div>
         </aside>
 
-        <section className="rounded-lg border border-slate-200 bg-white">
+        <section className={clsx('rounded-lg border border-slate-200 bg-white', isMobile && mobilePane === 'preview' && 'hidden')}>
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">
             <span>Conversations</span>
             <label className="flex items-center gap-2 text-xs font-normal text-slate-500">
@@ -601,7 +779,7 @@ export default function CommunicationsEmailInboxPage() {
             </div>
           )}
           {!loading && filtered.length > 0 && (
-            <div className="divide-y divide-slate-100">
+            <div className="max-h-[72vh] divide-y divide-slate-100 overflow-auto">
               {filtered.map((th) => (
                 <div key={th.id} className={clsx('px-3 py-2', selectedThreadId === th.id && 'bg-brand-50')}>
                   <div className="flex items-start gap-2">
@@ -611,7 +789,7 @@ export default function CommunicationsEmailInboxPage() {
                       onChange={(e) => setSelectedIds((prev) => e.target.checked ? [...new Set([...prev, th.id])] : prev.filter((x) => x !== th.id))}
                       className="mt-1"
                     />
-                    <button type="button" onClick={() => setSelectedThreadId(th.id)} className="flex-1 text-left">
+                    <button type="button" onClick={() => openThread(th.id)} className="flex-1 text-left">
                       <div className="truncate text-sm font-medium text-slate-900">{titleOf(th)}</div>
                       <div className="mt-1 truncate text-xs text-slate-500">{th.last_message_preview || '—'}</div>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
@@ -632,13 +810,22 @@ export default function CommunicationsEmailInboxPage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white">
-          <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">Preview & Reply</div>
+        <section className={clsx('rounded-lg border border-slate-200 bg-white', isMobile && mobilePane === 'list' && 'hidden')}>
+          <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">
+            <div className="flex items-center gap-2">
+              {isMobile && (
+                <button type="button" onClick={() => setMobilePane('list')} className="btn-secondary btn-xs">
+                  Back
+                </button>
+              )}
+              <span>Preview & Reply</span>
+            </div>
+          </div>
           {!selectedThread && (
             <div className="px-4 py-6 text-sm text-slate-500">Select a conversation to preview.</div>
           )}
           {selectedThread && (
-            <div className="space-y-3 px-4 py-4">
+            <div className="max-h-[72vh] space-y-3 overflow-auto px-4 py-4">
               <div>
                 <div className="text-sm font-semibold text-slate-900">{titleOf(selectedThread)}</div>
                 <div className="mt-1 text-xs text-slate-500">{selectedThread.last_message_preview || '—'}</div>
