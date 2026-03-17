@@ -54,6 +54,7 @@ import ClientLinkDetailPage from '../pages/ClientLinkDetailPage'
 import LegalDocumentsPage from '../pages/admin/LegalDocumentsPage'
 import DoProcesowaniaPage from '../pages/DoProcesowaniaPage'
 import AutomationLogPage from '../pages/AutomationLogPage'
+import AutomationRulesPage from '../pages/AutomationRulesPage'
 
 export type NavGroup = 'overview' | 'people' | 'workflows' | 'leads' | 'admin' | 'account'
 
@@ -240,6 +241,13 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'notifications.view',
   },
   {
+    key: 'automation-rules',
+    labelKey: 'app.nav.items.automation_rules',
+    path: '/app/automation-rules',
+    group: 'workflows',
+    permission: 'notifications.view',
+  },
+  {
     key: 'settings',
     labelKey: 'app.nav.items.settings',
     path: '/app/settings',
@@ -420,6 +428,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'reminders', path: 'reminders', Component: RemindersPage, permission: 'notifications.view' },
   { key: 'leads', path: 'leads', Component: LeadsPage, permission: 'leads.view' },
   { key: 'automation-log', path: 'automation-log', Component: AutomationLogPage, permission: 'notifications.view' },
+  { key: 'automation-rules', path: 'automation-rules', Component: AutomationRulesPage, permission: 'notifications.view' },
   { key: 'pipeline', path: 'pipeline', Component: PipelineRedirect, permission: 'candidates.pipeline' },
   { key: 'settings', path: 'settings', Component: SettingsLandingPage, permission: 'settings.view' },
   { key: 'settings-users', path: 'settings/users', Component: UsersPage, permission: ['admin.users', 'users.manage', 'users.view'] },

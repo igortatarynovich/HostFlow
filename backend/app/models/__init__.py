@@ -116,6 +116,7 @@ _register_aliases("document_reporting", _sys.modules[BulkOperation.__module__])
 Reminder = _load_model_module("reminder").Reminder  # type: ignore[attr-defined]
 ReminderEvent = _load_model_module("reminder_event").ReminderEvent  # type: ignore[attr-defined]
 UserNotification = _load_model_module("user_notification").UserNotification  # type: ignore[attr-defined]
+AutomationRule = _load_model_module("automation_rule").AutomationRule  # type: ignore[attr-defined]
 
 # Услуги (на кандидате)
 CandidateService = _load_model_module("service").CandidateService  # type: ignore[attr-defined]

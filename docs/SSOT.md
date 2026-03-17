@@ -337,7 +337,7 @@ This roadmap is sequenced to maximize adoption impact and minimize architecture 
 ### R2
 
 - [x] **R2.1 Automation log (rule fired → actions)** (ActivityLog-based; reminders emit `automation.*`; added API `/api/v1/automation-log` + UI `/app/automation-log`)
-- [ ] **R2.2 Minimal rules builder (candidate created/stage changed/doc expiring/lead processed)**
+- [x] **R2.2 Minimal rules builder (candidate created/stage changed/doc expiring/lead processed)** (DB-backed rules + API `/api/v1/automation-rules` + UI `/app/automation-rules`; execution wired for `candidate.created`, `candidate.stage_changed`, `lead.processed`)
 
 ### R3
 

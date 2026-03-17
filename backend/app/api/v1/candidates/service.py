@@ -46,6 +46,7 @@ from backend.app.services.recruiter_assignment import (
 from backend.app.services.audit import log_activity
 from backend.app.services import events
 from backend.app.services.events import EventAudience
+from backend.app.services.automation_rules import run_rules as run_automation_rules
 from backend.app.services.source_labels import normalize_candidate_source
 from backend.app.services.rodo import send_rodo_email as _send_rodo_email
 from backend.app.services.rodo import get_first_rodo_sent as _get_first_rodo_sent
@@ -576,6 +577,26 @@ async def create_candidate_full(
     await sync_candidate_links(
         db=db, tenant_id=UUID(tenant_id), candidate_id=UUID(c.id), candidate_stage=c.stage
     )
+
+    # Minimal rules builder (R2.2): trigger candidate.created automation rules.
+    try:
+        await run_automation_rules(
+            db,
+            tenant_id=tenant_id,
+            trigger="candidate.created",
+            actor_id=actor_id,
+            context={
+                "entity_type": "candidate",
+                "entity_id": c.id,
+                "stage": c.stage,
+                "company_id": c.company_id,
+                "vacancy_id": c.vacancy_id,
+                "assignee_id": c.recruiter_id or c.manager or actor_id,
+            },
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
     return c
 
 
@@ -948,6 +969,26 @@ async def update_candidate_full(
                     candidate_id=UUID(candidate_id),
                     candidate_stage=c.stage,
                 )
+                # Minimal rules builder (R2.2): trigger candidate.stage_changed rules.
+                try:
+                    await run_automation_rules(
+                        db,
+                        tenant_id=tenant_id,
+                        trigger="candidate.stage_changed",
+                        actor_id=actor_id,
+                        context={
+                            "entity_type": "candidate",
+                            "entity_id": c.id,
+                            "stage_from": old_stage_code,
+                            "stage_to": c.stage,
+                            "company_id": c.company_id,
+                            "vacancy_id": c.vacancy_id,
+                            "assignee_id": c.recruiter_id or c.manager or actor_id,
+                        },
+                    )
+                    await db.commit()
+                except Exception:
+                    await db.rollback()
                 await candidate_tg_notifications.send_candidate_stage_changed_telegram(
                     db,
                     tenant_id=tenant_id,

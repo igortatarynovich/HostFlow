@@ -56,6 +56,7 @@ try:
     from backend.app.api.v1 import catalogs as catalogs_router
     from backend.app.api.v1 import reminders_v2 as reminders_v2_router
     from backend.app.api.v1 import automation_log as automation_log_router
+    from backend.app.api.v1 import automation_rules as automation_rules_router
     from backend.app.api.v1 import services as additional_services_router
     try:
         from backend.app.api.v1 import scanner as scanner_router
@@ -72,6 +73,7 @@ try:
     from backend.app.modules.companies.ensure_schema import ensure_companies_schema
     from backend.app.modules.notifications.ensure_schema import ensure_notifications_schema
     from backend.app.services.ensure_reminders_schema import ensure_reminders_schema
+    from backend.app.services.ensure_automation_rules_schema import ensure_automation_rules_schema
     from backend.app.services.ensure_communications_schema import ensure_communications_schema
     from backend.app.services.ensure_funnels_schema import ensure_funnels_schema
     from backend.app.api.v1.vacancies.router import router as vacancies_router
@@ -421,6 +423,11 @@ async def lifespan(app: FastAPI):
         logger.warning("[startup:ensure_reminders_schema] skipped (%s)", e)
 
     try:
+        ensure_automation_rules_schema()
+    except Exception as e:
+        logger.warning("[startup:ensure_automation_rules_schema] skipped (%s)", e)
+
+    try:
         ensure_communications_schema()
     except Exception as e:
         logger.warning("[startup:ensure_communications_schema] skipped (%s)", e)
@@ -676,6 +683,7 @@ app.include_router(catalogs_router.router, prefix="/api/v1", tags=["catalogs"])
 app.include_router(additional_services_router.router, prefix="/api/v1", tags=["additional-services"])
 app.include_router(reminders_v2_router.router, prefix="/api/v1", tags=["reminders"])
 app.include_router(automation_log_router.router, prefix="/api/v1", tags=["automation-log"])
+app.include_router(automation_rules_router.router, prefix="/api/v1", tags=["automation-rules"])
 
 app.include_router(stages_router, prefix="/api/v1", tags=["stages"])
 app.include_router(tenants_router, prefix="/api/v1", tags=["tenants"])

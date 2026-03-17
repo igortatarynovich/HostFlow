@@ -18,6 +18,7 @@ from backend.app.modules.leads import pipeline
 from backend.app.services import events
 from backend.app.services.events import EventAudience
 from backend.app.services import reminder_tasks
+from backend.app.services.automation_rules import run_rules as run_automation_rules
 
 
 @dataclass
@@ -711,25 +712,33 @@ async def process_normalized_lead(
                 outcome_entity_id=resolved_company_id,
                 outcome_entity_name=resolved_company_name,
             )
-        assignee_id = await _pick_lead_assignee_id(
-            db,
-            tenant_id=tenant_id,
-            preferred_user_id=fallback_recruiter_hint,
-        )
-        if assignee_id:
-            await _create_lead_followup_reminder(
+        # Minimal rules builder (R2.2): trigger lead.processed automation rules
+        try:
+            assignee_id = await _pick_lead_assignee_id(
                 db,
                 tenant_id=tenant_id,
-                lead=lead,
-                assignee_id=assignee_id,
-                title="New lead — follow up",
-                payload={
+                preferred_user_id=fallback_recruiter_hint,
+            )
+            await run_automation_rules(
+                db,
+                tenant_id=tenant_id,
+                trigger="lead.processed",
+                actor_id=assignee_id,
+                context={
+                    "entity_type": "lead",
+                    "entity_id": lead.id,
                     "lead_id": lead.id,
                     "source": lead.source,
-                    "company_id": resolved_company_id,
+                    "status": "processed",
                     "business_type": business_type,
+                    "company_id": resolved_company_id,
+                    "vacancy_id": lead.vacancy_id,
+                    "assignee_id": assignee_id,
                 },
             )
+            await db.commit()
+        except Exception:
+            await db.rollback()
         await db.commit()
         return MetaLeadResult(
             lead_id=lead.id,
@@ -900,23 +909,30 @@ async def process_normalized_lead(
         tenant_id=tenant_id,
         preferred_user_id=recruiter_id or supervisor_id,
     )
-    if assignee_id:
-        await _create_lead_followup_reminder(
+    # Minimal rules builder (R2.2): trigger lead.processed automation rules (agency/employer path).
+    try:
+        await run_automation_rules(
             db,
             tenant_id=tenant_id,
-            lead=lead,
-            assignee_id=assignee_id,
-            title="New lead — follow up",
-            payload={
+            trigger="lead.processed",
+            actor_id=assignee_id,
+            context={
+                "entity_type": "lead",
+                "entity_id": lead.id,
                 "lead_id": lead.id,
                 "source": lead.source,
+                "status": "processed",
+                "business_type": business_type,
+                "company_id": resolved_company_id,
+                "vacancy_id": str(vacancy.id) if vacancy else None,
                 "candidate_id": str(candidate.id),
                 "recruiter_id": recruiter_id,
-                "vacancy_id": str(vacancy.id) if vacancy else None,
-                "company_id": resolved_company_id,
-                "business_type": business_type,
+                "assignee_id": assignee_id,
             },
         )
+        await db.commit()
+    except Exception:
+        await db.rollback()
     await _emit_lead_event(
         db,
         tenant_id=tenant_id,
