@@ -6,6 +6,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Body
 from fastapi import Query
 from sqlalchemy import select, func, update, text
+from sqlalchemy import exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from typing import Optional
@@ -73,6 +74,7 @@ from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
 from backend.app.api.v1.candidates import service as cand_service
 from backend.app.api.v1.candidates import repo as cand_repo
 from backend.app.models.candidate import Candidate
+from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.tenant import TenantLink
 from backend.app.api.v1.candidates.acl import (
@@ -1185,6 +1187,97 @@ async def list_candidates(
             )
     
     return {"total": total, "items": processed_items}
+
+
+@router.get(
+    "/no-next-action",
+    summary="Operational view: candidates without an active next action (reminder).",
+    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+)
+async def list_candidates_no_next_action(
+    response: Response,
+    limit: int = 50,
+    offset: int = 0,
+    stages: Optional[List[str]] = Query(default=None, description="Optional list of stage codes to include."),
+    manager_id: UUID | None = Query(default=None, description="Filter by candidate.manager user id."),
+    assignee_id: UUID | None = Query(default=None, description="Assignee to check reminders for (defaults to current user)."),
+    scope_tenant_id: UUID | None = Query(
+        default=None,
+        description="If set, scope the list to this tenant. Overrides X-Tenant-Id for scope only.",
+    ),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+):
+    """
+    Next action contract v1:
+    - a candidate has a "next action" iff there exists an active reminder for (entity_type='candidate', entity_id=candidate.id)
+      assigned to the selected assignee with status in {pending,new,overdue}.
+    """
+    db, tenant_id = db_tenant
+    scope_tenant = (
+        str(scope_tenant_id) if scope_tenant_id else (str(tenant_id).strip() or str(current_user.tenant_id).strip() or str(tenant_id))
+    )
+    try:
+        await db.execute(text("SELECT set_config('app.tenant_id', :tid, true)"), {"tid": scope_tenant})
+    except Exception:
+        pass
+
+    assignee = str(assignee_id) if assignee_id else str(current_user.sub)
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+
+    reminder_exists = (
+        exists()
+        .where(
+            Reminder.tenant_id == scope_tenant,
+            Reminder.entity_type == "candidate",
+            Reminder.entity_id == Candidate.id,
+            Reminder.assignee_id == assignee,
+            Reminder.status.in_(active_statuses),
+        )
+        .correlate(Candidate)
+    )
+
+    where = [
+        Candidate.tenant_id == scope_tenant,
+        Candidate.deleted_at.is_(None),
+        ~reminder_exists,
+    ]
+    if stages:
+        clean = [str(s).strip() for s in stages if str(s).strip()]
+        if clean:
+            where.append(Candidate.stage.in_(clean))
+    if manager_id:
+        where.append(Candidate.manager == str(manager_id))
+
+    count_row = await db.execute(select(func.count()).select_from(Candidate).where(*where))
+    total = int(count_row.scalar() or 0)
+    response.headers["X-Total-Count"] = str(total)
+
+    rows = await db.execute(
+        select(Candidate)
+        .where(*where)
+        .order_by(Candidate.updated_at.desc(), Candidate.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    items = []
+    for c in rows.scalars().all():
+        items.append(
+            {
+                "id": str(c.id),
+                "short_id": getattr(c, "short_id", None),
+                "first_name": getattr(c, "first_name", None),
+                "last_name": getattr(c, "last_name", None),
+                "stage": getattr(c, "stage", None),
+                "manager": getattr(c, "manager", None),
+                "company_id": getattr(c, "company_id", None),
+                "vacancy_id": getattr(c, "vacancy_id", None),
+                "created_at": getattr(c, "created_at", None),
+                "updated_at": getattr(c, "updated_at", None),
+            }
+        )
+
+    return {"total": total, "items": items}
 
 
 @router.get(

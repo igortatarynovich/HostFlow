@@ -747,6 +747,26 @@ export async function completeReminder(id: string) {
   return data;
 }
 
+// Candidates (operational views) --------------------------------------------
+export async function listCandidatesNoNextAction(opts?: {
+  limit?: number
+  offset?: number
+  stages?: string[]
+  managerId?: string
+  assigneeId?: string
+  scopeTenantId?: string
+}) {
+  const params: Record<string, any> = {}
+  if (opts?.limit != null) params.limit = opts.limit
+  if (opts?.offset != null) params.offset = opts.offset
+  if (opts?.stages && opts.stages.length) params.stages = opts.stages
+  if (opts?.managerId) params.manager_id = opts.managerId
+  if (opts?.assigneeId) params.assignee_id = opts.assigneeId
+  if (opts?.scopeTenantId) params.scope_tenant_id = opts.scopeTenantId
+  const { data } = await api.get(`/candidates/no-next-action`, { params })
+  return data
+}
+
 export async function snoozeReminder(id: string, payload: { minutes?: number; new_remind_at?: string | Date }) {
   const body: Record<string, any> = {};
   if (payload.minutes != null) body.minutes = payload.minutes;

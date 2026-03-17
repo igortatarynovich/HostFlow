@@ -5,6 +5,7 @@ import CommunicationsFeatureGate from '../components/communications/Communicatio
 import Dashboard from '../pages/Dashboard'
 import Candidates from '../pages/Candidates'
 import CandidateCard from '../pages/CandidateCard'
+import CandidatesNoNextActionPage from '../pages/CandidatesNoNextActionPage'
 import Companies from '../pages/Companies'
 import MyCompanyPage from '../pages/MyCompanyPage'
 import Vacancies from '../pages/Vacancies'
@@ -87,6 +88,13 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'candidates',
     labelKey: 'app.nav.items.candidates',
     path: '/app/candidates',
+    group: 'people',
+    permission: 'candidates.view',
+  },
+  {
+    key: 'candidates-no-next-action',
+    labelKey: 'app.nav.items.no_next_action',
+    path: '/app/candidates/no-next-action',
     group: 'people',
     permission: 'candidates.view',
   },
@@ -368,6 +376,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'my-company-detail', path: 'my-company/:id', Component: Companies, permission: 'companies.view' },
   { key: 'my-company-tab', path: 'my-company/:id/:tab', Component: Companies, permission: 'companies.view' },
   { key: 'candidates', path: 'candidates', Component: Candidates, permission: 'candidates.view' },
+  { key: 'candidates-no-next-action', path: 'candidates/no-next-action', Component: CandidatesNoNextActionPage, permission: 'candidates.view' },
   { key: 'candidate-detail', path: 'candidates/:id', Component: CandidateCard, permission: 'candidates.view' },
   { key: 'candidate-tab', path: 'candidates/:id/:tab', Component: CandidateCard, permission: 'candidates.view' },
   { key: 'clients', path: 'clients', Component: AgencyClientsPage, permission: 'companies.view' },
