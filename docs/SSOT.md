@@ -349,3 +349,148 @@ This roadmap is sequenced to maximize adoption impact and minimize architecture 
 - [ ] **R4.1 Perf baseline capture (p50/p95) for key actions**
 - [ ] **R4.2 Perf budgets + regression response workflow**
 
+---
+
+## Live audit: Pipedrive (public sources, 2025–2026)
+
+This section is based on Pipedrive’s official public documentation and feature pages (not guesses). It is here to make our plan implementable: we must know exactly which “Pipedrive-grade” mechanics we’re competing with.
+
+### 1) Activities are the operational backbone (not “tasks” on the side)
+
+Source: Pipedrive KB “Activities” (updated **Mar 11, 2026**) `https://support.pipedrive.com/en/article/activities`
+
+What matters (patterns to copy):
+
+- **Activities are first-class** and can be created from many contexts: pipeline cards, detail views, Leads Inbox, calendar/list, contacts timeline, mobile.
+- **Linking model**: activities link to person/org/lead/deal/project; visibility depends on visibility into linked items.
+- **Scheduling UX**: “Schedule an activity” shows calendar context to prevent double booking; supports guests, location, busy/free semantics.
+- **Fields that power “next”**:
+  - “Next activity date”, “Last activity date”
+  - “Update time” used as an operational signal
+- **Bulk activity creation** from list views (deals/contacts/leads/sent).
+- **Emails can be added as activities automatically**, reducing reporting gaps.
+
+HostFlow takeaway:
+
+- We must treat “next action” as a **core entity contract**, not a reminders-only feature.
+- Our recruitment equivalent must cover candidate-centric actions (call, docs request, verify doc, schedule interview, permit check, arrival planning).
+
+### 2) Leads Inbox is a separate qualification space (pipeline stays clean)
+
+Source: Pipedrive KB “Leads Inbox” (updated **Feb 26, 2026**) `https://support.pipedrive.com/en/article/leads-inbox`
+
+What matters:
+
+- Leads Inbox exists to store **unqualified leads**; conversion moves to pipeline later.
+- **Lead detail is a panel**, not a full page jump: left = structured data (org/person/lead fields); right = work surfaces.
+- Right side includes:
+  - **Composer** (notes/activities/email/files)
+  - **Focus** (upcoming activities, pinned notes, drafts, scheduled emails)
+  - **History** (notes, completed activities, sent emails, files)
+- Lead lifecycle features:
+  - archive vs delete
+  - merge duplicates
+  - convert single or bulk to deals
+  - bulk edit key lead fields
+
+HostFlow takeaway:
+
+- Our “Leads” should behave like an operational inbox with an embedded work panel and explicit conversion outcomes (services: lead→company; agency/employer: lead→candidate/vacancy context).
+
+### 3) Email is centralized as “Sales Inbox” with visibility controls + AI helpers
+
+Source: Pipedrive KB “Email sync” (updated **Feb 9, 2026**) `https://support.pipedrive.com/en/article/email-sync`
+
+What matters:
+
+- Central **Sales Inbox** to view/send/reply without app switching.
+- **Linking**: conversations auto-link or can be manually linked to deals/leads/projects.
+- **Visibility model**: private/shared; team account vs personal account rules.
+- Inbox organization via labels/filters.
+- AI helpers: suggested replies, email creation, summarization.
+- Automation templates exist specifically for email (action or date based).
+
+HostFlow takeaway:
+
+- We already have inbox + templates/signatures, but we need the Pipedrive-grade combination of:
+  - reliable linking and visibility semantics
+  - “focus” layer (upcoming + drafts + scheduled)
+  - explainable automation around outreach
+  - optional AI layer (later phase)
+
+### 4) Detail view: progress bar, changelog, hovercards reduce navigation cost
+
+Source: Pipedrive KB “Detail view” (updated **Feb 9, 2026**) `https://support.pipedrive.com/en/article/detail-view`
+
+What matters:
+
+- Deal detail has a **progress bar** showing current stage and days spent per stage.
+- **Changelog**: chronological list of all changes (default + custom fields) since creation.
+- **Hovercards** for owners/people/orgs/deals reduce context switching.
+
+HostFlow takeaway:
+
+- For recruitment, we need stage-time visibility and a changelog/timeline that is not “optional”.
+- Hovercards are a cheap but high-impact speed feature for daily ops.
+
+### 5) Insights: dashboards + goals + reports (with sharing and AI report generation)
+
+Source: Pipedrive KB “Insights feature” (updated **Jul 15, 2025**) `https://support.pipedrive.com/en/article/insights-feature`
+
+What matters:
+
+- Three pillars:
+  - **Reports** (visual builder + filters)
+  - **Dashboards** (drag/drop of reports/goals)
+  - **Goals** (deal/activity/forecast)
+- Share dashboards via public link (view-only).
+- AI-assisted report generation exists (prompt → report).
+- Visibility/permissions are explicit and tied to data visibility.
+
+HostFlow takeaway:
+
+- Our reporting must become operational and drill-down capable; goals should include “activity/next action compliance” and “readiness/compliance” metrics.
+
+### 6) LeadBooster: lead-gen is a product surface, not an integration footnote
+
+Source: Pipedrive KB “LeadBooster add-on” (updated **Dec 11, 2025**) `https://support.pipedrive.com/en/article/leadbooster-add-on`
+
+What matters:
+
+- Lead generation is packaged: web forms, chatbot, live chat, prospector.
+- All feeds into Leads Inbox.
+
+HostFlow takeaway:
+
+- We don’t need to copy Prospector, but we must treat “lead source → inbox → qualification → conversion” as a coherent product surface.
+
+---
+
+## How HostFlow becomes “Pipedrive+” (explicit deltas)
+
+### Copy (parity) targets
+
+- **Activities system**: unified activity types + schedule UX + bulk creation + link/visibility semantics.
+- **Inbox panels**: lead/candidate/communications side panel with Composer/Focus/History structure.
+- **Detail view utilities**: changelog + hovercards + stage-time visualization.
+- **Reporting shell**: dashboards + reports + goals (with drill-down).
+
+### Surpass (recruitment-native advantages)
+
+- **Readiness/compliance-first** reporting and automation:
+  - missing docs, expiring soon, compliance blockers
+  - time-to-ready and readiness score distribution
+- **Next action enforcement** tied to stage requirements:
+  - “no next action” is a managed operational risk
+  - stuck detection and recruitment-specific playbooks
+- **Document intelligence** integrated into the daily command center, not a separate module.
+
+---
+
+## Backlog additions (from live Pipedrive audit)
+
+- [ ] **R1.4 Lead/Candidate side panel: Composer + Focus + History** (Pipedrive Leads Inbox pattern)
+- [ ] **R1.5 Hovercards** for candidate/company/user to reduce navigation cost
+- [ ] **R1.6 Stage-time visualization** (days in stage) on candidate/vacancy pipeline entities
+- [ ] **R2.3 Activities bulk creation** from list views
+- [ ] **R3.3 Goals system** (activity compliance + readiness) and dashboard sharing
