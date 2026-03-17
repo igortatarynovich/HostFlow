@@ -45,6 +45,7 @@ import { getRegionDisplayName } from '../utils/catalogLocale'
 import Pipeline from './Pipeline'
 import { prefetchCandidate } from '../api/candidateCache'
 import { TableVirtuoso, type VirtuosoHandle } from 'react-virtuoso'
+import HoverCard from '../components/HoverCard'
 import {
   DOC_READINESS_META,
   DOC_READINESS_ORDER,
@@ -4091,24 +4092,75 @@ export default function Candidates(){
                     stickyProps.top = 0
                     stickyProps.zIndex = 5
                     stickyProps.backgroundColor = '#ffffff' // bg-white
+                    const candidateLabel =
+                      (c as AugmentedCandidate).masked === true
+                        ? (c.short_id
+                            ? t('app.candidates.table.masked_label_short_id', { defaultValue: 'Кандидат {short_id}', values: { short_id: c.short_id } })
+                            : t('app.candidates.table.masked_label', { defaultValue: 'Кандидат #{id}', values: { id: (c.id ?? '').slice(0, 8) } }))
+                        : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || t('common.labels.not_available')
+                    const managerName = resolveManagerLabel(c) || t('common.labels.not_available')
+                    const companyName = (c as any).company_name || (c as any).__extra?.companyName || t('common.labels.not_available')
                     cellContent = (
                       <div className="flex flex-col gap-1">
-                        <Link
-                          to={`/app/candidates/${c.id}`}
-                          className="font-medium text-brand-600 hover:text-brand-700 hover:underline"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            handleCandidateOpen(c.id)
-                            navigate(`/app/candidates/${c.id}`)
-                          }}
-                          onMouseEnter={() => handleCandidateHover(c.id)}
-                          onFocus={() => handleCandidateHover(c.id)}
-                          title={t('app.candidates.table.open_card') || ((c as AugmentedCandidate).masked === true ? t('app.candidates.table.open_card_masked', { defaultValue: 'Открыть карточку кандидата' }) : `Открыть карточку кандидата ${c.first_name} ${c.last_name}`)}
+                        <HoverCard
+                          content={
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-semibold text-slate-900">{candidateLabel}</div>
+                                  <div className="mt-0.5 text-xs text-slate-600">
+                                    <span className="font-medium">{t('app.candidates.columns.stage', { defaultValue: 'Stage' })}:</span>{' '}
+                                    <span className="text-slate-700">{String(c.stage || '—')}</span>
+                                  </div>
+                                </div>
+                                <div className="shrink-0">
+                                  <StageTag code={c.stage} />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-1 gap-1 text-xs text-slate-700">
+                                <div className="truncate">
+                                  <span className="text-slate-500">{t('app.candidates.columns.manager', { defaultValue: 'Manager' })}:</span>{' '}
+                                  <span className="font-medium text-slate-800">{managerName}</span>
+                                </div>
+                                <div className="truncate">
+                                  <span className="text-slate-500">{t('app.candidates.columns.company', { defaultValue: 'Company' })}:</span>{' '}
+                                  <span className="font-medium text-slate-800">{companyName}</span>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  className="btn-primary btn-xs"
+                                  onClick={() => navigate(`/app/candidates/${c.id}`)}
+                                >
+                                  {t('common.actions.open', { defaultValue: 'Open' })}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-secondary btn-xs"
+                                  onClick={() => navigate(`/app/candidates/${c.id}/documents`)}
+                                >
+                                  {t('app.nav.items.documents', { defaultValue: 'Documents' })}
+                                </button>
+                              </div>
+                            </div>
+                          }
                         >
-                          {(c as AugmentedCandidate).masked === true
-                            ? (c.short_id ? t('app.candidates.table.masked_label_short_id', { defaultValue: 'Кандидат {short_id}', values: { short_id: c.short_id } }) : t('app.candidates.table.masked_label', { defaultValue: 'Кандидат #{id}', values: { id: (c.id ?? '').slice(0, 8) } }))
-                            : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || t('common.labels.not_available')}
-                        </Link>
+                          <Link
+                            to={`/app/candidates/${c.id}`}
+                            className="font-medium text-brand-600 hover:text-brand-700 hover:underline"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handleCandidateOpen(c.id)
+                              navigate(`/app/candidates/${c.id}`)
+                            }}
+                            onMouseEnter={() => handleCandidateHover(c.id)}
+                            onFocus={() => handleCandidateHover(c.id)}
+                            title={t('app.candidates.table.open_card') || ((c as AugmentedCandidate).masked === true ? t('app.candidates.table.open_card_masked', { defaultValue: 'Открыть карточку кандидата' }) : `Открыть карточку кандидата ${c.first_name} ${c.last_name}`)}
+                          >
+                            {candidateLabel}
+                          </Link>
+                        </HoverCard>
                         <div className="text-xs text-slate-500" title={(c.short_id || ((c as AugmentedCandidate).masked && (c.id ?? '').slice(0, 8))) ? `Short ID: ${c.short_id || (c.id ?? '').slice(0, 8)}` : undefined}>
                           {c.short_id ? `ID ${c.short_id}` : (c as AugmentedCandidate).masked === true ? `ID ${(c.id ?? '').slice(0, 8)}` : t('common.labels.not_available')}
                         </div>

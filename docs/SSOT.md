@@ -490,7 +490,7 @@ HostFlow takeaway:
 ## Backlog additions (from live Pipedrive audit)
 
 - [ ] **R1.4 Lead/Candidate side panel: Composer + Focus + History** (Pipedrive Leads Inbox pattern)
-- [ ] **R1.5 Hovercards** for candidate/company/user to reduce navigation cost
+- [x] **R1.5 Hovercards** for candidate/company/user to reduce navigation cost
 - [x] **R1.6 Stage-time visualization** (days in stage) on candidate/vacancy pipeline entities
 - [ ] **R2.3 Activities bulk creation** from list views
 - [ ] **R3.3 Goals system** (activity compliance + readiness) and dashboard sharing
