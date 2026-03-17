@@ -331,7 +331,7 @@ This roadmap is sequenced to maximize adoption impact and minimize architecture 
 ### R1
 
 - [x] **R1.1 Candidates quick preview side panel** (implemented in Candidates right sidebar: select row → Composer/Focus/History + reminders)
-- [ ] **R1.2 Candidate unified timeline v1**
+- [x] **R1.2 Candidate unified timeline v1** (Candidate card tab: unified view of stage changes + notes + reminders with basic filters)
 - [ ] **R1.3 Next action contract + “no next action” operational view**
 
 ### R2

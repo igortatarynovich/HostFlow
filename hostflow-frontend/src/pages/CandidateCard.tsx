@@ -767,6 +767,15 @@ export default function CandidateCard(){
     return dt.toISOString().slice(0, 16)
   })
   const [reminderOffset, setReminderOffset] = useState(15)
+  const [timelineReminders, setTimelineReminders] = useState<ReminderRecord[]>([])
+  const [timelineRemindersLoading, setTimelineRemindersLoading] = useState(false)
+  const [timelineStageHistoryLoading, setTimelineStageHistoryLoading] = useState(false)
+  const [timelineError, setTimelineError] = useState<string | null>(null)
+  const [timelineFilter, setTimelineFilter] = useState<{ stage: boolean; notes: boolean; reminders: boolean }>({
+    stage: true,
+    notes: true,
+    reminders: true,
+  })
   const dateFnsLocale = useMemo(() => (locale === 'ru' ? ru : locale === 'pl' ? pl : enUS), [locale])
 
   useEffect(() => {
@@ -1570,6 +1579,53 @@ export default function CandidateCard(){
     }
   }, [])
 
+  const loadStageHistoryForTimeline = useCallback(
+    async (candidateId: string) => {
+      setTimelineStageHistoryLoading(true)
+      setTimelineError(null)
+      try {
+        const { data } = await api.get(`/candidates/${candidateId}/stage-history`)
+        const entries = Array.isArray(data) ? data : []
+        const normalized: StageHistoryEntry[] = entries.map((item: any, idx: number) => ({
+          id: String(item?.id ?? `${item?.to_code ?? 'stage'}-${item?.at ?? idx}`),
+          from_code: item?.from_code ?? null,
+          to_code: item?.to_code ?? null,
+          at: item?.at ?? null,
+          actor: item?.actor ?? item?.actor_name ?? null,
+          reason: item?.reason ?? null,
+        }))
+        setStageHistory(normalized)
+      } catch (err: any) {
+        setTimelineError(err?.response?.data?.detail ?? err?.message ?? unknownErrorLabel)
+      } finally {
+        setTimelineStageHistoryLoading(false)
+      }
+    },
+    [unknownErrorLabel],
+  )
+
+  const loadTimelineReminders = useCallback(
+    async (candidateId: string) => {
+      setTimelineRemindersLoading(true)
+      setTimelineError(null)
+      try {
+        const res = await listReminders({
+          entityType: 'candidate',
+          entityId: candidateId,
+          status: ['pending', 'new', 'overdue', 'done', 'cancelled'],
+        })
+        const items = Array.isArray(res?.items) ? res.items : []
+        setTimelineReminders(items)
+      } catch (err: any) {
+        setTimelineError(err?.response?.data?.detail ?? err?.message ?? unknownErrorLabel)
+        setTimelineReminders([])
+      } finally {
+        setTimelineRemindersLoading(false)
+      }
+    },
+    [unknownErrorLabel],
+  )
+
   const openHistoryModal = useCallback(() => {
     if (!model?.id) return
     setHistoryOpen(true)
@@ -2371,6 +2427,14 @@ export default function CandidateCard(){
     void loadStageHistoryQuiet(String(model.id))
   }, [loadStageHistoryQuiet, model?.id, model?.stage])
 
+  // Unified timeline v1: load reminders + stage history best-effort (lazy on tab open).
+  useEffect(() => {
+    if (tab !== 'timeline') return
+    if (!model?.id) return
+    void loadTimelineReminders(String(model.id))
+    void loadStageHistoryForTimeline(String(model.id))
+  }, [loadStageHistoryForTimeline, loadTimelineReminders, model?.id, tab])
+
   if (loading || !model) {
     return <div className="h-full w-full text-slate-500">{t('common.loading')}</div>
   }
@@ -2410,6 +2474,7 @@ export default function CandidateCard(){
             [
               ['personal', t('app.candidate_card.tabs.personal')],
                 ...(isMasked ? [] : [['docs', t('app.candidate_card.tabs.docs')]]),
+              ['timeline', t('app.candidate_card.tabs.timeline', { defaultValue: 'Timeline' })],
               ['services', t('app.candidate_card.tabs.services')],
             ] as [Tab, string][]
           )
@@ -2710,6 +2775,144 @@ export default function CandidateCard(){
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* TIMELINE */}
+        {tab === 'timeline' && (
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] lg:items-start lg:justify-between">
+            <div className="space-y-3 lg:pr-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-slate-700">
+                  {t('app.candidate_card.timeline.title', { defaultValue: 'Unified timeline' })}
+                </span>
+                {(timelineStageHistoryLoading || timelineRemindersLoading) && (
+                  <span className="text-xs text-slate-500">{t('common.loading')}</span>
+                )}
+                {timelineError ? <span className="text-xs text-red-600">{timelineError}</span> : null}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
+                {(
+                  [
+                    ['stage', t('app.candidate_card.timeline.filters.stage', { defaultValue: 'Stage' })],
+                    ['notes', t('app.candidate_card.timeline.filters.notes', { defaultValue: 'Notes' })],
+                    ['reminders', t('app.candidate_card.timeline.filters.reminders', { defaultValue: 'Reminders' })],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white px-2 py-1 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={timelineFilter[key]}
+                      onChange={() =>
+                        setTimelineFilter((prev) => ({
+                          ...prev,
+                          [key]: !prev[key],
+                        }))
+                      }
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+
+              {(() => {
+                type TimelineItem =
+                  | { kind: 'stage'; at: string; title: string; meta?: string }
+                  | { kind: 'note'; at: string; title: string; meta?: string }
+                  | { kind: 'reminder'; at: string; title: string; meta?: string }
+
+                const items: TimelineItem[] = []
+
+                if (timelineFilter.stage) {
+                  stageHistory.forEach((h) => {
+                    if (!h.at) return
+                    const from = h.from_code ? stageLabelIntl(String(h.from_code)) : t('app.candidate_card.history.modal.previous', { defaultValue: 'Previous' })
+                    const to = h.to_code ? stageLabelIntl(String(h.to_code)) : '—'
+                    items.push({
+                      kind: 'stage',
+                      at: String(h.at),
+                      title: t('app.candidate_card.timeline.items.stage_change', { defaultValue: 'Stage change' }),
+                      meta: `${from} → ${to}${h.actor ? ` · ${h.actor}` : ''}${h.reason ? ` · ${h.reason}` : ''}`,
+                    })
+                  })
+                }
+
+                if (timelineFilter.notes) {
+                  notes.forEach((n) => {
+                    if (!n.created_at) return
+                    const txt = String(n.text || '').trim()
+                    items.push({
+                      kind: 'note',
+                      at: String(n.created_at),
+                      title: t('app.candidate_card.timeline.items.note', { defaultValue: 'Note' }),
+                      meta: txt.length > 180 ? `${txt.slice(0, 180)}…` : txt,
+                    })
+                  })
+                }
+
+                if (timelineFilter.reminders) {
+                  timelineReminders.forEach((r) => {
+                    const at = (r.completed_at || r.due_at || r.created_at || '').toString()
+                    if (!at) return
+                    items.push({
+                      kind: 'reminder',
+                      at,
+                      title: r.title || t('app.reminders.item.untitled', { defaultValue: 'Untitled' }),
+                      meta: `${t('app.reminders.fields.due_at', { defaultValue: 'Due' })}: ${formatDateSafe(r.due_at, locale) || r.due_at} · ${String(r.status)}`,
+                    })
+                  })
+                }
+
+                items.sort((a, b) => {
+                  const ta = Date.parse(a.at)
+                  const tb = Date.parse(b.at)
+                  return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0)
+                })
+
+                if (!items.length) {
+                  return (
+                    <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+                      {t('app.candidate_card.timeline.empty', { defaultValue: 'No events yet.' })}
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {items.slice(0, 200).map((it, idx) => (
+                      <div key={`${it.kind}-${it.at}-${idx}`} className="rounded-xl border border-slate-200 bg-white p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-slate-900">{it.title}</div>
+                            {it.meta ? <div className="mt-0.5 text-xs text-slate-600">{it.meta}</div> : null}
+                          </div>
+                          <div className="shrink-0 text-[11px] text-slate-500" title={it.at}>
+                            {formatDateSafe(it.at, locale) || it.at}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="text-xs font-semibold text-slate-700">
+                  {t('app.candidate_card.timeline.sidebar.quick_actions', { defaultValue: 'Quick actions' })}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" className="btn-secondary btn-sm" onClick={openHistoryModal}>
+                    {t('app.candidate_card.history.modal.title', { defaultValue: 'Stage history' })}
+                  </button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setQuickPanelOpen((p) => (p === 'reminders' ? null : 'reminders'))}>
+                    {t('app.candidate_card.reminders.title')}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
         {/* DOCS */}
