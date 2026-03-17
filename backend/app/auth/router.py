@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 
 import sqlalchemy as sa
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from backend.app.auth.jwt_tools import encode as encode_jwt
@@ -52,12 +52,12 @@ _ROLE_MAP = {
 }
 
 class LoginIn(BaseModel):
-    email: EmailStr
+    email: str
     password: str
 
 
 class RegisterIn(BaseModel):
-    email: EmailStr
+    email: str
     password: str = Field(..., min_length=8, max_length=128)
     workspace_name: str = Field(..., min_length=2, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)

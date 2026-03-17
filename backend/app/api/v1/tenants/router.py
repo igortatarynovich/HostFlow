@@ -192,6 +192,17 @@ async def create_tenant_link(
     handoff_company = str(payload.handoff_include_company_id) if payload.handoff_include_company_id else None
     display_name = (payload.display_name or "").strip()
 
+    if cid and tid:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either client_company_id (portal-only) or client_tenant_id with handoff_include_company_id (tenant-backed), not both",
+        )
+    if tid and not handoff_company:
+        raise HTTPException(
+            status_code=400,
+            detail="Tenant-backed link requires handoff_include_company_id",
+        )
+
     features = {
         "handoff_enabled": payload.handoff_enabled,
         "see_vacancies": payload.see_vacancies,

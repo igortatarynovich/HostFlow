@@ -16,6 +16,8 @@ emsdk/
 opencv/
 opencv_contrib/
 .venv/
+node_modules/
+docs/manual-checklist/_artifacts/
 backend/uploads/
 ad_id
 form_id

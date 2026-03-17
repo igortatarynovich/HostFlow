@@ -1163,6 +1163,8 @@ async def create_checkout_session(
     cancel_url = (payload.cancel_url or "").strip() or "/app/settings/billing?checkout=cancel"
     session_id = f"cs_{uuid4().hex}"
 
+    current = _subscription_payload(tenant)
+
     if _stripe_ready():
         price_id = _plan_price_id(plan_code)
         if not price_id:

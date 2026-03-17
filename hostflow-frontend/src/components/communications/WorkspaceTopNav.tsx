@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 
 type WorkspaceSection = 'calendar' | 'planner' | 'reminders' | 'messages' | 'email' | null
+  | 'my_availability'
+  | 'team_availability'
 
 type Props = {
   active: WorkspaceSection
@@ -14,6 +16,8 @@ const ITEMS: Array<{ key: Exclude<WorkspaceSection, null>; to: string; labelKey:
   { key: 'reminders', to: '/app/reminders', labelKey: 'app.nav.items.reminders', defaultLabel: 'Reminders' },
   { key: 'messages', to: '/app/messages', labelKey: 'app.nav.items.messages', defaultLabel: 'Messages' },
   { key: 'email', to: '/app/email', labelKey: 'app.nav.items.email', defaultLabel: 'Email' },
+  { key: 'my_availability', to: '/app/my-availability', labelKey: 'app.nav.items.my_availability', defaultLabel: 'My availability' },
+  { key: 'team_availability', to: '/app/team-availability', labelKey: 'app.nav.items.team_availability', defaultLabel: 'Team availability' },
 ]
 
 export default function WorkspaceTopNav({ active }: Props) {
@@ -21,7 +25,7 @@ export default function WorkspaceTopNav({ active }: Props) {
   const visibleKeys: Array<Exclude<WorkspaceSection, null>> =
     active === 'messages' || active === 'email' || active === null
       ? ['messages', 'email']
-      : ['calendar', 'planner', 'reminders']
+      : ['calendar', 'planner', 'reminders', 'my_availability', 'team_availability']
 
   return (
     <div className="sticky top-2 z-20 rounded-lg border border-slate-200 bg-white/95 p-2 shadow-sm backdrop-blur">

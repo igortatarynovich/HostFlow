@@ -86,6 +86,89 @@ router = APIRouter(prefix="/communications", tags=["communications"])
 logger = logging.getLogger(__name__)
 
 
+_CLOCK_RE = re.compile(r"^(?:[01]?\d|2[0-3]):[0-5]\d$")
+
+
+def _parse_clock_minutes(value: str) -> int:
+    s = str(value or "").strip()
+    if not _CLOCK_RE.match(s):
+        raise ValueError("Invalid time format (expected HH:MM)")
+    h, m = s.split(":")
+    return int(h) * 60 + int(m)
+
+
+def _normalize_working_hours(payload: Any) -> Dict[str, Any]:
+    """
+    Canonical weekly working hours contract (v1).
+
+    Stored in User.extra under key `working_hours_v1`:
+      {
+        "tz": "Europe/Warsaw" | null,
+        "days": [
+          {"weekday": 0..6, "enabled": bool, "windows": [{"from":"09:00","to":"17:00"}]}
+        ]
+      }
+    weekday: 0=Mon .. 6=Sun (ISO-like, aligned with frontend usage).
+    """
+    root = _as_dict(payload)
+    tz = root.get("tz")
+    tz_norm = str(tz).strip() if isinstance(tz, str) else None
+
+    raw_days = root.get("days")
+    days_in = raw_days if isinstance(raw_days, list) else []
+    seen: set[int] = set()
+    days_out: list[dict[str, Any]] = []
+    for item in days_in:
+        row = _as_dict(item)
+        try:
+            weekday = int(row.get("weekday"))
+        except Exception:
+            continue
+        if weekday < 0 or weekday > 6:
+            continue
+        if weekday in seen:
+            continue
+        seen.add(weekday)
+        enabled = bool(row.get("enabled", True))
+        windows_in = row.get("windows") if isinstance(row.get("windows"), list) else []
+        windows_out: list[dict[str, str]] = []
+        for w in windows_in:
+            wr = _as_dict(w)
+            f = str(wr.get("from") or "").strip()
+            t = str(wr.get("to") or "").strip()
+            if not f or not t:
+                continue
+            fm = _parse_clock_minutes(f)
+            tm = _parse_clock_minutes(t)
+            if tm <= fm:
+                continue
+            windows_out.append({"from": f, "to": t})
+        days_out.append({"weekday": weekday, "enabled": enabled, "windows": windows_out})
+    days_out.sort(key=lambda x: int(x["weekday"]))
+    return {"tz": tz_norm, "days": days_out}
+
+
+class WorkingHoursWindowIn(BaseModel):
+    from_: str = Field(alias="from")
+    to: str
+
+
+class WorkingHoursDayIn(BaseModel):
+    weekday: int = Field(ge=0, le=6)
+    enabled: bool = True
+    windows: List[WorkingHoursWindowIn] = Field(default_factory=list)
+
+
+class WorkingHoursScheduleIn(BaseModel):
+    tz: str | None = None
+    days: List[WorkingHoursDayIn] = Field(default_factory=list)
+
+
+class WorkingHoursScheduleOut(BaseModel):
+    tz: str | None = None
+    days: List[Dict[str, Any]] = Field(default_factory=list)
+
+
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -6645,6 +6728,81 @@ async def list_time_off_requests(
     total = int((await db.execute(count_stmt)).scalar() or 0)
     rows = (await db.execute(stmt)).scalars().all()
     return TimeOffRequestListResponse(items=[_timeoff_out(r) for r in rows], total=total)
+
+
+@router.get(
+    "/availability/working-hours",
+    response_model=WorkingHoursScheduleOut,
+    dependencies=[
+        Depends(
+            require_roles(
+                Role.administrator,
+                Role.supervisor,
+                Role.recruiter,
+                Role.client_manager,
+                Role.client_processor,
+            )
+        )
+    ],
+)
+async def get_my_working_hours(
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> WorkingHoursScheduleOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await _require_any_comm_feature(
+        db,
+        tenant_id=tenant_id,
+        current_user=current_user,
+        features=["myAvailability", "planner", "calendar", "teamAvailability"],
+    )
+    user = await db.get(User, str(current_user.sub))
+    if user is None or str(user.tenant_id or "") != tenant_id:
+        raise HTTPException(status_code=404, detail="User not found")
+    extra = user.extra if isinstance(user.extra, dict) else {}
+    payload = extra.get("working_hours_v1") if isinstance(extra, dict) else None
+    normalized = _normalize_working_hours(payload)
+    return WorkingHoursScheduleOut(tz=normalized.get("tz"), days=normalized.get("days") or [])
+
+
+@router.put(
+    "/availability/working-hours",
+    response_model=WorkingHoursScheduleOut,
+    dependencies=[
+        Depends(
+            require_roles(
+                Role.administrator,
+                Role.supervisor,
+                Role.recruiter,
+                Role.client_manager,
+                Role.client_processor,
+            )
+        )
+    ],
+)
+async def upsert_my_working_hours(
+    body: WorkingHoursScheduleIn,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> WorkingHoursScheduleOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    await _require_any_comm_feature(
+        db,
+        tenant_id=tenant_id,
+        current_user=current_user,
+        features=["myAvailability", "planner", "calendar", "teamAvailability"],
+    )
+    user = await db.get(User, str(current_user.sub))
+    if user is None or str(user.tenant_id or "") != tenant_id:
+        raise HTTPException(status_code=404, detail="User not found")
+    normalized = _normalize_working_hours(body.model_dump(by_alias=True))
+    extra = user.extra if isinstance(user.extra, dict) else {}
+    extra = {**extra, "working_hours_v1": normalized}
+    user.extra = extra
+    await db.commit()
+    return WorkingHoursScheduleOut(tz=normalized.get("tz"), days=normalized.get("days") or [])
 
 
 @router.post(

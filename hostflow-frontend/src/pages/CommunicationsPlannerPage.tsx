@@ -5,9 +5,11 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import {
   createCommunicationPlannerEvent,
+  getMyWorkingHours,
   listCommunicationPlannerEvents,
   patchCommunicationPlannerEvent,
   type CommunicationPlannerEvent,
+  type WorkingHoursSchedule,
 } from '../api/communications'
 import { useI18n } from '../i18n'
 
@@ -40,6 +42,8 @@ export default function CommunicationsPlannerPage() {
   const [errorText, setErrorText] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [items, setItems] = useState<CommunicationPlannerEvent[]>([])
+  const [workingHours, setWorkingHours] = useState<WorkingHoursSchedule | null>(null)
+  const [allowOutsideHours, setAllowOutsideHours] = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [kindFilter, setKindFilter] = useState('')
   const [managers, setManagers] = useState<Array<{ id: string; label: string }>>([])
@@ -59,18 +63,20 @@ export default function CommunicationsPlannerPage() {
     setLoading(true)
     setErrorText(null)
     try {
-      const [eventsRes, mgrs] = await Promise.all([
+      const [eventsRes, mgrs, wh] = await Promise.all([
         listCommunicationPlannerEvents({
           limit: 200,
           status_filter: statusFilter ? [statusFilter] : undefined,
           kind: kindFilter || undefined,
         }),
         listManagers().catch(() => []),
+        getMyWorkingHours().catch(() => null),
       ])
       const normalized = (Array.isArray(mgrs) ? mgrs : []).map((m: any) => ({ id: String(m.id), label: String(m.label || m.full_name || m.email || m.id) }))
       setManagers(normalized)
       setLabels(new Map(normalized.map((m) => [m.id, m.label])))
       setItems(Array.isArray(eventsRes.items) ? eventsRes.items : [])
+      if (wh) setWorkingHours(wh)
     } catch (err: any) {
       setErrorText(errText(err, 'Failed to load planner'))
     } finally {
@@ -92,6 +98,25 @@ export default function CommunicationsPlannerPage() {
   const handleCreate = useCallback(async (e: FormEvent) => {
     e.preventDefault()
     if (!form.title.trim() || !form.startAt) return
+    if (!form.allDay && workingHours?.days?.length && !allowOutsideHours) {
+      const d = new Date(form.startAt)
+      const jsDay = d.getDay() // 0=Sun..6=Sat
+      const weekday = (jsDay + 6) % 7 // 0=Mon..6=Sun
+      const day = workingHours.days.find((x) => x.weekday === weekday)
+      if (day?.enabled && Array.isArray(day.windows) && day.windows.length) {
+        const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+        const toMin = (v: string) => {
+          const [h, m] = v.split(':').map((x) => Number(x))
+          return h * 60 + m
+        }
+        const mNow = toMin(hhmm)
+        const inAny = day.windows.some((w) => mNow >= toMin(w.from) && mNow < toMin(w.to))
+        if (!inAny) {
+          setErrorText('Selected start time is outside your working hours. Update My Availability or enable "Create outside hours".')
+          return
+        }
+      }
+    }
     setBusy(true)
     try {
       await createCommunicationPlannerEvent({
@@ -112,7 +137,7 @@ export default function CommunicationsPlannerPage() {
     } finally {
       setBusy(false)
     }
-  }, [form, load])
+  }, [allowOutsideHours, form, load, workingHours])
 
   const setEventStatus = useCallback(async (id: string, status: string) => {
     setBusy(true)
@@ -185,6 +210,10 @@ export default function CommunicationsPlannerPage() {
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={form.allDay} onChange={(e) => setForm((p) => ({ ...p, allDay: e.target.checked }))} />
               All day
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={allowOutsideHours} onChange={(e) => setAllowOutsideHours(e.target.checked)} />
+              Create outside working hours
             </label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input type={form.allDay ? 'date' : 'datetime-local'} value={form.startAt} onChange={(e) => setForm((p) => ({ ...p, startAt: e.target.value }))} className="input" />

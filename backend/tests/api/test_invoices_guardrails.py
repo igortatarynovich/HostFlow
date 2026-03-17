@@ -306,3 +306,93 @@ async def test_from_service_order_maps_recipient_guardrail_to_400(
     )
     assert create_resp.status_code == 400, create_resp.text
     assert "client company" in str(create_resp.text).lower()
+
+
+@pytest.mark.anyio
+async def test_from_service_order_creates_invoice_success(
+    client: AsyncClient,
+    db: AsyncSession,
+    manager_headers: dict[str, str],
+) -> None:
+    admin_stmt = sa.select(User).where(sa.func.lower(User.email) == ADMIN_EMAIL.lower()).limit(1)
+    admin = (await db.execute(admin_stmt)).scalar_one()
+
+    issuer = Company(
+        id=str(uuid4()),
+        tenant_id=TENANT_ID,
+        owner_user_id=str(admin.id),
+        manager_user_id=str(admin.id),
+        name="Issuer Services Sp. z o.o.",
+        legal_name="Issuer Services Sp. z o.o.",
+        tax_id="PL1122334455",
+        country="PL",
+        city="Warsaw",
+        address="Issuer 1",
+        extra=_operating_extra(),
+    )
+    client_company = Company(
+        id=str(uuid4()),
+        tenant_id=TENANT_ID,
+        owner_user_id=str(admin.id),
+        manager_user_id=str(admin.id),
+        name="Client Services Sp. z o.o.",
+        legal_name="Client Services Sp. z o.o.",
+        tax_id="PL9988776655",
+        country="PL",
+        city="Gdansk",
+        address="Client 20",
+        extra=_client_extra(),
+    )
+    service = Service(
+        id=str(uuid4()),
+        tenant_id=TENANT_ID,
+        code=f"SVC-OK-{str(uuid4())[:8]}",
+        name="Service OK",
+        unit="piece",
+        base_price=1000,
+        currency="PLN",
+        cost_currency="PLN",
+        vat_rate=23,
+        requires_schedule=False,
+        requires_candidate=False,
+    )
+    order = ServiceOrder(
+        id=str(uuid4()),
+        tenant_id=TENANT_ID,
+        company_id=str(client_company.id),
+        status="approved",
+        total_amount=1000,
+        vat_total=230,
+        currency="PLN",
+        requested_by=str(admin.id),
+        assigned_to=str(admin.id),
+        notes="ok",
+    )
+    item = ServiceItem(
+        id=str(uuid4()),
+        tenant_id=TENANT_ID,
+        order_id=str(order.id),
+        service_id=str(service.id),
+        qty=1,
+        unit_price=1000,
+        vat_rate=23,
+        amount=1230,
+        status="pending",
+    )
+    db.add(issuer)
+    db.add(client_company)
+    db.add(service)
+    await db.commit()
+
+    db.add(order)
+    db.add(item)
+    await db.commit()
+
+    resp = await client.post(
+        f"/api/v1/invoices/from-service-order/{order.id}",
+        headers=manager_headers,
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body.get("service_order_id") == str(order.id)
+    assert body.get("company_id") == str(client_company.id)

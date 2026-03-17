@@ -3,10 +3,13 @@ import uuid
 
 import pytest
 import sqlalchemy as sa
+import hmac
+import hashlib
 
 from backend.app.db.session import async_session_maker
 from backend.app.models import Candidate, Lead
 from backend.app.models.company import Company
+from backend.app.core.settings import settings
 
 
 async def _set_tenant_business_type(session, tenant_id: str, business_type: str) -> None:
@@ -14,7 +17,7 @@ async def _set_tenant_business_type(session, tenant_id: str, business_type: str)
         sa.text(
             """
             UPDATE tenants
-            SET settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object('business_type', :business_type)
+            SET settings = COALESCE(settings::jsonb, '{}'::jsonb) || jsonb_build_object('business_type', (:business_type)::text)
             WHERE id = :tenant_id
             """
         ),
@@ -139,6 +142,13 @@ def _meta_payload(
     }
 
 
+def _signature_for_payload(payload: dict) -> str:
+    secret = str(settings.meta_webhook_secret or "").encode("utf-8")
+    body = json.dumps(payload).encode("utf-8")
+    digest = hmac.new(secret, body, hashlib.sha256).hexdigest()
+    return f"sha256={digest}"
+
+
 @pytest.mark.anyio
 async def test_meta_lead_processed(client, manager_headers, recruiter_headers, supervisor_headers, tenant_id):
     async with async_session_maker() as session:
@@ -160,7 +170,7 @@ async def test_meta_lead_processed(client, manager_headers, recruiter_headers, s
 
     response = await client.post(
         "/api/v1/leads/meta",
-        headers=manager_headers,
+        headers={**manager_headers, "X-Hub-Signature-256": _signature_for_payload(payload)},
         content=json.dumps(payload),
     )
     assert response.status_code == 200, response.text
@@ -224,6 +234,70 @@ async def test_meta_lead_processed(client, manager_headers, recruiter_headers, s
         json={"mark_all": True},
     )
     assert resp_sup_mark.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_meta_lead_processed_services_flow_emits_telegram_events(
+    client,
+    manager_headers,
+    supervisor_headers,
+    tenant_id,
+):
+    async with async_session_maker() as session:
+        await _set_tenant_business_type(session, tenant_id, "services")
+        # Ensure webhook signature is not enforced for this test run.
+        await session.execute(
+            sa.text("DELETE FROM meta_lead_credentials WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        rows = await session.execute(
+            sa.text("SELECT count(*) FROM meta_lead_credentials WHERE tenant_id = :tenant_id"),
+            {"tenant_id": tenant_id},
+        )
+        assert int(rows.scalar_one() or 0) == 0
+        await session.commit()
+        company_id = await _ensure_company(session, tenant_id)
+        vacancy_id = await _ensure_vacancy(session, tenant_id, company_id)
+
+    payload = _meta_payload(
+        vacancy_id,
+        email="services-lead@example.com",
+        phone="+48500111222",
+        lead_id="services-lead-001",
+        company_name="Meta Logistics",
+        company_field="company",
+    )
+
+    response = await client.post(
+        "/api/v1/leads/meta",
+        headers={**manager_headers, "X-Hub-Signature-256": _signature_for_payload(payload)},
+        content=json.dumps(payload),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "processed"
+    assert body["business_type"] == "services"
+    assert body["candidate_id"] is None
+    assert body["outcome_entity_type"] == "company"
+    assert body["outcome_entity_id"] is not None
+
+    # Services flow should emit configurable "telegram" events as in-app notifications.
+    resp_sup = await client.get("/api/v1/notifications", headers=supervisor_headers)
+    assert resp_sup.status_code == 200
+    sup_events = {item["event_type"] for item in resp_sup.json().get("items", [])}
+    assert "lead.new.telegram" in sup_events
+
+    lead_id = body["lead_id"]
+    stage_resp = await client.patch(
+        f"/api/v1/leads/{lead_id}",
+        headers=manager_headers,
+        json={"stage": "qualified"},
+    )
+    assert stage_resp.status_code == 200, stage_resp.text
+
+    resp_sup2 = await client.get("/api/v1/notifications", headers=supervisor_headers)
+    sup_events2 = {item["event_type"] for item in resp_sup2.json().get("items", [])}
+    assert "lead.status_changed.telegram" in sup_events2
 
 
 @pytest.mark.anyio

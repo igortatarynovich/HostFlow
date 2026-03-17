@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class Token(BaseModel):
@@ -8,7 +8,7 @@ class Token(BaseModel):
 
 class UserPublic(BaseModel):
     id: int
-    email: EmailStr
+    email: str
     role: str
     is_active: bool
 

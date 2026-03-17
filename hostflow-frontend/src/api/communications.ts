@@ -331,6 +331,10 @@ export type CommunicationTimeOffRequest = {
   updated_at: string
 }
 
+export type WorkingHoursWindow = { from: string; to: string }
+export type WorkingHoursDay = { weekday: number; enabled: boolean; windows: WorkingHoursWindow[] }
+export type WorkingHoursSchedule = { tz?: string | null; days: WorkingHoursDay[] }
+
 export type CommunicationAllocationAudit = {
   id: string
   mode: string
@@ -1303,6 +1307,16 @@ export async function decideCommunicationTimeOffRequest(
 ): Promise<CommunicationTimeOffRequest> {
   const { data } = await api.post(`/communications/time-off/requests/${requestId}/decision`, payload)
   return data as CommunicationTimeOffRequest
+}
+
+export async function getMyWorkingHours(): Promise<WorkingHoursSchedule> {
+  const { data } = await api.get('/communications/availability/working-hours')
+  return data as WorkingHoursSchedule
+}
+
+export async function upsertMyWorkingHours(payload: WorkingHoursSchedule): Promise<WorkingHoursSchedule> {
+  const { data } = await api.put('/communications/availability/working-hours', payload)
+  return data as WorkingHoursSchedule
 }
 
 export async function listCommunicationAllocatorAudit(opts?: {

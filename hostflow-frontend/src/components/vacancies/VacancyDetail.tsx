@@ -551,9 +551,10 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       )}
 
       {tab === 'info' && (
-        <SectionCard title={t('app.vacancies.detail.sections.info', { defaultValue: 'Основные данные' })}>
-        <form className="space-y-4" onSubmit={handleSubmit(submitVacancy)}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          <SectionCard title={t('app.vacancies.detail.sections.info', { defaultValue: 'Основные данные' })}>
+            <form className="space-y-4" onSubmit={handleSubmit(submitVacancy)}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="block">
               <div className="label">Название</div>
               <input className="input" {...register('title')} />
@@ -671,9 +672,29 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 />
               </label>
             </div>
-          </div>
-        </form>
-        </SectionCard>
+              </div>
+            </form>
+          </SectionCard>
+
+          <SectionCard title={t('app.vacancies.detail.sections.documents', { defaultValue: 'Документы и требования' })}>
+            <div className="space-y-2 text-sm text-slate-700">
+              <p className="text-slate-600">
+                {t('app.vacancies.detail.documents.hint', {
+                  defaultValue:
+                    'Требования к документам задаются в модуле Documents и/или через профиль кандидата. Вакансия не содержит отдельной “Document policies” модели, чтобы не дублировать правила.',
+                })}
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Link to="/app/documents" className="btn-secondary btn-xs">
+                  {t('app.nav.items.documents', { defaultValue: 'Documents' })}
+                </Link>
+                <Link to="/app/settings/candidate-profiles" className="btn-secondary btn-xs">
+                  {t('app.settings.candidate_profiles', { defaultValue: 'Candidate profiles' })}
+                </Link>
+              </div>
+            </div>
+          </SectionCard>
+        </div>
       )}
 
       {tab === 'candidates' && (

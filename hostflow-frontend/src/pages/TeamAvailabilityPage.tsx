@@ -3,6 +3,7 @@ import { getCommunicationsSettings, listCommunicationTimeOffRequests, type Commu
 import { listManagers } from '../api/client'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
+import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 
 function errorTextFrom(err: any, fallback: string): string {
   const detail = err?.response?.data?.detail
@@ -98,6 +99,7 @@ export default function TeamAvailabilityPage() {
 
   return (
     <div className="space-y-4">
+      <WorkspaceTopNav active="team_availability" />
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.team_availability_title', { defaultValue: 'Team Availability' })}</h1>
         <p className="text-sm text-slate-500">

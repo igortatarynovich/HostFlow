@@ -85,6 +85,7 @@ export type TtvStep =
   | 'first_candidate_created'
   | 'email_connected'
   | 'first_email_sent'
+  | 'first_invoice_sent'
 
 export type TtvStepEventPayload = {
   event: 'ttv_step'

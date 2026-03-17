@@ -150,6 +150,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
         <div className="flex h-screen bg-slate-50 text-slate-900">
           <Sidebar
             tenant={tenant}
+            businessType={onboardingStatus?.business_type ?? 'agency'}
             items={shellNavItems}
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}

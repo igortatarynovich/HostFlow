@@ -8,6 +8,7 @@ import {
   dispatchCommunicationMessage,
   dispatchQueuedCommunicationMessages,
   getCommunicationThread,
+  getCommunicationsSettings,
   markCommunicationThreadRead,
   type CommunicationMessage,
   type CommunicationThread,
@@ -51,6 +52,8 @@ export default function CommunicationsThreadPage() {
   const [messages, setMessages] = useState<CommunicationMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [errorText, setErrorText] = useState<string | null>(null)
+  const [errorSecondaryTo, setErrorSecondaryTo] = useState<string | null>(null)
+  const [errorSecondaryLabel, setErrorSecondaryLabel] = useState<string | null>(null)
   const [busyAction, setBusyAction] = useState<'assign' | 'read' | null>(null)
   const [sending, setSending] = useState(false)
   const [dispatchingQueued, setDispatchingQueued] = useState(false)
@@ -63,24 +66,63 @@ export default function CommunicationsThreadPage() {
   const [recipientAddress, setRecipientAddress] = useState('')
   const [internalNote, setInternalNote] = useState(false)
   const [sendImmediately, setSendImmediately] = useState(true)
+  const [templates, setTemplates] = useState<Array<{ id: string; label: string; body: string }>>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+  const [signatureCandidates, setSignatureCandidates] = useState<string>('')
+  const [signatureClients, setSignatureClients] = useState<string>('')
+  const [applySignature, setApplySignature] = useState(true)
   const threadListPath = String(thread?.channel || '').toLowerCase() === 'email' ? '/app/email' : '/app/messages'
   const firstEmailTtvSentRef = useRef(false)
+
+  const inferredSignature = useMemo(() => {
+    if (!thread || String(thread.channel || '').toLowerCase() !== 'email') return ''
+    const hasCompany = Boolean(thread.linked_company_id) || String(thread.entity_type || '').toLowerCase().includes('company')
+    const raw = hasCompany ? signatureClients : signatureCandidates
+    return String(raw || '').trim()
+  }, [signatureCandidates, signatureClients, thread])
+
+  const appendSignature = useCallback(
+    (text: string) => {
+      const sig = inferredSignature
+      if (!sig) return text
+      const base = String(text || '')
+      const normalized = base.trimEnd()
+      if (!normalized) return `--\n${sig}`
+      return `${normalized}\n\n--\n${sig}`
+    },
+    [inferredSignature],
+  )
 
   const load = useCallback(async () => {
     if (!threadId) return
     setLoading(true)
     setErrorText(null)
+    setErrorSecondaryTo(null)
+    setErrorSecondaryLabel(null)
     try {
-      const data = await getCommunicationThread(threadId, { messagesLimit: 200 })
+      const [data, cfg] = await Promise.all([
+        getCommunicationThread(threadId, { messagesLimit: 200 }),
+        getCommunicationsSettings().catch(() => null),
+      ])
       setThread(data.thread)
       setMessages(Array.isArray(data.messages) ? data.messages : [])
       if (!draftSubject) setDraftSubject(data.thread.subject || '')
+      const emailCfg = (cfg as any)?.email || {}
+      setSignatureCandidates(String(emailCfg.signatureCandidates || '').trim())
+      setSignatureClients(String(emailCfg.signatureClients || '').trim())
+      const tplItems = Array.isArray((cfg as any)?.messageTemplates?.items) ? (cfg as any).messageTemplates.items : []
+      const nextTemplates = tplItems
+        .filter((x: any) => x && x.enabled && (x.target === 'email' || x.target === 'both'))
+        .map((x: any) => ({ id: String(x.id || ''), label: String(x.label || ''), body: String(x.body || '') }))
+        .filter((x: any) => x.id && x.label)
+      setTemplates(nextTemplates)
+      if (!selectedTemplateId && nextTemplates.length) setSelectedTemplateId(nextTemplates[0].id)
     } catch (err: any) {
       setErrorText(errorTextFrom(err, t('app.communications.errors.load', { defaultValue: 'Failed to load communications data' })))
     } finally {
       setLoading(false)
     }
-  }, [draftSubject, t, threadId])
+  }, [draftSubject, selectedTemplateId, t, threadId])
 
   useEffect(() => {
     void load()
@@ -161,11 +203,16 @@ export default function CommunicationsThreadPage() {
     if (!draftText.trim()) return
     setSending(true)
     try {
+      const baseText = draftText.trim()
+      const bodyText =
+        !internalNote && String(thread.channel || '').toLowerCase() === 'email' && applySignature
+          ? appendSignature(baseText)
+          : baseText
       const msg = await createCommunicationMessage(threadId, {
         direction: internalNote ? 'system' : 'outbound',
         message_type: internalNote ? 'note' : (thread.channel === 'email' ? 'email' : 'text'),
         subject: thread.channel === 'email' && !internalNote ? (draftSubject.trim() || undefined) : undefined,
-        body_text: draftText.trim(),
+        body_text: bodyText,
         sender_type: internalNote ? 'user' : 'user',
         recipient_address: !internalNote ? (recipientAddress.trim() || undefined) : undefined,
         delivery_status: internalNote ? 'sent' : 'queued',
@@ -177,6 +224,8 @@ export default function CommunicationsThreadPage() {
           const dispatched = await dispatchCommunicationMessage(msg.id, { mark_delivered: true })
           finalMsg = dispatched.message
           setThread(dispatched.thread)
+          setErrorSecondaryTo(null)
+          setErrorSecondaryLabel(null)
           if (!firstEmailTtvSentRef.current && String(thread.channel || '').toLowerCase() === 'email') {
             firstEmailTtvSentRef.current = true
             void recordTtvStepCompleted({
@@ -185,8 +234,16 @@ export default function CommunicationsThreadPage() {
               step_key: 'first_email_sent',
             })
           }
-        } catch {
+        } catch (err: any) {
           // Keep queued message visible; user can dispatch later manually.
+          setErrorText(
+            errorTextFrom(
+              err,
+              t('app.communications.email.dispatch_failed', { defaultValue: 'Email is queued but dispatch failed.' }),
+            ),
+          )
+          setErrorSecondaryTo('/app/settings/email')
+          setErrorSecondaryLabel(t('app.settings.email.title', { defaultValue: 'Email settings' }))
         }
       }
       setMessages((prev) => [...prev, finalMsg])
@@ -202,13 +259,32 @@ export default function CommunicationsThreadPage() {
           : prev
       )
       setDraftText('')
-      setErrorText(null)
+      if (!errorSecondaryTo) setErrorText(null)
     } catch (err: any) {
       setErrorText(errorTextFrom(err, t('app.communications.errors.load', { defaultValue: 'Failed to send message' })))
+      setErrorSecondaryTo(String(thread?.channel || '').toLowerCase() === 'email' ? '/app/settings/email' : threadListPath)
+      setErrorSecondaryLabel(
+        String(thread?.channel || '').toLowerCase() === 'email'
+          ? t('app.settings.email.title', { defaultValue: 'Email settings' })
+          : t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' }),
+      )
     } finally {
       setSending(false)
     }
-  }, [draftSubject, draftText, internalNote, recipientAddress, sendImmediately, t, thread, threadId])
+  }, [
+    appendSignature,
+    applySignature,
+    draftSubject,
+    draftText,
+    errorSecondaryTo,
+    internalNote,
+    recipientAddress,
+    sendImmediately,
+    t,
+    thread,
+    threadId,
+    threadListPath,
+  ])
 
   const handleDispatchQueued = useCallback(async () => {
     if (!thread) return
@@ -220,8 +296,16 @@ export default function CommunicationsThreadPage() {
       const threadItem = result.items.find((x) => x.thread.id === thread.id)?.thread
       if (threadItem) setThread(threadItem)
       setErrorText(null)
+      setErrorSecondaryTo(null)
+      setErrorSecondaryLabel(null)
     } catch (err: any) {
       setErrorText(errorTextFrom(err, t('app.communications.errors.load', { defaultValue: 'Failed to dispatch queued messages' })))
+      setErrorSecondaryTo(String(thread.channel || '').toLowerCase() === 'email' ? '/app/settings/email' : threadListPath)
+      setErrorSecondaryLabel(
+        String(thread.channel || '').toLowerCase() === 'email'
+          ? t('app.settings.email.title', { defaultValue: 'Email settings' })
+          : t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' }),
+      )
     } finally {
       setDispatchingQueued(false)
     }
@@ -234,6 +318,8 @@ export default function CommunicationsThreadPage() {
       setMessages((prev) => prev.map((m) => (m.id === messageId ? result.message : m)))
       setThread(result.thread)
       setErrorText(null)
+      setErrorSecondaryTo(null)
+      setErrorSecondaryLabel(null)
       if (
         !firstEmailTtvSentRef.current &&
         String(result.thread.channel || '').toLowerCase() === 'email'
@@ -247,6 +333,12 @@ export default function CommunicationsThreadPage() {
       }
     } catch (err: any) {
       setErrorText(errorTextFrom(err, t('app.communications.errors.load', { defaultValue: 'Failed to dispatch message' })))
+      setErrorSecondaryTo(String(thread?.channel || '').toLowerCase() === 'email' ? '/app/settings/email' : threadListPath)
+      setErrorSecondaryLabel(
+        String(thread?.channel || '').toLowerCase() === 'email'
+          ? t('app.settings.email.title', { defaultValue: 'Email settings' })
+          : t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' }),
+      )
     } finally {
       setDispatchingMessageId(null)
     }
@@ -392,8 +484,8 @@ export default function CommunicationsThreadPage() {
           }}
           onRetry={() => void load()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo={threadListPath}
-          secondaryLabel={t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' })}
+          secondaryTo={errorSecondaryTo || threadListPath}
+          secondaryLabel={errorSecondaryLabel || t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' })}
           compact
         />
       )}
@@ -515,6 +607,50 @@ export default function CommunicationsThreadPage() {
                   className="w-full input"
                   placeholder={t('app.communications.thread.recipient', { defaultValue: 'Recipient address (email/phone/chat id)' })}
                 />
+              )}
+
+              {thread.channel === 'email' && !internalNote && templates.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="input"
+                    value={selectedTemplateId}
+                    onChange={(e) => setSelectedTemplateId(e.target.value)}
+                  >
+                    {templates.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => {
+                      const tpl = templates.find((x) => x.id === selectedTemplateId)
+                      if (!tpl) return
+                      const body = String(tpl.body || '').trim()
+                      if (!body) return
+                      setDraftText((prev) => {
+                        const base = String(prev || '')
+                        if (!base.trim()) return body
+                        return `${base.trimEnd()}\n\n${body}`
+                      })
+                    }}
+                  >
+                    {t('common.actions.insert', { defaultValue: 'Insert' })}
+                  </button>
+                </div>
+              )}
+
+              {thread.channel === 'email' && !internalNote && inferredSignature && (
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={applySignature}
+                    onChange={(e) => setApplySignature(e.target.checked)}
+                  />
+                  {t('app.communications.email.signature.apply', { defaultValue: 'Add signature' })}
+                </label>
               )}
 
               <textarea

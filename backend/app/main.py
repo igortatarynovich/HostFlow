@@ -772,6 +772,31 @@ if public_dir.is_dir():
     
     app.mount("/", ExcludeUploadsStaticFiles(directory=public_dir, html=True), name="static")
 
+    # SPA fallback for client-side routes like /signup, /login, /app/*
+    # NOTE: Starlette StaticFiles with html=True serves index.html for directories,
+    # but does not guarantee SPA-style fallback for arbitrary routes.
+    index_html = public_dir / "index.html"
+
+    @app.middleware("http")
+    async def spa_fallback_middleware(request: Request, call_next):  # type: ignore[no-redef]
+        response = await call_next(request)
+        if response.status_code != 404:
+            return response
+        if request.method != "GET":
+            return response
+        path = request.url.path or "/"
+        if path.startswith("/api/") or path == "/api" or path.startswith("/docs") or path.startswith("/openapi"):
+            return response
+        if path.startswith("/uploads/") or path.startswith("/api/uploads"):
+            return response
+        accept = request.headers.get("accept", "")
+        # Only serve SPA shell for browser navigations.
+        if "text/html" not in accept and "*/*" not in accept:
+            return response
+        if index_html.is_file():
+            return FileResponse(str(index_html))
+        return response
+
 # S3-style mock upload endpoint for tests/dev
 @app.post("/api/v1/db/mock-upload")
 async def mock_upload(

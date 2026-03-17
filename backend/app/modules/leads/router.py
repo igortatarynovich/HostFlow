@@ -54,6 +54,7 @@ async def update_lead_stage_endpoint(
     lead_id: str,
     payload: LeadStageUpdate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
     _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
 ) -> LeadOut:
     """Update lead CRM stage (new, contacted, qualified, converted, lost)."""
@@ -76,6 +77,21 @@ async def update_lead_stage_endpoint(
         candidate_id=lead.candidate_id,
         candidate_name=None,
     )
+
+    if business_type == "services":
+        await service._emit_lead_event(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead,
+            event_type="lead.status_changed.telegram",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type=outcome_entity_type,
+            outcome_entity_id=outcome_entity_id,
+            outcome_entity_name=outcome_entity_name,
+            user_ids=[current_user.sub] if current_user and current_user.sub else None,
+        )
+        await db.commit()
 
     return LeadOut(
         id=PyUUID(lead.id),

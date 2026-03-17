@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
 import { getInvoicePdf, listInvoices, sendInvoice } from '../../api/client'
 import type { Invoice } from '../../api/types'
+import { recordTtvStepCompleted } from '../../api/analytics'
 import { useI18n } from '../../i18n'
 
 const STATUS_BADGE: Record<string, string> = {
@@ -41,6 +42,14 @@ export function ClientInvoicesBlock({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [sendingId, setSendingId] = useState<string | null>(null)
+  const firstInvoiceSentRecordedRef = useRef(false)
+  useEffect(() => {
+    try {
+      firstInvoiceSentRecordedRef.current = window.localStorage.getItem('hf:ttv:first_invoice_sent') === '1'
+    } catch {
+      firstInvoiceSentRecordedRef.current = false
+    }
+  }, [])
 
   const load = useCallback(async () => {
     if (!companyId) return
@@ -65,6 +74,13 @@ export function ClientInvoicesBlock({
     setSendingId(invoice.id)
     try {
       await sendInvoice(invoice.id)
+      if (!firstInvoiceSentRecordedRef.current) {
+        firstInvoiceSentRecordedRef.current = true
+        try {
+          window.localStorage.setItem('hf:ttv:first_invoice_sent', '1')
+        } catch {}
+        void recordTtvStepCompleted({ event: 'ttv_step', action: 'completed', step_key: 'first_invoice_sent' })
+      }
       await load()
     } catch (e: any) {
       alert(e?.response?.data?.detail || e?.message || 'Failed to send')

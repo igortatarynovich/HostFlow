@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Literal, Counter as TCounter
 import json
@@ -516,7 +516,7 @@ async def services_overview(
         )
     ).scalars().all()
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=30)
     trends_cutoff = now - timedelta(days=days)
 

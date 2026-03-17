@@ -1207,7 +1207,13 @@ export default function Pipeline(){
         onDragEnd={canManage ? handleDragEnd : undefined}
       >
         <div className="grid grid-flow-col auto-cols-[280px] gap-3 overflow-x-auto pb-2">
-          {(columnsOrder || []).map(code => (
+          {(columnsOrder || []).map(code => {
+            const stageForFilter = resolveColumnStage(code)
+            const viewInListParams = new URLSearchParams()
+            if (stageForFilter) viewInListParams.set('stage', stageForFilter)
+            if (vacancyId) viewInListParams.set('vacancy_id', vacancyId)
+            const viewInListHref = viewInListParams.toString() ? `/app/candidates?${viewInListParams.toString()}` : '/app/candidates'
+            return (
             <DroppableColumn
               key={code}
               id={code}
@@ -1225,6 +1231,8 @@ export default function Pipeline(){
               })()}
               count={filteredColumns?.[code]?.length || 0}
               total={data?.columns?.[code]?.length || 0}
+              viewInListHref={viewInListHref}
+              viewInListLabel={t('app.candidates.pipeline.view_in_list', { defaultValue: 'In list' })}
               headerRight={canManage ? (
                 (() => {
                   const colItems = (filteredColumns?.[code] || [])
@@ -1321,13 +1329,14 @@ export default function Pipeline(){
                     })}
                     primaryAction={{
                       label: t('app.candidates.pipeline.column_empty_cta_candidates', { defaultValue: 'Open candidates' }),
-                      to: '/app/candidates',
+                      to: viewInListHref,
                     }}
                   />
                 </div>
               )}
             </DroppableColumn>
-          ))}
+          );
+          })}
         </div>
       </DndContext>
         </div>
@@ -1609,8 +1618,8 @@ export default function Pipeline(){
 }
 
 // ----- DnD primitives
-function DroppableColumn({ id, title, subtitle, count, total, children, headerRight }:{
-  id:string; title:React.ReactNode; subtitle?: React.ReactNode; count:number; total?:number; children:React.ReactNode; headerRight?: React.ReactNode
+function DroppableColumn({ id, title, subtitle, count, total, children, headerRight, viewInListHref, viewInListLabel }:{
+  id:string; title:React.ReactNode; subtitle?: React.ReactNode; count:number; total?:number; children:React.ReactNode; headerRight?: React.ReactNode; viewInListHref?: string; viewInListLabel?: string
 }){
   const { setNodeRef, isOver } = useDroppable({ id })
   return (
@@ -1620,11 +1629,18 @@ function DroppableColumn({ id, title, subtitle, count, total, children, headerRi
           <div className="text-sm font-semibold text-slate-800">{title}</div>
           {subtitle}
         </div>
-        <div className="flex items-center gap-2">
-          <div className="text-[11px] text-slate-500">
-            {typeof total === 'number' ? `${count} / ${total}` : count}
+        <div className="flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-2">
+            <div className="text-[11px] text-slate-500">
+              {typeof total === 'number' ? `${count} / ${total}` : count}
+            </div>
+            {headerRight}
           </div>
-          {headerRight}
+          {viewInListHref && viewInListLabel && (
+            <Link to={viewInListHref} className="text-[10px] text-brand-600 hover:underline whitespace-nowrap">
+              {viewInListLabel}
+            </Link>
+          )}
         </div>
       </div>
       <div className="space-y-2 min-h-[36px]">{children}</div>

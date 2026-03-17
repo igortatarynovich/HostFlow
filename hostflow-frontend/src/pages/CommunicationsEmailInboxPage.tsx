@@ -147,6 +147,11 @@ export default function CommunicationsEmailInboxPage() {
   const [composeRecipient, setComposeRecipient] = useState('')
   const [composeSubject, setComposeSubject] = useState('')
   const [composeBody, setComposeBody] = useState('')
+  const [templates, setTemplates] = useState<Array<{ id: string; label: string; body: string }>>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+  const [signatureCandidates, setSignatureCandidates] = useState<string>('')
+  const [signatureClients, setSignatureClients] = useState<string>('')
+  const [applySignature, setApplySignature] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
   const [mobilePane, setMobilePane] = useState<'list' | 'preview'>('list')
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -169,6 +174,16 @@ export default function CommunicationsEmailInboxPage() {
         : []
       setCommandTemplates(templates)
       if (templates.length && !commandId) setCommandId(templates[0].id)
+      const emailCfg = (cfg as any)?.email || {}
+      setSignatureCandidates(String(emailCfg.signatureCandidates || '').trim())
+      setSignatureClients(String(emailCfg.signatureClients || '').trim())
+      const msgTplItems = Array.isArray((cfg as any)?.messageTemplates?.items) ? (cfg as any).messageTemplates.items : []
+      const emailTemplates = msgTplItems
+        .filter((x: any) => x && x.enabled && (x.target === 'email' || x.target === 'both'))
+        .map((x: any) => ({ id: String(x.id || ''), label: String(x.label || ''), body: String(x.body || '') }))
+        .filter((x: any) => x.id && x.label)
+      setTemplates(emailTemplates)
+      if (!selectedTemplateId && emailTemplates.length) setSelectedTemplateId(emailTemplates[0].id)
     } catch (err: any) {
       setErrorText(errorTextFrom(err, 'Failed to load email inbox'))
     } finally {
@@ -186,10 +201,12 @@ export default function CommunicationsEmailInboxPage() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      if (busy || pollBusy) return
       void load(true)
-    }, 15000)
+    }, 30000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [busy, pollBusy])
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
@@ -277,6 +294,26 @@ export default function CommunicationsEmailInboxPage() {
     () => filtered.find((x) => x.id === selectedThreadId) || null,
     [filtered, selectedThreadId],
   )
+
+  const inferredSignature = useMemo(() => {
+    if (!selectedThread) return ''
+    const hasCompany =
+      Boolean((selectedThread as any).linked_company_id) ||
+      String((selectedThread as any).entity_type || '').toLowerCase().includes('company')
+    const raw = hasCompany ? signatureClients : signatureCandidates
+    return String(raw || '').trim()
+  }, [selectedThread, signatureCandidates, signatureClients])
+
+  const appendSignature = useMemo(() => {
+    const sig = inferredSignature
+    return (text: string) => {
+      if (!sig) return text
+      const base = String(text || '')
+      const normalized = base.trimEnd()
+      if (!normalized) return `--\n${sig}`
+      return `${normalized}\n\n--\n${sig}`
+    }
+  }, [inferredSignature])
 
   useEffect(() => {
     if (!selectedThread) return
@@ -449,11 +486,13 @@ export default function CommunicationsEmailInboxPage() {
     setErrorText(null)
     try {
       const subject = composeSubject.trim() || `${mode === 'forward' ? 'Fwd:' : 'Re:'} ${selectedThread.subject || titleOf(selectedThread)}`
+      const baseBody = composeBody.trim()
+      const bodyText = applySignature && inferredSignature ? appendSignature(baseBody) : baseBody
       const msg = await createCommunicationMessage(selectedThread.id, {
         direction: 'outbound',
         message_type: 'email',
         subject,
-        body_text: composeBody.trim(),
+        body_text: bodyText,
         recipient_address: composeRecipient.trim() || undefined,
         delivery_status: 'queued',
       })
@@ -543,23 +582,25 @@ export default function CommunicationsEmailInboxPage() {
         </div>
       )}
 
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.email_title', { defaultValue: 'Email Inbox' })}</h1>
-          <p className="text-sm text-slate-500">Inbox workspace: folders, tags, commands, archive/delete, reply/forward.</p>
+      <header className={clsx('flex flex-wrap items-center justify-between gap-2', isMobile && 'gap-2')}>
+        <div className={clsx('min-w-0', isMobile && 'shrink-0')}>
+          <h1 className={clsx('font-semibold text-slate-900', isMobile ? 'text-lg' : 'text-2xl')}>
+            {t('app.communications.ia.email_title', { defaultValue: 'Email Inbox' })}
+          </h1>
+          {!isMobile && (
+            <p className="text-sm text-slate-500">Inbox workspace: folders, tags, commands, archive/delete, reply/forward.</p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="input"
-            placeholder="Search subject, preview, tags, id..."
-          />
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="btn-secondary"
-          >
+          {!isMobile && (
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="input"
+              placeholder="Search subject, preview, tags, id..."
+            />
+          )}
+          <button type="button" onClick={() => void load()} className="btn-secondary">
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
           <button
@@ -592,6 +633,16 @@ export default function CommunicationsEmailInboxPage() {
           )}
         </div>
       </header>
+      {isMobile && advancedOpen && (
+        <div className="min-w-0">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="w-full input py-2"
+            placeholder="Search subject, preview, tags..."
+          />
+        </div>
+      )}
 
       {(pollNote || lastPollAt) && (
         <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
@@ -867,6 +918,48 @@ export default function CommunicationsEmailInboxPage() {
                   className="input mb-2"
                   placeholder="Subject"
                 />
+                {templates.length > 0 && (
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <select
+                      className="input"
+                      value={selectedTemplateId}
+                      onChange={(e) => setSelectedTemplateId(e.target.value)}
+                    >
+                      {templates.map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-xs"
+                      onClick={() => {
+                        const tpl = templates.find((x) => x.id === selectedTemplateId)
+                        if (!tpl) return
+                        const body = String(tpl.body || '').trim()
+                        if (!body) return
+                        setComposeBody((prev) => {
+                          const base = String(prev || '')
+                          if (!base.trim()) return body
+                          return `${base.trimEnd()}\n\n${body}`
+                        })
+                      }}
+                    >
+                      Insert template
+                    </button>
+                  </div>
+                )}
+                {inferredSignature && (
+                  <label className="mb-2 flex items-center gap-2 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={applySignature}
+                      onChange={(e) => setApplySignature(e.target.checked)}
+                    />
+                    Add signature
+                  </label>
+                )}
                 <textarea
                   rows={6}
                   value={composeBody}

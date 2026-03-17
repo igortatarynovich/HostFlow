@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { listCompanies } from '../api/client'
 import { getBillingSummary, type BillingSummary } from '../api/billing'
+import { getTeamOverview } from '../api/tenants'
 import type { Company } from '../api/types'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { usePermissions } from '../hooks/usePermissions'
 
 function isOperatingCompany(company: Company) {
   const role = String((company.extra as Record<string, any> | undefined)?.company_role || '').trim().toLowerCase()
@@ -21,11 +23,13 @@ function isManagedByUser(company: Company, userId: string) {
 export default function MyCompanyPage() {
   const { t } = useI18n()
   const { me } = useAuth()
+  const { can } = usePermissions()
   const navigate = useNavigate()
   const [companies, setCompanies] = useState<Company[]>([])
   const [billing, setBilling] = useState<BillingSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [userLabelById, setUserLabelById] = useState<Record<string, string>>({})
 
   useEffect(() => {
     let mounted = true
@@ -33,13 +37,23 @@ export default function MyCompanyPage() {
       setLoading(true)
       setError(null)
       try {
-        const [companiesData, billingData] = await Promise.all([
+        const [companiesData, billingData, team] = await Promise.all([
           listCompanies({ limit: 500 }),
           getBillingSummary(),
+          getTeamOverview().catch(() => null),
         ])
         if (!mounted) return
         setCompanies(Array.isArray(companiesData) ? companiesData : [])
         setBilling(billingData)
+        const map: Record<string, string> = {}
+        const members = Array.isArray((team as any)?.members) ? (team as any).members : []
+        members.forEach((member: any) => {
+          const id = String(member?.id || member?.user_id || '').trim()
+          if (!id) return
+          const label = String(member?.full_name || member?.email || id).trim()
+          map[id] = label
+        })
+        setUserLabelById(map)
       } catch (err: any) {
         if (!mounted) return
         setError(err?.response?.data?.detail || err?.message || 'Failed to load company profiles')
@@ -56,6 +70,15 @@ export default function MyCompanyPage() {
     const userId = String((me as any)?.sub || '').trim()
     return companies.filter((company) => isOperatingCompany(company) && isManagedByUser(company, userId))
   }, [companies, me])
+
+  const formatUserLabel = (id?: string | null) => {
+    const key = String(id || '').trim()
+    if (!key) return '-'
+    const meId = String((me as any)?.sub || '').trim()
+    const base = userLabelById[key] || key
+    if (meId && key === meId) return t('app.common.you', { defaultValue: 'You' })
+    return base
+  }
 
   const primaryCompanyId = managedOperatingCompanies[0]?.id || ''
   const effectiveOperatingLimit = billing?.company_slots?.effective_limit ?? billing?.license?.max_companies ?? 0
@@ -216,7 +239,11 @@ export default function MyCompanyPage() {
                 </div>
                 <div>
                   <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.my_company.card.owner', { defaultValue: 'Owner' })}</dt>
-                  <dd className="mt-1 text-slate-900">{String(company.owner_user_id || '-')}</dd>
+                  <dd className="mt-1 text-slate-900">{formatUserLabel(company.owner_user_id)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.my_company.card.manager', { defaultValue: 'Manager' })}</dt>
+                  <dd className="mt-1 text-slate-900">{formatUserLabel(company.manager_user_id)}</dd>
                 </div>
               </dl>
               <div className="flex flex-wrap gap-2 pt-2">
@@ -226,6 +253,11 @@ export default function MyCompanyPage() {
                 <Link className="btn-secondary" to="/app/invoices">
                   {t('app.my_company.open_invoices', { defaultValue: 'Open invoices' })}
                 </Link>
+                {can('admin.companyAcl') ? (
+                  <Link className="btn-secondary" to="/app/settings/company-access">
+                    {t('app.my_company.manage_access', { defaultValue: 'Manage access' })}
+                  </Link>
+                ) : null}
               </div>
             </article>
           ))}

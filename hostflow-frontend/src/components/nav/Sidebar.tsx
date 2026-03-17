@@ -31,13 +31,14 @@ import type { NavItem } from '../../app/routes'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
-import { getTenantModules } from '../../api/tenants'
-import type { TenantModuleSettings } from '../../api/types'
+import { getTeamOverview, getTenantModules } from '../../api/tenants'
+import type { TeamOverviewResponse, TenantModuleSettings } from '../../api/types'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 
 type SidebarProps = {
   items: NavItem[]
   tenant: TenantSummary | null
+  businessType?: 'agency' | 'employer' | 'services'
   open: boolean
   onClose: () => void
   onLogout: () => void
@@ -85,26 +86,46 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   profile: IconUser,
 }
 
-export function Sidebar({ items, tenant, open, onClose, onLogout, pendingHandoffsCount = 0 }: SidebarProps) {
+export function Sidebar({ items, tenant, businessType = 'agency', open, onClose, onLogout, pendingHandoffsCount = 0 }: SidebarProps) {
   const { t } = useI18n()
   const { isClientTenant } = usePermissions()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const [modules, setModules] = useState<TenantModuleSettings | null>(null)
+  const [teamOverview, setTeamOverview] = useState<TeamOverviewResponse | null>(null)
 
   useEffect(() => {
     let mounted = true
     ;(async () => {
       try {
-        const data = await getTenantModules()
-        if (mounted) setModules(data)
+        const [modulesData, teamData] = await Promise.all([getTenantModules(), getTeamOverview().catch(() => null)])
+        if (mounted) {
+          setModules(modulesData)
+          setTeamOverview(teamData)
+        }
       } catch {
-        if (mounted) setModules(null)
+        if (mounted) {
+          setModules(null)
+          setTeamOverview(null)
+        }
       }
     })()
     return () => {
       mounted = false
     }
   }, [])
+
+  const isSoloWorkspace = useMemo(() => {
+    const membersCount = Array.isArray(teamOverview?.members) ? teamOverview!.members.length : null
+    if (typeof membersCount === 'number') return membersCount <= 1
+    const usage = teamOverview?.usage
+    if (!usage) return false
+    const total =
+      Number(usage.recruiter_count || 0) +
+      Number(usage.supervisor_count || 0) +
+      Number(usage.client_manager_count || 0) +
+      Number(usage.viewer_count || 0)
+    return total <= 1
+  }, [teamOverview])
 
   const visibleItems = useMemo(() => {
     const moduleByItemKey: Partial<Record<string, keyof TenantModuleSettings>> = {
@@ -144,6 +165,7 @@ export function Sidebar({ items, tenant, open, onClose, onLogout, pendingHandoff
 
     const moduleFiltered = items.filter((item) => {
       if (item.key === 'communications') return false
+      if (item.key === 'team-availability' && isSoloWorkspace) return false
       if (item.key === 'communications-setup') {
         return canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')
       }
@@ -161,33 +183,31 @@ export function Sidebar({ items, tenant, open, onClose, onLogout, pendingHandoff
     if (!isClientTenant) return moduleFiltered
     const allowed = new Set(['candidates', 'do-procesowania', 'reminders', 'sla-incidents', 'messages-inbox', 'email-inbox'])
     return moduleFiltered.filter((item) => allowed.has(item.key))
-  }, [canUseCommunicationsFeature, isClientTenant, items, modules])
+  }, [canUseCommunicationsFeature, isClientTenant, isSoloWorkspace, items, modules])
 
-  // Основные элементы, которые выносим наверх
+  // Основные элементы, которые выносим наверх (business-type order: services = client-first, employer = vacancy-first, agency = candidate-first)
   const mainItems = useMemo(() => {
     const order = isClientTenant
       ? ['candidates', 'do-procesowania', 'messages-inbox', 'email-inbox', 'sla-incidents', 'reminders']
-      : ['overview', 'candidates', 'clients', 'do-procesowania', 'vacancies', 'messages-inbox', 'email-inbox']
+      : businessType === 'services'
+        ? ['overview', 'clients', 'leads', 'services', 'invoices', 'candidates', 'vacancies', 'messages-inbox', 'email-inbox']
+        : businessType === 'employer'
+          ? ['overview', 'vacancies', 'candidates', 'clients', 'do-procesowania', 'messages-inbox', 'email-inbox']
+          : ['overview', 'candidates', 'clients', 'do-procesowania', 'vacancies', 'messages-inbox', 'email-inbox']
+    const mainKeys = new Set(order)
     const filtered = visibleItems.filter(
       (item) =>
         item.path &&
         (isClientTenant
           ? item.key === 'candidates' || item.key === 'do-procesowania' || item.key === 'messages-inbox' || item.key === 'email-inbox' || item.key === 'sla-incidents' || item.key === 'reminders'
-          : item.key === 'overview' ||
-            item.key === 'candidates' ||
-            item.key === 'clients' ||
-            item.key === 'do-procesowania' ||
-            item.key === 'vacancies' ||
-            item.key === 'messages-inbox' ||
-            item.key === 'email-inbox')
+          : mainKeys.has(item.key))
     )
-    // Сортируем в нужном порядке
     return filtered.sort((a, b) => {
       const indexA = order.indexOf(a.key)
       const indexB = order.indexOf(b.key)
       return indexA - indexB
     })
-  }, [isClientTenant, visibleItems])
+  }, [isClientTenant, businessType, visibleItems])
 
   const sections = useMemo(() => {
     const sectionDefs = isClientTenant

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 from uuid import UUID
 
@@ -17,6 +17,7 @@ from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, MetaLea
 from backend.app.modules.leads import pipeline
 from backend.app.services import events
 from backend.app.services.events import EventAudience
+from backend.app.services import reminder_tasks
 
 
 @dataclass
@@ -145,6 +146,58 @@ async def _load_supervisor_id(
     row = await db.execute(select(User.supervisor_id).where(User.id == recruiter_id))
     value = row.scalar_one_or_none()
     return value if value else None
+
+
+async def _pick_lead_assignee_id(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    preferred_user_id: Optional[str] = None,
+) -> Optional[str]:
+    if preferred_user_id:
+        return preferred_user_id
+    row = await db.execute(
+        select(User.id)
+        .where(
+            User.is_active.is_(True),
+            or_(User.tenant_id == tenant_id, User.tenant_id.is_(None)),
+            User.role.in_(["administrator", "supervisor", "manager", "admin", "owner"]),
+        )
+        .order_by(User.created_at.asc())
+        .limit(1)
+    )
+    return row.scalar_one_or_none()
+
+
+async def _create_lead_followup_reminder(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead: Lead,
+    assignee_id: str,
+    title: str,
+    payload: Dict[str, Any],
+) -> None:
+    try:
+        await reminder_tasks.create_reminder(
+            db,
+            tenant_id=tenant_id,
+            actor_id=assignee_id,
+            payload={
+                "title": title,
+                "type": "custom",
+                "entity_type": "lead",
+                "entity_id": str(lead.id),
+                "assignee_id": assignee_id,
+                "priority": "normal",
+                "channel": "internal",
+                "due_at": datetime.now(timezone.utc) + timedelta(hours=1),
+                "payload": payload,
+            },
+        )
+    except Exception:
+        # best-effort: lead processing must not fail due to reminder creation
+        return
 
 
 class LeadProcessingError(Exception):
@@ -622,6 +675,76 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
+    # --- Services mode semantics: lead = potential client (no candidate creation) ---
+    # For services tenants, vacancy/candidate is not the default conversion path.
+    # We still accept vacancy_id in payload for compatibility, but the outcome is company-centric.
+    if business_type == "services":
+        await crud.update_lead(
+            db,
+            lead,
+            status="processed",
+            candidate_id=None,
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=None,
+        )
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.processed",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+        )
+        if created_new:
+            await _emit_lead_event(
+                db,
+                tenant_id=tenant_id,
+                lead=lead,
+                event_type="lead.new.telegram",
+                roles=[Role.administrator, Role.supervisor],
+                business_type=business_type,
+                outcome_entity_type="company",
+                outcome_entity_id=resolved_company_id,
+                outcome_entity_name=resolved_company_name,
+            )
+        assignee_id = await _pick_lead_assignee_id(
+            db,
+            tenant_id=tenant_id,
+            preferred_user_id=fallback_recruiter_hint,
+        )
+        if assignee_id:
+            await _create_lead_followup_reminder(
+                db,
+                tenant_id=tenant_id,
+                lead=lead,
+                assignee_id=assignee_id,
+                title="New lead — follow up",
+                payload={
+                    "lead_id": lead.id,
+                    "source": lead.source,
+                    "company_id": resolved_company_id,
+                    "business_type": business_type,
+                },
+            )
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=lead.id,
+            status="processed",
+            vacancy_id=lead.vacancy_id,
+            candidate_id=None,
+            recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=None,
+            is_new=created_new,
+        )
+
     if not vacancy:
         await crud.update_lead(
             db,
@@ -746,6 +869,11 @@ async def process_normalized_lead(
         raise
 
     recruiter_id = getattr(candidate, "recruiter_id", None)
+    vacancy_recruiter_id = getattr(vacancy, "recruiter_id", None) if vacancy else None
+    if not recruiter_id and vacancy_recruiter_id:
+        candidate.recruiter_id = vacancy_recruiter_id
+        recruiter_id = vacancy_recruiter_id
+        await db.flush()
     if not recruiter_id:
         fallback_recruiter = await _validate_recruiter_id(db, tenant_id, fallback_recruiter_hint)
         if fallback_recruiter:
@@ -767,6 +895,28 @@ async def process_normalized_lead(
         recipient_ids.append(recruiter_id)
     if supervisor_id:
         recipient_ids.append(supervisor_id)
+    assignee_id = await _pick_lead_assignee_id(
+        db,
+        tenant_id=tenant_id,
+        preferred_user_id=recruiter_id or supervisor_id,
+    )
+    if assignee_id:
+        await _create_lead_followup_reminder(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            assignee_id=assignee_id,
+            title="New lead — follow up",
+            payload={
+                "lead_id": lead.id,
+                "source": lead.source,
+                "candidate_id": str(candidate.id),
+                "recruiter_id": recruiter_id,
+                "vacancy_id": str(vacancy.id) if vacancy else None,
+                "company_id": resolved_company_id,
+                "business_type": business_type,
+            },
+        )
     await _emit_lead_event(
         db,
         tenant_id=tenant_id,
@@ -829,6 +979,9 @@ async def retry_meta_leads(
     limit: Optional[int] = None,
     refresh_graph: bool = True,
 ) -> List[MetaLeadRetryOutcome]:
+    settings_row = await _load_settings(db, tenant_id)
+    min_hours = getattr(settings_row, "reroute_after_hours", None)
+    now_marker = datetime.now(timezone.utc)
     targets = await crud.list_leads_for_retry(
         db,
         tenant_id=tenant_id,
@@ -849,6 +1002,23 @@ async def retry_meta_leads(
     }
 
     for lead in targets:
+        if isinstance(min_hours, int) and min_hours > 0 and lead.last_routed_at:
+            # Rate-limit retries to avoid thrashing integrations.
+            delta = now_marker - (lead.last_routed_at if lead.last_routed_at.tzinfo else lead.last_routed_at.replace(tzinfo=timezone.utc))
+            if delta.total_seconds() < min_hours * 3600:
+                outcomes.append(
+                    MetaLeadRetryOutcome(
+                        lead_id=lead.id,
+                        status_before=lead.status,
+                        status_after=lead.status,
+                        candidate_id=lead.candidate_id,
+                        error_before=lead.error,
+                        error_after=lead.error,
+                        processed=False,
+                        message=f"Retry skipped: reroute_after_hours={min_hours}",
+                    )
+                )
+                continue
         status_before = lead.status
         error_before = lead.error
         payload_raw = lead.payload

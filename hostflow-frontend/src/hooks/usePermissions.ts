@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../store/useAuth'
 import { useTenantInfo } from '../contexts/TenantInfo'
-import { getTenantEffectiveRoleModules } from '../api/tenants'
+import { getTenantEffectiveRoleModules, getTenantModules } from '../api/tenants'
 import type { EffectiveRoleModules, TenantModuleSettings } from '../api/types'
 
 export type Permission =
@@ -139,19 +139,30 @@ export function usePermissions() {
   const { me } = useAuth()
   const tenant = useTenantInfo()
   const [effectiveModules, setEffectiveModules] = useState<EffectiveRoleModules | null>(null)
+  const [tenantModules, setTenantModules] = useState<TenantModuleSettings | null>(null)
 
   useEffect(() => {
     if (!me?.tenant_id || !me?.role) {
       setEffectiveModules(null)
+      setTenantModules(null)
       return
     }
     let mounted = true
     ;(async () => {
       try {
-        const data = await getTenantEffectiveRoleModules()
-        if (mounted) setEffectiveModules(data)
+        const [data, mods] = await Promise.all([
+          getTenantEffectiveRoleModules(),
+          getTenantModules().catch(() => null),
+        ])
+        if (mounted) {
+          setEffectiveModules(data)
+          setTenantModules(mods)
+        }
       } catch {
-        if (mounted) setEffectiveModules(null)
+        if (mounted) {
+          setEffectiveModules(null)
+          setTenantModules(null)
+        }
       }
     })()
     return () => {
@@ -180,13 +191,19 @@ export function usePermissions() {
     const set = new Set<Permission>(list)
 
     const moduleAccess = (moduleKey: keyof TenantModuleSettings) => {
+      // tenant-level module flags: if a module is disabled for the workspace,
+      // it must be treated as not visible regardless of role matrix.
+      const tenantVisible =
+        tenantModules && Object.prototype.hasOwnProperty.call(tenantModules, moduleKey)
+          ? Boolean(tenantModules[moduleKey])
+          : Boolean(MODULE_DEFAULTS[moduleKey])
       const cell = effectiveModules?.modules?.[moduleKey]
       if (!cell) {
-        return { visible: MODULE_DEFAULTS[moduleKey], editable: MODULE_DEFAULTS[moduleKey] }
+        return { visible: tenantVisible, editable: tenantVisible }
       }
       return {
-        visible: Boolean(cell.visible),
-        editable: Boolean(cell.editable),
+        visible: tenantVisible && Boolean(cell.visible),
+        editable: tenantVisible && Boolean(cell.visible) && Boolean(cell.editable),
       }
     }
 
@@ -213,7 +230,7 @@ export function usePermissions() {
       can,
       isClientTenant,
     }
-  }, [me, tenant, effectiveModules])
+  }, [me, tenant, effectiveModules, tenantModules])
 
   return { tenantId, role, permissions, can, isClientTenant }
 }

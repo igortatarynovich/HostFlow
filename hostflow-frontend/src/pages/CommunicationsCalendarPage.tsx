@@ -6,11 +6,13 @@ import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { completeReminder, createReminder, listManagers, listReminders, snoozeReminder } from '../api/client'
 import {
   createCommunicationPlannerEvent,
+  getMyWorkingHours,
   listCommunicationPlannerEvents,
   listCommunicationTimeOffRequests,
   patchCommunicationPlannerEvent,
   type CommunicationPlannerEvent,
   type CommunicationTimeOffRequest,
+  type WorkingHoursSchedule,
 } from '../api/communications'
 import { useI18n } from '../i18n'
 
@@ -246,6 +248,8 @@ export default function CommunicationsCalendarPage() {
   const [batchSelectPriority, setBatchSelectPriority] = useState('')
   const [batchSelectStatus, setBatchSelectStatus] = useState<BatchSelectStatusFilter>('')
   const [weekSlotMinutes, setWeekSlotMinutes] = useState<WeekSlotMinutes>(30)
+  const [workingHours, setWorkingHours] = useState<WorkingHoursSchedule | null>(null)
+  const [allowOutsideHours, setAllowOutsideHours] = useState(false)
 
   const [plannerForm, setPlannerForm] = useState({
     title: '',
@@ -273,7 +277,7 @@ export default function CommunicationsCalendarPage() {
     setLoading(true)
     setErrorText(null)
     try {
-      const [timeOffRes, remRes, plannerRes, mgrs] = await Promise.all([
+      const [timeOffRes, remRes, plannerRes, mgrs, wh] = await Promise.all([
         listCommunicationTimeOffRequests({
           limit: 500,
           status_filter: statusFilter === 'all' ? undefined : [statusFilter],
@@ -281,6 +285,7 @@ export default function CommunicationsCalendarPage() {
         listReminders().catch(() => ({ items: [] })),
         listCommunicationPlannerEvents({ limit: 500 }).catch(() => ({ items: [] })),
         listManagers().catch(() => []),
+        getMyWorkingHours().catch(() => null),
       ])
       const normalizedManagers = (Array.isArray(mgrs) ? mgrs : []).map((m: any) => ({ id: String(m.id), label: String(m.label || m.full_name || m.email || m.id) }))
       setManagers(normalizedManagers)
@@ -289,6 +294,7 @@ export default function CommunicationsCalendarPage() {
       setTimeOffRows(Array.isArray(timeOffRes.items) ? timeOffRes.items : [])
       setReminders(Array.isArray((remRes as any)?.items) ? (remRes as any).items : [])
       setPlannerEvents(Array.isArray(plannerRes?.items) ? plannerRes.items : [])
+      if (wh) setWorkingHours(wh)
     } catch (err: any) {
       setErrorText(errorTextFrom(err, 'Failed to load calendar data'))
     } finally {
@@ -597,6 +603,24 @@ export default function CommunicationsCalendarPage() {
               : plannerForm.repeatMode === 'weekdays'
                 ? addWeekdays(endBase, i)
                 : endBase
+        if (!plannerForm.allDay && workingHours?.days?.length && !allowOutsideHours) {
+          const jsDay = startShifted.getDay()
+          const weekday = (jsDay + 6) % 7
+          const day = workingHours.days.find((x) => x.weekday === weekday)
+          if (day?.enabled && Array.isArray(day.windows) && day.windows.length) {
+            const hhmm = `${String(startShifted.getHours()).padStart(2, '0')}:${String(startShifted.getMinutes()).padStart(2, '0')}`
+            const toMin = (v: string) => {
+              const [h, m] = v.split(':').map((x) => Number(x))
+              return h * 60 + m
+            }
+            const mNow = toMin(hhmm)
+            const inAny = day.windows.some((w) => mNow >= toMin(w.from) && mNow < toMin(w.to))
+            if (!inAny) {
+              skipped += 1
+              continue
+            }
+          }
+        }
         const conflictReason = findSchedulingConflict({
           assigneeId: plannerForm.assigneeId || null,
           startAt: startShifted,
@@ -631,7 +655,7 @@ export default function CommunicationsCalendarPage() {
       await load()
       setErrorText(created > 0 ? null : 'No events created')
       if (skipped > 0) {
-        setInfoText(`Created ${created} event(s). Skipped ${skipped} due to conflicts (time-off or planner overlap).`)
+        setInfoText(`Created ${created} event(s). Skipped ${skipped} due to conflicts or working hours.`)
       } else if (created > 1) {
         setInfoText(`Created ${created} recurring events.`)
       } else {
@@ -642,7 +666,7 @@ export default function CommunicationsCalendarPage() {
     } finally {
       setBusy(false)
     }
-  }, [findSchedulingConflict, load, plannerForm])
+  }, [allowOutsideHours, findSchedulingConflict, load, plannerForm, workingHours])
 
   const createDayReminder = useCallback(async (e: FormEvent) => {
     e.preventDefault()
@@ -1791,6 +1815,10 @@ export default function CommunicationsCalendarPage() {
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" checked={plannerForm.allDay} onChange={(e) => setPlannerForm((p) => ({ ...p, allDay: e.target.checked }))} />
                 All day
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input type="checkbox" checked={allowOutsideHours} onChange={(e) => setAllowOutsideHours(e.target.checked)} />
+                Create outside working hours
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <select value={plannerForm.repeatMode} onChange={(e) => setPlannerForm((p) => ({ ...p, repeatMode: e.target.value as PlannerRepeatMode }))} className="input">

@@ -18,12 +18,8 @@ export const ACTIVATION_PATHS = {
 export const ACTIVATION_ALLOWED_PREFIXES = [
   ACTIVATION_PATHS.onboarding,
   ACTIVATION_PATHS.clients,
-  ACTIVATION_PATHS.candidates,
   ACTIVATION_PATHS.vacancies,
   ACTIVATION_PATHS.leads,
-  ACTIVATION_PATHS.services,
-  ACTIVATION_PATHS.messages,
-  ACTIVATION_PATHS.invoices,
   ACTIVATION_PATHS.reminders,
   ACTIVATION_PATHS.billing,
   ACTIVATION_PATHS.legal,

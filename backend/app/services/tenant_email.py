@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -69,6 +70,9 @@ async def send_email_smtp(
     body: str,
 ) -> None:
     """Send email via tenant SMTP config."""
+    delivery_mode = (os.environ.get("EMAIL_DELIVERY_MODE") or "").strip().lower()
+    if delivery_mode == "mock":
+        return
     password = decrypt_secret(config.smtp_password_encrypted) if config.smtp_password_encrypted else None
     if not config.smtp_host or not config.from_email:
         raise ValueError("SMTP host and from_email are required")

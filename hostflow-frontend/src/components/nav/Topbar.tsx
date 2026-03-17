@@ -414,21 +414,14 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
             className="h-8 w-auto sm:h-9"
             loading="lazy"
           />
-          {isTrialTenant &&
-            (can('admin.users') ? (
-              <button
-                type="button"
-                className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800 transition hover:bg-amber-100"
-                onClick={() => navigate('/app/settings/billing')}
-                title={t('app.topbar.trial_badge_hint', { defaultValue: 'Trial workspace. Open billing to manage plan.' })}
-              >
-                {t('app.topbar.trial_badge', { defaultValue: 'Trial' })}
-              </button>
-            ) : (
-              <span className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
-                {t('app.topbar.trial_badge', { defaultValue: 'Trial' })}
-              </span>
-            ))}
+          {isTrialTenant ? (
+            <span
+              className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800"
+              title={t('app.topbar.trial_badge_hint', { defaultValue: 'Trial workspace. Manage plan in Settings → Billing.' })}
+            >
+              {t('app.topbar.trial_badge', { defaultValue: 'Trial' })}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">

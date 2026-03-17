@@ -7,7 +7,7 @@ from httpx import ASGITransport, AsyncClient
 from backend.app.main import app
 
 BASE_URL = "http://testserver"
-TENANT_ID = "00000000-0000-0000-0000-000000000001"
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
 
 ADMIN_EMAIL = "biuro@work-host.com"
 ADMIN_PASS = "Host123!"
@@ -167,7 +167,7 @@ async def test_additional_services_end_to_end():
                         "document_type": "medical",
                         "status": "approved",
                         "issued_at": "2025-01-11",
-                        "expires_at": "2026-01-11",
+                            "expires_at": "2027-01-11",
                         "extra": {"provider": "Medicover"},
                     },
                     "attachments": [

@@ -34,6 +34,7 @@ import {
 } from '../utils/communicationsOpsMode'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 
 const LS_KEY = 'hf:messages-chat:v1'
 const QUICK_EMOJIS = ['👍', '✅', '📞', '📄', '🙏']
@@ -1260,17 +1261,18 @@ export default function CommunicationsMessagesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-2">
+    <div className={clsx('flex flex-col', isMobile ? 'gap-2' : 'space-y-4')}>
+      <WorkspaceTopNav active="messages" />
+      <header className={clsx('flex flex-nowrap items-center gap-2', isMobile && 'min-h-0 shrink-0')}>
         <div className="min-w-0 flex-1">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="w-full input"
+            className="w-full input py-2"
             placeholder={t('app.communications_messages.search.placeholder')}
           />
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {!isMobile && (
             <button
               type="button"
@@ -1318,9 +1320,9 @@ export default function CommunicationsMessagesPage() {
         </div>
       )}
 
-      <div className="grid gap-4 xl:grid-cols-[340px_minmax(600px,1fr)]">
-        <section className={clsx('rounded-lg border border-slate-200 bg-white', isMobile && mobilePane === 'chat' && 'hidden')}>
-          <div className="border-b border-slate-100 px-4 py-3">
+      <div className={clsx('grid gap-4 xl:grid-cols-[340px_minmax(600px,1fr)]', isMobile && 'min-h-0 flex-1')}>
+        <section className={clsx('rounded-lg border border-slate-200 bg-white flex flex-col', isMobile && mobilePane === 'chat' && 'hidden', isMobile && 'min-h-[55vh]')}>
+          <div className="border-b border-slate-100 px-4 py-3 shrink-0">
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-semibold text-slate-900">{t('app.communications_messages.dialogs.title')}</div>
               {isMobile && (
@@ -1380,7 +1382,7 @@ export default function CommunicationsMessagesPage() {
             </div>
           )}
           {!loading && filtered.length > 0 && (
-            <div className="max-h-[70vh] divide-y divide-slate-100 overflow-auto">
+            <div className={clsx('divide-y divide-slate-100 overflow-auto', isMobile ? 'min-h-0 flex-1' : 'max-h-[70vh]')}>
               {filtered.map((th) => (
                 <div
                   key={th.id}
