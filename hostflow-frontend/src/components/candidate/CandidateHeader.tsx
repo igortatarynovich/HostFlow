@@ -35,6 +35,7 @@ interface CandidateHeaderProps {
   onFavoriteToggle?: () => void
   candidateProfile?: import('../../api/candidate_profiles').CandidateProfile | null
   profileLoading?: boolean
+  stageSinceAt?: string | null
 }
 
 function CandidateHeader({
@@ -60,8 +61,17 @@ function CandidateHeader({
   onFavoriteToggle,
   candidateProfile,
   profileLoading,
+  stageSinceAt = null,
 }: CandidateHeaderProps) {
   const { t } = useI18n()
+
+  const stageDays = (() => {
+    if (!stageSinceAt) return null
+    const ts = Date.parse(stageSinceAt)
+    if (!ts || Number.isNaN(ts)) return null
+    const days = Math.max(0, Math.floor((Date.now() - ts) / (24 * 60 * 60 * 1000)))
+    return days
+  })()
 
   const candidateTitle = candidate
     ? isMasked
@@ -99,6 +109,14 @@ function CandidateHeader({
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-semibold leading-tight">{candidateTitle}</h1>
               {candidate && <StageTag code={candidate.stage || 'new'} />}
+              {candidate && stageDays !== null && (
+                <span
+                  className="text-[11px] rounded-md border border-white/30 px-2 py-0.5 text-white/90"
+                  title={stageSinceAt || undefined}
+                >
+                  {t('app.candidate_card.labels.stage_days', { defaultValue: '{days}d in stage', values: { days: String(stageDays) } })}
+                </span>
+              )}
               {candidate?.short_id && (
                 <span className="text-[11px] rounded-md border border-white/30 px-2 py-0.5">
                   {t('app.candidate_card.labels.short_id_badge', { values: { id: candidate.short_id } })}

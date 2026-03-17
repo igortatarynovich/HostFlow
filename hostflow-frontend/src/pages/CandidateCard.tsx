@@ -752,6 +752,7 @@ export default function CandidateCard(){
   }
   const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
   const [historyInfo, setHistoryInfo] = useState<string | null>(null)
+  const [stageSinceAt, setStageSinceAt] = useState<string | null>(null)
   const [employmentRows, setEmploymentRows] = useState<EmploymentRow[]>([])
   const [employmentBaseline, setEmploymentBaseline] = useState<Record<string, EmploymentSnapshot>>({})
   const [employmentLoading, setEmploymentLoading] = useState(false)
@@ -1558,6 +1559,17 @@ export default function CandidateCard(){
     }
   }, [t, unknownErrorLabel])
 
+  const loadStageHistoryQuiet = useCallback(async (candidateId: string) => {
+    try {
+      const { data } = await api.get(`/candidates/${candidateId}/stage-history`)
+      const entries = Array.isArray(data) ? data : []
+      const last = entries.length ? entries[entries.length - 1] : null
+      setStageSinceAt(last?.at ? String(last.at) : null)
+    } catch {
+      setStageSinceAt(null)
+    }
+  }, [])
+
   const openHistoryModal = useCallback(() => {
     if (!model?.id) return
     setHistoryOpen(true)
@@ -2349,6 +2361,16 @@ export default function CandidateCard(){
     if (isMasked && tab === 'docs') setTab('personal')
   }, [isMasked, tab])
 
+  // Pipedrive-style indicator: show how long candidate is in current stage.
+  // Best-effort: uses stage history and loads quietly (does not block UI).
+  useEffect(() => {
+    if (!model?.id) {
+      setStageSinceAt(null)
+      return
+    }
+    void loadStageHistoryQuiet(String(model.id))
+  }, [loadStageHistoryQuiet, model?.id, model?.stage])
+
   if (loading || !model) {
     return <div className="h-full w-full text-slate-500">{t('common.loading')}</div>
   }
@@ -2378,6 +2400,7 @@ export default function CandidateCard(){
         onFavoriteToggle={handleFavoriteToggle}
         candidateProfile={candidateProfile}
         profileLoading={profileLoading}
+        stageSinceAt={stageSinceAt}
       />
 
       {/* Tabs */}
