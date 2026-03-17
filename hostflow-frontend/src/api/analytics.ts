@@ -46,6 +46,27 @@ export type OpsCounters = {
   automation_events_24h: number
 }
 
+export type StageTimeItem = {
+  stage: string
+  count: number
+  avg_days: number
+  p50_days: number
+  p90_days: number
+}
+
+export type StageTransitionItem = {
+  from_stage: string | null
+  to_stage: string
+  count: number
+}
+
+export type StageMetricsResponse = {
+  generated_at: string
+  stage_time: StageTimeItem[]
+  transitions: StageTransitionItem[]
+  readiness: Record<string, number>
+}
+
 export type ServicesAnalyticsOverview = {
   generated_at: string
   totals: {
@@ -182,6 +203,11 @@ export async function getAnalyticsProfileSummary(): Promise<AnalyticsProfileSumm
 
 export async function getOpsCounters(): Promise<OpsCounters> {
   const { data } = await api.get<OpsCounters>('/analytics/ops-counters')
+  return data
+}
+
+export async function getStageMetrics(params?: { from?: string; to?: string; limit_transitions?: number }): Promise<StageMetricsResponse> {
+  const { data } = await api.get<StageMetricsResponse>('/analytics/stage-metrics', { params })
   return data
 }
 

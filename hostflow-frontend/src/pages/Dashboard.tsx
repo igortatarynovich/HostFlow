@@ -15,8 +15,10 @@ import {
   getContactAttemptStats,
   getDocumentStats,
   getOpsCounters,
+  getStageMetrics,
   recordTrialRetentionEvent,
   type OpsCounters,
+  type StageMetricsResponse,
   type TrialRetentionReport,
 } from '../api/analytics'
 import { listTenantManagers } from '../api/users'
@@ -332,6 +334,8 @@ export default function Dashboard() {
 
   const [opsCounters, setOpsCounters] = useState<OpsCounters | null>(null)
   const [opsCountersLoading, setOpsCountersLoading] = useState(false)
+  const [stageMetrics, setStageMetrics] = useState<StageMetricsResponse | null>(null)
+  const [stageMetricsLoading, setStageMetricsLoading] = useState(false)
 
   const loadOpsCounters = useCallback(async () => {
     setOpsCountersLoading(true)
@@ -348,6 +352,22 @@ export default function Dashboard() {
   useEffect(() => {
     void loadOpsCounters()
   }, [loadOpsCounters])
+
+  const loadStageMetrics = useCallback(async () => {
+    setStageMetricsLoading(true)
+    try {
+      const data = await getStageMetrics({ limit_transitions: 12 })
+      setStageMetrics(data)
+    } catch {
+      setStageMetrics(null)
+    } finally {
+      setStageMetricsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadStageMetrics()
+  }, [loadStageMetrics])
 
   const [globalCounts, setGlobalCounts] = useState({ candidates: 0, companies: 0, vacancies: 0 })
   const [periodTotal, setPeriodTotal] = useState(0)
@@ -1665,6 +1685,69 @@ export default function Dashboard() {
               <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
             </Link>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                {t('app.dashboard.stage_metrics.title', { defaultValue: 'Stage metrics' })}
+              </div>
+              <div className="mt-0.5 text-xs text-slate-500">
+                {t('app.dashboard.stage_metrics.subtitle', { defaultValue: 'Stage time, top transitions, readiness distribution.' })}
+              </div>
+            </div>
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void loadStageMetrics()} disabled={stageMetricsLoading}>
+              {stageMetricsLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          </div>
+
+          {!stageMetrics ? (
+            <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.stage_metrics.empty', { defaultValue: 'No data yet.' })}</div>
+          ) : (
+            <div className="mt-3 grid gap-3 lg:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.readiness', { defaultValue: 'Readiness' })}</div>
+                <div className="mt-2 space-y-1 text-sm">
+                  {Object.entries(stageMetrics.readiness || {})
+                    .sort((a, b) => (b[1] || 0) - (a[1] || 0))
+                    .slice(0, 8)
+                    .map(([k, v]) => (
+                      <div key={k} className="flex justify-between">
+                        <span className="text-slate-600">{k}</span>
+                        <span className="font-semibold text-slate-900">{String(v)}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.stage_time', { defaultValue: 'Top stages by avg days' })}</div>
+                <div className="mt-2 space-y-1 text-sm">
+                  {(stageMetrics.stage_time || []).slice(0, 8).map((s) => (
+                    <div key={s.stage} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-slate-600" title={s.stage}>{s.stage}</span>
+                      <span className="shrink-0 font-semibold text-slate-900">{s.avg_days}d</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.transitions', { defaultValue: 'Top transitions' })}</div>
+                <div className="mt-2 space-y-1 text-sm">
+                  {(stageMetrics.transitions || []).slice(0, 10).map((tr, idx) => (
+                    <div key={`${tr.from_stage || 'none'}-${tr.to_stage}-${idx}`} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-slate-600" title={`${tr.from_stage || '—'} → ${tr.to_stage}`}>
+                        {(tr.from_stage || '—') + ' → ' + tr.to_stage}
+                      </span>
+                      <span className="shrink-0 font-semibold text-slate-900">{tr.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         {retentionNudge && (
           <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">

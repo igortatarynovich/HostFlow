@@ -22,6 +22,7 @@ from backend.app.models import (
     ActivityLog,
     Candidate,
     CandidateHandoff,
+    CandidateStageHistory,
     Company,
     ContactAttempt,
     Document,
@@ -174,6 +175,169 @@ async def ops_counters(
         draft_intake_stale=int(draft_intake_stale),
         automation_rules_enabled=int(automation_rules_enabled),
         automation_events_24h=int(automation_events_24h),
+    )
+
+
+class StageTimeItemOut(BaseModel):
+    stage: str
+    count: int
+    avg_days: float
+    p50_days: float
+    p90_days: float
+
+
+class StageTransitionOut(BaseModel):
+    from_stage: Optional[str] = None
+    to_stage: str
+    count: int
+
+
+class StageMetricsOut(BaseModel):
+    generated_at: datetime
+    stage_time: List[StageTimeItemOut]
+    transitions: List[StageTransitionOut]
+    readiness: Dict[str, int]
+
+
+def _safe_docs_progress(docs_progress: Any) -> Dict[str, Any]:
+    if isinstance(docs_progress, dict):
+        return docs_progress
+    if isinstance(docs_progress, str):
+        try:
+            parsed = json.loads(docs_progress)
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+
+def _readiness_key_from_docs_progress(progress: Dict[str, Any]) -> str:
+    # Mirror frontend deriveDocsMeta() fallback order (minimal subset).
+    raw = (
+        str(progress.get("readiness_state") or progress.get("readinessState") or progress.get("state") or "")
+        .strip()
+        .lower()
+    )
+    if raw:
+        return raw
+    total = int(progress.get("total") or progress.get("count") or 0) if str(progress.get("total") or progress.get("count") or "0").isdigit() else 0
+    ready = int(progress.get("ready") or progress.get("verified") or progress.get("approved") or 0) if str(progress.get("ready") or progress.get("verified") or progress.get("approved") or "0").isdigit() else 0
+    problem = int(progress.get("problem") or progress.get("invalid") or progress.get("expired") or progress.get("overdue") or 0) if str(progress.get("problem") or progress.get("invalid") or progress.get("expired") or progress.get("overdue") or "0").isdigit() else 0
+    in_progress = int(progress.get("in_progress") or progress.get("submitted") or progress.get("pending_validation") or 0) if str(progress.get("in_progress") or progress.get("submitted") or progress.get("pending_validation") or "0").isdigit() else 0
+    ordered = int(progress.get("ordered") or progress.get("requested") or progress.get("pending") or progress.get("ordered_count") or 0) if str(progress.get("ordered") or progress.get("requested") or progress.get("pending") or progress.get("ordered_count") or "0").isdigit() else 0
+    with_files = int(progress.get("with_files") or progress.get("uploaded") or progress.get("files") or progress.get("files_count") or 0) if str(progress.get("with_files") or progress.get("uploaded") or progress.get("files") or progress.get("files_count") or "0").isdigit() else 0
+    if problem > 0:
+        return "problem"
+    if ready > 0 and (total == 0 or ready >= total):
+        return "ready"
+    if in_progress > 0:
+        return "in_progress"
+    if ordered > 0:
+        return "ordered"
+    if with_files > 0:
+        return "awaiting_review"
+    if total > 0:
+        return "pending"
+    return "pending"
+
+
+def _percentile(sorted_values: List[float], p: float) -> float:
+    if not sorted_values:
+        return 0.0
+    if p <= 0:
+        return float(sorted_values[0])
+    if p >= 1:
+        return float(sorted_values[-1])
+    idx = int(round((len(sorted_values) - 1) * p))
+    idx = max(0, min(len(sorted_values) - 1, idx))
+    return float(sorted_values[idx])
+
+
+@router.get("/analytics/stage-metrics", response_model=StageMetricsOut)
+async def stage_metrics(
+    date_from: Optional[str] = Query(None, alias="from"),
+    date_to: Optional[str] = Query(None, alias="to"),
+    limit_transitions: int = Query(30, ge=5, le=200),
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+):
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    now = datetime.now(timezone.utc)
+
+    dfrom = _parse_dt(date_from)
+    dto = _parse_dt(date_to, end_of_day=True)
+
+    # Stage entered_at per candidate for current stage: last history record to_code == candidate.stage.
+    stage_entered_rows = await db.execute(
+        select(CandidateStageHistory.candidate_id, func.max(CandidateStageHistory.at))
+        .where(CandidateStageHistory.tenant_id == tenant_id_str)
+        .group_by(CandidateStageHistory.candidate_id)
+    )
+    # Note: history is stored for every stage change; for "current stage since", we need last entry,
+    # and it should correspond to current stage. We'll validate against candidate.stage below.
+    last_stage_at_map = {cid: at for cid, at in stage_entered_rows.all() if cid and at}
+
+    cand_rows = await db.execute(
+        select(Candidate.id, Candidate.stage, Candidate.docs_progress, Candidate.created_at)
+        .where(Candidate.tenant_id == tenant_id_str, Candidate.deleted_at.is_(None))
+    )
+    by_stage_days: Dict[str, List[float]] = defaultdict(list)
+    readiness_counts: Dict[str, int] = defaultdict(int)
+
+    for cid, stage, docs_progress, created_at in cand_rows.all():
+        stage_code = str(stage or "unknown")
+        entered_at = last_stage_at_map.get(str(cid)) or created_at
+        if entered_at is None:
+            continue
+        # stage history uses tz-aware at; created_at might be naive
+        if isinstance(entered_at, datetime) and entered_at.tzinfo is None:
+            entered_at = entered_at.replace(tzinfo=timezone.utc)
+        days = max(0.0, (now - entered_at).total_seconds() / 86400.0)
+        by_stage_days[stage_code].append(days)
+
+        progress = _safe_docs_progress(docs_progress)
+        key = _readiness_key_from_docs_progress(progress)
+        readiness_counts[key] += 1
+
+    stage_time_items: List[StageTimeItemOut] = []
+    for stage_code, vals in by_stage_days.items():
+        vals_sorted = sorted(vals)
+        avg = float(sum(vals_sorted) / max(1, len(vals_sorted)))
+        stage_time_items.append(
+            StageTimeItemOut(
+                stage=stage_code,
+                count=len(vals_sorted),
+                avg_days=round(avg, 2),
+                p50_days=round(_percentile(vals_sorted, 0.5), 2),
+                p90_days=round(_percentile(vals_sorted, 0.9), 2),
+            )
+        )
+    stage_time_items.sort(key=lambda x: (-x.avg_days, -x.count, x.stage))
+
+    # Transitions over period (from/to within date range)
+    trans_stmt = (
+        select(CandidateStageHistory.from_code, CandidateStageHistory.to_code, func.count())
+        .where(CandidateStageHistory.tenant_id == tenant_id_str)
+    )
+    if dfrom:
+        trans_stmt = trans_stmt.where(CandidateStageHistory.at >= dfrom)
+    if dto:
+        trans_stmt = trans_stmt.where(CandidateStageHistory.at <= dto)
+    trans_stmt = trans_stmt.group_by(CandidateStageHistory.from_code, CandidateStageHistory.to_code)
+    trans_rows = await db.execute(trans_stmt)
+    transitions = [
+        StageTransitionOut(from_stage=fs, to_stage=ts, count=int(cnt or 0))
+        for fs, ts, cnt in trans_rows.all()
+        if ts
+    ]
+    transitions.sort(key=lambda x: x.count, reverse=True)
+    transitions = transitions[:limit_transitions]
+
+    return StageMetricsOut(
+        generated_at=now,
+        stage_time=stage_time_items[:50],
+        transitions=transitions,
+        readiness={k: int(v) for k, v in readiness_counts.items()},
     )
 
 
