@@ -53,6 +53,7 @@ import AgencyClientsPage from '../pages/AgencyClientsPage'
 import ClientLinkDetailPage from '../pages/ClientLinkDetailPage'
 import LegalDocumentsPage from '../pages/admin/LegalDocumentsPage'
 import DoProcesowaniaPage from '../pages/DoProcesowaniaPage'
+import AutomationLogPage from '../pages/AutomationLogPage'
 
 export type NavGroup = 'overview' | 'people' | 'workflows' | 'leads' | 'admin' | 'account'
 
@@ -230,6 +231,13 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/app/leads',
     group: 'leads',
     permission: 'leads.view',
+  },
+  {
+    key: 'automation-log',
+    labelKey: 'app.nav.items.automation_log',
+    path: '/app/automation-log',
+    group: 'workflows',
+    permission: 'notifications.view',
   },
   {
     key: 'settings',
@@ -411,6 +419,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'communications-thread', path: 'communications/threads/:threadId', Component: withCommAnyFeature(CommunicationsThreadPage, ['messages', 'email']), permission: 'notifications.view' },
   { key: 'reminders', path: 'reminders', Component: RemindersPage, permission: 'notifications.view' },
   { key: 'leads', path: 'leads', Component: LeadsPage, permission: 'leads.view' },
+  { key: 'automation-log', path: 'automation-log', Component: AutomationLogPage, permission: 'notifications.view' },
   { key: 'pipeline', path: 'pipeline', Component: PipelineRedirect, permission: 'candidates.pipeline' },
   { key: 'settings', path: 'settings', Component: SettingsLandingPage, permission: 'settings.view' },
   { key: 'settings-users', path: 'settings/users', Component: UsersPage, permission: ['admin.users', 'users.manage', 'users.view'] },

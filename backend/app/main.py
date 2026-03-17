@@ -55,6 +55,7 @@ try:
     from backend.app.api.v1 import candidates_delete as candidate_delete_router
     from backend.app.api.v1 import catalogs as catalogs_router
     from backend.app.api.v1 import reminders_v2 as reminders_v2_router
+    from backend.app.api.v1 import automation_log as automation_log_router
     from backend.app.api.v1 import services as additional_services_router
     try:
         from backend.app.api.v1 import scanner as scanner_router
@@ -674,6 +675,7 @@ app.include_router(general_users_router.router)
 app.include_router(catalogs_router.router, prefix="/api/v1", tags=["catalogs"])
 app.include_router(additional_services_router.router, prefix="/api/v1", tags=["additional-services"])
 app.include_router(reminders_v2_router.router, prefix="/api/v1", tags=["reminders"])
+app.include_router(automation_log_router.router, prefix="/api/v1", tags=["automation-log"])
 
 app.include_router(stages_router, prefix="/api/v1", tags=["stages"])
 app.include_router(tenants_router, prefix="/api/v1", tags=["tenants"])

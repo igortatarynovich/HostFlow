@@ -143,6 +143,21 @@ async def create_reminder(
         event_type="created",
         payload={"actor_id": actor_id},
     )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action="automation.reminder_created",
+        target_type=reminder.entity_type,
+        target_id=reminder.entity_id,
+        payload={
+            "reminder_id": reminder.id,
+            "type": reminder.type,
+            "status": reminder.status,
+            "due_at": reminder.due_at.isoformat() if reminder.due_at else None,
+            "remind_at": reminder.remind_at.isoformat() if reminder.remind_at else None,
+        },
+    )
     await _log_invoice_reminder_activity(
         db,
         tenant_id=tenant_id,
@@ -242,6 +257,15 @@ async def update_reminder(
         event_type="updated",
         payload={"actor_id": actor_id},
     )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action="automation.reminder_updated",
+        target_type=reminder.entity_type,
+        target_id=reminder.entity_id,
+        payload={"reminder_id": reminder.id},
+    )
     return reminder
 
 
@@ -273,6 +297,15 @@ async def snooze_reminder(
         tenant_id=tenant_id,
         event_type="snoozed",
         payload={"actor_id": actor_id, "remind_at": reminder.remind_at.isoformat()},
+    )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action="automation.reminder_snoozed",
+        target_type=reminder.entity_type,
+        target_id=reminder.entity_id,
+        payload={"reminder_id": reminder.id, "remind_at": reminder.remind_at.isoformat() if reminder.remind_at else None},
     )
     return reminder
 
@@ -355,6 +388,15 @@ async def complete_reminder(
         tenant_id=tenant_id,
         event_type="completed",
         payload={"actor_id": actor_id, "completed_at": ts.isoformat()},
+    )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action="automation.reminder_completed",
+        target_type=reminder.entity_type,
+        target_id=reminder.entity_id,
+        payload={"reminder_id": reminder.id, "completed_at": ts.isoformat()},
     )
     await _log_invoice_reminder_activity(
         db,
