@@ -14,7 +14,9 @@ import {
   getHandoffStats,
   getContactAttemptStats,
   getDocumentStats,
+  getOpsCounters,
   recordTrialRetentionEvent,
+  type OpsCounters,
   type TrialRetentionReport,
 } from '../api/analytics'
 import { listTenantManagers } from '../api/users'
@@ -327,6 +329,25 @@ export default function Dashboard() {
 
   const [loading, setLoading] = useState(true)
   const [errText, setErrText] = useState<string | null>(null)
+
+  const [opsCounters, setOpsCounters] = useState<OpsCounters | null>(null)
+  const [opsCountersLoading, setOpsCountersLoading] = useState(false)
+
+  const loadOpsCounters = useCallback(async () => {
+    setOpsCountersLoading(true)
+    try {
+      const data = await getOpsCounters()
+      setOpsCounters(data)
+    } catch {
+      setOpsCounters(null)
+    } finally {
+      setOpsCountersLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadOpsCounters()
+  }, [loadOpsCounters])
 
   const [globalCounts, setGlobalCounts] = useState({ candidates: 0, companies: 0, vacancies: 0 })
   const [periodTotal, setPeriodTotal] = useState(0)
@@ -1586,6 +1607,65 @@ export default function Dashboard() {
     <section className="h-full min-h-0 w-full flex flex-col">
       <div className="flex-1 min-h-0 overflow-auto px-6 py-4 space-y-4">
         {tenantId && retentionStatus?.onboarding_required === true && <OnboardingWizard tenantId={tenantId} />}
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                {t('app.dashboard.ops.title', { defaultValue: 'Operational widgets' })}
+              </div>
+              <div className="mt-0.5 text-xs text-slate-500">
+                {t('app.dashboard.ops.subtitle', { defaultValue: 'Fast drill-down views for daily work.' })}
+              </div>
+            </div>
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void loadOpsCounters()} disabled={opsCountersLoading}>
+              {opsCountersLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          </div>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Link to="/app/candidates/no-next-action" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.no_next_action', { defaultValue: 'No next action' })}</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.no_next_action_candidates ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+            </Link>
+
+            <Link to="/app/reminders" className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50">
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.overdue_reminders', { defaultValue: 'Overdue reminders' })}</div>
+              <div className="mt-1 text-2xl font-semibold text-rose-700">{opsCounters?.overdue_reminders ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+            </Link>
+
+            <Link to="/app/leads?status=needs_routing" className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50">
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.leads_needs_routing', { defaultValue: 'Leads need routing' })}</div>
+              <div className="mt-1 text-2xl font-semibold text-amber-700">{opsCounters?.leads_needs_routing ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+            </Link>
+
+            <Link to="/app/leads?status=failed" className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50">
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.leads_failed', { defaultValue: 'Leads failed' })}</div>
+              <div className="mt-1 text-2xl font-semibold text-rose-700">{opsCounters?.leads_failed ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+            </Link>
+
+            <Link to="/app/candidates?debug=1" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.draft_intake', { defaultValue: 'Draft intake stale (24h+)' })}</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.draft_intake_stale ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.note', { defaultValue: 'Operational signal' })}</div>
+            </Link>
+
+            <Link to="/app/automation-rules" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.automation_rules', { defaultValue: 'Automation rules enabled' })}</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.automation_rules_enabled ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+            </Link>
+
+            <Link to="/app/automation-log" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.automation_24h', { defaultValue: 'Automation events (24h)' })}</div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.automation_events_24h ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+            </Link>
+          </div>
+        </div>
         {retentionNudge && (
           <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">

@@ -341,7 +341,7 @@ This roadmap is sequenced to maximize adoption impact and minimize architecture 
 
 ### R3
 
-- [ ] **R3.1 Dashboard operational widget set (8–10) + drill-down**
+- [x] **R3.1 Dashboard operational widget set (8–10) + drill-down** (added ops counters API + Operational widgets block on Overview with drilldowns)
 - [ ] **R3.2 Stage time + conversion + readiness analytics**
 
 ### R4

@@ -36,6 +36,16 @@ export type AnalyticsProfileSummary = {
   }
 }
 
+export type OpsCounters = {
+  no_next_action_candidates: number
+  overdue_reminders: number
+  leads_needs_routing: number
+  leads_failed: number
+  draft_intake_stale: number
+  automation_rules_enabled: number
+  automation_events_24h: number
+}
+
 export type ServicesAnalyticsOverview = {
   generated_at: string
   totals: {
@@ -167,6 +177,11 @@ export async function getDocumentStats(params?: {
 
 export async function getAnalyticsProfileSummary(): Promise<AnalyticsProfileSummary> {
   const { data } = await api.get<AnalyticsProfileSummary>('/analytics/profile-summary')
+  return data
+}
+
+export async function getOpsCounters(): Promise<OpsCounters> {
+  const { data } = await api.get<OpsCounters>('/analytics/ops-counters')
   return data
 }
 

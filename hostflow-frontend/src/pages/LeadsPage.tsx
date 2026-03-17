@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { IconFilter, IconRefresh, IconTable } from '@tabler/icons-react'
 
 import {
@@ -41,6 +41,7 @@ export default function LeadsPage() {
   const { t, locale } = useI18n()
   const { notify } = useToast()
   const { entitySingular, openEntityLabel } = useBusinessTerminology()
+  const location = useLocation()
   const [status, setStatus] = useState<'' | LeadStatus>('')
   const [stage, setStage] = useState<'' | LeadStage>('')
   const [page, setPage] = useState(1)
@@ -63,6 +64,22 @@ export default function LeadsPage() {
 
   const limit = 20
   const offset = (page - 1) * limit
+
+  // Drill-down support: /app/leads?status=needs_routing&stage=qualified
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search || '')
+    const nextStatus = (sp.get('status') || '').trim()
+    const nextStage = (sp.get('stage') || '').trim()
+    if (nextStatus && (STATUS_FILTERS as string[]).includes(nextStatus) && nextStatus !== status) {
+      setStatus(nextStatus as any)
+      setPage(1)
+    }
+    if (nextStage && (STAGE_FILTERS as string[]).includes(nextStage) && nextStage !== stage) {
+      setStage(nextStage as any)
+      setPage(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search])
 
   const loadLeads = useCallback(
     async (nextOffset: number = offset) => {

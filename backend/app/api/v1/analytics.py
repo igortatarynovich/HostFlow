@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select, or_, and_, text
+from sqlalchemy import exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, selectinload
 from uuid import UUID
@@ -25,11 +26,13 @@ from backend.app.models import (
     ContactAttempt,
     Document,
     Lead,
+    Reminder,
     ServiceOrder,
     Tenant,
     User,
     Vacancy,
 )
+from backend.app.models.reminder import ReminderStatus
 from backend.app.models.additional_service import Service, ServiceItem
 from backend.app.models.tenant import TenantLink
 from backend.app.services.handoff import is_client_tenant_for_list
@@ -47,6 +50,131 @@ from backend.app.api.v1.candidates import repo as candidates_repo
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause as repo_scope_clause
 
 router = APIRouter(tags=["analytics"])
+
+
+class OpsCountersOut(BaseModel):
+    no_next_action_candidates: int = 0
+    overdue_reminders: int = 0
+    leads_needs_routing: int = 0
+    leads_failed: int = 0
+    draft_intake_stale: int = 0
+    automation_rules_enabled: int = 0
+    automation_events_24h: int = 0
+
+
+@router.get("/analytics/ops-counters", response_model=OpsCountersOut)
+async def ops_counters(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+):
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+
+    # Candidate "no next action" = no active reminder for candidate assigned to current user.
+    assignee = str(ctx.sub)
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+    reminder_exists = (
+        exists()
+        .where(
+            Reminder.tenant_id == tenant_id_str,
+            Reminder.entity_type == "candidate",
+            Reminder.entity_id == Candidate.id,
+            Reminder.assignee_id == assignee,
+            Reminder.status.in_(active_statuses),
+        )
+        .correlate(Candidate)
+    )
+    no_next_action_candidates = (
+        await db.execute(
+            select(func.count())
+            .select_from(Candidate)
+            .where(
+                Candidate.deleted_at.is_(None),
+                Candidate.tenant_id == tenant_id_str,
+                ~reminder_exists,
+            )
+        )
+    ).scalar_one() or 0
+
+    overdue_reminders = (
+        await db.execute(
+            select(func.count())
+            .select_from(Reminder)
+            .where(
+                Reminder.tenant_id == tenant_id_str,
+                Reminder.assignee_id == assignee,
+                Reminder.status == ReminderStatus.overdue,
+            )
+        )
+    ).scalar_one() or 0
+
+    leads_needs_routing = (
+        await db.execute(
+            select(func.count())
+            .select_from(Lead)
+            .where(Lead.tenant_id == tenant_id_str, Lead.status == "needs_routing")
+        )
+    ).scalar_one() or 0
+
+    leads_failed = (
+        await db.execute(
+            select(func.count())
+            .select_from(Lead)
+            .where(Lead.tenant_id == tenant_id_str, Lead.status == "failed")
+        )
+    ).scalar_one() or 0
+
+    # Draft intake stale (24h+)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    draft_intake_stale = (
+        await db.execute(
+            select(func.count())
+            .select_from(Candidate)
+            .where(
+                Candidate.tenant_id == tenant_id_str,
+                Candidate.deleted_at.is_(None),
+                Candidate.intake_status == "draft",
+                Candidate.updated_at < cutoff.replace(tzinfo=None),
+            )
+        )
+    ).scalar_one() or 0
+
+    # Automation rules enabled
+    try:
+        from backend.app.models.automation_rule import AutomationRule
+        automation_rules_enabled = (
+            await db.execute(
+                select(func.count())
+                .select_from(AutomationRule)
+                .where(AutomationRule.tenant_id == tenant_id_str, AutomationRule.enabled.is_(True))
+            )
+        ).scalar_one() or 0
+    except Exception:
+        automation_rules_enabled = 0
+
+    # Automation events last 24h (ActivityLog)
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    automation_events_24h = (
+        await db.execute(
+            select(func.count())
+            .select_from(ActivityLog)
+            .where(
+                ActivityLog.tenant_id == tenant_id_str,
+                ActivityLog.action.like("automation.%"),
+                ActivityLog.created_at >= since,
+            )
+        )
+    ).scalar_one() or 0
+
+    return OpsCountersOut(
+        no_next_action_candidates=int(no_next_action_candidates),
+        overdue_reminders=int(overdue_reminders),
+        leads_needs_routing=int(leads_needs_routing),
+        leads_failed=int(leads_failed),
+        draft_intake_stale=int(draft_intake_stale),
+        automation_rules_enabled=int(automation_rules_enabled),
+        automation_events_24h=int(automation_events_24h),
+    )
 
 
 _REASON_LABELS = {
