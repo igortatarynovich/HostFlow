@@ -15,7 +15,7 @@ import {
   IconUserCircle,
   IconUsersGroup,
 } from '@tabler/icons-react'
-import { api, completeReminder, createReminder, listReminders, snoozeReminder } from '../api/client'
+import { api, completeActivity, completeReminder, createActivity, createReminder, listReminders, snoozeActivity, snoozeReminder } from '../api/client'
 import { listCandidateEmployments, createCandidateEmployment, updateCandidateEmployment, deleteCandidateEmployment } from '../api/candidateEmployments'
 import type {
   Candidate,
@@ -32,7 +32,6 @@ import { formatDistanceToNow } from 'date-fns'
 import { enUS, pl, ru } from 'date-fns/locale'
 import { createDeleteRequest } from '../api/deletionRequests'
 import { sendRodo } from '../api/legalDocuments'
-import StageTag from '../components/StageTag'
 import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import { exportCandidateBundle } from '../api/documents'
@@ -51,7 +50,7 @@ import { usePermissions } from '../hooks/usePermissions'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
 import { useI18n } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
-import { translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
+import { canonicalStageKey, translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { useToast } from '../components/Toast'
@@ -59,14 +58,22 @@ import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import CandidateHeader from '../components/candidate/CandidateHeader'
 import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
 import CandidateBasicSection from '../components/candidate/CandidateBasicSection'
-import CandidateCommunicationSection from '../components/candidate/CandidateCommunicationSection'
 import CandidateHandoffSection from '../components/candidate/CandidateHandoffSection'
 import CandidatePersonalSection from '../components/candidate/CandidatePersonalSection'
 import CandidateStatusSection from '../components/candidate/CandidateStatusSection'
 import CandidateExperienceSection from '../components/candidate/CandidateExperienceSection'
 import CandidateCustomFieldsSection from '../components/candidate/CandidateCustomFieldsSection'
-import CandidateNotesSection from '../components/candidate/CandidateNotesSection'
+import CandidateRodoSection from '../components/candidate/CandidateRodoSection'
+import CandidateContactAttemptsSection from '../components/candidate/CandidateContactAttemptsSection'
+import CandidateTimelinePanel from '../components/candidate/CandidateTimelinePanel'
+import CandidateStageDecisionPanel from '../components/candidate/CandidateStageDecisionPanel'
 import { Input, SearchableSelect } from '../components/candidate/shared/FormComponents'
+// CandidateCard layout: Info (top) / Control (right) / Content (main)
+// Documents are rendered as a single compact panel inside the rail.
+import CandidateNextActionPanel from '../components/candidate/CandidateNextActionPanel'
+import CandidateNotesRailSection from '../components/candidate/CandidateNotesRailSection'
+import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
+import { deriveDocsMeta } from '../modules/candidates/utils'
 import {
   ADDRESS_KEYS,
   UUID_RE,
@@ -77,7 +84,7 @@ import {
   SERVICE_ITEM_STATUSES,
   POLAND_BASIS_VALUES,
 } from '../modules/candidate-card/constants'
-import type { Tab, PreferredContact, Option, AddressFields, CandidateNote, StageHistoryEntry } from '../modules/candidate-card/types'
+import type { PreferredContact, Option, AddressFields, CandidateNote, StageHistoryEntry } from '../modules/candidate-card/types'
 import {
   createLocalId,
   ccToFlag,
@@ -89,6 +96,7 @@ import {
   formatAmount,
   mapResidencyStatusToPolandBasis,
 } from '../modules/candidate-card/utils'
+import { formatDateSafe } from '../modules/candidates/candidateUtils'
 
 type EmploymentEntry =
   NonNullable<CandidateExtra['employment_history']> extends Array<infer Item>
@@ -690,14 +698,15 @@ export default function CandidateCard(){
 
   const stageLabelIntl = useCallback((code: string) => {
     const funnelStage = profileFunnelStages.find((s) => s.code === code)
-    if (funnelStage?.label) return funnelStage.label
+    let profileLabel: string | null = null
     if (candidateProfile?.config?.stage_configs) {
       const profileStage = candidateProfile.config.stage_configs.find(
         (s: any) => s.stage_code === code
       )
-      if (profileStage?.stage_label) return profileStage.stage_label
+      if (profileStage?.stage_label) profileLabel = String(profileStage.stage_label)
     }
-    const fallback = meta?.labels?.[code] || code
+    const fallback = profileLabel || funnelStage?.label || meta?.labels?.[code] || code
+    // IMPORTANT: always translate via canonical stage key; do not render Polish labels directly.
     return translateStageLabel(t, code, fallback)
   }, [candidateProfile, meta?.labels, profileFunnelStages, t])
 
@@ -708,7 +717,6 @@ export default function CandidateCard(){
   const [uploadLinkBusy, setUploadLinkBusy] = useState(false)
   const [uploadLink, setUploadLink] = useState<CandidateUploadLinkResponse | null>(null)
   const [uploadLinkCopied, setUploadLinkCopied] = useState(false)
-  const [tab, setTab] = useState<Tab>('personal')
   const HEADER_STORAGE_KEY = 'hf:candidate:headerExpanded'
   const [headerExpanded, setHeaderExpanded] = useState(() => {
     try {
@@ -734,15 +742,10 @@ export default function CandidateCard(){
   const [notesLoading, setNotesLoading] = useState(false)
   const [newNote, setNewNote] = useState('')
   const [noteSending, setNoteSending] = useState(false)
-  const [quickPanelOpen, setQuickPanelOpen] = useState<null | 'handoff' | 'reminders'>(null)
   const [rodoSentTrigger, setRodoSentTrigger] = useState(0)
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historyError, setHistoryError] = useState<string | null>(null)
 
   const lastSavedPayloadRef = useRef<string | null>(null)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const quickPanelRef = useRef<HTMLDivElement | null>(null)
   const modelRef = useRef<Candidate | null>(null)
   const routeIdRef = useRef<string | null>(null)
   modelRef.current = model
@@ -751,7 +754,6 @@ export default function CandidateCard(){
     lastSavedPayloadRef.current = null
   }
   const [stageHistory, setStageHistory] = useState<StageHistoryEntry[]>([])
-  const [historyInfo, setHistoryInfo] = useState<string | null>(null)
   const [stageSinceAt, setStageSinceAt] = useState<string | null>(null)
   const [employmentRows, setEmploymentRows] = useState<EmploymentRow[]>([])
   const [employmentBaseline, setEmploymentBaseline] = useState<Record<string, EmploymentSnapshot>>({})
@@ -771,32 +773,73 @@ export default function CandidateCard(){
   const [timelineRemindersLoading, setTimelineRemindersLoading] = useState(false)
   const [timelineStageHistoryLoading, setTimelineStageHistoryLoading] = useState(false)
   const [timelineError, setTimelineError] = useState<string | null>(null)
-  const [timelineFilter, setTimelineFilter] = useState<{ stage: boolean; notes: boolean; reminders: boolean }>({
-    stage: true,
-    notes: true,
-    reminders: true,
-  })
+  const [docsBlockers, setDocsBlockers] = useState<{ missing: string[]; problematic: string[] }>({ missing: [], problematic: [] })
+  const [docsBlockersLoading, setDocsBlockersLoading] = useState(false)
+  const docsBlockersActive = docsBlockersLoading || docsBlockers.missing.length > 0 || docsBlockers.problematic.length > 0
+  const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
+  const [docsDrawerOpen, setDocsDrawerOpen] = useState(false)
+  const [docsDrawerType, setDocsDrawerType] = useState<string | undefined>(undefined)
+  const timelineLoadedRef = useRef(false)
   const dateFnsLocale = useMemo(() => (locale === 'ru' ? ru : locale === 'pl' ? pl : enUS), [locale])
 
-  useEffect(() => {
-    if (!quickPanelOpen) return
-    const onPointerDown = (event: MouseEvent | TouchEvent) => {
-      const target = event.target as Node | null
-      if (quickPanelRef.current && target && quickPanelRef.current.contains(target)) return
-      setQuickPanelOpen(null)
+  const nextAction = useMemo(() => {
+    const parseTs = (value?: string | null): number => {
+      if (!value) return 0
+      const ts = Date.parse(String(value))
+      return Number.isNaN(ts) ? 0 : ts
     }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setQuickPanelOpen(null)
+    const active = (reminders || []).filter((r) => r && r.status !== 'done' && r.status !== 'cancelled')
+    if (!active.length) return null
+    const now = Date.now()
+    active.sort((a, b) => {
+      const aDue = parseTs(a.due_at)
+      const bDue = parseTs(b.due_at)
+      const aOver = a.status === 'overdue' || (aDue > 0 && aDue < now)
+      const bOver = b.status === 'overdue' || (bDue > 0 && bDue < now)
+      if (aOver !== bOver) return aOver ? -1 : 1
+      if (aDue !== bDue) return (aDue || Number.MAX_SAFE_INTEGER) - (bDue || Number.MAX_SAFE_INTEGER)
+      return String(a.id).localeCompare(String(b.id))
+    })
+    return active[0] ?? null
+  }, [reminders])
+
+  const nextActionDueLabel = useMemo(() => {
+    if (!nextAction?.due_at) return '—'
+    try {
+      return new Intl.DateTimeFormat(locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(nextAction.due_at))
+    } catch {
+      return String(nextAction.due_at)
     }
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('touchstart', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('touchstart', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
+  }, [locale, nextAction?.due_at])
+
+  const docsMetaSummary = useMemo(() => {
+    try {
+      return deriveDocsMeta(model as any)
+    } catch {
+      return null
     }
-  }, [quickPanelOpen])
+  }, [model])
+
+  const docsCountsSummary = useMemo(() => {
+    const p = sanitizeDocsProgress((model as any)?.docs_progress)
+    const total = Number(p.total ?? p.count ?? 0) || 0
+    const ready = Number(p.ready ?? p.verified ?? p.approved ?? 0) || 0
+    const problem = Number(p.problem ?? p.invalid ?? p.expired ?? p.overdue ?? 0) || 0
+    const inProgress = Number(p.in_progress ?? p.submitted ?? p.pending_validation ?? 0) || 0
+    return { total, ready, problem, inProgress }
+  }, [model])
+
+  const docsPctSummary = useMemo(() => {
+    const total = docsCountsSummary.total || 0
+    if (!total) return 0
+    return Math.max(0, Math.min(100, Math.round((docsCountsSummary.ready / total) * 100)))
+  }, [docsCountsSummary.ready, docsCountsSummary.total])
 
   const isRodoStageBlockedError = useCallback((err: any): boolean => {
     const status = Number(err?.response?.status || 0)
@@ -843,7 +886,25 @@ export default function CandidateCard(){
 
     try {
       setProfileLoading(true)
-      const vacancy = await getVacancy(vacancyId)
+      let vacancy: any = null
+      try {
+        vacancy = await getVacancy(vacancyId)
+      } catch (vacancyErr: any) {
+        const status = Number(vacancyErr?.response?.status || 0)
+        // Client can legitimately get 404/403 for agency vacancy.
+        // Keep card usable and fallback to default candidate profile.
+        if (status === 404 || status === 403) {
+          try {
+            const profiles = await listCandidateProfiles()
+            const defaultProfile = profiles.find((p) => p.code === DEFAULT_PROFILE_CODE)
+            setCandidateProfile(defaultProfile ?? null)
+          } catch {
+            setCandidateProfile(null)
+          }
+          return
+        }
+        throw vacancyErr
+      }
       if (!vacancy?.candidate_profile_id) {
         try {
           const profiles = await listCandidateProfiles()
@@ -1468,7 +1529,8 @@ export default function CandidateCard(){
   useEffect(() => {
     if (isNew || !model?.id || model.id !== id) return
     const { payload } = buildCandidatePayload(model, meta?.reason_choices ?? {})
-    const serialized = JSON.stringify(payload)
+    const pAutoInit = stripCandidateOverrideFields(payload)
+    const serialized = JSON.stringify(pAutoInit)
     if (lastSavedPayloadRef.current === null) {
       lastSavedPayloadRef.current = serialized
       return
@@ -1484,6 +1546,10 @@ export default function CandidateCard(){
       if (Object.keys(pAuto).length === 0) {
         return
       }
+      const serializedAuto = JSON.stringify(pAuto)
+      if (lastSavedPayloadRef.current === serializedAuto) {
+        return
+      }
       const currentStage = String(p.stage || m.stage || '').trim()
       const reasonOptions = (meta?.reason_choices?.[currentStage] ?? [])
       const reasonCodes = Array.isArray(p.status_reason) ? p.status_reason : []
@@ -1492,7 +1558,7 @@ export default function CandidateCard(){
       }
       try {
         await api.patch(`/candidates/${m.id}`, pAuto)
-        lastSavedPayloadRef.current = JSON.stringify(pAuto)
+        lastSavedPayloadRef.current = serializedAuto
         setRodoSentTrigger((x) => x + 1)
         setSavedOk(true)
         setTimeout(() => setSavedOk(false), 1500)
@@ -1531,42 +1597,6 @@ export default function CandidateCard(){
       setNotesLoading(false)
     }
   }, [])
-
-  const loadStageHistory = useCallback(async (candidateId: string) => {
-    setHistoryLoading(true)
-    setHistoryError(null)
-    setHistoryInfo(null)
-    try{
-      const { data } = await api.get(`/candidates/${candidateId}/stage-history`)
-      const entries = Array.isArray(data) ? data : []
-      const normalized: StageHistoryEntry[] = entries.map((item: any, idx: number) => ({
-        id: String(item?.id ?? `${item?.to_code ?? 'stage'}-${item?.at ?? idx}`),
-        from_code: item?.from_code ?? null,
-        to_code: item?.to_code ?? null,
-        at: item?.at ?? null,
-        actor: item?.actor ?? item?.actor_name ?? null,
-        reason: item?.reason ?? null,
-      }))
-      setStageHistory(normalized)
-      if (!normalized.length) {
-        setHistoryInfo(t('app.candidate_card.history.empty'))
-      }
-    } catch (err: any) {
-      console.error('[CandidateCard] stage history error', err)
-      const r = err?.response?.data
-      const status = err?.response?.status
-      if (status === 404) {
-        setStageHistory([])
-        setHistoryInfo(t('app.candidate_card.history.unavailable'))
-        setHistoryError(null)
-      } else {
-        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
-        setHistoryError(errorMessage)
-      }
-    } finally {
-      setHistoryLoading(false)
-    }
-  }, [t, unknownErrorLabel])
 
   const loadStageHistoryQuiet = useCallback(async (candidateId: string) => {
     try {
@@ -1625,23 +1655,6 @@ export default function CandidateCard(){
     },
     [unknownErrorLabel],
   )
-
-  const openHistoryModal = useCallback(() => {
-    if (!model?.id) return
-    setHistoryOpen(true)
-    void loadStageHistory(String(model.id))
-  }, [model?.id, loadStageHistory])
-
-  const closeHistoryModal = useCallback(() => {
-    setHistoryOpen(false)
-    setHistoryError(null)
-    setHistoryInfo(null)
-  }, [])
-
-  const reloadStageHistory = useCallback(() => {
-    if (!model?.id) return
-    void loadStageHistory(String(model.id))
-  }, [model?.id, loadStageHistory])
 
   const onStageChangePersist = useCallback(
     async (stage: string, statusReason: string[]) => {
@@ -1790,6 +1803,10 @@ export default function CandidateCard(){
   const extra = useMemo<CandidateExtra>(
     () => sanitizeExtra(model?.extra as CandidateExtra | undefined),
     [model?.extra]
+  )
+  const docsOwnerContext = useMemo(
+    () => ({ citizenship: String(extra?.citizenship || '') }),
+    [extra?.citizenship],
   )
   const setExtra = (patch: Partial<CandidateExtra>) =>
     setModel(m => {
@@ -2057,6 +2074,7 @@ export default function CandidateCard(){
       setUploadLinkBusy(true)
       const data = await createCandidateUploadLink(String(model.id))
       setUploadLink(data)
+      setDocsSummaryRefreshTrigger((x) => x + 1)
       const absoluteUrl = new URL(data.apply_url, window.location.origin).toString()
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(absoluteUrl)
@@ -2282,7 +2300,7 @@ export default function CandidateCard(){
     try {
       const due = new Date(reminderDueAt)
       const remindAt = new Date(due.getTime() - reminderOffset * 60 * 1000)
-      await createReminder({
+      await createActivity({
         title: reminderTitle,
         description: '',
         type: 'custom',
@@ -2291,6 +2309,7 @@ export default function CandidateCard(){
         due_at: due.toISOString(),
         remind_at: remindAt.toISOString(),
         priority: 'normal',
+        source: 'manual',
       })
       setReminderTitle('')
       setReminderDueAt(new Date(due.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16))
@@ -2308,6 +2327,13 @@ export default function CandidateCard(){
       notify({ title: errorMessage, variant: 'error' })
     }
   }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, t, notify])
+
+  const handleDocsRequestCreate = useCallback(() => {
+    // Prefill reminder form based on docs blockers.
+    const dt = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
+    setReminderTitle(t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' }))
+    setReminderDueAt(dt)
+  }, [t])
 
   const handleFavoriteToggle = useCallback(async () => {
     if (!model?.id) return
@@ -2344,7 +2370,7 @@ export default function CandidateCard(){
   const handleReminderComplete = useCallback(async (id: string) => {
     try {
       setReminderBusy(id)
-      await completeReminder(id)
+      await completeActivity(id)
       const res = await listReminders({
         entityType: 'candidate',
         entityId: model?.id || '',
@@ -2365,7 +2391,7 @@ export default function CandidateCard(){
   const handleReminderSnooze = useCallback(async (id: string, minutes: number) => {
     try {
       setReminderBusy(id)
-      await snoozeReminder(id, { minutes })
+      await snoozeActivity(id, { minutes })
       const res = await listReminders({
         entityType: 'candidate',
         entityId: model?.id || '',
@@ -2412,11 +2438,6 @@ export default function CandidateCard(){
   const isMasked = model?.masked === true
   const candidateDataReadOnly = !isNew && !candidateOverrideMode
 
-  // When masked, docs tab is hidden — switch to personal if needed
-  useEffect(() => {
-    if (isMasked && tab === 'docs') setTab('personal')
-  }, [isMasked, tab])
-
   // Pipedrive-style indicator: show how long candidate is in current stage.
   // Best-effort: uses stage history and loads quietly (does not block UI).
   useEffect(() => {
@@ -2427,13 +2448,167 @@ export default function CandidateCard(){
     void loadStageHistoryQuiet(String(model.id))
   }, [loadStageHistoryQuiet, model?.id, model?.stage])
 
-  // Unified timeline v1: load reminders + stage history best-effort (lazy on tab open).
-  useEffect(() => {
-    if (tab !== 'timeline') return
+  const ensureTimelineLoaded = useCallback(() => {
     if (!model?.id) return
+    if (timelineLoadedRef.current) return
+    timelineLoadedRef.current = true
     void loadTimelineReminders(String(model.id))
     void loadStageHistoryForTimeline(String(model.id))
-  }, [loadStageHistoryForTimeline, loadTimelineReminders, model?.id, tab])
+  }, [loadStageHistoryForTimeline, loadTimelineReminders, model?.id])
+
+  // Always load activity timeline once on candidate open.
+  useEffect(() => {
+    if (!model?.id) return
+    ensureTimelineLoaded()
+  }, [ensureTimelineLoaded, model?.id])
+
+  const openDocsDrawer = useCallback((typeCode?: string) => {
+    setDocsDrawerType(typeCode)
+    setDocsDrawerOpen(true)
+  }, [])
+
+  const closeDocsDrawer = useCallback(() => {
+    setDocsDrawerOpen(false)
+    // Next docs summary poll should reflect any changes done in the drawer.
+    setDocsSummaryRefreshTrigger((x) => x + 1)
+    const currentId = modelRef.current?.id
+    if (currentId && location.pathname.includes('/documents')) {
+      nav(`/app/candidates/${currentId}`)
+    }
+  }, [location.pathname, nav])
+
+  // If user navigated directly to `/app/candidates/:id/documents`,
+  // open the documents drawer automatically.
+  useEffect(() => {
+    if (isMasked) return
+    if (!model?.id) return
+    if (!location.pathname.includes('/documents')) return
+
+    const sp = new URLSearchParams(location.search || '')
+    const type = sp.get('type') || undefined
+    openDocsDrawer(type)
+  }, [isMasked, location.pathname, location.search, model?.id, openDocsDrawer])
+
+  const { stageJourneyStages, stageOutcomeStages, stageJourneyDisplayStage, stageJourneyOutcomeStage, stageJourneySignals } = useMemo(() => {
+    const codes = profileFunnelStages.length > 0 ? profileFunnelStages.map((s) => s.code) : stageOptions
+    const uniq = Array.from(new Set((codes || []).filter(Boolean)))
+    const main: Array<{ code: string; label: string }> = []
+    const journeyOrder = ['processing_by_client', 'docs_submitted_permit', 'permit_received', 'employed', 'on_trip']
+    const allowedJourneyStages = new Set(journeyOrder)
+    const journeyOrderRank = new Map(journeyOrder.map((code, idx) => [code, idx] as const))
+
+    uniq.forEach((raw) => {
+      const code = String(raw)
+      const label = stageLabelIntl(code)
+      const canonical = canonicalStageKey(code, label) || ''
+
+      // "Brak kontaktu" / "no_answer" is a sub-stage (no reply), not a pipeline stage.
+      if (canonical === 'no_answer') return
+
+      // "kwestionariusz wysłany" / "questionnaire_submitted" is a signal (intake submitted), not a pipeline step.
+      if (canonical === 'questionnaire_submitted') return
+
+      // Return/reject/decline are decision outcomes and must not appear in stage timeline.
+      if (canonical === 'handoff_returned' || canonical === 'rejected' || canonical === 'declined') {
+        return
+      }
+      // Client card should show only client-facing stages in the journey.
+      if (!allowedJourneyStages.has(canonical)) return
+      main.push({ code, label })
+    })
+
+    const orderedMain = [...main].sort((a, b) => {
+      const aCanonical = canonicalStageKey(a.code, a.label) || ''
+      const bCanonical = canonicalStageKey(b.code, b.label) || ''
+      const aRank = journeyOrderRank.get(aCanonical)
+      const bRank = journeyOrderRank.get(bCanonical)
+      return (aRank as number) - (bRank as number)
+    })
+
+    const currentCode = String(model?.stage || '')
+    const currentCanonical = canonicalStageKey(currentCode, null) || ''
+    const journeySignals: Array<{ key: string; label: string }> = []
+
+    if (currentCanonical === 'no_answer') {
+      journeySignals.push({ key: 'no_answer', label: translateStageLabel(t, 'no_answer', 'no_answer') })
+    }
+    const intakeSubmitted = Boolean((model as any)?.intake_submitted_at || (model as any)?.intake_status === 'submitted')
+    if (currentCanonical === 'questionnaire_submitted' || intakeSubmitted) {
+      journeySignals.push({ key: 'questionnaire_submitted', label: translateStageLabel(t, 'questionnaire_submitted', 'questionnaire_submitted') })
+    }
+
+    // Display stage for journey: map sub-stages/signals to their parent stage.
+    let displayStage = currentCode || null
+    if (currentCanonical === 'no_answer' || currentCanonical === 'questionnaire_submitted') {
+      const contacted = uniq.find((c) => (canonicalStageKey(String(c), null) || '') === 'contacted') || 'contacted'
+      displayStage = String(contacted)
+    }
+
+    const outcomeStage = null
+
+    return {
+      stageJourneyStages: orderedMain,
+      stageOutcomeStages: [],
+      stageJourneyDisplayStage: displayStage,
+      stageJourneyOutcomeStage: outcomeStage,
+      stageJourneySignals: journeySignals,
+    }
+  }, [profileFunnelStages, stageLabelIntl, stageOptions, model?.stage, (model as any)?.intake_status, (model as any)?.intake_submitted_at, t])
+
+  const completedStageCodes = useMemo(() => {
+    const set = new Set<string>()
+    stageHistory.forEach((h) => {
+      if (h.from_code) set.add(String(h.from_code))
+      if (h.to_code) set.add(String(h.to_code))
+    })
+    return set
+  }, [stageHistory])
+
+  const handleStageJourneyChange = useCallback(async (nextStage: string) => {
+    // Documents are part of the pipeline: blockers stop forward movement.
+    // We only block "forward" changes in the current stage journey.
+    if (docsBlockersActive && Array.isArray(stageJourneyStages)) {
+      const steps = [...(stageJourneyStages || []), ...(stageOutcomeStages || [])]
+      const curCode = stageJourneyDisplayStage || model?.stage
+      const curIdx = steps.findIndex((s) => s.code === curCode)
+      const nextIdx = steps.findIndex((s) => s.code === nextStage)
+      const isForward = curIdx >= 0 && nextIdx > curIdx
+      if (isForward) {
+        const firstMissing = docsBlockers.missing[0] || docsBlockers.problematic[0]
+        notify({
+          title: t('app.candidate_card.stage_blocked_by_docs.title', { defaultValue: 'Stage is blocked by documents' }),
+          description: firstMissing
+            ? t('app.candidate_card.stage_blocked_by_docs.description', {
+                defaultValue: `Missing or invalid document: ${firstMissing}`,
+              })
+            : t('app.candidate_card.stage_blocked_by_docs.description_generic', { defaultValue: 'Request missing documents first.' }),
+          variant: 'warning',
+        })
+        return
+      }
+    }
+
+    if (!model?.stage) {
+      await onStageChangePersist(nextStage, model?.status_reason || [])
+      setModel((m) => (m ? { ...m, stage: nextStage } : m))
+      return
+    }
+    if (nextStage === model.stage) return
+    await onStageChangePersist(nextStage, model?.status_reason || [])
+    setModel((m) => (m ? { ...m, stage: nextStage } : m))
+  }, [
+    model?.stage,
+    model?.status_reason,
+    onStageChangePersist,
+    docsBlockersActive,
+    docsBlockers.missing,
+    docsBlockers.problematic,
+    stageJourneyStages,
+    stageOutcomeStages,
+    stageJourneyDisplayStage,
+    notify,
+    t,
+  ])
 
   if (loading || !model) {
     return <div className="h-full w-full text-slate-500">{t('common.loading')}</div>
@@ -2465,549 +2640,396 @@ export default function CandidateCard(){
         candidateProfile={candidateProfile}
         profileLoading={profileLoading}
         stageSinceAt={stageSinceAt}
+        focusContent={!isNew && model?.id ? (
+          <div className="grid gap-2">
+            <CandidateStageDecisionPanel
+              locale={locale}
+              stageSinceAt={stageSinceAt}
+              stageJourneyStages={stageJourneyStages}
+              stageOutcomeStages={stageOutcomeStages}
+              stageJourneyDisplayStage={stageJourneyDisplayStage}
+              stageJourneyOutcomeStage={stageJourneyOutcomeStage}
+              stageJourneySignals={stageJourneySignals}
+              completedStageCodes={completedStageCodes}
+              currentStageCode={model.stage}
+              stageLabelIntl={stageLabelIntl}
+              docsBlockers={docsBlockers}
+              docsBlockersActive={docsBlockersActive}
+              canEdit={model.can_edit !== false}
+              onMoveStage={handleStageJourneyChange}
+            />
+          </div>
+        ) : null}
       />
 
-      {/* Tabs */}
       <div className="card p-3">
-        <div className="mb-3 flex gap-2 border-b border-brand-100/70">
-          {(
-            [
-              ['personal', t('app.candidate_card.tabs.personal')],
-                ...(isMasked ? [] : [['docs', t('app.candidate_card.tabs.docs')]]),
-              ['timeline', t('app.candidate_card.tabs.timeline', { defaultValue: 'Timeline' })],
-              ['services', t('app.candidate_card.tabs.services')],
-            ] as [Tab, string][]
-          )
-            .map(([tabKey,label]) => (
-            <button key={tabKey}
-              className={clsx('px-3 py-2 -mb-px border-b-2', tab===tabKey ? 'border-brand-500 text-brand-700' : 'border-transparent text-slate-500')}
-              onClick={()=>setTab(tabKey)}>{label}</button>
-          ))}
-        </div>
+        <div className="space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
+            <div className="space-y-4 lg:pr-6">
+                  {/* Основные данные */}
+                  {!isMasked && (
+                    <CandidateBasicSection
+                      candidate={model}
+                      extra={extra}
+                      isNew={isNew}
+                      locale={locale}
+                      basicRef={basicRef}
+                      stageOptions={stageOptions}
+                      profileStageCodes={profileStageCodes}
+                      meta={meta}
+                      dialCodes={dialCodes}
+                      managers={managers}
+                      preferredContactOptions={preferredContactOptions}
+                      selectTexts={selectTexts}
+                      createdAtDisplay={createdAtDisplay}
+                      isMetaLead={isMetaLead}
+                      onModelChange={setModel}
+                      onExtraChange={setExtra}
+                      onPhoneInputChange={handlePhoneInputChange}
+                      onGenerateShortId={handleGenerateShortId}
+                      candidateProfile={candidateProfile}
+                      stageLabelIntl={stageLabelIntl}
+                      candidateDataReadOnly={candidateDataReadOnly}
+                      onStageChangePersist={onStageChangePersist}
+                      embedded
+                    />
+                  )}
 
-        {/* PERSONAL */}
-        {tab==='personal' && (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] lg:items-start lg:justify-between">
-            <div className="space-y-8 lg:pr-6">
-                  {!isNew && !isMasked && (
+                  {/* Activity timeline (center stage) */}
+                  <div className="pt-2">
+                    <CandidateTimelinePanel
+                      locale={locale}
+                      stageHistory={stageHistory}
+                      notes={notes}
+                      reminders={timelineReminders}
+                      loading={timelineStageHistoryLoading || timelineRemindersLoading}
+                      errorText={timelineError}
+                      resolveStageLabel={stageLabelIntl}
+                      includeStageChanges
+                      hideToggle
+                      hideFilters
+                      variant="info"
+                      collapsedCount={5}
+                    />
+                  </div>
+
+                  {/* Персональные данные */}
+                  {!isMasked && (
+                    <CandidatePersonalSection
+                      candidate={model}
+                      extra={extra}
+                      personalRef={personalRef}
+                      countries={countries}
+                      languages={languages}
+                      selectTexts={selectTexts}
+                      onModelChange={setModel}
+                      onExtraChange={setExtra}
+                      onAddressFieldChange={setAddressField}
+                      candidateProfile={candidateProfile}
+                      candidateDataReadOnly={candidateDataReadOnly}
+                      embedded
+                    />
+                  )}
+
+                  {/* Статус и соответствие требованиям (на всю ширину) */}
+                  <div className="space-y-4">
+                    <CandidateStatusSection
+                      extra={extra}
+                      statusRef={statusRef}
+                      polandBasisOptions={polandBasisOptions}
+                      selectTexts={selectTexts}
+                      onExtraChange={setExtra}
+                      candidateProfile={candidateProfile}
+                      candidateDataReadOnly={candidateDataReadOnly}
+                      embedded
+                    />
+
+                    <CandidateCustomFieldsSection
+                      extra={extra}
+                      customFieldsRef={customFieldsRef}
+                      candidateProfile={candidateProfile}
+                      selectTexts={selectTexts}
+                      onExtraChange={setExtra}
+                    />
+                  </div>
+
+                  {/* Опыт */}
+                  <CandidateExperienceSection
+                    extra={extra}
+                    experienceRef={experienceRef}
+                    experienceTotalDisplay={experienceTotalDisplay}
+                    trailerTypeOptions={trailerTypeOptions}
+                    routeTypeOptions={routeTypeOptions}
+                    employmentHistory={employmentHistory}
+                    employmentLoading={employmentLoading}
+                    employmentError={employmentError}
+                    selectTexts={selectTexts}
+                    onExtraChange={setExtra}
+                    onExperienceChange={handleExperienceChange}
+                    onAddEmploymentRow={addEmploymentRow}
+                    onUpdateEmploymentHistory={updateEmploymentHistory}
+                    onRemoveEmploymentRow={removeEmploymentRow}
+                    candidateProfile={candidateProfile}
+                    candidateDataReadOnly={candidateDataReadOnly}
+                    embedded
+                  />
+
+                  {/* Работодатель и вакансия */}
+                  {!isMasked && (
                     <section
-                      ref={quickPanelRef}
-                      className="relative rounded-2xl border border-slate-200 bg-white/80 p-3"
+                      ref={employerRef}
+                      id="section-employer"
+                      className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
                     >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          className={clsx(
-                            'btn-secondary btn-sm',
-                            candidateOverrideMode
-                              ? 'border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                              : '',
-                          )}
-                          onClick={() => {
-                            const next = !candidateOverrideMode
-                            setCandidateOverrideMode(next)
-                            if (!next) setCandidateOverrideReason('')
-                          }}
-                        >
-                          {candidateOverrideMode
-                            ? t('app.candidate_card.override.done')
-                            : t('app.candidate_card.override.edit')}
-                        </button>
-                        <button
-                          type="button"
-                          className={clsx(
-                            'btn-secondary btn-sm',
-                            quickPanelOpen === 'handoff'
-                              ? 'border-brand-400 bg-brand-50 text-brand-700'
-                              : '',
-                          )}
-                          onClick={() => setQuickPanelOpen((prev) => (prev === 'handoff' ? null : 'handoff'))}
-                        >
-                          {t('app.candidate_card.handoff.title')}
-                        </button>
-                        <button
-                          type="button"
-                          className={clsx(
-                            'btn-secondary btn-sm',
-                            quickPanelOpen === 'reminders'
-                              ? 'border-brand-400 bg-brand-50 text-brand-700'
-                              : '',
-                          )}
-                          onClick={() => setQuickPanelOpen((prev) => (prev === 'reminders' ? null : 'reminders'))}
-                        >
-                          {t('app.candidate_card.reminders.title')}
-                        </button>
+                      <div className="flex items-center gap-3">
+                        <IconBuilding size={22} className="text-slate-600" />
+                        <div>
+                          <h2 className="text-lg font-semibold text-slate-900">
+                            {t('app.candidate_card.sections.employer.title')}
+                          </h2>
+                          <p className="text-sm text-slate-500">
+                            {t('app.candidate_card.sections.employer.description')}
+                          </p>
+                        </div>
                       </div>
-                      {candidateOverrideMode && (
-                        <div className="mt-3 max-w-2xl">
-                          <Input
-                            label={t('app.candidate_card.override.reason_label')}
-                            value={candidateOverrideReason}
-                            onChange={(e) => setCandidateOverrideReason(e.target.value)}
-                            placeholder={t('app.candidate_card.override.reason_placeholder')}
+
+                      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <label className="block md:col-span-2">
+                          <div className="label">{t('app.candidate_card.fields.vacancy')}</div>
+                          <SearchableSelect
+                            options={vacancyOpts}
+                            value={(model.vacancy_id as string) || ''}
+                            onChange={async (v) => {
+                              if (!v) {
+                                setModel((m) => {
+                                  if (!m) return m
+                                  return {
+                                    ...m,
+                                    vacancy_id: null,
+                                    vacancy_name: '',
+                                    company_id: null,
+                                    company_name: '',
+                                  }
+                                })
+                                setCandidateProfile(null)
+                                return
+                              }
+                              const opt = vacancyOpts.find((o) => o.value === v)
+                              const company_id = opt?.extra?.company_id || null
+                              const company_name = opt?.extra?.company_name || model.company_name || ''
+                              const vacancy_label = opt?.label || ''
+                              setModel((m) => {
+                                if (!m) return m
+                                return {
+                                  ...m,
+                                  vacancy_id: v as any,
+                                  vacancy_name: vacancy_label,
+                                  company_id,
+                                  company_name: company_name || m.company_name || '',
+                                }
+                              })
+                              // Загружаем профиль из новой вакансии
+                              await loadProfileFromVacancy(v)
+                            }}
+                            placeholder={selectTexts.empty}
+                            searchPlaceholder={selectTexts.search}
+                            noResultsLabel={selectTexts.noResults}
                           />
-                        </div>
-                      )}
-                      {quickPanelOpen && (
-                        <div className="absolute left-0 right-0 top-full z-30 mt-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
-                          {quickPanelOpen === 'handoff' ? (
-                            <CandidateHandoffSection
-                              candidateId={model.id}
-                              companyId={model.company_id}
-                              onHandoffCreated={handleAttemptCreated}
-                              embedded
-                            />
-                          ) : (
-                            <CandidateRemindersSection
-                              candidateId={String(model.id)}
-                              reminders={reminders}
-                              remindersLoading={remindersLoading}
-                              remindersError={remindersError}
-                              reminderTitle={reminderTitle}
-                              reminderDueAt={reminderDueAt}
-                              reminderOffset={reminderOffset}
-                              reminderBusy={reminderBusy}
-                              onReminderTitleChange={setReminderTitle}
-                              onReminderDueAtChange={setReminderDueAt}
-                              onReminderOffsetChange={setReminderOffset}
-                              onReminderCreate={handleCreateReminder}
-                              onReminderComplete={handleReminderComplete}
-                              onReminderSnooze={handleReminderSnooze}
-                              embedded
-                            />
-                          )}
-                        </div>
-                      )}
+                          <p className="mt-1 text-xs text-slate-500">
+                            {t('app.candidate_card.messages.vacancy_hint')}
+                          </p>
+                        </label>
+
+                        <Input
+                          label={t('app.candidate_card.fields.company')}
+                          value={model.company_name || ''}
+                          readOnly
+                          placeholder="—"
+                          hint={t('app.candidate_card.fields.company_hint')}
+                        />
+                      </div>
                     </section>
                   )}
-                  <div className="flex flex-wrap items-center gap-2 overflow-x-auto">
-                    {sectionNavItems.map(item => (
-                      (() => {
-                        const ItemIcon = item.icon
-                        return (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className="btn-secondary btn-sm"
-                        onClick={handleScrollTo(item.ref)}
-                      >
-                        <ItemIcon size={14} className="text-slate-500" />
-                        <span>{item.label}</span>
-                      </button>
-                        )
-                      })()
-                    ))}
-                  </div>
 
-              {!isMasked && (
-              <CandidateBasicSection
-                candidate={model}
-                extra={extra}
-                isNew={isNew}
-                locale={locale}
-                basicRef={basicRef}
-                historyLoading={historyLoading}
-                stageOptions={stageOptions}
-                profileStageCodes={profileStageCodes}
-                meta={meta}
-                dialCodes={dialCodes}
-                managers={managers}
-                preferredContactOptions={preferredContactOptions}
-                selectTexts={selectTexts}
-                createdAtDisplay={createdAtDisplay}
-                isMetaLead={isMetaLead}
-                onModelChange={setModel}
-                onExtraChange={setExtra}
-                onPhoneInputChange={handlePhoneInputChange}
-                onGenerateShortId={handleGenerateShortId}
-                onOpenHistory={openHistoryModal}
-                candidateProfile={candidateProfile}
-                stageLabelIntl={stageLabelIntl}
-                candidateDataReadOnly={candidateDataReadOnly}
-                onStageChangePersist={onStageChangePersist}
-              />
-              )}
+            </div>
 
-            {!isMasked && (
-            <CandidatePersonalSection
-              candidate={model}
-              extra={extra}
-              personalRef={personalRef}
-              countries={countries}
-              languages={languages}
-              selectTexts={selectTexts}
-              onModelChange={setModel}
-              onExtraChange={setExtra}
-              onAddressFieldChange={setAddressField}
-              candidateProfile={candidateProfile}
-              candidateDataReadOnly={candidateDataReadOnly}
-            />
-            )}
-
-            <CandidateStatusSection
-              extra={extra}
-              statusRef={statusRef}
-              polandBasisOptions={polandBasisOptions}
-              selectTexts={selectTexts}
-              onExtraChange={setExtra}
-              candidateProfile={candidateProfile}
-              candidateDataReadOnly={candidateDataReadOnly}
-            />
-
-            <CandidateExperienceSection
-              extra={extra}
-              experienceRef={experienceRef}
-              experienceTotalDisplay={experienceTotalDisplay}
-              trailerTypeOptions={trailerTypeOptions}
-              routeTypeOptions={routeTypeOptions}
-              employmentHistory={employmentHistory}
-              employmentLoading={employmentLoading}
-              employmentError={employmentError}
-              selectTexts={selectTexts}
-              onExtraChange={setExtra}
-              onExperienceChange={handleExperienceChange}
-              onAddEmploymentRow={addEmploymentRow}
-              onUpdateEmploymentHistory={updateEmploymentHistory}
-              onRemoveEmploymentRow={removeEmploymentRow}
-              candidateProfile={candidateProfile}
-              candidateDataReadOnly={candidateDataReadOnly}
-            />
-
-            <CandidateCustomFieldsSection
-              extra={extra}
-              customFieldsRef={customFieldsRef}
-              candidateProfile={candidateProfile}
-              selectTexts={selectTexts}
-              onExtraChange={setExtra}
-            />
-
-            {!isMasked && (
-            <section
-              ref={employerRef}
-              id="section-employer"
-              className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+          {/* Work panel (sticky): Next action -> Documents -> Quick actions -> Client transfer */}
+          {!isNew && model?.id ? (
+            <div
+              className="flex w-full min-w-0 flex-col gap-4 overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto"
+              data-candidate-control-rail
             >
-              <div className="flex items-center gap-3">
-                <IconBuilding size={22} className="text-slate-600" />
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">{t('app.candidate_card.sections.employer.title')}</h2>
-                  <p className="text-sm text-slate-500">{t('app.candidate_card.sections.employer.description')}</p>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="block md:col-span-2">
-                  <div className="label">{t('app.candidate_card.fields.vacancy')}</div>
-                  <SearchableSelect
-                    options={vacancyOpts}
-                    value={(model.vacancy_id as string) || ''}
-                    onChange={async (v) => {
-                      if (!v) {
-                        setModel(m => m && ({
-                          ...m,
-                          vacancy_id: null,
-                          vacancy_name: '',
-                          company_id: null,
-                          company_name: '',
-                        }))
-                        setCandidateProfile(null)
-                        return
-                      }
-                      const opt = vacancyOpts.find(o => o.value === v)
-                      const company_id = opt?.extra?.company_id || null
-                      const company_name = opt?.extra?.company_name || model.company_name || ''
-                      const vacancy_label = opt?.label || ''
-                      setModel(m => m && ({
-                        ...m,
-                        vacancy_id: v as any,
-                        vacancy_name: vacancy_label,
-                        company_id,
-                        company_name: company_name || m.company_name || '',
-                      }))
-                      // Загружаем профиль из новой вакансии
-                      await loadProfileFromVacancy(v)
-                    }}
-                    placeholder={selectTexts.empty}
-                    searchPlaceholder={selectTexts.search}
-                    noResultsLabel={selectTexts.noResults}
-                  />
-                  <p className="mt-1 text-xs text-slate-500">{t('app.candidate_card.messages.vacancy_hint')}</p>
-                </label>
-                <Input
-                  label={t('app.candidate_card.fields.company')}
-                  value={model.company_name || ''}
-                  readOnly
-                  placeholder="—"
-                  hint={t('app.candidate_card.fields.company_hint')}
-                />
-              </div>
-            </section>
-            )}
-
-          </div>
-            {!isNew && (
-              <div className="flex w-full min-w-0 flex-col gap-6 overflow-hidden">
-                {model?.id && (
-                  <>
-                    {!isMasked && (
-                    <CandidateCommunicationSection
-                      candidateId={model.id}
-                      companyId={model.company_id}
-                      onRodoSent={() => setRodoSentTrigger((t) => t + 1)}
-                      onAttemptCreated={handleAttemptCreated}
-                      refreshTrigger={rodoSentTrigger}
-                    />
-                    )}
-                  </>
-                )}
-                {!isMasked && (
-                <div className="border-t border-slate-200 pt-6">
-                  <CandidateNotesSection
-                    notesRef={notesRef}
-                    notes={notes}
-                    notesLoading={notesLoading}
-                    newNote={newNote}
-                    noteSending={noteSending}
-                    onNewNoteChange={setNewNote}
-                    onAddNote={addNote}
-                    onRefreshNotes={() => model?.id && fetchNotes(String(model.id))}
-                  />
-                </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TIMELINE */}
-        {tab === 'timeline' && (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(280px,1fr)] lg:items-start lg:justify-between">
-            <div className="space-y-3 lg:pr-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-slate-700">
-                  {t('app.candidate_card.timeline.title', { defaultValue: 'Unified timeline' })}
-                </span>
-                {(timelineStageHistoryLoading || timelineRemindersLoading) && (
-                  <span className="text-xs text-slate-500">{t('common.loading')}</span>
-                )}
-                {timelineError ? <span className="text-xs text-red-600">{timelineError}</span> : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2">
-                {(
-                  [
-                    ['stage', t('app.candidate_card.timeline.filters.stage', { defaultValue: 'Stage' })],
-                    ['notes', t('app.candidate_card.timeline.filters.notes', { defaultValue: 'Notes' })],
-                    ['reminders', t('app.candidate_card.timeline.filters.reminders', { defaultValue: 'Reminders' })],
-                  ] as const
-                ).map(([key, label]) => (
-                  <label key={key} className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-white px-2 py-1 text-xs text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={timelineFilter[key]}
-                      onChange={() =>
-                        setTimelineFilter((prev) => ({
-                          ...prev,
-                          [key]: !prev[key],
-                        }))
-                      }
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-
-              {(() => {
-                type TimelineItem =
-                  | { kind: 'stage'; at: string; title: string; meta?: string }
-                  | { kind: 'note'; at: string; title: string; meta?: string }
-                  | { kind: 'reminder'; at: string; title: string; meta?: string }
-
-                const items: TimelineItem[] = []
-
-                if (timelineFilter.stage) {
-                  stageHistory.forEach((h) => {
-                    if (!h.at) return
-                    const from = h.from_code ? stageLabelIntl(String(h.from_code)) : t('app.candidate_card.history.modal.previous', { defaultValue: 'Previous' })
-                    const to = h.to_code ? stageLabelIntl(String(h.to_code)) : '—'
-                    items.push({
-                      kind: 'stage',
-                      at: String(h.at),
-                      title: t('app.candidate_card.timeline.items.stage_change', { defaultValue: 'Stage change' }),
-                      meta: `${from} → ${to}${h.actor ? ` · ${h.actor}` : ''}${h.reason ? ` · ${h.reason}` : ''}`,
-                    })
-                  })
-                }
-
-                if (timelineFilter.notes) {
-                  notes.forEach((n) => {
-                    if (!n.created_at) return
-                    const txt = String(n.text || '').trim()
-                    items.push({
-                      kind: 'note',
-                      at: String(n.created_at),
-                      title: t('app.candidate_card.timeline.items.note', { defaultValue: 'Note' }),
-                      meta: txt.length > 180 ? `${txt.slice(0, 180)}…` : txt,
-                    })
-                  })
-                }
-
-                if (timelineFilter.reminders) {
-                  timelineReminders.forEach((r) => {
-                    const at = (r.completed_at || r.due_at || r.created_at || '').toString()
-                    if (!at) return
-                    items.push({
-                      kind: 'reminder',
-                      at,
-                      title: r.title || t('app.reminders.item.untitled', { defaultValue: 'Untitled' }),
-                      meta: `${t('app.reminders.fields.due_at', { defaultValue: 'Due' })}: ${formatDateSafe(r.due_at, locale) || r.due_at} · ${String(r.status)}`,
-                    })
-                  })
-                }
-
-                items.sort((a, b) => {
-                  const ta = Date.parse(a.at)
-                  const tb = Date.parse(b.at)
-                  return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0)
-                })
-
-                if (!items.length) {
-                  return (
-                    <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
-                      {t('app.candidate_card.timeline.empty', { defaultValue: 'No events yet.' })}
-                    </div>
-                  )
-                }
-
-                return (
-                  <div className="space-y-2">
-                    {items.slice(0, 200).map((it, idx) => (
-                      <div key={`${it.kind}-${it.at}-${idx}`} className="rounded-xl border border-slate-200 bg-white p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium text-slate-900">{it.title}</div>
-                            {it.meta ? <div className="mt-0.5 text-xs text-slate-600">{it.meta}</div> : null}
-                          </div>
-                          <div className="shrink-0 text-[11px] text-slate-500" title={it.at}>
-                            {formatDateSafe(it.at, locale) || it.at}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              })()}
-            </div>
-
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-3">
-                <div className="text-xs font-semibold text-slate-700">
-                  {t('app.candidate_card.timeline.sidebar.quick_actions', { defaultValue: 'Quick actions' })}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button type="button" className="btn-secondary btn-sm" onClick={openHistoryModal}>
-                    {t('app.candidate_card.history.modal.title', { defaultValue: 'Stage history' })}
-                  </button>
-                  <button type="button" className="btn-secondary btn-sm" onClick={() => setQuickPanelOpen((p) => (p === 'reminders' ? null : 'reminders'))}>
-                    {t('app.candidate_card.reminders.title')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* DOCS */}
-        {tab==='docs' && !isMasked && (
-          <div className="space-y-4">
-            <div className="app-surface p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-lg font-semibold text-slate-900">{t('app.candidate_card.tabs.docs')}</p>
-                  <p className="text-sm text-slate-500">{t('app.candidate_card.docs.helper')}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="btn-secondary text-sm"
-                    onClick={() => void generateUploadLink()}
-                    disabled={!model?.id || uploadLinkBusy}
-                  >
-                    {uploadLinkBusy
-                      ? t('app.candidate_card.actions.upload_link_creating')
-                      : t('app.candidate_card.actions.upload_link')}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary text-sm"
-                    onClick={() => void downloadBundle()}
-                    disabled={!model?.id || downloadingBundle}
-                  >
-                    {downloadingBundle
-                      ? t('app.candidate_card.actions.exporting_bundle')
-                      : t('app.candidate_card.actions.export_bundle')}
-                  </button>
-                </div>
-              </div>
-              {!isNew && model.id ? (
-                <CandidateDocuments
-                  key={String(model.id)}
-                  candidateId={String(model.id)}
-                  hideHeader
-                  candidateProfile={candidateProfile}
-                  {...({
-                    ownerContext: { citizenship: (extra as any)?.citizenship || '' },
-                    onFieldsApplied: (doc: any, fields: Record<string, any>) =>
-                      applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
-                  } as any)}
-                />
-              ) : (
-                <div className="text-slate-500">{t('app.candidate_card.docs.disabled')}</div>
-              )}
-              {uploadLink && (
-                <div className="mt-3 rounded border border-dashed border-brand-200 bg-brand-50/40 p-3 text-sm text-brand-800">
-                  <div className="font-semibold">{t('app.candidate_card.docs.upload_link_label')}</div>
-                  <div className="break-all text-xs sm:text-sm">
-                    {new URL(uploadLink.apply_url, window.location.origin).toString()}
-                  </div>
-                  {uploadLink.expires_at && (
-                    <div className="text-xs text-brand-700">
-                      {t('app.candidate_card.docs.upload_link_expires', { values: { date: uploadLink.expires_at } })}
-                    </div>
-                  )}
-                  {uploadLinkCopied && (
-                    <div className="text-xs text-green-700">
-                      {t('app.candidate_card.actions.upload_link_copied')}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        {/* SERVICES */}
-        {tab === 'services' && (
-          <div className="space-y-4">
-            {!isNew && model.id ? (
-              <CandidateServicesSection
+              <CandidateNextActionPanel
                 candidateId={String(model.id)}
-                canManage={can('services.orders.manage')}
+                reminders={reminders}
+                remindersLoading={remindersLoading}
+                remindersError={remindersError}
+                reminderTitle={reminderTitle}
+                reminderDueAt={reminderDueAt}
+                reminderOffset={reminderOffset}
+                reminderBusy={reminderBusy}
+                docsBlockersActive={docsBlockersActive}
+                docsRequestDueLabel={t('common.today', { defaultValue: 'Today' })}
+                onDocsRequestCreate={handleDocsRequestCreate}
+                hideToggle
+                hideRemindersList
+                onReminderTitleChange={setReminderTitle}
+                onReminderDueAtChange={setReminderDueAt}
+                onReminderOffsetChange={setReminderOffset}
+                onReminderCreate={handleCreateReminder}
+                onReminderComplete={handleReminderComplete}
+                onReminderSnooze={handleReminderSnooze}
               />
-            ) : (
-              <div className="text-slate-500">{t('app.candidate_card.services.disabled')}</div>
-            )}
+
+              {!isMasked ? (
+                <CandidateDocsRailPanel
+                  candidateId={String(model.id)}
+                  ownerContext={docsOwnerContext}
+                  uploadBusy={false}
+                  onUpload={() => openDocsDrawer(undefined)}
+                  onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic })}
+                  onLoadingChange={setDocsBlockersLoading}
+                  refreshTrigger={docsSummaryRefreshTrigger}
+                  onSelectType={(typeCode) => openDocsDrawer(typeCode)}
+                  pollingEnabled={docsDrawerOpen}
+                />
+              ) : null}
+
+              {!isMasked ? (
+                <CandidateNotesRailSection
+                  notes={notes}
+                  notesLoading={notesLoading}
+                  newNote={newNote}
+                  noteSending={noteSending}
+                  onNewNoteChange={setNewNote}
+                  onAddNote={addNote}
+                  onRefreshNotes={() => model?.id && fetchNotes(String(model.id))}
+                />
+              ) : null}
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-slate-800">
+                    {t('app.candidate_card.control.title', { defaultValue: 'Control' })}
+                  </div>
+                </div>
+
+                {/* Messages + edit are the same logical block: one place to manage communication + corrections */}
+                <div className="mt-3 flex flex-col gap-2">
+                  <Link
+                    to={`/app/messages?candidateId=${model.id}`}
+                    className="btn-secondary btn-sm w-full text-center"
+                  >
+                    {t('app.candidate_card.control.open_messages', { defaultValue: 'Messages' })}
+                  </Link>
+
+                  {!isMasked ? (
+                    <button
+                      type="button"
+                      className={clsx(
+                        'btn-secondary btn-sm w-full text-center',
+                        candidateOverrideMode ? 'bg-amber-50 border-amber-200' : '',
+                      )}
+                      onClick={() => {
+                        setCandidateOverrideMode((v) => {
+                          const next = !v
+                          if (next === false) setCandidateOverrideReason('')
+                          return next
+                        })
+                      }}
+                    >
+                      {candidateOverrideMode
+                        ? t('app.candidate_card.actions.cancel_edit', { defaultValue: 'Cancel edit' })
+                        : t('app.candidate_card.actions.edit', { defaultValue: 'Edit' })}
+                    </button>
+                  ) : null}
+                </div>
+
+                {candidateOverrideMode ? (
+                  <div className="mt-3">
+                    <Input
+                      label={t('app.candidate_card.override_reason_label', { defaultValue: 'Reason for override' })}
+                      value={candidateOverrideReason}
+                      onChange={(e) => setCandidateOverrideReason(e.target.value)}
+                      placeholder={t(
+                        'app.candidate_card.override_reason_placeholder',
+                        { defaultValue: 'Why are you editing restricted fields?' },
+                      )}
+                      readOnly={model?.can_edit === false}
+                    />
+                  </div>
+                ) : null}
+
+                {candidateOverrideMode ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <button type="button" className="btn-primary btn-sm" onClick={() => void save()}>
+                      {t('common.actions.save', { defaultValue: 'Save' })}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              {!isMasked ? (
+                <CandidateHandoffSection
+                  candidateId={model.id}
+                  companyId={model.company_id}
+                  onHandoffCreated={handleAttemptCreated}
+                  embedded
+                />
+              ) : null}
+
+              {/* RODO + attempts/contact: compliance + actions to allow stage changes */}
+              <div className="space-y-3">
+                <CandidateRodoSection
+                  candidateId={String(model.id) as any}
+                  onSent={() => setRodoSentTrigger((x) => x + 1)}
+                  refreshTrigger={rodoSentTrigger}
+                />
+                <CandidateContactAttemptsSection
+                  candidateId={String(model.id) as any}
+                  refreshTrigger={rodoSentTrigger}
+                />
+              </div>
+            </div>
+          ) : null}
           </div>
-        )}
+          </div>
       </div>
 
-      <StageHistoryModal
-        open={historyOpen}
-        loading={historyLoading}
-        error={historyError}
-        infoMessage={historyInfo}
-        entries={stageHistory}
-        onClose={closeHistoryModal}
-        onReload={reloadStageHistory}
-        resolveStageLabel={resolveStageLabel}
-      />
+      {/* Documents side panel */}
+      {!isMasked && docsDrawerOpen && model?.id ? (
+        <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={closeDocsDrawer}>
+          <div
+            className="fixed right-0 top-0 h-full w-full max-w-6xl overflow-hidden rounded-l-2xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 p-3">
+              <div className="min-w-0 text-sm font-semibold text-slate-900 truncate">
+                {t('app.candidate_card.docs_panel.title', { defaultValue: 'Documents' })}
+              </div>
+              <button type="button" className="btn-secondary btn-sm" onClick={closeDocsDrawer}>
+                {t('common.actions.close', { defaultValue: 'Close' })}
+              </button>
+            </div>
+            <div className="h-full overflow-auto p-3">
+              <CandidateDocuments
+                key={`${model.id}:${docsDrawerType || 'default'}`}
+                candidateId={String(model.id)}
+                hideHeader
+                candidateProfile={candidateProfile}
+                initialType={docsDrawerType}
+                compactType
+                {...({
+                  ownerContext: docsOwnerContext,
+                  onFieldsApplied: (doc: any, fields: Record<string, any>) =>
+                    applyDocFieldsToCandidate(String(doc?.type_code || doc?.type || ''), fields),
+                } as any)}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
     </div>
   )
 }
@@ -3086,118 +3108,6 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
           </table>
         </div>
       )}
-    </div>
-  )
-}
-
-type StageHistoryModalProps = {
-  open: boolean
-  loading: boolean
-  error: string | null
-  infoMessage: string | null
-  entries: StageHistoryEntry[]
-  onClose: () => void
-  onReload: () => void
-  resolveStageLabel: (code: string | null | undefined) => string
-}
-
-function StageHistoryModal({
-  open,
-  loading,
-  error,
-  infoMessage,
-  entries,
-  onClose,
-  onReload,
-  resolveStageLabel,
-}: StageHistoryModalProps) {
-  const { t, locale } = useI18n()
-  if (!open) return null
-
-  const renderStage = (code: string | null | undefined) => {
-    if (!code) return <span className="text-slate-400">—</span>
-    const label = resolveStageLabel(code)
-    return (
-      <div className="flex items-center gap-2">
-        <StageTag code={code} />
-        <span>{label || code}</span>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-3xl max-h-[80vh] overflow-hidden rounded-3xl bg-white/98 shadow-2xl ring-1 ring-black/10"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-brand-100/60 bg-brand-50/40 px-4 py-3">
-          <div className="text-lg font-semibold">{t('app.candidate_card.history.modal.title')}</div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="btn-secondary btn-sm"
-              onClick={onReload}
-              disabled={loading}
-            >
-              {loading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}
-            </button>
-            <button type="button" className="btn-secondary btn-sm" onClick={onClose}>
-              {t('common.actions.close')}
-            </button>
-          </div>
-        </div>
-        <div className="max-h-[calc(80vh-56px)] overflow-auto">
-          {loading ? (
-            <div className="px-4 py-6 text-sm text-slate-500">{t('common.loading')}</div>
-          ) : error ? (
-            <div className="px-4 py-6 text-sm text-rose-600">{error}</div>
-          ) : entries.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-slate-500">
-              {infoMessage || t('app.candidate_card.history.empty')}
-            </div>
-          ) : (
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.actor')}</th>
-                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.when')}</th>
-                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.change')}</th>
-                  <th className="px-3 py-2 text-left">{t('app.candidate_card.history.modal.columns.comment')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white">
-                {entries.map((entry) => (
-                  <tr key={entry.id}>
-                    <td className="px-3 py-2 text-xs font-medium text-slate-700">{entry.actor || '—'}</td>
-                    <td className="px-3 py-2 text-xs text-slate-600 whitespace-nowrap">
-                      {entry.at ? formatDateTime(entry.at, locale) : '—'}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <span>{t('app.candidate_card.history.modal.previous')}</span>
-                          {renderStage(entry.from_code)}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <span>{t('app.candidate_card.history.modal.next')}</span>
-                          {renderStage(entry.to_code)}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-slate-600">
-                      {entry.reason ? entry.reason : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
     </div>
   )
 }

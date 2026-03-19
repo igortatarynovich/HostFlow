@@ -17,11 +17,19 @@ READY_STATUSES: Set[str] = {
     DocumentStatus.delivered.value,
     DocumentStatus.completed.value,
     DocumentStatus.submitted.value,
+    DocumentStatus.verified.value,
+    DocumentStatus.issued.value,
+    DocumentStatus.registered.value,
+    DocumentStatus.active.value,
+    DocumentStatus.not_required.value,
 }
 IN_PROGRESS_STATUSES: Set[str] = {
     DocumentStatus.requested.value,
     DocumentStatus.in_progress.value,
     DocumentStatus.submitted.value,
+    DocumentStatus.uploaded.value,
+    DocumentStatus.to_prepare.value,
+    DocumentStatus.to_register.value,
 }
 PROBLEM_STATUSES: Set[str] = {
     DocumentStatus.rejected.value,
@@ -32,6 +40,13 @@ PROBLEM_STATUSES: Set[str] = {
 EQUIVALENT_SATISFACTION: Dict[str, List[str]] = {
     "driver_license_code95": ["driver_license", "code95"],
 }
+
+
+def _normalize_type_code(value: Any) -> str:
+    raw = str(value or "").strip().lower()
+    if not raw:
+        return ""
+    return raw.replace("-", "_").replace(" ", "_")
 
 
 def _normalize_status(value: Any) -> str:
@@ -79,26 +94,30 @@ def compute_owner_summary(
     ctx: Dict[str, Any], ruleset: Dict[str, Any], docs: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     checklist = _apply_default_checklist(compute_candidate_checklist(ctx, ruleset), ruleset)
-    required = checklist.get("requiredTypes", []) or []
+    required = [_normalize_type_code(item) for item in (checklist.get("requiredTypes", []) or [])]
+    required = [item for item in required if item]
 
     # индекс статусов по типам
     by_type: Dict[str, Dict[str, Any]] = {}
     for d in docs:
-        t = d.get("type") or d.get("doc_type")
+        t = _normalize_type_code(d.get("type") or d.get("doc_type"))
         if not t:
             continue
         targets = EQUIVALENT_SATISFACTION.get(str(t)) or [str(t)]
         status_map = {status.value: 0 for status in DocumentStatus}
         for target in targets:
+            normalized_target = _normalize_type_code(target)
+            if not normalized_target:
+                continue
             cur = by_type.setdefault(
-                target,
+                normalized_target,
                 status_map.copy(),
             )
             st = _normalize_status(d.get("status"))
             if st not in cur:
                 cur[st] = 0
             cur[st] += 1
-            by_type[target] = cur
+            by_type[normalized_target] = cur
 
     ready_types: List[str] = []
     in_progress_types: List[str] = []
@@ -106,7 +125,7 @@ def compute_owner_summary(
     missing_types: List[str] = []
 
     for t in required:
-        statuses = by_type.get(t, {})
+        statuses = by_type.get(_normalize_type_code(t), {})
         bucket, _ = _classify_required_type(statuses)
         if bucket == "ready":
             ready_types.append(t)
