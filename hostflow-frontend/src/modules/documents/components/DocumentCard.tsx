@@ -102,6 +102,7 @@ export const DocumentCard = memo(function DocumentCard({
   const hasFiles = doc.has_files ?? (Array.isArray(doc.files) && doc.files.length > 0);
   const firstFileName = Array.isArray(doc.files) ? doc.files[0]?.name : undefined;
   const isExpiringSoon = isExpiringSoonDoc(doc);
+  const needsVerification = hasFiles && !READY_STATUSES.has(statusValue) && !NEGATIVE_STATUSES.has(statusValue);
   const fieldsConfig = getDocumentFieldsConfig(normalizedTypeCode || doc.doc_type || doc.type_code || "");
 
   const expanded = !isCompact && Boolean(expandedDocs[doc.id]);
@@ -156,7 +157,10 @@ export const DocumentCard = memo(function DocumentCard({
   return (
     <div key={doc.id} className="rounded border border-slate-200 bg-white shadow-sm">
       <div
-        className="flex flex-col gap-3 p-4 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+        className={clsx(
+          "flex flex-col gap-3 p-4 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between",
+          needsVerification && "bg-amber-50/40",
+        )}
         onClick={toggleExpanded}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -194,6 +198,11 @@ export const DocumentCard = memo(function DocumentCard({
                 {isExpiringSoon && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
                     {t("admin.documents.badges.expiring", { values: { days: EXPIRING_SOON_THRESHOLD_DAYS } })}
+                  </span>
+                )}
+                {needsVerification && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-800">
+                    {t("admin.documents.badges.pending_verification", { defaultValue: "verification required" })}
                   </span>
                 )}
               </div>
@@ -239,6 +248,11 @@ export const DocumentCard = memo(function DocumentCard({
             </>
           ) : (
             <>
+              {needsVerification ? (
+                <div className="w-full rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800 sm:w-auto">
+                  {t("admin.documents.hints.review_required", { defaultValue: "Uploaded but not verified. Approve or reject to continue pipeline." })}
+                </div>
+              ) : null}
               <label className="flex w-full items-center gap-2 text-xs sm:w-auto">
                 <span className="text-slate-600">{t("admin.documents.table.status")}</span>
                 <select
@@ -255,14 +269,14 @@ export const DocumentCard = memo(function DocumentCard({
                 </select>
               </label>
               <button
-                className="btn-primary btn-xs w-full sm:w-auto"
+                className={clsx("btn-xs w-full sm:w-auto", needsVerification ? "btn-primary ring-2 ring-emerald-200" : "btn-primary")}
                 onClick={() => approveDocument(doc)}
                 disabled={!canManageDocuments || statusUpdating[doc.id] || selectStatus === "approved"}
               >
                 {t("admin.documents.actions.approve")}
               </button>
               <button
-                className="btn-danger btn-xs w-full sm:w-auto"
+                className={clsx("btn-xs w-full sm:w-auto", needsVerification ? "btn-danger ring-2 ring-rose-200" : "btn-danger")}
                 onClick={() => rejectDocument(doc)}
                 disabled={!canManageDocuments || statusUpdating[doc.id]}
               >
