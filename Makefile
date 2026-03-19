@@ -33,6 +33,7 @@ help:
 	@echo "  make up             - run API (uvicorn --reload)"
 	@echo "  make install        - create venv and install deps"
 	@echo "  make upg            - alembic upgrade head"
+	@echo "  make ensure-automation-schema - ensure automation_rules table exists (dev fallback)"
 	@echo "  make mig msg=...    - alembic autogenerate revision"
 	@echo "  make down           - alembic downgrade -1"
 	@echo "  make seed-demo      - seed demo data (5 companies, 5 vacancies, 25 candidates)"
@@ -80,6 +81,10 @@ upg:
 .PHONY: down
 down:
 	$(ALEMBIC) downgrade -1
+
+.PHONY: ensure-automation-schema
+ensure-automation-schema:
+	$(PY) -c "from backend.app.services.ensure_automation_rules_schema import ensure_automation_rules_schema; ensure_automation_rules_schema(); print('automation_rules schema ensured')"
 
 # ---- Seed demo data ----
 # Скрипт читает SYNC_DATABASE_URL из окружения

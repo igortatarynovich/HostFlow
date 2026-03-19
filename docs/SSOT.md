@@ -477,6 +477,13 @@ Turn Candidates into the primary “work surface” (not a registry), with a cle
 
 - [x] **R2.1 Automation log (rule fired → actions)** (ActivityLog-based; reminders emit `automation.*`; added API `/api/v1/automation-log` + UI `/app/automation-log`)
 - [x] **R2.2 Minimal rules builder (candidate created/stage changed/doc expiring/lead processed)** (DB-backed rules + API `/api/v1/automation-rules` + UI `/app/automation-rules`; execution wired for `candidate.created`, `candidate.stage_changed`, `lead.processed`)
+  - Operational hardening:
+    - `GET /api/v1/automation-rules` now degrades safely to empty list if `automation_rules` table is missing (no 500 on page open).
+    - Added deploy/dev command: `make ensure-automation-schema` to bootstrap `automation_rules` in environments where Alembic is unavailable.
+    - Recommended rollout order:
+      1) `make upg` (preferred, full migrations),
+      2) fallback `make ensure-automation-schema` (SQLite/dev safety net),
+      3) smoke check `GET /api/v1/automation-rules` returns `200` with `items`.
 
 ### R3
 
