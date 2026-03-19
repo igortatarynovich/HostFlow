@@ -58,7 +58,6 @@ import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import CandidateHeader from '../components/candidate/CandidateHeader'
 import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
 import CandidateBasicSection from '../components/candidate/CandidateBasicSection'
-import CandidateHandoffSection from '../components/candidate/CandidateHandoffSection'
 import CandidatePersonalSection from '../components/candidate/CandidatePersonalSection'
 import CandidateStatusSection from '../components/candidate/CandidateStatusSection'
 import CandidateExperienceSection from '../components/candidate/CandidateExperienceSection'
@@ -73,6 +72,7 @@ import { Input, SearchableSelect } from '../components/candidate/shared/FormComp
 import CandidateNextActionPanel from '../components/candidate/CandidateNextActionPanel'
 import CandidateNotesRailSection from '../components/candidate/CandidateNotesRailSection'
 import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
+import { createHandoff, getAvailableClients, getHandoffStatus, type AvailableClientOut, type HandoffStatusResponse } from '../api/handoffs'
 import { deriveDocsMeta } from '../modules/candidates/utils'
 import {
   ADDRESS_KEYS,
@@ -788,6 +788,12 @@ export default function CandidateCard(){
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false)
   const [docsDrawerType, setDocsDrawerType] = useState<string | undefined>(undefined)
   const docsVerifyTaskSignatureRef = useRef<string | null>(null)
+  const [handoffStatus, setHandoffStatus] = useState<HandoffStatusResponse | null>(null)
+  const [handoffClients, setHandoffClients] = useState<AvailableClientOut[]>([])
+  const [handoffLoading, setHandoffLoading] = useState(false)
+  const [handoffModalOpen, setHandoffModalOpen] = useState(false)
+  const [handoffSubmitting, setHandoffSubmitting] = useState(false)
+  const [handoffClientLinkId, setHandoffClientLinkId] = useState('')
   const timelineLoadedRef = useRef(false)
   const dateFnsLocale = useMemo(() => (locale === 'ru' ? ru : locale === 'pl' ? pl : enUS), [locale])
 
@@ -2458,6 +2464,66 @@ export default function CandidateCard(){
     }
   }, [model?.id, model, fetchCandidate])
 
+  const refreshHandoffMeta = useCallback(async () => {
+    if (!model?.id) return
+    try {
+      setHandoffLoading(true)
+      const [statusResp, clientsResp] = await Promise.all([
+        getHandoffStatus(model.id as UUID, (model.company_id as UUID) || undefined),
+        getAvailableClients(),
+      ])
+      setHandoffStatus(statusResp)
+      setHandoffClients(clientsResp)
+    } catch {
+      setHandoffStatus(null)
+      setHandoffClients([])
+    } finally {
+      setHandoffLoading(false)
+    }
+  }, [model?.company_id, model?.id])
+
+  useEffect(() => {
+    if (isNew || !model?.id) {
+      setHandoffStatus(null)
+      setHandoffClients([])
+      setHandoffClientLinkId('')
+      setHandoffModalOpen(false)
+      return
+    }
+    void refreshHandoffMeta()
+  }, [isNew, model?.id, refreshHandoffMeta])
+
+  const handleHandoffCreate = useCallback(async () => {
+    if (!model?.id || !handoffClientLinkId) return
+    const selectedClient = handoffClients.find((x) => x.link_id === handoffClientLinkId) || null
+    if (!selectedClient) return
+    const payload = selectedClient.client_company_id
+      ? { client_company_id: selectedClient.client_company_id }
+      : selectedClient.client_tenant_id
+        ? { client_tenant_id: selectedClient.client_tenant_id }
+        : null
+    if (!payload) return
+    try {
+      setHandoffSubmitting(true)
+      await createHandoff(model.id as UUID, payload)
+      setHandoffModalOpen(false)
+      setHandoffClientLinkId('')
+      await refreshHandoffMeta()
+      await handleAttemptCreated()
+      notify({
+        title: t('app.candidate_card.handoff.created', { defaultValue: 'Transferred to client' }),
+        variant: 'success',
+      })
+    } catch (e: any) {
+      notify({
+        title: e?.response?.data?.detail || e?.message || t('app.common.messages.unexpected'),
+        variant: 'error',
+      })
+    } finally {
+      setHandoffSubmitting(false)
+    }
+  }, [handoffClientLinkId, handoffClients, handleAttemptCreated, model?.id, notify, refreshHandoffMeta, t])
+
   const handleReminderComplete = useCallback(async (id: string) => {
     try {
       setReminderBusy(id)
@@ -2528,6 +2594,14 @@ export default function CandidateCard(){
 
   const isMasked = model?.masked === true
   const candidateDataReadOnly = !isNew && !candidateOverrideMode
+  const handoffLocked = Boolean(handoffStatus?.pending || handoffStatus?.accepted || handoffLoading)
+  const handoffRequestedAt = handoffStatus?.accepted?.requested_at || handoffStatus?.pending?.requested_at || null
+  const handoffButtonLabel = handoffRequestedAt
+    ? t('app.candidate_card.handoff.transferred_at', {
+        defaultValue: 'Transferred {{date}}',
+        values: { date: formatDateTime(handoffRequestedAt, locale) || handoffRequestedAt },
+      })
+    : t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })
 
   // Pipedrive-style indicator: show how long candidate is in current stage.
   // Best-effort: uses stage history and loads quietly (does not block UI).
@@ -2727,6 +2801,11 @@ export default function CandidateCard(){
         onHeaderExpandedChange={setHeaderExpanded}
         onSave={save}
         onDelete={handleDelete}
+        onEditToggle={toggleCandidateEditMode}
+        editMode={candidateOverrideMode}
+        onOpenHandoff={() => setHandoffModalOpen(true)}
+        handoffDisabled={handoffLocked}
+        handoffLabel={handoffButtonLabel}
         onDeleteRequest={handleDeleteRequest}
         onCancel={() => nav(originPath, { state: { returnFromCandidateId: model?.id } })}
         backPath={originPath}
@@ -2973,6 +3052,18 @@ export default function CandidateCard(){
                 />
               ) : null}
 
+              {!isMasked ? (
+                <CandidateNotesRailSection
+                  notes={notes}
+                  notesLoading={notesLoading}
+                  newNote={newNote}
+                  noteSending={noteSending}
+                  onNewNoteChange={setNewNote}
+                  onAddNote={addNote}
+                  onRefreshNotes={() => model?.id && fetchNotes(String(model.id))}
+                />
+              ) : null}
+
               <CandidateTimelinePanel
                 locale={locale}
                 stageHistory={stageHistory}
@@ -2989,18 +3080,6 @@ export default function CandidateCard(){
                 itemsMaxHeightClass="max-h-[28rem]"
               />
 
-              {!isMasked ? (
-                <CandidateNotesRailSection
-                  notes={notes}
-                  notesLoading={notesLoading}
-                  newNote={newNote}
-                  noteSending={noteSending}
-                  onNewNoteChange={setNewNote}
-                  onAddNote={addNote}
-                  onRefreshNotes={() => model?.id && fetchNotes(String(model.id))}
-                />
-              ) : null}
-
               <div className="rounded-2xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-xs font-semibold text-slate-800">
@@ -3012,77 +3091,34 @@ export default function CandidateCard(){
                     to={`/app/messages?candidateId=${model.id}`}
                     className="btn-secondary btn-sm w-full text-center"
                   >
-                    {t('app.candidate_card.control.open_messages', { defaultValue: 'Messages' })}
+                    {t('app.candidate_card.control.open_messages', { defaultValue: 'Open messages' })}
                   </Link>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-xs font-semibold text-slate-800">
-                    {t('app.candidate_card.control.title', { defaultValue: 'Control' })}
+              {candidateOverrideMode ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-3">
+                  <div className="text-xs font-semibold text-amber-900">
+                    {t('app.candidate_card.override_reason_label', { defaultValue: 'Reason for override' })}
                   </div>
-                </div>
-                <div className="mt-3 flex flex-col gap-2">
-                  {!isMasked ? (
-                    <button
-                      type="button"
-                      className={clsx(
-                        'btn-secondary btn-sm w-full text-center',
-                        candidateOverrideMode ? 'bg-amber-50 border-amber-200' : '',
-                      )}
-                      onClick={toggleCandidateEditMode}
+                  <div className="mt-2">
+                    <select
+                      className="input w-full"
+                      value={candidateOverrideReason}
+                      onChange={(e) => setCandidateOverrideReason(e.target.value)}
                     >
-                      {candidateOverrideMode
-                        ? t('app.candidate_card.actions.cancel_edit', { defaultValue: 'Cancel edit' })
-                        : t('app.candidate_card.actions.edit', { defaultValue: 'Edit' })}
-                    </button>
-                  ) : null}
-                  {!isNew && canDeleteDirect ? (
-                    <button
-                      type="button"
-                      className="btn-sm w-full rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-center font-semibold text-rose-700 hover:bg-rose-100"
-                      onClick={handleDelete}
-                    >
-                      {t('common.actions.delete', { defaultValue: 'Delete' })}
-                    </button>
-                  ) : null}
-                </div>
-
-                {candidateOverrideMode ? (
-                  <div className="mt-3">
-                    <label className="block">
-                      <div className="label">{t('app.candidate_card.override_reason_label', { defaultValue: 'Reason for override' })}</div>
-                      <select
-                        className="input w-full"
-                        value={candidateOverrideReason}
-                        onChange={(e) => setCandidateOverrideReason(e.target.value)}
-                      >
-                        <option value="">{t('app.candidate_card.override_reason_placeholder', { defaultValue: 'Why are you editing restricted fields?' })}</option>
-                        {overrideReasonOptions.map((reason) => (
-                          <option key={reason} value={reason}>{reason}</option>
-                        ))}
-                      </select>
-                    </label>
+                      <option value="">{t('app.candidate_card.override_reason_placeholder', { defaultValue: 'Why are you editing restricted fields?' })}</option>
+                      {overrideReasonOptions.map((reason) => (
+                        <option key={reason} value={reason}>{reason}</option>
+                      ))}
+                    </select>
                   </div>
-                ) : null}
-
-                {candidateOverrideMode ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <button type="button" className="btn-primary btn-sm" onClick={() => void save()}>
                       {t('common.actions.save', { defaultValue: 'Save' })}
                     </button>
                   </div>
-                ) : null}
-              </div>
-
-              {!isMasked ? (
-                <CandidateHandoffSection
-                  candidateId={model.id}
-                  companyId={model.company_id}
-                  onHandoffCreated={handleAttemptCreated}
-                  embedded
-                />
+                </div>
               ) : null}
 
               {/* RODO + attempts/contact: compliance + actions to allow stage changes */}
@@ -3102,6 +3138,68 @@ export default function CandidateCard(){
           </div>
           </div>
       </div>
+
+      {!isNew && model?.id && handoffModalOpen ? (
+        <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={() => setHandoffModalOpen(false)}>
+          <div
+            className="mx-auto mt-12 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-slate-900">
+                {t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
+              </div>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
+                {t('common.actions.close', { defaultValue: 'Close' })}
+              </button>
+            </div>
+
+            {handoffLocked ? (
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                {handoffRequestedAt
+                  ? t('app.candidate_card.handoff.transferred_at', {
+                      defaultValue: 'Transferred {{date}}',
+                      values: { date: formatDateTime(handoffRequestedAt, locale) || handoffRequestedAt },
+                    })
+                  : t('app.candidate_card.handoff.locked', { defaultValue: 'Candidate is already transferred. Repeat transfer is disabled.' })}
+              </div>
+            ) : (
+              <>
+                <div className="mt-3">
+                  <label className="label">{t('app.candidate_card.handoff.client', { defaultValue: 'Client' })}</label>
+                  <select
+                    className="input w-full"
+                    value={handoffClientLinkId}
+                    onChange={(e) => setHandoffClientLinkId(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {handoffClients.map((c) => (
+                      <option key={c.link_id} value={c.link_id}>
+                        {c.client_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
+                    {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    disabled={!handoffClientLinkId || handoffSubmitting}
+                    onClick={() => void handleHandoffCreate()}
+                  >
+                    {handoffSubmitting
+                      ? t('common.saving', { defaultValue: 'Saving...' })
+                      : t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {/* Documents side panel */}
       {!isMasked && docsDrawerOpen && model?.id ? (

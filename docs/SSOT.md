@@ -858,6 +858,8 @@ HostFlow takeaway:
   - Pipeline gating tightened: candidate stage progression is blocked not only for missing/problematic docs, but also for uploaded-yet-unverified (`in_progress`) required docs.
   - `Request documents` next action now also generates candidate upload link; once candidate has uploaded required docs and they remain unverified (`in_progress`), system auto-creates follow-up verification activity (`Verify uploaded documents`).
   - Candidate card rail rebalanced for operators: activity moved to right rail (up to 5 visible with scroll), messages isolated into its own widget, edit control paired with red delete action, edit action auto-scrolls to candidate data section, and override reason switched to predefined dropdown options.
+  - Candidate header action model simplified: primary actions moved to hero (`Transfer to client`, `Edit`, `Delete`), with transfer modal (client picker), transfer timestamp lock (no repeat transfer), and removal of duplicated control/handoff actions from side rail.
+  - Side rail ordering updated for workflow scanning: `Notes` now renders before `Activity`.
 - [x] **R2.3 Activities bulk creation** from list views (Candidates bulk action “Create activity” → creates reminders in bulk via `POST /api/v1/reminders/bulk`)
 - [x] **R3.3 Goals system** (activity compliance + readiness) and dashboard sharing (added `/api/v1/analytics/goals` + Overview block; public share endpoint `/api/v1/public/goals/{share_token}` when tenant sharing is enabled)
 - [x] **Activity templates/types** (Call, Email, Document request, Follow-up): quick-type buttons in bulk-activity modal (Candidates + Leads); reminder `type` sent to API; defaults for title and reminder offset per template

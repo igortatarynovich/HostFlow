@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import clsx from 'clsx'
 import {
   IconAlertTriangle,
   IconBookmark,
@@ -28,6 +29,11 @@ interface CandidateHeaderProps {
   onHeaderExpandedChange: (expanded: boolean) => void
   onSave: () => void
   onDelete: () => void
+  onEditToggle?: () => void
+  editMode?: boolean
+  onOpenHandoff?: () => void
+  handoffDisabled?: boolean
+  handoffLabel?: string
   onDeleteRequest: () => void
   onCancel: () => void
   backPath?: string
@@ -55,6 +61,11 @@ function CandidateHeader({
   onHeaderExpandedChange,
   onSave,
   onDelete,
+  onEditToggle,
+  editMode = false,
+  onOpenHandoff,
+  handoffDisabled = false,
+  handoffLabel,
   onDeleteRequest,
   onCancel,
   backPath = '/app/candidates',
@@ -211,13 +222,39 @@ function CandidateHeader({
                 </button>
               </>
             )}
-            {!isNew && canDeleteDirect && (
-              <button
-                className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 font-semibold text-rose-700 transition hover:bg-rose-100"
-                onClick={onDelete}
-              >
-                {t('common.actions.delete')}
-              </button>
+            {!isNew && (
+              <>
+                <button
+                  type="button"
+                  className="rounded-lg border border-white bg-white px-3 py-1.5 font-semibold text-brand-700 shadow-sm transition hover:bg-white/90 disabled:opacity-60"
+                  onClick={onOpenHandoff}
+                  disabled={handoffDisabled}
+                >
+                  {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
+                </button>
+                <button
+                  type="button"
+                  className={clsx(
+                    "rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 font-medium text-white transition hover:bg-white/20",
+                    editMode && "bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100",
+                  )}
+                  onClick={onEditToggle}
+                  disabled={!canEdit}
+                >
+                  {editMode
+                    ? t('app.candidate_card.actions.cancel_edit', { defaultValue: 'Cancel edit' })
+                    : t('app.candidate_card.actions.edit', { defaultValue: 'Edit' })}
+                </button>
+                <span className="mx-1 hidden h-6 w-px bg-white/30 md:inline-block" />
+                {canDeleteDirect ? (
+                  <button
+                    className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 font-semibold text-rose-700 transition hover:bg-rose-100"
+                    onClick={onDelete}
+                  >
+                    {t('common.actions.delete')}
+                  </button>
+                ) : null}
+              </>
             )}
             {!isNew && !canDeleteDirect && canRequestDelete && (
               <button
