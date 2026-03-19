@@ -2881,6 +2881,25 @@
         "handoff": "Передача",
         "reminders": "Напоминания"
       },
+      "control": {
+        "title": "Контроль",
+        "messages_title": "Сообщения",
+        "open_messages": "Сообщения"
+      },
+      "override_reason_label": "Причина override",
+      "override_reason_placeholder": "Почему вы редактируете ограниченные поля?",
+      "override_reasons": {
+        "data_correction": "Корректировка данных после уточнения с кандидатом",
+        "docs_fix": "Исправление статуса/метаданных документа",
+        "pipeline_fix": "Нормализация статуса в pipeline",
+        "manager_request": "Запрос менеджера",
+        "legal_compliance": "Юридическое/комплаенс требование",
+        "other": "Другое"
+      },
+      "next_action": {
+        "docs_verify_title": "Проверить загруженные документы",
+        "docs_verify_description": "Кандидат загрузил документы. Проверьте и подтвердите/отклоните перед переходом этапа."
+      },
       "reminders": {
         "title": "Напоминания по кандидату",
         "subtitle": "Быстрое напоминание: заголовок, срок, смещение (мин).",

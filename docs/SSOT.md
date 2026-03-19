@@ -847,7 +847,7 @@ HostFlow takeaway:
   - Right-rail **Quick Documents** panel for fast status + blockers + one-click upload/open.
   - Preserved full **Document Center** access (not removed): opens full candidate documents workspace for approve/reject/edit/replace/delete, upload link generation, and profile export.
   - Pipeline gating tightened: candidate stage progression is blocked not only for missing/problematic docs, but also for uploaded-yet-unverified (`in_progress`) required docs.
-  - `Request documents` next action now also generates candidate upload link and creates follow-up verification activity (`Verify uploaded documents`).
+  - `Request documents` next action now also generates candidate upload link; once candidate has uploaded required docs and they remain unverified (`in_progress`), system auto-creates follow-up verification activity (`Verify uploaded documents`).
   - Candidate card rail rebalanced for operators: activity moved to right rail (up to 5 visible with scroll), messages isolated into its own widget, edit control paired with red delete action, edit action auto-scrolls to candidate data section, and override reason switched to predefined dropdown options.
 - [x] **R2.3 Activities bulk creation** from list views (Candidates bulk action “Create activity” → creates reminders in bulk via `POST /api/v1/reminders/bulk`)
 - [x] **R3.3 Goals system** (activity compliance + readiness) and dashboard sharing (added `/api/v1/analytics/goals` + Overview block; public share endpoint `/api/v1/public/goals/{share_token}` when tenant sharing is enabled)

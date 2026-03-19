@@ -2881,6 +2881,25 @@
         "handoff": "Handoff",
         "reminders": "Reminders"
       },
+      "control": {
+        "title": "Control",
+        "messages_title": "Messages",
+        "open_messages": "Messages"
+      },
+      "override_reason_label": "Reason for override",
+      "override_reason_placeholder": "Why are you editing restricted fields?",
+      "override_reasons": {
+        "data_correction": "Data correction after candidate clarification",
+        "docs_fix": "Document metadata/status correction",
+        "pipeline_fix": "Pipeline status normalization",
+        "manager_request": "Manager request",
+        "legal_compliance": "Legal/compliance request",
+        "other": "Other"
+      },
+      "next_action": {
+        "docs_verify_title": "Verify uploaded documents",
+        "docs_verify_description": "Candidate uploaded documents. Verify and approve/reject before moving stage."
+      },
       "reminders": {
         "title": "Candidate reminders",
         "subtitle": "Quick reminder: title, due date, offset (min).",

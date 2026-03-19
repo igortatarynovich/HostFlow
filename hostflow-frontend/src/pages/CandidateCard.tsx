@@ -787,6 +787,7 @@ export default function CandidateCard(){
   const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false)
   const [docsDrawerType, setDocsDrawerType] = useState<string | undefined>(undefined)
+  const docsVerifyTaskSignatureRef = useRef<string | null>(null)
   const timelineLoadedRef = useRef(false)
   const dateFnsLocale = useMemo(() => (locale === 'ru' ? ru : locale === 'pl' ? pl : enUS), [locale])
 
@@ -2339,26 +2340,61 @@ export default function CandidateCard(){
   const handleDocsRequestCreate = useCallback(() => {
     // Prefill reminder form based on docs blockers.
     const dt = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
-    const dueIso = new Date(dt).toISOString()
     setReminderTitle(t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' }))
     setReminderDueAt(dt)
     void generateUploadLink()
-    if (model?.id) {
-      void createActivity({
-        title: t('app.candidate_card.next_action.docs_verify_title', { defaultValue: 'Verify uploaded documents' }),
-        description: t('app.candidate_card.next_action.docs_verify_description', {
-          defaultValue: 'Candidate uploaded documents. Verify and approve/reject before moving stage.',
-        }),
-        type: 'custom',
-        entity_type: 'candidate',
-        entity_id: model.id,
-        due_at: dueIso,
-        remind_at: dueIso,
-        priority: 'high',
-        source: 'documents_upload',
-      }).catch(() => {})
+  }, [generateUploadLink, t])
+
+  useEffect(() => {
+    if (!model?.id || docsBlockersLoading) return
+    const pending = [...(docsBlockers.inProgress || [])].filter(Boolean).sort()
+    if (!pending.length) return
+    const signature = `${String(model.id)}::${pending.join('|')}`
+    if (docsVerifyTaskSignatureRef.current === signature) return
+
+    const hasActiveVerify = (reminders || []).some((r) => {
+      if (!r || r.status === 'done' || r.status === 'cancelled') return false
+      const type = String(r.type || '').toLowerCase()
+      const title = String(r.title || '').toLowerCase()
+      const description = String(r.description || '').toLowerCase()
+      return type === 'document_review'
+        || title.includes('verify uploaded documents')
+        || description.includes('[auto:docs_verify]')
+    })
+    if (hasActiveVerify) {
+      docsVerifyTaskSignatureRef.current = signature
+      return
     }
-  }, [generateUploadLink, model?.id, t])
+
+    docsVerifyTaskSignatureRef.current = signature
+    const dueIso = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+    void (async () => {
+      try {
+        await createActivity({
+          title: t('app.candidate_card.next_action.docs_verify_title', { defaultValue: 'Verify uploaded documents' }),
+          description: t('app.candidate_card.next_action.docs_verify_description', {
+            defaultValue: '[AUTO:DOCS_VERIFY] Candidate uploaded documents. Verify and approve/reject before moving stage.',
+          }),
+          type: 'document_review',
+          entity_type: 'candidate',
+          entity_id: model.id,
+          due_at: dueIso,
+          remind_at: dueIso,
+          priority: 'high',
+          source: 'documents_upload',
+        })
+        const res = await listReminders({
+          entityType: 'candidate',
+          entityId: model.id,
+          status: ['pending', 'new', 'overdue'],
+        })
+        const items = Array.isArray(res?.items) ? res.items : []
+        setReminders(items.slice(0, 5))
+      } catch {
+        // Best-effort automation; user-facing docs flow should not break.
+      }
+    })()
+  }, [docsBlockers.inProgress, docsBlockersLoading, model?.id, reminders, t])
 
   const overrideReasonOptions = useMemo(
     () => [

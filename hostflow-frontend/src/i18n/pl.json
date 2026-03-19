@@ -2763,6 +2763,25 @@
         "vacancy_hint": "Wakat określa firmę i podsumowanie gotowości.",
         "favorite_toggle_failed": "Nie udało się zmienić statusu ulubionego: {detail}"
       },
+      "control": {
+        "title": "Kontrola",
+        "messages_title": "Wiadomości",
+        "open_messages": "Wiadomości"
+      },
+      "override_reason_label": "Powód override",
+      "override_reason_placeholder": "Dlaczego edytujesz pola z ograniczeniami?",
+      "override_reasons": {
+        "data_correction": "Korekta danych po doprecyzowaniu z kandydatem",
+        "docs_fix": "Korekta statusu/metadanych dokumentu",
+        "pipeline_fix": "Normalizacja statusu w pipeline",
+        "manager_request": "Prośba menedżera",
+        "legal_compliance": "Wymóg prawny/compliance",
+        "other": "Inne"
+      },
+      "next_action": {
+        "docs_verify_title": "Zweryfikuj wgrane dokumenty",
+        "docs_verify_description": "Kandydat wgrał dokumenty. Zweryfikuj i zatwierdź/odrzuć przed zmianą etapu."
+      },
       "override": {
         "title": "Ochrona danych podanych przez kandydata",
         "description": "Pola danych osobowych, kontaktów i doświadczenia są domyślnie tylko do odczytu. Włączaj override tylko wtedy, gdy świadomie poprawiasz dane kandydata.",
