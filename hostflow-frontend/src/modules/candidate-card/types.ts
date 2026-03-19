@@ -2,7 +2,7 @@
  * Type definitions for candidate card module
  */
 
-export type Tab = 'personal' | 'docs' | 'services' | 'timeline';
+export type Tab = 'personal' | 'docs' | 'services';
 export type PreferredContact = 'viber' | 'whatsapp' | 'telegram' | 'phone' | '';
 export type Option = { value: string; label: string; extra?: any };
 export type AddressFields = {

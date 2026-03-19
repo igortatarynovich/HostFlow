@@ -15,9 +15,15 @@ import {
   getContactAttemptStats,
   getDocumentStats,
   getOpsCounters,
+  getGoals,
   getStageMetrics,
+  getPerfBaseline,
+  getPerfBudgets,
   recordTrialRetentionEvent,
   type OpsCounters,
+  type GoalsResponse,
+  type PerfBudgetsResponse,
+  type PerfBaselineResponse,
   type StageMetricsResponse,
   type TrialRetentionReport,
 } from '../api/analytics'
@@ -334,8 +340,13 @@ export default function Dashboard() {
 
   const [opsCounters, setOpsCounters] = useState<OpsCounters | null>(null)
   const [opsCountersLoading, setOpsCountersLoading] = useState(false)
+  const [goals, setGoals] = useState<GoalsResponse | null>(null)
+  const [goalsLoading, setGoalsLoading] = useState(false)
   const [stageMetrics, setStageMetrics] = useState<StageMetricsResponse | null>(null)
   const [stageMetricsLoading, setStageMetricsLoading] = useState(false)
+  const [perfBaseline, setPerfBaseline] = useState<PerfBaselineResponse | null>(null)
+  const [perfBaselineLoading, setPerfBaselineLoading] = useState(false)
+  const [perfBudgets, setPerfBudgets] = useState<PerfBudgetsResponse | null>(null)
 
   const loadOpsCounters = useCallback(async () => {
     setOpsCountersLoading(true)
@@ -353,6 +364,22 @@ export default function Dashboard() {
     void loadOpsCounters()
   }, [loadOpsCounters])
 
+  const loadGoals = useCallback(async () => {
+    setGoalsLoading(true)
+    try {
+      const data = await getGoals()
+      setGoals(data)
+    } catch {
+      setGoals(null)
+    } finally {
+      setGoalsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadGoals()
+  }, [loadGoals])
+
   const loadStageMetrics = useCallback(async () => {
     setStageMetricsLoading(true)
     try {
@@ -368,6 +395,33 @@ export default function Dashboard() {
   useEffect(() => {
     void loadStageMetrics()
   }, [loadStageMetrics])
+
+  const loadPerfBaseline = useCallback(async () => {
+    setPerfBaselineLoading(true)
+    try {
+      const data = await getPerfBaseline({ days: 14, limit: 30 })
+      setPerfBaseline(data)
+    } catch {
+      setPerfBaseline(null)
+    } finally {
+      setPerfBaselineLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadPerfBaseline()
+  }, [loadPerfBaseline])
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const data = await getPerfBudgets()
+        setPerfBudgets(data)
+      } catch {
+        setPerfBudgets(null)
+      }
+    })()
+  }, [])
 
   const [globalCounts, setGlobalCounts] = useState({ candidates: 0, companies: 0, vacancies: 0 })
   const [periodTotal, setPeriodTotal] = useState(0)
@@ -1667,6 +1721,30 @@ export default function Dashboard() {
               <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
             </Link>
 
+            <Link to="/app/leads?status=processed&next_action=no_next_action" className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50">
+              <div className="text-xs text-slate-500">
+                {t('app.dashboard.ops.leads_no_next_action', { defaultValue: 'Leads: no next action' })}
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-amber-700">{opsCounters?.leads_no_next_action ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+            </Link>
+
+            <Link to="/app/reminders?type=leads_no_next_action" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+              <div className="text-xs text-slate-500">
+                {t('app.dashboard.ops.leads_sla_nudges', { defaultValue: 'Leads SLA nudges (assigned)' })}
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.leads_sla_no_next_action_reminders ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+            </Link>
+
+            <Link to="/app/leads?status=processed&next_action=stuck" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+              <div className="text-xs text-slate-500">
+                {t('app.dashboard.ops.leads_stuck_nudges', { defaultValue: 'Leads stuck nudges (assigned)' })}
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.leads_sla_stuck_stage_reminders ?? '—'}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+            </Link>
+
             <Link to="/app/candidates?debug=1" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.draft_intake', { defaultValue: 'Draft intake stale (24h+)' })}</div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.draft_intake_stale ?? '—'}</div>
@@ -1685,6 +1763,64 @@ export default function Dashboard() {
               <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
             </Link>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                {t('app.dashboard.goals.title', { defaultValue: 'Goals (operational)' })}
+              </div>
+              <div className="mt-0.5 text-xs text-slate-500">
+                {t('app.dashboard.goals.subtitle', { defaultValue: 'Activity/next-action compliance goals.' })}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {goals?.share_url ? (
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => void navigator.clipboard?.writeText(`${window.location.origin}${goals.share_url}`).catch(() => {})}
+                >
+                  {t('app.dashboard.goals.copy_share', { defaultValue: 'Copy share link' })}
+                </button>
+              ) : null}
+              <button type="button" className="btn-secondary btn-sm" onClick={() => void loadGoals()} disabled={goalsLoading}>
+                {goalsLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+              </button>
+            </div>
+          </div>
+
+          {!goals ? (
+            <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.goals.empty', { defaultValue: 'No goals data yet.' })}</div>
+          ) : (
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              {(goals.goals || []).map((g) => {
+                const value = (goals.metrics || {})[g.key]
+                const target = g.target
+                const op = String(g.op || '>=')
+                const ok =
+                  typeof value === 'number'
+                    ? op === '>='
+                      ? value >= target
+                      : op === '<='
+                        ? value <= target
+                        : value === target
+                    : true
+                return (
+                  <div key={g.key} className={ok ? 'rounded-xl border border-emerald-200 bg-emerald-50/50 p-3' : 'rounded-xl border border-rose-200 bg-rose-50/50 p-3'}>
+                    <div className="text-xs font-semibold text-slate-700">{g.label || g.key}</div>
+                    <div className="mt-1 flex items-baseline justify-between gap-2">
+                      <div className="text-2xl font-semibold text-slate-900">{value ?? '—'}</div>
+                      <div className="text-xs text-slate-600">
+                        {op} {target}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -1746,6 +1882,59 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                {t('app.dashboard.perf.title', { defaultValue: 'Performance baseline (p50/p95)' })}
+              </div>
+              <div className="mt-0.5 text-xs text-slate-500">
+                {t('app.dashboard.perf.subtitle', { defaultValue: 'Captured from real user actions (last 14 days).' })}
+              </div>
+            </div>
+            <button type="button" className="btn-secondary btn-sm" onClick={() => void loadPerfBaseline()} disabled={perfBaselineLoading}>
+              {perfBaselineLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          </div>
+
+          {!perfBaseline || (perfBaseline.rows || []).length === 0 ? (
+            <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.perf.empty', { defaultValue: 'No measurements yet.' })}</div>
+          ) : (
+            <div className="mt-3 overflow-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-slate-500">
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.metric', { defaultValue: 'Metric' })}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.samples', { defaultValue: 'Samples' })}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.p50', { defaultValue: 'p50 (ms)' })}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.p95', { defaultValue: 'p95 (ms)' })}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.budget', { defaultValue: 'Budget p95 (ms)' })}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.range', { defaultValue: 'min–max (ms)' })}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(perfBaseline.rows || []).map((r) => {
+                    const budget = perfBudgets?.budgets_p95_ms?.[r.metric_key]
+                    const breached = budget != null && Number.isFinite(budget) && r.p95_ms > Number(budget)
+                    return (
+                    <tr key={r.metric_key} className="border-t border-slate-100">
+                      <td className="py-2 pr-3 font-mono text-xs text-slate-700">{r.metric_key}</td>
+                      <td className="py-2 pr-3 text-slate-700">{r.samples}</td>
+                      <td className="py-2 pr-3 font-semibold text-slate-900">{r.p50_ms}</td>
+                      <td className={breached ? "py-2 pr-3 font-semibold text-rose-700" : "py-2 pr-3 font-semibold text-slate-900"}>{r.p95_ms}</td>
+                      <td className="py-2 pr-3 text-slate-700">{budget != null ? String(budget) : '—'}</td>
+                      <td className="py-2 pr-3 text-slate-700">
+                        {r.min_ms}–{r.max_ms}
+                      </td>
+                    </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -2266,9 +2455,9 @@ export default function Dashboard() {
               {pivotSecondary !== 'none' && ` × ${secondaryLabel}`}
             </div>
           </div>
-          <div ref={pivotChartContainerRef} className="w-full min-w-0 overflow-hidden" style={{ height: 256, minHeight: 200 }}>
+          <div ref={pivotChartContainerRef} className="w-full min-w-0 overflow-hidden" style={{ minHeight: 200 }}>
             {isPivotChartContainerReady ? (
-              <ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={0}>
+              <ResponsiveContainer width="100%" height={256} minHeight={200} minWidth={0}>
                 <BarChart
                   data={pivotData.rows.slice(0, 15).map((r) => ({
                     name: r.key.length > 20 ? r.key.slice(0, 18) + '…' : r.key,
@@ -2296,7 +2485,7 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-xs text-slate-500">
+              <div className="flex h-64 items-center justify-center text-xs text-slate-500">
                 {t('common.loading')}
               </div>
             )}

@@ -1,0 +1,197 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import clsx from 'clsx'
+import { useI18n } from '../../i18n'
+import { getSummary } from '../../api/documents'
+
+type SummaryRequired = {
+  total: number
+  approved?: number
+  ready: number
+  in_progress: number
+  missing_count: number
+  problems: number
+  missing: string[]
+  problematic: string[]
+  ready_types?: string[]
+  in_progress_types?: string[]
+}
+
+type Summary = {
+  status: string
+  percent_ready: number
+  required: SummaryRequired
+  expiring_soon: Array<{ type: string; expires_at: string }>
+}
+
+export default function CandidateDocsChecklistMiniPanel({
+  candidateId,
+  ownerContext,
+  onOpenDocs,
+  alwaysOpen = false,
+}: {
+  candidateId: string
+  ownerContext?: Record<string, any> | null
+  onOpenDocs?: () => void
+  alwaysOpen?: boolean
+}) {
+  const { t, locale } = useI18n()
+  const [open, setOpen] = useState(alwaysOpen)
+  const [loaded, setLoaded] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [errorText, setErrorText] = useState<string | null>(null)
+  const [summary, setSummary] = useState<Summary | null>(null)
+
+  const load = useCallback(async () => {
+    if (!candidateId) return
+    setLoading(true)
+    setErrorText(null)
+    try {
+      const res = await getSummary(candidateId, { context: ownerContext || null, fillMissing: true })
+      const s = (res as any)?.summary as Summary | undefined
+      setSummary(s ?? null)
+      setLoaded(true)
+    } catch (err: any) {
+      setErrorText(err?.response?.data?.detail ?? err?.message ?? 'Request failed')
+      setSummary(null)
+      setLoaded(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [candidateId, ownerContext])
+
+  useEffect(() => {
+    if (!open) return
+    if (loaded) return
+    void load()
+  }, [loaded, load, open])
+
+  const labelForType = useCallback(
+    (code: string) => t(`admin.documents.types.${code}`, { defaultValue: code }),
+    [t],
+  )
+
+  const missing = useMemo(() => summary?.required?.missing ?? [], [summary])
+  const problematic = useMemo(() => summary?.required?.problematic ?? [], [summary])
+  const expiring = useMemo(() => summary?.expiring_soon ?? [], [summary])
+
+  const percent = useMemo(() => {
+    const p = Number(summary?.percent_ready ?? 0)
+    if (!Number.isFinite(p)) return 0
+    return Math.max(0, Math.min(100, Math.round(p)))
+  }, [summary])
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-slate-700">
+            {t('app.candidate_card.docs_checklist.title', { defaultValue: 'Required docs checklist' })}
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            <div className="h-2 w-full max-w-[160px] rounded-full bg-slate-100 overflow-hidden">
+              <div
+                className={clsx('h-full rounded-full', percent >= 90 ? 'bg-emerald-500' : percent >= 50 ? 'bg-amber-500' : 'bg-rose-500')}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+            <div className="text-[11px] text-slate-500">{percent}%</div>
+          </div>
+        </div>
+
+        <div className="shrink-0 flex items-center gap-2">
+          {!alwaysOpen ? (
+            <>
+              {onOpenDocs ? (
+                <button type="button" className="btn-secondary btn-sm" onClick={onOpenDocs}>
+                  {t('app.candidate_card.docs_checklist.open', { defaultValue: 'Open' })}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="text-[11px] text-slate-500 hover:text-slate-700"
+                onClick={() => setOpen((v) => !v)}
+              >
+                {open ? t('common.actions.collapse') : t('common.actions.expand')}
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      {open ? (
+        <div className="mt-3 space-y-3">
+          {loading ? <div className="text-xs text-slate-500">{t('common.loading')}</div> : null}
+          {errorText ? <div className="text-xs text-red-600">{errorText}</div> : null}
+
+          {!loading && !errorText && (
+            <>
+              {missing.length ? (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-rose-700">
+                    {t('app.candidate_card.docs_checklist.missing', { defaultValue: 'Missing' })}
+                  </div>
+                  <ul className="mt-1 space-y-1">
+                    {missing.slice(0, 6).map((code) => (
+                      <li key={code} className="text-xs text-rose-800">
+                        {labelForType(code)}
+                      </li>
+                    ))}
+                    {missing.length > 6 ? (
+                      <li className="text-[11px] text-rose-700">
+                        {t('common.and_more', { defaultValue: 'and more…' })}
+                      </li>
+                    ) : null}
+                  </ul>
+                </div>
+              ) : null}
+
+              {problematic.length ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                    {t('app.candidate_card.docs_checklist.problematic', { defaultValue: 'Needs attention' })}
+                  </div>
+                  <ul className="mt-1 space-y-1">
+                    {problematic.slice(0, 6).map((code) => (
+                      <li key={code} className="text-xs text-amber-900">
+                        {labelForType(code)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {expiring.length ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                    {t('app.candidate_card.docs_checklist.expiring', { defaultValue: 'Expiring soon' })}
+                  </div>
+                  <ul className="mt-1 space-y-1">
+                    {expiring.slice(0, 5).map((x) => (
+                      <li key={`${x.type}-${x.expires_at}`} className="text-xs text-slate-700">
+                        <span className="font-medium">{labelForType(String(x.type || ''))}</span>
+                        <span className="ml-2 text-slate-500" title={x.expires_at}>
+                          {new Intl.DateTimeFormat(locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : undefined, {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                          }).format(new Date(x.expires_at))}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {!missing.length && !problematic.length && !expiring.length ? (
+                <div className="text-xs text-slate-500">
+                  {t('app.candidate_card.docs_checklist.ok', { defaultValue: 'No blockers detected.' })}
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+

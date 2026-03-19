@@ -39,11 +39,24 @@ export type AnalyticsProfileSummary = {
 export type OpsCounters = {
   no_next_action_candidates: number
   overdue_reminders: number
+  leads_no_next_action?: number
+  leads_overdue?: number
+  leads_with_next_action?: number
+  leads_total?: number
+  leads_sla_no_next_action_reminders?: number
+  leads_sla_stuck_stage_reminders?: number
   leads_needs_routing: number
   leads_failed: number
   draft_intake_stale: number
   automation_rules_enabled: number
   automation_events_24h: number
+}
+
+export type GoalsResponse = {
+  generated_at: string
+  goals: Array<{ key: string; op: string; target: number; label?: string | null }>
+  metrics: Record<string, any>
+  share_url?: string | null
 }
 
 export type StageTimeItem = {
@@ -79,6 +92,10 @@ export type ServicesAnalyticsOverview = {
     gross_profit: number
     gross_margin: number
     cost_coverage: number
+    invoices_invoiced?: number
+    invoices_paid?: number
+    invoices_outstanding?: number
+    invoices_overdue_count?: number
   }
   last30: {
     total: number
@@ -95,7 +112,16 @@ export type ServicesAnalyticsOverview = {
   top_items: Array<{ service_id?: string | null; label: string; total: number; pending: number; revenue: number; profit: number }>
   top_clients: Array<{ owner_kind: string; owner_id?: string | null; label: string; revenue: number; profit: number; orders: number }>
   hot_orders: Array<{ order_id: string; label: string; reason: string; owner_kind: string; status: string; updated_at?: string | null }>
-  trends: Array<{ bucket: string; orders: number; delivered: number; revenue: number; profit: number }>
+  trends: Array<{
+    bucket: string
+    orders: number
+    delivered: number
+    revenue: number
+    profit: number
+    invoiced?: number
+    paid?: number
+    overdue_invoices?: number
+  }>
   slices: Array<{ label: string; slice_kind?: string | null; slice_value?: string | null; owner_kind?: string | null; orders: number; revenue: number; profit: number }>
 }
 
@@ -117,6 +143,33 @@ export type TtvStep =
   | 'email_connected'
   | 'first_email_sent'
   | 'first_invoice_sent'
+
+export type PerfMeasurementEventPayload = {
+  event: 'perf'
+  action: 'measured'
+  metric_key: string
+  duration_ms: number
+  route?: string | null
+  meta?: Record<string, any> | null
+}
+
+export type PerfBaselineRow = {
+  metric_key: string
+  samples: number
+  p50_ms: number
+  p95_ms: number
+  min_ms: number
+  max_ms: number
+}
+
+export type PerfBaselineResponse = {
+  period: { from: string | null; to: string | null }
+  rows: PerfBaselineRow[]
+}
+
+export type PerfBudgetsResponse = {
+  budgets_p95_ms: Record<string, number>
+}
 
 export type TtvStepEventPayload = {
   event: 'ttv_step'
@@ -206,8 +259,28 @@ export async function getOpsCounters(): Promise<OpsCounters> {
   return data
 }
 
+export async function getGoals(): Promise<GoalsResponse> {
+  const { data } = await api.get<GoalsResponse>('/analytics/goals')
+  return data
+}
+
 export async function getStageMetrics(params?: { from?: string; to?: string; limit_transitions?: number }): Promise<StageMetricsResponse> {
   const { data } = await api.get<StageMetricsResponse>('/analytics/stage-metrics', { params })
+  return data
+}
+
+export async function getPerfBaseline(params?: { days?: number; limit?: number }): Promise<PerfBaselineResponse> {
+  const q: Record<string, string> = {}
+  if (params?.days != null) q.days = String(params.days)
+  if (params?.limit != null) q.limit = String(params.limit)
+  const { data } = await api.get<PerfBaselineResponse>('/analytics/perf-baseline', {
+    params: Object.keys(q).length ? q : undefined,
+  })
+  return data
+}
+
+export async function getPerfBudgets(): Promise<PerfBudgetsResponse> {
+  const { data } = await api.get<PerfBudgetsResponse>('/analytics/perf-budgets')
   return data
 }
 
@@ -255,6 +328,10 @@ export async function getServicesAnalyticsOverview(params?: {
         gross_profit: 0,
         gross_margin: 0,
         cost_coverage: 0,
+        invoices_invoiced: 0,
+        invoices_paid: 0,
+        invoices_outstanding: 0,
+        invoices_overdue_count: 0,
       },
       last30: {
         total: 0,
@@ -283,6 +360,23 @@ export async function recordTrialRetentionEvent(payload: TrialRetentionEventPayl
 
 export async function recordTtvStepCompleted(payload: TtvStepEventPayload): Promise<void> {
   await api.post('/analytics/events', payload)
+}
+
+export async function recordPerfMeasurement(payload: {
+  metricKey: string
+  durationMs: number
+  route?: string
+  meta?: Record<string, any>
+}): Promise<void> {
+  const eventPayload: PerfMeasurementEventPayload = {
+    event: 'perf',
+    action: 'measured',
+    metric_key: payload.metricKey,
+    duration_ms: payload.durationMs,
+    route: payload.route ?? null,
+    meta: payload.meta ?? null,
+  }
+  await api.post('/analytics/events', eventPayload)
 }
 
 export async function getTrialRetentionReport(params?: { days?: number }): Promise<TrialRetentionReport> {

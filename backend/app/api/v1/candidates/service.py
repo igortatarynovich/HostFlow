@@ -15,6 +15,7 @@ import logging
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 import uuid as _uuid
+from types import SimpleNamespace
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_stage_history import CandidateStageHistory
@@ -364,6 +365,7 @@ async def create_candidate_full(
 
     company_id_val: Optional[str] = str(payload.get("company_id")) if payload.get("company_id") else None
     vacancy_id_val: Optional[str] = str(payload.get("vacancy_id")) if payload.get("vacancy_id") else None
+    own_company_id_val: Optional[str] = str(payload.get("own_company_id")) if payload.get("own_company_id") else None
 
     if vacancy_id_val:
         vrow = await db.execute(
@@ -377,6 +379,8 @@ async def create_candidate_full(
             raise HTTPException(status_code=404, detail="Vacancy not found")
         vacancy_id_val = v.id
         company_id_val = v.company_id
+        if not own_company_id_val:
+            own_company_id_val = getattr(v, "own_company_id", None)
         if acl and not acl.unrestricted:
             if v.company_id and str(v.company_id) not in acl.company_ids:
                 raise HTTPException(status_code=403, detail="Forbidden vacancy for recruiter")
@@ -941,6 +945,103 @@ async def update_candidate_full(
 
     if changes:
         try:
+            # Change log (candidate.updated): record meaningful diffs for the Candidate card.
+            # This is intentionally best-effort and must never break the update.
+            try:
+                diff_items: list[dict[str, Any]] = []
+                changed_keys: list[str] = []
+
+                def _safe_value(key: str, val: Any) -> Any:
+                    if val is None:
+                        return None
+                    if key in {"password", "password_hash"}:
+                        return None
+                    if key in {"email", "phone", "address"}:
+                        s = str(val)
+                        if len(s) <= 4:
+                            return "***"
+                        return s[:2] + "***" + s[-2:]
+                    if isinstance(val, (str, int, float, bool)):
+                        return val
+                    if isinstance(val, (list, dict)):
+                        return val
+                    return str(val)
+
+                def _json_dict_or_empty(v: Any) -> dict:
+                    if v is None:
+                        return {}
+                    if isinstance(v, dict):
+                        return v
+                    if isinstance(v, str):
+                        s = v.strip()
+                        if not s:
+                            return {}
+                        try:
+                            parsed = json.loads(s)
+                            return parsed if isinstance(parsed, dict) else {}
+                        except Exception:
+                            return {}
+                    return {}
+
+                # Column-level diffs (shallow)
+                for key, new_val in changes.items():
+                    if key in {"updated_at"}:
+                        continue
+                    if key in {"extra", "docs_progress"}:
+                        continue
+                    old_val = getattr(c, key, None)
+                    if old_val != new_val:
+                        changed_keys.append(key)
+                        diff_items.append(
+                            {
+                                "field": key,
+                                "from": _safe_value(key, old_val),
+                                "to": _safe_value(key, new_val),
+                            }
+                        )
+
+                # JSON diffs: store changed top-level keys only (avoid huge payloads)
+                for json_key in {"extra", "docs_progress"}:
+                    if json_key not in changes:
+                        continue
+                    old_dict = _json_dict_or_empty(getattr(c, json_key, None))
+                    new_dict = _json_dict_or_empty(changes.get(json_key))
+                    touched: list[str] = []
+                    for k in set(old_dict.keys()) | set(new_dict.keys()):
+                        if old_dict.get(k) != new_dict.get(k):
+                            touched.append(str(k))
+                    if touched:
+                        touched.sort()
+                        changed_keys.append(json_key)
+                        diff_items.append(
+                            {
+                                "field": json_key,
+                                "changed_keys": touched[:80],
+                                "changed_keys_count": len(touched),
+                            }
+                        )
+
+                if changed_keys:
+                    await log_activity(
+                        db,
+                        tenant_id=tenant_id,
+                        action="candidate.updated",
+                        actor_id=actor_id,
+                        target_type="candidate",
+                        target_id=candidate_id,
+                        payload={
+                            "changed_keys": sorted(list(set(changed_keys))),
+                            "diff": diff_items[:80],
+                            "source": "candidate_card",
+                        },
+                    )
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "candidate.updated activity log failed tenant=%s candidate=%s",
+                    tenant_id,
+                    candidate_id,
+                )
+
             changes["updated_at"] = _now_naive()
             await db.execute(
                 update(Candidate)
@@ -961,44 +1062,90 @@ async def update_candidate_full(
 
             await db.commit()
             await db.refresh(c)
+            email_after = str(getattr(c, "email", "") or "").strip()
 
-            if stage_changed:
+        except Exception as e:
+            await db.rollback()
+            raise HTTPException(status_code=400, detail=f"Update failed: {e}")
+
+        # Side-effects must never break the update itself.
+        if stage_changed:
+            # Snapshot ORM fields to avoid lazy-load IO in async side-effects.
+            stage_after = str(getattr(c, "stage", None) or "").strip() or None
+            company_after = str(getattr(c, "company_id", None) or "").strip() or None
+            vacancy_after = str(getattr(c, "vacancy_id", None) or "").strip() or None
+            assignee_after = str(getattr(c, "recruiter_id", None) or "").strip() or None
+            if not assignee_after:
+                assignee_after = str(getattr(c, "manager", None) or "").strip() or None
+            if not assignee_after:
+                assignee_after = str(actor_id or "").strip() or None
+            # Plain snapshot for notifications to avoid ORM attribute IO after commits/rollbacks.
+            cand_snapshot = SimpleNamespace(
+                id=str(getattr(c, "id", "") or candidate_id),
+                short_id=getattr(c, "short_id", None),
+                first_name=getattr(c, "first_name", None),
+                last_name=getattr(c, "last_name", None),
+                intake_state=getattr(c, "intake_state", None),
+                intake_token=getattr(c, "intake_token", None),
+                status_share_token=getattr(c, "status_share_token", None),
+            )
+
+            try:
                 await sync_candidate_links(
                     db=db,
                     tenant_id=UUID(tenant_id),
                     candidate_id=UUID(candidate_id),
-                    candidate_stage=c.stage,
+                    candidate_stage=stage_after,
                 )
-                # Minimal rules builder (R2.2): trigger candidate.stage_changed rules.
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "sync_candidate_links failed tenant=%s candidate=%s",
+                    tenant_id,
+                    candidate_id,
+                )
                 try:
-                    await run_automation_rules(
-                        db,
-                        tenant_id=tenant_id,
-                        trigger="candidate.stage_changed",
-                        actor_id=actor_id,
-                        context={
-                            "entity_type": "candidate",
-                            "entity_id": c.id,
-                            "stage_from": old_stage_code,
-                            "stage_to": c.stage,
-                            "company_id": c.company_id,
-                            "vacancy_id": c.vacancy_id,
-                            "assignee_id": c.recruiter_id or c.manager or actor_id,
-                        },
-                    )
-                    await db.commit()
-                except Exception:
                     await db.rollback()
+                except Exception:
+                    pass
+
+            # Minimal rules builder (R2.2): trigger candidate.stage_changed rules.
+            try:
+                await run_automation_rules(
+                    db,
+                    tenant_id=tenant_id,
+                    trigger="candidate.stage_changed",
+                    actor_id=actor_id,
+                    context={
+                        "entity_type": "candidate",
+                        "entity_id": c.id,
+                        "stage_from": old_stage_code,
+                        "stage_to": stage_after,
+                        "company_id": company_after,
+                        "vacancy_id": vacancy_after,
+                        "assignee_id": assignee_after,
+                    },
+                )
+                await db.commit()
+            except Exception:
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+
+            try:
                 await candidate_tg_notifications.send_candidate_stage_changed_telegram(
                     db,
                     tenant_id=tenant_id,
-                    candidate=c,
+                    candidate=cand_snapshot,  # type: ignore[arg-type]
                     old_stage=old_stage_code,
-                    new_stage=c.stage,
+                    new_stage=stage_after,
                 )
-        except Exception as e:
-            await db.rollback()
-            raise HTTPException(status_code=400, detail=f"Update failed: {e}")
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "candidate telegram notify stage failed tenant=%s candidate=%s",
+                    tenant_id,
+                    candidate_id,
+                )
     elif stage_changed and new_stage_code:
         try:
             history_entry = _make_stage_history(
@@ -1012,27 +1159,60 @@ async def update_candidate_full(
             db.add(history_entry)
             await db.commit()
             await db.refresh(c)
-            await sync_candidate_links(
-                db=db,
-                tenant_id=UUID(tenant_id),
-                candidate_id=UUID(candidate_id),
-                candidate_stage=c.stage,
-            )
-            await candidate_tg_notifications.send_candidate_stage_changed_telegram(
-                db,
-                tenant_id=tenant_id,
-                candidate=c,
-                old_stage=old_stage_code,
-                new_stage=c.stage,
-            )
+            email_after = str(getattr(c, "email", "") or "").strip()
         except Exception as e:
             await db.rollback()
             raise HTTPException(status_code=400, detail=f"Update failed: {e}")
 
-    # Auto-send RODO when candidate has email (art.14 GDPR); send_rodo_email no-ops if already sent
-    if (c.email or "").strip():
+        # Side-effects (best-effort)
+        stage_after = str(getattr(c, "stage", None) or "").strip() or None
+        cand_snapshot = SimpleNamespace(
+            id=str(getattr(c, "id", "") or candidate_id),
+            short_id=getattr(c, "short_id", None),
+            first_name=getattr(c, "first_name", None),
+            last_name=getattr(c, "last_name", None),
+            intake_state=getattr(c, "intake_state", None),
+            intake_token=getattr(c, "intake_token", None),
+            status_share_token=getattr(c, "status_share_token", None),
+        )
         try:
-            await _send_rodo_email(db, candidate_id=c.id, tenant_id=tenant_id, actor_id=actor_id)
+            await sync_candidate_links(
+                db=db,
+                tenant_id=UUID(tenant_id),
+                candidate_id=UUID(candidate_id),
+                candidate_stage=stage_after,
+            )
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "sync_candidate_links failed tenant=%s candidate=%s",
+                tenant_id,
+                candidate_id,
+            )
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
+        try:
+            await candidate_tg_notifications.send_candidate_stage_changed_telegram(
+                db,
+                tenant_id=tenant_id,
+                candidate=cand_snapshot,  # type: ignore[arg-type]
+                old_stage=old_stage_code,
+                new_stage=stage_after,
+            )
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "candidate telegram notify stage failed tenant=%s candidate=%s",
+                tenant_id,
+                candidate_id,
+            )
+
+    # Auto-send RODO when candidate has email (art.14 GDPR); send_rodo_email no-ops if already sent
+    email_after = locals().get("email_after", "") or ""
+    if str(email_after).strip():
+        try:
+            await _send_rodo_email(db, candidate_id=candidate_id, tenant_id=tenant_id, actor_id=actor_id)
             await db.commit()
         except Exception:
             await db.rollback()

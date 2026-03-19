@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import String, DateTime, Text, JSON, Index
+from sqlalchemy import String, DateTime, Text, JSON, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
@@ -45,6 +45,8 @@ class Reminder(Base, TimestampMixin):
     channel: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, default="internal")
     due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     remind_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    duration_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    source: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     snoozed_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     recurrence_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)

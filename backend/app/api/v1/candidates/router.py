@@ -69,11 +69,14 @@ class CreateCandidateIn(BaseModel):
     vacancy_id: Optional[UUID] = None
 
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
 
 from backend.app.api.v1.candidates import service as cand_service
 from backend.app.api.v1.candidates import repo as cand_repo
 from backend.app.models.candidate import Candidate
+from backend.app.models.audit import ActivityLog
+from backend.app.models.user import User
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.tenant import TenantLink
@@ -99,6 +102,12 @@ from backend.app.core.audit_events import AuditEntityType
 from backend.app.modules.documents import crud as documents_crud
 from backend.app.services import candidate_notifications
 from backend.app.services.audit import log_audit_event
+from backend.app.api.v1.candidates.schemas import (
+    CandidateTimelineResponse,
+    CandidateTimelineEventOut,
+    CandidateChangeLogItemOut,
+    CandidateChangeLogResponse,
+)
 
 
 
@@ -585,6 +594,7 @@ async def list_candidates(
     ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     """
     List endpoint с фильтрами и пагинацией. Возвращает: {"total": int, "items": [ ... ]}
@@ -617,6 +627,10 @@ async def list_candidates(
     filters: dict[str, object] = {}
     # Client tenant scope is from tenant_links in repo, not from ACL; avoid returning 0 on empty ACL.
     client_tenant = await is_client_tenant_for_list(db, scope_tenant)
+    # Do not apply own_company filter for client tenants:
+    # handoff candidates can belong to agency/linked company and would be filtered out.
+    if own_company_id and not client_tenant:
+        filters["own_company_id"] = own_company_id
     
     # Debug logging для диагностики определения клиентского тенанта
     user_email = (getattr(current_user, "email", None) or "").lower().strip()
@@ -1624,6 +1638,193 @@ async def get_candidate(
     else:
         out["can_edit"] = await can_agency_edit(db, str(candidate_id), tenant_id_str)
     return out
+
+
+@router.get(
+    "/{candidate_id}/timeline",
+    response_model=CandidateTimelineResponse,
+    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    summary="Get candidate unified timeline",
+)
+async def get_candidate_timeline(
+    candidate_id: UUID,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    limit: int = Query(200, ge=20, le=500),
+) -> CandidateTimelineResponse:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    if current_user.role in ACL_RESTRICTED_ROLES:
+        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    # Ensure candidate exists in scope.
+    client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
+    row = await cand_repo.get_candidate_with_labels(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        visibility=visibility,
+        is_client_tenant=client_tenant,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    # Activity log events for this candidate.
+    log_rows = (
+        await db.execute(
+            select(ActivityLog.action, ActivityLog.created_at, ActivityLog.payload)
+            .where(
+                ActivityLog.tenant_id == tenant_id_str,
+                ActivityLog.target_type == "candidate",
+                ActivityLog.target_id == str(candidate_id),
+            )
+            .order_by(ActivityLog.created_at.desc())
+            .limit(limit)
+        )
+    ).all()
+
+    # Reminder events for this candidate.
+    rem_rows = (
+        await db.execute(
+            select(
+                Reminder.id,
+                Reminder.type,
+                Reminder.status,
+                Reminder.title,
+                Reminder.description,
+                Reminder.created_at,
+                Reminder.due_at,
+                Reminder.completed_at,
+            )
+            .where(
+                Reminder.tenant_id == tenant_id_str,
+                Reminder.entity_type == "candidate",
+                Reminder.entity_id == str(candidate_id),
+            )
+            .order_by(Reminder.created_at.desc())
+            .limit(limit)
+        )
+    ).all()
+
+    events: list[CandidateTimelineEventOut] = []
+
+    for action, created_at, payload in log_rows:
+        kind = "activity"
+        title = str(action or "").strip() or "event"
+        descr = None
+        # Best-effort stage change detection.
+        if str(action or "") in {"candidate.stage_changed", "candidate_stage_changed"}:
+            kind = "stage_changed"
+        events.append(
+            CandidateTimelineEventOut(
+                at=created_at,
+                kind=kind,
+                source="activity_log",
+                title=title,
+                description=descr,
+                payload=payload if isinstance(payload, dict) else {},
+            )
+        )
+
+    for rem_id, r_type, status, title, description, created_at, due_at, completed_at in rem_rows:
+        base_payload: Dict[str, Any] = {
+            "reminder_id": rem_id,
+            "type": r_type,
+            "status": status,
+            "due_at": due_at.isoformat() if isinstance(due_at, datetime) else None,
+            "completed_at": completed_at.isoformat() if isinstance(completed_at, datetime) else None,
+        }
+        events.append(
+            CandidateTimelineEventOut(
+                at=created_at,
+                kind="reminder_created",
+                source="reminder",
+                title=title or "Reminder created",
+                description=description,
+                payload=base_payload,
+            )
+        )
+        if completed_at:
+            events.append(
+                CandidateTimelineEventOut(
+                    at=completed_at,
+                    kind="reminder_completed",
+                    source="reminder",
+                    title=title or "Reminder completed",
+                    description=description,
+                    payload=base_payload,
+                )
+            )
+
+    events.sort(key=lambda e: e.at, reverse=True)
+    if len(events) > limit:
+        events = events[:limit]
+    return CandidateTimelineResponse(items=events)
+
+
+@router.get(
+    "/{candidate_id}/change-log",
+    response_model=CandidateChangeLogResponse,
+    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    summary="Get candidate change log (all updates)",
+)
+async def get_candidate_change_log(
+    candidate_id: UUID,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    limit: int = Query(200, ge=20, le=500),
+) -> CandidateChangeLogResponse:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    if current_user.role in ACL_RESTRICTED_ROLES:
+        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
+    row = await cand_repo.get_candidate_with_labels(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        visibility=visibility,
+        is_client_tenant=client_tenant,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    rows = (
+        await db.execute(
+            select(
+                ActivityLog.action,
+                ActivityLog.created_at,
+                ActivityLog.actor_id,
+                ActivityLog.payload,
+                User.full_name,
+            )
+            .outerjoin(User, User.id == ActivityLog.actor_id)
+            .where(
+                ActivityLog.tenant_id == tenant_id_str,
+                ActivityLog.target_type == "candidate",
+                ActivityLog.target_id == str(candidate_id),
+                ActivityLog.action.in_(["candidate.updated"]),
+            )
+            .order_by(ActivityLog.created_at.desc())
+            .limit(limit)
+        )
+    ).all()
+
+    items: list[CandidateChangeLogItemOut] = []
+    for action, created_at, actor_id, payload, actor_name in rows:
+        items.append(
+            CandidateChangeLogItemOut(
+                at=created_at,
+                actor_id=str(actor_id) if actor_id else None,
+                actor_name=str(actor_name) if actor_name else None,
+                action=str(action or ""),
+                payload=payload if isinstance(payload, dict) else {},
+            )
+        )
+    return CandidateChangeLogResponse(items=items)
 
 
 @router.post(

@@ -20,6 +20,10 @@ from .schemas import VacancyIn, VacancyOut, VacancyPatch
 from .repo import VacancyRepo
 from .service import VacancyService
 from backend.app.services.tenant_visibility import get_tenant_visibility
+from backend.app.api.v1.utils.own_company import (
+    resolve_active_own_company_id,
+    resolve_active_own_company_id_optional,
+)
 
 router = APIRouter(prefix="/vacancies", tags=["vacancies"], redirect_slashes=False)
 PIPELINE_ROLES = (Role.manager, Role.admin, Role.recruiter)
@@ -40,10 +44,10 @@ def _as_bool(value: Optional[str]) -> bool:
         return bool(value)
 
 
-def _svc(db_tenant: Tuple[AsyncSession, UUID]) -> VacancyService:
+def _svc(db_tenant: Tuple[AsyncSession, UUID], *, own_company_id: str | None = None) -> VacancyService:
     db, tenant_id = db_tenant
     visibility = get_tenant_visibility(db, str(tenant_id))
-    return VacancyService(VacancyRepo(db, str(tenant_id), visibility=visibility))
+    return VacancyService(VacancyRepo(db, str(tenant_id), own_company_id=own_company_id, visibility=visibility))
 
 
 def _vacancy_allowed(vacancy_id: str, company_id: Optional[str], acl) -> bool:
@@ -75,6 +79,7 @@ async def list_vacancies(
     desc: Optional[str] = Query("1", description="Accepts 1/0 or true/false for sort direction"),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     # debug instrumentation (temporary) to observe incoming values
     logger = getattr(router, "_logger", None)
@@ -83,7 +88,7 @@ async def list_vacancies(
         logger = logging.getLogger("backend.app.api.v1.vacancies")
         router._logger = logger  # type: ignore[attr-defined]
     logger.debug("list_vacancies query desc=%r", desc)
-    svc = _svc(db_tenant)
+    svc = _svc(db_tenant, own_company_id=own_company_id)
     db, tenant_id = db_tenant
     acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
     return await svc.list(
@@ -103,8 +108,9 @@ async def get_vacancy(
     vacancy_id: UUID,
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
-    svc = _svc(db_tenant)
+    svc = _svc(db_tenant, own_company_id=own_company_id)
     try:
         vacancy = await svc.get(str(vacancy_id))
     except LookupError:
@@ -117,10 +123,14 @@ async def get_vacancy(
 
 @router.post("/", response_model=VacancyOut, dependencies=[Depends(require_roles(Role.manager, Role.admin))])
 @router.post("", response_model=VacancyOut, dependencies=[Depends(require_roles(Role.manager, Role.admin))], include_in_schema=False)
-async def create_vacancy(payload: VacancyIn, db_tenant=Depends(get_db_with_tenant)):
-    svc = _svc(db_tenant)
+async def create_vacancy(
+    payload: VacancyIn,
+    db_tenant=Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+):
+    svc = _svc(db_tenant, own_company_id=own_company_id)
     _db, tenant_id = db_tenant
-    return await svc.create(str(tenant_id), payload)
+    return await svc.create(str(tenant_id), payload, own_company_id=own_company_id)
 
 @router.post(
     "/{vacancy_id}/candidates",
@@ -330,8 +340,13 @@ async def get_vacancy_pipeline(
     return result
 
 @router.patch("/{vacancy_id}", response_model=VacancyOut, dependencies=[Depends(require_roles(Role.manager, Role.admin))])
-async def update_vacancy(vacancy_id: UUID, payload: VacancyPatch, db_tenant=Depends(get_db_with_tenant)):
-    svc = _svc(db_tenant)
+async def update_vacancy(
+    vacancy_id: UUID,
+    payload: VacancyPatch,
+    db_tenant=Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+):
+    svc = _svc(db_tenant, own_company_id=own_company_id)
     try:
         return await svc.patch(str(vacancy_id), payload)
     except LookupError:
@@ -340,8 +355,12 @@ async def update_vacancy(vacancy_id: UUID, payload: VacancyPatch, db_tenant=Depe
         raise HTTPException(status_code=409, detail=str(e))
 
 @router.delete("/{vacancy_id}", dependencies=[Depends(require_roles(Role.manager, Role.admin))])
-async def delete_vacancy(vacancy_id: UUID, db_tenant=Depends(get_db_with_tenant)) -> Response:
-    svc = _svc(db_tenant)
+async def delete_vacancy(
+    vacancy_id: UUID,
+    db_tenant=Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+) -> Response:
+    svc = _svc(db_tenant, own_company_id=own_company_id)
     try:
         await svc.delete(str(vacancy_id))
     except LookupError:

@@ -30,6 +30,9 @@ export function useBusinessTerminology() {
     ? businessType === 'employer'
     : String(tenant?.type || '').trim().toLowerCase() === 'company'
   const isServicesTenant = businessType === 'services'
+  const effectiveBusinessType: 'agency' | 'employer' | 'services' = businessType
+    ? businessType
+    : (isEmployerTenant ? 'employer' : 'agency')
 
   return useMemo(() => {
     const entityPlural = isEmployerTenant || isServicesTenant
@@ -43,11 +46,12 @@ export function useBusinessTerminology() {
       : t('common.actions.open_clients', { defaultValue: 'Open clients' })
 
     return {
+      businessType: effectiveBusinessType,
       isEmployerTenant,
       isServicesTenant,
       entityPlural,
       entitySingular,
       openEntityLabel,
     }
-  }, [isEmployerTenant, isServicesTenant, t])
+  }, [effectiveBusinessType, isEmployerTenant, isServicesTenant, t])
 }

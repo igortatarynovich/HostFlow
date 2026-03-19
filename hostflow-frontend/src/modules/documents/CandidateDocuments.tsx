@@ -296,9 +296,19 @@ type Props = {
   onFieldsApplied?: (doc: Document, fields: Record<string, any>) => void;
   hideHeader?: boolean;
   candidateProfile?: import('../../api/candidate_profiles').CandidateProfile | null;
+  initialType?: string;
+  compactType?: boolean;
 };
 
-export default function CandidateDocuments({ candidateId, ownerContext, onFieldsApplied, hideHeader, candidateProfile }: Props) {
+export default function CandidateDocuments({
+  candidateId,
+  ownerContext,
+  onFieldsApplied,
+  hideHeader,
+  candidateProfile,
+  initialType,
+  compactType = false,
+}: Props) {
   const { can } = usePermissions();
   const { t, locale } = useI18n();
   const translateStatus = useCallback(
@@ -692,7 +702,15 @@ export default function CandidateDocuments({ candidateId, ownerContext, onFields
         });
         return firstRequired?.code || filteredTypes[0].code;
       })();
-      setSelectedType((prev) => prev || defaultType);
+      setSelectedType((prev) => {
+        if (prev) return prev;
+        if (initialType) {
+          const normalized = normalizeDocTypeCode(initialType);
+          const exists = filteredTypes.some((t) => t.code === initialType || normalizeDocTypeCode(t.code) === normalized);
+          if (exists) return initialType;
+        }
+        return defaultType;
+      });
     } catch (e: any) {
       const fallback = t("admin.documents.errors.load_failed");
       const message = e?.response?.data?.detail || e?.message || fallback;
@@ -1396,6 +1414,35 @@ useEffect(() => {
 
   // Document preview is now handled by useDocumentPreview hook
   const { previewUrl, previewOpen, previewContentType, openDoc, closePreview } = useDocumentPreview({ setError });
+  const initialTypeAutoOpenedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    initialTypeAutoOpenedRef.current = null;
+  }, [candidateId, initialType]);
+
+  useEffect(() => {
+    if (!initialType) return;
+    if (initialTypeAutoOpenedRef.current === initialType) return;
+
+    const normalizedInitial = normalizeDocTypeCode(initialType);
+    const candidates = docs.filter((doc) => {
+      const docType = normalizeDocTypeCode(doc.type_code || doc.doc_type || "");
+      if (docType !== normalizedInitial) return false;
+      const hasFiles = doc.has_files ?? (Array.isArray(doc.files) && doc.files.length > 0);
+      return Boolean(hasFiles);
+    });
+    if (!candidates.length) return;
+
+    candidates.sort((a, b) => {
+      const aReady = READY_STATUSES.has(primaryStatus(a));
+      const bReady = READY_STATUSES.has(primaryStatus(b));
+      if (aReady !== bReady) return aReady ? -1 : 1;
+      return dateValue(b.updated_at ?? b.created_at ?? null) - dateValue(a.updated_at ?? a.created_at ?? null);
+    });
+
+    initialTypeAutoOpenedRef.current = initialType;
+    void openDoc(candidates[0]);
+  }, [candidateId, docs, initialType, openDoc]);
 
   // renderWorkflow is now a component: DocumentWorkflow
 
@@ -1853,15 +1900,99 @@ useEffect(() => {
         <div className="rounded border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
           {docs.length ? t("admin.documents.filters.no_results") : t("admin.documents.filters.empty")}
         </div>
+      ) : compactType && selectedType ? (
+        (() => {
+          const normalizedSelected = normalizeDocTypeCode(selectedType);
+          const typeDocs = docs
+            .filter((doc) => {
+              const docType = normalizeDocTypeCode(doc.type_code || doc.doc_type || "");
+              return docType === normalizedSelected;
+            })
+            .filter((doc) => {
+              const statusValue = primaryStatus(doc);
+              if (statusFilter !== "all" && statusValue !== statusFilter) return false;
+              if (orderedFilter === "ordered" && !doc.ordered_at) return false;
+              if (orderedFilter === "not_ordered" && doc.ordered_at) return false;
+              if (expiringSoonOnly && !expiringSoonSet.has(doc.id)) return false;
+              if (missingOnly && primaryStatus(doc) !== "missing") return false;
+              if (passportIncompleteOnly && !passportIncompleteSet.has(doc.id)) return false;
+              if (searchQuery.trim()) {
+                const search = searchQuery.trim().toLowerCase();
+                const typeInfo = typeByCode.get(normalizeDocTypeCode(doc.type_code || doc.doc_type || "")) ?? typeByCode.get(doc.doc_type) ?? typeByCode.get(doc.type_code);
+                const typeName = getDocTypeLabel(normalizeDocTypeCode(doc.type_code || doc.doc_type || ""), typeInfo?.name).toLowerCase();
+                const title = (doc.title || doc.custom_name || "").toLowerCase();
+                const rawType = (doc.doc_type || "").toLowerCase();
+                if (!typeName.includes(search) && !title.includes(search) && !rawType.includes(search)) return false;
+              }
+              return true;
+            })
+            .sort((a, b) => {
+              const statusA = primaryStatus(a);
+              const statusB = primaryStatus(b);
+              const rankA = DOCUMENT_STATUS_META[statusA]?.order ?? (typeof a.status_rank === "number" ? a.status_rank : 0);
+              const rankB = DOCUMENT_STATUS_META[statusB]?.order ?? (typeof b.status_rank === "number" ? b.status_rank : 0);
+              if (rankA !== rankB) return rankB - rankA;
+              const orderedDiff = dateValue(b.ordered_at ?? null) - dateValue(a.ordered_at ?? null);
+              if (orderedDiff !== 0) return orderedDiff;
+              const expiresDiff = dateValue(a.expire_date ?? a.expires_at ?? null) - dateValue(b.expire_date ?? b.expires_at ?? null);
+              if (expiresDiff !== 0) return expiresDiff;
+              return (a.title || a.custom_name || a.doc_type).localeCompare(
+                b.title || b.custom_name || b.doc_type,
+                locale || undefined
+              );
+            });
+
+          if (typeDocs.length === 0) {
+            return <div className="text-sm text-slate-500">{t("admin.documents.filters.no_results", { defaultValue: "No results." })}</div>;
+          }
+
+          return (
+            <div className="space-y-3">
+              {typeDocs.map((doc) => (
+                <DocumentCard
+                  key={doc.id}
+                  doc={doc}
+                  variant="compact"
+                  typeByCode={typeByCode}
+                  metadataFieldMap={metadataFieldMap}
+                  coreEdits={coreEdits}
+                  metadataEdits={metadataEdits}
+                  statusUpdating={statusUpdating}
+                  coreSaving={coreSaving}
+                  replaceFile={replaceFile}
+                  replacePct={replacePct}
+                  replaceUploading={replaceUploading}
+                  expandedDocs={expandedDocs}
+                  canManageDocuments={canManageDocuments}
+                  coreFromDocument={coreFromDocument}
+                  translateStatus={translateStatus}
+                  getFieldValue={getFieldValue}
+                  updateFieldValue={updateFieldValue}
+                  updateStatus={updateStatus}
+                  approveDocument={approveDocument}
+                  rejectDocument={rejectDocument}
+                  saveCoreFields={saveCoreFields}
+                  deleteDocumentFile={deleteDocumentFile}
+                  deleteDocument={doDelete}
+                  openDoc={openDoc}
+                  handleReplaceUpload={handleReplaceUploadHook}
+                  setReplaceFile={setReplaceFile}
+                  setExpandedDocs={setExpandedDocs}
+                  setError={setError}
+                />
+              ))}
+            </div>
+          );
+        })()
       ) : (
         <div className="space-y-4">
           {KIND_ORDER.map((kind) => {
             const kindDocs = groupedDocs[kind] ?? [];
             if (kindDocs.length === 0) return null;
-            
+
             const kindStats = statsByKind[kind];
             const kindLabel = translateKind(kind);
-            
+
             return (
               <div key={kind} className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">

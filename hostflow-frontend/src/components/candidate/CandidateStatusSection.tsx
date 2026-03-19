@@ -19,6 +19,7 @@ interface CandidateStatusSectionProps {
   onExtraChange: (patch: Partial<CandidateExtra>) => void
   candidateProfile?: CandidateProfile | null
   candidateDataReadOnly?: boolean
+  embedded?: boolean
 }
 
 function CandidateStatusSection({
@@ -29,38 +30,48 @@ function CandidateStatusSection({
   onExtraChange,
   candidateProfile,
   candidateDataReadOnly = false,
+  embedded = false,
 }: CandidateStatusSectionProps) {
   const { t } = useI18n()
   const addressCountry = String(extra.address?.country || '').trim().toUpperCase()
   const isInPoland = addressCountry === 'PL' || extra.current_location === 'in_poland'
   const [collapsed, setCollapsed] = useState(() => {
+    if (embedded) return false
     try { const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}'); return !!s.status } catch { return false }
   })
   const toggle = useCallback(() => {
+    if (embedded) return
     setCollapsed((p) => {
       const next = !p
       try { const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}'); s.status = next; localStorage.setItem('hf:card-sections', JSON.stringify(s)) } catch {}
       return next
     })
-  }, [])
+  }, [embedded])
 
   return (
     <section
       ref={statusRef}
       id="section-status"
-      className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+      className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
     >
+      {!embedded ? (
       <button type="button" onClick={toggle} className="flex w-full items-center justify-between gap-3 text-left">
         <div className="flex items-center gap-3">
-          <IconIdBadge2 size={22} className="text-slate-600" />
+          <IconIdBadge2 size={20} className="text-slate-600" />
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">{t('app.candidate_card.sections.status.title')}</h2>
-            <p className="text-sm text-slate-500">{t('app.candidate_card.sections.status.description')}</p>
+            <h2 className="text-base font-semibold text-slate-900">{t('app.candidate_card.sections.status.title')}</h2>
           </div>
         </div>
         <IconChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
       </button>
-      {!collapsed && <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      ) : (
+        <div className="flex items-center gap-3">
+          <IconIdBadge2 size={20} className="text-slate-600" />
+          <h2 className="text-base font-semibold text-slate-900">{t('app.candidate_card.sections.status.title')}</h2>
+        </div>
+      )}
+      {(embedded || !collapsed) ? (
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         {(!candidateProfile || isFieldVisible(candidateProfile, 'poland_stay_basis')) && (
           <label className="block">
             <div className="label">
@@ -84,9 +95,10 @@ function CandidateStatusSection({
             )}
           </label>
         )}
-      </div>}
+      </div>
+      ) : null}
 
-      {!collapsed && (!candidateProfile || isFieldVisible(candidateProfile, 'has_adr')) && (
+      {(embedded || !collapsed) && (!candidateProfile || isFieldVisible(candidateProfile, 'has_adr')) && (
         <div className="mt-6">
           <h3 className="text-sm font-semibold text-slate-700 mb-3">{t('app.candidate_card.sections.status.qualifications')}</h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

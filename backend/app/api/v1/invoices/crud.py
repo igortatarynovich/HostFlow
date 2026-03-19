@@ -388,6 +388,7 @@ async def create_invoice(
     invoice = Invoice(
         id=str(uuid4()),
         tenant_id=tenant_id_str,
+        own_company_id=_normalized_text(payload.get("own_company_id")),
         company_id=payload.get("company_id"),
         candidate_id=payload.get("candidate_id"),
         contract_id=payload.get("contract_id"),
@@ -507,10 +508,12 @@ async def list_invoices(
     session: AsyncSession,
     tenant_id: str,
     *,
+    own_company_id: Optional[str] = None,
     company_id: Optional[str] = None,
     candidate_id: Optional[str] = None,
     service_order_id: Optional[str] = None,
     status: Optional[str] = None,
+    unpaid: Optional[bool] = None,
     limit: int = 100,
     offset: int = 0,
 ) -> List[Invoice]:
@@ -518,6 +521,8 @@ async def list_invoices(
     # tenant_id is stored as VARCHAR, convert UUID to string for comparison
     tenant_id_str = str(tenant_id)
     stmt = select(Invoice).where(Invoice.tenant_id == tenant_id_str)
+    if own_company_id:
+        stmt = stmt.where(Invoice.own_company_id == str(own_company_id))
     
     if company_id:
         stmt = stmt.where(Invoice.company_id == company_id)
@@ -527,6 +532,11 @@ async def list_invoices(
         stmt = stmt.where(Invoice.service_order_id == service_order_id)
     if status:
         stmt = stmt.where(Invoice.status == status)
+    if unpaid:
+        stmt = stmt.where(
+            Invoice.status.notin_([InvoiceStatus.paid.value, InvoiceStatus.cancelled.value]),
+            Invoice.paid_amount < Invoice.total_amount,
+        )
     
     stmt = stmt.order_by(Invoice.created_at.desc()).limit(limit).offset(offset)
     result = await session.execute(stmt)

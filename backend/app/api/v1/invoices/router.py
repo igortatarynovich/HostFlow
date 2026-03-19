@@ -18,6 +18,7 @@ from backend.app.models.audit import ActivityLog
 from backend.app.models.invoice import Invoice, InvoiceStatus
 from backend.app.models.additional_service import ServiceOrder
 from backend.app.models.company import Company
+from backend.app.models.additional_service import ServiceItem
 from backend.app.services.audit import log_activity
 from backend.app.services.invoice_pdf import generate_invoice_pdf
 from backend.app.services.notifications import send_webhook
@@ -37,6 +38,61 @@ from .schemas import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/invoices", tags=["invoices"])
+
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
+@router.get("/service-orders-summary", response_model=list[dict])
+async def service_orders_invoices_summary(
+    order_id: List[str] = Query(default_factory=list, description="Repeatable service order ids"),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+):
+    """
+    Batch invoice summary for service orders (for list views).
+    Returns minimal payload per order_id: invoice id/status/amounts/due_date.
+    """
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    ids = [str(x).strip() for x in (order_id or []) if str(x).strip()]
+    if not ids:
+        return []
+    stmt = (
+        select(
+            Invoice.service_order_id,
+            Invoice.id,
+            Invoice.status,
+            Invoice.total_amount,
+            Invoice.paid_amount,
+            Invoice.due_date,
+            Invoice.invoice_number,
+        )
+        .where(
+            Invoice.tenant_id == tenant_id_str,
+            Invoice.own_company_id == str(own_company_id),
+            Invoice.service_order_id.in_(ids),
+        )
+        .order_by(Invoice.created_at.desc())
+    )
+    rows = (await db.execute(stmt)).all()
+    # Keep latest invoice per service_order_id
+    seen: set[str] = set()
+    out: list[dict] = []
+    for service_order_id, inv_id, st, total_amount, paid_amount, due_date, invoice_number in rows:
+        so = str(service_order_id or "").strip()
+        if not so or so in seen:
+            continue
+        seen.add(so)
+        out.append(
+            {
+                "service_order_id": so,
+                "invoice_id": str(inv_id),
+                "invoice_number": str(invoice_number),
+                "status": str(st),
+                "total_amount": float(total_amount or 0),
+                "paid_amount": float(paid_amount or 0),
+                "due_date": due_date.isoformat() if due_date else None,
+            }
+        )
+    return out
 
 
 async def _log_invoice_activity(
@@ -106,6 +162,7 @@ async def create_invoice(
     payload: InvoiceCreate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> InvoiceOut:
     """Create a new invoice."""
     db, tenant_id = db_tenant
@@ -121,7 +178,7 @@ async def create_invoice(
         invoice = await crud.create_invoice(
             db,
             str(tenant_id),
-            payload.model_dump(),
+            {**payload.model_dump(), "own_company_id": own_company_id},
             created_by=current_user.sub,
         )
         await _log_invoice_activity(
@@ -151,10 +208,12 @@ async def create_invoice(
 async def list_invoices(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
     company_id: Optional[str] = Query(None),
     candidate_id: Optional[str] = Query(None),
     service_order_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    unpaid: Optional[bool] = Query(None, description="If true, return only invoices with paid_amount < total_amount"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ) -> List[InvoiceOut]:
@@ -164,10 +223,12 @@ async def list_invoices(
     invoices = await crud.list_invoices(
         db,
         str(tenant_id),
+        own_company_id=own_company_id,
         company_id=company_id,
         candidate_id=candidate_id,
         service_order_id=service_order_id,
         status=status,
+        unpaid=unpaid,
         limit=limit,
         offset=offset,
     )
@@ -193,6 +254,7 @@ async def create_invoice_from_service_order(
     order_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> InvoiceOut:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -210,18 +272,35 @@ async def create_invoice_from_service_order(
     order_stmt = (
         select(ServiceOrder)
         .where(ServiceOrder.id == order_id, ServiceOrder.tenant_id == tenant_id_str)
+        .options(selectinload(ServiceOrder.items).selectinload(ServiceItem.service))
         .limit(1)
     )
     order = (await db.execute(order_stmt)).scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Service order not found")
-    if not order.company_id:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Service order must be linked to a company")
-    await db.refresh(order, ["items"])
     if not order.items:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Service order has no billable items")
 
-    company = await db.get(Company, order.company_id)
+    # Resolve invoice recipient (company or candidate), allowing agency/service flows.
+    resolved_company_id: str | None = str(order.company_id) if getattr(order, "company_id", None) else None
+    resolved_candidate_id: str | None = str(order.candidate_id) if getattr(order, "candidate_id", None) else None
+    if not resolved_company_id and getattr(order, "vacancy_id", None):
+        vacancy = await db.get(Vacancy, str(order.vacancy_id))
+        if vacancy and str(getattr(vacancy, "tenant_id", "")) == tenant_id_str:
+            resolved_company_id = str(getattr(vacancy, "company_id", "") or "") or None
+
+    company: Company | None = await db.get(Company, resolved_company_id) if resolved_company_id else None
+    candidate: Candidate | None = await db.get(Candidate, resolved_candidate_id) if resolved_candidate_id else None
+    if resolved_company_id and (not company or str(getattr(company, "tenant_id", "")) != tenant_id_str):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid company recipient for service order")
+    if resolved_candidate_id and (not candidate or str(getattr(candidate, "tenant_id", "")) != tenant_id_str):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid candidate recipient for service order")
+    if not resolved_company_id and not resolved_candidate_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Service order must be linked to a company or candidate (direct billing)",
+        )
+
     company_extra = dict(getattr(company, "extra", {}) or {}) if company else {}
     billing = dict(company_extra.get("billing") or {}) if isinstance(company_extra.get("billing"), dict) else {}
 
@@ -243,10 +322,15 @@ async def create_invoice_from_service_order(
         )
 
     billing_details = {
-        "company_name": getattr(company, "legal_name", None) or getattr(company, "name", None),
-        "email": billing.get("invoice_email") or getattr(company, "email", None),
-        "tax_id": getattr(company, "tax_id", None),
-        "address": billing.get("billing_address") or getattr(company, "address", None),
+        "company_name": (getattr(company, "legal_name", None) or getattr(company, "name", None)) if company else None,
+        "email": (billing.get("invoice_email") or getattr(company, "email", None)) if company else getattr(candidate, "email", None),
+        "tax_id": getattr(company, "tax_id", None) if company else None,
+        "address": (billing.get("billing_address") or getattr(company, "address", None)) if company else None,
+        "recipient_name": (
+            (getattr(company, "name", None) or getattr(company, "legal_name", None))
+            if company
+            else f"{getattr(candidate, 'first_name', '')} {getattr(candidate, 'last_name', '')}".strip()
+        ),
     }
 
     try:
@@ -254,7 +338,9 @@ async def create_invoice_from_service_order(
             db,
             tenant_id_str,
             {
-                "company_id": order.company_id,
+                "own_company_id": own_company_id,
+                "company_id": resolved_company_id,
+                "candidate_id": resolved_candidate_id,
                 "service_order_id": order.id,
                 "issue_date": issue_date,
                 "due_date": due_date,

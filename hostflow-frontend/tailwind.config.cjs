@@ -7,18 +7,19 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ПАЛИТРА под фирменный бирюзовый (brand-500 ≈ #6BC6CF)
+        // Brand tokens aligned to docs/pipedesign.md
+        // Primary: #3FA3A8, Accent: #2E6F74, Section bg: #F4F8F9
         brand: {
-          50:  "#F1FBFD",
-          100: "#E4F6F8",
-          200: "#C7EDF0",
-          300: "#A0DEE4",
-          400: "#7FD0D6",
-          500: "#6BC6CF",
-          600: "#2BB4C1",
-          700: "#1991A4",
-          800: "#0F6E7D",
-          900: "#0A5662"
+          50:  "#F4F8F9",
+          100: "#E6EEF0",
+          200: "#CDE2E4",
+          300: "#A7CED1",
+          400: "#6FB3B8",
+          500: "#3FA3A8",
+          600: "#338B90",
+          700: "#2E6F74",
+          800: "#255A5E",
+          900: "#1D4A4D"
         },
       },
       fontFamily: {

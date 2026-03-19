@@ -657,6 +657,10 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
     if is_favorite is not None:
         conds.append(Candidate.is_favorite == is_favorite)
 
+    own_company_id = str(filters.get("own_company_id") or "").strip()
+    if own_company_id:
+        conds.append(Candidate.own_company_id == own_company_id)
+
     return conds
 
 

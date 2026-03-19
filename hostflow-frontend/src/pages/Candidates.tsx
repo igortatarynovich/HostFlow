@@ -9,21 +9,8 @@ import {
   IconBookmarkFilled,
   IconClipboardList,
 } from '@tabler/icons-react'
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core'
-import type { DragEndEvent } from '@dnd-kit/core'
-import {
-  useSortable,
-  SortableContext,
-  horizontalListSortingStrategy,
-} from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
-import api, { completeReminder, createReminder, listReminders, withTenant } from '../api/client'
+import api, { completeActivity, completeReminder, createActivity, createBulkActivities, createReminder, listReminders, withTenant, getCandidateTimeline } from '../api/client'
+import { recordPerfMeasurement } from '../api/analytics'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { patchUserMe } from '../api/users'
 import type { Candidate, UserSavedView, Vacancy } from '../api/types'
@@ -44,9 +31,10 @@ import {
 } from '../utils/stageLabels'
 import { getRegionDisplayName } from '../utils/catalogLocale'
 import Pipeline from './Pipeline'
-import { prefetchCandidate } from '../api/candidateCache'
+import CandidateNextActionPanel from '../components/candidate/CandidateNextActionPanel'
+import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
+import CandidateHandoffSection from '../components/candidate/CandidateHandoffSection'
 import { TableVirtuoso, type VirtuosoHandle } from 'react-virtuoso'
-import HoverCard from '../components/HoverCard'
 import {
   DOC_READINESS_META,
   DOC_READINESS_ORDER,
@@ -115,6 +103,7 @@ import {
   BulkVacancyModal,
   BulkHandoffModal,
   BulkTagsModal,
+  BulkActivitiesModal,
   BulkDeleteModal,
   ColumnFilterMenu,
   FilterBadges,
@@ -197,15 +186,27 @@ export default function Candidates(){
 
   // R1.1: candidate quick preview side panel (in existing right sidebar)
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
-  const [previewTab, setPreviewTab] = useState<'composer' | 'focus' | 'history'>('composer')
   const [previewRemindersLoading, setPreviewRemindersLoading] = useState(false)
   const [previewRemindersError, setPreviewRemindersError] = useState<string | null>(null)
   const [previewReminders, setPreviewReminders] = useState<ReminderRecord[]>([])
+  const [nextActionDetailsOpenTrigger] = useState(0)
   const [previewReminderTitle, setPreviewReminderTitle] = useState('')
   const [previewReminderDueAt, setPreviewReminderDueAt] = useState(() =>
     new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
   )
+  const [previewReminderBusy, setPreviewReminderBusy] = useState<string | null>(null)
   const [previewReminderOffset, setPreviewReminderOffset] = useState<number>(15)
+  const [previewTimelineLoading, setPreviewTimelineLoading] = useState(false)
+  const [previewTimelineError, setPreviewTimelineError] = useState<string | null>(null)
+  const [previewTimelineExpanded, setPreviewTimelineExpanded] = useState(false)
+  const PREVIEW_TIMELINE_COLLAPSED_COUNT = 15
+  const [previewTimelineItems, setPreviewTimelineItems] = useState<
+    { at: string; kind: string; source: string; title?: string | null; description?: string | null }[]
+  >([])
+
+  const [docsBlockers, setDocsBlockers] = useState<{ missing: string[]; problematic: string[] }>({ missing: [], problematic: [] })
+  const [docsBlockersLoading, setDocsBlockersLoading] = useState(false)
+  const docsBlockersActive = docsBlockersLoading || docsBlockers.missing.length > 0 || docsBlockers.problematic.length > 0
 
   const [debugClientView, setDebugClientView] = useState<Record<string, unknown> | null>(null)
   const [debugClientViewLoading, setDebugClientViewLoading] = useState(false)
@@ -253,6 +254,14 @@ export default function Candidates(){
   const [bulkTagsOpen, setBulkTagsOpen] = useState(false)
   const [bulkTagsOperation, setBulkTagsOperation] = useState<'add' | 'remove'>('add')
   const [bulkTagsList, setBulkTagsList] = useState<string>('')
+
+  const [bulkActivitiesOpen, setBulkActivitiesOpen] = useState(false)
+  const [bulkActivityTitle, setBulkActivityTitle] = useState('')
+  const [bulkActivityDueAt, setBulkActivityDueAt] = useState(() =>
+    new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
+  )
+  const [bulkActivityOffsetMinutes, setBulkActivityOffsetMinutes] = useState(60)
+  const [bulkActivityType, setBulkActivityType] = useState('custom')
 
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
 
@@ -910,31 +919,6 @@ export default function Candidates(){
       .filter((key) => visibleCols[key] && !columnOrder.includes(key))
     return [...visible, ...missing]
   }, [columnOrder, visibleCols])
-
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // Нужно переместить мышь на 8px перед началом drag
-      },
-    })
-  )
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-
-    const oldIndex = columnOrder.indexOf(String(active.id))
-    const newIndex = columnOrder.indexOf(String(over.id))
-
-    if (oldIndex === -1 || newIndex === -1) return
-
-    const newOrder = [...columnOrder]
-    const [removed] = newOrder.splice(oldIndex, 1)
-    newOrder.splice(newIndex, 0, removed)
-
-    setColumnOrder(newOrder)
-  }, [columnOrder])
 
   // Состояние для ресайза колонок
   const [resizingColumn, setResizingColumn] = useState<string | null>(null)
@@ -1814,6 +1798,17 @@ export default function Candidates(){
     [displayedItems, selectedCandidateId],
   )
 
+  const docsOwnerContext = useMemo(() => {
+    const citizenship = String((selectedCandidate as any)?.__extra?.citizenship || '')
+    return { citizenship }
+  }, [(selectedCandidate as any)?.__extra?.citizenship])
+
+  useEffect(() => {
+    // Reset blockers state on candidate change to avoid showing stale UI.
+    setDocsBlockers({ missing: [], problematic: [] })
+    setDocsBlockersLoading(false)
+  }, [selectedCandidateId])
+
   const loadPreviewReminders = useCallback(
     async (candidateId: string) => {
       setPreviewRemindersLoading(true)
@@ -1832,6 +1827,32 @@ export default function Candidates(){
     [],
   )
 
+  const loadPreviewTimeline = useCallback(
+    async (candidateId: string) => {
+      setPreviewTimelineLoading(true)
+      setPreviewTimelineError(null)
+      try {
+        const res = await getCandidateTimeline(candidateId)
+        const items = Array.isArray(res?.items) ? res.items : []
+        setPreviewTimelineItems(
+          items.map((item: any) => ({
+            at: item.at,
+            kind: String(item.kind || ''),
+            source: String(item.source || ''),
+            title: item.title,
+            description: item.description,
+          })),
+        )
+      } catch (err: any) {
+        setPreviewTimelineError(err?.response?.data?.detail ?? err?.message ?? 'Failed to load timeline')
+        setPreviewTimelineItems([])
+      } finally {
+        setPreviewTimelineLoading(false)
+      }
+    },
+    [],
+  )
+
   useEffect(() => {
     if (!selectedCandidateId) {
       setPreviewReminders([])
@@ -1842,12 +1863,23 @@ export default function Candidates(){
     void loadPreviewReminders(selectedCandidateId)
   }, [loadPreviewReminders, selectedCandidateId])
 
+  useEffect(() => {
+    if (!selectedCandidateId) {
+      setPreviewTimelineItems([])
+      setPreviewTimelineError(null)
+      setPreviewTimelineLoading(false)
+      return
+    }
+    setPreviewTimelineExpanded(false)
+    void loadPreviewTimeline(selectedCandidateId)
+  }, [loadPreviewTimeline, selectedCandidateId])
+
   const handleCreatePreviewReminder = useCallback(async () => {
     if (!selectedCandidateId || !previewReminderTitle || !previewReminderDueAt) return
     try {
       const due = new Date(previewReminderDueAt)
       const remindAt = new Date(due.getTime() - previewReminderOffset * 60 * 1000)
-      await createReminder({
+      await createActivity({
         title: previewReminderTitle,
         description: '',
         type: 'custom',
@@ -1856,23 +1888,49 @@ export default function Candidates(){
         due_at: due.toISOString(),
         remind_at: remindAt.toISOString(),
         priority: 'normal',
+        source: 'manual',
       })
       setPreviewReminderTitle('')
       setPreviewReminderDueAt(new Date(due.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16))
       await loadPreviewReminders(selectedCandidateId)
-      setPreviewTab('focus')
     } catch (err: any) {
       setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to create reminder')
     }
   }, [loadPreviewReminders, previewReminderDueAt, previewReminderOffset, previewReminderTitle, selectedCandidateId])
 
+  const handleDocsRequestCreate = useCallback(() => {
+    const dt = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
+    setPreviewReminderTitle(
+      t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' }),
+    )
+    setPreviewReminderDueAt(dt)
+  }, [t])
+
   const handleCompletePreviewReminder = useCallback(
     async (id: string) => {
       try {
-        await completeReminder(id)
+        setPreviewReminderBusy(id)
+        await completeActivity(id)
         if (selectedCandidateId) await loadPreviewReminders(selectedCandidateId)
       } catch (err: any) {
         setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to complete reminder')
+      } finally {
+        setPreviewReminderBusy((prev) => (prev === id ? null : prev))
+      }
+    },
+    [loadPreviewReminders, selectedCandidateId],
+  )
+
+  const handlePreviewReminderSnooze = useCallback(
+    async (id: string, minutes: number) => {
+      try {
+        setPreviewReminderBusy(id)
+        await snoozeActivity(id, { minutes })
+        if (selectedCandidateId) await loadPreviewReminders(selectedCandidateId)
+      } catch (err: any) {
+        setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to snooze reminder')
+      } finally {
+        setPreviewReminderBusy((prev) => (prev === id ? null : prev))
       }
     },
     [loadPreviewReminders, selectedCandidateId],
@@ -2400,30 +2458,13 @@ export default function Candidates(){
     isSticky?: boolean
     stickyLeft?: string
   }) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: columnKey, disabled: columnKey === 'checkbox' })
-
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-    }
-
     const className = clsx(
       'px-4 py-3 border-r border-slate-200',
       isSticky ? 'sticky bg-slate-50 z-[25]' : 'relative',
-      columnKey === 'checkbox' && 'cursor-default',
-      columnKey !== 'checkbox' && !isDragging && 'cursor-move hover:bg-slate-100'
+      'cursor-default'
     )
 
     const dynamicStyle: React.CSSProperties = {
-      ...style,
       width: columnKey === 'checkbox' ? '56px' : `${getColumnWidth(columnKey)}px`,
       minWidth: columnKey === 'checkbox' ? '56px' : `${getColumnWidth(columnKey)}px`,
       maxWidth: columnKey === 'checkbox' ? '56px' : `${getColumnWidth(columnKey)}px`,
@@ -2456,11 +2497,8 @@ export default function Candidates(){
 
     return (
       <th
-        ref={setNodeRef}
         className={className}
         style={dynamicStyle}
-        {...attributes}
-        {...listeners}
       >
         <div className="flex items-center justify-between gap-2">
           {content}
@@ -2547,6 +2585,8 @@ export default function Candidates(){
     console.debug('[Candidates] load() started: loadId=', myLoadId, 'force=', forceReload, 'allowCache=', allowCache)
     setLoading(true)
     setErrorText(null)
+    const perfT0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    let perfOk = true
     try{
       let nextOffset = 0
       let accumulated: UICandidate[] = []
@@ -2671,6 +2711,7 @@ export default function Candidates(){
         })
       }
     } catch (e: any) {
+      perfOk = false
       const errorInfo = getErrorInfo(e)
       const formattedMessage = formatErrorForDisplay(e, {
         fallback: t('app.candidates.messages.load_failed') || 'Не удалось загрузить список кандидатов',
@@ -2683,6 +2724,15 @@ export default function Candidates(){
       }
       console.error('[Candidates] Load error:', errorInfo)
     } finally {
+      const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - perfT0
+      if (willRefetch) {
+        void recordPerfMeasurement({
+          metricKey: 'candidates.list.load',
+          durationMs,
+          route: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : undefined,
+          meta: { ok: perfOk, limit, cache: !willRefetch ? 'fresh' : 'refetch' },
+        }).catch(() => {})
+      }
       loadInProgressRef.current = false
       if (myLoadId === loadIdRef.current) setLoading(false)
       if (willRefetch) {
@@ -3024,9 +3074,6 @@ export default function Candidates(){
     },
     [persistScrollState]
   )
-  const handleCandidateHover = useCallback((id: string) => {
-    void prefetchCandidate(id)
-  }, [])
 
   useEffect(() => {
     if (!filtersHydrated) return
@@ -3222,7 +3269,50 @@ export default function Candidates(){
     return items.filter(i => checked[i.id]).map(i => i.id)
   }, [items, checked])
 
-  const [bulkOperationLoading, setBulkOperationLoading] = useState<string | null>(null) // 'stage' | 'manager' | 'vacancy' | 'handoff' | 'tags' | null
+  const [bulkOperationLoading, setBulkOperationLoading] = useState<string | null>(null) // 'stage' | 'manager' | 'vacancy' | 'handoff' | 'tags' | 'activities' | null
+
+  async function doBulkActivities() {
+    const ids = allSelected()
+    if (ids.length === 0 || !bulkActivityTitle.trim() || !bulkActivityDueAt) return
+    setBulkOperationLoading('activities')
+    try {
+      const due = new Date(bulkActivityDueAt)
+      const remindAt = new Date(due.getTime() - bulkActivityOffsetMinutes * 60 * 1000)
+      const res = await createBulkActivities({
+        title: bulkActivityTitle.trim(),
+        description: '',
+        type: bulkActivityType,
+        entity_type: 'candidate',
+        entity_ids: ids,
+        due_at: due.toISOString(),
+        remind_at: remindAt.toISOString(),
+        source: 'bulk',
+        priority: 'normal',
+      })
+      const results: Array<{ entity_id?: string; ok?: boolean; error?: string }> = Array.isArray(res?.results) ? res.results : []
+      const failures = results.filter((r) => r && r.ok === false)
+      setBulkActivitiesOpen(false)
+      if (failures.length > 0) {
+        alert(
+          t('app.candidates.messages.bulk_activities_partial', {
+            defaultValue: 'Created with errors: {{failed}} failed out of {{total}}.',
+            values: { failed: failures.length, total: ids.length },
+          }),
+        )
+      } else {
+        setChecked({})
+      }
+    } catch (e: any) {
+      alert(
+        formatErrorForDisplay(e, {
+          fallback: t('app.candidates.messages.bulk_activities_failed', { defaultValue: 'Failed to create activities' }),
+          includeStatusCode: false,
+        }),
+      )
+    } finally {
+      setBulkOperationLoading(null)
+    }
+  }
 
   async function doBulk(){
     const ids = allSelected()
@@ -3659,6 +3749,81 @@ export default function Candidates(){
     } catch {/* ignore */}
   }
 
+  type QuickViewKey = 'my_work_today' | 'overdue_next_action' | 'no_next_action' | 'docs_incomplete' | 'ready_for_handoff' | 'new_this_week'
+
+  const quickViewParam = searchParams.get('qv') || ''
+  const applyQuickViewFilters = useCallback(
+    (key: QuickViewKey, opts?: { syncUrl?: boolean }) => {
+      const syncUrl = opts?.syncUrl ?? false
+
+      const next = new URLSearchParams(searchParams)
+      if (syncUrl) next.set('qv', key)
+      if (syncUrl) setSearchParams(next, { replace: true })
+
+      const setTodayRange = (start: Date, end: Date) => {
+        setCreatedRange({
+          from: start.toISOString().slice(0, 10),
+          to: end.toISOString().slice(0, 10),
+        })
+      }
+
+      // Всегда начинаем с "чистого" листа, чтобы пресет был предсказуемым.
+      handleResetFilters()
+
+      switch (key) {
+        case 'my_work_today': {
+          const todayStart = new Date()
+          todayStart.setHours(0, 0, 0, 0)
+          const todayEnd = new Date()
+          todayEnd.setHours(23, 59, 59, 999)
+          setManagerFilter(preferredManagerId ? [preferredManagerId] : [])
+          setTodayRange(todayStart, todayEnd)
+          break
+        }
+        case 'new_this_week': {
+          const end = new Date()
+          end.setHours(23, 59, 59, 999)
+          const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          start.setHours(0, 0, 0, 0)
+          setTodayRange(start, end)
+          break
+        }
+        case 'docs_incomplete': {
+          // incomplete = attention + pending
+          setDocsStatusFilter([...QUICK_DOC_STATUS_SETS.attention, ...QUICK_DOC_STATUS_SETS.pending])
+          break
+        }
+        case 'ready_for_handoff': {
+          setHandoffStatusFilter('pending')
+          setDocsStatusFilter(['ready'])
+          break
+        }
+        default:
+          break
+      }
+    },
+    [
+      QUICK_DOC_STATUS_SETS,
+      handleResetFilters,
+      preferredManagerId,
+      searchParams,
+      setCreatedRange,
+      setDocsStatusFilter,
+      setHandoffStatusFilter,
+      setManagerFilter,
+      setSearchParams,
+    ]
+  )
+
+  useEffect(() => {
+    if (!filtersHydrated) return
+    if (!quickViewParam) return
+    const key = quickViewParam as QuickViewKey
+    if (['my_work_today', 'docs_incomplete', 'ready_for_handoff', 'new_this_week'].includes(key)) {
+      applyQuickViewFilters(key, { syncUrl: false })
+    }
+  }, [filtersHydrated, quickViewParam, applyQuickViewFilters])
+
   // Reusable secondary button style for top/filter actions
   const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
 
@@ -3849,21 +4014,26 @@ export default function Candidates(){
       window.removeEventListener('keydown', handleEscape)
     }
   }, [contextMenu])
+  useEffect(() => {
+    if (!contextMenu) return
+    const exists = displayedItems.some((candidate) => candidate.id === contextMenu.candidateId)
+    if (!exists) setContextMenu(null)
+  }, [contextMenu, displayedItems])
 
   const summaryHero = (
-    <section className="rounded-xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-sm">
+    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold">{t('app.candidates.insights.title')}</h2>
+          <h2 className="text-sm font-bold text-slate-900">{t('app.candidates.insights.title')}</h2>
           <button
             type="button"
-            className="text-[10px] text-white/80 underline hover:text-white"
+            className="text-[10px] text-slate-500 underline hover:text-slate-800"
             onClick={() => setHeroExpanded((prev) => !prev)}
           >
             {heroExpanded ? t('common.actions.collapse') : t('common.actions.expand')}
           </button>
         </div>
-        <p className="text-[10px] text-white/80 leading-tight">{t('app.candidates.insights.subtitle')}</p>
+        <p className="text-[10px] text-slate-500 leading-tight">{t('app.candidates.insights.subtitle')}</p>
       </div>
       <div
         className={clsx(
@@ -3875,13 +4045,13 @@ export default function Candidates(){
           <div
             key={card.label}
             className={clsx(
-              'rounded-lg border border-white/30 bg-white/10 px-2 py-1.5 shadow-inner backdrop-blur',
+              'rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5',
               !heroExpanded && 'py-1.5'
             )}
           >
-            <div className="text-[9px] uppercase tracking-wide text-white/80 leading-tight">{card.label}</div>
-            <div className="text-lg font-semibold leading-tight">{card.value}</div>
-            {heroExpanded && <div className="text-[9px] text-white/70 leading-tight mt-0.5">{card.hint}</div>}
+            <div className="text-[9px] uppercase tracking-wide text-slate-500 leading-tight">{card.label}</div>
+            <div className="text-lg font-semibold leading-tight text-slate-900">{card.value}</div>
+            {heroExpanded && <div className="text-[9px] text-slate-500 leading-tight mt-0.5">{card.hint}</div>}
           </div>
         ))}
       </div>
@@ -4063,6 +4233,18 @@ export default function Candidates(){
                 {t('app.candidates.bulk.tags.action')}
               </button>
               <button
+                className="btn"
+                title={t('app.candidates.bulk.activities.title', { defaultValue: 'Create activities for selected' })}
+                onClick={() => {
+                  setBulkActivityTitle(t('app.candidates.bulk.activities.default_title', { defaultValue: 'Follow up' }))
+                  setBulkActivityDueAt(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16))
+                  setBulkActivityOffsetMinutes(60)
+                  setBulkActivitiesOpen(true)
+                }}
+              >
+                {t('app.candidates.bulk.activities.action', { defaultValue: 'Create activity' })}
+              </button>
+              <button
                 className="btn bg-red-600 hover:bg-red-700 text-white"
                 title={t('app.candidates.bulk.delete.title')}
                 onClick={()=>{ setBulkDeleteOpen(true) }}
@@ -4114,23 +4296,19 @@ export default function Candidates(){
             data={displayedItems}
             increaseViewportBy={{ top: 400, bottom: 800 }}
             fixedHeaderContent={() => (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={orderedVisibleColumns} strategy={horizontalListSortingStrategy}>
-                  <tr className="bg-slate-50 text-left">
-                    <DraggableColumnHeader columnKey="checkbox" isSticky={true} stickyLeft="0" />
-                    {orderedVisibleColumns.map((columnKey) => {
-                      if (columnKey === 'name') {
-                        return (
-                          <DraggableColumnHeader key={columnKey} columnKey={columnKey} isSticky={true} stickyLeft="56px" />
-                        )
-                      }
-                      return (
-                        <DraggableColumnHeader key={columnKey} columnKey={columnKey} />
-                      )
-                    })}
-                  </tr>
-                </SortableContext>
-              </DndContext>
+              <tr className="bg-slate-50 text-left">
+                <DraggableColumnHeader columnKey="checkbox" isSticky={true} stickyLeft="0" />
+                {orderedVisibleColumns.map((columnKey) => {
+                  if (columnKey === 'name') {
+                    return (
+                      <DraggableColumnHeader key={columnKey} columnKey={columnKey} isSticky={true} stickyLeft="56px" />
+                    )
+                  }
+                  return (
+                    <DraggableColumnHeader key={columnKey} columnKey={columnKey} />
+                  )
+                })}
+              </tr>
             )}
           itemContent={(index, item) => {
             const c = item as AugmentedCandidate
@@ -4180,79 +4358,54 @@ export default function Candidates(){
                             ? t('app.candidates.table.masked_label_short_id', { defaultValue: 'Кандидат {short_id}', values: { short_id: c.short_id } })
                             : t('app.candidates.table.masked_label', { defaultValue: 'Кандидат #{id}', values: { id: (c.id ?? '').slice(0, 8) } }))
                         : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || t('common.labels.not_available')
-                    const managerName = resolveManagerLabel(c) || t('common.labels.not_available')
-                    const companyName = (c as any).company_name || (c as any).__extra?.companyName || t('common.labels.not_available')
+                    const isMasked = (c as AugmentedCandidate).masked === true
                     cellContent = (
-                      <div className="flex flex-col gap-1">
-                        <HoverCard
-                          content={
-                            <div className="space-y-2">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <div className="truncate text-sm font-semibold text-slate-900">{candidateLabel}</div>
-                                  <div className="mt-0.5 text-xs text-slate-600">
-                                    <span className="font-medium">{t('app.candidates.columns.stage', { defaultValue: 'Stage' })}:</span>{' '}
-                                    <span className="text-slate-700">{String(c.stage || '—')}</span>
-                                  </div>
-                                </div>
-                                <div className="shrink-0">
-                                  <StageTag code={c.stage} />
-                                </div>
+                      <div className="flex flex-col gap-0.5 min-w-0 group">
+                        <div className="flex items-start justify-between gap-2 min-w-0">
+                          <div className="min-w-0 flex-1">
+                            <Link
+                              to={`/app/candidates/${c.id}`}
+                              className="font-medium text-brand-600 hover:text-brand-700 hover:underline"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleCandidateOpen(c.id)
+                                navigate(`/app/candidates/${c.id}`)
+                              }}
+                              title={t('app.candidates.table.open_card') || ((c as AugmentedCandidate).masked === true ? t('app.candidates.table.open_card_masked', { defaultValue: 'Открыть карточку кандидата' }) : `Открыть карточку кандидата ${c.first_name} ${c.last_name}`)}
+                            >
+                              {candidateLabel}
+                            </Link>
+                            {isMasked ? (
+                              <div
+                                className="text-xs text-slate-500 truncate"
+                                title={
+                                  c.short_id || ((c as AugmentedCandidate).masked && (c.id ?? '').slice(0, 8))
+                                    ? `Short ID: ${c.short_id || (c.id ?? '').slice(0, 8)}`
+                                    : undefined
+                                }
+                              >
+                                {c.short_id ? `ID ${c.short_id}` : `ID ${(c.id ?? '').slice(0, 8)}`}
                               </div>
-                              <div className="grid grid-cols-1 gap-1 text-xs text-slate-700">
-                                <div className="truncate">
-                                  <span className="text-slate-500">{t('app.candidates.columns.manager', { defaultValue: 'Manager' })}:</span>{' '}
-                                  <span className="font-medium text-slate-800">{managerName}</span>
-                                </div>
-                                <div className="truncate">
-                                  <span className="text-slate-500">{t('app.candidates.columns.company', { defaultValue: 'Company' })}:</span>{' '}
-                                  <span className="font-medium text-slate-800">{companyName}</span>
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap gap-2 pt-1">
-                                <button
-                                  type="button"
-                                  className="btn-primary btn-xs"
-                                  onClick={() => navigate(`/app/candidates/${c.id}`)}
-                                >
-                                  {t('common.actions.open', { defaultValue: 'Open' })}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn-secondary btn-xs"
-                                  onClick={() => navigate(`/app/candidates/${c.id}/documents`)}
-                                >
-                                  {t('app.nav.items.documents', { defaultValue: 'Documents' })}
-                                </button>
-                              </div>
-                            </div>
-                          }
-                        >
-                          <Link
-                            to={`/app/candidates/${c.id}`}
-                            className="font-medium text-brand-600 hover:text-brand-700 hover:underline"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              handleCandidateOpen(c.id)
-                              navigate(`/app/candidates/${c.id}`)
-                            }}
-                            onMouseEnter={() => handleCandidateHover(c.id)}
-                            onFocus={() => handleCandidateHover(c.id)}
-                            title={t('app.candidates.table.open_card') || ((c as AugmentedCandidate).masked === true ? t('app.candidates.table.open_card_masked', { defaultValue: 'Открыть карточку кандидата' }) : `Открыть карточку кандидата ${c.first_name} ${c.last_name}`)}
-                          >
-                            {candidateLabel}
-                          </Link>
-                        </HoverCard>
-                        <div className="text-xs text-slate-500" title={(c.short_id || ((c as AugmentedCandidate).masked && (c.id ?? '').slice(0, 8))) ? `Short ID: ${c.short_id || (c.id ?? '').slice(0, 8)}` : undefined}>
-                          {c.short_id ? `ID ${c.short_id}` : (c as AugmentedCandidate).masked === true ? `ID ${(c.id ?? '').slice(0, 8)}` : t('common.labels.not_available')}
-                        </div>
-                        {c.__extra.opsMode && (
-                          <div>
-                            <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700">
-                              {opsModeLabelMap[c.__extra.opsMode]}
-                            </span>
+                            ) : null}
                           </div>
-                        )}
+
+                          {/* Row quick actions: visible on hover for explicit preview/open actions */}
+                          <div className="hidden group-hover:flex flex-col gap-0 shrink-0">
+                            <button
+                              type="button"
+                              className="text-[12px] font-medium text-slate-500 hover:text-slate-700 hover:underline px-1 py-0.5"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedCandidateId(c.id)
+                                setSidebarOpen(true)
+                              }}
+                            >
+                              {t('app.candidates.actions.preview', { defaultValue: 'Preview' })}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* opsMode badge moved into HoverCard to reduce scan noise */}
                       </div>
                     )
                   } else if (columnKey === 'email') {
@@ -4403,11 +4556,24 @@ export default function Candidates(){
                     )
                   } else if (columnKey === 'docsStatus') {
                     if (docsMeta?.readinessState) {
-                      const meta = DOC_READINESS_META[docsMeta.readinessState] || DOC_READINESS_META.pending
+                      const readinessKey = String(docsMeta.readinessState)
+                      const meta = DOC_READINESS_META[readinessKey] || DOC_READINESS_META.pending
+                      const docsRequestTitle = t('app.candidate_card.next_action.docs_request_title', {
+                        defaultValue: 'Request documents',
+                      })
+
+                      // Operational hint: when docs are not ready, the next loop is typically requesting/processing documents.
+                      const showNextHint = readinessKey !== 'ready' && readinessKey !== 'ordered'
+
                       cellContent = (
-                        <span className={clsx('text-xs px-2 py-0.5 rounded', meta.className)}>
-                          {t(meta.labelKey)}
-                        </span>
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className={clsx('text-xs px-2 py-0.5 rounded', meta.className)}>
+                            {t(meta.labelKey)}
+                          </span>
+                          {showNextHint ? (
+                            <span className="text-[10px] text-slate-500 truncate">→ {docsRequestTitle}</span>
+                          ) : null}
+                        </div>
                       )
                     } else {
                       cellContent = t('common.labels.not_available')
@@ -4425,7 +4591,11 @@ export default function Candidates(){
                     <td
                       key={columnKey}
                       className={clsx(
-                        "px-4 py-3 border-r border-slate-200 overflow-hidden",
+                        "border-r border-slate-200 overflow-hidden",
+                        // Compact operational defaults: reduce padding in the most-used columns.
+                        ['stage', 'docsStatus', 'vacancy', 'manager'].includes(columnKey)
+                          ? 'px-3 py-2'
+                          : 'px-4 py-3',
                         isFocused ? "bg-brand-100" : "bg-white",
                         columnKey === 'name' && "sticky font-medium z-[5]"
                       )}
@@ -4499,10 +4669,12 @@ export default function Candidates(){
                   onClick={(e) => {
                     if (!id) return
                     const target = e.target as HTMLElement | null
-                    if (target?.closest('a,button,input,select,textarea,[role="button"]')) return
-                    setSelectedCandidateId(id)
-                    setPreviewTab('composer')
-                    setSidebarOpen(true)
+                    if (target?.closest('a,button,input[type="checkbox"],select,textarea')) return
+                    // Keep row click safe: it only switches candidate when rail is already open.
+                    if (sidebarOpenRef.current) {
+                      setSelectedCandidateId(id)
+                      setSidebarOpen(true)
+                    }
                   }}
                   onContextMenu={(e) => {
                     if (id && canManage) {
@@ -4608,14 +4780,6 @@ export default function Candidates(){
       {/* Контекстное меню для строк */}
       {contextMenu && (
         <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setContextMenu(null)}
-            onContextMenu={(e) => {
-              e.preventDefault()
-              setContextMenu(null)
-            }}
-          />
           <div
             ref={contextMenuRef}
             className="fixed z-50 w-56 rounded-lg border border-slate-200 bg-white p-2 shadow-xl"
@@ -4790,6 +4954,22 @@ export default function Candidates(){
         canManage={canManage}
       />
 
+      <BulkActivitiesModal
+        open={bulkActivitiesOpen}
+        onClose={() => !bulkOperationLoading && setBulkActivitiesOpen(false)}
+        title={bulkActivityTitle}
+        dueAt={bulkActivityDueAt}
+        offsetMinutes={bulkActivityOffsetMinutes}
+        onTitleChange={setBulkActivityTitle}
+        onDueAtChange={setBulkActivityDueAt}
+        onOffsetMinutesChange={setBulkActivityOffsetMinutes}
+        onApply={doBulkActivities}
+        loading={bulkOperationLoading === 'activities'}
+        canManage={canManage}
+        activityType={bulkActivityType}
+        onActivityTypeChange={setBulkActivityType}
+      />
+
       <BulkDeleteModal
         open={bulkDeleteOpen}
         onClose={() => !bulkOperationLoading && setBulkDeleteOpen(false)}
@@ -4820,8 +5000,11 @@ export default function Candidates(){
 
       {/* Боковое меню справа */}
       <div
+        className="fixed inset-y-0 right-0 z-40 w-96 pointer-events-none"
+      >
+        <div
         className={clsx(
-          "fixed top-0 right-0 h-full w-96 bg-gradient-to-b from-slate-50 to-white border-l-2 border-slate-300 shadow-2xl z-40 transition-transform duration-300 ease-in-out overflow-y-auto",
+          "h-full w-96 bg-gradient-to-b from-slate-50 to-white border-l-2 border-slate-300 shadow-2xl transition-transform duration-300 ease-in-out overflow-y-auto pointer-events-auto",
           sidebarOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
@@ -4858,7 +5041,10 @@ export default function Candidates(){
                 <button
                   type="button"
                   className="btn-secondary h-8 rounded-lg px-2 text-xs"
-                  onClick={() => setSelectedCandidateId(null)}
+                  onClick={() => {
+                    setSelectedCandidateId(null)
+                    setSidebarOpen(false)
+                  }}
                 >
                   {t('common.actions.close', { defaultValue: 'Close' })}
                 </button>
@@ -4877,142 +5063,131 @@ export default function Candidates(){
                 </button>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className={previewTab === 'composer' ? 'btn-primary h-8 rounded-lg px-2 text-xs' : 'btn-secondary h-8 rounded-lg px-2 text-xs'}
-                  onClick={() => setPreviewTab('composer')}
-                >
-                  {t('app.candidates.preview.tabs.composer', { defaultValue: 'Composer' })}
-                </button>
-                <button
-                  type="button"
-                  className={previewTab === 'focus' ? 'btn-primary h-8 rounded-lg px-2 text-xs' : 'btn-secondary h-8 rounded-lg px-2 text-xs'}
-                  onClick={() => setPreviewTab('focus')}
-                >
-                  {t('app.candidates.preview.tabs.focus', { defaultValue: 'Focus' })}
-                </button>
-                <button
-                  type="button"
-                  className={previewTab === 'history' ? 'btn-primary h-8 rounded-lg px-2 text-xs' : 'btn-secondary h-8 rounded-lg px-2 text-xs'}
-                  onClick={() => setPreviewTab('history')}
-                >
-                  {t('app.candidates.preview.tabs.history', { defaultValue: 'History' })}
-                </button>
-              </div>
+              <div className="space-y-3">
+                <CandidateNextActionPanel
+                  candidateId={String(selectedCandidate.id)}
+                  reminders={previewReminders}
+                  remindersLoading={previewRemindersLoading}
+                  remindersError={previewRemindersError}
+                  reminderBusy={previewReminderBusy}
+                  reminderTitle={previewReminderTitle}
+                  reminderDueAt={previewReminderDueAt}
+                  reminderOffset={previewReminderOffset}
+                  detailsOpenTrigger={nextActionDetailsOpenTrigger}
+                  onReminderTitleChange={setPreviewReminderTitle}
+                  onReminderDueAtChange={setPreviewReminderDueAt}
+                  onReminderOffsetChange={setPreviewReminderOffset}
+                  onReminderCreate={() => void handleCreatePreviewReminder()}
+                  onReminderComplete={(id) => void handleCompletePreviewReminder(id)}
+                  onReminderSnooze={(id, minutes) => void handlePreviewReminderSnooze(id, minutes)}
+                  docsBlockersActive={!selectedCandidate.masked && docsBlockersActive}
+                  docsRequestDueLabel={t('common.today', { defaultValue: 'Today' })}
+                  onDocsRequestCreate={handleDocsRequestCreate}
+                  hideToggle
+                />
 
-              {previewTab === 'composer' && (
-                <div className="space-y-2">
-                  <input
-                    className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
-                    value={previewReminderTitle}
-                    onChange={(e) => setPreviewReminderTitle(e.target.value)}
-                    placeholder={t('app.reminders.fields.title', { defaultValue: 'Title' })}
+                {!selectedCandidate.masked ? (
+                  <CandidateDocsRailPanel
+                    key={`docs-rail:${selectedCandidate.id}`}
+                    candidateId={String(selectedCandidate.id)}
+                    ownerContext={docsOwnerContext}
+                    uploadBusy={false}
+                    onUpload={() => navigate(`/app/candidates/${selectedCandidate.id}/documents`)}
+                    onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic })}
+                    onLoadingChange={(v) => setDocsBlockersLoading(v)}
+                    refreshTrigger={0}
+                    onSelectType={(typeCode) =>
+                      navigate(`/app/candidates/${selectedCandidate.id}/documents?type=${encodeURIComponent(typeCode)}`)
+                    }
+                    pollingEnabled={false}
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="text-xs font-medium text-slate-600">
-                      <div className="mb-1">{t('app.reminders.fields.due_at', { defaultValue: 'Due' })}</div>
-                      <input
-                        type="datetime-local"
-                        className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
-                        value={previewReminderDueAt}
-                        onChange={(e) => setPreviewReminderDueAt(e.target.value)}
-                      />
-                    </label>
-                    <label className="text-xs font-medium text-slate-600">
-                      <div className="mb-1">{t('app.reminders.fields.remind_before', { defaultValue: 'Remind before (min)' })}</div>
-                      <input
-                        type="number"
-                        min={0}
-                        className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
-                        value={previewReminderOffset}
-                        onChange={(e) => setPreviewReminderOffset(Number(e.target.value) || 0)}
-                      />
-                    </label>
-                  </div>
+                ) : null}
+
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="btn-primary h-9 w-full rounded-lg text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={!previewReminderTitle || !previewReminderDueAt}
-                    onClick={() => void handleCreatePreviewReminder()}
+                    className="btn-secondary btn-xs w-full"
+                    onClick={() => navigate(`/app/messages?candidateId=${selectedCandidate.id}`)}
                   >
-                    {t('app.reminders.actions.create', { defaultValue: 'Create reminder' })}
+                    {t('app.candidate_card.control.open_messages', { defaultValue: 'Messages' })}
                   </button>
-                  {previewRemindersError ? <div className="text-xs text-red-600">{previewRemindersError}</div> : null}
                 </div>
-              )}
+              </div>
+              {/* Mini timeline: всегда видна в right work panel (Phase A) */}
+              <div className="space-y-2 text-xs">
+                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold text-slate-700">
+                      {t('app.candidates.preview.timeline_title', { defaultValue: 'Timeline' })}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="btn-secondary h-7 rounded-lg px-2 text-[11px]"
+                        onClick={() => selectedCandidateId && void loadPreviewTimeline(selectedCandidateId)}
+                      >
+                        {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                      </button>
+                      {previewTimelineItems.length > PREVIEW_TIMELINE_COLLAPSED_COUNT ? (
+                        <button
+                          type="button"
+                          className="btn-secondary h-7 rounded-lg px-2 text-[11px]"
+                          onClick={() => setPreviewTimelineExpanded((v) => !v)}
+                        >
+                          {previewTimelineExpanded
+                            ? t('common.actions.collapse', { defaultValue: 'Hide' })
+                            : t('common.actions.expand', { defaultValue: 'Show more' })}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
 
-              {previewTab === 'focus' && (
-                <div className="space-y-2">
-                  {previewRemindersLoading ? (
-                    <div className="py-2 text-center text-xs text-slate-500">{t('common.loading')}</div>
-                  ) : previewReminders.length === 0 ? (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
-                      {t('app.reminders.states.empty', { defaultValue: 'No reminders yet.' })}
+                  {previewTimelineLoading ? (
+                    <div className="py-3 text-center text-[11px] text-slate-500">{t('common.loading')}</div>
+                  ) : previewTimelineError ? (
+                    <div className="mt-2 rounded border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700">
+                      {previewTimelineError}
+                    </div>
+                  ) : previewTimelineItems.length === 0 ? (
+                    <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-500">
+                      {t('app.candidates.preview.timeline_empty', { defaultValue: 'No events yet.' })}
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {previewReminders.slice(0, 10).map((r) => (
-                        <div key={r.id} className="rounded-lg border border-slate-200 bg-white p-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium text-slate-900">
-                                {r.title || t('app.reminders.item.untitled', { defaultValue: 'Untitled' })}
+                    <ul className="mt-2 space-y-1.5">
+                      {(previewTimelineExpanded ? previewTimelineItems : previewTimelineItems.slice(0, PREVIEW_TIMELINE_COLLAPSED_COUNT)).map(
+                        (ev, idx) => (
+                          <li key={`${ev.at}-${ev.kind}-${idx}`} className="flex items-start gap-2">
+                            <div className="mt-[3px] h-1.5 w-1.5 rounded-full bg-slate-400" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="truncate text-[11px] font-medium text-slate-800">
+                                  {ev.title || ev.kind || t('app.candidates.preview.event', { defaultValue: 'Event' })}
+                                </div>
+                                <div className="shrink-0 text-[10px] text-slate-500">
+                                  {formatDateSafe(ev.at, locale) || ev.at}
+                                </div>
                               </div>
-                              <div className="mt-0.5 text-xs text-slate-600">
-                                <span className="font-medium">{t('app.reminders.fields.due_at', { defaultValue: 'Due' })}:</span>{' '}
-                                {formatDateSafe(r.due_at, locale) || r.due_at}
-                              </div>
+                              {ev.description ? (
+                                <div className="mt-0.5 text-[11px] text-slate-600 truncate">{ev.description}</div>
+                              ) : null}
                             </div>
-                            <button
-                              type="button"
-                              className="btn-secondary h-8 rounded-lg px-2 text-xs"
-                              onClick={() => void handleCompletePreviewReminder(r.id)}
-                            >
-                              {t('app.reminders.actions.complete', { defaultValue: 'Done' })}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                          </li>
+                        )
+                      )}
+                    </ul>
                   )}
-                  {previewRemindersError ? <div className="text-xs text-red-600">{previewRemindersError}</div> : null}
                 </div>
-              )}
+              </div>
 
-              {previewTab === 'history' && (
-                <div className="space-y-2 text-xs">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                    <div className="grid grid-cols-1 gap-1">
-                      <div>
-                        <span className="text-slate-500">{t('app.candidates.columns.stage', { defaultValue: 'Stage' })}:</span>{' '}
-                        <span className="font-medium text-slate-800">{String(selectedCandidate.stage || '—')}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">{t('app.candidates.columns.manager', { defaultValue: 'Manager' })}:</span>{' '}
-                        <span className="font-medium text-slate-800">{resolveManagerLabel(selectedCandidate) || '—'}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">{t('app.candidates.columns.docs', { defaultValue: 'Docs' })}:</span>{' '}
-                        <span className="font-medium text-slate-800">{String(selectedCandidate.__docsMeta?.readinessKey || '—')}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">{t('app.candidates.columns.phone', { defaultValue: 'Phone' })}:</span>{' '}
-                        <span className="font-medium text-slate-800">{selectedCandidate.masked === true ? '—' : selectedCandidate.phone || '—'}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">{t('app.candidates.columns.email', { defaultValue: 'Email' })}:</span>{' '}
-                        <span className="font-medium text-slate-800">{selectedCandidate.masked === true ? '—' : selectedCandidate.email || '—'}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    {t('app.candidates.preview.history_note', {
-                      defaultValue: 'History v1 shows key metadata. Next step: unify events into a timeline.',
-                    })}
-                  </div>
+              {!selectedCandidate.masked ? (
+                <div className="mt-3">
+                  <CandidateHandoffSection
+                    candidateId={String(selectedCandidate.id) as any}
+                    companyId={(selectedCandidate as any).company_id}
+                    embedded
+                  />
                 </div>
-              )}
+              ) : null}
             </section>
           )}
 
@@ -5220,7 +5395,55 @@ export default function Candidates(){
               </div>
             </div>
             <div className="pt-2.5 border-t border-slate-200">
-              <h3 className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">{t('app.candidates.filters.quick_title')}</h3>
+              <h3 className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">
+                {t('app.candidates.views.quick_views_title', { defaultValue: 'Quick Views' })}
+              </h3>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                {(
+                  [
+                    ['my_work_today', t('app.candidates.views.quick_my_work_today', { defaultValue: 'My work today' })],
+                    ['docs_incomplete', t('app.candidates.views.quick_docs_incomplete', { defaultValue: 'Docs incomplete' })],
+                    [
+                      'ready_for_handoff',
+                      t('app.candidates.views.quick_ready_for_handoff', { defaultValue: 'Ready for handoff' }),
+                    ],
+                    ['new_this_week', t('app.candidates.views.quick_new_this_week', { defaultValue: 'New this week' })],
+                    ['no_next_action', t('app.candidates.views.quick_no_next_action', { defaultValue: 'No next action' })],
+                    [
+                      'overdue_next_action',
+                      t('app.candidates.views.quick_overdue_next_action', { defaultValue: 'Overdue next action' }),
+                    ],
+                  ] as Array<[QuickViewKey, string]>
+                ).map(([key, label]) => {
+                  const active = quickViewParam === key
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        if (key === 'no_next_action') {
+                          void navigate('/app/candidates/no-next-action')
+                          return
+                        }
+                        if (key === 'overdue_next_action') {
+                          void navigate('/app/reminders?tab=tasks&t_status=active&t_entity=candidate')
+                          return
+                        }
+                        void applyQuickViewFilters(key, { syncUrl: true })
+                      }}
+                      className={[
+                        'rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
+                        active
+                          ? 'bg-brand-600 text-white shadow-sm hover:bg-brand-700'
+                          : 'bg-white text-brand-700 border border-brand-200 hover:bg-brand-50 hover:border-brand-300',
+                      ].join(' ')}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -5265,33 +5488,47 @@ export default function Candidates(){
           {/* Сохраненные виды */}
           {savedViews.length > 0 && (
             <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-              <details className="relative">
-                <summary className="text-xs font-semibold text-slate-600 cursor-pointer select-none hover:text-brand-600 transition-colors pb-2 border-b border-slate-200 uppercase tracking-wide" title={t('app.candidates.views.manage_title')}>
-                  {t('app.candidates.views.toggle')}
-                </summary>
+              <div className="relative">
+                <div
+                  className="text-xs font-semibold text-slate-600 pb-2 border-b border-slate-200 uppercase tracking-wide"
+                  title={t('app.candidates.views.manage_title')}
+                >
+                  {t('app.candidates.views.toggle', { defaultValue: 'Views' })}
+                </div>
                 <div className="mt-3 space-y-1.5 max-h-64 overflow-auto">
-                  {savedViews.map(v => (
-                    <div key={v.id} className="flex items-center justify-between gap-1.5 p-1.5 rounded-md hover:bg-slate-50 transition-colors">
+                  {savedViews.map((v) => (
+                    <div
+                      key={v.id}
+                      className="flex items-center justify-between gap-1.5 p-1.5 rounded-md hover:bg-slate-50 transition-colors"
+                    >
                       <button
                         className="btn-secondary text-left justify-start flex-1 truncate text-xs font-medium px-1.5 py-1"
                         title={t('app.candidates.views.apply_title', { values: { name: v.name } })}
-                        onClick={()=>applyView(v)}
-                      >{v.name}</button>
+                        onClick={() => applyView(v)}
+                      >
+                        {v.name}
+                      </button>
                       <button
                         className="btn-danger btn-xs"
                         title={t('app.candidates.views.delete_title')}
-                        onClick={(e)=>{ e.preventDefault(); void deleteView(v.id) }}
-                      >×</button>
+                        onClick={(e) => {
+                          e.preventDefault()
+                          void deleteView(v.id)
+                        }}
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                   {savedViews.length === 0 && (
                     <div className="text-[10px] text-slate-400 text-center py-3">{t('app.candidates.views.empty')}</div>
                   )}
                 </div>
-              </details>
+              </div>
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   )

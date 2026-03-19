@@ -275,6 +275,7 @@
         "email_inbox": "Почта",
         "calendar": "Календарь",
         "planner": "Планировщик",
+        "activities": "Активности",
         "sla_incidents": "SLA-инциденты",
         "command_audit": "Аудит команд",
         "team_availability": "Доступность команды",

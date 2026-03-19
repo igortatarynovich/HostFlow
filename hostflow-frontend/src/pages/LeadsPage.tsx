@@ -3,26 +3,39 @@ import { Link, useLocation } from 'react-router-dom'
 import { IconFilter, IconRefresh, IconTable } from '@tabler/icons-react'
 
 import {
-  completeReminder,
+  completeActivity,
+  createActivity,
+  createBulkActivities,
   createInvoiceFromServiceOrder,
   createLeadServiceOrder,
-  createReminder,
+  bulkUpdateLeads,
+  getLeadTimeline,
   getOnboardingStatus,
   listLeads,
   listReminders,
+  processLead,
   type OnboardingStatus,
 } from '../api/client'
 import type { Lead, LeadListResponse, LeadStatus, LeadStage } from '../api/types'
 import type { ReminderRecord } from '../api/types/notification'
+import { recordPerfMeasurement } from '../api/analytics'
 import { useI18n } from '../i18n'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { BulkActivitiesModal } from '../modules/candidates/components'
 import { useToast } from '../components/Toast'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
 const STATUS_FILTERS: Array<'' | LeadStatus> = ['', 'new', 'processed', 'duplicated', 'needs_routing', 'failed']
 const STAGE_FILTERS: Array<'' | LeadStage> = ['', 'new', 'contacted', 'qualified', 'converted', 'lost']
+const NEXT_ACTION_FILTERS: Array<'' | 'no_next_action' | 'overdue' | 'scheduled' | 'stuck'> = [
+  '',
+  'no_next_action',
+  'overdue',
+  'scheduled',
+  'stuck',
+]
 const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   year: 'numeric',
   month: '2-digit',
@@ -44,6 +57,7 @@ export default function LeadsPage() {
   const location = useLocation()
   const [status, setStatus] = useState<'' | LeadStatus>('')
   const [stage, setStage] = useState<'' | LeadStage>('')
+  const [nextAction, setNextAction] = useState<'' | 'no_next_action' | 'overdue' | 'scheduled' | 'stuck'>('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
@@ -51,6 +65,7 @@ export default function LeadsPage() {
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
   const [creatingOrderLeadId, setCreatingOrderLeadId] = useState<string | null>(null)
   const [creatingInvoiceOrderId, setCreatingInvoiceOrderId] = useState<string | null>(null)
+  const [processingLeadId, setProcessingLeadId] = useState<string | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
 
   // Lead Inbox side panel (Pipedrive-like: Composer / Focus / History)
@@ -61,6 +76,104 @@ export default function LeadsPage() {
   const [reminderTitle, setReminderTitle] = useState('')
   const [reminderDueAt, setReminderDueAt] = useState(() => new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16))
   const [reminderOffset, setReminderOffset] = useState<number>(15)
+  const [timelineLoading, setTimelineLoading] = useState(false)
+  const [timelineError, setTimelineError] = useState<string | null>(null)
+  const [timelineItems, setTimelineItems] = useState<
+    { at: string; kind: string; source: string; title?: string | null; description?: string | null }[]
+  >([])
+
+  // Bulk activities (reminders) for selected leads
+  const [checked, setChecked] = useState<Record<string, boolean>>({})
+  const selectedCount = useMemo(() => Object.values(checked).filter(Boolean).length, [checked])
+  const allSelectedLeadIds = useMemo(() => data.items.filter((l) => checked[l.id]).map((l) => l.id), [checked, data.items])
+  const toggleChecked = useCallback((id: string) => setChecked((s) => ({ ...s, [id]: !s[id] })), [])
+
+  const [bulkActivitiesOpen, setBulkActivitiesOpen] = useState(false)
+  const [bulkActivityTitle, setBulkActivityTitle] = useState('')
+  const [bulkActivityDueAt, setBulkActivityDueAt] = useState(() =>
+    new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
+  )
+  const [bulkActivityOffsetMinutes, setBulkActivityOffsetMinutes] = useState(60)
+  const [bulkActivityType, setBulkActivityType] = useState('custom')
+  const [bulkActivitiesLoading, setBulkActivitiesLoading] = useState(false)
+  const [bulkStage, setBulkStage] = useState<'' | LeadStage>('')
+  const [bulkStatus, setBulkStatus] = useState<'' | LeadStatus>('')
+  const [bulkUpdating, setBulkUpdating] = useState(false)
+
+  const doBulkActivities = useCallback(async () => {
+    const ids = allSelectedLeadIds
+    if (ids.length === 0 || !bulkActivityTitle.trim() || !bulkActivityDueAt) return
+    setBulkActivitiesLoading(true)
+    try {
+      const due = new Date(bulkActivityDueAt)
+      const remindAt = new Date(due.getTime() - bulkActivityOffsetMinutes * 60 * 1000)
+      const res = await createBulkActivities({
+        title: bulkActivityTitle.trim(),
+        description: '',
+        type: bulkActivityType,
+        entity_type: 'lead',
+        entity_ids: ids,
+        due_at: due.toISOString(),
+        remind_at: remindAt.toISOString(),
+        source: 'bulk',
+        priority: 'normal',
+      })
+      const results: Array<{ entity_id?: string; ok?: boolean }> = Array.isArray(res?.results) ? res.results : []
+      const failures = results.filter((r) => r && r.ok === false)
+      setBulkActivitiesOpen(false)
+      if (failures.length > 0) {
+        notify({
+          title: t('app.leads.bulk.activities.partial', { defaultValue: 'Some activities failed to create' }),
+          description: `${failures.length} / ${ids.length}`,
+          variant: 'error',
+        })
+      } else {
+        notify({ title: t('app.leads.bulk.activities.created', { defaultValue: 'Activities created' }), variant: 'success' })
+        setChecked({})
+      }
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail ?? err?.message ?? 'Failed'
+      notify({
+        title: t('app.leads.bulk.activities.failed', { defaultValue: 'Failed to create activities' }),
+        description: String(detail),
+        variant: 'error',
+      })
+    } finally {
+      setBulkActivitiesLoading(false)
+    }
+  }, [allSelectedLeadIds, bulkActivityDueAt, bulkActivityOffsetMinutes, bulkActivityTitle, bulkActivityType, notify, t])
+
+  const doBulkUpdateLeads = useCallback(async () => {
+    const ids = allSelectedLeadIds
+    if (ids.length === 0) return
+    if (!bulkStage && !bulkStatus) return
+    setBulkUpdating(true)
+    try {
+      await bulkUpdateLeads({
+        lead_ids: ids,
+        stage: bulkStage || null,
+        status: bulkStatus || null,
+      })
+      await loadLeads(offset)
+      notify({
+        title: t('app.leads.bulk.updated', { defaultValue: 'Leads updated' }),
+        description: `${ids.length}`,
+        variant: 'success',
+      })
+      setChecked({})
+      setBulkStage('')
+      setBulkStatus('')
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail ?? err?.message ?? 'Failed'
+      notify({
+        title: t('app.leads.bulk.update_failed', { defaultValue: 'Bulk update failed' }),
+        description: String(detail),
+        variant: 'error',
+      })
+    } finally {
+      setBulkUpdating(false)
+    }
+  }, [allSelectedLeadIds, bulkStage, bulkStatus, loadLeads, notify, offset, t])
 
   const limit = 20
   const offset = (page - 1) * limit
@@ -70,12 +183,17 @@ export default function LeadsPage() {
     const sp = new URLSearchParams(location.search || '')
     const nextStatus = (sp.get('status') || '').trim()
     const nextStage = (sp.get('stage') || '').trim()
+    const nextNextAction = (sp.get('next_action') || '').trim()
     if (nextStatus && (STATUS_FILTERS as string[]).includes(nextStatus) && nextStatus !== status) {
       setStatus(nextStatus as any)
       setPage(1)
     }
     if (nextStage && (STAGE_FILTERS as string[]).includes(nextStage) && nextStage !== stage) {
       setStage(nextStage as any)
+      setPage(1)
+    }
+    if (nextNextAction && (NEXT_ACTION_FILTERS as string[]).includes(nextNextAction) && nextNextAction !== nextAction) {
+      setNextAction(nextNextAction as any)
       setPage(1)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,16 +203,32 @@ export default function LeadsPage() {
     async (nextOffset: number = offset) => {
       setLoading(true)
       setError(null)
+      const perfT0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
+      let perfOk = true
       try {
-        const payload = await listLeads({ status: status || undefined, stage: stage || undefined, limit, offset: nextOffset })
+        const payload = await listLeads({
+          status: status || undefined,
+          stage: stage || undefined,
+          nextAction: nextAction || undefined,
+          limit,
+          offset: nextOffset,
+        })
         setData(payload as LeadListResponse)
       } catch (err: any) {
+        perfOk = false
         setError(getFriendlyErrorInfo(err, t('app.leads.messages.load_failed')))
       } finally {
+        const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - perfT0
+        void recordPerfMeasurement({
+          metricKey: 'leads.list.load',
+          durationMs,
+          route: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : undefined,
+          meta: { ok: perfOk, status: status || null, stage: stage || null, next_action: nextAction || null, limit, offset: nextOffset },
+        }).catch(() => {})
         setLoading(false)
       }
     },
-    [limit, offset, stage, status, t],
+    [limit, nextAction, offset, stage, status, t],
   )
 
   useEffect(() => {
@@ -159,6 +293,12 @@ export default function LeadsPage() {
   const canNext = page < totalPages
 
   const items: Lead[] = useMemo(() => (Array.isArray(data.items) ? data.items : []), [data.items])
+
+  useEffect(() => {
+    // Drop selection when list changes (filters/paging).
+    setChecked({})
+  }, [nextAction, offset, stage, status])
+
   const selectedLead = useMemo(() => (selectedLeadId ? items.find((item) => item.id === selectedLeadId) ?? null : null), [items, selectedLeadId])
   const statusOptions = useMemo<Array<{ value: '' | LeadStatus; label: string }>>(
     () =>
@@ -175,6 +315,23 @@ export default function LeadsPage() {
         label: value ? t(`app.leads.stages.${value}`) : t('app.leads.filters.stage_all', { defaultValue: 'All stages' }),
       })),
     [t]
+  )
+  const nextActionOptions = useMemo<Array<{ value: '' | 'no_next_action' | 'overdue' | 'scheduled' | 'stuck'; label: string }>>(
+    () =>
+      NEXT_ACTION_FILTERS.map((value) => ({
+        value,
+        label:
+          value === ''
+            ? t('common.filters.all', { defaultValue: 'All' })
+            : value === 'no_next_action'
+            ? t('app.leads.next_action.no_next_action', { defaultValue: 'No next action' })
+            : value === 'overdue'
+            ? t('app.leads.next_action.overdue', { defaultValue: 'Overdue' })
+            : value === 'stuck'
+            ? t('app.leads.next_action.stuck', { defaultValue: 'Stuck' })
+            : t('app.leads.next_action.scheduled', { defaultValue: 'Scheduled' }),
+      })),
+    [t],
   )
   const stageLabels = useMemo(() => {
     const map: Record<string, string> = {}
@@ -200,6 +357,12 @@ export default function LeadsPage() {
       return new Intl.DateTimeFormat('en-US', DATE_FORMAT_OPTIONS)
     }
   }, [locale])
+
+  useEffect(() => {
+    if (panelTab === 'history' && selectedLeadId) {
+      void loadLeadTimeline(selectedLeadId)
+    }
+  }, [loadLeadTimeline, panelTab, selectedLeadId])
   const formatDateValue = (value?: string) => {
     if (!value) return '—'
     try {
@@ -246,7 +409,7 @@ export default function LeadsPage() {
     try {
       const due = new Date(reminderDueAt)
       const remindAt = new Date(due.getTime() - reminderOffset * 60 * 1000)
-      await createReminder({
+        await createActivity({
         title: reminderTitle,
         description: '',
         type: 'custom',
@@ -255,6 +418,7 @@ export default function LeadsPage() {
         due_at: due.toISOString(),
         remind_at: remindAt.toISOString(),
         priority: 'normal',
+          source: 'manual',
       })
       setReminderTitle('')
       setReminderDueAt(new Date(due.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16))
@@ -274,7 +438,7 @@ export default function LeadsPage() {
   const handleCompleteReminder = useCallback(
     async (id: string) => {
       try {
-        await completeReminder(id)
+        await completeActivity(id)
         if (selectedLeadId) await loadLeadReminders(selectedLeadId)
       } catch (err: any) {
         const detail =
@@ -285,6 +449,32 @@ export default function LeadsPage() {
       }
     },
     [loadLeadReminders, notify, selectedLeadId, t],
+  )
+
+  const loadLeadTimeline = useCallback(
+    async (leadId: string) => {
+      setTimelineLoading(true)
+      setTimelineError(null)
+      try {
+        const res = await getLeadTimeline(leadId)
+        const items = Array.isArray(res?.items) ? res.items : []
+        setTimelineItems(
+          items.map((item: any) => ({
+            at: item.at,
+            kind: String(item.kind || ''),
+            source: String(item.source || ''),
+            title: item.title,
+            description: item.description,
+          })),
+        )
+      } catch (err: any) {
+        const detail = err?.response?.data?.detail ?? err?.message ?? 'Failed'
+        setTimelineError(String(detail))
+      } finally {
+        setTimelineLoading(false)
+      }
+    },
+    [],
   )
 
   const handleCreateServiceOrder = useCallback(
@@ -314,6 +504,36 @@ export default function LeadsPage() {
         })
       } finally {
         setCreatingOrderLeadId(null)
+      }
+    },
+    [loadLeads, notify, offset, t],
+  )
+
+  const handleProcessLead = useCallback(
+    async (leadId: string) => {
+      setProcessingLeadId(leadId)
+      try {
+        await processLead(leadId)
+        await loadLeads(offset)
+        notify({
+          title: t('app.leads.messages.processed', { defaultValue: 'Lead processed' }),
+          description: t('app.leads.messages.processed_desc', { defaultValue: 'Lead was processed and routed.' }),
+          variant: 'success',
+        })
+      } catch (err: any) {
+        const detail =
+          err?.response?.data?.detail ??
+          err?.message ??
+          t('app.leads.messages.process_failed', {
+            defaultValue: 'Failed to process lead',
+          })
+        notify({
+          title: t('app.leads.messages.process_failed', { defaultValue: 'Failed to process lead' }),
+          description: typeof detail === 'string' ? detail : JSON.stringify(detail),
+          variant: 'error',
+        })
+      } finally {
+        setProcessingLeadId(null)
       }
     },
     [loadLeads, notify, offset, t],
@@ -402,6 +622,26 @@ export default function LeadsPage() {
               ))}
             </select>
           </label>
+          <label className="min-w-[190px] text-xs font-medium text-slate-600">
+            <span className="mb-1 inline-flex items-center gap-1">
+              <IconFilter size={12} />
+              {t('app.leads.filters.next_action', { defaultValue: 'Next action' })}
+            </span>
+            <select
+              className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+              value={nextAction}
+              onChange={(event) => {
+                setNextAction(event.target.value as any)
+                setPage(1)
+              }}
+            >
+              {nextActionOptions.map((opt) => (
+                <option key={opt.value || 'all'} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <button
             type="button"
             onClick={() => {
@@ -418,17 +658,89 @@ export default function LeadsPage() {
 
       <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          {selectedCount > 0 && (
+            <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 flex flex-wrap items-center gap-2">
+              <div className="font-medium">
+                {t('app.leads.bulk.selected', { defaultValue: 'Selected: {{count}}', values: { count: selectedCount } })}
+              </div>
+              <select
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+                value={bulkStage}
+                onChange={(e) => setBulkStage(e.target.value as any)}
+                disabled={bulkUpdating}
+              >
+                <option value="">{t('app.leads.bulk.stage', { defaultValue: 'Set stage…' })}</option>
+                {STAGE_FILTERS.filter((s) => s).map((s) => (
+                  <option key={s} value={s}>
+                    {String(s)}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+                value={bulkStatus}
+                onChange={(e) => setBulkStatus(e.target.value as any)}
+                disabled={bulkUpdating}
+              >
+                <option value="">{t('app.leads.bulk.status', { defaultValue: 'Set status…' })}</option>
+                {STATUS_FILTERS.filter((s) => s).map((s) => (
+                  <option key={s} value={s}>
+                    {String(s)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn-secondary rounded-lg px-2.5 py-1 text-xs"
+                onClick={() => void doBulkUpdateLeads()}
+                disabled={bulkUpdating || (!bulkStage && !bulkStatus)}
+              >
+                {bulkUpdating ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.leads.bulk.apply', { defaultValue: 'Apply' })}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary rounded-lg px-2.5 py-1 text-xs"
+                onClick={() => {
+                  setBulkActivityTitle(t('app.leads.bulk.activities.default_title', { defaultValue: 'Follow up' }))
+                  setBulkActivityDueAt(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16))
+                  setBulkActivityOffsetMinutes(60)
+                  setBulkActivitiesOpen(true)
+                }}
+              >
+                {t('app.leads.bulk.activities.action', { defaultValue: 'Create activity' })}
+              </button>
+              <button type="button" className="btn-secondary rounded-lg px-2.5 py-1 text-xs" onClick={() => setChecked({})}>
+                {t('app.leads.bulk.clear', { defaultValue: 'Clear' })}
+              </button>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="table min-w-full text-sm">
               <thead className="bg-slate-50">
                 <tr>
+                  <th className="w-[44px]">
+                    <input
+                      type="checkbox"
+                      checked={items.length > 0 && items.every((l) => checked[l.id])}
+                      onChange={(e) => {
+                        const next: Record<string, boolean> = {}
+                        if (e.target.checked) {
+                          items.forEach((l) => (next[l.id] = true))
+                        }
+                        setChecked(next)
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </th>
                   <th>{t('app.leads.table.created')}</th>
                   <th>{t('app.leads.table.status')}</th>
                   <th>{t('app.leads.table.stage', { defaultValue: 'Stage' })}</th>
+                  <th>{t('app.leads.table.next_action', { defaultValue: 'Next action' })}</th>
                   <th>{companyColumnLabel}</th>
                   <th>{vacancyColumnLabel}</th>
                   <th>{t('app.leads.table.contact')}</th>
                   <th>{t('app.leads.table.source')}</th>
+                  <th>{t('app.leads.table.fit', { defaultValue: 'Fit' })}</th>
                   <th>{ownerColumnLabel}</th>
                   <th>{t('app.leads.table.error')}</th>
                 </tr>
@@ -436,14 +748,14 @@ export default function LeadsPage() {
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-5 text-center text-slate-500">
+                    <td colSpan={12} className="px-3 py-5 text-center text-slate-500">
                       {t('common.loading')}
                     </td>
                   </tr>
                 )}
                 {error && !loading && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-4">
+                    <td colSpan={12} className="px-3 py-4">
                       <ErrorRecoveryBanner
                         compact
                         info={error}
@@ -457,7 +769,7 @@ export default function LeadsPage() {
                 )}
                 {!loading && !error && items.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-3 py-6">
+                    <td colSpan={12} className="px-3 py-6">
                       <EmptyStatePanel
                         compact
                         title={emptyTitle}
@@ -483,6 +795,24 @@ export default function LeadsPage() {
                     const contactPhone = normalized.phone
                     const contact = [contactName, contactEmail, contactPhone].filter(Boolean).join(' · ')
                     const isSelected = selectedLeadId === lead.id
+                    const fitStatus = (lead as any).fit_status as string | undefined
+                    const fitReasons = Array.isArray((lead as any).fit_reasons) ? ((lead as any).fit_reasons as string[]) : []
+                    const fitLabel =
+                      fitStatus === 'fit'
+                        ? 'Fit'
+                        : fitStatus === 'no_fit'
+                          ? 'No fit'
+                          : fitStatus === 'needs_info'
+                            ? 'Needs info'
+                            : '—'
+                    const fitClass =
+                      fitStatus === 'fit'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : fitStatus === 'no_fit'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                          : fitStatus === 'needs_info'
+                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                            : 'bg-slate-50 text-slate-600 border-slate-200'
 
                     return (
                       <tr
@@ -502,6 +832,14 @@ export default function LeadsPage() {
                           }
                         }}
                       >
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={!!checked[lead.id]}
+                            onChange={() => toggleChecked(lead.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </td>
                         <td className="text-slate-600">{formatDateValue(lead.created_at)}</td>
                         <td>
                           <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
@@ -517,10 +855,43 @@ export default function LeadsPage() {
                             '—'
                           )}
                         </td>
+                        <td>
+                          {lead.next_action_status === 'overdue' ? (
+                            <div className="flex flex-col items-start gap-0.5">
+                              <span className="inline-flex items-center rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-800">
+                                {t('app.leads.next_action.overdue', { defaultValue: 'Overdue' })}
+                              </span>
+                              {lead.next_action_due_at ? (
+                                <span className="text-[11px] text-rose-700">{formatDateValue(lead.next_action_due_at)}</span>
+                              ) : null}
+                            </div>
+                          ) : lead.next_action_status === 'scheduled' ? (
+                            <div className="flex flex-col items-start gap-0.5">
+                              <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                                {t('app.leads.next_action.scheduled', { defaultValue: 'Scheduled' })}
+                              </span>
+                              {lead.next_action_due_at ? (
+                                <span className="text-[11px] text-slate-600">{formatDateValue(lead.next_action_due_at)}</span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                              {t('app.leads.next_action.no_next_action', { defaultValue: 'No next action' })}
+                            </span>
+                          )}
+                        </td>
                         <td className="text-slate-800">{lead.company_name || lead.company_id}</td>
                         <td className="text-slate-800">{lead.vacancy_title || lead.vacancy_id || '—'}</td>
                         <td className="text-slate-700">{contact || '—'}</td>
                         <td className="text-slate-700">{lead.source}</td>
+                        <td className="text-slate-700">
+                          <span
+                            className={['inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold', fitClass].join(' ')}
+                            title={fitReasons.length ? fitReasons.join('\n') : ''}
+                          >
+                            {fitLabel}
+                          </span>
+                        </td>
                         <td className="text-brand-700">
                           {isServicesTenant ? (
                             <div className="flex flex-col items-start gap-1">
@@ -575,7 +946,24 @@ export default function LeadsPage() {
                               {lead.candidate_name || lead.candidate_id}
                             </Link>
                           ) : (
-                            '—'
+                            <div className="flex items-center gap-2">
+                              <span>—</span>
+                              {String(lead.source || '').toLowerCase() === 'meta' ? (
+                                <button
+                                  type="button"
+                                  className="btn-secondary rounded-lg px-2 py-1 text-[11px]"
+                                  disabled={processingLeadId === lead.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    void handleProcessLead(lead.id)
+                                  }}
+                                >
+                                  {processingLeadId === lead.id
+                                    ? t('common.loading', { defaultValue: 'Loading...' })
+                                    : t('app.leads.actions.process', { defaultValue: 'Process' })}
+                                </button>
+                              ) : null}
+                            </div>
                           )}
                         </td>
                         <td className="text-sm text-red-500">{lead.error || '—'}</td>
@@ -608,6 +996,21 @@ export default function LeadsPage() {
             </div>
           </footer>
         </div>
+
+        <BulkActivitiesModal
+          open={bulkActivitiesOpen}
+          onClose={() => !bulkActivitiesLoading && setBulkActivitiesOpen(false)}
+          title={bulkActivityTitle}
+          dueAt={bulkActivityDueAt}
+          offsetMinutes={bulkActivityOffsetMinutes}
+          onTitleChange={setBulkActivityTitle}
+          onDueAtChange={setBulkActivityDueAt}
+          onOffsetMinutesChange={setBulkActivityOffsetMinutes}
+          onApply={doBulkActivities}
+          loading={bulkActivitiesLoading}
+          activityType={bulkActivityType}
+          onActivityTypeChange={setBulkActivityType}
+        />
 
         <aside className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           {!selectedLead ? (
@@ -800,10 +1203,6 @@ export default function LeadsPage() {
                           <span className="font-medium text-slate-800">{selectedLead.stage ? stageLabels[selectedLead.stage] ?? selectedLead.stage : '—'}</span>
                         </div>
                         <div>
-                          <span className="text-slate-500">{t('app.leads.table.error')}:</span>{' '}
-                          <span className="font-medium text-slate-800">{selectedLead.error || '—'}</span>
-                        </div>
-                        <div>
                           <span className="text-slate-500">{t('app.leads.table.contact')}:</span>{' '}
                           <span className="font-medium text-slate-800">
                             {[
@@ -816,22 +1215,51 @@ export default function LeadsPage() {
                               .join(' · ') || '—'}
                           </span>
                         </div>
-                        <div>
-                          <span className="text-slate-500">{t('app.leads.inbox.history.last_routed', { defaultValue: 'Last routed' })}:</span>{' '}
-                          <span className="font-medium text-slate-800">{selectedLead.last_routed_at ? formatDateValue(selectedLead.last_routed_at) : '—'}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">{t('app.leads.inbox.history.outcome', { defaultValue: 'Outcome' })}:</span>{' '}
-                          <span className="font-medium text-slate-800">
-                            {selectedLead.outcome_entity_id ? `${selectedLead.outcome_entity_type || 'entity'}: ${selectedLead.outcome_entity_name || selectedLead.outcome_entity_id}` : '—'}
-                          </span>
-                        </div>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-500">
-                      {t('app.leads.inbox.history.note', {
-                        defaultValue: 'History v1 shows lead metadata. We can extend it with event timeline once backend exposes lead events.',
-                      })}
+                    <div className="rounded-lg border border-slate-200 bg-white p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-semibold text-slate-700">
+                          {t('app.leads.inbox.history.timeline_title', { defaultValue: 'Timeline' })}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-secondary h-7 rounded-lg px-2 text-[11px]"
+                          onClick={() => selectedLeadId && void loadLeadTimeline(selectedLeadId)}
+                        >
+                          {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                        </button>
+                      </div>
+                      {timelineLoading ? (
+                        <div className="py-3 text-center text-[11px] text-slate-500">{t('common.loading')}</div>
+                      ) : timelineError ? (
+                        <div className="mt-2 rounded border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700">
+                          {timelineError}
+                        </div>
+                      ) : timelineItems.length === 0 ? (
+                        <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-500">
+                          {t('app.leads.inbox.history.empty', { defaultValue: 'No events yet.' })}
+                        </div>
+                      ) : (
+                        <ul className="mt-2 space-y-1.5">
+                          {timelineItems.map((ev, idx) => (
+                            <li key={`${ev.at}-${ev.kind}-${idx}`} className="flex items-start gap-2">
+                              <div className="mt-[3px] h-1.5 w-1.5 rounded-full bg-slate-400" />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="truncate text-[11px] font-medium text-slate-800">
+                                    {ev.title || ev.kind || t('app.leads.inbox.history.event', { defaultValue: 'Event' })}
+                                  </div>
+                                  <div className="shrink-0 text-[10px] text-slate-500">{formatDateValue(ev.at)}</div>
+                                </div>
+                                {ev.description ? (
+                                  <div className="mt-0.5 text-[11px] text-slate-600 truncate">{ev.description}</div>
+                                ) : null}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   </div>
                 )}

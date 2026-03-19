@@ -9,6 +9,7 @@ from typing import Any, Dict
 from uuid import UUID
 
 import sqlalchemy as sa
+from datetime import timedelta
 
 from backend.app.db.session import async_session_maker
 from backend.app.models.tenant import Tenant
@@ -179,6 +180,556 @@ def _docs_reminder_thresholds_hours() -> list[int]:
         max(1, int(_docs_second_reminder_hours())),
     }
     return sorted(values)
+
+
+def _leads_next_action_sla_enabled() -> bool:
+    return _env_bool("COMM_SCHEDULER_LEADS_NEXT_ACTION_SLA_ENABLED", True)
+
+
+def _tenant_leads_sla_settings(tenant: Tenant) -> Dict[str, Any]:
+    root = tenant.settings if isinstance(tenant.settings, dict) else {}
+    raw = root.get("leads_next_action_sla_v1")
+    return raw if isinstance(raw, dict) else {}
+
+
+def _tenant_leads_next_action_sla_enabled(tenant: Tenant) -> bool:
+    if not _leads_next_action_sla_enabled():
+        return False
+    cfg = _tenant_leads_sla_settings(tenant)
+    return bool(cfg.get("enabled", True))
+
+
+def _tenant_leads_no_next_action_after_hours(tenant: Tenant) -> int:
+    cfg = _tenant_leads_sla_settings(tenant)
+    try:
+        return max(1, int(cfg.get("noNextActionAfterHours") or 24))
+    except Exception:
+        return 24
+
+
+def _tenant_leads_sla_create_notifications(tenant: Tenant) -> bool:
+    cfg = _tenant_leads_sla_settings(tenant)
+    return bool(cfg.get("createNotifications", True))
+
+
+def _tenant_leads_sla_create_reminders(tenant: Tenant) -> bool:
+    cfg = _tenant_leads_sla_settings(tenant)
+    return bool(cfg.get("createReminders", True))
+
+
+def _tenant_leads_sla_limit(tenant: Tenant) -> int:
+    cfg = _tenant_leads_sla_settings(tenant)
+    try:
+        return max(10, min(500, int(cfg.get("limit") or 200)))
+    except Exception:
+        return 200
+
+
+def _tenant_leads_stuck_after_days(tenant: Tenant) -> int:
+    cfg = _tenant_leads_sla_settings(tenant)
+    try:
+        return max(1, int(cfg.get("stuckAfterDays") or 7))
+    except Exception:
+        return 7
+
+
+def _tenant_leads_stuck_stages(tenant: Tenant) -> set[str]:
+    cfg = _tenant_leads_sla_settings(tenant)
+    raw = cfg.get("stages")
+    if isinstance(raw, list):
+        out = {str(x).strip() for x in raw if str(x or "").strip()}
+        if out:
+            return out
+    # Default: active lead stages (exclude converted/lost)
+    return {"new", "contacted", "qualified"}
+
+
+def _invoices_overdue_sla_enabled() -> bool:
+    return _env_bool("COMM_SCHEDULER_INVOICES_OVERDUE_SLA_ENABLED", True)
+
+
+def _tenant_invoices_sla_settings(tenant: Tenant) -> Dict[str, Any]:
+    root = tenant.settings if isinstance(tenant.settings, dict) else {}
+    raw = root.get("invoice_overdue_sla_v1")
+    return raw if isinstance(raw, dict) else {}
+
+
+def _tenant_invoices_overdue_sla_enabled(tenant: Tenant) -> bool:
+    if not _invoices_overdue_sla_enabled():
+        return False
+    cfg = _tenant_invoices_sla_settings(tenant)
+    return bool(cfg.get("enabled", True))
+
+
+def _tenant_invoices_sla_create_notifications(tenant: Tenant) -> bool:
+    cfg = _tenant_invoices_sla_settings(tenant)
+    return bool(cfg.get("createNotifications", True))
+
+
+def _tenant_invoices_sla_create_reminders(tenant: Tenant) -> bool:
+    cfg = _tenant_invoices_sla_settings(tenant)
+    return bool(cfg.get("createReminders", True))
+
+
+def _tenant_invoices_sla_limit(tenant: Tenant) -> int:
+    cfg = _tenant_invoices_sla_settings(tenant)
+    try:
+        return max(10, min(500, int(cfg.get("limit") or 200)))
+    except Exception:
+        return 200
+
+
+def _tenant_invoices_overdue_after_days(tenant: Tenant) -> int:
+    cfg = _tenant_invoices_sla_settings(tenant)
+    try:
+        return max(0, int(cfg.get("overdueAfterDays") or 0))
+    except Exception:
+        return 0
+
+
+async def _pick_ops_assignee_id(db, *, tenant_id: str) -> str | None:
+    """Pick a stable ops recipient for SLA nudges (best-effort)."""
+    from backend.app.models.user import Role, User
+
+    row = await db.execute(
+        sa.select(User.id)
+        .where(
+            User.is_active.is_(True),
+            sa.or_(User.tenant_id == tenant_id, User.tenant_id.is_(None)),
+            # IMPORTANT: keep only real DB enum values (no aliases like "owner").
+            User.role.in_([Role.superadmin.value, Role.administrator.value, Role.supervisor.value]),
+        )
+        .order_by(sa.asc(User.created_at))
+        .limit(1)
+    )
+    return row.scalar_one_or_none()
+
+
+async def _latest_lead_stage_change_map(db, *, tenant_id: str, lead_ids: list[str]) -> Dict[str, datetime]:
+    """Fetch last lead.stage_changed timestamps from ActivityLog for the given leads."""
+    from backend.app.models.audit import ActivityLog
+
+    if not lead_ids:
+        return {}
+    stmt = (
+        sa.select(ActivityLog.target_id, sa.func.max(ActivityLog.created_at))
+        .where(
+            ActivityLog.tenant_id == tenant_id,
+            ActivityLog.target_type == "lead",
+            ActivityLog.action == "lead.stage_changed",
+            ActivityLog.target_id.in_(lead_ids),
+        )
+        .group_by(ActivityLog.target_id)
+    )
+    rows = (await db.execute(stmt)).all()
+    return {str(tid): ts for tid, ts in rows if tid and ts}
+
+
+async def _run_leads_next_action_sla_for_tenant(db, *, tenant: Tenant, now: datetime) -> Dict[str, int]:
+    """
+    Leads SLA nudge: if a processed lead has no next action for N hours, create:
+    - in-app notification (optional)
+    - internal reminder assigned to ops recipient (optional)
+    Idempotent via reminder existence check for type=leads_no_next_action.
+    """
+    from backend.app.models.lead import Lead
+    from backend.app.models.reminder import Reminder, ReminderStatus
+    from backend.app.services.user_notifications import create_notification
+
+    stats = {"checked": 0, "due": 0, "notifications": 0, "reminders": 0, "skipped_unassigned": 0}
+    if not _tenant_leads_next_action_sla_enabled(tenant):
+        return stats
+
+    tenant_id = str(tenant.id)
+    limit = _tenant_leads_sla_limit(tenant)
+    threshold_hours = _tenant_leads_no_next_action_after_hours(tenant)
+    create_notifications = _tenant_leads_sla_create_notifications(tenant)
+    create_reminders = _tenant_leads_sla_create_reminders(tenant)
+
+    assignee_id = await _pick_ops_assignee_id(db, tenant_id=tenant_id)
+    if not assignee_id:
+        stats["skipped_unassigned"] += 1
+        return stats
+
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+    # Cross-DB cutoff: compute in python and compare.
+    cutoff_dt = now - timedelta(hours=int(threshold_hours))
+
+    reminder_exists_active = (
+        sa.exists()
+        .where(
+            Reminder.tenant_id == tenant_id,
+            Reminder.entity_type == "lead",
+            Reminder.entity_id == Lead.id,
+            Reminder.status.in_(active_statuses),
+        )
+        .correlate(Lead)
+    )
+
+    # Candidates: processed leads with no active reminder and older than threshold.
+    stmt = (
+        sa.select(Lead.id, Lead.created_at, Lead.stage)
+        .where(
+            Lead.tenant_id == tenant_id,
+            Lead.status == "processed",
+            Lead.created_at <= cutoff_dt,
+            ~reminder_exists_active,
+        )
+        .order_by(sa.asc(Lead.created_at))
+        .limit(limit)
+    )
+    rows = (await db.execute(stmt)).all()
+    stats["checked"] = len(rows)
+    if not rows:
+        return stats
+
+    for lead_id, created_at, stage in rows:
+        lid = str(lead_id)
+        stats["due"] += 1
+        due_key = f"{tenant_id}:{lid}:{threshold_hours}"
+
+        if create_notifications:
+            await create_notification(
+                db,
+                tenant_id=tenant_id,
+                user_id=str(assignee_id),
+                event_type="lead_no_next_action",
+                entity_type="lead",
+                entity_id=lid,
+                payload={
+                    "type": "lead_no_next_action",
+                    "source": "leads_next_action_sla",
+                    "severity": "medium",
+                    "requires_action": True,
+                    "title": "Lead without next action",
+                    "description": f"Processed lead has no next action for {threshold_hours}h+.",
+                    "lead_id": lid,
+                    "stage": str(stage or ""),
+                    "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else None,
+                    "threshold_hours": int(threshold_hours),
+                    "dedupe_key": f"lead_no_next_action:{due_key}",
+                },
+                dedupe_window_minutes=60 * 24,
+            )
+            stats["notifications"] += 1
+
+        if create_reminders:
+            # Idempotency: avoid duplicate active reminders of this type.
+            existing = (
+                await db.execute(
+                    sa.select(Reminder.id)
+                    .where(
+                        Reminder.tenant_id == tenant_id,
+                        Reminder.entity_type == "lead",
+                        Reminder.entity_id == lid,
+                        Reminder.assignee_id == str(assignee_id),
+                        Reminder.type == "leads_no_next_action",
+                        Reminder.status.in_(list(active_statuses)),
+                    )
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if not existing:
+                reminder = Reminder(
+                    tenant_id=tenant_id,
+                    type="leads_no_next_action",
+                    entity_type="lead",
+                    entity_id=lid,
+                    title="Lead: create next action",
+                    description=f"No next action for {threshold_hours}h+ (processed lead).",
+                    owner_id=str(assignee_id),
+                    assignee_id=str(assignee_id),
+                    priority="normal",
+                    channel="internal",
+                    due_at=now,
+                    remind_at=now,
+                    status=ReminderStatus.pending,
+                    message="Lead requires next action",
+                    payload={
+                        "lead_id": lid,
+                        "threshold_hours": int(threshold_hours),
+                        "created_at": created_at.isoformat() if hasattr(created_at, "isoformat") else None,
+                        "stage": str(stage or ""),
+                        "source": "leads_next_action_sla",
+                    },
+                    created_by=None,
+                )
+                db.add(reminder)
+                stats["reminders"] += 1
+
+    return stats
+
+
+async def _run_leads_stuck_stage_sla_for_tenant(db, *, tenant: Tenant, now: datetime) -> Dict[str, int]:
+    """
+    Leads stuck-in-stage: for processed leads in selected stages, if no stage change for D days,
+    create best-effort nudge (notification + reminder). Idempotent by reminder existence.
+    """
+    from backend.app.models.lead import Lead
+    from backend.app.models.reminder import Reminder, ReminderStatus
+    from backend.app.services.user_notifications import create_notification
+
+    stats = {"checked": 0, "due": 0, "notifications": 0, "reminders": 0, "skipped_unassigned": 0}
+    if not _tenant_leads_next_action_sla_enabled(tenant):
+        return stats
+
+    tenant_id = str(tenant.id)
+    limit = _tenant_leads_sla_limit(tenant)
+    stages = _tenant_leads_stuck_stages(tenant)
+    stuck_days = _tenant_leads_stuck_after_days(tenant)
+    create_notifications = _tenant_leads_sla_create_notifications(tenant)
+    create_reminders = _tenant_leads_sla_create_reminders(tenant)
+    cutoff_dt = now - timedelta(days=int(stuck_days))
+
+    assignee_id = await _pick_ops_assignee_id(db, tenant_id=tenant_id)
+    if not assignee_id:
+        stats["skipped_unassigned"] += 1
+        return stats
+
+    # Consider only leads in configured stages; if stage is NULL, treat as "new".
+    stmt = (
+        sa.select(Lead.id, Lead.created_at, Lead.stage)
+        .where(
+            Lead.tenant_id == tenant_id,
+            Lead.status == "processed",
+            sa.func.coalesce(Lead.stage, "new").in_(list(stages)),
+        )
+        .order_by(sa.asc(Lead.created_at))
+        .limit(limit)
+    )
+    rows = (await db.execute(stmt)).all()
+    stats["checked"] = len(rows)
+    if not rows:
+        return stats
+
+    lead_ids = [str(lid) for lid, _c, _s in rows if lid]
+    last_change_map = await _latest_lead_stage_change_map(db, tenant_id=tenant_id, lead_ids=lead_ids)
+
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+    for lead_id, created_at, stage in rows:
+        lid = str(lead_id)
+        last_change_at = last_change_map.get(lid) or (created_at if isinstance(created_at, datetime) else None) or now
+        if last_change_at.tzinfo is None:
+            last_change_at = last_change_at.replace(tzinfo=timezone.utc)
+        if last_change_at > cutoff_dt:
+            continue
+
+        stats["due"] += 1
+        due_key = f"{tenant_id}:{lid}:{stuck_days}:{str(stage or '')}"
+
+        if create_notifications:
+            await create_notification(
+                db,
+                tenant_id=tenant_id,
+                user_id=str(assignee_id),
+                event_type="lead_stuck_stage",
+                entity_type="lead",
+                entity_id=lid,
+                payload={
+                    "type": "lead_stuck_stage",
+                    "source": "leads_next_action_sla",
+                    "severity": "medium",
+                    "requires_action": True,
+                    "title": "Lead stuck in stage",
+                    "description": f"No stage change for {stuck_days}d+.",
+                    "lead_id": lid,
+                    "stage": str(stage or "new"),
+                    "last_stage_change_at": last_change_at.isoformat(),
+                    "stuck_days": int(stuck_days),
+                    "dedupe_key": f"lead_stuck_stage:{due_key}",
+                },
+                dedupe_window_minutes=60 * 24,
+            )
+            stats["notifications"] += 1
+
+        if create_reminders:
+            existing = (
+                await db.execute(
+                    sa.select(Reminder.id)
+                    .where(
+                        Reminder.tenant_id == tenant_id,
+                        Reminder.entity_type == "lead",
+                        Reminder.entity_id == lid,
+                        Reminder.assignee_id == str(assignee_id),
+                        Reminder.type == "leads_stuck_stage",
+                        Reminder.status.in_(list(active_statuses)),
+                    )
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if not existing:
+                reminder = Reminder(
+                    tenant_id=tenant_id,
+                    type="leads_stuck_stage",
+                    entity_type="lead",
+                    entity_id=lid,
+                    title="Lead: check stage progress",
+                    description=f"No stage change for {stuck_days}d+ (processed lead).",
+                    owner_id=str(assignee_id),
+                    assignee_id=str(assignee_id),
+                    priority="normal",
+                    channel="internal",
+                    due_at=now,
+                    remind_at=now,
+                    status=ReminderStatus.pending,
+                    message="Lead stuck in stage",
+                    payload={
+                        "lead_id": lid,
+                        "stuck_days": int(stuck_days),
+                        "last_stage_change_at": last_change_at.isoformat(),
+                        "stage": str(stage or "new"),
+                        "source": "leads_next_action_sla",
+                    },
+                    created_by=None,
+                )
+                db.add(reminder)
+                stats["reminders"] += 1
+
+    return stats
+
+
+async def _run_invoices_overdue_sla_for_tenant(db, *, tenant: Tenant, now: datetime) -> Dict[str, int]:
+    """
+    Invoice overdue SLA: create best-effort notification + internal reminder for overdue invoices.
+    Idempotency:
+    - notification dedupe by due date key
+    - reminder check by type/entity/assignee and active statuses
+    """
+    from backend.app.models.invoice import Invoice
+    from backend.app.models.reminder import Reminder, ReminderStatus
+    from backend.app.services.user_notifications import create_notification
+
+    stats = {"checked": 0, "due": 0, "notifications": 0, "reminders": 0, "skipped_unassigned": 0}
+    if not _tenant_invoices_overdue_sla_enabled(tenant):
+        return stats
+
+    tenant_id = str(tenant.id)
+    limit = _tenant_invoices_sla_limit(tenant)
+    overdue_after_days = _tenant_invoices_overdue_after_days(tenant)
+    create_notifications = _tenant_invoices_sla_create_notifications(tenant)
+    create_reminders = _tenant_invoices_sla_create_reminders(tenant)
+    assignee_id = await _pick_ops_assignee_id(db, tenant_id=tenant_id)
+    if not assignee_id:
+        stats["skipped_unassigned"] += 1
+        return stats
+
+    due_cutoff = (now.date() - timedelta(days=int(overdue_after_days)))
+    # Overdue candidates: invoice due date passed threshold and not fully settled/cancelled.
+    stmt = (
+        sa.select(
+            Invoice.id,
+            Invoice.invoice_number,
+            Invoice.status,
+            Invoice.due_date,
+            Invoice.total_amount,
+            Invoice.paid_amount,
+            Invoice.service_order_id,
+            Invoice.company_id,
+            Invoice.candidate_id,
+        )
+        .where(
+            Invoice.tenant_id == tenant_id,
+            Invoice.due_date.is_not(None),
+            Invoice.due_date <= due_cutoff,
+            sa.func.coalesce(Invoice.status, "").notin_(["paid", "cancelled"]),
+        )
+        .order_by(sa.asc(Invoice.due_date))
+        .limit(limit)
+    )
+    rows = (await db.execute(stmt)).all()
+    stats["checked"] = len(rows)
+    if not rows:
+        return stats
+
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+    for inv_id, inv_number, inv_status, due_date, total_amount, paid_amount, service_order_id, company_id, candidate_id in rows:
+        iid = str(inv_id)
+        total = float(total_amount or 0)
+        paid = float(paid_amount or 0)
+        outstanding = max(0.0, total - paid)
+        if outstanding <= 0:
+            continue
+
+        stats["due"] += 1
+        due_key = f"{tenant_id}:{iid}:{str(due_date)}"
+        title = "Invoice overdue"
+        description = f"Invoice {str(inv_number or iid)[:32]} is overdue. Outstanding: {round(outstanding, 2)}."
+
+        if create_notifications:
+            await create_notification(
+                db,
+                tenant_id=tenant_id,
+                user_id=str(assignee_id),
+                event_type="invoice_overdue",
+                entity_type="invoice",
+                entity_id=iid,
+                payload={
+                    "type": "invoice_overdue",
+                    "source": "invoice_overdue_sla",
+                    "severity": "high",
+                    "requires_action": True,
+                    "title": title,
+                    "description": description,
+                    "invoice_id": iid,
+                    "invoice_number": str(inv_number or ""),
+                    "invoice_status": str(inv_status or ""),
+                    "due_date": str(due_date) if due_date else None,
+                    "outstanding_amount": round(outstanding, 2),
+                    "service_order_id": str(service_order_id) if service_order_id else None,
+                    "company_id": str(company_id) if company_id else None,
+                    "candidate_id": str(candidate_id) if candidate_id else None,
+                    "dedupe_key": f"invoice_overdue:{due_key}",
+                },
+                dedupe_window_minutes=60 * 24,
+            )
+            stats["notifications"] += 1
+
+        if create_reminders:
+            existing = (
+                await db.execute(
+                    sa.select(Reminder.id)
+                    .where(
+                        Reminder.tenant_id == tenant_id,
+                        Reminder.entity_type == "invoice",
+                        Reminder.entity_id == iid,
+                        Reminder.assignee_id == str(assignee_id),
+                        Reminder.type == "invoice_overdue_payment",
+                        Reminder.status.in_(list(active_statuses)),
+                    )
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            if not existing:
+                reminder = Reminder(
+                    tenant_id=tenant_id,
+                    type="invoice_overdue_payment",
+                    entity_type="invoice",
+                    entity_id=iid,
+                    title=title,
+                    description=description,
+                    owner_id=str(assignee_id),
+                    assignee_id=str(assignee_id),
+                    priority="high",
+                    channel="internal",
+                    due_at=now,
+                    remind_at=now,
+                    status=ReminderStatus.overdue,
+                    message="Overdue invoice requires payment follow-up",
+                    payload={
+                        "invoice_id": iid,
+                        "invoice_number": str(inv_number or ""),
+                        "invoice_status": str(inv_status or ""),
+                        "due_date": str(due_date) if due_date else None,
+                        "outstanding_amount": round(outstanding, 2),
+                        "service_order_id": str(service_order_id) if service_order_id else None,
+                        "source": "invoice_overdue_sla",
+                    },
+                    created_by=None,
+                )
+                db.add(reminder)
+                stats["reminders"] += 1
+
+    return stats
 
 
 async def _run_sla_escalations_for_tenant(db, *, tenant: Tenant, now: datetime) -> Dict[str, int]:
@@ -559,6 +1110,14 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
         "docs_deadline_due": 0,
         "docs_deadline_manager_notifications": 0,
         "docs_deadline_candidate_telegram": 0,
+        "leads_sla_runs": 0,
+        "leads_sla_due": 0,
+        "leads_sla_notifications": 0,
+        "leads_sla_reminders": 0,
+        "invoices_sla_runs": 0,
+        "invoices_sla_due": 0,
+        "invoices_sla_notifications": 0,
+        "invoices_sla_reminders": 0,
     }
 
     for tenant in tenants:
@@ -711,6 +1270,92 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
                     pass
                 tenant_runtime["last_docs_deadline_error"] = str(exc)
                 logger.warning("[communications-scheduler] docs deadlines failed tenant=%s (%s)", tenant_id, exc)
+
+            # Leads next-action SLA nudges: processed leads without next action for N hours.
+            try:
+                leads_stats = await _run_leads_next_action_sla_for_tenant(db, tenant=tenant, now=now)
+                tenant_runtime["last_leads_sla_check_at"] = now.isoformat()
+                tenant_runtime["last_leads_sla_stats"] = dict(leads_stats)
+                tick_summary["leads_sla_runs"] = int(tick_summary["leads_sla_runs"]) + 1
+                tick_summary["leads_sla_due"] = int(tick_summary["leads_sla_due"]) + int(leads_stats.get("due", 0) or 0)
+                tick_summary["leads_sla_notifications"] = int(tick_summary["leads_sla_notifications"]) + int(
+                    leads_stats.get("notifications", 0) or 0
+                )
+                tick_summary["leads_sla_reminders"] = int(tick_summary["leads_sla_reminders"]) + int(leads_stats.get("reminders", 0) or 0)
+                if int(leads_stats.get("reminders", 0) or 0) > 0 or int(leads_stats.get("notifications", 0) or 0) > 0:
+                    logger.info(
+                        "[communications-scheduler] leads SLA tenant=%s due=%s notifications=%s reminders=%s",
+                        tenant_id,
+                        leads_stats.get("due", 0),
+                        leads_stats.get("notifications", 0),
+                        leads_stats.get("reminders", 0),
+                    )
+                await db.commit()
+            except Exception as exc:
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+                tenant_runtime["last_leads_sla_error"] = str(exc)
+                logger.warning("[communications-scheduler] leads SLA failed tenant=%s (%s)", tenant_id, exc)
+
+            # Leads stuck-in-stage SLA nudges.
+            try:
+                stuck_stats = await _run_leads_stuck_stage_sla_for_tenant(db, tenant=tenant, now=now)
+                tenant_runtime["last_leads_stuck_check_at"] = now.isoformat()
+                tenant_runtime["last_leads_stuck_stats"] = dict(stuck_stats)
+                tick_summary["leads_sla_runs"] = int(tick_summary["leads_sla_runs"]) + 1
+                tick_summary["leads_sla_due"] = int(tick_summary["leads_sla_due"]) + int(stuck_stats.get("due", 0) or 0)
+                tick_summary["leads_sla_notifications"] = int(tick_summary["leads_sla_notifications"]) + int(
+                    stuck_stats.get("notifications", 0) or 0
+                )
+                tick_summary["leads_sla_reminders"] = int(tick_summary["leads_sla_reminders"]) + int(stuck_stats.get("reminders", 0) or 0)
+                if int(stuck_stats.get("reminders", 0) or 0) > 0 or int(stuck_stats.get("notifications", 0) or 0) > 0:
+                    logger.info(
+                        "[communications-scheduler] leads stuck tenant=%s due=%s notifications=%s reminders=%s",
+                        tenant_id,
+                        stuck_stats.get("due", 0),
+                        stuck_stats.get("notifications", 0),
+                        stuck_stats.get("reminders", 0),
+                    )
+                await db.commit()
+            except Exception as exc:
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+                tenant_runtime["last_leads_stuck_error"] = str(exc)
+                logger.warning("[communications-scheduler] leads stuck failed tenant=%s (%s)", tenant_id, exc)
+
+            # Invoice overdue SLA nudges.
+            try:
+                invoices_stats = await _run_invoices_overdue_sla_for_tenant(db, tenant=tenant, now=now)
+                tenant_runtime["last_invoices_sla_check_at"] = now.isoformat()
+                tenant_runtime["last_invoices_sla_stats"] = dict(invoices_stats)
+                tick_summary["invoices_sla_runs"] = int(tick_summary["invoices_sla_runs"]) + 1
+                tick_summary["invoices_sla_due"] = int(tick_summary["invoices_sla_due"]) + int(invoices_stats.get("due", 0) or 0)
+                tick_summary["invoices_sla_notifications"] = int(tick_summary["invoices_sla_notifications"]) + int(
+                    invoices_stats.get("notifications", 0) or 0
+                )
+                tick_summary["invoices_sla_reminders"] = int(tick_summary["invoices_sla_reminders"]) + int(
+                    invoices_stats.get("reminders", 0) or 0
+                )
+                if int(invoices_stats.get("reminders", 0) or 0) > 0 or int(invoices_stats.get("notifications", 0) or 0) > 0:
+                    logger.info(
+                        "[communications-scheduler] invoices SLA tenant=%s due=%s notifications=%s reminders=%s",
+                        tenant_id,
+                        invoices_stats.get("due", 0),
+                        invoices_stats.get("notifications", 0),
+                        invoices_stats.get("reminders", 0),
+                    )
+                await db.commit()
+            except Exception as exc:
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+                tenant_runtime["last_invoices_sla_error"] = str(exc)
+                logger.warning("[communications-scheduler] invoices SLA failed tenant=%s (%s)", tenant_id, exc)
 
     _RUNTIME_STATUS["last_tick_summary"] = tick_summary
 

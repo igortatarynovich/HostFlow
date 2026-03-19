@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../i18n'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
 
@@ -13,13 +14,21 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 export function TrialStatusBanner({ visible, validUntil, canOpenBilling, onSetupClick }: Props) {
   const { t } = useI18n()
-
-  if (!visible) return null
-
   const endDate = validUntil ? new Date(validUntil) : null
   const hasValidDate = Boolean(endDate && !Number.isNaN(endDate.getTime()))
-  const daysLeft = hasValidDate ? Math.max(0, Math.ceil((endDate!.getTime() - Date.now()) / DAY_MS)) : null
+  const [nowTs, setNowTs] = useState<number>(0)
+  useEffect(() => {
+    // Keep render pure; set "now" from effect.
+    setNowTs(Date.now())
+  }, [validUntil, visible])
+
+  const daysLeft = useMemo(() => {
+    if (!hasValidDate || !nowTs) return null
+    return Math.max(0, Math.ceil((endDate!.getTime() - nowTs) / DAY_MS))
+  }, [endDate, hasValidDate, nowTs])
   const tone: 'normal' | 'warning' | 'critical' = daysLeft == null ? 'normal' : daysLeft <= 2 ? 'critical' : daysLeft <= 7 ? 'warning' : 'normal'
+
+  if (!visible) return null
 
   const wrapperClass =
     tone === 'critical'

@@ -639,6 +639,120 @@ def get_effective_role_module_permissions(
     return effective
 
 
+def get_vacancy_requirements_presets_snapshot(tenant: Tenant) -> list[dict]:
+    """
+    Presets are stored in tenant.settings['vacancy_requirements_presets_v1'] as a list of dicts.
+    Each preset: { id: str, label: str, criteria: dict, updated_at?: str }
+    """
+    settings_payload = tenant.settings if isinstance(tenant.settings, dict) else {}
+    raw = settings_payload.get("vacancy_requirements_presets_v1") if isinstance(settings_payload, dict) else None
+    if not isinstance(raw, list):
+        return []
+    out: list[dict] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        pid = str(item.get("id") or "").strip()
+        label = str(item.get("label") or "").strip()
+        criteria = item.get("criteria")
+        if not pid or not label or not isinstance(criteria, dict):
+            continue
+        out.append(
+            {
+                "id": pid,
+                "label": label,
+                "criteria": criteria,
+                "updated_at": item.get("updated_at"),
+            }
+        )
+    return out
+
+
+async def upsert_vacancy_requirements_preset(
+    db: AsyncSession,
+    tenant: Tenant,
+    *,
+    preset_id: str,
+    label: str,
+    criteria: dict,
+    actor_id: str | None = None,
+) -> list[dict]:
+    preset_id = str(preset_id or "").strip()
+    if not preset_id:
+        raise ValueError("invalid_preset_id")
+    label = str(label or "").strip()
+    if not label:
+        raise ValueError("invalid_label")
+    if not isinstance(criteria, dict):
+        raise ValueError("invalid_criteria")
+
+    current = get_vacancy_requirements_presets_snapshot(tenant)
+    now = _now_utc().isoformat()
+    next_item = {"id": preset_id, "label": label, "criteria": criteria, "updated_at": now}
+    replaced = False
+    next_list: list[dict] = []
+    for item in current:
+        if str(item.get("id") or "") == preset_id:
+            next_list.append(next_item)
+            replaced = True
+        else:
+            next_list.append(item)
+    if not replaced:
+        next_list.append(next_item)
+
+    settings_payload = dict(tenant.settings or {})
+    settings_payload["vacancy_requirements_presets_v1"] = next_list
+    tenant.settings = settings_payload
+    tenant.updated_at = _now_utc()
+    await db.commit()
+    await db.refresh(tenant)
+    try:
+        await log_activity(
+            db,
+            tenant_id=tenant.id,
+            actor_id=actor_id,
+            action="tenant.vacancy_requirements_presets.upsert",
+            target_type="tenant",
+            target_id=tenant.id,
+            payload={"preset_id": preset_id, "label": label},
+        )
+    except Exception:
+        pass
+    return get_vacancy_requirements_presets_snapshot(tenant)
+
+
+async def delete_vacancy_requirements_preset(
+    db: AsyncSession,
+    tenant: Tenant,
+    *,
+    preset_id: str,
+    actor_id: str | None = None,
+) -> list[dict]:
+    preset_id = str(preset_id or "").strip()
+    if not preset_id:
+        raise ValueError("invalid_preset_id")
+    current = get_vacancy_requirements_presets_snapshot(tenant)
+    next_list = [item for item in current if str(item.get("id") or "") != preset_id]
+    settings_payload = dict(tenant.settings or {})
+    settings_payload["vacancy_requirements_presets_v1"] = next_list
+    tenant.settings = settings_payload
+    tenant.updated_at = _now_utc()
+    await db.commit()
+    await db.refresh(tenant)
+    try:
+        await log_activity(
+            db,
+            tenant_id=tenant.id,
+            actor_id=actor_id,
+            action="tenant.vacancy_requirements_presets.delete",
+            target_type="tenant",
+            target_id=tenant.id,
+            payload={"preset_id": preset_id},
+        )
+    except Exception:
+        pass
+    return get_vacancy_requirements_presets_snapshot(tenant)
+
 async def update_module_settings(
     db: AsyncSession,
     tenant: Tenant,

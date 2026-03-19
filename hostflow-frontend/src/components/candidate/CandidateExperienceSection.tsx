@@ -42,6 +42,7 @@ interface CandidateExperienceSectionProps {
   onRemoveEmploymentRow: (localId: string) => void
   candidateProfile?: CandidateProfile | null
   candidateDataReadOnly?: boolean
+  embedded?: boolean
 }
 
 function CandidateExperienceSection({
@@ -61,37 +62,47 @@ function CandidateExperienceSection({
   onRemoveEmploymentRow,
   candidateProfile,
   candidateDataReadOnly = false,
+  embedded = false,
 }: CandidateExperienceSectionProps) {
   const { t } = useI18n()
   const [collapsed, setCollapsed] = useState(() => {
+    if (embedded) return false
     try { const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}'); return !!s.experience } catch { return false }
   })
   const toggle = useCallback(() => {
+    if (embedded) return
     setCollapsed((p) => {
       const next = !p
       try { const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}'); s.experience = next; localStorage.setItem('hf:card-sections', JSON.stringify(s)) } catch {}
       return next
     })
-  }, [])
+  }, [embedded])
 
   return (
     <section
       ref={experienceRef}
       id="section-experience"
-      className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+      className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
     >
-      <button type="button" onClick={toggle} className="flex w-full items-center justify-between gap-3 text-left">
-        <div className="flex items-center gap-3">
-          <IconBriefcase2 size={22} className="text-slate-600" />
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">{t('app.candidate_card.sections.experience.title')}</h2>
-            <p className="text-sm text-slate-500">{t('app.candidate_card.sections.experience.description')}</p>
+      {!embedded ? (
+        <button type="button" onClick={toggle} className="flex w-full items-center justify-between gap-3 text-left">
+          <div className="flex items-center gap-3">
+            <IconBriefcase2 size={20} className="text-slate-600" />
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">{t('app.candidate_card.sections.experience.title')}</h2>
+            </div>
           </div>
+          <IconChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+        </button>
+      ) : (
+        <div className="flex items-center gap-3">
+          <IconBriefcase2 size={20} className="text-slate-600" />
+          <h2 className="text-base font-semibold text-slate-900">{t('app.candidate_card.sections.experience.title')}</h2>
         </div>
-        <IconChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
-      </button>
-      {!collapsed && (!candidateProfile || isFieldVisible(candidateProfile, 'experience_eu_years') || isFieldVisible(candidateProfile, 'experience_non_eu_years')) && (
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      )}
+
+      {(embedded || !collapsed) && (!candidateProfile || isFieldVisible(candidateProfile, 'experience_eu_years') || isFieldVisible(candidateProfile, 'experience_non_eu_years')) && (
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           {(!candidateProfile || isFieldVisible(candidateProfile, 'experience_eu_years')) && (
             <Input
               label={getFieldLabel(candidateProfile, 'experience_eu_years', t('app.candidate_card.fields.experience_eu'))}
@@ -130,8 +141,8 @@ function CandidateExperienceSection({
         </div>
       )}
 
-      {!collapsed && (!candidateProfile || isFieldVisible(candidateProfile, 'trailer_types') || isFieldVisible(candidateProfile, 'route_types')) && (
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      {(embedded || !collapsed) && (!candidateProfile || isFieldVisible(candidateProfile, 'trailer_types') || isFieldVisible(candidateProfile, 'route_types')) && (
+        <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
           {(!candidateProfile || isFieldVisible(candidateProfile, 'trailer_types')) && (
             <div>
               <div className="label">
@@ -171,7 +182,7 @@ function CandidateExperienceSection({
         </div>
       )}
 
-      {!collapsed && (!candidateProfile || isFieldVisible(candidateProfile, 'employment_history')) && (
+      {(embedded || !collapsed) && (!candidateProfile || isFieldVisible(candidateProfile, 'employment_history')) && (
         <div className="mt-6 space-y-3">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-slate-800">

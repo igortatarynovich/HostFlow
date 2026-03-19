@@ -342,3 +342,28 @@ class CandidateOut(BaseModel):
             intake_experience=intake_experience,
             intake_agreements=intake_agreements,
         )
+
+
+class CandidateTimelineEventOut(BaseModel):
+    at: datetime
+    kind: str
+    source: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CandidateTimelineResponse(BaseModel):
+    items: List[CandidateTimelineEventOut] = Field(default_factory=list)
+
+
+class CandidateChangeLogItemOut(BaseModel):
+    at: datetime
+    actor_id: Optional[str] = None
+    actor_name: Optional[str] = None
+    action: str
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CandidateChangeLogResponse(BaseModel):
+    items: List[CandidateChangeLogItemOut] = Field(default_factory=list)

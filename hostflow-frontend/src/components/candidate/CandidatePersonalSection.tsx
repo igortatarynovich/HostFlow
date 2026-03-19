@@ -1,4 +1,5 @@
 import { memo, useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import clsx from 'clsx'
 import { IconChevronDown, IconUser } from '@tabler/icons-react'
 import type { Candidate, CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
@@ -27,6 +28,7 @@ interface CandidatePersonalSectionProps {
   onAddressFieldChange: (which: 'address' | 'reg_address', key: keyof NonNullable<CandidateExtra['address']>, value: string) => void
   candidateProfile?: CandidateProfile | null
   candidateDataReadOnly?: boolean
+  embedded?: boolean
 }
 
 function CandidatePersonalSection({
@@ -41,13 +43,23 @@ function CandidatePersonalSection({
   onAddressFieldChange,
   candidateProfile,
   candidateDataReadOnly = false,
+  embedded = false,
 }: CandidatePersonalSectionProps) {
   const { t } = useI18n()
   const [collapsed, setCollapsed] = useState(() => {
+    if (embedded) return false
     try {
       const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}')
       return !!s.personal
     } catch { return false }
+  })
+  const [addressCollapsed, setAddressCollapsed] = useState(() => {
+    if (embedded) return false
+    try {
+      const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}')
+      // Address is heavy; default collapsed unless explicitly opened before.
+      return s.personal_address == null ? true : !!s.personal_address
+    } catch { return true }
   })
   const toggle = useCallback(() => {
     setCollapsed((p) => {
@@ -55,6 +67,17 @@ function CandidatePersonalSection({
       try {
         const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}')
         s.personal = next
+        localStorage.setItem('hf:card-sections', JSON.stringify(s))
+      } catch {}
+      return next
+    })
+  }, [])
+  const toggleAddress = useCallback(() => {
+    setAddressCollapsed((p) => {
+      const next = !p
+      try {
+        const s = JSON.parse(localStorage.getItem('hf:card-sections') || '{}')
+        s.personal_address = next
         localStorage.setItem('hf:card-sections', JSON.stringify(s))
       } catch {}
       return next
@@ -78,20 +101,26 @@ function CandidatePersonalSection({
     <section
       ref={personalRef}
       id="section-personal"
-      className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+      className={clsx(
+        'scroll-mt-24',
+        embedded ? 'rounded-2xl border border-slate-200 bg-white p-4' : 'group app-surface p-4 transition-shadow hover:shadow-xl',
+      )}
     >
-      <button type="button" onClick={toggle} className="flex w-full items-center justify-between gap-3 text-left">
-        <div className="flex items-center gap-3">
-          <IconUser size={22} className="text-slate-600" />
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">{t('app.candidate_card.sections.personal.title')}</h2>
-            <p className="text-sm text-slate-500">{t('app.candidate_card.sections.personal.description')}</p>
-          </div>
+      <button
+        type="button"
+        onClick={embedded ? undefined : toggle}
+        className={clsx('flex w-full items-center justify-between gap-3 text-left', embedded && 'cursor-default')}
+      >
+        <div className="flex items-center gap-2">
+          <IconUser size={18} className="text-slate-600" />
+          <div className="text-sm font-semibold text-slate-900">{t('app.candidate_card.sections.personal.title')}</div>
         </div>
-        <IconChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+        {!embedded ? (
+          <IconChevronDown size={16} className={`shrink-0 text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+        ) : null}
       </button>
 
-      {!collapsed && <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {!collapsed && <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {(!candidateProfile || isFieldVisible(candidateProfile, 'birth_date')) && (
           <div>
             <Input
@@ -166,115 +195,133 @@ function CandidatePersonalSection({
         )}
       </div>}
 
-      {!collapsed && <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-4">
-          <div className="font-semibold text-slate-800">{t('app.candidate_card.sections.personal.address_current')}</div>
-          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <label className="block md:col-span-2">
-              <div className="label">{t('app.candidate_card.fields.address.country')}</div>
-              <SearchableSelect
-                options={countries}
-                value={extra.address?.country || ''}
-                onChange={(v) => onAddressFieldChange('address', 'country', v)}
-                disabled={candidateDataReadOnly}
-                placeholder={selectTexts.empty}
-                searchPlaceholder={selectTexts.search}
-                noResultsLabel={selectTexts.noResults}
-              />
-            </label>
-            <Input
-              label={t('app.candidate_card.fields.address.city')}
-              value={extra.address?.city || ''}
-              onChange={(e) => onAddressFieldChange('address', 'city', e.target.value)}
-              readOnly={candidateDataReadOnly}
-            />
-            <Input
-              label={t('app.candidate_card.fields.address.zip')}
-              value={extra.address?.zip || ''}
-              onChange={(e) => onAddressFieldChange('address', 'zip', e.target.value)}
-              readOnly={candidateDataReadOnly}
-            />
-            <Input
-              label={t('app.candidate_card.fields.address.street')}
-              containerClassName="md:col-span-2"
-              value={extra.address?.street || ''}
-              onChange={(e) => onAddressFieldChange('address', 'street', e.target.value)}
-              readOnly={candidateDataReadOnly}
-            />
-            <Input
-              label={t('app.candidate_card.fields.address.house')}
-              value={extra.address?.house || ''}
-              onChange={(e) => onAddressFieldChange('address', 'house', e.target.value)}
-              readOnly={candidateDataReadOnly}
-            />
-            <Input
-              label={t('app.candidate_card.fields.address.apt')}
-              value={extra.address?.apt || ''}
-              onChange={(e) => onAddressFieldChange('address', 'apt', e.target.value)}
-              readOnly={candidateDataReadOnly}
-            />
-          </div>
+      {!collapsed && (
+        <div className="mt-4">
+          {!embedded && (
+            <button
+              type="button"
+              onClick={toggleAddress}
+              className="btn-secondary btn-sm"
+              title={t('app.candidate_card.sections.personal.address_current')}
+            >
+              {addressCollapsed ? t('common.actions.expand') : t('common.actions.collapse')} ·{' '}
+              {t('app.candidate_card.sections.personal.address_current')}
+            </button>
+          )}
 
-          <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2">
-            <Checkbox
-              label={t('app.candidate_card.fields.address.diff')}
-              checked={!!(extra as any).reg_address_diff}
-              onChange={candidateDataReadOnly ? undefined : (v) => onExtraChange({ reg_address_diff: v })}
-            />
-          </div>
-        </div>
+          {(embedded || !addressCollapsed) && (
+            <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-4">
+                <div className="font-semibold text-slate-800">{t('app.candidate_card.sections.personal.address_current')}</div>
+                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <label className="block md:col-span-2">
+                    <div className="label">{t('app.candidate_card.fields.address.country')}</div>
+                    <SearchableSelect
+                      options={countries}
+                      value={extra.address?.country || ''}
+                      onChange={(v) => onAddressFieldChange('address', 'country', v)}
+                      disabled={candidateDataReadOnly}
+                      placeholder={selectTexts.empty}
+                      searchPlaceholder={selectTexts.search}
+                      noResultsLabel={selectTexts.noResults}
+                    />
+                  </label>
+                  <Input
+                    label={t('app.candidate_card.fields.address.city')}
+                    value={extra.address?.city || ''}
+                    onChange={(e) => onAddressFieldChange('address', 'city', e.target.value)}
+                    readOnly={candidateDataReadOnly}
+                  />
+                  <Input
+                    label={t('app.candidate_card.fields.address.zip')}
+                    value={extra.address?.zip || ''}
+                    onChange={(e) => onAddressFieldChange('address', 'zip', e.target.value)}
+                    readOnly={candidateDataReadOnly}
+                  />
+                  <Input
+                    label={t('app.candidate_card.fields.address.street')}
+                    containerClassName="md:col-span-2"
+                    value={extra.address?.street || ''}
+                    onChange={(e) => onAddressFieldChange('address', 'street', e.target.value)}
+                    readOnly={candidateDataReadOnly}
+                  />
+                  <Input
+                    label={t('app.candidate_card.fields.address.house')}
+                    value={extra.address?.house || ''}
+                    onChange={(e) => onAddressFieldChange('address', 'house', e.target.value)}
+                    readOnly={candidateDataReadOnly}
+                  />
+                  <Input
+                    label={t('app.candidate_card.fields.address.apt')}
+                    value={extra.address?.apt || ''}
+                    onChange={(e) => onAddressFieldChange('address', 'apt', e.target.value)}
+                    readOnly={candidateDataReadOnly}
+                  />
+                </div>
 
-        {(extra as any).reg_address_diff && (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-4">
-            <div className="font-semibold text-slate-800">{t('app.candidate_card.sections.personal.address_registered')}</div>
-            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-              <label className="block md:col-span-2">
-                <div className="label">{t('app.candidate_card.fields.address.country')}</div>
-                <SearchableSelect
-                  options={countries}
-                  value={extra.reg_address?.country || ''}
-                  onChange={(v) => onAddressFieldChange('reg_address', 'country', v)}
-                  disabled={candidateDataReadOnly}
-                  placeholder={selectTexts.empty}
-                  searchPlaceholder={selectTexts.search}
-                  noResultsLabel={selectTexts.noResults}
-                />
-              </label>
-              <Input
-                label={t('app.candidate_card.fields.address.city')}
-                value={extra.reg_address?.city || ''}
-                onChange={(e) => onAddressFieldChange('reg_address', 'city', e.target.value)}
-                readOnly={candidateDataReadOnly}
-              />
-              <Input
-                label={t('app.candidate_card.fields.address.zip')}
-                value={extra.reg_address?.zip || ''}
-                onChange={(e) => onAddressFieldChange('reg_address', 'zip', e.target.value)}
-                readOnly={candidateDataReadOnly}
-              />
-              <Input
-                label={t('app.candidate_card.fields.address.street')}
-                containerClassName="md:col-span-2"
-                value={extra.reg_address?.street || ''}
-                onChange={(e) => onAddressFieldChange('reg_address', 'street', e.target.value)}
-                readOnly={candidateDataReadOnly}
-              />
-              <Input
-                label={t('app.candidate_card.fields.address.house')}
-                value={extra.reg_address?.house || ''}
-                onChange={(e) => onAddressFieldChange('reg_address', 'house', e.target.value)}
-                readOnly={candidateDataReadOnly}
-              />
-              <Input
-                label={t('app.candidate_card.fields.address.apt')}
-                value={extra.reg_address?.apt || ''}
-                onChange={(e) => onAddressFieldChange('reg_address', 'apt', e.target.value)}
-                readOnly={candidateDataReadOnly}
-              />
+                <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2">
+                  <Checkbox
+                    label={t('app.candidate_card.fields.address.diff')}
+                    checked={!!(extra as any).reg_address_diff}
+                    onChange={candidateDataReadOnly ? undefined : (v) => onExtraChange({ reg_address_diff: v })}
+                  />
+                </div>
+              </div>
+
+              {(extra as any).reg_address_diff && (
+                <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 p-4">
+                  <div className="font-semibold text-slate-800">{t('app.candidate_card.sections.personal.address_registered')}</div>
+                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <label className="block md:col-span-2">
+                      <div className="label">{t('app.candidate_card.fields.address.country')}</div>
+                      <SearchableSelect
+                        options={countries}
+                        value={extra.reg_address?.country || ''}
+                        onChange={(v) => onAddressFieldChange('reg_address', 'country', v)}
+                        disabled={candidateDataReadOnly}
+                        placeholder={selectTexts.empty}
+                        searchPlaceholder={selectTexts.search}
+                        noResultsLabel={selectTexts.noResults}
+                      />
+                    </label>
+                    <Input
+                      label={t('app.candidate_card.fields.address.city')}
+                      value={extra.reg_address?.city || ''}
+                      onChange={(e) => onAddressFieldChange('reg_address', 'city', e.target.value)}
+                      readOnly={candidateDataReadOnly}
+                    />
+                    <Input
+                      label={t('app.candidate_card.fields.address.zip')}
+                      value={extra.reg_address?.zip || ''}
+                      onChange={(e) => onAddressFieldChange('reg_address', 'zip', e.target.value)}
+                      readOnly={candidateDataReadOnly}
+                    />
+                    <Input
+                      label={t('app.candidate_card.fields.address.street')}
+                      containerClassName="md:col-span-2"
+                      value={extra.reg_address?.street || ''}
+                      onChange={(e) => onAddressFieldChange('reg_address', 'street', e.target.value)}
+                      readOnly={candidateDataReadOnly}
+                    />
+                    <Input
+                      label={t('app.candidate_card.fields.address.house')}
+                      value={extra.reg_address?.house || ''}
+                      onChange={(e) => onAddressFieldChange('reg_address', 'house', e.target.value)}
+                      readOnly={candidateDataReadOnly}
+                    />
+                    <Input
+                      label={t('app.candidate_card.fields.address.apt')}
+                      value={extra.reg_address?.apt || ''}
+                      onChange={(e) => onAddressFieldChange('reg_address', 'apt', e.target.value)}
+                      readOnly={candidateDataReadOnly}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
-      </div>}
+          )}
+        </div>
+      )}
 
     </section>
   )

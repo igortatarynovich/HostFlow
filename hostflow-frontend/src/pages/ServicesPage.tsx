@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -28,6 +28,7 @@ import { searchCandidates } from '../api/candidates'
 import { listCompanies } from '../api/client'
 import { listVacancies } from '../api/vacancies'
 import { getAnalyticsProfileSummary, getServicesAnalyticsOverview, type ServicesAnalyticsOverview } from '../api/analytics'
+import { createInvoiceFromServiceOrder, createPayment, listInvoices, listInvoicesByServiceOrders, sendInvoice } from '../api/client'
 import { useI18n } from '../i18n'
 import { ORDER_STATUSES, SCHEDULE_STATUSES, ITEM_STATUSES, DOCUMENT_STATUSES } from '../modules/services/constants'
 import type { NewServiceFormState, NewOrderFormState } from '../modules/services/types'
@@ -64,12 +65,21 @@ const initialOrderState: NewOrderFormState = {
   currency: 'PLN',
 }
 
+type ServicesOrdersDrilldown =
+  | null
+  | { kind: 'order'; orderId: string }
+  | { kind: 'client'; ownerKind: string; ownerId?: string | null }
+  | { kind: 'item'; serviceId?: string | null; label: string }
+  | { kind: 'manager'; label: string }
+  | { kind: 'status'; status: string }
+  | { kind: 'trend'; bucket: string }
+
 export function ServicesPage() {
   const { t } = useI18n()
-  const { openEntityLabel } = useBusinessTerminology()
+  const { openEntityLabel, businessType, isServicesTenant, isEmployerTenant } = useBusinessTerminology()
   const navigate = useNavigate()
   const { can } = usePermissions()
-  const [tab, setTab] = useState<'analytics' | 'orders' | 'catalog'>('orders')
+  const [tab, setTab] = useState<'overview' | 'analytics' | 'orders' | 'catalog' | 'billing'>('overview')
   const [includeInactive, setIncludeInactive] = useState(false)
   const [catalogForm, setCatalogForm] = useState<NewServiceFormState>(initialServiceState)
   const [catalogMessage, setCatalogMessage] = useState<string | null>(null)
@@ -81,15 +91,7 @@ export function ServicesPage() {
   const [analyticsDays, setAnalyticsDays] = useState<30 | 90 | 180>(90)
   const [analyticsTrendBucket, setAnalyticsTrendBucket] = useState<'week' | 'month'>('month')
   const [analyticsSliceBy, setAnalyticsSliceBy] = useState<'client' | 'item' | 'status' | 'manager'>('client')
-  const [ordersDrilldown, setOrdersDrilldown] = useState<
-    | null
-    | { kind: 'order'; orderId: string }
-    | { kind: 'client'; ownerKind: string; ownerId?: string | null }
-    | { kind: 'item'; serviceId?: string | null; label: string }
-    | { kind: 'manager'; label: string }
-    | { kind: 'status'; status: string }
-    | { kind: 'trend'; bucket: string }
-  >(null)
+  const [ordersDrilldown, setOrdersDrilldown] = useState<ServicesOrdersDrilldown>(null)
 
   const catalogHook = useAdditionalServiceCatalog(includeInactive)
 
@@ -102,12 +104,96 @@ export function ServicesPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const orderDetailHook = useServiceOrder(selectedOrderId)
   const orderSummaryHook = useServiceOrderSummary(selectedOrderId)
+  const [orderInvoiceMap, setOrderInvoiceMap] = useState<Record<string, any>>({})
+
+  const refreshOrderInvoices = useCallback(async () => {
+    const ids = ordersHook.orders.map((o) => o.id)
+    if (ids.length === 0) {
+      setOrderInvoiceMap({})
+      return
+    }
+    try {
+      const rows = await listInvoicesByServiceOrders(ids.slice(0, 200))
+      const next: Record<string, any> = {}
+      for (const r of rows || []) {
+        if (r?.service_order_id) next[String(r.service_order_id)] = r
+      }
+      setOrderInvoiceMap(next)
+    } catch {
+      // ignore
+    }
+  }, [ordersHook.orders])
+  const [billingLoading, setBillingLoading] = useState(false)
+  const [billingError, setBillingError] = useState<string | null>(null)
+  const [billingStatusFilter, setBillingStatusFilter] = useState<string>('all')
+  const [billingInvoices, setBillingInvoices] = useState<any[]>([])
+  const [billingRowAction, setBillingRowAction] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    if (tab !== 'billing') return
+    setBillingLoading(true)
+    setBillingError(null)
+    ;(async () => {
+      try {
+        const unpaid = billingStatusFilter === 'unpaid'
+        const status =
+          billingStatusFilter === 'all' || unpaid
+            ? undefined
+            : billingStatusFilter
+        const data = await listInvoices({
+          service_order_id: selectedOrderId || undefined,
+          status,
+          unpaid: unpaid ? true : undefined,
+          limit: 50,
+          offset: 0,
+        } as any)
+        if (!active) return
+        setBillingInvoices(Array.isArray(data) ? data : [])
+      } catch (e: any) {
+        if (!active) return
+        setBillingInvoices([])
+        setBillingError(e?.response?.data?.detail || e?.message || 'Failed to load invoices')
+      } finally {
+        if (active) setBillingLoading(false)
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [tab, selectedOrderId, billingStatusFilter])
 
   useEffect(() => {
     if (!selectedOrderId && ordersHook.orders.length > 0) {
       setSelectedOrderId(ordersHook.orders[0].id)
     }
   }, [ordersHook.orders, selectedOrderId])
+
+  useEffect(() => {
+    let active = true
+    if (tab !== 'orders') return
+    const ids = ordersHook.orders.map((o) => o.id)
+    if (ids.length === 0) {
+      setOrderInvoiceMap({})
+      return
+    }
+    ;(async () => {
+      try {
+        const rows = await listInvoicesByServiceOrders(ids.slice(0, 200))
+        if (!active) return
+        const next: Record<string, any> = {}
+        for (const r of rows || []) {
+          if (r?.service_order_id) next[String(r.service_order_id)] = r
+        }
+        setOrderInvoiceMap(next)
+      } catch {
+        if (active) setOrderInvoiceMap({})
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [tab, ordersHook.orders])
 
   useEffect(() => {
     let active = true
@@ -298,9 +384,13 @@ export function ServicesPage() {
     let actualCost = 0
     let confirmedCostItems = 0
     let totalCostItems = 0
+    let ordersWithMissingSchedule = 0
+    let ordersWithMissingDocs = 0
     ordersHook.orders.forEach((order: AdditionalServiceOrder) => {
       const status = order.status
       const amount = Number(order.total_amount ?? 0)
+      let missingSchedule = false
+      let missingDocs = false
       order.items.forEach((item) => {
         totalCostItems += 1
         estimatedCost += Number(item.estimated_cost ?? 0)
@@ -308,7 +398,15 @@ export function ServicesPage() {
           actualCost += Number(item.actual_cost)
           confirmedCostItems += 1
         }
+        if (item.service?.requires_schedule && (!Array.isArray(item.schedules) || item.schedules.length === 0)) {
+          missingSchedule = true
+        }
+        if (Array.isArray(item.required_documents) && item.required_documents.length > 0 && (!Array.isArray(item.attachments) || item.attachments.length === 0)) {
+          missingDocs = true
+        }
       })
+      if (missingSchedule) ordersWithMissingSchedule += 1
+      if (missingDocs) ordersWithMissingDocs += 1
       if (status === 'delivered') {
         deliveredOrders += 1
         deliveredRevenue += amount
@@ -336,87 +434,146 @@ export function ServicesPage() {
       estimatedCost,
       actualCost,
       costCoverage,
+      ordersWithMissingSchedule,
+      ordersWithMissingDocs,
     }
   }, [ordersHook.orders, catalogHook.services])
 
-  const serviceHeroCards = [
-    {
-      key: 'visible',
-      label: t('app.services.hero.orders_visible'),
-      value: serviceInsights.visibleOrders,
-      hint: t('app.services.hero.orders_visible_hint', { values: { count: serviceInsights.visibleOrders } }),
-    },
-    {
-      key: 'active',
-      label: t('app.services.hero.orders_active'),
-      value: serviceInsights.activeOrders,
-      hint: t('app.services.hero.orders_active_hint'),
-    },
-    {
-      key: 'delivered',
-      label: t('app.services.hero.orders_delivered'),
-      value: serviceInsights.deliveredOrders,
-      hint: t('app.services.hero.orders_delivered_hint'),
-    },
-    {
-      key: 'revenue',
-      label: t('app.services.hero.orders_revenue'),
-      value: formatAmount(serviceInsights.pipelineValue),
-      hint: t('app.services.hero.orders_revenue_hint'),
-    },
-    {
-      key: 'catalog',
-      label: t('app.services.hero.catalog_active'),
-      value: serviceInsights.catalogActive,
-      hint: t('app.services.hero.catalog_hint', { values: { total: catalogHook.services.length } }),
-    },
-    {
-      key: 'profit',
-      label: t('app.services.hero.gross_profit', { defaultValue: 'Gross profit' }),
-      value: formatAmount(serviceInsights.grossProfit),
-      hint: t('app.services.hero.gross_profit_hint', {
-        defaultValue: 'Margin {{margin}}% · cost coverage {{coverage}}%',
-        values: { margin: serviceInsights.grossMargin, coverage: serviceInsights.costCoverage },
-      }),
-    },
-  ]
-
   const tabs = (
     <div className="flex flex-wrap gap-2">
-      {(['orders', 'catalog', 'analytics'] as const).map((key) => (
+      {(['overview', 'orders', 'catalog', 'analytics', 'billing'] as const).map((key) => (
         <button
           key={key}
           type="button"
           className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-            tab === key ? 'bg-white text-brand-700 shadow-sm' : 'bg-white/20 text-white/90 hover:bg-white/30'
+            tab === key ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'
           }`}
           onClick={() => setTab(key)}
         >
-          {t(`app.services.tabs.${key}`)}
+          {t(`app.services.tabs.${key}`, { defaultValue: key })}
         </button>
       ))}
     </div>
   )
 
   const heroSection = (
-    <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="space-y-1">
-          <p className="text-2xl font-semibold">{t('app.services.title')}</p>
-          <p className="text-sm text-white/80">{t('app.services.hero.subtitle')}</p>
+    <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <h1 className="truncate text-base font-semibold text-slate-900">{t('app.services.title')}</h1>
+            <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-700 md:inline">
+              {t('app.services.hero.subtitle')}
+            </span>
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {tabs}
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {tabs}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            onClick={() => {
+              setTab('orders')
+              const el = document.getElementById('services-new-order')
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+          >
+            {t('app.services.actions.new_order', { defaultValue: 'New order' })}
+          </button>
+          <button
+            type="button"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            onClick={() => {
+              setTab('catalog')
+              const el = document.getElementById('services-new-service')
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }}
+          >
+            {t('app.services.actions.new_service', { defaultValue: 'New service' })}
+          </button>
+          <button
+            type="button"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+            onClick={async () => {
+              if (!selectedOrderId) {
+                setTab('orders')
+                setOrdersMessage(t('app.services.billing.create_invoice.select_order', { defaultValue: 'Select an order first to create invoice.' }))
+                return
+              }
+              try {
+                const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
+                navigate(`/app/invoices/${invoice.id}`)
+              } catch (e: any) {
+                setBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                setTab('billing')
+              }
+            }}
+          >
+            {t('app.services.actions.create_invoice', { defaultValue: 'Create invoice' })}
+          </button>
         </div>
       </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {serviceHeroCards.map((card) => (
-          <div key={card.key} className="rounded-2xl border border-white/30 bg-white/10 p-4">
-            <div className="text-sm text-white/80">{card.label}</div>
-            <div className="text-2xl font-semibold">{card.value}</div>
-            <div className="text-xs text-white/70">{card.hint}</div>
+      <div className="mt-2 grid gap-2 md:grid-cols-5">
+        <button
+          type="button"
+          className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
+          onClick={() => {
+            setTab('orders')
+            setStatusFilter('all')
+            setOrdersDrilldown(null)
+          }}
+        >
+          <div className="text-[11px] font-medium text-slate-600">{t('app.services.hero.orders_active')}</div>
+          <div className="mt-0.5 text-lg font-semibold text-slate-900">{serviceInsights.activeOrders}</div>
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
+          onClick={() => {
+            setTab('billing')
+            setBillingStatusFilter('unpaid')
+          }}
+        >
+          <div className="text-[11px] font-medium text-slate-600">{t('app.services.overview.kpi.outstanding', { defaultValue: 'Outstanding' })}</div>
+          <div className="mt-0.5 text-lg font-semibold text-slate-900">
+            {formatAmount(Number((analyticsOverview as any)?.totals?.invoices_outstanding || 0))}
           </div>
-        ))}
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border border-red-200 bg-red-50/40 p-2.5 text-left hover:bg-red-50"
+          onClick={() => {
+            setTab('billing')
+            setBillingStatusFilter('overdue')
+          }}
+        >
+          <div className="text-[11px] font-medium text-red-700">{t('app.services.overview.kpi.overdue', { defaultValue: 'Overdue' })}</div>
+          <div className="mt-0.5 text-lg font-semibold text-red-800">
+            {Number((analyticsOverview as any)?.totals?.invoices_overdue_count || 0)}
+          </div>
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
+          onClick={() => setTab('analytics')}
+        >
+          <div className="text-[11px] font-medium text-slate-600">{t('app.services.overview.kpi.invoiced', { defaultValue: 'Invoiced' })}</div>
+          <div className="mt-0.5 text-lg font-semibold text-slate-900">
+            {formatAmount(Number((analyticsOverview as any)?.totals?.invoices_invoiced || 0))}
+          </div>
+        </button>
+        <button
+          type="button"
+          className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
+          onClick={() => setTab('analytics')}
+        >
+          <div className="text-[11px] font-medium text-slate-600">{t('app.services.overview.kpi.paid', { defaultValue: 'Paid' })}</div>
+          <div className="mt-0.5 text-lg font-semibold text-slate-900">
+            {formatAmount(Number((analyticsOverview as any)?.totals?.invoices_paid || 0))}
+          </div>
+        </button>
       </div>
     </section>
   )
@@ -424,6 +581,160 @@ export function ServicesPage() {
   return (
     <div className="space-y-4">
       {heroSection}
+
+      {tab === 'overview' && (
+        <div className="space-y-4">
+          <div className="card p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {t('app.services.overview.title', { defaultValue: 'Overview' })}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {t('app.services.overview.subtitle', {
+                    defaultValue: 'Fast money + operations snapshot with drill-down.',
+                  })}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  onClick={() => {
+                    setTab('orders')
+                    setStatusFilter('all')
+                    setOrdersDrilldown(null)
+                  }}
+                >
+                  {t('app.services.overview.actions.open_orders', { defaultValue: 'Open orders' })}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  onClick={() => {
+                    setTab('billing')
+                    setBillingStatusFilter('unpaid')
+                  }}
+                >
+                  {t('app.services.overview.actions.open_unpaid', { defaultValue: 'Unpaid invoices' })}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              {t('app.services.overview.kpi_strip_hint', {
+                defaultValue: 'Money KPIs moved to top strip for faster scan and one-click drill-down.',
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="card p-4 lg:col-span-2">
+              <div className="text-sm font-semibold text-slate-900">
+                {t('app.services.overview.ops.title', { defaultValue: 'Operations' })}
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50"
+                  onClick={() => {
+                    setTab('orders')
+                    setStatusFilter('approved' as any)
+                    setOrdersDrilldown({ kind: 'status', status: 'approved' } as any)
+                  }}
+                >
+                  <div className="text-xs font-medium text-slate-600">
+                    {t('app.services.overview.ops.approved', { defaultValue: 'Approved (needs fulfillment)' })}
+                  </div>
+                  <div className="mt-1 text-xl font-semibold text-slate-900">{serviceInsights.approvedOrders}</div>
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50"
+                  onClick={() => {
+                    setTab('orders')
+                    setStatusFilter('delivered' as any)
+                    setOrdersDrilldown({ kind: 'status', status: 'delivered' } as any)
+                  }}
+                >
+                  <div className="text-xs font-medium text-slate-600">
+                    {t('app.services.overview.ops.delivered', { defaultValue: 'Delivered' })}
+                  </div>
+                  <div className="mt-1 text-xl font-semibold text-slate-900">{serviceInsights.deliveredOrders}</div>
+                </button>
+              </div>
+            </div>
+
+            <div className="card p-4">
+              <div className="text-sm font-semibold text-slate-900">
+                {t('app.services.overview.alerts.title', { defaultValue: 'Alerts' })}
+              </div>
+              <div className="mt-3 space-y-2 text-sm">
+                {Number((analyticsOverview as any)?.totals?.invoices_overdue_count || 0) > 0 ? (
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-red-800 hover:bg-red-50/80"
+                    onClick={() => {
+                      setTab('billing')
+                      setBillingStatusFilter('overdue')
+                    }}
+                  >
+                    {t('app.services.overview.alerts.overdue', { defaultValue: 'Overdue invoices require attention.' })}
+                  </button>
+                ) : null}
+                {serviceInsights.costCoverage < 60 ? (
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left text-amber-800 hover:bg-amber-50/80"
+                    onClick={() => setTab('analytics')}
+                  >
+                    {t('app.services.overview.alerts.cost_coverage', {
+                      defaultValue: 'Low cost coverage ({{coverage}}%). Confirm item costs for reliable margin.',
+                      values: { coverage: serviceInsights.costCoverage },
+                    })}
+                  </button>
+                ) : null}
+                {serviceInsights.ordersWithMissingSchedule > 0 ? (
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-700 hover:bg-slate-100"
+                    onClick={() => {
+                      setTab('orders')
+                      setStatusFilter('approved')
+                      setOrdersDrilldown({ kind: 'status', status: 'approved' })
+                    }}
+                  >
+                    {t('app.services.overview.alerts.schedule_missing', {
+                      defaultValue: 'Orders missing required schedules: {{count}}',
+                      values: { count: serviceInsights.ordersWithMissingSchedule },
+                    })}
+                  </button>
+                ) : null}
+                {serviceInsights.ordersWithMissingDocs > 0 ? (
+                  <button
+                    type="button"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-700 hover:bg-slate-100"
+                    onClick={() => setTab('orders')}
+                  >
+                    {t('app.services.overview.alerts.docs_missing', {
+                      defaultValue: 'Orders with missing required docs: {{count}}',
+                      values: { count: serviceInsights.ordersWithMissingDocs },
+                    })}
+                  </button>
+                ) : null}
+                {Number((analyticsOverview as any)?.totals?.invoices_overdue_count || 0) === 0
+                  && serviceInsights.costCoverage >= 60
+                  && serviceInsights.ordersWithMissingSchedule === 0
+                  && serviceInsights.ordersWithMissingDocs === 0 ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700">
+                    {t('app.services.overview.alerts.none', { defaultValue: 'No critical alerts.' })}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {tab === 'catalog' && (
         <CatalogTab
@@ -459,9 +770,13 @@ export function ServicesPage() {
           onCreateOrder={handleCreateOrder}
           services={catalogHook.services}
           openEntityLabel={openEntityLabel}
+          businessType={businessType}
+          ownerDefault={isServicesTenant || isEmployerTenant ? 'company' : 'candidate'}
+          invoiceMap={orderInvoiceMap}
           drilldown={ordersDrilldown}
           analyticsTrendBucket={analyticsTrendBucket}
-          onClearDrilldown={() => setOrdersDrilldown(null)}
+          onSetDrilldown={setOrdersDrilldown}
+          onRefreshInvoices={refreshOrderInvoices}
         />
       )}
       {tab === 'analytics' && (
@@ -482,6 +797,7 @@ export function ServicesPage() {
             if (params.companyId) search.set('company_id', params.companyId)
             if (params.serviceOrderId) search.set('service_order_id', params.serviceOrderId)
             if (params.status) search.set('status', params.status)
+            if (!params.status) search.set('unpaid', '1')
             navigate(`/app/invoices${search.toString() ? `?${search.toString()}` : ''}`)
           }}
           onDrilldown={(next) => {
@@ -500,6 +816,229 @@ export function ServicesPage() {
           }}
           formatStatus={(status) => t(`app.services.status.order.${status}`)}
         />
+      )}
+
+      {tab === 'billing' && (
+        <div className="space-y-4">
+          <div className="card p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900">
+                  {t('app.services.billing.title', { defaultValue: 'Billing' })}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {selectedOrderId
+                    ? t('app.services.billing.subtitle_scoped', { defaultValue: 'Invoices linked to selected order.' })
+                    : t('app.services.billing.subtitle', { defaultValue: 'Invoices and payments for service orders.' })}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                    billingStatusFilter === 'overdue'
+                      ? 'border-red-200 bg-red-50 text-red-700'
+                      : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+                  }`}
+                  onClick={() => setBillingStatusFilter('overdue')}
+                >
+                  {t('app.services.billing.filters.overdue', { defaultValue: 'Overdue' })}
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                    billingStatusFilter === 'sent'
+                      ? 'border-amber-200 bg-amber-50 text-amber-800'
+                      : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+                  }`}
+                  onClick={() => setBillingStatusFilter('unpaid')}
+                >
+                  {t('app.services.billing.filters.unpaid', { defaultValue: 'Unpaid' })}
+                </button>
+                <select
+                  className="input w-auto py-2 text-sm"
+                  value={billingStatusFilter}
+                  onChange={(e) => setBillingStatusFilter(e.target.value)}
+                >
+                  {['all', 'unpaid', 'draft', 'issued', 'sent', 'paid', 'overdue', 'cancelled'].map((s) => (
+                    <option key={s} value={s}>
+                      {s === 'all'
+                        ? t('common.filters.all', { defaultValue: 'All' })
+                        : s === 'unpaid'
+                        ? t('app.services.billing.filters.unpaid', { defaultValue: 'Unpaid' })
+                        : s}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                  disabled={!selectedOrderId}
+                  onClick={async () => {
+                    if (!selectedOrderId) return
+                    try {
+                      const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
+                      navigate(`/app/invoices/${invoice.id}`)
+                    } catch (e: any) {
+                      setBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                    }
+                  }}
+                >
+                  {t('app.services.billing.actions.create_from_order', { defaultValue: 'Create invoice' })}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  onClick={() => navigate(`/app/invoices${selectedOrderId ? `?service_order_id=${selectedOrderId}` : ''}`)}
+                >
+                  {t('app.services.billing.actions.open_all', { defaultValue: 'Open invoices' })}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card p-4">
+            {billingLoading ? (
+              <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</div>
+            ) : billingError ? (
+              <div className="text-sm text-red-600">{String(billingError)}</div>
+            ) : billingInvoices.length === 0 ? (
+              <div className="text-sm text-slate-500">{t('app.services.billing.empty', { defaultValue: 'No invoices yet.' })}</div>
+            ) : (
+              <div className="overflow-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="text-xs text-slate-500">
+                    <tr>
+                      <th className="py-2 pr-3">{t('app.invoices.fields.number', { defaultValue: 'Number' })}</th>
+                      <th className="py-2 pr-3">{t('app.invoices.fields.status', { defaultValue: 'Status' })}</th>
+                      <th className="py-2 pr-3">{t('app.invoices.fields.total', { defaultValue: 'Total' })}</th>
+                      <th className="py-2 pr-3">{t('app.invoices.fields.paid', { defaultValue: 'Paid' })}</th>
+                      <th className="py-2 pr-3">{t('app.invoices.fields.outstanding', { defaultValue: 'Outstanding' })}</th>
+                      <th className="py-2 pr-3">{t('app.invoices.fields.due', { defaultValue: 'Due' })}</th>
+                      <th className="py-2 pr-3 text-right">{t('common.actions.actions', { defaultValue: 'Actions' })}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {billingInvoices.map((inv) => (
+                      (() => {
+                        const total = Number(inv.total_amount || 0)
+                        const paid = Number(inv.paid_amount || 0)
+                        const outstanding = Math.max(0, total - paid)
+                        const isOverdue = String(inv.status || '').toLowerCase() === 'overdue'
+                        const isPaid = String(inv.status || '').toLowerCase() === 'paid' || outstanding <= 0
+                        return (
+                      <tr
+                        key={inv.id}
+                        className={[
+                          'hover:bg-slate-50',
+                          isOverdue ? 'bg-red-50/40' : '',
+                        ].join(' ')}
+                      >
+                        <td className="py-2 pr-3 font-medium text-slate-900">
+                          <button type="button" className="hover:underline" onClick={() => navigate(`/app/invoices/${inv.id}`)}>
+                            {inv.invoice_number}
+                          </button>
+                        </td>
+                        <td className="py-2 pr-3 text-slate-700">{inv.status}</td>
+                        <td className="py-2 pr-3 text-slate-700">{formatAmount(total)}</td>
+                        <td className="py-2 pr-3 text-slate-700">{formatAmount(paid)}</td>
+                        <td className="py-2 pr-3 text-slate-700">{formatAmount(outstanding)}</td>
+                        <td className="py-2 pr-3 text-slate-700">{String(inv.due_date || '')}</td>
+                        <td className="py-2 pr-3 text-right">
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
+                              onClick={() => navigate(`/app/invoices/${inv.id}`)}
+                            >
+                              {t('common.actions.open', { defaultValue: 'Open' })}
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                              disabled={billingRowAction === `send:${inv.id}`}
+                              onClick={async () => {
+                                setBillingError(null)
+                                setBillingRowAction(`send:${inv.id}`)
+                                try {
+                                  await sendInvoice(String(inv.id))
+                                  // refresh list
+                                  setBillingLoading(true)
+                                  const unpaid = billingStatusFilter === 'unpaid'
+                                  const status =
+                                    billingStatusFilter === 'all' || unpaid
+                                      ? undefined
+                                      : billingStatusFilter
+                                  const data = await listInvoices({
+                                    service_order_id: selectedOrderId || undefined,
+                                    status,
+                                    unpaid: unpaid ? true : undefined,
+                                    limit: 50,
+                                    offset: 0,
+                                  } as any)
+                                  setBillingInvoices(Array.isArray(data) ? data : [])
+                                } catch (e: any) {
+                                  setBillingError(e?.response?.data?.detail || e?.message || 'Failed to send invoice')
+                                } finally {
+                                  setBillingLoading(false)
+                                  setBillingRowAction(null)
+                                }
+                              }}
+                            >
+                              {billingRowAction === `send:${inv.id}`
+                                ? t('common.loading', { defaultValue: 'Loading…' })
+                                : t('app.services.billing.row.send', { defaultValue: 'Send' })}
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                              disabled={billingRowAction === `paid:${inv.id}` || isPaid}
+                              onClick={async () => {
+                                setBillingError(null)
+                                setBillingRowAction(`paid:${inv.id}`)
+                                try {
+                                  const amount = outstanding > 0 ? outstanding : total
+                                  const today = new Date().toISOString().slice(0, 10)
+                                  await createPayment(String(inv.id), { amount, payment_date: today, method: 'bank_transfer' })
+                                  // refresh list
+                                  setBillingLoading(true)
+                                  const unpaid = billingStatusFilter === 'unpaid'
+                                  const status =
+                                    billingStatusFilter === 'all' || unpaid
+                                      ? undefined
+                                      : billingStatusFilter
+                                  const data = await listInvoices({
+                                    service_order_id: selectedOrderId || undefined,
+                                    status,
+                                    unpaid: unpaid ? true : undefined,
+                                    limit: 50,
+                                    offset: 0,
+                                  } as any)
+                                  setBillingInvoices(Array.isArray(data) ? data : [])
+                                } catch (e: any) {
+                                  setBillingError(e?.response?.data?.detail || e?.message || 'Failed to mark as paid')
+                                } finally {
+                                  setBillingLoading(false)
+                                  setBillingRowAction(null)
+                                }
+                              }}
+                            >
+                              {billingRowAction === `paid:${inv.id}`
+                                ? t('common.loading', { defaultValue: 'Loading…' })
+                                : t('app.services.billing.row.mark_paid', { defaultValue: 'Mark paid' })}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                        )
+                      })()
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )
@@ -749,12 +1288,22 @@ type OrdersTabProps = {
   onCreateOrder: (event: FormEvent) => void
   services: AdditionalService[]
   openEntityLabel: string
-  drilldown: null | { kind: 'order'; orderId: string } | { kind: 'client'; ownerKind: string; ownerId?: string | null } | { kind: 'item'; serviceId?: string | null; label: string } | { kind: 'manager'; label: string } | { kind: 'status'; status: string } | { kind: 'trend'; bucket: string }
+  businessType: 'agency' | 'employer' | 'services'
+  ownerDefault: 'candidate' | 'vacancy' | 'company'
+  invoiceMap: Record<string, any>
+  drilldown: ServicesOrdersDrilldown
   analyticsTrendBucket: 'week' | 'month'
-  onClearDrilldown: () => void
+  onSetDrilldown: (value: ServicesOrdersDrilldown) => void
+  onRefreshInvoices: () => void
 }
 
 type OrderOwnerChoice = 'candidate' | 'vacancy' | 'company'
+type ServicesOrderSavedFilter = {
+  id: string
+  name: string
+  statusFilter: string
+  drilldown: ServicesOrdersDrilldown
+}
 
 function OrdersTab({
   statusFilter,
@@ -775,11 +1324,16 @@ function OrdersTab({
   onCreateOrder,
   services,
   openEntityLabel,
+  businessType,
+  ownerDefault,
+  invoiceMap,
   drilldown,
   analyticsTrendBucket,
-  onClearDrilldown,
+  onSetDrilldown,
+  onRefreshInvoices,
 }: OrdersTabProps) {
   const { t } = useI18n()
+  const navigate = useNavigate()
   const orderStatusLabels = useMemo(() => {
     const map: Record<string, string> = {}
     ORDER_STATUSES.forEach((status) => {
@@ -789,7 +1343,11 @@ function OrdersTab({
   }, [t])
   const availableServices = useMemo(() => services.map((svc) => ({ id: svc.id, label: `${svc.name} (${svc.code})` })), [services])
   const serviceLookup = useMemo(() => new Map(services.map((svc) => [svc.id, svc])), [services])
-  const [ownerChoice, setOwnerChoice] = useState<OrderOwnerChoice>('candidate')
+  const [orderBillingAction, setOrderBillingAction] = useState<'create' | 'send' | 'paid' | null>(null)
+  const [orderBillingError, setOrderBillingError] = useState<string | null>(null)
+  const [savedFilterName, setSavedFilterName] = useState('')
+  const [savedFilters, setSavedFilters] = useState<ServicesOrderSavedFilter[]>([])
+  const [ownerChoice, setOwnerChoice] = useState<OrderOwnerChoice>(ownerDefault)
   const [candidateQuery, setCandidateQuery] = useState('')
   const [candidateResults, setCandidateResults] = useState<Candidate[]>([])
   const [candidateLoading, setCandidateLoading] = useState(false)
@@ -802,26 +1360,63 @@ function OrdersTab({
   const [companyResults, setCompanyResults] = useState<Company[]>([])
   const [companyLoading, setCompanyLoading] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
-  const ownerOptions = useMemo(
-    () => [
-      {
-        key: 'candidate' as OrderOwnerChoice,
+  const ownerOptions = useMemo(() => {
+    const map: Record<OrderOwnerChoice, { key: OrderOwnerChoice; label: string; description: string }> = {
+      candidate: {
+        key: 'candidate',
         label: t('app.services.orders.new.owner.options.candidate'),
         description: t('app.services.orders.new.owner.descriptions.candidate'),
       },
-      {
-        key: 'vacancy' as OrderOwnerChoice,
+      vacancy: {
+        key: 'vacancy',
         label: t('app.services.orders.new.owner.options.vacancy'),
         description: t('app.services.orders.new.owner.descriptions.vacancy'),
       },
-      {
-        key: 'company' as OrderOwnerChoice,
+      company: {
+        key: 'company',
         label: t('app.services.orders.new.owner.options.company'),
         description: t('app.services.orders.new.owner.descriptions.company'),
       },
-    ],
-    [t],
-  )
+    }
+    const order: OrderOwnerChoice[] =
+      businessType === 'services' || businessType === 'employer'
+        ? ['company', 'vacancy', 'candidate']
+        : ['candidate', 'vacancy', 'company']
+    return order.map((key) => map[key])
+  }, [businessType, t])
+
+  useEffect(() => {
+    const hasSelectedOwner = Boolean(orderForm.candidateId || orderForm.vacancyId || orderForm.companyId)
+    if (!hasSelectedOwner) setOwnerChoice(ownerDefault)
+  }, [ownerDefault, orderForm.candidateId, orderForm.companyId, orderForm.vacancyId])
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('hf:services:orders:saved-filters:v1')
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return
+      const normalized = parsed
+        .map((item: any) => ({
+          id: String(item?.id || ''),
+          name: String(item?.name || '').trim(),
+          statusFilter: String(item?.statusFilter || 'all'),
+          drilldown: (item?.drilldown ?? null) as ServicesOrdersDrilldown,
+        }))
+        .filter((item: ServicesOrderSavedFilter) => item.id && item.name)
+      setSavedFilters(normalized.slice(0, 30))
+    } catch {
+      // ignore invalid local storage
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('hf:services:orders:saved-filters:v1', JSON.stringify(savedFilters.slice(0, 30)))
+    } catch {
+      // ignore
+    }
+  }, [savedFilters])
 
   useEffect(() => {
     if (ownerChoice !== 'candidate' || !candidateQuery.trim()) {
@@ -1071,6 +1666,88 @@ function OrdersTab({
       return true
     })
   }, [orders, drilldown, analyticsTrendBucket])
+  const selectedInvoiceSummary = selectedOrderId ? invoiceMap[String(selectedOrderId)] || null : null
+  const selectedInvoiceOutstanding = Math.max(
+    0,
+    Number(selectedInvoiceSummary?.total_amount || 0) - Number(selectedInvoiceSummary?.paid_amount || 0),
+  )
+  const selectedInvoiceIsPaid =
+    String(selectedInvoiceSummary?.status || '').toLowerCase() === 'paid' || selectedInvoiceOutstanding <= 0
+
+  const handleSaveCurrentFilter = () => {
+    const name = savedFilterName.trim()
+    if (!name) return
+    const next: ServicesOrderSavedFilter = {
+      id: `svc-filter-${Date.now()}`,
+      name,
+      statusFilter,
+      drilldown,
+    }
+    setSavedFilters((prev) => [next, ...prev].slice(0, 30))
+    setSavedFilterName('')
+  }
+
+  const applySavedFilter = (id: string) => {
+    const view = savedFilters.find((x) => x.id === id)
+    if (!view) return
+    onStatusFilterChange(view.statusFilter || 'all')
+    onSetDrilldown(view.drilldown ?? null)
+  }
+
+  const deleteSavedFilter = (id: string) => {
+    setSavedFilters((prev) => prev.filter((x) => x.id !== id))
+  }
+
+  const exportVisibleOrdersCsv = () => {
+    const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const header = [
+      'order_id',
+      'status',
+      'owner_kind',
+      'owner_id',
+      'items_count',
+      'total_amount',
+      'invoice_number',
+      'invoice_status',
+      'invoice_total',
+      'invoice_paid',
+      'invoice_outstanding',
+      'created_at',
+      'updated_at',
+    ]
+    const lines = [header.join(',')]
+    for (const ord of visibleOrders) {
+      const inv = invoiceMap[String(ord.id)] || null
+      const invTotal = Number(inv?.total_amount || 0)
+      const invPaid = Number(inv?.paid_amount || 0)
+      const ownerKind = ord.company_id ? 'company' : ord.candidate_id ? 'candidate' : ord.vacancy_id ? 'vacancy' : 'none'
+      const ownerId = ord.company_id || ord.candidate_id || ord.vacancy_id || ''
+      lines.push([
+        esc(ord.id),
+        esc(ord.status),
+        esc(ownerKind),
+        esc(ownerId),
+        esc(ord.items.length),
+        esc(Number(ord.total_amount || 0)),
+        esc(inv?.invoice_number || inv?.invoice_id || ''),
+        esc(inv?.status || ''),
+        esc(invTotal),
+        esc(invPaid),
+        esc(Math.max(0, invTotal - invPaid)),
+        esc(ord.created_at || ''),
+        esc(ord.updated_at || ''),
+      ].join(','))
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `services-orders-${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
@@ -1085,6 +1762,13 @@ function OrdersTab({
                   {t('app.services.orders.new.owner.title')}
                 </p>
                 <p className="text-xs text-slate-500">{t('app.services.orders.new.owner.hint')}</p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  {businessType === 'services'
+                    ? t('app.services.orders.new.owner.default_services', { defaultValue: 'Default for Services: company-owned orders first.' })
+                    : businessType === 'employer'
+                    ? t('app.services.orders.new.owner.default_employer', { defaultValue: 'Default for Employer: company/vacancy context first.' })
+                    : t('app.services.orders.new.owner.default_agency', { defaultValue: 'Default for Agency: candidate context first.' })}
+                </p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-3">
                   {ownerOptions.map((option) => (
                     <button
@@ -1404,7 +2088,7 @@ function OrdersTab({
             <h2 className="text-lg font-semibold">{t('app.services.orders.list.title')}</h2>
             <div className="flex items-center gap-2">
               {drilldown && (
-                <button type="button" className="btn-secondary btn-xs" onClick={onClearDrilldown}>
+                <button type="button" className="btn-secondary btn-xs" onClick={() => onSetDrilldown(null)}>
                   {t('app.services.analytics.drilldown.clear', { defaultValue: 'Clear drilldown' })}
                 </button>
               )}
@@ -1418,7 +2102,169 @@ function OrdersTab({
                   <option key={status} value={status}>{orderStatusLabels[status] ?? status}</option>
                 ))}
               </select>
+              <button type="button" className="btn-secondary btn-xs" onClick={exportVisibleOrdersCsv}>
+                {t('app.services.orders.actions.export_csv', { defaultValue: 'Export CSV' })}
+              </button>
             </div>
+          </div>
+          <div className="border-b border-slate-200 bg-white px-4 py-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                className="input w-[220px] py-1 text-xs"
+                placeholder={t('app.services.orders.saved_filters.placeholder', { defaultValue: 'Saved filter name' })}
+                value={savedFilterName}
+                onChange={(e) => setSavedFilterName(e.target.value)}
+              />
+              <button type="button" className="btn-secondary btn-xs" onClick={handleSaveCurrentFilter}>
+                {t('app.services.orders.saved_filters.save', { defaultValue: 'Save filter' })}
+              </button>
+              {savedFilters.length > 0 && (
+                <select
+                  className="input w-auto py-1 text-xs"
+                  value=""
+                  onChange={(e) => {
+                    const id = e.target.value
+                    if (id) applySavedFilter(id)
+                  }}
+                >
+                  <option value="">{t('app.services.orders.saved_filters.apply', { defaultValue: 'Apply saved filter' })}</option>
+                  {savedFilters.map((view) => (
+                    <option key={view.id} value={view.id}>
+                      {view.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {savedFilters.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {savedFilters.slice(0, 6).map((view) => (
+                  <div key={view.id} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[11px]">
+                    <button type="button" className="text-slate-700 hover:text-slate-900" onClick={() => applySavedFilter(view.id)}>
+                      {view.name}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-slate-400 hover:text-red-600"
+                      aria-label={t('common.actions.delete', { defaultValue: 'Delete' })}
+                      onClick={() => deleteSavedFilter(view.id)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="border-b border-slate-200 bg-slate-50 px-4 py-2">
+            {!selectedOrderId ? (
+              <div className="text-xs text-slate-500">
+                {t('app.services.orders.billing_bar.select_order', { defaultValue: 'Select an order to access invoice actions.' })}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-xs text-slate-600">
+                  {selectedInvoiceSummary?.invoice_id
+                    ? t('app.services.orders.billing_bar.linked', {
+                        defaultValue: 'Invoice {{number}} · {{status}} · Outstanding {{outstanding}}',
+                        values: {
+                          number: String(selectedInvoiceSummary.invoice_number || selectedInvoiceSummary.invoice_id).trim(),
+                          status: String(selectedInvoiceSummary.status || 'draft'),
+                          outstanding: formatAmount(selectedInvoiceOutstanding),
+                        },
+                      })
+                    : t('app.services.orders.billing_bar.none', { defaultValue: 'No invoice linked to selected order.' })}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {selectedInvoiceSummary?.invoice_id ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-xs"
+                        onClick={() => navigate(`/app/invoices/${selectedInvoiceSummary.invoice_id}`)}
+                      >
+                        {t('common.actions.open', { defaultValue: 'Open' })}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-xs"
+                        disabled={!canManage || orderBillingAction === 'send'}
+                        onClick={async () => {
+                          setOrderBillingError(null)
+                          setOrderBillingAction('send')
+                          try {
+                            await sendInvoice(String(selectedInvoiceSummary.invoice_id))
+                            onRefreshInvoices()
+                          } catch (e: any) {
+                            setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to send invoice')
+                          } finally {
+                            setOrderBillingAction(null)
+                          }
+                        }}
+                      >
+                        {orderBillingAction === 'send'
+                          ? t('common.loading', { defaultValue: 'Loading…' })
+                          : t('app.services.orders.detail.invoice.send', { defaultValue: 'Send' })}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary btn-xs"
+                        disabled={!canManage || selectedInvoiceIsPaid || orderBillingAction === 'paid'}
+                        onClick={async () => {
+                          setOrderBillingError(null)
+                          setOrderBillingAction('paid')
+                          try {
+                            const amount = selectedInvoiceOutstanding > 0
+                              ? selectedInvoiceOutstanding
+                              : Number(selectedInvoiceSummary.total_amount || 0)
+                            const today = new Date().toISOString().slice(0, 10)
+                            await createPayment(String(selectedInvoiceSummary.invoice_id), {
+                              amount,
+                              payment_date: today,
+                              method: 'bank_transfer',
+                            })
+                            onRefreshInvoices()
+                          } catch (e: any) {
+                            setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to mark as paid')
+                          } finally {
+                            setOrderBillingAction(null)
+                          }
+                        }}
+                      >
+                        {orderBillingAction === 'paid'
+                          ? t('common.loading', { defaultValue: 'Loading…' })
+                          : t('app.services.billing.row.mark_paid', { defaultValue: 'Mark paid' })}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-primary btn-xs"
+                      disabled={!canManage || orderBillingAction === 'create'}
+                      onClick={async () => {
+                        if (!selectedOrderId) return
+                        setOrderBillingError(null)
+                        setOrderBillingAction('create')
+                        try {
+                          const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
+                          onRefreshInvoices()
+                          navigate(`/app/invoices/${invoice.id}`)
+                        } catch (e: any) {
+                          setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                        } finally {
+                          setOrderBillingAction(null)
+                        }
+                      }}
+                    >
+                      {orderBillingAction === 'create'
+                        ? t('app.services.orders.detail.creating_invoice', { defaultValue: 'Creating…' })
+                        : t('app.services.orders.detail.create_invoice', { defaultValue: 'Create invoice' })}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            {orderBillingError && <div className="mt-1 text-xs text-red-600">{orderBillingError}</div>}
           </div>
           {drilldown && (
             <div className="border-b border-slate-200 bg-brand-50 px-4 py-2 text-xs text-brand-800">
@@ -1450,6 +2296,17 @@ function OrdersTab({
               <ul className="space-y-3">
                 {visibleOrders.map((ord) => (
                   <li key={ord.id}>
+                    {(() => {
+                      const inv = invoiceMap[String(ord.id)]
+                      const invStatus = String(inv?.status || '')
+                      const invPaid = Number(inv?.paid_amount || 0)
+                      const invTotal = Number(inv?.total_amount || 0)
+                      const hasInv = Boolean(inv?.invoice_id)
+                      const badge =
+                        !hasInv
+                          ? null
+                          : `${invStatus}${invTotal > 0 ? ` · ${formatAmount(invPaid)} / ${formatAmount(invTotal)}` : ''}`
+                      return (
                     <button
                       type="button"
                       onClick={() => onSelectOrder(ord.id)}
@@ -1462,8 +2319,15 @@ function OrdersTab({
                     >
                       <div className="flex items-baseline justify-between">
                        <span className="text-sm font-medium text-brand-700">{ord.id.slice(0, 8)}…</span>
-                        <span className="text-xs uppercase tracking-wide text-slate-500">
-                          {orderStatusLabels[ord.status] ?? ord.status}
+                        <span className="flex items-center gap-2">
+                          {badge && (
+                            <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                              {badge}
+                            </span>
+                          )}
+                          <span className="text-xs uppercase tracking-wide text-slate-500">
+                            {orderStatusLabels[ord.status] ?? ord.status}
+                          </span>
                         </span>
                      </div>
                      <div className="mt-1 text-sm text-slate-600">
@@ -1481,6 +2345,8 @@ function OrdersTab({
                         })}
                       </div>
                    </button>
+                      )
+                    })()}
                  </li>
                ))}
               </ul>
@@ -1496,7 +2362,11 @@ function OrdersTab({
           <OrderDetail
             order={order}
             summary={summary}
+            invoiceSummary={invoiceMap[String(order.id)] || null}
             canManage={canManage}
+            onInvoiceChanged={() => {
+              void refreshOrderInvoices()
+            }}
             onStatusUpdate={onStatusUpdate}
             onScheduleSubmit={onScheduleSubmit}
             onDeliverItem={onDeliverItem}
@@ -1547,6 +2417,11 @@ function ServicesAnalyticsTab({
   formatStatus,
 }: ServicesAnalyticsTabProps) {
   const { t } = useI18n()
+
+  const invoiced = Number((analytics?.totals as any)?.invoices_invoiced ?? 0) || 0
+  const paid = Number((analytics?.totals as any)?.invoices_paid ?? 0) || 0
+  const outstanding = Number((analytics?.totals as any)?.invoices_outstanding ?? 0) || 0
+  const overdueCount = Number((analytics?.totals as any)?.invoices_overdue_count ?? 0) || 0
 
   const servicesBusinessCards = useMemo(() => {
     if (!profileSummary || profileSummary.business_type !== 'services') return []
@@ -1654,6 +2529,33 @@ function ServicesAnalyticsTab({
           </p>
         </div>
         <div className="card p-4">
+          <div className="text-sm font-semibold">{t('app.services.analytics.billing.invoiced', { defaultValue: 'Invoiced' })}</div>
+          <div className="mt-2 text-3xl font-semibold">{formatAmount(invoiced)}</div>
+          <p className="text-xs text-slate-500">
+            {t('app.services.analytics.billing.invoiced_hint', { defaultValue: 'Sum of invoices linked to service orders.' })}
+          </p>
+        </div>
+        <div className="card p-4">
+          <div className="text-sm font-semibold">{t('app.services.analytics.billing.paid', { defaultValue: 'Paid' })}</div>
+          <div className="mt-2 text-3xl font-semibold">{formatAmount(paid)}</div>
+          <p className="text-xs text-slate-500">
+            {t('app.services.analytics.billing.paid_hint', { defaultValue: 'Paid amount across linked invoices.' })}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="card p-4 text-left transition hover:bg-slate-50"
+          onClick={() => onOpenInvoices({ serviceOrderId: null, companyId: null, status: 'overdue' })}
+        >
+          <div className="text-sm font-semibold">{t('app.services.analytics.billing.overdue', { defaultValue: 'Overdue invoices' })}</div>
+          <div className="mt-2 text-3xl font-semibold">{overdueCount}</div>
+          <p className="text-xs text-slate-500">
+            {t('app.services.analytics.billing.overdue_hint', { defaultValue: 'Invoices past due date (not paid).' })}
+          </p>
+        </button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="card p-4">
           <div className="text-sm font-semibold">{t('app.services.analytics.profitability.cost_basis', { defaultValue: 'Cost basis' })}</div>
           <div className="mt-2 text-3xl font-semibold">
             {formatAmount((analytics?.totals.actual_cost || 0) || (analytics?.totals.estimated_cost || 0))}
@@ -1665,6 +2567,17 @@ function ServicesAnalyticsTab({
             })}
           </p>
         </div>
+        <button
+          type="button"
+          className="card p-4 text-left transition hover:bg-slate-50"
+          onClick={() => onOpenInvoices({ serviceOrderId: null, companyId: null, status: null })}
+        >
+          <div className="text-sm font-semibold">{t('app.services.analytics.billing.outstanding', { defaultValue: 'Outstanding' })}</div>
+          <div className="mt-2 text-3xl font-semibold">{formatAmount(outstanding)}</div>
+          <p className="text-xs text-slate-500">
+            {t('app.services.analytics.billing.outstanding_hint', { defaultValue: 'Invoiced − paid (approx).' })}
+          </p>
+        </button>
         <div className="card p-4">
           <div className="text-sm font-semibold">{t('app.services.analytics.profitability.data_quality', { defaultValue: 'Data quality' })}</div>
           <dl className="mt-4 space-y-1 text-sm text-slate-600">
@@ -1756,6 +2669,8 @@ function ServicesAnalyticsTab({
                   <th className="text-right">{t('app.services.analytics.trends.orders', { defaultValue: 'Orders' })}</th>
                   <th className="text-right">{t('app.services.analytics.trends.delivered', { defaultValue: 'Delivered' })}</th>
                   <th className="text-right">{t('app.services.analytics.trends.revenue', { defaultValue: 'Revenue' })}</th>
+                  <th className="text-right">{t('app.services.analytics.trends.invoiced', { defaultValue: 'Invoiced' })}</th>
+                  <th className="text-right">{t('app.services.analytics.trends.paid', { defaultValue: 'Paid' })}</th>
                   <th className="text-right">{t('app.services.analytics.trends.profit', { defaultValue: 'Profit' })}</th>
                 </tr>
               </thead>
@@ -1766,6 +2681,8 @@ function ServicesAnalyticsTab({
                     <td className="text-right">{row.orders}</td>
                     <td className="text-right">{row.delivered}</td>
                     <td className="text-right">{formatAmount(row.revenue)}</td>
+                    <td className="text-right">{formatAmount(Number((row as any).invoiced || 0))}</td>
+                    <td className="text-right">{formatAmount(Number((row as any).paid || 0))}</td>
                     <td className="text-right">{formatAmount(row.profit)}</td>
                   </tr>
                 ))}
@@ -1926,14 +2843,29 @@ function ServicesAnalyticsTab({
 type OrderDetailProps = {
   order: AdditionalServiceOrder
   summary: AdditionalServiceOrderSummary | null
+  invoiceSummary: any | null
   canManage: boolean
+  onInvoiceChanged: () => void
   onStatusUpdate: (orderId: string, status: ServiceOrderStatus) => void
   onScheduleSubmit: (itemId: string, event: FormEvent<HTMLFormElement>) => void
   onDeliverItem: (item: AdditionalServiceItem, event: FormEvent<HTMLFormElement>) => void
 }
 
-function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubmit, onDeliverItem }: OrderDetailProps) {
+function OrderDetail({
+  order,
+  summary,
+  invoiceSummary,
+  canManage,
+  onInvoiceChanged,
+  onStatusUpdate,
+  onScheduleSubmit,
+  onDeliverItem,
+}: OrderDetailProps) {
   const { t } = useI18n()
+  const navigate = useNavigate()
+  const [creatingInvoice, setCreatingInvoice] = useState(false)
+  const [invoiceError, setInvoiceError] = useState<string | null>(null)
+  const [invoiceActionLoading, setInvoiceActionLoading] = useState<string | null>(null)
   const blockingIds = new Set(summary?.blocking_items.map((item) => item.id) ?? [])
   const missingDocs = summary?.missing_documents ?? {}
   const orderStatusLabels = useMemo(() => {
@@ -1973,6 +2905,29 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
           <div className="text-lg font-semibold tracking-tight">{order.id}</div>
         </div>
         <div className="flex items-center gap-2">
+          {canManage && (
+            <button
+              type="button"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+              disabled={creatingInvoice}
+              onClick={async () => {
+                setInvoiceError(null)
+                setCreatingInvoice(true)
+                try {
+                  const invoice = await createInvoiceFromServiceOrder(order.id)
+                  navigate(`/app/invoices/${invoice.id}`)
+                } catch (e: any) {
+                  setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                } finally {
+                  setCreatingInvoice(false)
+                }
+              }}
+            >
+              {creatingInvoice
+                ? t('app.services.orders.detail.creating_invoice', { defaultValue: 'Creating…' })
+                : t('app.services.orders.detail.create_invoice', { defaultValue: 'Create invoice' })}
+            </button>
+          )}
           <span className="text-sm text-slate-500">{t('app.services.orders.detail.status_label')}</span>
           {canManage ? (
             <select
@@ -1987,6 +2942,126 @@ function OrderDetail({ order, summary, canManage, onStatusUpdate, onScheduleSubm
           ) : (
             <span className="text-sm font-medium uppercase">{orderStatusLabels[order.status] ?? order.status}</span>
           )}
+        </div>
+      </div>
+      {invoiceError && <div className="text-sm text-red-600">{invoiceError}</div>}
+
+      <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-xs font-medium text-slate-500">{t('app.services.orders.detail.invoice.title', { defaultValue: 'Invoice' })}</div>
+            {invoiceSummary?.invoice_id ? (
+              <div className="mt-1 text-sm font-semibold text-slate-900">
+                {String(invoiceSummary.invoice_number || invoiceSummary.invoice_id).trim()}
+                <span className="ml-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold text-slate-700">
+                  {String(invoiceSummary.status || 'draft')}
+                </span>
+              </div>
+            ) : (
+              <div className="mt-1 text-sm text-slate-600">
+                {t('app.services.orders.detail.invoice.none', { defaultValue: 'No invoice linked yet.' })}
+              </div>
+            )}
+            {invoiceSummary?.invoice_id && (
+              <div className="mt-1 text-xs text-slate-500">
+                {t('app.services.orders.detail.invoice.amounts', {
+                  defaultValue: 'Paid {{paid}} / {{total}} · Due {{due}}',
+                  values: {
+                    paid: formatAmount(Number(invoiceSummary.paid_amount || 0)),
+                    total: formatAmount(Number(invoiceSummary.total_amount || 0)),
+                    due: String(invoiceSummary.due_date || '—'),
+                  },
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {invoiceSummary?.invoice_id ? (
+              <>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                  onClick={() => navigate(`/app/invoices/${invoiceSummary.invoice_id}`)}
+                >
+                  {t('app.services.orders.detail.invoice.open', { defaultValue: 'Open' })}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                  disabled={!canManage || invoiceActionLoading === 'send'}
+                  onClick={async () => {
+                    setInvoiceError(null)
+                    setInvoiceActionLoading('send')
+                    try {
+                      await sendInvoice(String(invoiceSummary.invoice_id))
+                      onInvoiceChanged()
+                    } catch (e: any) {
+                      setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to send invoice')
+                    } finally {
+                      setInvoiceActionLoading(null)
+                    }
+                  }}
+                >
+                  {invoiceActionLoading === 'send'
+                    ? t('common.loading', { defaultValue: 'Loading…' })
+                    : t('app.services.orders.detail.invoice.send', { defaultValue: 'Send' })}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  disabled={!canManage || invoiceActionLoading === 'paid'}
+                  onClick={async () => {
+                    setInvoiceError(null)
+                    setInvoiceActionLoading('paid')
+                    try {
+                      const total = Number(invoiceSummary.total_amount || 0)
+                      const paid = Number(invoiceSummary.paid_amount || 0)
+                      const outstanding = Math.max(0, total - paid)
+                      const amount = outstanding > 0 ? outstanding : total
+                      const today = new Date().toISOString().slice(0, 10)
+                      await createPayment(String(invoiceSummary.invoice_id), {
+                        amount,
+                        payment_date: today,
+                        method: 'bank_transfer',
+                      })
+                      onInvoiceChanged()
+                    } catch (e: any) {
+                      setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to mark as paid')
+                    } finally {
+                      setInvoiceActionLoading(null)
+                    }
+                  }}
+                >
+                  {invoiceActionLoading === 'paid'
+                    ? t('common.loading', { defaultValue: 'Loading…' })
+                    : t('app.services.orders.detail.invoice.mark_paid', { defaultValue: 'Mark paid' })}
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                disabled={!canManage || creatingInvoice}
+                onClick={async () => {
+                  setInvoiceError(null)
+                  setCreatingInvoice(true)
+                  try {
+                    const invoice = await createInvoiceFromServiceOrder(order.id)
+                    navigate(`/app/invoices/${invoice.id}`)
+                  } catch (e: any) {
+                    setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
+                  } finally {
+                    setCreatingInvoice(false)
+                  }
+                }}
+              >
+                {creatingInvoice
+                  ? t('app.services.orders.detail.creating_invoice', { defaultValue: 'Creating…' })
+                  : t('app.services.orders.detail.create_invoice', { defaultValue: 'Create invoice' })}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

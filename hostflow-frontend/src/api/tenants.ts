@@ -200,6 +200,39 @@ export async function getTenantModules(opts?: { tenantId?: string }) {
   return data
 }
 
+export type VacancyRequirementsPreset = {
+  id: string
+  label: string
+  criteria: Record<string, any>
+  updated_at?: string | null
+}
+
+export async function listVacancyRequirementsPresets(opts?: { tenantId?: string }) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.get<{ items: VacancyRequirementsPreset[] }>('/settings/team/vacancy-requirements-presets')
+  return Array.isArray(data?.items) ? data.items : []
+}
+
+export async function upsertVacancyRequirementsPreset(
+  preset: { id: string; label: string; criteria: Record<string, any> },
+  opts?: { tenantId?: string },
+) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.put<{ items: VacancyRequirementsPreset[] }>(
+    `/settings/team/vacancy-requirements-presets/${preset.id}`,
+    preset,
+  )
+  return Array.isArray(data?.items) ? data.items : []
+}
+
+export async function deleteVacancyRequirementsPreset(presetId: string, opts?: { tenantId?: string }) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.delete<{ items: VacancyRequirementsPreset[] }>(
+    `/settings/team/vacancy-requirements-presets/${presetId}`,
+  )
+  return Array.isArray(data?.items) ? data.items : []
+}
+
 export async function updateTenantModules(
   payload: TenantModuleSettingsPatch,
   opts?: { tenantId?: string },

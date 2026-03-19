@@ -32,6 +32,13 @@ class Vacancy(Base, TimestampMixin):
         String(36), primary_key=True, default=lambda: str(uuid4())
     )
     tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    # scope: which own-company within the tenant owns this vacancy
+    own_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("own_companies.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
 
     # relations
     company_id: Mapped[str] = mapped_column(

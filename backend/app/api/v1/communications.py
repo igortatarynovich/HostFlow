@@ -5508,6 +5508,10 @@ async def run_email_poll_worker(
                 await db.commit()
             except (OAuthMailboxPollError, OAuthProviderError, Exception) as exc:
                 skipped_messages += 1
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
                 settings_json = _as_dict(account.settings_json)
                 oauth_json = _as_dict(settings_json.get("oauth"))
                 oauth_json["last_error"] = str(exc)

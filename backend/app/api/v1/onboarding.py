@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.models import Company, Lead, Reminder, ServiceOrder, Tenant, Vacancy
+from backend.app.models import Company, Lead, OwnCompany, Reminder, ServiceOrder, Tenant, Vacancy
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -56,11 +56,12 @@ async def get_onboarding_status(
     )
     tenant = tenant_row.scalar_one_or_none()
 
-    company_count_row = await db.execute(
+    own_company_count_row = await db.execute(
         select(func.count())
-        .select_from(Company)
-        .where(Company.tenant_id == tenant_id, Company.is_archived.is_(False))
+        .select_from(OwnCompany)
+        .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
     )
+    # Keep legacy client/counterparty classification from Company.extra for now.
     company_extra_rows = await db.execute(
         select(Company.extra).where(Company.tenant_id == tenant_id, Company.is_archived.is_(False))
     )
@@ -77,24 +78,28 @@ async def get_onboarding_status(
         select(func.count()).select_from(Reminder).where(Reminder.tenant_id == tenant_id)
     )
 
-    total_companies_count = int(company_count_row.scalar_one() or 0)
-    operating_companies_count = 0
+    total_companies_count = int(own_company_count_row.scalar_one() or 0)
+    operating_companies_count = total_companies_count
     clients_count = 0
     counterparties_count = 0
     for extra in company_extra_rows.scalars().all():
         kind = _normalize_company_role(extra)
-        if kind == "operating":
-            operating_companies_count += 1
-        elif kind == "client":
+        if kind == "client":
             clients_count += 1
         elif kind == "counterparty":
             counterparties_count += 1
 
-    # Backward compatibility for tenants created before explicit company_role classification.
-    if operating_companies_count == 0 and total_companies_count > 0:
-        operating_companies_count = 1
-        if clients_count == 0 and counterparties_count == 0 and total_companies_count > 1:
-            clients_count = total_companies_count - 1
+    # Backward compatibility: if tenant has legacy operating companies but no OwnCompany yet.
+    if operating_companies_count == 0:
+        legacy_company_count_row = await db.execute(
+            select(func.count())
+            .select_from(Company)
+            .where(Company.tenant_id == tenant_id, Company.is_archived.is_(False))
+        )
+        legacy_total = int(legacy_company_count_row.scalar_one() or 0)
+        if legacy_total > 0:
+            operating_companies_count = 1
+            total_companies_count = 1
 
     leads_count = int(lead_count_row.scalar_one() or 0)
     vacancies_count = int(vacancy_count_row.scalar_one() or 0)

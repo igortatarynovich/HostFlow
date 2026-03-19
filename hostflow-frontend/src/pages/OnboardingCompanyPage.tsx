@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { createCompany } from '../api/client'
+import { createOwnCompany, setActiveOwnCompany, ownCompanySettings } from '../api/client'
 import { getBillingSummary } from '../api/billing'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
@@ -132,7 +132,13 @@ export default function OnboardingCompanyPage() {
     }
     setLoading(true)
     try {
-      await createCompany({ name: trimmed, company_type: companyType, company_role: 'operating' })
+      const own = await createOwnCompany({ name: trimmed, extra: { business_type: companyType } })
+      try {
+        await setActiveOwnCompany(own.id)
+        ownCompanySettings.set(own.id)
+      } catch {
+        // best-effort
+      }
       void recordTtvStepCompleted({ event: 'ttv_step', action: 'completed', step_key: 'company_created' })
       navigate(ACTIVATION_PATHS.onboardingGettingStarted, { replace: true })
     } catch (err: any) {
@@ -144,7 +150,7 @@ export default function OnboardingCompanyPage() {
       )
         .trim()
         .toUpperCase()
-      if (detailCode === 'OPERATING-COMPANY-LIMIT') {
+      if (detailCode === 'OPERATING-COMPANY-LIMIT' || detailCode === 'COMPANY LIMIT REACHED FOR CURRENT PLAN' || err?.response?.status === 402) {
         const recommendedExtraSlots =
           typeof detailPayload === 'object' && detailPayload
             ? Number((detailPayload as Record<string, any>).recommended_extra_slots || 0)

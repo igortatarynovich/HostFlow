@@ -1,6 +1,9 @@
 import axios, { AxiosHeaders } from "axios";
 
 const API_BASE_STORAGE_KEY = "hf_api_base";
+const OWN_COMPANY_STORAGE_KEY = "hf_own_company_id";
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function safeStorageGet(key: string): string | null {
   try {
@@ -236,6 +239,13 @@ function sanitizeTenantId(raw: string | null | undefined): string | null {
   return first;
 }
 
+function sanitizeOwnCompanyId(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const first = String(raw).split(",")[0].trim();
+  if (!first) return null;
+  return UUID_RE.test(first) ? first : null;
+}
+
 export const settings = {
   get(): string {
     const keys = ["tenant_id", "X-Tenant-Id", "x-tenant-id"];
@@ -260,6 +270,22 @@ export const settings = {
     safeStorageSet("tenant_id", sanitized);
     safeStorageSet("X-Tenant-Id", sanitized);
     safeStorageSet("x-tenant-id", sanitized);
+  },
+};
+
+export const ownCompanySettings = {
+  get(): string | null {
+    const stored = safeStorageGet(OWN_COMPANY_STORAGE_KEY);
+    const sanitized = sanitizeOwnCompanyId(stored);
+    if (sanitized && stored !== sanitized) {
+      safeStorageSet(OWN_COMPANY_STORAGE_KEY, sanitized);
+    }
+    return sanitized;
+  },
+  set(value: string | null) {
+    const trimmed = sanitizeOwnCompanyId(value) ?? "";
+    if (!trimmed) safeStorageRemove(OWN_COMPANY_STORAGE_KEY);
+    else safeStorageSet(OWN_COMPANY_STORAGE_KEY, trimmed);
   },
 };
 
@@ -289,8 +315,12 @@ function attachInterceptors(inst: ReturnType<typeof axios.create>, tenantId?: st
     if (!config.headers) config.headers = new AxiosHeaders();
     if (config.headers instanceof AxiosHeaders) {
       config.headers.set("X-Tenant-Id", tid);
+      const ownId = ownCompanySettings.get();
+      if (ownId) config.headers.set("X-Own-Company-Id", ownId);
     } else {
       (config.headers as any)["X-Tenant-Id"] = tid;
+      const ownId = ownCompanySettings.get();
+      if (ownId) (config.headers as any)["X-Own-Company-Id"] = ownId;
     }
 
     const token =
@@ -488,6 +518,80 @@ export async function createCompany(payload: Record<string, any>) {
   return data;
 }
 
+// Own companies (legal entities within tenant) --------------------------------
+export type OwnCompanyRecord = {
+  id: string
+  tenant_id: string
+  name: string
+  legal_name?: string | null
+  tax_id?: string | null
+  phone?: string | null
+  email?: string | null
+  website?: string | null
+  country_code?: string | null
+  country?: string | null
+  city?: string | null
+  address?: string | null
+  notes?: string | null
+  is_archived?: boolean | null
+  contacts?: Record<string, any>
+  extra?: Record<string, any>
+  bank_details?: Record<string, any>
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export async function listOwnCompanies() {
+  try {
+    const { data } = await api.get<{ items: OwnCompanyRecord[]; active_own_company_id?: string | null }>(`/own-companies`)
+    return data
+  } catch (e: any) {
+    if (e?.response?.status === 404) {
+      const { data } = await api.get<{ items: OwnCompanyRecord[]; active_own_company_id?: string | null }>(`/own_companies`)
+      return data
+    }
+    throw e
+  }
+}
+
+export async function createOwnCompany(payload: Partial<OwnCompanyRecord> & { name: string }) {
+  try {
+    const { data } = await api.post<OwnCompanyRecord>(`/own-companies`, payload)
+    return data
+  } catch (e: any) {
+    if (e?.response?.status === 404) {
+      const { data } = await api.post<OwnCompanyRecord>(`/own_companies`, payload)
+      return data
+    }
+    throw e
+  }
+}
+
+export async function setActiveOwnCompany(ownCompanyId: string) {
+  let data: { items: OwnCompanyRecord[]; active_own_company_id?: string | null }
+  try {
+    const res = await api.post<{ items: OwnCompanyRecord[]; active_own_company_id?: string | null }>(`/own-companies/active`, {
+      own_company_id: ownCompanyId,
+    })
+    data = res.data
+  } catch (e: any) {
+    if (e?.response?.status === 404) {
+      const res = await api.post<{ items: OwnCompanyRecord[]; active_own_company_id?: string | null }>(`/own_companies/active`, {
+        own_company_id: ownCompanyId,
+      })
+      data = res.data
+    } else {
+      throw e
+    }
+  }
+  try {
+    ownCompanySettings.set(ownCompanyId)
+  } catch {
+    // ignore
+  }
+  return data
+}
+
 export async function createClientCompany(payload: Record<string, any>) {
   const body = { ...payload, company_role: payload.company_role ?? 'client' };
   const { data } = await api.post(`/companies/`, body);
@@ -594,13 +698,19 @@ export async function getCompanyReadiness(id: string) {
 }
 
 // Leads -----------------------------------------------------------------
-export async function listLeads(opts?: { status?: string; stage?: string; limit?: number; offset?: number }) {
+export async function listLeads(opts?: { status?: string; stage?: string; nextAction?: string; limit?: number; offset?: number }) {
   const params: Record<string, any> = {};
   if (opts?.status) params.status = opts.status;
   if (opts?.stage) params.stage = opts.stage;
+  if (opts?.nextAction) params.next_action = opts.nextAction;
   if (opts?.limit != null) params.limit = opts.limit;
   if (opts?.offset != null) params.offset = opts.offset;
   const { data } = await api.get(`/leads`, { params });
+  return data;
+}
+
+export async function getLeadTimeline(leadId: string) {
+  const { data } = await api.get(`/leads/${leadId}/timeline`);
   return data;
 }
 
@@ -609,18 +719,29 @@ export async function updateLeadStage(leadId: string, payload: { stage?: string 
   return data;
 }
 
+export async function bulkUpdateLeads(payload: { lead_ids: string[]; stage?: string | null; status?: string | null }) {
+  const { data } = await api.patch(`/leads/bulk`, payload);
+  return data;
+}
+
 export async function createLeadServiceOrder(leadId: string) {
   const { data } = await api.post(`/leads/${leadId}/service-order`);
   return data;
 }
 
+export async function processLead(leadId: string) {
+  const { data } = await api.post(`/leads/${leadId}/process`);
+  return data;
+}
+
 // Invoices ---------------------------------------------------------------
-export async function listInvoices(opts?: { company_id?: string; candidate_id?: string; service_order_id?: string; status?: string; limit?: number; offset?: number }) {
+export async function listInvoices(opts?: { company_id?: string; candidate_id?: string; service_order_id?: string; status?: string; unpaid?: boolean; limit?: number; offset?: number }) {
   const params: Record<string, any> = {};
   if (opts?.company_id) params.company_id = opts.company_id;
   if (opts?.candidate_id) params.candidate_id = opts.candidate_id;
   if (opts?.service_order_id) params.service_order_id = opts.service_order_id;
   if (opts?.status) params.status = opts.status;
+  if (opts?.unpaid) params.unpaid = true;
   if (opts?.limit != null) params.limit = opts.limit;
   if (opts?.offset != null) params.offset = opts.offset;
   const { data } = await api.get(`/invoices`, { params });
@@ -652,6 +773,23 @@ export async function createInvoice(payload: Record<string, any>) {
 export async function createInvoiceFromServiceOrder(orderId: string) {
   const { data } = await api.post(`/invoices/from-service-order/${orderId}`);
   return data;
+}
+
+export async function listInvoicesByServiceOrders(orderIds: string[]) {
+  const params: Record<string, any> = {}
+  const clean = (orderIds || []).map((x) => String(x || '').trim()).filter(Boolean)
+  if (clean.length === 0) return []
+  params.order_id = clean
+  const { data } = await api.get(`/invoices/service-orders-summary`, { params })
+  return data as Array<{
+    service_order_id: string
+    invoice_id: string
+    invoice_number: string
+    status: string
+    total_amount: number
+    paid_amount: number
+    due_date?: string | null
+  }>
 }
 
 export async function updateInvoice(id: string, payload: Record<string, any>) {
@@ -722,12 +860,18 @@ export async function listReminders(opts?: {
   assigneeId?: string;
   entityType?: string;
   entityId?: string;
+  types?: string[];
+  dueFrom?: string | Date;
+  dueTo?: string | Date;
 }) {
   const params: Record<string, any> = {};
   if (opts?.status) params.status_filter = opts.status;
+  if (opts?.types) params.type_filter = opts.types;
   if (opts?.assigneeId) params.assignee_id = opts.assigneeId;
   if (opts?.entityType) params.entity_type = opts.entityType;
   if (opts?.entityId) params.entity_id = opts.entityId;
+  if (opts?.dueFrom) params.due_from = opts.dueFrom;
+  if (opts?.dueTo) params.due_to = opts.dueTo;
   const { data } = await api.get(`/reminders`, { params });
   return data;
 }
@@ -735,6 +879,20 @@ export async function listReminders(opts?: {
 export async function createReminder(payload: Record<string, any>) {
   const { data } = await api.post(`/reminders`, payload);
   return data;
+}
+
+export async function createBulkReminders(payload: {
+  title: string
+  description?: string
+  type?: string
+  entity_type: string
+  entity_ids: string[]
+  due_at: string | Date
+  remind_at?: string | Date
+  priority?: string
+}) {
+  const { data } = await api.post(`/reminders/bulk`, payload)
+  return data
 }
 
 export async function updateReminder(id: string, payload: Record<string, any>) {
@@ -745,6 +903,67 @@ export async function updateReminder(id: string, payload: Record<string, any>) {
 export async function completeReminder(id: string) {
   const { data } = await api.post(`/reminders/${id}/complete`);
   return data;
+}
+
+// Activities v1 --------------------------------------------------------------
+export async function listActivities(opts?: {
+  status?: string[];
+  assigneeId?: string;
+  entityType?: string;
+  entityId?: string;
+  types?: string[];
+  dueFrom?: string | Date;
+  dueTo?: string | Date;
+}) {
+  const params: Record<string, any> = {};
+  if (opts?.status) params.status_filter = opts.status;
+  if (opts?.types) params.type_filter = opts.types;
+  if (opts?.assigneeId) params.assignee_id = opts.assigneeId;
+  if (opts?.entityType) params.entity_type = opts.entityType;
+  if (opts?.entityId) params.entity_id = opts.entityId;
+  if (opts?.dueFrom) params.due_from = opts.dueFrom;
+  if (opts?.dueTo) params.due_to = opts.dueTo;
+  const { data } = await api.get(`/activities`, { params });
+  return data;
+}
+
+export async function createActivity(payload: Record<string, any>) {
+  const { data } = await api.post(`/activities`, payload);
+  return data;
+}
+
+export async function updateActivity(id: string, payload: Record<string, any>) {
+  const { data } = await api.patch(`/activities/${id}`, payload);
+  return data;
+}
+
+export async function completeActivity(id: string) {
+  const { data } = await api.post(`/activities/${id}/complete`);
+  return data;
+}
+
+export async function snoozeActivity(id: string, payload: { minutes?: number; new_remind_at?: string | Date }) {
+  const body: Record<string, any> = {};
+  if (payload.minutes != null) body.minutes = payload.minutes;
+  if (payload.new_remind_at) body.new_remind_at = payload.new_remind_at;
+  const { data } = await api.post(`/activities/${id}/snooze`, body);
+  return data;
+}
+
+export async function createBulkActivities(payload: {
+  title: string
+  description?: string
+  type?: string
+  entity_type: string
+  entity_ids: string[]
+  due_at: string | Date
+  remind_at?: string | Date
+  duration_minutes?: number
+  source?: string
+  priority?: string
+}) {
+  const { data } = await api.post(`/activities/bulk`, payload)
+  return data
 }
 
 // Candidates (operational views) --------------------------------------------
@@ -764,6 +983,18 @@ export async function listCandidatesNoNextAction(opts?: {
   if (opts?.assigneeId) params.assignee_id = opts.assigneeId
   if (opts?.scopeTenantId) params.scope_tenant_id = opts.scopeTenantId
   const { data } = await api.get(`/candidates/no-next-action`, { params })
+  return data
+}
+
+export async function getCandidateTimeline(candidateId: string) {
+  const { data } = await api.get(`/candidates/${candidateId}/timeline`)
+  return data
+}
+
+export async function getCandidateChangeLog(candidateId: string, opts?: { limit?: number }) {
+  const params: Record<string, any> = {}
+  if (opts?.limit != null) params.limit = opts.limit
+  const { data } = await api.get(`/candidates/${candidateId}/change-log`, { params })
   return data
 }
 

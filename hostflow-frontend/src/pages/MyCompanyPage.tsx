@@ -89,7 +89,7 @@ export default function MyCompanyPage() {
   const usedOperatingSlots = Number(billing?.company_slots?.used ?? managedOperatingCompanies.length)
   const recommendedExtraSlots = Math.max(1, usedOperatingSlots - effectiveOperatingLimit + 1)
   const billingCompanySlotsPath = `/app/settings/billing?focus=company-slots&recommended_extra_slots=${recommendedExtraSlots}`
-  const operatingSlotsOverflow = !Boolean(billing?.company_slots?.unlimited) && effectiveOperatingLimit > 0 && usedOperatingSlots > effectiveOperatingLimit
+  const operatingSlotsOverflow = !billing?.company_slots?.unlimited && effectiveOperatingLimit > 0 && usedOperatingSlots > effectiveOperatingLimit
   const operatingSlotsMissing = operatingSlotsOverflow ? Math.max(1, usedOperatingSlots - effectiveOperatingLimit) : 0
 
   return (

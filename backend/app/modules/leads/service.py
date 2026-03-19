@@ -6,19 +6,23 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+import json
+
+from sqlalchemy import case, func, or_, select, exists, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.service import create_candidate_full
-from backend.app.models import Candidate, Company, Lead, Tenant, User, Vacancy
+from backend.app.models import Candidate, Company, Lead, OwnCompany, Tenant, User, Vacancy, ActivityLog
 from backend.app.models.user import Role
 from backend.app.modules.leads import crud, normalizer
-from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, MetaLeadResponse
+from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, MetaLeadResponse, LeadTimelineResponse, LeadTimelineEventOut
 from backend.app.modules.leads import pipeline
 from backend.app.services import events
 from backend.app.services.events import EventAudience
 from backend.app.services import reminder_tasks
 from backend.app.services.automation_rules import run_rules as run_automation_rules
+from backend.app.models import Reminder
+from backend.app.models.reminder import ReminderStatus
 
 
 @dataclass
@@ -276,33 +280,115 @@ async def list_leads(
     db: AsyncSession,
     *,
     tenant_id: str,
+    own_company_id: str | None = None,
     status: Optional[str] = None,
     stage: Optional[str] = None,
+    next_action: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
 ) -> LeadListResponse:
     business_type = await _load_tenant_business_type(db, tenant_id)
     filters = [Lead.tenant_id == tenant_id]
+    if own_company_id:
+        filters.append(Lead.own_company_id == own_company_id)
     if status:
         filters.append(Lead.status == status)
     if stage:
         filters.append(Lead.stage == stage)
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+    now = datetime.now(timezone.utc)
+    stuck_stage_subq = None
+    stuck_stage_join_on = None
 
-    total_stmt = select(func.count()).select_from(Lead).where(*filters)
+    # Next action filters (entity-level, not assignee-level)
+    if next_action:
+        normalized = str(next_action or "").strip().lower()
+        reminder_exists_active = (
+            exists()
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "lead",
+                Reminder.entity_id == Lead.id,
+                Reminder.status.in_(active_statuses),
+            )
+            .correlate(Lead)
+        )
+        reminder_exists_overdue = (
+            exists()
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "lead",
+                Reminder.entity_id == Lead.id,
+                Reminder.status.in_(active_statuses),
+                or_(Reminder.status == ReminderStatus.overdue, Reminder.due_at < now),
+            )
+            .correlate(Lead)
+        )
+        if normalized in {"no_next_action", "none"}:
+            filters.append(~reminder_exists_active)
+        elif normalized in {"overdue"}:
+            filters.append(reminder_exists_overdue)
+        elif normalized in {"scheduled", "has_next_action"}:
+            filters.append(reminder_exists_active)
+        elif normalized in {"stuck", "stuck_stage"}:
+            # "Stuck" = processed lead in active stages with no stage change for D days.
+            # Uses ActivityLog lead.stage_changed; falls back to Lead.created_at if no events.
+            tenant_row = (await db.execute(select(Tenant.settings).where(Tenant.id == tenant_id).limit(1))).first()
+            settings_payload = tenant_row[0] if tenant_row else {}
+            settings_dict = settings_payload if isinstance(settings_payload, dict) else {}
+            sla_cfg = settings_dict.get("leads_next_action_sla_v1") if isinstance(settings_dict, dict) else None
+            sla_cfg = sla_cfg if isinstance(sla_cfg, dict) else {}
+            try:
+                stuck_days = max(1, int(sla_cfg.get("stuckAfterDays") or 7))
+            except Exception:
+                stuck_days = 7
+            stages_raw = sla_cfg.get("stages")
+            if isinstance(stages_raw, list):
+                active_stages = {str(x).strip() for x in stages_raw if str(x or "").strip()}
+            else:
+                active_stages = {"new", "contacted", "qualified"}
+            cutoff = now - timedelta(days=int(stuck_days))
+
+            last_change_subq = (
+                select(
+                    ActivityLog.target_id.label("lead_id"),
+                    func.max(ActivityLog.created_at).label("last_changed_at"),
+                )
+                .where(
+                    ActivityLog.tenant_id == tenant_id,
+                    ActivityLog.target_type == "lead",
+                    ActivityLog.action == "lead.stage_changed",
+                )
+                .group_by(ActivityLog.target_id)
+                .subquery()
+            )
+            stuck_stage_subq = last_change_subq
+            stuck_stage_join_on = last_change_subq.c.lead_id == Lead.id
+            last_changed_at = func.coalesce(last_change_subq.c.last_changed_at, Lead.created_at)
+            filters.append(Lead.status == "processed")
+            filters.append(func.coalesce(Lead.stage, "new").in_(sorted(active_stages)))
+            filters.append(last_changed_at <= cutoff)
+
+    total_stmt = select(func.count()).select_from(Lead)
+    if stuck_stage_subq is not None and stuck_stage_join_on is not None:
+        total_stmt = total_stmt.outerjoin(stuck_stage_subq, stuck_stage_join_on)
+    total_stmt = total_stmt.where(*filters)
     total = (await db.execute(total_stmt)).scalar_one()
 
+    stmt = select(
+        Lead,
+        Company.name.label("company_name"),
+        Vacancy.title.label("vacancy_title"),
+        Vacancy.extra.label("vacancy_extra"),
+        Candidate.first_name.label("candidate_first"),
+        Candidate.last_name.label("candidate_last"),
+        Candidate.id.label("candidate_id"),
+        Candidate.recruiter_id.label("candidate_recruiter"),
+    ).select_from(Lead)
+    if stuck_stage_subq is not None and stuck_stage_join_on is not None:
+        stmt = stmt.outerjoin(stuck_stage_subq, stuck_stage_join_on)
     stmt = (
-        select(
-            Lead,
-            Company.name.label("company_name"),
-            Vacancy.title.label("vacancy_title"),
-            Candidate.first_name.label("candidate_first"),
-            Candidate.last_name.label("candidate_last"),
-            Candidate.id.label("candidate_id"),
-            Candidate.recruiter_id.label("candidate_recruiter"),
-        )
-        .select_from(Lead)
-        .join(Company, Company.id == Lead.company_id, isouter=True)
+        stmt.join(Company, Company.id == Lead.company_id, isouter=True)
         .join(Vacancy, Vacancy.id == Lead.vacancy_id, isouter=True)
         .join(Candidate, Candidate.id == Lead.candidate_id, isouter=True)
         .where(*filters)
@@ -311,6 +397,77 @@ async def list_leads(
         .offset(offset)
     )
     rows = await db.execute(stmt)
+    raw_rows = rows.all()
+
+    # Preload next action info in one query for current page items.
+    # We compute:
+    # - overdue_count: number of active reminders with due_at < now OR status overdue
+    # - next_due_at/title/type: earliest due_at among active reminders
+    lead_ids: list[str] = [str(lead.id) for lead, *_ in raw_rows]
+    next_action_map: dict[str, dict[str, Any]] = {}
+    if lead_ids:
+        due_col = Reminder.due_at
+        overdue_case = case(
+            (
+                or_(Reminder.status == ReminderStatus.overdue, due_col < now),
+                1,
+            ),
+            else_=0,
+        )
+        agg_stmt = (
+            select(
+                Reminder.entity_id.label("lead_id"),
+                func.min(due_col).label("next_due_at"),
+                func.sum(overdue_case).label("overdue_count"),
+            )
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "lead",
+                Reminder.entity_id.in_(lead_ids),
+                Reminder.status.in_(active_statuses),
+            )
+            .group_by(Reminder.entity_id)
+        )
+        agg_rows = (await db.execute(agg_stmt)).all()
+        by_lead = {str(lid): {"next_due_at": nd, "overdue_count": int(oc or 0)} for lid, nd, oc in agg_rows}
+
+        # Fetch the earliest reminder per lead (title/type) via a subquery on min(due_at).
+        min_due_subq = (
+            select(
+                Reminder.entity_id.label("lead_id"),
+                func.min(Reminder.due_at).label("min_due_at"),
+            )
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "lead",
+                Reminder.entity_id.in_(lead_ids),
+                Reminder.status.in_(active_statuses),
+            )
+            .group_by(Reminder.entity_id)
+            .subquery()
+        )
+        details_stmt = (
+            select(Reminder.entity_id, Reminder.title, Reminder.type, Reminder.due_at)
+            .join(
+                min_due_subq,
+                and_(
+                    Reminder.entity_id == min_due_subq.c.lead_id,
+                    Reminder.due_at == min_due_subq.c.min_due_at,
+                ),
+            )
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "lead",
+                Reminder.entity_id.in_(lead_ids),
+                Reminder.status.in_(active_statuses),
+            )
+        )
+        det_rows = (await db.execute(details_stmt)).all()
+        for lid, title, rtype, due_at in det_rows:
+            entry = by_lead.get(str(lid)) or {"next_due_at": due_at, "overdue_count": 0}
+            entry["next_title"] = str(title or "") or None
+            entry["next_type"] = str(rtype or "") or None
+            next_action_map[str(lid)] = entry
 
     def _uuid_or_none(value: Optional[str]) -> Optional[UUID]:
         if not value:
@@ -320,8 +477,102 @@ async def list_leads(
         except ValueError:
             return None
 
+    def _loads_extra(extra: Any) -> dict[str, Any]:
+        if not extra:
+            return {}
+        if isinstance(extra, dict):
+            return extra
+        try:
+            return json.loads(str(extra))
+        except Exception:
+            return {}
+
+    def _evaluate_fit(criteria: Any, normalized: Any) -> tuple[str, list[str]]:
+        """
+        MVP vacancy fit evaluator.
+
+        criteria schema (lead_criteria_v1):
+          - min_experience_eu_years: int
+          - requires_fields: [string]            # normalized keys required to be present (truthy)
+          - in_poland: bool                      # requires normalized.in_poland == True/False
+          - requires_documents: [string]         # requires normalized.documents includes each code
+        """
+        if not isinstance(criteria, dict) or not criteria:
+            return ("no_criteria", [])
+        norm = normalized if isinstance(normalized, dict) else {}
+        reasons: list[str] = []
+        missing_info = False
+        hard_fail = False
+
+        min_years = criteria.get("min_experience_eu_years")
+        if min_years is not None:
+            try:
+                min_years_i = int(min_years)
+            except Exception:
+                min_years_i = 0
+            if min_years_i > 0:
+                value = norm.get("experience_eu_years")
+                if value is None:
+                    missing_info = True
+                    reasons.append("missing_experience_eu_years")
+                else:
+                    try:
+                        years_i = int(value)
+                    except Exception:
+                        years_i = -1
+                    if years_i < min_years_i:
+                        reasons.append(f"experience_eu_years<{min_years_i}")
+                        hard_fail = True
+
+        req_fields = criteria.get("requires_fields")
+        if isinstance(req_fields, list):
+            for key in req_fields:
+                k = str(key or "").strip()
+                if not k:
+                    continue
+                if not norm.get(k):
+                    missing_info = True
+                    reasons.append(f"missing:{k}")
+
+        in_poland_req = criteria.get("in_poland")
+        if isinstance(in_poland_req, bool):
+            value = norm.get("in_poland")
+            if value is None:
+                missing_info = True
+                reasons.append("missing_in_poland")
+            else:
+                if bool(value) is not in_poland_req:
+                    reasons.append(f"in_poland!={str(in_poland_req).lower()}")
+                    hard_fail = True
+
+        req_docs = criteria.get("requires_documents")
+        if isinstance(req_docs, list):
+            docs = norm.get("documents")
+            docs_set = set()
+            if isinstance(docs, list):
+                docs_set = {str(x).strip().lower() for x in docs if str(x or "").strip()}
+            for code in req_docs:
+                c = str(code or "").strip().lower()
+                if not c:
+                    continue
+                if not docs_set:
+                    missing_info = True
+                    reasons.append("missing_documents")
+                    break
+                if c not in docs_set:
+                    reasons.append(f"missing_doc:{c}")
+                    hard_fail = True
+
+        if reasons:
+            if hard_fail:
+                return ("no_fit", reasons)
+            if missing_info:
+                return ("needs_info", reasons)
+            return ("no_fit", reasons)
+        return ("fit", [])
+
     items: List[LeadOut] = []
-    for lead, company_name, vacancy_title, cand_first, cand_last, cand_id, cand_recruiter in rows.all():
+    for lead, company_name, vacancy_title, vacancy_extra, cand_first, cand_last, cand_id, cand_recruiter in raw_rows:
         candidate_name = None
         if cand_first or cand_last:
             candidate_name = f"{cand_first or ''} {cand_last or ''}".strip()
@@ -335,6 +586,9 @@ async def list_leads(
             candidate_name=candidate_name,
         )
 
+        extra_obj = _loads_extra(vacancy_extra)
+        criteria = (extra_obj or {}).get("lead_criteria_v1")
+        fit_status, fit_reasons = _evaluate_fit(criteria, lead.normalized)
         items.append(
             LeadOut(
                 id=_uuid_or_none(lead.id) or UUID(lead.id),
@@ -360,10 +614,148 @@ async def list_leads(
                 normalized=lead.normalized,
                 created_at=lead.created_at,
                 last_routed_at=lead.last_routed_at,
+                next_action_status=(
+                    "overdue"
+                    if (next_action_map.get(str(lead.id)) or {}).get("overdue_count", 0) > 0
+                    else "scheduled"
+                    if (next_action_map.get(str(lead.id)) or {}).get("next_due_at") is not None
+                    else "no_next_action"
+                ),
+                next_action_due_at=(next_action_map.get(str(lead.id)) or {}).get("next_due_at"),
+                next_action_type=(next_action_map.get(str(lead.id)) or {}).get("next_type"),
+                next_action_title=(next_action_map.get(str(lead.id)) or {}).get("next_title"),
+                fit_status=fit_status,
+                fit_reasons=fit_reasons,
             )
         )
 
     return LeadListResponse(items=items, total=int(total or 0), limit=limit, offset=offset)
+
+
+async def get_lead_timeline(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead_id: str,
+    limit: int = 200,
+) -> LeadTimelineResponse:
+    # Ensure lead exists and belongs to tenant.
+    lead_row = await db.execute(select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tenant_id).limit(1))
+    lead = lead_row.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    # ActivityLog events for this lead.
+    log_rows = (
+        await db.execute(
+            select(ActivityLog.action, ActivityLog.created_at, ActivityLog.payload)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.target_type == "lead",
+                ActivityLog.target_id == lead_id,
+            )
+            .order_by(ActivityLog.created_at.desc())
+            .limit(limit)
+        )
+    ).all()
+
+    # Reminder events for this lead.
+    rem_rows = (
+        await db.execute(
+            select(
+                Reminder.id,
+                Reminder.type,
+                Reminder.status,
+                Reminder.title,
+                Reminder.description,
+                Reminder.created_at,
+                Reminder.due_at,
+                Reminder.completed_at,
+            )
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "lead",
+                Reminder.entity_id == lead_id,
+            )
+            .order_by(Reminder.created_at.desc())
+            .limit(limit)
+        )
+    ).all()
+
+    events: list[LeadTimelineEventOut] = []
+
+    for action, created_at, payload in log_rows:
+        kind = "activity"
+        source = "activity_log"
+        title = str(action or "").strip() or "event"
+        descr = None
+        if action == "lead.stage_changed":
+            kind = "stage_changed"
+            from_stage = (payload or {}).get("from_stage") if isinstance(payload, dict) else None
+            to_stage = (payload or {}).get("to_stage") if isinstance(payload, dict) else None
+            descr = f"{from_stage or '—'} → {to_stage or '—'}"
+        elif str(action or "").startswith("analytics.next_action."):
+            kind = "next_action_warning"
+        elif str(action or "").startswith("analytics.perf."):
+            kind = "analytics"
+        events.append(
+            LeadTimelineEventOut(
+                at=created_at,
+                kind=kind,
+                source=source,
+                title=title,
+                description=descr,
+                payload=payload if isinstance(payload, dict) else {},
+            )
+        )
+
+    for (
+        rem_id,
+        r_type,
+        status,
+        title,
+        description,
+        created_at,
+        due_at,
+        completed_at,
+    ) in rem_rows:
+        base_payload: Dict[str, Any] = {
+            "reminder_id": rem_id,
+            "type": r_type,
+            "status": status,
+            "due_at": due_at.isoformat() if isinstance(due_at, datetime) else None,
+            "completed_at": completed_at.isoformat() if isinstance(completed_at, datetime) else None,
+        }
+        # Created event
+        events.append(
+            LeadTimelineEventOut(
+                at=created_at,
+                kind="reminder_created",
+                source="reminder",
+                title=title or "Reminder created",
+                description=description,
+                payload=base_payload,
+            )
+        )
+        # Completed event (if any)
+        if completed_at:
+            events.append(
+                LeadTimelineEventOut(
+                    at=completed_at,
+                    kind="reminder_completed",
+                    source="reminder",
+                    title=title or "Reminder completed",
+                    description=description,
+                    payload=base_payload,
+                )
+            )
+
+    # Sort all events by time desc and trim.
+    events.sort(key=lambda e: e.at, reverse=True)
+    if len(events) > limit:
+        events = events[:limit]
+
+    return LeadTimelineResponse(items=events)
 
 
 async def process_normalized_lead(
@@ -536,9 +928,21 @@ async def process_normalized_lead(
     resolved_company_name = next((hint for hint in company_hints if hint), None)
 
     if lead is None:
+        own_company_id = getattr(vacancy, "own_company_id", None) if vacancy else None
+        if not own_company_id:
+            row = await db.execute(
+                select(OwnCompany.id)
+                .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
+                .order_by(OwnCompany.created_at.asc())
+                .limit(1)
+            )
+            own_company_id = row.scalar_one_or_none()
+        if not own_company_id:
+            raise LeadProcessingError("needs_routing", "OWN_COMPANY_REQUIRED")
         lead = await crud.create_lead(
             db,
             tenant_id=tenant_id,
+            own_company_id=str(own_company_id),
             company_id=resolved_company_id,
             vacancy_id=vacancy.id if vacancy else None,
             payload=payload,
@@ -556,6 +960,8 @@ async def process_normalized_lead(
     else:
         lead.company_id = resolved_company_id
         lead.vacancy_id = vacancy.id if vacancy else None
+        if getattr(lead, "own_company_id", None) in (None, ""):
+            lead.own_company_id = getattr(vacancy, "own_company_id", None) if vacancy else None
         lead.payload = payload
         lead.normalized = normalized
         lead.ad_id = normalized.get("ad_id")

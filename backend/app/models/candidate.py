@@ -25,6 +25,12 @@ class Candidate(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(String, index=True, nullable=False)
+    own_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("own_companies.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
 
     short_id: Mapped[Optional[str]] = mapped_column(String, index=True, nullable=True)
 

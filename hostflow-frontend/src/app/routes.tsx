@@ -17,6 +17,7 @@ import InvoiceDetailPage from '../pages/InvoiceDetailPage'
 import LeadsPage from '../pages/LeadsPage'
 import ProfilePage from '../pages/ProfilePage'
 import RemindersPage from '../pages/RemindersPage'
+import ActivitiesPage from '../pages/ActivitiesPage'
 import CommunicationsThreadPage from '../pages/CommunicationsThreadPage'
 import CommunicationsMessagesPage from '../pages/CommunicationsMessagesPage'
 import CommunicationsEmailInboxPage from '../pages/CommunicationsEmailInboxPage'
@@ -227,6 +228,13 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'notifications.view',
   },
   {
+    key: 'activities',
+    labelKey: 'app.nav.items.activities',
+    path: '/app/activities',
+    group: 'workflows',
+    permission: 'notifications.view',
+  },
+  {
     key: 'leads',
     labelKey: 'app.nav.items.leads',
     path: '/app/leads',
@@ -426,6 +434,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'communications', path: 'communications', Component: LegacyCommunicationsRedirect, permission: 'notifications.view' },
   { key: 'communications-thread', path: 'communications/threads/:threadId', Component: withCommAnyFeature(CommunicationsThreadPage, ['messages', 'email']), permission: 'notifications.view' },
   { key: 'reminders', path: 'reminders', Component: RemindersPage, permission: 'notifications.view' },
+  { key: 'activities', path: 'activities', Component: ActivitiesPage, permission: 'notifications.view' },
   { key: 'leads', path: 'leads', Component: LeadsPage, permission: 'leads.view' },
   { key: 'automation-log', path: 'automation-log', Component: AutomationLogPage, permission: 'notifications.view' },
   { key: 'automation-rules', path: 'automation-rules', Component: AutomationRulesPage, permission: 'notifications.view' },

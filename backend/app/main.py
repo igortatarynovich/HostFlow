@@ -52,9 +52,11 @@ try:
     from backend.app.api.v1 import health as health_router
     from backend.app.api.v1 import users as general_users_router
     from backend.app.api.v1 import analytics as analytics_router
+    from backend.app.api.v1 import goals as goals_router
     from backend.app.api.v1 import candidates_delete as candidate_delete_router
     from backend.app.api.v1 import catalogs as catalogs_router
     from backend.app.api.v1 import reminders_v2 as reminders_v2_router
+    from backend.app.api.v1 import activities_v1 as activities_v1_router
     from backend.app.api.v1 import automation_log as automation_log_router
     from backend.app.api.v1 import automation_rules as automation_rules_router
     from backend.app.api.v1 import services as additional_services_router
@@ -73,10 +75,13 @@ try:
     from backend.app.modules.companies.ensure_schema import ensure_companies_schema
     from backend.app.modules.notifications.ensure_schema import ensure_notifications_schema
     from backend.app.services.ensure_reminders_schema import ensure_reminders_schema
+    from backend.app.services.ensure_additional_services_schema import ensure_additional_services_schema
     from backend.app.services.ensure_automation_rules_schema import ensure_automation_rules_schema
     from backend.app.services.ensure_communications_schema import ensure_communications_schema
     from backend.app.services.ensure_funnels_schema import ensure_funnels_schema
     from backend.app.api.v1.vacancies.router import router as vacancies_router
+    from backend.app.api.v1.own_companies import legacy_router as own_companies_legacy_router
+    from backend.app.api.v1.own_companies import router as own_companies_router
     from backend.app.api.public import intake as public_intake_router
     try:
         from backend.app.api.public import scanner as public_scanner_router
@@ -85,6 +90,7 @@ try:
         public_scanner_router = None  # type: ignore[assignment]
     from backend.app.api.public import notifications as public_notifications_router
     from backend.app.api.public import client_portal as public_client_portal_router
+    from backend.app.api.public import goals as public_goals_router
     if not _DOCUMENTS_DISABLED:
         from backend.app.modules.documents.router import router as documents_db_router  # type: ignore[assignment]
         from backend.app.modules.documents.ensure_schema import ensure_documents_schema  # type: ignore[no-redef]
@@ -142,9 +148,11 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import health as health_router  # type: ignore[no-redef]
     from .api.v1 import users as general_users_router  # type: ignore[no-redef]
     from .api.v1 import analytics as analytics_router  # type: ignore[no-redef]
+    from .api.v1 import goals as goals_router  # type: ignore[no-redef]
     from .api.v1 import candidates_delete as candidate_delete_router  # type: ignore[no-redef]
     from .api.v1 import catalogs as catalogs_router  # type: ignore[no-redef]
     from .api.v1 import reminders_v2 as reminders_v2_router  # type: ignore[no-redef]
+    from .api.v1 import activities_v1 as activities_v1_router  # type: ignore[no-redef]
     from .api.v1 import services as additional_services_router  # type: ignore[no-redef]
     try:
         from .api.v1 import scanner as scanner_router  # type: ignore[no-redef]
@@ -161,6 +169,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .modules.companies.ensure_schema import ensure_companies_schema  # type: ignore[no-redef]
     from .modules.notifications.ensure_schema import ensure_notifications_schema  # type: ignore[no-redef]
     from .services.ensure_reminders_schema import ensure_reminders_schema  # type: ignore[no-redef]
+    from .services.ensure_additional_services_schema import ensure_additional_services_schema  # type: ignore[no-redef]
     from .services.ensure_communications_schema import ensure_communications_schema  # type: ignore[no-redef]
     from .services.ensure_funnels_schema import ensure_funnels_schema  # type: ignore[no-redef]
     from .api.v1.vacancies.router import router as vacancies_router  # type: ignore[no-redef]
@@ -172,6 +181,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
         public_scanner_router = None  # type: ignore[assignment]
     from .api.public import notifications as public_notifications_router  # type: ignore[no-redef]
     from .api.public import client_portal as public_client_portal_router  # type: ignore[no-redef]
+    from .api.public import goals as public_goals_router  # type: ignore[no-redef]
     if not _DOCUMENTS_DISABLED:
         from .modules.documents.router import router as documents_db_router  # type: ignore[no-redef]
         from .modules.documents.ensure_schema import ensure_documents_schema  # type: ignore[no-redef]
@@ -421,6 +431,11 @@ async def lifespan(app: FastAPI):
         ensure_reminders_schema()
     except Exception as e:
         logger.warning("[startup:ensure_reminders_schema] skipped (%s)", e)
+
+    try:
+        ensure_additional_services_schema()
+    except Exception as e:
+        logger.warning("[startup:ensure_additional_services_schema] skipped (%s)", e)
 
     try:
         ensure_automation_rules_schema()
@@ -676,12 +691,14 @@ app.include_router(onboarding_router.router, prefix="/api/v1", tags=["onboarding
 app.include_router(health_router.router, prefix="/api/v1", tags=["health"])
 app.include_router(meta_router.router, prefix="/api/v1", tags=["meta"])
 app.include_router(analytics_router.router, prefix="/api/v1", tags=["analytics"])
+app.include_router(goals_router.router, prefix="/api/v1", tags=["goals"])
 app.include_router(meta_webhook.router, prefix="/api/v1/leads/meta", tags=["meta-leads"])
 app.include_router(general_users_router.router)
 
 app.include_router(catalogs_router.router, prefix="/api/v1", tags=["catalogs"])
 app.include_router(additional_services_router.router, prefix="/api/v1", tags=["additional-services"])
 app.include_router(reminders_v2_router.router, prefix="/api/v1", tags=["reminders"])
+app.include_router(activities_v1_router.router, prefix="/api/v1", tags=["activities"])
 app.include_router(automation_log_router.router, prefix="/api/v1", tags=["automation-log"])
 app.include_router(automation_rules_router.router, prefix="/api/v1", tags=["automation-rules"])
 
@@ -700,6 +717,7 @@ app.include_router(settings_communications_router.router, prefix="/api/v1/settin
 app.include_router(public_intake_router.router, prefix="/api/v1", tags=["public-intake"])
 app.include_router(public_notifications_router.router, prefix="/api/v1", tags=["public-notifications"])
 app.include_router(public_client_portal_router.router, prefix="/api/v1", tags=["public-client-portal"])
+app.include_router(public_goals_router.router, prefix="/api/v1", tags=["public-goals"])
 if scanner_router is not None:
     app.include_router(scanner_router.meta_router)
     app.include_router(scanner_router.router)
@@ -708,6 +726,8 @@ app.include_router(invoices_router, prefix="/api/v1", tags=["invoices"])
 # Домен
 app.include_router(companies_router, prefix="/api/v1", tags=["companies"])
 app.include_router(vacancies_router, prefix="/api/v1", tags=["vacancies"])
+app.include_router(own_companies_router, prefix="/api/v1", tags=["own-companies"])
+app.include_router(own_companies_legacy_router, prefix="/api/v1", tags=["own-companies"])
 app.include_router(recruiters_router, prefix="/api/v1", tags=["recruiters"])
 app.include_router(leads_router, prefix="/api/v1", tags=["leads"])
 app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])

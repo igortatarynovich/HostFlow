@@ -8,6 +8,8 @@ from backend.app.models.tenant import Tenant
 
 async def run_seed(db: AsyncSession) -> None:
     """Run all seed functions for the application."""
+    import logging
+    logger = logging.getLogger(__name__)
     # Получаем все активные тенанты
     stmt = select(Tenant).where(Tenant.is_active == True)
     tenants = (await db.execute(stmt)).scalars().all()
@@ -31,8 +33,10 @@ async def run_seed(db: AsyncSession) -> None:
                     spec.loader.exec_module(seed_stages_module)
                     await seed_stages_module.seed_stages(db)  # type: ignore
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             logger.debug(f"[seed] Stages seed skipped: {e}")
 
         # Seed process templates
@@ -40,8 +44,10 @@ async def run_seed(db: AsyncSession) -> None:
             from seed.seed_process_templates import seed_process_templates
             await seed_process_templates(db, tenant_id)
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             logger.warning(f"[seed] Failed to seed process templates for tenant {tenant_id}: {e}")
 
         # Seed requirements and gates
@@ -49,8 +55,10 @@ async def run_seed(db: AsyncSession) -> None:
             from seed.seed_requirements_and_gates import seed_requirements_and_gates
             await seed_requirements_and_gates(db, tenant_id)
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             logger.warning(f"[seed] Failed to seed requirements and gates for tenant {tenant_id}: {e}")
 
         # Seed base candidate profile
@@ -58,8 +66,10 @@ async def run_seed(db: AsyncSession) -> None:
             from backend.app.seed_candidate_profiles import ensure_base_candidate_profile
             await ensure_base_candidate_profile(db, tenant_id)
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             logger.warning(f"[seed] Failed to seed base candidate profile for tenant {tenant_id}: {e}")
 
         # Seed driver_ce_default profile and assign to vacancies without profile
@@ -67,6 +77,8 @@ async def run_seed(db: AsyncSession) -> None:
             from backend.app.seed_candidate_profiles import ensure_driver_ce_default_profile
             await ensure_driver_ce_default_profile(db, tenant_id)
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             logger.warning(f"[seed] Failed to seed driver_ce_default profile for tenant {tenant_id}: {e}")

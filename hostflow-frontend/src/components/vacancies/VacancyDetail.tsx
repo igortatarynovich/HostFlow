@@ -11,6 +11,7 @@ import { useI18n } from '../../i18n'
 import { EMPLOYMENT_TYPES, createVacancy, getVacancy, updateVacancy } from '../../api/vacancies'
 import type { EmploymentType } from '../../api/vacancies'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
+import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 
 const primaryBtn = 'btn-primary'
 const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
@@ -32,6 +33,12 @@ const vacancyFormSchema = z.object({
   is_archived: z.boolean().default(false),
   employment_type: z.enum(EMPLOYMENT_ENUM),
   candidate_profile_id: z.string().optional().or(z.literal('')),
+  // Lead qualification criteria (stored in vacancy.extra.lead_criteria_v1)
+  criteria_min_experience_eu_years: z
+    .union([z.string(), z.number()])
+    .optional()
+    .transform((v) => (v === '' || v == null ? undefined : v)),
+  criteria_requires_documents: z.string().optional().or(z.literal('')),
 })
 
 type VacancyFormValues = z.infer<typeof vacancyFormSchema>
@@ -104,6 +111,9 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     ? (employment as EmploymentType)
     : EMPLOYMENT_TYPES[0]
 
+  const extra = (source?.extra && typeof source.extra === 'object' ? source.extra : {}) as any
+  const crit = (extra?.lead_criteria_v1 && typeof extra.lead_criteria_v1 === 'object' ? extra.lead_criteria_v1 : {}) as any
+
   return {
     title: source?.title ?? '',
     status: normalizedStatus,
@@ -118,6 +128,8 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     is_open: typeof source?.is_open === 'boolean' ? source.is_open : normalizedStatus === 'open',
     employment_type: normalizedEmployment,
     candidate_profile_id: source?.candidate_profile_id ?? '',
+    criteria_min_experience_eu_years: crit?.min_experience_eu_years ?? '',
+    criteria_requires_documents: Array.isArray(crit?.requires_documents) ? crit.requires_documents.join(', ') : '',
   }
 }
 
@@ -181,6 +193,8 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const [pipeCounts, setPipeCounts] = useState<Record<string, number>>({})
   const [pipeLoading, setPipeLoading] = useState(false)
   const [candidateProfiles, setCandidateProfiles] = useState<CandidateProfile[]>([])
+  const [requirementsPresets, setRequirementsPresets] = useState<VacancyRequirementsPreset[]>([])
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('')
 
   const {
     control,
@@ -203,6 +217,21 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   useEffect(() => {
     resetForm(toFormDefaults(model))
   }, [model, resetForm])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const items = await listVacancyRequirementsPresets()
+        if (!cancelled) setRequirementsPresets(items)
+      } catch {
+        if (!cancelled) setRequirementsPresets([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const shouldBeOpen = (watchStatus ?? 'open') === 'open'
@@ -333,6 +362,23 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         const mode: 'create' | 'update' = model?.id ? 'update' : 'create'
 
         const payload = buildVacancyPayload(values, model, mode)
+        // Inject lead criteria into extra (MVP)
+        const minRaw: any = (values as any).criteria_min_experience_eu_years
+        let minYears: number | undefined = undefined
+        if (minRaw !== undefined && minRaw !== null && String(minRaw).trim() !== '') {
+          const parsed = Number(minRaw)
+          if (Number.isFinite(parsed) && parsed > 0) minYears = Math.floor(parsed)
+        }
+        const docs = String((values as any).criteria_requires_documents || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+        const criteria: any = {}
+        if (typeof minYears !== 'undefined') criteria.min_experience_eu_years = minYears
+        if (docs.length > 0) criteria.requires_documents = docs
+        if (payload?.extra && typeof payload.extra === 'object') {
+          ;(payload.extra as any).lead_criteria_v1 = criteria
+        }
 
         const response = mode === 'update'
           ? await updateVacancy(model!.id, payload)
@@ -671,6 +717,59 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                   style={{ height: 'auto' }}
                 />
               </label>
+            </div>
+            <div className="md:col-span-2">
+              <div className="mb-2 text-sm font-semibold text-slate-800">Критерии для лидов (авто‑qualification)</div>
+              {requirementsPresets.length > 0 && (
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <select
+                    className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                    value={selectedPresetId}
+                    onChange={(e) => setSelectedPresetId(e.target.value)}
+                  >
+                    <option value="">— пресет требований —</option>
+                    {requirementsPresets.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className={secondaryBtn}
+                    disabled={!selectedPresetId}
+                    onClick={() => {
+                      const preset = requirementsPresets.find((p) => p.id === selectedPresetId)
+                      const crit: any = preset?.criteria || {}
+                      const min = crit?.min_experience_eu_years
+                      const docs = Array.isArray(crit?.requires_documents) ? crit.requires_documents.join(', ') : ''
+                      setValue('criteria_min_experience_eu_years' as any, (typeof min !== 'undefined' ? String(min) : '') as any)
+                      setValue('criteria_requires_documents' as any, docs as any)
+                    }}
+                  >
+                    Применить пресет
+                  </button>
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="block">
+                  <div className="label">Мин. опыт по ЕС (лет)</div>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="input"
+                    {...register('criteria_min_experience_eu_years')}
+                    placeholder="например, 1"
+                  />
+                </label>
+                <label className="block">
+                  <div className="label">Требуемые документы (коды, через запятую)</div>
+                  <input className="input" {...register('criteria_requires_documents')} placeholder="np. karta_pobytu, wp_a" />
+                </label>
+              </div>
+              <div className="mt-2 text-xs text-slate-500">
+                Сейчас проверяем по полям лида: <span className="font-mono">experience_eu_years</span> и <span className="font-mono">documents[]</span> (если есть).
+              </div>
             </div>
               </div>
             </form>

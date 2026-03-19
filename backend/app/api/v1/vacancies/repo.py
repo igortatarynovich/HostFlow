@@ -7,9 +7,17 @@ from backend.app.models.candidate_profile import CandidateProfile
 from backend.app.services.tenant_visibility import TenantVisibility
 
 class VacancyRepo:
-    def __init__(self, db: AsyncSession, tenant_id: str, visibility: TenantVisibility | None = None) -> None:
+    def __init__(
+        self,
+        db: AsyncSession,
+        tenant_id: str,
+        *,
+        own_company_id: str | None = None,
+        visibility: TenantVisibility | None = None,
+    ) -> None:
         self.db = db
         self.tenant_id = tenant_id
+        self.own_company_id = own_company_id
         self.visibility = visibility or TenantVisibility(tenant_id=tenant_id)
 
     def _scope_clause(self):
@@ -39,6 +47,8 @@ class VacancyRepo:
                 isouter=True,
             )
         )
+        if self.own_company_id:
+            stmt = stmt.where(Vacancy.own_company_id == self.own_company_id)
         res = await self.db.execute(stmt)
         row = res.first()
         if row is None:
@@ -83,6 +93,8 @@ class VacancyRepo:
             )
             .group_by(Vacancy.id, Company.name, CandidateProfile.id, CandidateProfile.name)
         )
+        if self.own_company_id:
+            stmt = stmt.where(Vacancy.own_company_id == self.own_company_id)
         if company_id:
             stmt = stmt.where(Vacancy.company_id == company_id)
         if status:

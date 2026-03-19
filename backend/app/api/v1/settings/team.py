@@ -62,6 +62,23 @@ EffectiveRoleModules = platform_schemas.EffectiveRoleModules
 SeatRequestOut = platform_schemas.TenantSeatRequestOut
 
 
+class VacancyRequirementsPresetIn(BaseModel):
+    id: str = Field(..., min_length=1, max_length=64)
+    label: str = Field(..., min_length=1, max_length=128)
+    criteria: Dict[str, object] = Field(default_factory=dict)
+
+
+class VacancyRequirementsPresetOut(BaseModel):
+    id: str
+    label: str
+    criteria: Dict[str, object] = Field(default_factory=dict)
+    updated_at: str | None = None
+
+
+class VacancyRequirementsPresetListOut(BaseModel):
+    items: list[VacancyRequirementsPresetOut]
+
+
 @router.get(
     "",
     response_model=TeamOverviewResponse,
@@ -194,6 +211,83 @@ async def get_module_settings(
     modules = tenant_service.get_module_settings_snapshot(tenant)
     return TenantModuleSettings(**modules)
 
+
+@router.get(
+    "/vacancy-requirements-presets",
+    response_model=VacancyRequirementsPresetListOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager, Role.recruiter))],
+)
+async def list_vacancy_requirements_presets(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> VacancyRequirementsPresetListOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    items = tenant_service.get_vacancy_requirements_presets_snapshot(tenant)
+    return VacancyRequirementsPresetListOut(items=[VacancyRequirementsPresetOut(**i) for i in items])
+
+
+@router.put(
+    "/vacancy-requirements-presets/{preset_id}",
+    response_model=VacancyRequirementsPresetListOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager))],
+)
+async def upsert_vacancy_requirements_preset(
+    preset_id: str,
+    payload: VacancyRequirementsPresetIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> VacancyRequirementsPresetListOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    try:
+        items = await tenant_service.upsert_vacancy_requirements_preset(
+            db,
+            tenant,
+            preset_id=preset_id,
+            label=payload.label,
+            criteria=dict(payload.criteria or {}),
+            actor_id=str(ctx.sub or "").strip() or None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return VacancyRequirementsPresetListOut(items=[VacancyRequirementsPresetOut(**i) for i in items])
+
+
+@router.delete(
+    "/vacancy-requirements-presets/{preset_id}",
+    response_model=VacancyRequirementsPresetListOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.manager))],
+)
+async def delete_vacancy_requirements_preset(
+    preset_id: str,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> VacancyRequirementsPresetListOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    try:
+        items = await tenant_service.delete_vacancy_requirements_preset(
+            db,
+            tenant,
+            preset_id=preset_id,
+            actor_id=str(ctx.sub or "").strip() or None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return VacancyRequirementsPresetListOut(items=[VacancyRequirementsPresetOut(**i) for i in items])
 
 @router.get(
     "/module-matrix",

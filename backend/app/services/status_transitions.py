@@ -146,7 +146,7 @@ class StatusTransitionService:
     }
 
     @classmethod
-    def get_status_model_for_document_type(
+    async def get_status_model_for_document_type(
         cls, db: AsyncSession, tenant_id: str, document_type_id: str
     ) -> Optional[DocumentStatusModel]:
         """Получить статус-модель для типа документа."""

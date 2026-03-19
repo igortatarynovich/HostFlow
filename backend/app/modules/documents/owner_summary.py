@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Set, Tuple
 
 from ...models.enums import DocumentStatus
+from ...services.document_catalog import normalize_doc_type
 from ...services.document_ruleset import load_default_ruleset
 from .rules_engine import compute_candidate_checklist, expiring_threshold_for
 
@@ -46,13 +47,52 @@ def _normalize_type_code(value: Any) -> str:
     raw = str(value or "").strip().lower()
     if not raw:
         return ""
-    return raw.replace("-", "_").replace(" ", "_")
+    compact = raw.replace("-", "_").replace(" ", "_")
+    canonical = normalize_doc_type(compact)
+    if canonical and canonical != "additional_document":
+        return canonical
+    return compact
+
+
+def _is_adr_like_additional_document(doc: Dict[str, Any]) -> bool:
+    doc_type = _normalize_type_code(doc.get("type") or doc.get("doc_type"))
+    if doc_type != "additional_document":
+        return False
+    hints: List[str] = []
+    for key in ("custom_name", "title", "name"):
+        value = doc.get(key)
+        if value:
+            hints.append(str(value).lower())
+    for key in ("meta", "meta_json", "extra"):
+        payload = doc.get(key)
+        if isinstance(payload, dict):
+            for nested_key in ("legacy_doc_type", "doc_type", "title", "custom_name"):
+                nested_value = payload.get(nested_key)
+                if nested_value:
+                    hints.append(str(nested_value).lower())
+    joined = " ".join(hints)
+    return "adr" in joined
 
 
 def _normalize_status(value: Any) -> str:
     if isinstance(value, DocumentStatus):
         return value.value
     return str(value or "").lower()
+
+
+def _effective_status(doc: Dict[str, Any]) -> str:
+    status = _normalize_status(doc.get("status"))
+    last_check = doc.get("last_check")
+    decision = ""
+    if isinstance(last_check, dict):
+        decision = str(last_check.get("decision") or "").strip().lower()
+    # Some legacy flows persist reviewer decision but don't update Document.status.
+    # Use reviewer decision as source of truth for summary blockers.
+    if decision == "approved":
+        return DocumentStatus.approved.value
+    if decision == "rejected":
+        return DocumentStatus.rejected.value
+    return status
 
 
 def _classify_required_type(statuses: Dict[str, int]) -> Tuple[str, str]:
@@ -104,6 +144,8 @@ def compute_owner_summary(
         if not t:
             continue
         targets = EQUIVALENT_SATISFACTION.get(str(t)) or [str(t)]
+        if _is_adr_like_additional_document(d):
+            targets = list(dict.fromkeys([*targets, "adr"]))
         status_map = {status.value: 0 for status in DocumentStatus}
         for target in targets:
             normalized_target = _normalize_type_code(target)
@@ -113,7 +155,7 @@ def compute_owner_summary(
                 normalized_target,
                 status_map.copy(),
             )
-            st = _normalize_status(d.get("status"))
+            st = _effective_status(d)
             if st not in cur:
                 cur[st] = 0
             cur[st] += 1

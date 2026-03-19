@@ -32,6 +32,12 @@ class Lead(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    own_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("own_companies.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     company_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("companies.id", ondelete="RESTRICT"),

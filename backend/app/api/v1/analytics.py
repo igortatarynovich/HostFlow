@@ -35,6 +35,7 @@ from backend.app.models import (
 )
 from backend.app.models.reminder import ReminderStatus
 from backend.app.models.additional_service import Service, ServiceItem
+from backend.app.models.invoice import Invoice
 from backend.app.models.tenant import TenantLink
 from backend.app.services.handoff import is_client_tenant_for_list
 from backend.app.models.enums import CandidateStage
@@ -52,10 +53,25 @@ from backend.app.api.v1.candidates.repo import _candidate_scope_clause as repo_s
 
 router = APIRouter(tags=["analytics"])
 
+# Perf budgets: p95 thresholds (ms) by metric key.
+# Keep small and actionable; these values are meant to be tuned after baseline stabilizes.
+PERF_BUDGETS_P95_MS: dict[str, float] = {
+    "leads.list.load": 1500.0,
+    "candidates.list.load": 2500.0,
+}
+
 
 class OpsCountersOut(BaseModel):
     no_next_action_candidates: int = 0
     overdue_reminders: int = 0
+    # Leads next action loop (processed leads only)
+    leads_no_next_action: int = 0
+    leads_overdue: int = 0
+    leads_with_next_action: int = 0
+    leads_total: int = 0
+    # SLA nudge signals (best-effort, reminder-based)
+    leads_sla_no_next_action_reminders: int = 0
+    leads_sla_stuck_stage_reminders: int = 0
     leads_needs_routing: int = 0
     leads_failed: int = 0
     draft_intake_stale: int = 0
@@ -109,6 +125,101 @@ async def ops_counters(
         )
     ).scalar_one() or 0
 
+    # Leads next action (processed leads only)
+    # - no_next_action: processed leads with no active reminders
+    # - overdue: processed leads with at least one active reminder overdue (status=overdue or due_at < now)
+    # - with_next_action: processed leads with at least one active reminder
+    now = datetime.now(timezone.utc)
+    lead_active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+
+    lead_has_active_reminder = (
+        exists()
+        .where(
+            Reminder.tenant_id == tenant_id_str,
+            Reminder.entity_type == "lead",
+            Reminder.entity_id == Lead.id,
+            Reminder.status.in_(lead_active_statuses),
+        )
+        .correlate(Lead)
+    )
+    lead_has_overdue_reminder = (
+        exists()
+        .where(
+            Reminder.tenant_id == tenant_id_str,
+            Reminder.entity_type == "lead",
+            Reminder.entity_id == Lead.id,
+            Reminder.status.in_(lead_active_statuses),
+            or_(Reminder.status == ReminderStatus.overdue, Reminder.due_at < now),
+        )
+        .correlate(Lead)
+    )
+
+    leads_total = (
+        await db.execute(select(func.count()).select_from(Lead).where(Lead.tenant_id == tenant_id_str, Lead.status == "processed"))
+    ).scalar_one() or 0
+    leads_no_next_action = (
+        await db.execute(
+            select(func.count())
+            .select_from(Lead)
+            .where(
+                Lead.tenant_id == tenant_id_str,
+                Lead.status == "processed",
+                ~lead_has_active_reminder,
+            )
+        )
+    ).scalar_one() or 0
+    leads_with_next_action = (
+        await db.execute(
+            select(func.count())
+            .select_from(Lead)
+            .where(
+                Lead.tenant_id == tenant_id_str,
+                Lead.status == "processed",
+                lead_has_active_reminder,
+            )
+        )
+    ).scalar_one() or 0
+    leads_overdue = (
+        await db.execute(
+            select(func.count())
+            .select_from(Lead)
+            .where(
+                Lead.tenant_id == tenant_id_str,
+                Lead.status == "processed",
+                lead_has_overdue_reminder,
+            )
+        )
+    ).scalar_one() or 0
+
+    # Leads SLA: number of active "no next action" SLA reminders assigned to current user.
+    leads_sla_no_next_action_reminders = (
+        await db.execute(
+            select(func.count())
+            .select_from(Reminder)
+            .where(
+                Reminder.tenant_id == tenant_id_str,
+                Reminder.assignee_id == assignee,
+                Reminder.entity_type == "lead",
+                Reminder.type == "leads_no_next_action",
+                Reminder.status.in_(lead_active_statuses),
+            )
+        )
+    ).scalar_one() or 0
+
+    leads_sla_stuck_stage_reminders = (
+        await db.execute(
+            select(func.count())
+            .select_from(Reminder)
+            .where(
+                Reminder.tenant_id == tenant_id_str,
+                Reminder.assignee_id == assignee,
+                Reminder.entity_type == "lead",
+                Reminder.type == "leads_stuck_stage",
+                Reminder.status.in_(lead_active_statuses),
+            )
+        )
+    ).scalar_one() or 0
+
     leads_needs_routing = (
         await db.execute(
             select(func.count())
@@ -142,7 +253,8 @@ async def ops_counters(
 
     # Automation rules enabled
     try:
-        from backend.app.models.automation_rule import AutomationRule
+        # Import from aggregated models to avoid app/backend import alias drift.
+        from backend.app.models import AutomationRule
         automation_rules_enabled = (
             await db.execute(
                 select(func.count())
@@ -151,25 +263,44 @@ async def ops_counters(
             )
         ).scalar_one() or 0
     except Exception:
+        # If a statement failed, the transaction is aborted in Postgres.
+        # Roll back so subsequent counters can still execute.
+        try:
+            await db.rollback()
+        except Exception:
+            pass
         automation_rules_enabled = 0
 
     # Automation events last 24h (ActivityLog)
     since = datetime.now(timezone.utc) - timedelta(hours=24)
-    automation_events_24h = (
-        await db.execute(
-            select(func.count())
-            .select_from(ActivityLog)
-            .where(
-                ActivityLog.tenant_id == tenant_id_str,
-                ActivityLog.action.like("automation.%"),
-                ActivityLog.created_at >= since,
+    try:
+        automation_events_24h = (
+            await db.execute(
+                select(func.count())
+                .select_from(ActivityLog)
+                .where(
+                    ActivityLog.tenant_id == tenant_id_str,
+                    ActivityLog.action.like("automation.%"),
+                    ActivityLog.created_at >= since,
+                )
             )
-        )
-    ).scalar_one() or 0
+        ).scalar_one() or 0
+    except Exception:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        automation_events_24h = 0
 
     return OpsCountersOut(
         no_next_action_candidates=int(no_next_action_candidates),
         overdue_reminders=int(overdue_reminders),
+        leads_no_next_action=int(leads_no_next_action),
+        leads_overdue=int(leads_overdue),
+        leads_with_next_action=int(leads_with_next_action),
+        leads_total=int(leads_total),
+        leads_sla_no_next_action_reminders=int(leads_sla_no_next_action_reminders),
+        leads_sla_stuck_stage_reminders=int(leads_sla_stuck_stage_reminders),
         leads_needs_routing=int(leads_needs_routing),
         leads_failed=int(leads_failed),
         draft_intake_stale=int(draft_intake_stale),
@@ -808,7 +939,69 @@ async def services_overview(
         )
     ).scalars().all()
 
+    # Build label lookup maps (avoid placeholder labels in UI).
+    company_ids = {str(o.company_id) for o in rows if getattr(o, "company_id", None)}
+    candidate_ids = {str(o.candidate_id) for o in rows if getattr(o, "candidate_id", None)}
+    vacancy_ids = {str(o.vacancy_id) for o in rows if getattr(o, "vacancy_id", None)}
+    user_ids = {str(getattr(o, "assigned_to", "") or "").strip() for o in rows if str(getattr(o, "assigned_to", "") or "").strip()}
+
+    company_map: dict[str, str] = {}
+    candidate_map: dict[str, str] = {}
+    vacancy_map: dict[str, str] = {}
+    user_map: dict[str, str] = {}
+
+    if company_ids:
+        crows = await db.execute(select(Company.id, Company.name).where(Company.tenant_id == tenant_id_str, Company.id.in_(company_ids)))
+        company_map = {str(cid): (str(name or "").strip() or str(cid)[:8]) for cid, name in crows.all()}
+    if candidate_ids:
+        crow = await db.execute(select(Candidate.id, Candidate.first_name, Candidate.last_name).where(Candidate.tenant_id == tenant_id_str, Candidate.id.in_(candidate_ids)))
+        candidate_map = {
+            str(cid): (f"{(fn or '').strip()} {(ln or '').strip()}".strip() or str(cid)[:8])
+            for cid, fn, ln in crow.all()
+        }
+    if vacancy_ids:
+        vrow = await db.execute(select(Vacancy.id, Vacancy.title).where(Vacancy.tenant_id == tenant_id_str, Vacancy.id.in_(vacancy_ids)))
+        vacancy_map = {str(vid): (str(title or "").strip() or str(vid)[:8]) for vid, title in vrow.all()}
+    if user_ids:
+        urow = await db.execute(select(User.id, User.full_name, User.email).where(User.tenant_id == tenant_id_str, User.id.in_(user_ids)))
+        user_map = {
+            str(uid): (str(full or "").strip() or str(email or "").strip() or str(uid)[:8])
+            for uid, full, email in urow.all()
+        }
+
     now = datetime.now(timezone.utc)
+
+    # Invoice aggregation for service_orders (sell → invoice → collect analytics).
+    order_ids = [str(o.id) for o in rows]
+    invoices_by_order: dict[str, list[Invoice]] = defaultdict(list)
+    invoices_invoiced_total = 0.0
+    invoices_paid_total = 0.0
+    invoices_overdue_count = 0
+    if order_ids:
+        inv_rows = await db.execute(
+            select(Invoice).where(
+                Invoice.tenant_id == tenant_id_str,
+                Invoice.service_order_id.in_(order_ids),
+            )
+        )
+        for inv in inv_rows.scalars().all():
+            invoices_by_order[str(inv.service_order_id)].append(inv)
+            try:
+                invoices_invoiced_total += _as_float(getattr(inv, "total_amount", 0))
+            except Exception:
+                pass
+            try:
+                invoices_paid_total += _as_float(getattr(inv, "paid_amount", 0))
+            except Exception:
+                pass
+            try:
+                due = getattr(inv, "due_date", None)
+                st = str(getattr(inv, "status", "") or "").strip().lower()
+                if due and hasattr(due, "toordinal") and st not in {"paid", "cancelled"} and due < now.date():
+                    invoices_overdue_count += 1
+            except Exception:
+                pass
+
     cutoff = now - timedelta(days=30)
     trends_cutoff = now - timedelta(days=days)
 
@@ -832,16 +1025,21 @@ async def services_overview(
 
     def owner_label_and_kind(order: ServiceOrder) -> tuple[str, str]:
         if order.company_id:
-            return (f"Company {str(order.company_id)[:8]}", "company")
+            cid = str(order.company_id)
+            return (company_map.get(cid) or cid[:8], "company")
         if order.candidate_id:
-            return (f"Candidate {str(order.candidate_id)[:8]}", "candidate")
+            cid = str(order.candidate_id)
+            return (candidate_map.get(cid) or cid[:8], "candidate")
         if order.vacancy_id:
-            return (f"Vacancy {str(order.vacancy_id)[:8]}", "vacancy")
+            vid = str(order.vacancy_id)
+            return (vacancy_map.get(vid) or vid[:8], "vacancy")
         return ("Unknown", "unknown")
 
     def manager_label(order: ServiceOrder) -> str:
         assigned = str(getattr(order, "assigned_to", "") or "").strip()
-        return f"Manager {assigned[:8]}" if assigned else "Unassigned"
+        if not assigned:
+            return "Unassigned"
+        return user_map.get(assigned) or f"Manager {assigned[:8]}"
 
     def trend_key(order: ServiceOrder) -> str:
         dt = order.created_at or now
@@ -892,6 +1090,31 @@ async def services_overview(
         has_docs_issue = False
         first_item_label = "Unknown"
         order_profit = 0.0
+        order_invoiced = 0.0
+        order_paid = 0.0
+        order_overdue = 0
+        for inv in invoices_by_order.get(str(order.id), []):
+            try:
+                total_amount = _as_float(getattr(inv, "total_amount", 0))
+            except Exception:
+                total_amount = 0.0
+            try:
+                paid_amount = _as_float(getattr(inv, "paid_amount", 0))
+            except Exception:
+                paid_amount = 0.0
+            order_invoiced += total_amount
+            order_paid += paid_amount
+            due = getattr(inv, "due_date", None)
+            st = str(getattr(inv, "status", "") or "").strip().lower()
+            if due and st not in {"paid", "cancelled"} and isinstance(due, (datetime, )):
+                # due_date is Date on model; keep safe
+                pass
+            try:
+                # due_date is date; compare with now.date()
+                if due and hasattr(due, "toordinal") and st not in {"paid", "cancelled"} and due < now.date():
+                    order_overdue += 1
+            except Exception:
+                pass
         for item in order.items:
             item_revenue = _as_float(item.amount)
             item_estimated_cost = _as_float(getattr(item, "estimated_cost", 0))
@@ -949,10 +1172,16 @@ async def services_overview(
                 "revenue": 0.0,
                 "profit": 0.0,
                 "delivered": 0,
+                "invoiced": 0.0,
+                "paid": 0.0,
+                "overdue_invoices": 0,
             }
             trend_entry["orders"] = int(trend_entry["orders"]) + 1
             trend_entry["revenue"] = float(trend_entry["revenue"]) + order_revenue
             trend_entry["profit"] = float(trend_entry["profit"]) + order_profit
+            trend_entry["invoiced"] = float(trend_entry["invoiced"]) + order_invoiced
+            trend_entry["paid"] = float(trend_entry["paid"]) + order_paid
+            trend_entry["overdue_invoices"] = int(trend_entry["overdue_invoices"]) + int(order_overdue)
             if status_value == "delivered":
                 trend_entry["delivered"] = int(trend_entry["delivered"]) + 1
             trend_map[trend_key(order)] = trend_entry
@@ -1003,6 +1232,10 @@ async def services_overview(
             "gross_profit": round(gross_profit, 2),
             "gross_margin": gross_margin,
             "cost_coverage": coverage,
+            "invoices_invoiced": round(invoices_invoiced_total, 2),
+            "invoices_paid": round(invoices_paid_total, 2),
+            "invoices_outstanding": round(max(0.0, invoices_invoiced_total - invoices_paid_total), 2),
+            "invoices_overdue_count": int(invoices_overdue_count),
         },
         last30={
             "total": last30_total,
@@ -1925,11 +2158,11 @@ class AnalyticsEventIn(BaseModel):
     # Тип события:
     # - trial_retention_nudge: существующий трек для D1/D2/D3/D7 подсказок
     # - ttv_step: новый трек для замеров Time To Value (ключевые шаги онбординга)
-    event: Literal["trial_retention_nudge", "ttv_step"]
+    event: Literal["trial_retention_nudge", "ttv_step", "perf"]
     # Действие над событием:
     # - impression/cta_click/dismiss — как раньше
     # - completed — новый action для фиксации завершения шага TTV
-    action: Literal["impression", "cta_click", "dismiss", "completed"]
+    action: Literal["impression", "cta_click", "dismiss", "completed", "measured"]
     # Для trial_retention_nudge:
     day_bucket: Optional[Literal["d1", "d2", "d3", "d7"]] = None
     # Для ttv_step:
@@ -1938,6 +2171,11 @@ class AnalyticsEventIn(BaseModel):
     step_key: Optional[str] = None
     target_href: Optional[str] = None
     activation_done: Optional[bool] = None
+    # For perf:
+    metric_key: Optional[str] = None
+    duration_ms: Optional[float] = None
+    route: Optional[str] = None
+    meta: Optional[dict[str, Any]] = None
 
 
 class TrialRetentionBucketOut(BaseModel):
@@ -1970,6 +2208,24 @@ class TtvReportOut(BaseModel):
     steps: list[TtvStepDurationsOut]
 
 
+class PerfBaselineRowOut(BaseModel):
+    metric_key: str
+    samples: int
+    p50_ms: float
+    p95_ms: float
+    min_ms: float
+    max_ms: float
+
+
+class PerfBaselineOut(BaseModel):
+    period: dict[str, Optional[str]]
+    rows: list[PerfBaselineRowOut]
+
+
+class PerfBudgetsOut(BaseModel):
+    budgets_p95_ms: dict[str, float]
+
+
 @router.post("/analytics/events")
 async def post_analytics_event(
     payload: AnalyticsEventIn,
@@ -1990,6 +2246,10 @@ async def post_analytics_event(
         "step_key": payload.step_key,
         "target_href": payload.target_href,
         "activation_done": payload.activation_done,
+        "metric_key": payload.metric_key,
+        "duration_ms": payload.duration_ms,
+        "route": payload.route,
+        "meta": payload.meta,
     }
 
     await log_activity(
@@ -2002,6 +2262,30 @@ async def post_analytics_event(
             **event_payload,
         },
     )
+
+    # Perf budgets: log an extra signal when a measurement breaches p95 budget.
+    if payload.event == "perf" and payload.action == "measured":
+        key = str(payload.metric_key or "").strip()
+        if key and payload.duration_ms is not None:
+            try:
+                dms = float(payload.duration_ms)
+            except Exception:
+                dms = -1.0
+            budget = PERF_BUDGETS_P95_MS.get(key)
+            if budget is not None and dms >= 0 and dms > float(budget):
+                await log_activity(
+                    db,
+                    tenant_id=tenant_id,
+                    actor_id=str(user.sub or "").strip() or None,
+                    action="analytics.perf.budget_breached",
+                    target_type="analytics",
+                    payload={
+                        "metric_key": key,
+                        "duration_ms": dms,
+                        "budget_p95_ms": float(budget),
+                        "route": payload.route,
+                    },
+                )
     await db.commit()
     return {"ok": True}
 
@@ -2096,6 +2380,74 @@ async def get_trial_retention_report(
         },
         buckets=buckets,
     )
+
+
+@router.get("/analytics/perf-baseline", response_model=PerfBaselineOut)
+async def get_perf_baseline(
+    days: int = Query(14, ge=1, le=180),
+    limit: int = Query(50, ge=5, le=500),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    now = datetime.utcnow()
+    since = now - timedelta(days=days)
+
+    rows = (
+        await db.execute(
+            select(ActivityLog.payload)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.action == "analytics.perf.measured",
+                ActivityLog.created_at >= since,
+            )
+        )
+    ).all()
+
+    by_key: dict[str, list[float]] = defaultdict(list)
+    for (raw_payload,) in rows:
+        payload = _safe_dict(raw_payload)
+        key = str(payload.get("metric_key") or "").strip()
+        if not key:
+            continue
+        dur = payload.get("duration_ms")
+        try:
+            d = float(dur)
+        except Exception:
+            continue
+        if d < 0:
+            continue
+        by_key[key].append(d)
+
+    out_rows: list[PerfBaselineRowOut] = []
+    for key, vals in by_key.items():
+        if not vals:
+            continue
+        vals_sorted = sorted(vals)
+        out_rows.append(
+            PerfBaselineRowOut(
+                metric_key=key,
+                samples=len(vals_sorted),
+                p50_ms=round(_percentile(vals_sorted, 0.5), 1),
+                p95_ms=round(_percentile(vals_sorted, 0.95), 1),
+                min_ms=round(float(vals_sorted[0]), 1),
+                max_ms=round(float(vals_sorted[-1]), 1),
+            )
+        )
+    out_rows.sort(key=lambda r: (-r.p95_ms, -r.samples, r.metric_key))
+    out_rows = out_rows[:limit]
+    return PerfBaselineOut(
+        period={
+            "from": since.isoformat(),
+            "to": now.isoformat(),
+        },
+        rows=out_rows,
+    )
+
+
+@router.get("/analytics/perf-budgets", response_model=PerfBudgetsOut)
+async def get_perf_budgets():
+    return PerfBudgetsOut(budgets_p95_ms={k: float(v) for k, v in PERF_BUDGETS_P95_MS.items()})
 
 
 @router.get("/analytics/ttv-report", response_model=TtvReportOut)

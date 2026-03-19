@@ -113,6 +113,17 @@ async def create_reminder(
         raise HTTPException(status_code=400, detail="remind_at must be datetime or null")
 
     assignee_id = payload.get("assignee_id") or actor_id
+    duration_minutes = payload.get("duration_minutes")
+    if duration_minutes is not None:
+        try:
+            duration_minutes = int(duration_minutes)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="duration_minutes must be int or null")
+        if duration_minutes <= 0:
+            duration_minutes = None
+    source = payload.get("source")
+    if source is not None:
+        source = str(source).strip() or None
     reminder = Reminder(
         tenant_id=tenant_id,
         type=payload.get("type") or "custom",
@@ -126,6 +137,8 @@ async def create_reminder(
         channel=channel,
         due_at=due_at,
         remind_at=_normalize_remind_at(due_at, remind_at, DEFAULT_REMIND_OFFSET_MINUTES),
+        duration_minutes=duration_minutes,
+        source=source,
         snoozed_until=None,
         completed_at=None,
         recurrence_json=payload.get("recurrence_json"),
@@ -176,6 +189,7 @@ async def list_reminders(
     assignee_id: Optional[str] = None,
     entity: Optional[Tuple[str, str]] = None,
     status_in: Optional[Sequence[str]] = None,
+    type_in: Optional[Sequence[str]] = None,
     due_range: Optional[Tuple[datetime, datetime]] = None,
 ) -> List[Reminder]:
     stmt = select(Reminder).where(Reminder.tenant_id == tenant_id)
@@ -189,6 +203,8 @@ async def list_reminders(
         )
     if status_in:
         stmt = stmt.where(Reminder.status.in_(list(status_in)))
+    if type_in:
+        stmt = stmt.where(Reminder.type.in_(list(type_in)))
     if due_range:
         start, end = due_range
         if start:
@@ -224,9 +240,20 @@ async def update_reminder(
     reminder = await _get_reminder(db, tenant_id, reminder_id)
     _assert_acl(reminder, actor_id, role)
 
-    for key in ("title", "description", "priority", "channel", "message"):
+    for key in ("title", "description", "priority", "channel", "message", "source"):
         if key in payload and payload[key] is not None:
             setattr(reminder, key, payload[key])
+
+    if "duration_minutes" in payload:
+        duration_minutes = payload["duration_minutes"]
+        if duration_minutes is None:
+            reminder.duration_minutes = None
+        else:
+            try:
+                duration_minutes_int = int(duration_minutes)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail="duration_minutes must be int or null")
+            reminder.duration_minutes = duration_minutes_int if duration_minutes_int > 0 else None
 
     if "assignee_id" in payload and payload["assignee_id"]:
         reminder.assignee_id = payload["assignee_id"]
@@ -349,6 +376,8 @@ async def _spawn_next_recurrence(
         channel=reminder.channel,
         due_at=next_due,
         remind_at=next_remind,
+        duration_minutes=reminder.duration_minutes,
+        source=reminder.source,
         recurrence_json=reminder.recurrence_json,
         status=ReminderStatus.pending,
         message=reminder.message,

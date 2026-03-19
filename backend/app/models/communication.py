@@ -27,6 +27,7 @@ class CommunicationThread(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    own_company_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
 
     channel: Mapped[str] = mapped_column(String(32), nullable=False)  # email, whatsapp, telegram, ...
     channel_account_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
@@ -70,6 +71,7 @@ class CommunicationMessage(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    own_company_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
     thread_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
 
     channel: Mapped[str] = mapped_column(String(32), nullable=False)

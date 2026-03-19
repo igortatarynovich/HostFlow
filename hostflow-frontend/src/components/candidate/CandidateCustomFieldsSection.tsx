@@ -125,7 +125,7 @@ function CandidateCustomFieldsSection({
       <section
         ref={customFieldsRef}
         id="section-custom-fields"
-        className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+        className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
       >
         <div className="text-sm text-slate-500">{t('common.loading')}</div>
       </section>
@@ -136,7 +136,7 @@ function CandidateCustomFieldsSection({
     <section
       ref={customFieldsRef}
       id="section-custom-fields"
-      className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+      className="group app-surface p-4 scroll-mt-24 transition-shadow hover:shadow-xl"
     >
       <div className="flex items-center gap-3">
         <IconClipboardList size={22} className="text-slate-600" />
@@ -149,7 +149,7 @@ function CandidateCustomFieldsSection({
           </p>
         </div>
       </div>
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         {visibleFields.map((fieldConfig) => {
           const definition = fieldDefinitionMap.get(fieldConfig.field_key)
           if (!definition) return null

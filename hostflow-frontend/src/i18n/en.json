@@ -275,6 +275,7 @@
         "email_inbox": "Email",
         "calendar": "Calendar",
         "planner": "Planner",
+        "activities": "Activities",
         "sla_incidents": "SLA incidents",
         "command_audit": "Command audit",
         "team_availability": "Team availability",

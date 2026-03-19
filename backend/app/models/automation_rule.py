@@ -6,8 +6,8 @@ from uuid import uuid4
 from sqlalchemy import Boolean, DateTime, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app.db.base import Base
-from backend.app.models.mixins import now_utc
+from ..db.base import Base
+from .mixins import now_utc
 
 
 class AutomationRule(Base):

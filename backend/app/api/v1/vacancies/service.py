@@ -79,10 +79,11 @@ class VacancyService:
             candidate_profile_name=profile_name,
         )
 
-    async def create(self, tenant_id: str, payload: VacancyIn) -> VacancyOut:
+    async def create(self, tenant_id: str, payload: VacancyIn, *, own_company_id: str | None = None) -> VacancyOut:
         values: Dict[str, Any] = {
             "id": str(uuid4()),
             "tenant_id": tenant_id,
+            "own_company_id": own_company_id,
             "company_id": str(payload.company_id),
             "title": payload.title,
             "description": payload.description,

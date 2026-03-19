@@ -36,6 +36,7 @@ class Document(Base):
         default=lambda: str(uuid4()),
     )
     tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    own_company_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
 
     # Candidate / company ownership
     candidate_id: Mapped[str] = mapped_column(

@@ -1,4 +1,5 @@
 import { memo, useRef, useState, useEffect } from 'react'
+import clsx from 'clsx'
 import { IconUserCircle } from '@tabler/icons-react'
 import type { Candidate, CandidateExtra } from '../../api/types'
 import type { RefObject } from 'react'
@@ -21,7 +22,6 @@ interface CandidateBasicSectionProps {
   isNew: boolean
   locale: string
   basicRef: RefObject<HTMLDivElement>
-  historyLoading: boolean
   stageOptions: string[]
   profileStageCodes?: string[]
   meta?: {
@@ -43,12 +43,12 @@ interface CandidateBasicSectionProps {
   onPhoneInputChange: (value: string) => void
   onFirstContactToggle: (checked: boolean) => void
   onGenerateShortId: () => Promise<void>
-  onOpenHistory: () => void
   candidateProfile?: CandidateProfile | null
   stageLabelIntl?: (code: string) => string
   candidateDataReadOnly?: boolean
   /** When set, stage and status_reason are persisted immediately (no Save required). */
   onStageChangePersist?: (stage: string, statusReason: string[]) => void | Promise<void>
+  embedded?: boolean
 }
 
 function CandidateBasicSection({
@@ -57,7 +57,6 @@ function CandidateBasicSection({
   isNew,
   locale,
   basicRef,
-  historyLoading,
   stageOptions,
   profileStageCodes,
   meta,
@@ -71,11 +70,11 @@ function CandidateBasicSection({
   onExtraChange,
   onPhoneInputChange,
   onGenerateShortId,
-  onOpenHistory,
   candidateProfile,
   stageLabelIntl: stageLabelIntlProp,
   candidateDataReadOnly = false,
   onStageChangePersist,
+  embedded = false,
 }: CandidateBasicSectionProps) {
   const { t } = useI18n()
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -120,32 +119,25 @@ function CandidateBasicSection({
     }
   }, [candidate.phone, phoneTouched])
 
+  const Container: any = embedded ? 'div' : 'section'
+
   return (
-    <section
+    <Container
       ref={basicRef}
       id="section-basic"
-      className="group app-surface p-6 scroll-mt-24 transition-all hover:-translate-y-0.5 hover:shadow-xl"
+      className={clsx(
+        'scroll-mt-24',
+        embedded ? 'rounded-2xl border border-slate-200 bg-white p-4' : 'group app-surface p-4 transition-shadow hover:shadow-xl',
+      )}
     >
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <IconUserCircle size={22} className="text-slate-600" />
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">{t('app.candidate_card.sections.basic.title')}</h2>
-            <p className="text-sm text-slate-500">{t('app.candidate_card.sections.basic.description')}</p>
-          </div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <IconUserCircle size={18} className="text-slate-600" />
+          <div className="text-sm font-semibold text-slate-900">{t('app.candidate_card.sections.basic.title')}</div>
         </div>
-        {!isNew && (
-          <button
-            type="button"
-            className="btn-secondary btn-sm self-start"
-            onClick={onOpenHistory}
-            disabled={historyLoading}
-          >
-            {historyLoading ? t('app.candidate_card.actions.history_loading') : t('app.candidate_card.actions.history')}
-          </button>
-        )}
       </div>
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+      <div className="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="space-y-4">
           {(!candidateProfile || isFieldVisible(candidateProfile, 'first_name')) && (
             <Input
@@ -194,38 +186,40 @@ function CandidateBasicSection({
           {(!candidateProfile || isFieldVisible(candidateProfile, 'phone')) && (
             <div>
               <div className="label">{getFieldLabel(candidateProfile, 'phone', t('app.candidate_card.fields.phone'))} {isFieldRequired(candidateProfile, 'phone') && <span className="text-red-600">*</span>}</div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(160px,1fr)_12px_minmax(160px,1fr)] sm:items-center">
-              <SearchableSelect
-                options={dialCodes}
-                value={(extra as any).phone_country || ''}
-                onChange={(cc) => {
-                  const prefix = dialCodes.find((x) => x.value === cc)?.extra?.prefix || ''
-                  onExtraChange({ phone_country: cc, phone_prefix: prefix })
-                }}
-                disabled={candidateDataReadOnly}
-                placeholder={selectTexts.empty}
-                searchPlaceholder={t('app.candidate_card.select.search_country')}
-                noResultsLabel={selectTexts.noResults}
-                className="w-full"
-              />
-              <span className="hidden text-slate-400 text-center sm:block">—</span>
-              <div className="flex-1">
-                <Input
-                  placeholder={t('app.candidate_card.placeholders.phone_number')}
-                  value={candidate.phone || ''}
-                  onChange={(e) => {
-                    onPhoneInputChange(e.target.value)
-                    setPhoneTouched(true)
-                  }}
-                  onBlur={() => setPhoneTouched(true)}
-                  className={phoneError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}
-                  readOnly={candidateDataReadOnly}
-                />
-                {phoneError && phoneTouched && (
-                  <p className="mt-1 text-xs text-red-600">{translateValidationError(phoneError)}</p>
-                )}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                <div className="sm:w-64">
+                  <SearchableSelect
+                    options={dialCodes}
+                    value={(extra as any).phone_country || ''}
+                    onChange={(cc) => {
+                      const prefix = dialCodes.find((x) => x.value === cc)?.extra?.prefix || ''
+                      onExtraChange({ phone_country: cc, phone_prefix: prefix })
+                    }}
+                    disabled={candidateDataReadOnly}
+                    placeholder={selectTexts.empty}
+                    searchPlaceholder={t('app.candidate_card.select.search_country')}
+                    noResultsLabel={selectTexts.noResults}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Input
+                    placeholder={t('app.candidate_card.placeholders.phone_number')}
+                    value={candidate.phone || ''}
+                    onChange={(e) => {
+                      onPhoneInputChange(e.target.value)
+                      setPhoneTouched(true)
+                    }}
+                    onBlur={() => setPhoneTouched(true)}
+                    containerClassName="min-w-0"
+                    className={clsx('w-full', phoneError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : '')}
+                    readOnly={candidateDataReadOnly}
+                  />
+                  {phoneError && phoneTouched && (
+                    <p className="mt-1 text-xs text-red-600">{translateValidationError(phoneError)}</p>
+                  )}
+                </div>
               </div>
-            </div>
           </div>
           )}
 
@@ -412,7 +406,8 @@ function CandidateBasicSection({
                       }
                     }
                   }}
-                  className="flex-1"
+                  containerClassName="flex-1 min-w-0"
+                  className="w-full"
                 />
                 <button
                   type="button"
@@ -453,7 +448,7 @@ function CandidateBasicSection({
           )}
         </div>
       </div>
-    </section>
+    </Container>
   )
 }
 

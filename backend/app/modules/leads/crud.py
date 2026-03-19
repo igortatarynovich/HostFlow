@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from sqlalchemy import String, and_, cast, func, or_, select
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models import (
@@ -22,6 +23,7 @@ async def create_lead(
     db: AsyncSession,
     *,
     tenant_id: str,
+    own_company_id: Optional[str] = None,
     company_id: str,
     vacancy_id: Optional[str],
     payload: Dict[str, Any],
@@ -34,6 +36,7 @@ async def create_lead(
     lead = Lead(
         id=str(uuid.uuid4()),
         tenant_id=tenant_id,
+        own_company_id=own_company_id,
         company_id=company_id,
         vacancy_id=vacancy_id,
         source=source,
@@ -327,6 +330,36 @@ async def update_lead_stage(
     lead.stage = stage
     await db.flush()
     return lead
+
+
+async def bulk_update_leads(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead_ids: list[str],
+    stage: Optional[str] = None,
+    status: Optional[str] = None,
+) -> int:
+    if not lead_ids:
+        return 0
+    values: Dict[str, Any] = {}
+    if stage is not None:
+        values["stage"] = stage
+    if status is not None:
+        values["status"] = status
+    if not values:
+        return 0
+    stmt = (
+        update(Lead)
+        .where(
+            Lead.tenant_id == tenant_id,
+            Lead.id.in_(lead_ids),
+        )
+        .values(**values)
+    )
+    res = await db.execute(stmt)
+    await db.flush()
+    return int(getattr(res, "rowcount", 0) or 0)
 
 
 async def list_meta_ads_map(

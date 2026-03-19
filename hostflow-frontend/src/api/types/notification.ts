@@ -35,6 +35,8 @@ export interface ReminderRecord {
   status: ReminderStatus;
   due_at: string;
   remind_at?: string | null;
+  duration_minutes?: number | null;
+  source?: string | null;
   snoozed_until?: string | null;
   completed_at?: string | null;
   recurrence_json?: Record<string, any> | null;

@@ -48,6 +48,8 @@ def _load_model_module(module_name: str) -> ModuleType:
 _tenant_mod = _load_model_module("tenant")
 Tenant = _tenant_mod.Tenant  # type: ignore[attr-defined]
 TenantLink = _tenant_mod.TenantLink  # type: ignore[attr-defined]
+OwnCompany = _load_model_module("own_company").OwnCompany  # type: ignore[attr-defined]
+ClientCompany = _load_model_module("client_company").ClientCompany  # type: ignore[attr-defined]
 Company = _load_model_module("company").Company  # type: ignore[attr-defined]
 Vacancy = _load_model_module("vacancy").Vacancy  # type: ignore[attr-defined]
 VacancyRecruiter = _load_model_module("vacancy_recruiter").VacancyRecruiter  # type: ignore[attr-defined]

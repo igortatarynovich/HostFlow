@@ -2,7 +2,7 @@
  * Component for displaying a single document card with accordion functionality
  */
 
-import { memo, useState } from "react";
+import { memo, useRef, useState } from "react";
 import clsx from "clsx";
 import type { Document, DocumentStatus } from "../../../api/types";
 import { DocumentFieldInput } from "./DocumentFieldInput";
@@ -48,6 +48,7 @@ interface DocumentCardProps {
   setReplaceFile: React.Dispatch<React.SetStateAction<Record<string, File | null>>>;
   setExpandedDocs: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   setError: (error: string | null) => void;
+  variant?: "full" | "compact";
 }
 
 export const DocumentCard = memo(function DocumentCard({
@@ -78,8 +79,10 @@ export const DocumentCard = memo(function DocumentCard({
   setReplaceFile,
   setExpandedDocs,
   setError,
+  variant = "full",
 }: DocumentCardProps) {
   const { t } = useI18n();
+  const isCompact = variant === "compact";
 
   const normalizedTypeCode = normalizeDocTypeCode(doc.type_code || doc.doc_type || "");
   const typeInfo = typeByCode.get(normalizedTypeCode) ?? typeByCode.get(doc.doc_type) ?? typeByCode.get(doc.type_code);
@@ -97,11 +100,13 @@ export const DocumentCard = memo(function DocumentCard({
   const statusLabel = translateStatus(statusValue);
   const selectStatus = statusValue;
   const hasFiles = doc.has_files ?? (Array.isArray(doc.files) && doc.files.length > 0);
+  const firstFileName = Array.isArray(doc.files) ? doc.files[0]?.name : undefined;
   const isExpiringSoon = isExpiringSoonDoc(doc);
   const fieldsConfig = getDocumentFieldsConfig(normalizedTypeCode || doc.doc_type || doc.type_code || "");
 
-  const expanded = Boolean(expandedDocs[doc.id]);
+  const expanded = !isCompact && Boolean(expandedDocs[doc.id]);
   const toggleExpanded = () => {
+    if (isCompact) return;
     setExpandedDocs((prev) => ({ ...prev, [doc.id]: !prev[doc.id] }));
   };
 
@@ -127,6 +132,27 @@ export const DocumentCard = memo(function DocumentCard({
     await handleReplaceUpload(doc, nextFile);
   };
 
+  const replaceInputRef = useRef<HTMLInputElement | null>(null);
+  const triggerReplace = () => {
+    if (!replaceInputRef.current) return;
+    replaceInputRef.current.click();
+  };
+
+  const handleReplaceSelectedFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextFile = e.currentTarget.files?.[0] ?? null;
+    e.currentTarget.value = "";
+    if (!nextFile) return;
+
+    if (isTooLarge(nextFile)) {
+      setError(t("admin.documents.errors.file_too_large", { values: { limit: MAX_FILE_MB } }));
+      return;
+    }
+    setError(null);
+    // Immediately upload for side-panel UX.
+    setReplaceFile((prev) => ({ ...prev, [doc.id]: nextFile }));
+    await handleReplaceUpload(doc, nextFile);
+  };
+
   return (
     <div key={doc.id} className="rounded border border-slate-200 bg-white shadow-sm">
       <div
@@ -134,7 +160,7 @@ export const DocumentCard = memo(function DocumentCard({
         onClick={toggleExpanded}
       >
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <span className="text-sm">{expanded ? "▾" : "▸"}</span>
+          {!isCompact && <span className="text-sm">{expanded ? "▾" : "▸"}</span>}
           <div className="flex-1 min-w-0">
             <div className="text-base font-semibold text-slate-800">{title}</div>
             {!expanded && (
@@ -146,9 +172,9 @@ export const DocumentCard = memo(function DocumentCard({
                     {t("admin.documents.labels.issue_date")} {formatDate(doc.issue_date)}
                   </span>
                 )}
-                {doc.expire_date && (
+                {(doc.expire_date || doc.expires_at) && (
                   <span>
-                    {t("admin.documents.labels.expire_date")} {formatDate(doc.expire_date)}
+                    {t("admin.documents.labels.expire_date")} {formatDate(doc.expire_date || doc.expires_at)}
                   </span>
                 )}
                 {doc.ordered_at && (
@@ -164,6 +190,7 @@ export const DocumentCard = memo(function DocumentCard({
                 >
                   {hasFiles ? t("admin.documents.badges.files_present") : t("admin.documents.badges.files_missing")}
                 </span>
+                {hasFiles && firstFileName ? <span className="text-xs text-slate-600">{firstFileName}</span> : null}
                 {isExpiringSoon && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">
                     {t("admin.documents.badges.expiring", { values: { days: EXPIRING_SOON_THRESHOLD_DAYS } })}
@@ -182,55 +209,86 @@ export const DocumentCard = memo(function DocumentCard({
             {statusUpdating[doc.id] && <span className="text-[10px] text-slate-600">…</span>}
           </span>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end" onClick={(e) => e.stopPropagation()}>
-          <label className="flex w-full items-center gap-2 text-xs sm:w-auto">
-            <span className="text-slate-600">{t("admin.documents.table.status")}</span>
-            <select
-              className="input input-sm w-full sm:w-auto"
-              value={selectStatus}
-              onChange={(e) => updateStatus(doc, e.target.value as DocumentStatus)}
-              disabled={!canManageDocuments || statusUpdating[doc.id]}
-            >
-              {Object.keys(DOCUMENT_STATUS_META).map((status) => (
-                <option key={status} value={status}>
-                  {translateStatus(status)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            className="btn-primary btn-xs w-full sm:w-auto"
-            onClick={() => approveDocument(doc)}
-            disabled={!canManageDocuments || statusUpdating[doc.id] || selectStatus === "approved"}
-          >
-            {t("admin.documents.actions.approve")}
-          </button>
-          <button
-            className="btn-danger btn-xs w-full sm:w-auto"
-            onClick={() => rejectDocument(doc)}
-            disabled={!canManageDocuments || statusUpdating[doc.id]}
-          >
-            {t("admin.documents.actions.reject")}
-          </button>
-          <label className="input btn-xs flex w-full cursor-pointer items-center gap-2 sm:w-auto">
-            <span className="text-xs">{t("admin.documents.actions.choose_file")}</span>
-            <input type="file" className="hidden" onChange={handleFileSelect} />
-          </label>
-          {selectedReplaceFile && (
-            <button
-              className="btn-primary btn-xs w-full sm:w-auto"
-              onClick={handleReplaceUploadClick}
-              disabled={isReplacing}
-            >
-              {isReplacing
-                ? t("admin.documents.status.uploading_with_progress", { values: { percent: uploadProgress } })
-                : t("admin.documents.actions.upload_file")}
-            </button>
-          )}
-          {hasFiles && (
-            <button type="button" className="btn-secondary btn-xs w-full sm:w-auto" onClick={() => openDoc(doc)}>
-              {t("admin.documents.actions.open")}
-            </button>
+        <div
+          className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isCompact ? (
+            <>
+              <input ref={replaceInputRef} type="file" className="hidden" onChange={handleReplaceSelectedFile} />
+              <button
+                type="button"
+                className="btn-primary btn-xs w-full sm:w-auto"
+                onClick={triggerReplace}
+                disabled={!canManageDocuments || statusUpdating[doc.id] || replaceUploading[doc.id]}
+              >
+                {replaceUploading[doc.id]
+                  ? t("admin.documents.status.uploading", { defaultValue: "Uploading..." })
+                  : t("admin.documents.actions.replace")}
+              </button>
+              {hasFiles ? (
+                <button
+                  type="button"
+                  className="btn-danger btn-xs w-full sm:w-auto"
+                  onClick={() => deleteDocumentFile(doc)}
+                  disabled={!canManageDocuments || statusUpdating[doc.id] || coreSaving[doc.id]}
+                >
+                  {t("admin.documents.actions.delete_file")}
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <label className="flex w-full items-center gap-2 text-xs sm:w-auto">
+                <span className="text-slate-600">{t("admin.documents.table.status")}</span>
+                <select
+                  className="input input-sm w-full sm:w-auto"
+                  value={selectStatus}
+                  onChange={(e) => updateStatus(doc, e.target.value as DocumentStatus)}
+                  disabled={!canManageDocuments || statusUpdating[doc.id]}
+                >
+                  {Object.keys(DOCUMENT_STATUS_META).map((status) => (
+                    <option key={status} value={status}>
+                      {translateStatus(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="btn-primary btn-xs w-full sm:w-auto"
+                onClick={() => approveDocument(doc)}
+                disabled={!canManageDocuments || statusUpdating[doc.id] || selectStatus === "approved"}
+              >
+                {t("admin.documents.actions.approve")}
+              </button>
+              <button
+                className="btn-danger btn-xs w-full sm:w-auto"
+                onClick={() => rejectDocument(doc)}
+                disabled={!canManageDocuments || statusUpdating[doc.id]}
+              >
+                {t("admin.documents.actions.reject")}
+              </button>
+              <label className="input btn-xs flex w-full cursor-pointer items-center gap-2 sm:w-auto">
+                <span className="text-xs">{t("admin.documents.actions.choose_file")}</span>
+                <input type="file" className="hidden" onChange={handleFileSelect} />
+              </label>
+              {selectedReplaceFile && (
+                <button
+                  className="btn-primary btn-xs w-full sm:w-auto"
+                  onClick={handleReplaceUploadClick}
+                  disabled={isReplacing}
+                >
+                  {isReplacing
+                    ? t("admin.documents.status.uploading_with_progress", { values: { percent: uploadProgress } })
+                    : t("admin.documents.actions.upload_file")}
+                </button>
+              )}
+              {hasFiles && (
+                <button type="button" className="btn-secondary btn-xs w-full sm:w-auto" onClick={() => openDoc(doc)}>
+                  {t("admin.documents.actions.open")}
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

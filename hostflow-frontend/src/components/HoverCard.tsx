@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 type HoverCardProps = {
@@ -105,14 +105,15 @@ export default function HoverCard({
     setPos({ top: Math.round(top + window.scrollY), left: Math.round(left + window.scrollX) })
   }, [open, content])
 
-  const child = useMemo(() => {
+  const child = (() => {
     const props: Record<string, any> = {
       ref: (node: HTMLElement | null) => {
         triggerRef.current = node
         const anyChild: any = children as any
         const childRef = anyChild?.ref
         if (typeof childRef === 'function') childRef(node)
-        else if (childRef && typeof childRef === 'object') childRef.current = node
+        // Note: we intentionally do not assign to object refs from children props
+        // to keep render/purity rules (and avoid mutating props-derived objects).
       },
       onMouseEnter: (e: any) => {
         children.props.onMouseEnter?.(e)
@@ -132,7 +133,7 @@ export default function HoverCard({
       },
     }
     return { ...children, props: { ...children.props, ...props } }
-  }, [children])
+  })()
 
   const card =
     open && pos

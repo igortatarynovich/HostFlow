@@ -11,7 +11,14 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import type { TenantSummary, WhoAmI } from '../../api/types'
-import { listNotifications, markNotificationsRead, reconcileNotifications } from '../../api/client'
+import {
+  listNotifications,
+  markNotificationsRead,
+  reconcileNotifications,
+  listOwnCompanies,
+  setActiveOwnCompany,
+  ownCompanySettings,
+} from '../../api/client'
 import type { NotificationItem, NotificationListResponse } from '../../api/types'
 import { listCommunicationThreads, reconcileCommunicationThreadUnread } from '../../api/communications'
 import { useToast } from '../Toast'
@@ -65,6 +72,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
   const localeMap = { ru, en: enUS, pl }
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const [langOpen, setLangOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchLoading, setSearchLoading] = useState(false)
@@ -76,7 +84,36 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
   const shownNotificationIdsRef = useRef<Set<string>>(new Set())
   const unreadReconcileDoneRef = useRef(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
+  const langRef = useRef<HTMLDivElement | null>(null)
   const pendingHandoffsCount = usePendingHandoffsCount()
+  const [ownCompanies, setOwnCompanies] = useState<Array<{ id: string; name: string }>>([])
+  const [activeOwnCompanyId, setActiveOwnCompanyId] = useState<string | null>(() => ownCompanySettings.get())
+
+  useEffect(() => {
+    let cancelled = false
+    if (!me?.tenant_id) return
+    ;(async () => {
+      try {
+        const res = await listOwnCompanies()
+        const items = Array.isArray((res as any)?.items) ? (res as any).items : []
+        if (cancelled) return
+        setOwnCompanies(items.map((x: any) => ({ id: String(x.id), name: String(x.name || x.id) })))
+        const active = String((res as any)?.active_own_company_id || '').trim() || ownCompanySettings.get()
+        if (active) {
+          setActiveOwnCompanyId(active)
+          ownCompanySettings.set(active)
+        } else if (items.length > 0) {
+          setActiveOwnCompanyId(String(items[0].id))
+          ownCompanySettings.set(String(items[0].id))
+        }
+      } catch {
+        if (!cancelled) setOwnCompanies([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [me?.tenant_id])
 
   const notificationRank = (item: NotificationItem): number => {
     if (item.is_read) return 0
@@ -111,10 +148,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
   const { entityPlural: clientsNavLabel } = useBusinessTerminology()
 
-  const toggleLang = () => {
-    const index = SUPPORTED_LOCALES.indexOf(locale)
-    const next = SUPPORTED_LOCALES[(index + 1) % SUPPORTED_LOCALES.length]
+  const openLang = () => setLangOpen((v) => !v)
+  const pickLang = (next: LocaleCode) => {
     setLocale(next)
+    setLangOpen(false)
   }
 
   const getNotificationTitle = (item: NotificationItem): string => {
@@ -264,6 +301,17 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [menuOpen])
+
+  useEffect(() => {
+    const handler = (event: MouseEvent) => {
+      if (!langOpen) return
+      if (langRef.current && !langRef.current.contains(event.target as Node)) {
+        setLangOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [langOpen])
 
   useEffect(() => {
     const onMessagesUnreadSync = (event: Event) => {
@@ -425,6 +473,27 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">
+          {ownCompanies.length > 0 && (
+            <label className="hidden items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 sm:inline-flex">
+              <span className="text-slate-500">{t('app.topbar.own_company', { defaultValue: 'Company' })}</span>
+              <select
+                className="bg-transparent text-xs font-semibold text-slate-800 outline-none"
+                value={activeOwnCompanyId || ''}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setActiveOwnCompanyId(next)
+                  ownCompanySettings.set(next)
+                  void setActiveOwnCompany(next).catch(() => {})
+                }}
+              >
+                {ownCompanies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {canReturnToPlatform && (
             <button
               type="button"
@@ -449,13 +518,37 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
           {/* Кнопка меню кандидатов - показывается только на странице кандидатов */}
           <CandidatesMenuButton t={t} />
 
-          <button
-            type="button"
-            className="hidden rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold uppercase text-slate-700 transition hover:bg-slate-50 sm:inline-flex"
-            onClick={toggleLang}
-          >
-            {locale.toUpperCase()}
-          </button>
+          <div className="relative hidden sm:block" ref={langRef}>
+            <button
+              type="button"
+              className="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold uppercase text-slate-700 transition hover:bg-slate-50"
+              onClick={openLang}
+              aria-haspopup="menu"
+              aria-expanded={langOpen}
+              title={t('app.topbar.actions.language', { defaultValue: 'Language' })}
+            >
+              {locale.toUpperCase()}
+            </button>
+            {langOpen && (
+              <div className="absolute right-0 z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+                <div className="flex items-center gap-1 bg-slate-50 p-1">
+                  {SUPPORTED_LOCALES.map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      className={[
+                        'rounded-lg px-3 py-1.5 text-xs font-semibold uppercase transition',
+                        locale === code ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-200',
+                      ].join(' ')}
+                      onClick={() => pickLang(code)}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {can('notifications.view') && (
             <div className="flex items-center gap-2">

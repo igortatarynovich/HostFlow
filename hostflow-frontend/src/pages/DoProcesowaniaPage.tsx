@@ -303,15 +303,29 @@ export default function DoProcesowaniaPage() {
           ? Array.from(EMPLOYER_IN_PROGRESS_STAGE_CODES)
           : undefined
 
-      const response = await getHandoffsWithCandidates({
-        clientCompanyId,
-        clientTenantId,
-        status: statusForRequest,
-        stageCodes: stageCodesForRequest,
-        limit: 500,
-        offset: 0,
-      })
-      setItems(response.items)
+      const pageSize = 500
+      let offset = 0
+      let total = 0
+      const collected: PendingHandoffWithCandidate[] = []
+      do {
+        const response = await getHandoffsWithCandidates({
+          clientCompanyId,
+          clientTenantId,
+          status: statusForRequest,
+          // Important: without explicit fromDays backend defaults to 30 days.
+          // For Do Procesowania / history we need full timeline.
+          fromDays: 0,
+          stageCodes: stageCodesForRequest,
+          limit: pageSize,
+          offset,
+        })
+        total = Number(response.total || 0)
+        if (Array.isArray(response.items) && response.items.length > 0) {
+          collected.push(...response.items)
+        }
+        offset += pageSize
+      } while (offset < total)
+      setItems(collected)
     } catch {
       setItems([])
     } finally {

@@ -4,7 +4,7 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 ServiceUnitLiteral = Literal["piece", "person", "hour", "package"]
 ServiceOrderStatusLiteral = Literal[
@@ -169,7 +169,7 @@ class ServiceOrderBase(BaseModel):
     currency: str = Field("PLN", min_length=3, max_length=3)
     notes: Optional[str] = None
     assigned_to: Optional[str] = None
-    audit: Dict[str, Any] = Field(default_factory=dict)
+    audit: Optional[Dict[str, Any]] = None
 
 
 class ServiceOrderCreate(ServiceOrderBase):
@@ -199,6 +199,22 @@ class ServiceOrderOut(ServiceOrderBase):
     created_at: datetime
     updated_at: datetime
     items: List[ServiceItemOut] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _coerce_audit(cls, data: Any) -> Any:
+        # DB may contain NULL in audit; API should return a stable object.
+        if isinstance(data, dict):
+            if data.get("audit") is None:
+                data["audit"] = {}
+            return data
+        try:
+            audit = getattr(data, "audit", None)
+            if audit is None:
+                setattr(data, "audit", {})
+        except Exception:
+            pass
+        return data
 
 
 class ServiceScheduleCreate(BaseModel):

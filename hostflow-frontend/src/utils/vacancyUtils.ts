@@ -234,7 +234,14 @@ export function buildVacancyPayload(
     stage:  form.status || undefined,
   }
 
-  payload.extra = extraObject
+  // Preserve unknown extra keys (e.g. lead_criteria_v1)
+  let baseExtra: any = _base?.extra ?? {}
+  if (typeof baseExtra === 'string') {
+    try { baseExtra = JSON.parse(baseExtra) } catch { baseExtra = {} }
+  }
+  if (!baseExtra || typeof baseExtra !== 'object' || Array.isArray(baseExtra)) baseExtra = {}
+
+  payload.extra = { ...baseExtra, ...extraObject }
 
   return payload
 }

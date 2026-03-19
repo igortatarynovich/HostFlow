@@ -651,6 +651,7 @@ export default function CandidateCard(){
     return '/app/candidates'
   }, [location.state])
   const fromProcesowani = originPath.startsWith('/app/procesowani') || location.pathname.includes('/app/procesowani')
+  const isClientJourneyView = fromProcesowani || isClientTenant
   
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
@@ -773,9 +774,16 @@ export default function CandidateCard(){
   const [timelineRemindersLoading, setTimelineRemindersLoading] = useState(false)
   const [timelineStageHistoryLoading, setTimelineStageHistoryLoading] = useState(false)
   const [timelineError, setTimelineError] = useState<string | null>(null)
-  const [docsBlockers, setDocsBlockers] = useState<{ missing: string[]; problematic: string[] }>({ missing: [], problematic: [] })
+  const [docsBlockers, setDocsBlockers] = useState<{ missing: string[]; problematic: string[]; inProgress: string[] }>({
+    missing: [],
+    problematic: [],
+    inProgress: [],
+  })
   const [docsBlockersLoading, setDocsBlockersLoading] = useState(false)
-  const docsBlockersActive = docsBlockersLoading || docsBlockers.missing.length > 0 || docsBlockers.problematic.length > 0
+  const docsBlockersActive = docsBlockersLoading
+    || docsBlockers.missing.length > 0
+    || docsBlockers.problematic.length > 0
+    || docsBlockers.inProgress.length > 0
   const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false)
   const [docsDrawerType, setDocsDrawerType] = useState<string | undefined>(undefined)
@@ -2331,9 +2339,56 @@ export default function CandidateCard(){
   const handleDocsRequestCreate = useCallback(() => {
     // Prefill reminder form based on docs blockers.
     const dt = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
+    const dueIso = new Date(dt).toISOString()
     setReminderTitle(t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' }))
     setReminderDueAt(dt)
-  }, [t])
+    void generateUploadLink()
+    if (model?.id) {
+      void createActivity({
+        title: t('app.candidate_card.next_action.docs_verify_title', { defaultValue: 'Verify uploaded documents' }),
+        description: t('app.candidate_card.next_action.docs_verify_description', {
+          defaultValue: 'Candidate uploaded documents. Verify and approve/reject before moving stage.',
+        }),
+        type: 'custom',
+        entity_type: 'candidate',
+        entity_id: model.id,
+        due_at: dueIso,
+        remind_at: dueIso,
+        priority: 'high',
+        source: 'documents_upload',
+      }).catch(() => {})
+    }
+  }, [generateUploadLink, model?.id, t])
+
+  const overrideReasonOptions = useMemo(
+    () => [
+      t('app.candidate_card.override_reasons.data_correction', { defaultValue: 'Data correction after candidate clarification' }),
+      t('app.candidate_card.override_reasons.docs_fix', { defaultValue: 'Document metadata/status correction' }),
+      t('app.candidate_card.override_reasons.pipeline_fix', { defaultValue: 'Pipeline status normalization' }),
+      t('app.candidate_card.override_reasons.manager_request', { defaultValue: 'Manager request' }),
+      t('app.candidate_card.override_reasons.legal_compliance', { defaultValue: 'Legal/compliance request' }),
+      t('app.candidate_card.override_reasons.other', { defaultValue: 'Other' }),
+    ],
+    [t],
+  )
+
+  const scrollToCandidateData = useCallback(() => {
+    const el = basicRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const toggleCandidateEditMode = useCallback(() => {
+    setCandidateOverrideMode((v) => {
+      const next = !v
+      if (!next) {
+        setCandidateOverrideReason('')
+      } else {
+        window.setTimeout(() => scrollToCandidateData(), 40)
+      }
+      return next
+    })
+  }, [scrollToCandidateData])
 
   const handleFavoriteToggle = useCallback(async () => {
     if (!model?.id) return
@@ -2513,7 +2568,7 @@ export default function CandidateCard(){
         return
       }
       // Client card should show only client-facing stages in the journey.
-      if (!allowedJourneyStages.has(canonical)) return
+      if (isClientJourneyView && !allowedJourneyStages.has(canonical)) return
       main.push({ code, label })
     })
 
@@ -2522,7 +2577,10 @@ export default function CandidateCard(){
       const bCanonical = canonicalStageKey(b.code, b.label) || ''
       const aRank = journeyOrderRank.get(aCanonical)
       const bRank = journeyOrderRank.get(bCanonical)
-      return (aRank as number) - (bRank as number)
+      if (aRank === undefined && bRank === undefined) return 0
+      if (aRank === undefined) return 1
+      if (bRank === undefined) return -1
+      return aRank - bRank
     })
 
     const currentCode = String(model?.stage || '')
@@ -2553,7 +2611,7 @@ export default function CandidateCard(){
       stageJourneyOutcomeStage: outcomeStage,
       stageJourneySignals: journeySignals,
     }
-  }, [profileFunnelStages, stageLabelIntl, stageOptions, model?.stage, (model as any)?.intake_status, (model as any)?.intake_submitted_at, t])
+  }, [profileFunnelStages, stageLabelIntl, stageOptions, model?.stage, (model as any)?.intake_status, (model as any)?.intake_submitted_at, t, isClientJourneyView])
 
   const completedStageCodes = useMemo(() => {
     const set = new Set<string>()
@@ -2574,7 +2632,7 @@ export default function CandidateCard(){
       const nextIdx = steps.findIndex((s) => s.code === nextStage)
       const isForward = curIdx >= 0 && nextIdx > curIdx
       if (isForward) {
-        const firstMissing = docsBlockers.missing[0] || docsBlockers.problematic[0]
+        const firstMissing = docsBlockers.missing[0] || docsBlockers.problematic[0] || docsBlockers.inProgress[0]
         notify({
           title: t('app.candidate_card.stage_blocked_by_docs.title', { defaultValue: 'Stage is blocked by documents' }),
           description: firstMissing
@@ -2603,6 +2661,7 @@ export default function CandidateCard(){
     docsBlockersActive,
     docsBlockers.missing,
     docsBlockers.problematic,
+    docsBlockers.inProgress,
     stageJourneyStages,
     stageOutcomeStages,
     stageJourneyDisplayStage,
@@ -2694,24 +2753,6 @@ export default function CandidateCard(){
                       embedded
                     />
                   )}
-
-                  {/* Activity timeline (center stage) */}
-                  <div className="pt-2">
-                    <CandidateTimelinePanel
-                      locale={locale}
-                      stageHistory={stageHistory}
-                      notes={notes}
-                      reminders={timelineReminders}
-                      loading={timelineStageHistoryLoading || timelineRemindersLoading}
-                      errorText={timelineError}
-                      resolveStageLabel={stageLabelIntl}
-                      includeStageChanges
-                      hideToggle
-                      hideFilters
-                      variant="info"
-                      collapsedCount={5}
-                    />
-                  </div>
 
                   {/* Персональные данные */}
                   {!isMasked && (
@@ -2887,13 +2928,31 @@ export default function CandidateCard(){
                   ownerContext={docsOwnerContext}
                   uploadBusy={false}
                   onUpload={() => openDocsDrawer(undefined)}
-                  onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic })}
+                  onOpenDocs={() => openDocsDrawer(undefined)}
+                  onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic, inProgress: b.inProgress })}
                   onLoadingChange={setDocsBlockersLoading}
                   refreshTrigger={docsSummaryRefreshTrigger}
                   onSelectType={(typeCode) => openDocsDrawer(typeCode)}
                   pollingEnabled={docsDrawerOpen}
                 />
               ) : null}
+
+              <CandidateTimelinePanel
+                locale={locale}
+                stageHistory={stageHistory}
+                notes={notes}
+                reminders={timelineReminders}
+                loading={timelineStageHistoryLoading || timelineRemindersLoading}
+                errorText={timelineError}
+                resolveStageLabel={stageLabelIntl}
+                includeStageChanges
+                hideToggle
+                hideFilters
+                variant="info"
+                collapsedCount={5}
+                maxItems={5}
+                itemsMaxHeightClass="max-h-[28rem]"
+              />
 
               {!isMasked ? (
                 <CandidateNotesRailSection
@@ -2910,19 +2969,26 @@ export default function CandidateCard(){
               <div className="rounded-2xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-xs font-semibold text-slate-800">
-                    {t('app.candidate_card.control.title', { defaultValue: 'Control' })}
+                    {t('app.candidate_card.control.messages_title', { defaultValue: 'Messages' })}
                   </div>
                 </div>
-
-                {/* Messages + edit are the same logical block: one place to manage communication + corrections */}
-                <div className="mt-3 flex flex-col gap-2">
+                <div className="mt-3">
                   <Link
                     to={`/app/messages?candidateId=${model.id}`}
                     className="btn-secondary btn-sm w-full text-center"
                   >
                     {t('app.candidate_card.control.open_messages', { defaultValue: 'Messages' })}
                   </Link>
+                </div>
+              </div>
 
+              <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold text-slate-800">
+                    {t('app.candidate_card.control.title', { defaultValue: 'Control' })}
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col gap-2">
                   {!isMasked ? (
                     <button
                       type="button"
@@ -2930,33 +2996,39 @@ export default function CandidateCard(){
                         'btn-secondary btn-sm w-full text-center',
                         candidateOverrideMode ? 'bg-amber-50 border-amber-200' : '',
                       )}
-                      onClick={() => {
-                        setCandidateOverrideMode((v) => {
-                          const next = !v
-                          if (next === false) setCandidateOverrideReason('')
-                          return next
-                        })
-                      }}
+                      onClick={toggleCandidateEditMode}
                     >
                       {candidateOverrideMode
                         ? t('app.candidate_card.actions.cancel_edit', { defaultValue: 'Cancel edit' })
                         : t('app.candidate_card.actions.edit', { defaultValue: 'Edit' })}
                     </button>
                   ) : null}
+                  {!isNew && canDeleteDirect ? (
+                    <button
+                      type="button"
+                      className="btn-sm w-full rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-center font-semibold text-rose-700 hover:bg-rose-100"
+                      onClick={handleDelete}
+                    >
+                      {t('common.actions.delete', { defaultValue: 'Delete' })}
+                    </button>
+                  ) : null}
                 </div>
 
                 {candidateOverrideMode ? (
                   <div className="mt-3">
-                    <Input
-                      label={t('app.candidate_card.override_reason_label', { defaultValue: 'Reason for override' })}
-                      value={candidateOverrideReason}
-                      onChange={(e) => setCandidateOverrideReason(e.target.value)}
-                      placeholder={t(
-                        'app.candidate_card.override_reason_placeholder',
-                        { defaultValue: 'Why are you editing restricted fields?' },
-                      )}
-                      readOnly={model?.can_edit === false}
-                    />
+                    <label className="block">
+                      <div className="label">{t('app.candidate_card.override_reason_label', { defaultValue: 'Reason for override' })}</div>
+                      <select
+                        className="input w-full"
+                        value={candidateOverrideReason}
+                        onChange={(e) => setCandidateOverrideReason(e.target.value)}
+                      >
+                        <option value="">{t('app.candidate_card.override_reason_placeholder', { defaultValue: 'Why are you editing restricted fields?' })}</option>
+                        {overrideReasonOptions.map((reason) => (
+                          <option key={reason} value={reason}>{reason}</option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
                 ) : null}
 
@@ -3018,7 +3090,6 @@ export default function CandidateCard(){
                 hideHeader
                 candidateProfile={candidateProfile}
                 initialType={docsDrawerType}
-                compactType
                 {...({
                   ownerContext: docsOwnerContext,
                   onFieldsApplied: (doc: any, fields: Record<string, any>) =>

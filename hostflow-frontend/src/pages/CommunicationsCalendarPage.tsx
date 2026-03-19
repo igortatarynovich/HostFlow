@@ -3,7 +3,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
-import { completeReminder, createReminder, listManagers, listReminders, snoozeReminder } from '../api/client'
+import { completeActivity, createActivity, listActivities, listManagers, snoozeActivity } from '../api/client'
+import { ACTIVITY_TEMPLATES } from '../modules/candidates/activityTemplates'
 import {
   createCommunicationPlannerEvent,
   getMyWorkingHours,
@@ -236,6 +237,7 @@ export default function CommunicationsCalendarPage() {
   const [statusFilter, setStatusFilter] = useState<TimeOffStatusFilter>('approved')
   const [sourceFilter, setSourceFilter] = useState<CalendarSourceFilter>('all')
   const [assigneeFilter, setAssigneeFilter] = useState('')
+  const [activityTypeFilter, setActivityTypeFilter] = useState('')
   const [plannerKindFilter, setPlannerKindFilter] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('month')
   const [dragPlannerEvent, setDragPlannerEvent] = useState<UnifiedCalendarEvent | null>(null)
@@ -266,6 +268,7 @@ export default function CommunicationsCalendarPage() {
 
   const [reminderForm, setReminderForm] = useState({
     title: '',
+    type: 'custom',
     dueAt: toLocalInput(new Date(Date.now() + 2 * 60 * 60_000).toISOString()),
     offsetMinutes: 30,
     assigneeId: '',
@@ -277,13 +280,49 @@ export default function CommunicationsCalendarPage() {
     setLoading(true)
     setErrorText(null)
     try {
+      const needTimeoff = sourceFilter === 'all' || sourceFilter === 'timeoff'
+      const needActivities = sourceFilter === 'all' || sourceFilter === 'reminders'
+      const needPlanner = sourceFilter === 'all' || sourceFilter === 'planner'
+
+      const range =
+        viewMode === 'day'
+          ? toDayBounds(selectedDay)
+          : viewMode === 'week'
+            ? (() => {
+                const start = new Date(weekCursor)
+                start.setHours(0, 0, 0, 0)
+                const end = addDays(start, 6)
+                end.setHours(23, 59, 59, 999)
+                return { start, end }
+              })()
+            : (() => {
+                const start = monthMeta.days[0] ? new Date(monthMeta.days[0]) : new Date(monthCursor)
+                const end = monthMeta.days[monthMeta.days.length - 1]
+                  ? new Date(monthMeta.days[monthMeta.days.length - 1])
+                  : addDays(start, 41)
+                start.setHours(0, 0, 0, 0)
+                end.setHours(23, 59, 59, 999)
+                return { start, end }
+              })()
+
       const [timeOffRes, remRes, plannerRes, mgrs, wh] = await Promise.all([
-        listCommunicationTimeOffRequests({
-          limit: 500,
-          status_filter: statusFilter === 'all' ? undefined : [statusFilter],
-        }),
-        listReminders().catch(() => ({ items: [] })),
-        listCommunicationPlannerEvents({ limit: 500 }).catch(() => ({ items: [] })),
+        needTimeoff
+          ? listCommunicationTimeOffRequests({
+              limit: 500,
+              status_filter: statusFilter === 'all' ? undefined : [statusFilter],
+            })
+          : Promise.resolve({ items: [] } as any),
+        needActivities
+          ? listActivities({
+              dueFrom: range.start.toISOString(),
+              dueTo: range.end.toISOString(),
+              assigneeId: assigneeFilter || undefined,
+              types: activityTypeFilter ? [activityTypeFilter] : undefined,
+            }).catch(() => ({ items: [] }))
+          : Promise.resolve({ items: [] } as any),
+        needPlanner
+          ? listCommunicationPlannerEvents({ limit: 500 }).catch(() => ({ items: [] }))
+          : Promise.resolve({ items: [] } as any),
         listManagers().catch(() => []),
         getMyWorkingHours().catch(() => null),
       ])
@@ -300,7 +339,7 @@ export default function CommunicationsCalendarPage() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [activityTypeFilter, assigneeFilter, monthCursor, selectedDay, sourceFilter, statusFilter, viewMode, weekCursor])
 
   useEffect(() => {
     void load()
@@ -367,6 +406,7 @@ export default function CommunicationsCalendarPage() {
         endAt: null,
         entityPath: reminderLink(rem),
         assigneeId: rem?.assignee_id ? String(rem.assignee_id) : null,
+        kind: rem?.type ? String(rem.type) : null,
         priority: rem?.priority ? String(rem.priority) : 'normal',
       })
     }
@@ -407,10 +447,11 @@ export default function CommunicationsCalendarPage() {
       if (sourceFilter === 'reminders' && e.source !== 'reminder') return false
       if (sourceFilter === 'planner' && e.source !== 'planner') return false
       if (assigneeFilter && String(e.assigneeId || '') !== assigneeFilter) return false
+      if (activityTypeFilter && e.source === 'reminder' && String(e.kind || '') !== activityTypeFilter) return false
       if (plannerKindFilter && e.source === 'planner' && String(e.kind || '') !== plannerKindFilter) return false
       return true
     })
-  }, [assigneeFilter, plannerKindFilter, sourceFilter, unifiedEvents])
+  }, [activityTypeFilter, assigneeFilter, plannerKindFilter, sourceFilter, unifiedEvents])
 
   const eventsByDay = useMemo(() => {
     const map = new Map<string, UnifiedCalendarEvent[]>()
@@ -675,17 +716,18 @@ export default function CommunicationsCalendarPage() {
     try {
       const due = new Date(reminderForm.dueAt)
       const remindAt = new Date(due.getTime() - Math.max(1, Number(reminderForm.offsetMinutes || 30)) * 60_000)
-      await createReminder({
+      await createActivity({
         title: reminderForm.title.trim(),
         description: reminderForm.description.trim() || undefined,
+        type: reminderForm.type || 'custom',
         entity_type: 'calendar',
         entity_id: selectedDay,
         assignee_id: reminderForm.assigneeId || undefined,
         due_at: due.toISOString(),
         remind_at: remindAt.toISOString(),
+        source: 'communications_calendar',
         payload: {
           priority: reminderForm.priority,
-          source: 'communications_calendar',
           selected_day: selectedDay,
         },
       })
@@ -693,7 +735,7 @@ export default function CommunicationsCalendarPage() {
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to create reminder'))
+      setErrorText(errorTextFrom(err, 'Failed to create activity'))
     } finally {
       setBusy(false)
     }
@@ -1039,11 +1081,11 @@ export default function CommunicationsCalendarPage() {
   const completeDayReminder = useCallback(async (reminderId: string) => {
     setBusy(true)
     try {
-      await completeReminder(reminderId)
+      await completeActivity(reminderId)
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to complete reminder'))
+      setErrorText(errorTextFrom(err, 'Failed to complete activity'))
     } finally {
       setBusy(false)
     }
@@ -1052,11 +1094,11 @@ export default function CommunicationsCalendarPage() {
   const snoozeDayReminder = useCallback(async (reminderId: string, minutes: number) => {
     setBusy(true)
     try {
-      await snoozeReminder(reminderId, { minutes })
+      await snoozeActivity(reminderId, { minutes })
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to snooze reminder'))
+      setErrorText(errorTextFrom(err, 'Failed to snooze activity'))
     } finally {
       setBusy(false)
     }
@@ -1174,13 +1216,13 @@ export default function CommunicationsCalendarPage() {
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.calendar_title', { defaultValue: 'Calendar' })}</h1>
         <p className="text-sm text-slate-500">
-          {t('app.communications.ia.calendar_subtitle', { defaultValue: 'Daily planning workspace: meetings, tasks, reminders, time-off and team load. Inbound email/messages are not shown here.' })}
+          {t('app.communications.ia.calendar_subtitle', { defaultValue: 'Daily planning workspace: meetings, tasks, activities, time-off and team load. Inbound email/messages are not shown here.' })}
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Time-off: <strong>{stats.timeOff}</strong></div>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Reminders: <strong>{stats.reminders}</strong></div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Activities: <strong>{stats.reminders}</strong></div>
         <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-800">Planner items: <strong>{stats.planner}</strong></div>
         <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">Meetings: <strong>{stats.meetings}</strong></div>
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Tasks: <strong>{stats.tasks}</strong></div>
@@ -1215,7 +1257,7 @@ export default function CommunicationsCalendarPage() {
           <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as CalendarSourceFilter)} className="input">
             <option value="all">All sources</option>
             <option value="timeoff">Time-off</option>
-            <option value="reminders">Reminders</option>
+            <option value="reminders">Activities</option>
             <option value="planner">Planner</option>
           </select>
 
@@ -1228,6 +1270,12 @@ export default function CommunicationsCalendarPage() {
           <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} className="input">
             <option value="">All managers</option>
             {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
+          <select value={activityTypeFilter} onChange={(e) => setActivityTypeFilter(e.target.value)} className="input">
+            <option value="">All activity types</option>
+            {Array.from(new Set(reminders.map((r) => String(r?.type || '')).filter(Boolean))).sort().map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
           </select>
           <select value={plannerKindFilter} onChange={(e) => setPlannerKindFilter(e.target.value)} className="input">
             <option value="">All planner kinds</option>
@@ -1849,9 +1897,50 @@ export default function CommunicationsCalendarPage() {
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-2 text-sm font-semibold text-slate-900">Create reminder</div>
+            <div className="mb-2 text-sm font-semibold text-slate-900">Create activity</div>
             <form className="space-y-2" onSubmit={createDayReminder}>
-              <input value={reminderForm.title} onChange={(e) => setReminderForm((p) => ({ ...p, title: e.target.value }))} className="w-full input" placeholder="Reminder title" />
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Quick type</div>
+                <div className="flex flex-wrap gap-2">
+                  {ACTIVITY_TEMPLATES.map((tmpl) => (
+                    <button
+                      key={tmpl.key}
+                      type="button"
+                      className={clsx(
+                        'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                        reminderForm.type === tmpl.type
+                          ? 'border-brand-500 bg-brand-100 text-brand-800'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                      )}
+                      disabled={busy}
+                      onClick={() => {
+                        setReminderForm((p) => ({
+                          ...p,
+                          type: tmpl.type,
+                          title: p.title.trim() ? p.title : tmpl.defaultTitle,
+                          offsetMinutes: tmpl.defaultOffsetMinutes,
+                        }))
+                      }}
+                    >
+                      {tmpl.defaultTitle}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={clsx(
+                      'rounded-lg border px-3 py-1.5 text-xs font-medium transition',
+                      reminderForm.type === 'custom'
+                        ? 'border-brand-500 bg-brand-100 text-brand-800'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                    )}
+                    disabled={busy}
+                    onClick={() => setReminderForm((p) => ({ ...p, type: 'custom' }))}
+                  >
+                    Custom
+                  </button>
+                </div>
+              </div>
+              <input value={reminderForm.title} onChange={(e) => setReminderForm((p) => ({ ...p, title: e.target.value }))} className="w-full input" placeholder="Activity title" />
               <div className="grid grid-cols-2 gap-2">
                 <input type="datetime-local" value={reminderForm.dueAt} onChange={(e) => setReminderForm((p) => ({ ...p, dueAt: e.target.value }))} className="input" />
                 <input type="number" min={1} value={String(reminderForm.offsetMinutes)} onChange={(e) => setReminderForm((p) => ({ ...p, offsetMinutes: Number(e.target.value || 30) }))} className="input" placeholder="Offset min" />
@@ -1892,6 +1981,9 @@ export default function CommunicationsCalendarPage() {
             <div className="mt-4 flex flex-wrap gap-2">
               <Link to="/app/planner" className="btn-secondary">
                 {t('app.nav.items.planner', { defaultValue: 'Planner' })}
+              </Link>
+              <Link to="/app/activities" className="btn-secondary">
+                {t('app.nav.items.activities', { defaultValue: 'Activities' })}
               </Link>
               <Link to="/app/reminders" className="btn-secondary">
                 {t('app.nav.items.reminders', { defaultValue: 'Reminders' })}

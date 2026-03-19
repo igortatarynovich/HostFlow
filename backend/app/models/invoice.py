@@ -85,6 +85,12 @@ class Invoice(Base):
         default=lambda: str(uuid4()),
     )
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    own_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        ForeignKey("own_companies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # References
     company_id: Mapped[Optional[str]] = mapped_column(

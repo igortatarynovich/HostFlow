@@ -6,6 +6,7 @@ import type { UUID } from './common';
 
 export type LeadStatus = 'new' | 'processed' | 'duplicated' | 'failed' | 'needs_routing';
 export type LeadStage = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+export type LeadNextActionStatus = 'scheduled' | 'overdue' | 'no_next_action';
 
 export interface Lead {
   id: UUID;
@@ -31,6 +32,10 @@ export interface Lead {
   normalized?: Record<string, any> | null;
   created_at: string;
   last_routed_at?: string | null;
+  next_action_status?: LeadNextActionStatus | null;
+  next_action_due_at?: string | null;
+  next_action_type?: string | null;
+  next_action_title?: string | null;
 }
 
 export interface LeadListResponse {

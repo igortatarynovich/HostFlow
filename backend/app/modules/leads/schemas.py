@@ -10,6 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 LeadStatus = Literal["new", "processed", "duplicated", "failed", "needs_routing"]
 LeadStage = Literal["new", "contacted", "qualified", "converted", "lost"]
 LeadImportStatus = Literal["pending", "running", "completed", "failed"]
+LeadNextActionStatus = Literal["scheduled", "overdue", "no_next_action"]
+LeadFitStatus = Literal["fit", "no_fit", "needs_info", "no_criteria"]
 
 
 class MetaLeadResponse(BaseModel):
@@ -49,6 +51,14 @@ class LeadOut(BaseModel):
     normalized: Optional[Dict[str, Any]] = None
     created_at: datetime
     last_routed_at: Optional[datetime] = None
+    # Next action (reminders-based activity loop)
+    next_action_status: Optional[LeadNextActionStatus] = None
+    next_action_due_at: Optional[datetime] = None
+    next_action_type: Optional[str] = None
+    next_action_title: Optional[str] = None
+    # Vacancy fit check (criteria-based)
+    fit_status: Optional[LeadFitStatus] = None
+    fit_reasons: List[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -57,11 +67,34 @@ class LeadStageUpdate(BaseModel):
     stage: Optional[LeadStage] = None
 
 
+class BulkLeadUpdateRequest(BaseModel):
+    lead_ids: List[UUID] = Field(min_length=1)
+    stage: Optional[LeadStage] = None
+    status: Optional[LeadStatus] = None
+
+
+class BulkLeadUpdateResponse(BaseModel):
+    updated: int
+
+
 class LeadListResponse(BaseModel):
     items: List[LeadOut]
     total: int
     limit: int
     offset: int
+
+
+class LeadTimelineEventOut(BaseModel):
+    at: datetime
+    kind: str
+    source: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LeadTimelineResponse(BaseModel):
+    items: List[LeadTimelineEventOut]
 
 
 class UnmappedAdGroup(BaseModel):

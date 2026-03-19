@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   IconAlertTriangle,
@@ -36,6 +36,7 @@ interface CandidateHeaderProps {
   candidateProfile?: import('../../api/candidate_profiles').CandidateProfile | null
   profileLoading?: boolean
   stageSinceAt?: string | null
+  focusContent?: React.ReactNode
 }
 
 function CandidateHeader({
@@ -62,16 +63,22 @@ function CandidateHeader({
   candidateProfile,
   profileLoading,
   stageSinceAt = null,
+  focusContent,
 }: CandidateHeaderProps) {
   const { t } = useI18n()
 
-  const stageDays = (() => {
-    if (!stageSinceAt) return null
+  const [nowTs, setNowTs] = useState<number>(0)
+  useEffect(() => {
+    setNowTs(Date.now())
+  }, [stageSinceAt])
+
+  const stageDays = useMemo(() => {
+    if (!stageSinceAt || !nowTs) return null
     const ts = Date.parse(stageSinceAt)
     if (!ts || Number.isNaN(ts)) return null
-    const days = Math.max(0, Math.floor((Date.now() - ts) / (24 * 60 * 60 * 1000)))
+    const days = Math.max(0, Math.floor((nowTs - ts) / (24 * 60 * 60 * 1000)))
     return days
-  })()
+  }, [nowTs, stageSinceAt])
 
   const candidateTitle = candidate
     ? isMasked
@@ -98,7 +105,7 @@ function CandidateHeader({
   return (
     <>
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-4 text-white shadow-card">
+      <div className="rounded-2xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
             <div className="text-[11px] text-white/80">
@@ -106,8 +113,8 @@ function CandidateHeader({
                 {backLabel || t('app.candidate_card.header.back')}
               </Link>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold leading-tight">{candidateTitle}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-semibold leading-tight">{candidateTitle}</h1>
               {candidate && <StageTag code={candidate.stage || 'new'} />}
               {candidate && stageDays !== null && (
                 <span
@@ -206,7 +213,7 @@ function CandidateHeader({
             )}
             {!isNew && canDeleteDirect && (
               <button
-                className="rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 font-medium text-rose-50 transition hover:bg-white/20"
+                className="rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 font-semibold text-rose-700 transition hover:bg-rose-100"
                 onClick={onDelete}
               >
                 {t('common.actions.delete')}
@@ -226,6 +233,7 @@ function CandidateHeader({
             )}
           </div>
         </div>
+        {focusContent ? <div className="mt-3">{focusContent}</div> : null}
       </div>
 
       {/* Status Messages */}
