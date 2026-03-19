@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
@@ -10,6 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
@@ -19,6 +21,16 @@ from backend.app.services.automation_rules import TRIGGERS
 
 
 router = APIRouter(prefix="/automation-rules", tags=["automation-rules"])
+logger = logging.getLogger(__name__)
+
+
+def _is_missing_table_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return (
+        "no such table: automation_rules" in msg
+        or "relation \"automation_rules\" does not exist" in msg
+        or "undefined table" in msg
+    )
 
 
 def _dumps(obj: Optional[dict]) -> Optional[str]:
@@ -82,7 +94,15 @@ async def list_rules(
     stmt = select(AutomationRule).where(AutomationRule.tenant_id == tenant_id)
     if trigger:
         stmt = stmt.where(AutomationRule.trigger == trigger)
-    rows = await db.execute(stmt.order_by(AutomationRule.created_at.desc()))
+    try:
+        rows = await db.execute(stmt.order_by(AutomationRule.created_at.desc()))
+    except (ProgrammingError, OperationalError) as exc:
+        # Backward-compatible guard for environments where automation_rules
+        # migration did not run yet: keep page usable and surface empty state.
+        if _is_missing_table_error(exc):
+            logger.warning("[automation-rules] table missing, returning empty list tenant=%s", tenant_id)
+            return AutomationRuleListOut(items=[])
+        raise
     items = []
     for r in rows.scalars().all():
         items.append(
