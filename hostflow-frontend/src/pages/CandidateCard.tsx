@@ -717,7 +717,7 @@ export default function CandidateCard(){
   const [downloadingBundle, setDownloadingBundle] = useState(false)
   const [uploadLinkBusy, setUploadLinkBusy] = useState(false)
   const [uploadLink, setUploadLink] = useState<CandidateUploadLinkResponse | null>(null)
-  const [uploadLinkCopied, setUploadLinkCopied] = useState(false)
+  const [, setUploadLinkCopied] = useState(false)
   const HEADER_STORAGE_KEY = 'hf:candidate:headerExpanded'
   const [headerExpanded, setHeaderExpanded] = useState(() => {
     try {
@@ -2986,7 +2986,6 @@ export default function CandidateCard(){
                 hideFilters
                 variant="info"
                 collapsedCount={5}
-                maxItems={5}
                 itemsMaxHeightClass="max-h-[28rem]"
               />
 
@@ -3111,13 +3110,64 @@ export default function CandidateCard(){
             className="fixed right-0 top-0 h-full w-full max-w-6xl overflow-hidden rounded-l-2xl bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 p-3">
-              <div className="min-w-0 text-sm font-semibold text-slate-900 truncate">
-                {t('app.candidate_card.docs_panel.title', { defaultValue: 'Documents' })}
+            <div className="border-b border-slate-200 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 text-sm font-semibold text-slate-900 truncate">
+                  {t('app.candidate_card.docs_panel.title', { defaultValue: 'Documents' })}
+                </div>
+                <button type="button" className="btn-secondary btn-sm" onClick={closeDocsDrawer}>
+                  {t('common.actions.close', { defaultValue: 'Close' })}
+                </button>
               </div>
-              <button type="button" className="btn-secondary btn-sm" onClick={closeDocsDrawer}>
-                {t('common.actions.close', { defaultValue: 'Close' })}
-              </button>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="btn-primary btn-sm"
+                  onClick={() => void generateUploadLink()}
+                  disabled={uploadLinkBusy}
+                >
+                  {uploadLinkBusy
+                    ? t('app.candidate_card.actions.upload_link_creating', { defaultValue: 'Creating link...' })
+                    : t('app.candidate_card.actions.upload_link', { defaultValue: 'Upload link' })}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => void downloadBundle()}
+                  disabled={downloadingBundle}
+                >
+                  {downloadingBundle
+                    ? t('app.candidate_card.actions.exporting_bundle', { defaultValue: 'Preparing archive...' })
+                    : t('app.candidate_card.actions.export_bundle', { defaultValue: 'Download candidate profile' })}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => setDocsSummaryRefreshTrigger((x) => x + 1)}
+                >
+                  {t('app.candidate_card.actions.refresh', { defaultValue: 'Refresh' })}
+                </button>
+              </div>
+              {uploadLink?.apply_url ? (
+                <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-700">
+                  <div className="font-medium text-slate-800">
+                    {t('app.candidate_card.docs.upload_link_label', {
+                      defaultValue: 'Send this link to the candidate so they can upload documents.',
+                    })}
+                  </div>
+                  <div className="mt-1 break-all text-slate-600">
+                    {new URL(uploadLink.apply_url, window.location.origin).toString()}
+                  </div>
+                  {uploadLink.expires_at ? (
+                    <div className="mt-1 text-[11px] text-slate-500">
+                      {t('app.candidate_card.docs.upload_link_expires', {
+                        defaultValue: 'Link valid until {date}',
+                        values: { date: formatDateSafe(uploadLink.expires_at, locale) || uploadLink.expires_at },
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             <div className="h-full overflow-auto p-3">
               <CandidateDocuments

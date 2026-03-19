@@ -24,7 +24,6 @@ type Props = {
   includeStageChanges?: boolean
   collapsedCount?: number
   variant?: 'info' | 'full'
-  maxItems?: number
   itemsMaxHeightClass?: string
 }
 
@@ -50,7 +49,6 @@ export default function CandidateTimelinePanel({
   includeStageChanges = true,
   collapsedCount = 3,
   variant = 'info',
-  maxItems,
   itemsMaxHeightClass,
 }: Props) {
   const { t } = useI18n()
@@ -127,12 +125,6 @@ export default function CandidateTimelinePanel({
     const n = Math.max(0, Math.min(10, Number(collapsedCount) || 0))
     return n > 0 ? items.slice(0, n) : []
   }, [collapsedCount, items])
-  const visibleItems = useMemo(() => {
-    const limit = Number(maxItems || 0)
-    if (!limit || limit < 1) return items
-    return items.slice(0, Math.min(200, limit))
-  }, [items, maxItems])
-
   return (
     <section className={clsx('rounded-2xl border border-slate-200 bg-white p-3', variant === 'info' && 'flex flex-col')}>
       <div className="flex items-start justify-between gap-3">
@@ -198,7 +190,7 @@ export default function CandidateTimelinePanel({
 
           {items.length ? (
             <div className={clsx('mt-2 space-y-2', itemsMaxHeightClass ? `${itemsMaxHeightClass} overflow-y-auto pr-1` : '')}>
-              {visibleItems.map((it, idx) => (
+              {items.map((it, idx) => (
                 <div
                   key={`${it.kind}-${it.at}-${idx}`}
                   className={clsx(

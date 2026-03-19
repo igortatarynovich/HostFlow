@@ -846,6 +846,7 @@ HostFlow takeaway:
   Implemented in candidate card as:
   - Right-rail **Quick Documents** panel for fast status + blockers + one-click upload/open.
   - Preserved full **Document Center** access (not removed): opens full candidate documents workspace for approve/reject/edit/replace/delete, upload link generation, and profile export.
+  - Document Center drawer header now exposes explicit quick actions: `Upload link`, `Download candidate profile`, `Refresh`, plus inline display of the latest generated upload link + expiry.
   - Pipeline gating tightened: candidate stage progression is blocked not only for missing/problematic docs, but also for uploaded-yet-unverified (`in_progress`) required docs.
   - `Request documents` next action now also generates candidate upload link; once candidate has uploaded required docs and they remain unverified (`in_progress`), system auto-creates follow-up verification activity (`Verify uploaded documents`).
   - Candidate card rail rebalanced for operators: activity moved to right rail (up to 5 visible with scroll), messages isolated into its own widget, edit control paired with red delete action, edit action auto-scrolls to candidate data section, and override reason switched to predefined dropdown options.
