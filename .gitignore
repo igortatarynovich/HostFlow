@@ -23,3 +23,7 @@ ad_id
 form_id
 leadgen_id
 opt.code-workspace
+
+# Local backups and generated reports (do not commit)
+backups/
+hostflow-frontend/i18n-hardcode-report.json
