@@ -1,3 +1,4 @@
+import type { AxiosInstance } from 'axios'
 import http from './http'
 import { withTenant } from './client'
 import type {
@@ -30,6 +31,8 @@ import type {
   TenantVacancyAccessListResponse,
   TenantVacancyAccessUpdatePayload,
   TenantVacancyOption,
+  HiringPipelineGatesPublic,
+  HiringPipelineGatesPatch,
 } from './types'
 
 export type PlatformTenantFilters = {
@@ -188,6 +191,43 @@ function resolveTenantClient(tenantId?: string) {
   return tenantId ? withTenant(tenantId) : http
 }
 
+const HIRING_GATES_PRIMARY = '/settings/team/hiring-pipeline-gates'
+const HIRING_GATES_FALLBACK = '/tenants/me/hiring-pipeline-gates'
+
+/** Same handler on backend; fallback helps if an older proxy only routes `/tenants/*`. */
+async function getHiringPipelineGatesWithFallback(
+  client: AxiosInstance,
+): Promise<HiringPipelineGatesPublic | null> {
+  const primary = await client.get<HiringPipelineGatesPublic>(HIRING_GATES_PRIMARY, {
+    validateStatus: (s) => s === 200 || s === 404,
+  })
+  if (primary.status === 200) return primary.data
+  if (primary.status !== 404) {
+    const err: any = new Error(`GET hiring-pipeline-gates failed: ${primary.status}`)
+    err.response = primary
+    throw err
+  }
+  const fb = await client.get<HiringPipelineGatesPublic>(HIRING_GATES_FALLBACK, {
+    validateStatus: (s) => s === 200 || s === 404,
+  })
+  if (fb.status === 200) return fb.data
+  return null
+}
+
+async function patchHiringPipelineGatesWithFallback(
+  client: AxiosInstance,
+  payload: HiringPipelineGatesPatch,
+): Promise<HiringPipelineGatesPublic> {
+  try {
+    const { data } = await client.patch<HiringPipelineGatesPublic>(HIRING_GATES_PRIMARY, payload)
+    return data
+  } catch (e: any) {
+    if (e?.response?.status !== 404) throw e
+    const { data } = await client.patch<HiringPipelineGatesPublic>(HIRING_GATES_FALLBACK, payload)
+    return data
+  }
+}
+
 export async function getTeamOverview(opts?: { tenantId?: string }) {
   const client = resolveTenantClient(opts?.tenantId)
   const { data } = await client.get<TeamOverviewResponse>('/settings/team')
@@ -198,6 +238,19 @@ export async function getTenantModules(opts?: { tenantId?: string }) {
   const client = resolveTenantClient(opts?.tenantId)
   const { data } = await client.get<TenantModuleSettings>('/settings/team/modules')
   return data
+}
+
+export async function getHiringPipelineGates(opts?: { tenantId?: string }) {
+  const client = resolveTenantClient(opts?.tenantId)
+  return getHiringPipelineGatesWithFallback(client)
+}
+
+export async function patchHiringPipelineGates(
+  payload: HiringPipelineGatesPatch,
+  opts?: { tenantId?: string },
+) {
+  const client = resolveTenantClient(opts?.tenantId)
+  return patchHiringPipelineGatesWithFallback(client, payload)
 }
 
 export type VacancyRequirementsPreset = {

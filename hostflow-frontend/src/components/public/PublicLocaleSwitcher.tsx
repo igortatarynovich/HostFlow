@@ -13,7 +13,7 @@ type Props = {
 }
 
 export function PublicLocaleSwitcher({ className }: Props) {
-  const { locale, setLocale } = useI18n()
+  const { t, locale, setLocale } = useI18n()
   const value = useMemo<LocaleCode>(() => {
     if (locale === 'ru' || locale === 'pl') return locale
     return 'en'
@@ -21,7 +21,7 @@ export function PublicLocaleSwitcher({ className }: Props) {
 
   return (
     <label className={clsx('inline-flex items-center gap-2 text-xs font-medium text-slate-500', className)}>
-      <span className="uppercase tracking-wide">Lang</span>
+      <span className="uppercase tracking-wide">{t('public.locale_switcher.label', { defaultValue: 'Lang' })}</span>
       <select
         className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] uppercase tracking-wide text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none"
         value={value}

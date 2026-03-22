@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { analyzeImageData, type ScanPresetKey, type ScanQualityReport } from '../../modules/public-intake/scan/analyzer'
 import { ScanningOverlay } from './ScanningOverlay'
+import { useI18n } from '../../i18n'
 
 type CameraPaneProps = {
   mode: 'camera' | 'fallback'
@@ -51,6 +52,7 @@ export function CameraPane({
   preset = 'default',
   onQualityChange,
 }: CameraPaneProps) {
+  const { t } = useI18n()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -472,7 +474,7 @@ export function CameraPane({
               type="button"
               onClick={handleCapture}
               className="h-14 w-14 rounded-full border-4 border-white bg-white/90 shadow-lg active:scale-95"
-              aria-label="Capture"
+              aria-label={t('public.scanner.camera.capture', { defaultValue: 'Capture' })}
             />
           </div>
           {torchSupported && (
@@ -487,7 +489,9 @@ export function CameraPane({
         </div>
       ) : (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-700">
-          <p className="mb-3 text-sm font-semibold">Upload a photo of the document</p>
+          <p className="mb-3 text-sm font-semibold">
+            {t('public.scanner.camera.upload_photo', { defaultValue: 'Upload a photo of the document' })}
+          </p>
           <input type="file" accept={fallbackAccept} onChange={handleFileChange} />
         </div>
       )}

@@ -117,61 +117,62 @@ export function FilterBadges({
   onProcessorFilterChange,
 }: FilterBadgesProps) {
   const { t } = useI18n()
+  const removeGlyph = '\u00D7'
 
   return (
     <div className="flex flex-wrap items-center gap-2 p-4 sticky top-0 bg-white z-10 border-b">
       {q && (
         <span className="badge">
           {t('app.candidates.filters.search', { values: { value: q } })}
-          <button className="ml-2 text-xs" onClick={() => onQChange('')}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onQChange('')}>{removeGlyph}</button>
         </span>
       )}
       {textFilters.name.trim() && (
         <span className="badge">
           {t('app.candidates.filters.name_badge', { values: { value: textFilters.name } })}
-          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('name', '')}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('name', '')}>{removeGlyph}</button>
         </span>
       )}
       {textFilters.email.trim() && (
         <span className="badge">
           {t('app.candidates.filters.email_badge', { values: { value: textFilters.email } })}
-          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('email', '')}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('email', '')}>{removeGlyph}</button>
         </span>
       )}
       {textFilters.phone.trim() && (
         <span className="badge">
           {t('app.candidates.filters.phone_badge', { values: { value: textFilters.phone } })}
-          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('phone', '')}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('phone', '')}>{removeGlyph}</button>
         </span>
       )}
       {textFilters.citizenship.trim() && (
         <span className="badge">
           {t('app.candidates.filters.citizenship_badge', { values: { value: textFilters.citizenship } })}
-          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('citizenship', '')}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('citizenship', '')}>{removeGlyph}</button>
         </span>
       )}
       {textFilters.short.trim() && (
         <span className="badge">
           {t('app.candidates.filters.short_badge', { values: { value: textFilters.short } })}
-          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('short', '')}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onTextFilterChange('short', '')}>{removeGlyph}</button>
         </span>
       )}
       {stageFilter.map((code) => (
         <span className="badge" key={`stage-${code}`}>
           {t('app.candidates.filters.stage', { values: { value: stageLabelMap[code] || code } })}
-          <button className="ml-2 text-xs" onClick={() => onStageFilterChange((prev) => prev.filter((item) => item !== code))}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onStageFilterChange((prev) => prev.filter((item) => item !== code))}>{removeGlyph}</button>
         </span>
       ))}
       {vacancyFilter.map((id) => (
         <span className="badge" key={`vacancy-${id}`}>
           {t('app.candidates.filters.vacancy', { values: { value: vacancyLabelMap.get(id) || '—' } })}
-          <button className="ml-2 text-xs" onClick={() => onVacancyFilterChange((prev) => prev.filter((item) => item !== id))}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onVacancyFilterChange((prev) => prev.filter((item) => item !== id))}>{removeGlyph}</button>
         </span>
       ))}
       {managerFilter.map((id) => (
         <span className="badge" key={`manager-${id}`}>
           {t('app.candidates.filters.manager', { values: { value: managerLabelMap.get(id) || '—' } })}
-          <button className="ml-2 text-xs" onClick={() => onManagerFilterChange((prev) => prev.filter((item) => item !== id))}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onManagerFilterChange((prev) => prev.filter((item) => item !== id))}>{removeGlyph}</button>
         </span>
       ))}
       {statusReasonFilter.map((code) => (
@@ -184,7 +185,7 @@ export function FilterBadges({
             className="ml-2 text-xs"
             onClick={() => onStatusReasonFilterChange((prev) => prev.filter((item) => item !== code))}
           >
-            ×
+            {removeGlyph}
           </button>
         </span>
       ))}
@@ -193,7 +194,7 @@ export function FilterBadges({
         return (
           <span className="badge" key={`docs-status-${value}`}>
             {t('app.candidates.filters.docs_status', { values: { value: entry?.label || value } })}
-            <button className="ml-2 text-xs" onClick={() => onDocsStatusFilterChange((prev) => prev.filter((item) => item !== value))}>×</button>
+            <button className="ml-2 text-xs" onClick={() => onDocsStatusFilterChange((prev) => prev.filter((item) => item !== value))}>{removeGlyph}</button>
           </span>
         )
       })}
@@ -202,7 +203,7 @@ export function FilterBadges({
         return (
           <span className="badge" key={`docs-ordered-${value}`}>
             {t('app.candidates.filters.docs_order', { values: { value: entry?.label || value } })}
-            <button className="ml-2 text-xs" onClick={() => onDocsOrderedFilterChange((prev) => prev.filter((item) => item !== value))}>×</button>
+            <button className="ml-2 text-xs" onClick={() => onDocsOrderedFilterChange((prev) => prev.filter((item) => item !== value))}>{removeGlyph}</button>
           </span>
         )
       })}
@@ -211,13 +212,13 @@ export function FilterBadges({
           {t('app.candidates.filters.preferred_channel', {
             values: { value: preferredChannelLabelMap[value] ?? value },
           })}
-          <button className="ml-2 text-xs" onClick={() => onPreferredChannelFilterChange((prev) => prev.filter((item) => item !== value))}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onPreferredChannelFilterChange((prev) => prev.filter((item) => item !== value))}>{removeGlyph}</button>
         </span>
       ))}
       {inPolandFilter.map((value) => (
         <span className="badge" key={`poland-now-${value}`}>
           {t('app.candidates.filters.in_poland', { values: { value: inPolandLabelMap[value] || value } })}
-          <button className="ml-2 text-xs" onClick={() => onInPolandFilterChange((prev) => prev.filter((item) => item !== value))}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onInPolandFilterChange((prev) => prev.filter((item) => item !== value))}>{removeGlyph}</button>
         </span>
       ))}
       {polandBasisFilter.map((value) => (
@@ -225,19 +226,19 @@ export function FilterBadges({
           {t('app.candidates.filters.poland_basis', {
             values: { value: value === EMPTY_OPTION_VALUE ? t('common.labels.not_available') : getPolandBasisLabel(value) },
           })}
-          <button className="ml-2 text-xs" onClick={() => onPolandBasisFilterChange((prev) => prev.filter((item) => item !== value))}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onPolandBasisFilterChange((prev) => prev.filter((item) => item !== value))}>{removeGlyph}</button>
         </span>
       ))}
       {trailerTypesFilter.map((value) => (
         <span className="badge" key={`trailer-${value}`}>
           {t('app.candidates.filters.trailer_types', { values: { value: getTrailerTypeLabel(value) } })}
-          <button className="ml-2 text-xs" onClick={() => onTrailerTypesFilterChange((prev) => prev.filter((item) => item !== value))}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onTrailerTypesFilterChange((prev) => prev.filter((item) => item !== value))}>{removeGlyph}</button>
         </span>
       ))}
       {opsModeFilter.map((value) => (
         <span className="badge" key={`ops-mode-${value}`}>
           {t('app.candidates.filters.ops_mode', { values: { value: opsModeLabelMap[value] || value } })}
-          <button className="ml-2 text-xs" onClick={() => onOpsModeFilterChange((prev) => prev.filter((item) => item !== value))}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onOpsModeFilterChange((prev) => prev.filter((item) => item !== value))}>{removeGlyph}</button>
         </span>
       ))}
       {isRangeActive(createdRange) && (
@@ -245,7 +246,7 @@ export function FilterBadges({
           {t('app.candidates.filters.created_range', {
             values: { from: createdRange.from || '—', to: createdRange.to || '—' },
           })}
-          <button className="ml-2 text-xs" onClick={() => onCreatedRangeChange({ from: null, to: null })}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onCreatedRangeChange({ from: null, to: null })}>{removeGlyph}</button>
         </span>
       )}
       {isRangeActive(firstContactRange) && (
@@ -253,7 +254,7 @@ export function FilterBadges({
           {t('app.candidates.filters.first_contact_range', {
             values: { from: firstContactRange.from || '—', to: firstContactRange.to || '—' },
           })}
-          <button className="ml-2 text-xs" onClick={() => onFirstContactRangeChange({ from: null, to: null })}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onFirstContactRangeChange({ from: null, to: null })}>{removeGlyph}</button>
         </span>
       )}
       {isRangeActive(docsValidRange) && (
@@ -261,7 +262,7 @@ export function FilterBadges({
           {t('app.candidates.filters.docs_valid_range', {
             values: { from: docsValidRange.from || '—', to: docsValidRange.to || '—' },
           })}
-          <button className="ml-2 text-xs" onClick={() => onDocsValidRangeChange({ from: null, to: null })}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onDocsValidRangeChange({ from: null, to: null })}>{removeGlyph}</button>
         </span>
       )}
       {docsHasFilesFilter.map((value) => (
@@ -274,7 +275,7 @@ export function FilterBadges({
                   : t('app.candidates.filters.docs_files_without'),
             },
           })}
-          <button className="ml-2 text-xs" onClick={() => onDocsHasFilesFilterChange((prev) => prev.filter((item) => item !== value))}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onDocsHasFilesFilterChange((prev) => prev.filter((item) => item !== value))}>{removeGlyph}</button>
         </span>
       ))}
       {handoffStatusFilter && onHandoffStatusFilterChange && (
@@ -282,7 +283,7 @@ export function FilterBadges({
           {t('app.candidates.filters.handoff_badge', {
             values: { value: t(`app.candidates.filters.handoff_${handoffStatusFilter}` as any) || handoffStatusFilter },
           })}
-          <button className="ml-2 text-xs" onClick={() => onHandoffStatusFilterChange('')}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onHandoffStatusFilterChange('')}>{removeGlyph}</button>
         </span>
       )}
       {contactAttemptsFilter && onContactAttemptsFilterChange && (
@@ -295,7 +296,7 @@ export function FilterBadges({
                   : (t(`app.candidates.filters.contact_${contactAttemptsFilter}` as any) as string) || contactAttemptsFilter,
             },
           })}
-          <button className="ml-2 text-xs" onClick={() => onContactAttemptsFilterChange('')}>×</button>
+          <button className="ml-2 text-xs" onClick={() => onContactAttemptsFilterChange('')}>{removeGlyph}</button>
         </span>
       )}
     </div>

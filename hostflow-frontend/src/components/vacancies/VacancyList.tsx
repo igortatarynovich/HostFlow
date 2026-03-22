@@ -10,6 +10,7 @@ import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 // Unify button styles with Candidates page
 const primaryBtn = 'btn-primary'
 const secondaryBtn = 'btn-secondary'
+const NEXT_PAGE_GLYPH = '\u2192'
 
 const API_BASE: string = resolveApiBase().replace(/\/+$/, '')
 const API_BASE_WITH_SLASH = `${API_BASE}/`
@@ -720,7 +721,7 @@ export default function VacancyList() {
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => goPage(Math.max(1, page - 1))} disabled={page <= 1} className="btn-secondary btn-sm">←</button>
           <span className="px-2 text-sm text-slate-600">{t('app.vacancies.list.page', { values: { page, total: Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit))) } })}</span>
-          <button type="button" onClick={() => goPage(Math.min(Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit))), page + 1))} disabled={page >= Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit)))} className="btn-secondary btn-sm">→</button>
+          <button type="button" onClick={() => goPage(Math.min(Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit))), page + 1))} disabled={page >= Math.max(1, Math.ceil((data.total || 0) / (data.limit || limit)))} className="btn-secondary btn-sm">{NEXT_PAGE_GLYPH}</button>
         </div>
       </div>
     </div>

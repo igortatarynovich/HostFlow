@@ -54,6 +54,9 @@ class RodoStatusOut(BaseModel):
     recipient: Optional[str] = None
     rodo_version_id: Optional[str] = None
     can_send: bool
+    # Hints when sent=false — why «Send RODO» may be disabled (UI / contact-attempts copy).
+    candidate_has_email: bool = False
+    active_rodo_template: bool = False
 
 
 class LegalDocumentUpdate(BaseModel):
@@ -169,14 +172,19 @@ async def get_rodo_status(
     cand = await db.get(Candidate, str(candidate_id))
     email = (cand.email or "").strip() if cand else ""
     rodo_doc = await get_active_legal_document(db, str(tenant_id), "rodo_clause")
-    can_send = bool(email and rodo_doc and not first)
+    has_email = bool(email)
+    has_template = rodo_doc is not None
+    sent = first is not None
+    can_send = bool(has_email and has_template and not sent)
     return RodoStatusOut(
-        sent=first is not None,
+        sent=sent,
         sent_at=first.sent_at if first else None,
         sent_by_user_id=first.sent_by_user_id if first else None,
         recipient=first.recipient if first else email or None,
         rodo_version_id=first.rodo_version_id if first else (rodo_doc.version_id if rodo_doc else None),
         can_send=can_send,
+        candidate_has_email=has_email,
+        active_rodo_template=has_template,
     )
 
 

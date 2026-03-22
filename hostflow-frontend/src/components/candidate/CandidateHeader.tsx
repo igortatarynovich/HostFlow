@@ -6,6 +6,7 @@ import {
   IconBookmark,
   IconBookmarkFilled,
   IconClipboardList,
+  IconHistory,
 } from '@tabler/icons-react'
 import type { Candidate } from '../../api/types'
 import StageTag from '../StageTag'
@@ -43,6 +44,11 @@ interface CandidateHeaderProps {
   profileLoading?: boolean
   stageSinceAt?: string | null
   focusContent?: React.ReactNode
+  /** Document pipeline waivers: show visible badges in header (plan: “override must be noticeable”). */
+  pipelineWaiverPendingCount?: number
+  pipelineWaiverApprovedCount?: number
+  /** Opens candidate activity feed (timeline) in a modal — hero CTA. */
+  onOpenActivity?: () => void
 }
 
 function CandidateHeader({
@@ -75,6 +81,9 @@ function CandidateHeader({
   profileLoading,
   stageSinceAt = null,
   focusContent,
+  pipelineWaiverPendingCount = 0,
+  pipelineWaiverApprovedCount = 0,
+  onOpenActivity,
 }: CandidateHeaderProps) {
   const { t } = useI18n()
 
@@ -127,6 +136,33 @@ function CandidateHeader({
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold leading-tight">{candidateTitle}</h1>
               {candidate && <StageTag code={candidate.stage || 'new'} />}
+              {!isMasked && pipelineWaiverPendingCount > 0 ? (
+                <span
+                  className="text-[11px] inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-400/90 px-2 py-0.5 font-semibold text-amber-950 shadow-sm"
+                  title={t('app.candidate_card.pipeline_override.badge_pending_hint', {
+                    defaultValue: 'Document waiver waiting for manager approval',
+                  })}
+                >
+                  <IconAlertTriangle size={12} />
+                  {t('app.candidate_card.pipeline_override.badge_pending', {
+                    defaultValue: 'Waiver pending ({count})',
+                    values: { count: String(pipelineWaiverPendingCount) },
+                  })}
+                </span>
+              ) : null}
+              {!isMasked && pipelineWaiverApprovedCount > 0 ? (
+                <span
+                  className="text-[11px] inline-flex items-center rounded-md border border-emerald-200 bg-emerald-500/90 px-2 py-0.5 font-semibold text-emerald-950 shadow-sm"
+                  title={t('app.candidate_card.pipeline_override.badge_active_hint', {
+                    defaultValue: 'Approved document waiver(s) relax pipeline / handoff gates for listed types',
+                  })}
+                >
+                  {t('app.candidate_card.pipeline_override.badge_active', {
+                    defaultValue: 'Waiver active ({count})',
+                    values: { count: String(pipelineWaiverApprovedCount) },
+                  })}
+                </span>
+              ) : null}
               {candidate && stageDays !== null && (
                 <span
                   className="text-[11px] rounded-md border border-white/30 px-2 py-0.5 text-white/90"
@@ -232,6 +268,17 @@ function CandidateHeader({
                 >
                   {handoffLabel || t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
                 </button>
+                {onOpenActivity ? (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/30 bg-white/10 px-3 py-1.5 font-medium text-white transition hover:bg-white/20"
+                    onClick={onOpenActivity}
+                    title={t('app.candidate_card.activity_feed.title', { defaultValue: 'Activity' })}
+                  >
+                    <IconHistory size={18} className="shrink-0 opacity-90" aria-hidden />
+                    {t('app.candidate_card.activity_feed.title', { defaultValue: 'Activity' })}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className={clsx(

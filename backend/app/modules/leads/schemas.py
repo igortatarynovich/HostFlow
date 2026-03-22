@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 LeadStatus = Literal["new", "processed", "duplicated", "failed", "needs_routing"]
+LeadType = Literal["candidate", "client"]
 LeadStage = Literal["new", "contacted", "qualified", "converted", "lost"]
 LeadImportStatus = Literal["pending", "running", "completed", "failed"]
 LeadNextActionStatus = Literal["scheduled", "overdue", "no_next_action"]
@@ -31,7 +32,8 @@ class LeadOut(BaseModel):
     id: UUID
     tenant_id: UUID
     business_type: Optional[str] = None
-    company_id: UUID
+    lead_type: LeadType = "candidate"
+    company_id: Optional[UUID] = None
     company_name: Optional[str] = None
     vacancy_id: Optional[UUID] = None
     vacancy_title: Optional[str] = None

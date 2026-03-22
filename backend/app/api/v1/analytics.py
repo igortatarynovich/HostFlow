@@ -785,7 +785,7 @@ async def profile_summary(
     service_orders_by_status = {str(status): int(count or 0) for status, count, _sum in service_orders_rows}
     service_revenue_delivered = 0.0
     for status, _count, total_sum in service_orders_rows:
-        if str(status) == "delivered":
+        if str(status) == "completed":
             service_revenue_delivered = _as_float(total_sum)
 
     company_rows = (
@@ -819,9 +819,9 @@ async def profile_summary(
 
     service_in_progress = sum(
         int(service_orders_by_status.get(key, 0))
-        for key in ("approved", "scheduled", "in_progress")
+        for key in ("confirmed", "in_progress", "on_hold")
     )
-    service_delivered = int(service_orders_by_status.get("delivered", 0))
+    service_delivered = int(service_orders_by_status.get("completed", 0))
 
     profile = {
         "business_type": business_type,
@@ -1053,15 +1053,15 @@ async def services_overview(
         status_counter[status_value] += 1
         order_revenue = _as_float(order.total_amount)
         revenue += order_revenue
-        if status_value == "delivered":
+        if status_value == "completed":
             delivered_orders += 1
-        if status_value in {"cancelled", "refunded"}:
+        if status_value == "cancelled":
             cancelled_orders += 1
         if order.created_at and order.created_at >= cutoff:
             last30_total += 1
-            if status_value == "delivered":
+            if status_value == "completed":
                 last30_delivered += 1
-            if status_value in {"cancelled", "refunded"}:
+            if status_value == "cancelled":
                 last30_cancelled += 1
 
         client_label, owner_kind = owner_label_and_kind(order)
@@ -1182,7 +1182,7 @@ async def services_overview(
             trend_entry["invoiced"] = float(trend_entry["invoiced"]) + order_invoiced
             trend_entry["paid"] = float(trend_entry["paid"]) + order_paid
             trend_entry["overdue_invoices"] = int(trend_entry["overdue_invoices"]) + int(order_overdue)
-            if status_value == "delivered":
+            if status_value == "completed":
                 trend_entry["delivered"] = int(trend_entry["delivered"]) + 1
             trend_map[trend_key(order)] = trend_entry
 
@@ -1201,7 +1201,7 @@ async def services_overview(
             slice_entry["profit"] = float(slice_entry["profit"]) + order_profit
             slice_map[slice_label] = slice_entry
 
-        if status_value not in {"delivered", "refunded"} and order.items:
+        if status_value not in {"completed", "cancelled"} and order.items:
             hot_orders.append(
                 ServicesAnalyticsHotOrderOut(
                     order_id=str(order.id),

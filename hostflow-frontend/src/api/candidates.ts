@@ -29,6 +29,7 @@ export async function searchCandidates({ q, limit = 10 }: CandidateSearchParams)
 
 export type CandidateUploadLinkResponse = {
   apply_url: string
+  documents_url?: string | null
   status_url?: string | null
   intake_token: string
   status_share_token?: string | null

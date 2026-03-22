@@ -169,7 +169,9 @@ export default function TenantLinksSettingsPage() {
                         type="text"
                         value={addOrgTenantId}
                         onChange={(e) => setAddOrgTenantId(e.target.value)}
-                        placeholder="517319d0-b53e-493d-9ac8-40f23091a35d"
+                        placeholder={t('admin.tenant_links.placeholders.tenant_uuid', {
+                          defaultValue: '517319d0-b53e-493d-9ac8-40f23091a35d',
+                        })}
                         className="input mt-1 font-mono text-sm"
                       />
                     </div>

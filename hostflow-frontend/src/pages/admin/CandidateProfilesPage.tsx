@@ -763,7 +763,7 @@ export default function CandidateProfilesPage() {
                                 className="btn-secondary btn-sm"
                                 type="button"
                                 onClick={() => handleExport(profile)}
-                                title="Экспортировать профиль в JSON"
+                                title={t('app.admin.candidate_profiles.actions.export_json', { defaultValue: 'Экспортировать профиль в JSON' })}
                               >
                                 Экспорт
                               </button>
@@ -1049,7 +1049,7 @@ function ProfileForm({
             value={code}
             onChange={handleCodeChange}
             disabled={!!profile || saving}
-            placeholder="driver_ce"
+            placeholder={t('app.admin.candidate_profiles.form.code_placeholder', { defaultValue: 'driver_ce' })}
             className={codeError ? 'border-rose-300' : ''}
           />
           {codeError && <div className="mt-1 text-xs text-rose-600">{codeError}</div>}
@@ -1065,7 +1065,7 @@ function ProfileForm({
             value={name}
             onChange={handleNameChange}
             disabled={saving}
-            placeholder="Водитель CE"
+            placeholder={t('app.admin.candidate_profiles.form.name_placeholder', { defaultValue: 'Водитель CE' })}
             className={nameError ? 'border-rose-300' : ''}
           />
           {nameError && <div className="mt-1 text-xs text-rose-600">{nameError}</div>}

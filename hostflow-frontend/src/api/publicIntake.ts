@@ -176,6 +176,19 @@ export type MagicLinkRequestPayload = {
   phone?: string
 }
 
+export type PublicDocumentsAccessPayload = {
+  email?: string
+  phone_country_code?: string
+  phone?: string
+}
+
+export type PublicDocumentsAccessResponse = {
+  verified: boolean
+  upload_url: string
+  questionnaire_url: string
+  expires_at: string
+}
+
 export type MagicLinkRequestResponse = {
   status: string
   cooldown_seconds: number
@@ -255,6 +268,14 @@ export async function redeemMagicLink(token: string): Promise<MagicLinkRedeemRes
   return data
 }
 
+export async function requestPublicDocumentsAccess(
+  statusToken: string,
+  payload: PublicDocumentsAccessPayload,
+): Promise<PublicDocumentsAccessResponse> {
+  const { data } = await http.post(`/public/status/${statusToken}/documents/access`, payload)
+  return data
+}
+
 export type PublicPresignPayload = {
   doc_type: string
   filename: string
@@ -275,6 +296,21 @@ export async function presignPublicDocument(token: string, payload: PublicPresig
 
 export async function uploadPublicDocument(token: string, formData: FormData): Promise<PublicIntakeState> {
   const { data } = await http.post(`/public/apply/${token}/documents/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
+export async function presignStatusDocument(
+  statusToken: string,
+  payload: PublicPresignPayload & PublicDocumentsAccessPayload,
+): Promise<PublicPresignResponse> {
+  const { data } = await http.post(`/public/status/${statusToken}/documents/presign`, payload)
+  return data
+}
+
+export async function uploadStatusDocument(statusToken: string, formData: FormData): Promise<PublicStatusState> {
+  const { data } = await http.post(`/public/status/${statusToken}/documents/upload`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
   return data

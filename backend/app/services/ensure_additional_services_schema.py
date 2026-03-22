@@ -102,6 +102,8 @@ def ensure_additional_services_schema() -> None:
                 ("currency", "TEXT NOT NULL DEFAULT 'PLN'"),
                 ("status", "TEXT NOT NULL DEFAULT 'draft'"),
                 ("requested_by", "TEXT"),
+                ("start_date", "TEXT"),
+                ("end_date", "TEXT"),
             ):
                 if name not in cols:
                     _add_column(cur, "service_orders", f"{name} {coldef}")

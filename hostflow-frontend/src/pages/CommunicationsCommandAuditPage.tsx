@@ -79,7 +79,7 @@ export default function CommunicationsCommandAuditPage() {
       const cmds = Array.isArray(settings?.commands?.items) ? settings!.commands.items : []
       setTemplates(cmds)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to load command audit'))
+      setErrorText(errorTextFrom(err, t('app.communications.command_audit.errors.load', { defaultValue: 'Failed to load command audit' })))
     } finally {
       setLoading(false)
     }
@@ -96,35 +96,37 @@ export default function CommunicationsCommandAuditPage() {
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-semibold text-slate-900">{t('app.nav.items.command_audit', { defaultValue: 'Command audit' })}</h1>
-        <p className="text-sm text-slate-500">Execution log for workspace command templates.</p>
+        <p className="text-sm text-slate-500">
+          {t('app.communications.command_audit.subtitle', { defaultValue: 'Execution log for workspace command templates.' })}
+        </p>
       </header>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-5">
           <label className="space-y-1">
-            <span className="text-xs font-medium text-slate-600">Channel</span>
+            <span className="text-xs font-medium text-slate-600">{t('app.communications.command_audit.filters.channel', { defaultValue: 'Channel' })}</span>
             <select value={channel} onChange={(e) => setChannel(e.target.value)} className="input">
-              <option value="">All</option>
+              <option value="">{t('app.communications.command_audit.filters.all', { defaultValue: 'All' })}</option>
               {channels.map((ch) => <option key={ch} value={ch}>{ch}</option>)}
             </select>
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-medium text-slate-600">Command</span>
+            <span className="text-xs font-medium text-slate-600">{t('app.communications.command_audit.filters.command', { defaultValue: 'Command' })}</span>
             <select value={commandId} onChange={(e) => setCommandId(e.target.value)} className="input">
-              <option value="">All</option>
+              <option value="">{t('app.communications.command_audit.filters.all', { defaultValue: 'All' })}</option>
               {templates.map((cmd) => <option key={cmd.id} value={cmd.id}>{cmd.label}</option>)}
             </select>
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-medium text-slate-600">Thread ID</span>
+            <span className="text-xs font-medium text-slate-600">{t('app.communications.command_audit.filters.thread_id', { defaultValue: 'Thread ID' })}</span>
             <input value={threadId} onChange={(e) => setThreadId(e.target.value)} className="input" />
           </label>
           <label className="space-y-1">
-            <span className="text-xs font-medium text-slate-600">Actor user ID</span>
+            <span className="text-xs font-medium text-slate-600">{t('app.communications.command_audit.filters.actor_user_id', { defaultValue: 'Actor user ID' })}</span>
             <input value={actorUserId} onChange={(e) => setActorUserId(e.target.value)} className="input" />
           </label>
           <div className="flex items-end gap-2">
-            <button type="button" onClick={applyFilters} className="btn-secondary">Apply</button>
+            <button type="button" onClick={applyFilters} className="btn-secondary">{t('app.communications.command_audit.actions.apply', { defaultValue: 'Apply' })}</button>
             <button
               type="button"
               onClick={() => {
@@ -136,7 +138,7 @@ export default function CommunicationsCommandAuditPage() {
               }}
               className="btn-secondary"
             >
-              Reset
+              {t('app.communications.command_audit.actions.reset', { defaultValue: 'Reset' })}
             </button>
           </div>
         </div>
@@ -144,10 +146,16 @@ export default function CommunicationsCommandAuditPage() {
 
       <section className="rounded-lg border border-slate-200 bg-white">
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 text-sm">
-          <span className="font-semibold text-slate-900">Records: {total}</span>
+          <span className="font-semibold text-slate-900">
+            {t('app.communications.command_audit.records', { defaultValue: 'Records: {count}', values: { count: total } })}
+          </span>
           <div className="flex items-center gap-2">
-            <button type="button" disabled={!canPrev || loading} onClick={() => void load(Math.max(0, offset - limit))} className="btn-secondary btn-xs disabled:opacity-50">Prev</button>
-            <button type="button" disabled={!canNext || loading} onClick={() => void load(offset + limit)} className="btn-secondary btn-xs disabled:opacity-50">Next</button>
+            <button type="button" disabled={!canPrev || loading} onClick={() => void load(Math.max(0, offset - limit))} className="btn-secondary btn-xs disabled:opacity-50">
+              {t('app.communications.command_audit.pagination.prev', { defaultValue: 'Prev' })}
+            </button>
+            <button type="button" disabled={!canNext || loading} onClick={() => void load(offset + limit)} className="btn-secondary btn-xs disabled:opacity-50">
+              {t('app.communications.command_audit.pagination.next', { defaultValue: 'Next' })}
+            </button>
           </div>
         </div>
         {loading && <div className="px-4 py-4 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
@@ -169,12 +177,12 @@ export default function CommunicationsCommandAuditPage() {
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  <th className="px-3 py-2 text-left">Executed</th>
-                  <th className="px-3 py-2 text-left">Channel</th>
-                  <th className="px-3 py-2 text-left">Command</th>
-                  <th className="px-3 py-2 text-left">Actor</th>
-                  <th className="px-3 py-2 text-left">Thread</th>
-                  <th className="px-3 py-2 text-left">Actions</th>
+                  <th className="px-3 py-2 text-left">{t('app.communications.command_audit.columns.executed', { defaultValue: 'Executed' })}</th>
+                  <th className="px-3 py-2 text-left">{t('app.communications.command_audit.columns.channel', { defaultValue: 'Channel' })}</th>
+                  <th className="px-3 py-2 text-left">{t('app.communications.command_audit.columns.command', { defaultValue: 'Command' })}</th>
+                  <th className="px-3 py-2 text-left">{t('app.communications.command_audit.columns.actor', { defaultValue: 'Actor' })}</th>
+                  <th className="px-3 py-2 text-left">{t('app.communications.command_audit.columns.thread', { defaultValue: 'Thread' })}</th>
+                  <th className="px-3 py-2 text-left">{t('app.communications.command_audit.columns.actions', { defaultValue: 'Actions' })}</th>
                 </tr>
               </thead>
               <tbody>

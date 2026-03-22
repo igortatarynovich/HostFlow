@@ -33,10 +33,13 @@ export interface CreateAdditionalServiceInput {
 
 export type UpdateAdditionalServiceInput = Partial<CreateAdditionalServiceInput>
 
-export async function listAdditionalServices(includeInactive = false) {
+export async function listAdditionalServices(includeInactive = false, includeMetrics = false) {
+  const params: Record<string, boolean> = {}
+  if (includeInactive) params.include_inactive = true
+  if (includeMetrics) params.include_metrics = true
   const { data } = await api.get<AdditionalService[]>(
     '/services',
-    { params: includeInactive ? { include_inactive: true } : undefined }
+    Object.keys(params).length ? { params } : undefined
   )
   return data
 }

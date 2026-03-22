@@ -1,7 +1,7 @@
 import logging
 from typing import List, Tuple
 from uuid import UUID
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Body
 from fastapi import Query
@@ -45,6 +45,7 @@ class BulkDeleteItemOut(BaseModel):
 
 class CandidateUploadLinkOut(BaseModel):
     apply_url: str
+    documents_url: Optional[str] = None
     status_url: Optional[str] = None
     intake_token: str
     status_share_token: Optional[str] = None
@@ -102,6 +103,7 @@ from backend.app.core.audit_events import AuditEntityType
 from backend.app.modules.documents import crud as documents_crud
 from backend.app.services import candidate_notifications
 from backend.app.services.audit import log_audit_event
+from backend.app.services.risk_scoring import compute_candidate_risk_scores
 from backend.app.api.v1.candidates.schemas import (
     CandidateTimelineResponse,
     CandidateTimelineEventOut,
@@ -588,6 +590,14 @@ async def list_candidates(
         default=False,
         description="Return a compact payload for list views (omit heavy fields).",
     ),
+    include_risk: bool = Query(
+        default=False,
+        description="Include candidate risk scoring fields in the list payload.",
+    ),
+    include_insights: bool = Query(
+        default=False,
+        description="Include aggregate counters (total, new, docs readiness buckets) for the current filter set, computed in one SQL query.",
+    ),
     scope_tenant_id: UUID | None = Query(
         default=None,
         description="If set, scope the list to this tenant (e.g. from getCurrentTenant). Overrides X-Tenant-Id for scope only.",
@@ -782,12 +792,32 @@ async def list_candidates(
         filters["dt_from"] = datetime.combine(created_from, datetime.min.time())
     if created_to:
         filters["dt_to"] = datetime.combine(created_to, datetime.max.time())
-    total = await cand_repo.count_candidates(
-        db,
-        tenant_id=scope_tenant,
-        filters=filters,
-        visibility=visibility,
-    )
+    insights_payload: dict[str, int] | None = None
+    if include_insights:
+        try:
+            insights_payload = await cand_repo.count_candidates_insights(
+                db,
+                tenant_id=scope_tenant,
+                filters=filters,
+                visibility=visibility,
+            )
+            total = int(insights_payload.get("total", 0))
+        except Exception:
+            logging.getLogger(__name__).exception("count_candidates_insights failed, falling back to count_candidates")
+            insights_payload = None
+            total = await cand_repo.count_candidates(
+                db,
+                tenant_id=scope_tenant,
+                filters=filters,
+                visibility=visibility,
+            )
+    else:
+        total = await cand_repo.count_candidates(
+            db,
+            tenant_id=scope_tenant,
+            filters=filters,
+            visibility=visibility,
+        )
     # Log scope used for count (align list total with analytics; diagnose 666 vs 524)
     if client_tenant and total > 0:
         logging.getLogger(__name__).debug(
@@ -929,6 +959,28 @@ async def list_candidates(
         response.headers["X-List-Rows"] = str(len(rows))
         response.headers["X-List-Source"] = "fetch"
 
+    risk_map: Dict[str, Any] = {}
+    if include_risk and rows:
+        candidate_by_id: Dict[str, Candidate] = {}
+        for row in rows:
+            if not row:
+                continue
+            c = row[0]
+            cid = str(getattr(c, "id", "") or "")
+            if cid:
+                candidate_by_id[cid] = c
+        try:
+            now = datetime.now(timezone.utc)
+            risk_map = await compute_candidate_risk_scores(
+                db,
+                tenant_id=scope_tenant,
+                candidates_by_id=candidate_by_id,
+                now=now,
+            )
+        except Exception:
+            logging.getLogger(__name__).exception("Failed to compute candidate risk scores")
+            risk_map = {}
+
     items = []
     for row in rows:
         # "rows" can come in two shapes depending on repo implementation.
@@ -1007,6 +1059,8 @@ async def list_candidates(
             "trailer_types": extra_payload.get("trailer_types"),
         }
 
+        risk = risk_map.get(str(c.id)) if include_risk else None
+
         base_payload = {
             "id": str(c.id),
             "tenant_id": str(getattr(c, "tenant_id", "")) if getattr(c, "tenant_id", None) else None,
@@ -1043,6 +1097,13 @@ async def list_candidates(
             "docs_next_valid_from": docs_next_valid_from.isoformat() if getattr(docs_next_valid_from, "isoformat", None) else docs_next_valid_from,
             "docs_has_files": docs_has_files,
         }
+        if include_risk:
+            base_payload["risk_score"] = getattr(risk, "risk_score", None) if risk else None
+            base_payload["risk_band"] = getattr(risk, "risk_band", None) if risk else None
+            base_payload["risk_drivers"] = getattr(risk, "risk_drivers", None) if risk else None
+            ru = getattr(risk, "risk_updated_at", None) if risk else None
+            base_payload["risk_updated_at"] = ru.isoformat() if ru and hasattr(ru, "isoformat") else None
+            base_payload["risk_version"] = getattr(risk, "risk_version", None) if risk else None
 
         if compact:
             item = {
@@ -1200,7 +1261,10 @@ async def list_candidates(
                 sample_masked.get("email"),
             )
     
-    return {"total": total, "items": processed_items}
+    out: dict[str, Any] = {"total": total, "items": processed_items}
+    if include_insights and insights_payload is not None:
+        out["insights"] = insights_payload
+    return out
 
 
 @router.get(
@@ -1637,6 +1701,23 @@ async def get_candidate(
         out["can_edit"] = await can_client_edit(db, str(candidate_id), tenant_id_str)
     else:
         out["can_edit"] = await can_agency_edit(db, str(candidate_id), tenant_id_str)
+
+    # Contact-attempt readiness for stage UI (plan: New → at least one attempt when policy on).
+    cand_row = row[0]
+    try:
+        from backend.app.services.contact_attempts import (
+            count_contact_attempts,
+            get_effective_contact_policy,
+        )
+
+        pol = await get_effective_contact_policy(db, tenant_id_str, cand_row)
+        out["contact_policy_enabled"] = bool(pol.get("enabled"))
+        out["contact_attempt_count"] = await count_contact_attempts(db, str(cand_row.id))
+    except Exception:
+        logging.getLogger(__name__).exception("contact readiness enrich failed for candidate %s", candidate_id)
+        out["contact_policy_enabled"] = False
+        out["contact_attempt_count"] = 0
+
     return out
 
 
@@ -1867,6 +1948,7 @@ async def create_candidate_upload_link(
 
     return CandidateUploadLinkOut(
         apply_url=f"/public/apply/{apply_token}",
+        documents_url=f"/public/documents/{status_token}" if status_token else None,
         status_url=f"/public/status/{status_token}" if status_token else None,
         intake_token=apply_token,
         status_share_token=status_token,
@@ -2203,3 +2285,8 @@ async def delete_candidate(
     db, tenant_id = db_tenant
     await cand_service.delete_candidate_full(db, str(tenant_id), str(candidate_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+from backend.app.api.v1.candidates import pipeline_overrides_api as _pipeline_overrides_api  # noqa: E402
+
+router.include_router(_pipeline_overrides_api.router)

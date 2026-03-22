@@ -42,7 +42,9 @@ export default function TtvReportPage() {
         const data = await getTtvReport({ days })
         if (!cancelled) setReport(data)
       } catch (err: any) {
-        if (!cancelled) setError(err?.message || 'Failed to load TTV report')
+        if (!cancelled) {
+          setError(err?.message || t('admin.ttv.load_error', { defaultValue: 'Failed to load TTV report' }))
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -50,7 +52,7 @@ export default function TtvReportPage() {
     return () => {
       cancelled = true
     }
-  }, [days])
+  }, [days, t])
 
   const steps = ORDER.map((key) => report?.steps.find((s) => s.step_key === key) ?? null)
 
@@ -114,7 +116,7 @@ export default function TtvReportPage() {
               <thead>
                 <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
                   <th className="px-3 py-2 font-medium">
-                    {t('admin.ttv.step', { defaultValue: 'Step' })}
+                    {t('admin.ttv.step_label', { defaultValue: 'Step' })}
                   </th>
                   <th className="px-3 py-2 font-medium">
                     {t('admin.ttv.samples', { defaultValue: 'Samples' })}
@@ -177,4 +179,3 @@ export default function TtvReportPage() {
     </div>
   )
 }
-

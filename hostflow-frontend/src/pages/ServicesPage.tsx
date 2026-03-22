@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 
 import {
   addServiceSchedule,
@@ -25,7 +25,7 @@ import type {
 import { useAdditionalServiceCatalog, useServiceOrder, useServiceOrderSummary, useServiceOrders } from '../hooks/useAdditionalServices'
 import { usePermissions } from '../hooks/usePermissions'
 import { searchCandidates } from '../api/candidates'
-import { listCompanies } from '../api/client'
+import { api, listCompanies } from '../api/client'
 import { listVacancies } from '../api/vacancies'
 import { getAnalyticsProfileSummary, getServicesAnalyticsOverview, type ServicesAnalyticsOverview } from '../api/analytics'
 import { createInvoiceFromServiceOrder, createPayment, listInvoices, listInvoicesByServiceOrders, sendInvoice } from '../api/client'
@@ -78,6 +78,11 @@ export function ServicesPage() {
   const { t } = useI18n()
   const { openEntityLabel, businessType, isServicesTenant, isEmployerTenant } = useBusinessTerminology()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const companyIdFromUrl = useMemo(() => String(searchParams.get('company_id') || '').trim(), [searchParams])
+  const companyScopeFromUrlRef = useRef(false)
+  const [urlCompanyScopeName, setUrlCompanyScopeName] = useState<string | null>(null)
   const { can } = usePermissions()
   const [tab, setTab] = useState<'overview' | 'analytics' | 'orders' | 'catalog' | 'billing'>('overview')
   const [includeInactive, setIncludeInactive] = useState(false)
@@ -93,6 +98,69 @@ export function ServicesPage() {
   const [analyticsSliceBy, setAnalyticsSliceBy] = useState<'client' | 'item' | 'status' | 'manager'>('client')
   const [ordersDrilldown, setOrdersDrilldown] = useState<ServicesOrdersDrilldown>(null)
 
+  useEffect(() => {
+    if (!companyIdFromUrl) {
+      setUrlCompanyScopeName(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data } = await api.get<{ name?: string }>(`/companies/${companyIdFromUrl}`)
+        if (!cancelled) {
+          const n = String(data?.name || '').trim()
+          setUrlCompanyScopeName(n || null)
+        }
+      } catch {
+        if (!cancelled) setUrlCompanyScopeName(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [companyIdFromUrl])
+
+  useEffect(() => {
+    if (companyIdFromUrl) {
+      companyScopeFromUrlRef.current = true
+      setOrdersDrilldown({ kind: 'client', ownerKind: 'company', ownerId: companyIdFromUrl })
+      setOrderForm((prev) => ({
+        ...prev,
+        companyId: companyIdFromUrl,
+        candidateId: '',
+        vacancyId: '',
+      }))
+    } else if (companyScopeFromUrlRef.current) {
+      companyScopeFromUrlRef.current = false
+      setOrdersDrilldown(null)
+    }
+  }, [companyIdFromUrl])
+
+  const clearUrlCompanyScope = useCallback(() => {
+    companyScopeFromUrlRef.current = false
+    const next = new URLSearchParams(searchParams)
+    next.delete('company_id')
+    const qs = next.toString()
+    navigate(qs ? `${location.pathname}?${qs}` : location.pathname, { replace: true })
+    setOrdersDrilldown((d) =>
+      d?.kind === 'client' && d.ownerKind === 'company' && d.ownerId === companyIdFromUrl ? null : d,
+    )
+  }, [companyIdFromUrl, location.pathname, navigate, searchParams])
+
+  const handleOrdersDrilldownChange = useCallback(
+    (next: ServicesOrdersDrilldown) => {
+      setOrdersDrilldown(next)
+      if (next === null && companyIdFromUrl) {
+        companyScopeFromUrlRef.current = false
+        const nextParams = new URLSearchParams(searchParams)
+        nextParams.delete('company_id')
+        const qs = nextParams.toString()
+        navigate(qs ? `${location.pathname}?${qs}` : location.pathname, { replace: true })
+      }
+    },
+    [companyIdFromUrl, location.pathname, navigate, searchParams],
+  )
+
   const catalogHook = useAdditionalServiceCatalog(includeInactive)
 
   const orderQuery = useMemo(() => {
@@ -102,6 +170,24 @@ export function ServicesPage() {
 
   const ordersHook = useServiceOrders(orderQuery)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (
+      tabParam === 'overview' ||
+      tabParam === 'orders' ||
+      tabParam === 'catalog' ||
+      tabParam === 'analytics' ||
+      tabParam === 'billing'
+    ) {
+      setTab(tabParam)
+    }
+    const orderId = searchParams.get('order_id')
+    if (orderId) {
+      setSelectedOrderId(orderId)
+    }
+  }, [searchParams])
+
   const orderDetailHook = useServiceOrder(selectedOrderId)
   const orderSummaryHook = useServiceOrderSummary(selectedOrderId)
   const [orderInvoiceMap, setOrderInvoiceMap] = useState<Record<string, any>>({})
@@ -164,10 +250,23 @@ export function ServicesPage() {
   }, [tab, selectedOrderId, billingStatusFilter])
 
   useEffect(() => {
-    if (!selectedOrderId && ordersHook.orders.length > 0) {
-      setSelectedOrderId(ordersHook.orders[0].id)
+    if (ordersHook.orders.length === 0) return
+    const pool = companyIdFromUrl
+      ? ordersHook.orders.filter((o) => o.company_id === companyIdFromUrl)
+      : ordersHook.orders
+    if (pool.length === 0) {
+      if (companyIdFromUrl) setSelectedOrderId(null)
+      return
     }
-  }, [ordersHook.orders, selectedOrderId])
+    const orderIdParam = searchParams.get('order_id')
+    if (orderIdParam && pool.some((o) => o.id === orderIdParam)) {
+      setSelectedOrderId(orderIdParam)
+      return
+    }
+    if (!selectedOrderId || !pool.some((o) => o.id === selectedOrderId)) {
+      setSelectedOrderId(pool[0].id)
+    }
+  }, [ordersHook.orders, selectedOrderId, companyIdFromUrl, searchParams])
 
   useEffect(() => {
     let active = true
@@ -377,6 +476,7 @@ export function ServicesPage() {
   const serviceInsights = useMemo(() => {
     const visibleOrders = ordersHook.orders.length
     let activeOrders = 0
+    let approvedOrders = 0
     let deliveredOrders = 0
     let totalRevenue = 0
     let deliveredRevenue = 0
@@ -407,11 +507,14 @@ export function ServicesPage() {
       })
       if (missingSchedule) ordersWithMissingSchedule += 1
       if (missingDocs) ordersWithMissingDocs += 1
-      if (status === 'delivered') {
+      if (status === 'confirmed') {
+        approvedOrders += 1
+      }
+      if (status === 'completed') {
         deliveredOrders += 1
         deliveredRevenue += amount
       }
-      const terminal = status === 'delivered' || status === 'cancelled' || status === 'refunded'
+      const terminal = status === 'completed' || status === 'cancelled'
       if (!terminal) activeOrders += 1
       totalRevenue += amount
     })
@@ -424,6 +527,7 @@ export function ServicesPage() {
     return {
       visibleOrders,
       activeOrders,
+      approvedOrders,
       deliveredOrders,
       totalRevenue,
       averageCheck,
@@ -639,12 +743,12 @@ export function ServicesPage() {
                   className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50"
                   onClick={() => {
                     setTab('orders')
-                    setStatusFilter('approved' as any)
-                    setOrdersDrilldown({ kind: 'status', status: 'approved' } as any)
+                    setStatusFilter('confirmed')
+                    setOrdersDrilldown({ kind: 'status', status: 'confirmed' })
                   }}
                 >
                   <div className="text-xs font-medium text-slate-600">
-                    {t('app.services.overview.ops.approved', { defaultValue: 'Approved (needs fulfillment)' })}
+                    {t('app.services.overview.ops.approved', { defaultValue: 'Confirmed (needs fulfillment)' })}
                   </div>
                   <div className="mt-1 text-xl font-semibold text-slate-900">{serviceInsights.approvedOrders}</div>
                 </button>
@@ -653,12 +757,12 @@ export function ServicesPage() {
                   className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50"
                   onClick={() => {
                     setTab('orders')
-                    setStatusFilter('delivered' as any)
-                    setOrdersDrilldown({ kind: 'status', status: 'delivered' } as any)
+                    setStatusFilter('completed')
+                    setOrdersDrilldown({ kind: 'status', status: 'completed' })
                   }}
                 >
                   <div className="text-xs font-medium text-slate-600">
-                    {t('app.services.overview.ops.delivered', { defaultValue: 'Delivered' })}
+                    {t('app.services.overview.ops.delivered', { defaultValue: 'Completed' })}
                   </div>
                   <div className="mt-1 text-xl font-semibold text-slate-900">{serviceInsights.deliveredOrders}</div>
                 </button>
@@ -700,8 +804,8 @@ export function ServicesPage() {
                     className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-700 hover:bg-slate-100"
                     onClick={() => {
                       setTab('orders')
-                      setStatusFilter('approved')
-                      setOrdersDrilldown({ kind: 'status', status: 'approved' })
+                      setStatusFilter('confirmed')
+                      setOrdersDrilldown({ kind: 'status', status: 'confirmed' })
                     }}
                   >
                     {t('app.services.overview.alerts.schedule_missing', {
@@ -775,8 +879,11 @@ export function ServicesPage() {
           invoiceMap={orderInvoiceMap}
           drilldown={ordersDrilldown}
           analyticsTrendBucket={analyticsTrendBucket}
-          onSetDrilldown={setOrdersDrilldown}
+          onSetDrilldown={handleOrdersDrilldownChange}
           onRefreshInvoices={refreshOrderInvoices}
+          urlCompanyScopeId={companyIdFromUrl || null}
+          urlCompanyScopeName={urlCompanyScopeName}
+          onClearUrlCompanyScope={companyIdFromUrl ? clearUrlCompanyScope : undefined}
         />
       )}
       {tab === 'analytics' && (
@@ -1157,7 +1264,7 @@ function CatalogTab({
                   className="input mt-1"
                   value={formState.costCurrency}
                   onChange={(e) => onFormChange({ ...formState, costCurrency: e.target.value.toUpperCase() })}
-                  placeholder="PLN"
+                  placeholder={t('app.services.catalog.new_service.placeholders.cost_currency', { defaultValue: 'PLN' })}
                 />
               </div>
               <div>
@@ -1208,6 +1315,12 @@ function CatalogTab({
               <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.name')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.category')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.price')}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">
+                {t('app.services.catalog.table.orders_count')}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">
+                {t('app.services.catalog.table.revenue_completed')}
+              </th>
               <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.schedule')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.candidate')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600">{t('app.services.catalog.table.status')}</th>
@@ -1217,13 +1330,13 @@ function CatalogTab({
           <tbody className="bg-white">
             {loading ? (
               <tr>
-                <td colSpan={canManage ? 8 : 7} className="px-4 py-4 text-center text-slate-500">
+                <td colSpan={canManage ? 10 : 9} className="px-4 py-4 text-center text-slate-500">
                   {t('app.services.catalog.table.loading')}
                 </td>
               </tr>
             ) : services.length === 0 ? (
               <tr>
-                <td colSpan={canManage ? 8 : 7} className="px-4 py-4 text-center text-slate-500">
+                <td colSpan={canManage ? 10 : 9} className="px-4 py-4 text-center text-slate-500">
                   {t('app.services.catalog.table.empty')}
                 </td>
               </tr>
@@ -1240,6 +1353,10 @@ function CatalogTab({
                   <td className="border-r border-slate-200 px-4 py-2">{svc.name}</td>
                   <td className="border-r border-slate-200 px-4 py-2 text-slate-600">{svc.category || '—'}</td>
                   <td className="border-r border-slate-200 px-4 py-2">{formatAmount(svc.base_price)}</td>
+                  <td className="border-r border-slate-200 px-4 py-2 tabular-nums">{svc.metrics_orders_count ?? 0}</td>
+                  <td className="border-r border-slate-200 px-4 py-2 tabular-nums">
+                    {formatAmount(svc.metrics_revenue_completed ?? 0)}
+                  </td>
                   <td className="border-r border-slate-200 px-4 py-2">{svc.requires_schedule ? t('app.services.words.yes') : t('app.services.words.no')}</td>
                   <td className="border-r border-slate-200 px-4 py-2">{svc.requires_candidate ? t('app.services.words.yes') : t('app.services.words.no')}</td>
                   <td className="border-r border-slate-200 px-4 py-2">
@@ -1295,6 +1412,9 @@ type OrdersTabProps = {
   analyticsTrendBucket: 'week' | 'month'
   onSetDrilldown: (value: ServicesOrdersDrilldown) => void
   onRefreshInvoices: () => void
+  urlCompanyScopeId?: string | null
+  urlCompanyScopeName?: string | null
+  onClearUrlCompanyScope?: () => void
 }
 
 type OrderOwnerChoice = 'candidate' | 'vacancy' | 'company'
@@ -1331,6 +1451,9 @@ function OrdersTab({
   analyticsTrendBucket,
   onSetDrilldown,
   onRefreshInvoices,
+  urlCompanyScopeId,
+  urlCompanyScopeName,
+  onClearUrlCompanyScope,
 }: OrdersTabProps) {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -1360,6 +1483,22 @@ function OrdersTab({
   const [companyResults, setCompanyResults] = useState<Company[]>([])
   const [companyLoading, setCompanyLoading] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+
+  useEffect(() => {
+    if (!urlCompanyScopeId) return
+    setOwnerChoice('company')
+    setSelectedCandidate(null)
+    setSelectedVacancy(null)
+    setCandidateQuery('')
+    setVacancyQuery('')
+    setCompanyQuery('')
+    setCompanyResults([])
+    setSelectedCompany({
+      id: urlCompanyScopeId,
+      name: urlCompanyScopeName || urlCompanyScopeId,
+    })
+  }, [urlCompanyScopeId, urlCompanyScopeName])
+
   const ownerOptions = useMemo(() => {
     const map: Record<OrderOwnerChoice, { key: OrderOwnerChoice; label: string; description: string }> = {
       candidate: {
@@ -1752,6 +1891,23 @@ function OrdersTab({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
       <div className="space-y-4">
+        {urlCompanyScopeId && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50/80 px-3 py-2 text-sm text-brand-900">
+            <span className="min-w-0">
+              {t('app.services.orders.scope.company', {
+                values: { name: urlCompanyScopeName || urlCompanyScopeId },
+              })}{' '}
+              <Link className="whitespace-nowrap text-xs font-medium text-brand-700 hover:underline" to={`/app/clients/${urlCompanyScopeId}`}>
+                {t('app.services.orders.scope.open_client')}
+              </Link>
+            </span>
+            {onClearUrlCompanyScope && (
+              <button type="button" className="btn-secondary btn-xs shrink-0" onClick={onClearUrlCompanyScope}>
+                {t('app.services.orders.scope.clear')}
+              </button>
+            )}
+          </div>
+        )}
         {canManage && (
           <form className="app-surface space-y-3 p-4" onSubmit={onCreateOrder}>
             <h2 className="text-lg font-semibold">{t('app.services.orders.new.title')}</h2>

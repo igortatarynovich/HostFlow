@@ -34,10 +34,22 @@
       "collapse": "Collapse",
       "expand": "Expand",
       "open_clients": "Open clients",
-      "open_companies": "Open companies"
+      "open_companies": "Open companies",
+      "open": "Open",
+      "actions": "Actions",
+      "advanced": "Advanced",
+      "check": "Check",
+      "dismiss": "Dismiss",
+      "hide": "Hide",
+      "insert": "Insert",
+      "prev": "Prev",
+      "remove": "Remove",
+      "show": "Show",
+      "title": "Title"
     },
     "errors": {
-      "unknown": "Unknown error"
+      "unknown": "Unknown error",
+      "request_failed": "Request failed"
     },
     "candidate_card": {
       "contacts": {
@@ -147,8 +159,42 @@
     },
     "words": {
       "yes": "Yes",
-      "no": "No"
-    }
+      "no": "No",
+      "if_available": "if available"
+    },
+    "and_more": "and more",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "save": "Save",
+    "sending": "Sending…",
+    "sort": {
+      "asc": "Ascending",
+      "desc": "Descending"
+    },
+    "today": "Today",
+    "saved": "Saved",
+    "apply": "Apply",
+    "clear": "Clear",
+    "copy": "Copy",
+    "edit": "Edit",
+    "enabled": "Enabled",
+    "filters": {
+      "all": "All"
+    },
+    "messages": {
+      "saved": "Saved"
+    },
+    "navigation": {
+      "settings": "Settings"
+    },
+    "refresh": "Refresh",
+    "reset": "Reset",
+    "search": "Search",
+    "and": "and",
+    "plan": "plan",
+    "available": "Available",
+    "active": "Active",
+    "required": "Required"
   },
   "scanner": {
     "place_in_frame": "Place the document inside the frame",
@@ -271,12 +317,14 @@
         "invoices": "Invoices",
         "communications": "Communications",
         "communications_setup": "Comms setup",
+        "inbox": "Inbox",
+        "tasks": "Tasks",
         "messages_inbox": "Messages",
         "email_inbox": "Email",
         "calendar": "Calendar",
         "planner": "Planner",
         "activities": "Activities",
-        "sla_incidents": "SLA incidents",
+        "sla_incidents": "SLA",
         "command_audit": "Command audit",
         "team_availability": "Team availability",
         "my_availability": "My availability",
@@ -298,7 +346,13 @@
         "settings_audit": "Audit log",
         "settings_communications": "Communications settings",
         "profile": "Profile",
-        "logout": "Sign out"
+        "logout": "Sign out",
+        "email": "Email",
+        "messages": "Messages",
+        "setup": "Setup",
+        "no_next_action": "No next action",
+        "automation_log": "Automation log",
+        "automation_rules": "Automation rules"
       }
     },
     "clients": {
@@ -331,7 +385,17 @@
       "not_found": "Client not found",
       "errors": {
         "name_or_link": "Enter a name or link to a company."
-      }
+      },
+      "add_entity_dynamic": "Add entity dynamic",
+      "created_dynamic": "Created dynamic",
+      "display_name_dynamic": "Display name dynamic",
+      "empty_cta_companies": "Empty CTA companies",
+      "empty_desc": "Empty desc",
+      "empty_title_dynamic": "Empty title dynamic",
+      "not_found_dynamic": "Not found dynamic",
+      "quick_defaults": "Quick defaults",
+      "subtitle_dynamic": "Subtitle dynamic",
+      "title_dynamic": "Title dynamic"
     },
     "vacancies": {
       "list": {
@@ -344,7 +408,7 @@
         "export_csv_title": "Export table to CSV",
         "export_csv": "Export CSV",
         "columns": "Columns",
-        "col_title": "Title",
+        "col_title": "Col title",
         "col_company": "Company",
         "col_status": "Status",
         "col_updated": "Updated",
@@ -380,7 +444,43 @@
           "unauthorized": "Unauthorized: sign in and try again.",
           "load_failed": "Failed to load vacancies"
         }
-      }
+      },
+      "actions": {
+        "create": "Create"
+      },
+      "detail": {
+        "documents": {
+          "hint": "Hint"
+        },
+        "notes_coming": "Notes coming",
+        "sections": {
+          "documents": "Documents",
+          "info": "Info"
+        },
+        "tabs": {
+          "candidates": "Candidates",
+          "info": "Info",
+          "notes": "Notes"
+        },
+        "untitled": "Untitled",
+        "table": {
+          "candidate": "Candidate",
+          "email": "Email",
+          "stage": "Stage"
+        },
+        "placeholders": {
+          "currency_codes": "PLN / EUR / USD"
+        },
+        "fields": {
+          "id": "ID"
+        },
+        "criteria": {
+          "title": "Lead criteria (auto-qualification)",
+          "documents_placeholder": "e.g. karta_pobytu, wp_a",
+          "lead_fields": "Currently checked against lead fields:"
+        }
+      },
+      "load_failed": "Load failed"
     },
     "handoff": {
       "do_procesowania": "Processed",
@@ -538,7 +638,8 @@
       "dialogs": {
         "title": "Dialogs",
         "reorder_hint": "Drag and drop to reorder priority.",
-        "select_prompt": "Select a dialog to start messaging."
+        "select_prompt": "Select a dialog to start messaging.",
+        "filters_label": "Filters label"
       },
       "manager": {
         "label": "Manager",
@@ -553,6 +654,31 @@
         "searching": "Searching...",
         "unlink": "Unlink",
         "link": "Link candidate"
+      },
+      "uos": {
+        "pick_thread": "Select a dialog to link client and order.",
+        "panel_title": "Context",
+        "panel_hint": "Link company and service order to this thread (UOS).",
+        "client": "Client (company)",
+        "open_client": "Open client",
+        "unlink_client": "Unlink",
+        "client_search_placeholder": "Company name…",
+        "link_client": "Link client",
+        "order": "Service order",
+        "open_order": "Open order",
+        "unlink_order": "Unlink",
+        "order_need_context": "Link a candidate or client to load recent orders, or paste order ID below.",
+        "order_empty": "No orders found for this context.",
+        "order_select": "Select order…",
+        "link_order": "Link",
+        "order_id_placeholder": "Order UUID",
+        "link_order_by_id": "Link ID",
+        "candidate_linked_short": "candidate",
+        "candidate_missing_short": "no candidate",
+        "client_linked_short": "client",
+        "client_missing_short": "no client",
+        "order_linked_short": "order",
+        "order_missing_short": "no order"
       },
       "timeline": {
         "empty": "No messages yet."
@@ -585,7 +711,8 @@
           "name": "Name",
           "color": "Color",
           "state": "State"
-        }
+        },
+        "remove_from_dialog": "Click to remove from dialog"
       },
       "ops": {
         "all_modes": "All modes",
@@ -629,18 +756,39 @@
     "shell": {
       "sidebar": {
         "workspace": "Workspace",
-        "close_menu": "Close menu"
+        "close_menu": "Close menu",
+        "client_workflow": "Client workflow",
+        "communications_workspace": "Communications workspace",
+        "more": "More",
+        "operations": "Operations"
       },
       "actions": {
         "logout": "Sign out",
         "profile": "Profile"
+      },
+      "account": {
+        "my_account": "My account"
       }
     },
     "topbar": {
       "actions": {
         "open_menu": "Open menu",
+        "notifications": "Notifications",
         "reminders": "Reminders",
-        "return_to_platform": "Return to platform admin"
+        "return_to_platform": "Return to platform admin",
+        "language": "Language"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "subtitle": "{unread} unread · {total} loaded",
+        "open_thread": "Open thread",
+        "groups": {
+          "all": "All",
+          "sla": "Urgent (SLA)",
+          "tasks": "Tasks",
+          "messages": "Messages",
+          "system": "System"
+        }
       },
       "search": {
         "open": "Search",
@@ -655,7 +803,10 @@
           "company": "Company",
           "document": "Document"
         }
-      }
+      },
+      "own_company": "Own company",
+      "trial_badge": "Trial badge",
+      "trial_badge_hint": "Trial badge hint"
     },
     "trial_banner": {
       "badge": "Trial status",
@@ -842,6 +993,13 @@
         "last_seen": "Last activity: {value}",
         "revoked_at": "Ended: {value}",
         "current_badge": "Current"
+      },
+      "actions": {
+        "use_browser_timezone": "Use browser timezone"
+      },
+      "labels": {
+        "timezone": "Timezone",
+        "user": "User"
       }
     },
     "signup": {
@@ -854,8 +1012,24 @@
       "legal_notice_privacy": "Privacy Policy",
       "legal_notice_cookies": "Cookie Policy",
       "errors": {
-        "consent_required": "You must accept Terms and Privacy Policy to continue."
-      }
+        "consent_required": "You must accept Terms and Privacy Policy to continue.",
+        "generic": "Generic",
+        "password_mismatch": "Password mismatch",
+        "password_short": "Password short"
+      },
+      "fields": {
+        "confirm": "Confirm",
+        "full_name": "Full name",
+        "password": "Password",
+        "workspace": "Workspace",
+        "workspace_placeholder": "Workspace placeholder"
+      },
+      "have_account": "Have account",
+      "selected_plan": "Selected plan",
+      "sign_in": "Sign in",
+      "submit": "Submit",
+      "subtitle": "Subtitle",
+      "title": "Title"
     },
     "login": {
       "title": "Sign in to HostFlow",
@@ -898,6 +1072,27 @@
             "body": "Give managers and clients a branded portal with updates in real time."
           }
         }
+      },
+      "create_account": "Create account",
+      "forgot_password": "Forgot password",
+      "notices": {
+        "invite_accepted": "Invite accepted",
+        "password_reset_success": "Password reset success"
+      },
+      "signup_first": {
+        "badge": "Badge",
+        "bullets": {
+          "0": "0",
+          "1": "1",
+          "2": "2"
+        },
+        "card_caption": "Card caption",
+        "card_title": "Card title",
+        "image_alt": "Image alt",
+        "primary_cta": "Primary CTA",
+        "secondary_cta": "Secondary CTA",
+        "subtitle": "Subtitle",
+        "title": "Title"
       }
     },
     "platform": {
@@ -1283,7 +1478,13 @@
           "plan_change_title": "Plan updated",
           "plan_change_text": "Your subscription was switched to {plan}.",
           "plan_change_pending_title": "Complete payment to switch plans",
-          "plan_change_pending_text": "We opened Stripe payment for the {plan} plan. Your current plan stays active until payment is completed."
+          "plan_change_pending_text": "We opened Stripe payment for the {plan} plan. Your current plan stays active until payment is completed.",
+          "company_slots_overflow_text": "Company slots overflow text",
+          "company_slots_overflow_title": "Company slots overflow title",
+          "company_slots_recommended_text": "Company slots recommended text",
+          "company_slots_recommended_title": "Company slots recommended title",
+          "company_slots_text": "Company slots text",
+          "company_slots_title": "Company slots title"
         },
         "verification": {
           "title": "Checking payment status",
@@ -1317,7 +1518,14 @@
           "client_managers": "Client managers: {used} / {limit}",
           "viewers": "Viewers: {used} / {limit}",
           "storage": "Storage: {used}GB / {limit}GB",
-          "companies": "Companies: limit {limit}"
+          "companies": "Companies: limit {limit}",
+          "back_to_onboarding": "Back to onboarding",
+          "back_to_onboarding_hint": "Back to onboarding hint",
+          "companies_addon": "Companies addon",
+          "companies_overflow": "Companies overflow",
+          "extra_company_slots": "Extra company slots",
+          "extra_company_slots_hint": "Extra company slots hint",
+          "extra_company_slots_recommended": "Extra company slots recommended"
         },
         "plans": {
           "starter": {
@@ -1369,7 +1577,161 @@
           "legal_terms": "Terms",
           "legal_privacy": "Privacy",
           "legal_cookies": "Cookies"
+        },
+        "checkout_sim": {
+          "cancel": "Cancel",
+          "error": "Error",
+          "subtitle": "Subtitle",
+          "success": "Success",
+          "title": "Title"
+        },
+        "company_slots_error": "Company slots error",
+        "checkout": {
+          "popup_title": "HostFlow Billing",
+          "popup_opening": "Opening Stripe checkout..."
         }
+      },
+      "candidate_profiles": {
+        "import": {
+          "json_only": "JSON files only (.json)",
+          "duplicate_suffix_hint": "If a profile with this code already exists, a new profile will be created with the \"_imported\" suffix",
+          "errors": {
+            "invalid_format": "Invalid file format. Select a JSON file (.json)",
+            "select_file": "Select a file to import",
+            "import_failed": "Failed to import profile",
+            "hint": "Fix the file or retry the action."
+          },
+          "title": "Import profile",
+          "description": "Select a JSON file with profile configuration for import. The file must contain a profile structure exported from the system.",
+          "select_other": "Click to select another file",
+          "dropzone": "Drop file here or click to select",
+          "important_title": "Important:",
+          "copy_fields_hint": "All fields, stages and documents from the imported profile will be copied",
+          "new_profile_hint": "The imported profile will be created as new and will not be linked to the original",
+          "actions": {
+            "importing": "Importing...",
+            "import": "Import"
+          }
+        },
+        "field_constructor": {
+          "key_placeholder": "custom_field_1",
+          "limits_title": "Field limits",
+          "limits": {
+            "simple": "Simple",
+            "medium": "Medium",
+            "resource": "Resource-heavy",
+            "total_custom": "Total custom"
+          },
+          "limits_exceeded": "Limits exceeded!",
+          "in_profile": "Fields in profile",
+          "empty": "No fields. Add fields from the list below.",
+          "create_new": "Create new custom field",
+          "available": "Available fields",
+          "all_added": "All fields are added",
+          "category": {
+            "simple": "Simple",
+            "medium": "Medium",
+            "resource": "Resource-heavy",
+            "system": "System"
+          },
+          "groups": {
+            "personal": "Personal data",
+            "contact": "Contacts",
+            "experience": "Work experience",
+            "documents": "Documents",
+            "status": "Status",
+            "other": "Other"
+          },
+          "system_fields": {
+            "first_name": "First name",
+            "last_name": "Last name",
+            "birth_date": "Date of birth",
+            "citizenship": "Citizenship",
+            "address": "Address",
+            "email": "Email",
+            "phone": "Phone",
+            "languages": "Languages",
+            "license_number": "Driver license number",
+            "license_categories": "License categories",
+            "employment_history": "Employment history"
+          },
+          "errors": {
+            "create_failed": "Failed to create field",
+            "key_label_required": "Key and label are required"
+          },
+          "types": {
+            "text": "Text",
+            "textarea": "Multiline text",
+            "number": "Number",
+            "date": "Date",
+            "checkbox": "Checkbox",
+            "select": "Select (single)",
+            "multiselect": "Select (multiple)"
+          },
+          "modal": {
+            "title": "Create new custom field",
+            "field_label": "Field name (display label) *",
+            "field_label_placeholder": "Example: Additional information",
+            "key_label": "Key (technical name) *",
+            "key_hint": "Used for technical field identification",
+            "type_label": "Field type *",
+            "options_label": "Selection options",
+            "add_option_placeholder": "Add option...",
+            "required_label": "Required field",
+            "help_label": "Hint (help text)",
+            "help_placeholder": "Hint text for users...",
+            "creating": "Creating...",
+            "create": "Create field"
+          }
+        },
+        "stage_constructor": {
+          "code_placeholder": "initial_interview",
+          "create_new": "Create new custom stage",
+          "in_funnel": "Stages in funnel",
+          "empty": "No stages. Add stages from the list below.",
+          "available_system": "Available system stages",
+          "all_system_added": "All system stages are added",
+          "available_custom": "Available custom stages",
+          "errors": {
+            "code_label_required": "Code and label are required",
+            "delete_failed": "Failed to delete stage",
+            "create_failed": "Failed to create stage",
+            "update_failed": "Failed to update stage"
+          },
+          "modal": {
+            "edit_title": "Edit stage",
+            "create_title": "Create new custom stage",
+            "label_field": "Stage name (display label) *",
+            "label_placeholder": "Example: Initial interview",
+            "code_field": "Stage code (technical name) *",
+            "code_hint": "Used for technical stage identification",
+            "code_locked": "cannot be changed",
+            "order_field": "Sort order",
+            "create_action": "Create stage"
+          },
+          "badges": {
+            "inactive": "Inactive",
+            "custom": "Custom"
+          },
+          "prompts": {
+            "delete": "Delete stage?"
+          }
+        }
+      },
+      "chrome": {
+        "billing": "Billing",
+        "crm_setup": "CRM setup",
+        "integrations": "Integrations",
+        "overview": "Overview",
+        "personal": "Personal",
+        "security": "Security",
+        "subtitle": "Subtitle",
+        "team": "Team",
+        "title": "Title",
+        "workspace": "Workspace"
+      },
+      "email": {
+        "title": "Title"
       }
     },
     "admin": {
@@ -1412,7 +1774,14 @@
           "invite": "Failed to create invite",
           "create": "Failed to create user",
           "supervisor_update": "Failed to update supervisor",
-          "company_update_failed": "Failed to update company access"
+          "company_update_failed": "Failed to update company access",
+          "delete_failed": "Delete failed",
+          "email_required": "Email required",
+          "password_change_failed": "Password change failed",
+          "password_reset_failed": "Password reset failed",
+          "password_short": "Password short",
+          "supervisor_required": "Supervisor required",
+          "supervisor_required_for_recruiter": "Supervisor required for recruiter"
         },
         "invite": {
           "expiry_label": "Expiration (hours)",
@@ -1440,7 +1809,9 @@
             "activate": "Activate",
             "deactivate": "Deactivate",
             "revoke_refresh": "Revoke refresh token",
-            "audit": "Audit"
+            "audit": "Audit",
+            "change_password": "Change password",
+            "reset_password": "Reset password"
           },
           "empty": "No users found"
         },
@@ -1520,8 +1891,13 @@
             "refresh_loading": "Loading…",
             "refresh": "Refresh audit",
             "no_entries": "No audit entries yet.",
-            "system_actor": "system"
-          }
+            "system_actor": "system",
+            "title": "Title"
+          },
+          "recruiters": {
+            "title": "Title"
+          },
+          "supervisor_current": "Supervisor current"
         },
         "page": {
           "title": "Users & roles",
@@ -1537,7 +1913,11 @@
             "apply": "Apply override",
             "clear": "Clear override",
             "inactive": "Override inactive",
-            "search_hint": "Search by tenant ID"
+            "search_hint": "Search by tenant ID",
+            "no_results": "No results",
+            "subtitle": "Subtitle",
+            "suggestions": "Suggestions",
+            "title": "Title"
           },
           "actions": {
             "title": "User actions",
@@ -1545,7 +1925,33 @@
               "create": "Create",
               "invite": "Invite",
               "team": "Team"
-            }
+            },
+            "team_help": "Team help"
+          },
+          "access_denied": "Access denied",
+          "access_denied_forbidden": "Access denied forbidden"
+        },
+        "actions": {
+          "confirm_delete": "Confirm delete",
+          "delete_success": "Delete success",
+          "enter_new_password": "Enter new password",
+          "password_change_success": "Password change success",
+          "password_reset_link_sent": "Password reset link sent"
+        },
+        "success": {
+          "create": {
+            "title": "Title"
+          },
+          "invite": {
+            "title": "Title"
+          },
+          "labels": {
+            "email": "Email",
+            "name": "Name",
+            "role": "Role",
+            "temp_password": "Temp password",
+            "token": "Token",
+            "valid_until": "Valid until"
           }
         }
       },
@@ -1681,7 +2087,8 @@
           "settings": "Settings",
           "credentials": "Credentials",
           "mapping": "Ad mapping",
-          "logs": "Lead logs"
+          "logs": "Lead logs",
+          "automation_rules": "Automation rules"
         },
         "notices": {
           "settings_saved": "Meta Leads settings updated",
@@ -1689,7 +2096,8 @@
           "secret_rotated": "New secret: {secret}",
           "mapping_saved": "Mapping saved",
           "lead_rerouted": "Lead sent for processing",
-          "lead_retried": "Lead processed successfully"
+          "lead_retried": "Lead processed successfully",
+          "unmapped_attached": "Unmapped attached"
         },
         "errors": {
           "load": "Could not load Meta Leads data",
@@ -1734,23 +2142,37 @@
           "webhook_token": "Verify token",
           "last_signature_check": "Last signature check: {date}",
           "signature_status": "Status: {status}",
-          "save": "Save settings"
+          "save": "Save settings",
+          "field_mapping": "Field mapping",
+          "field_mapping_hint": "Field mapping hint",
+          "field_mapping_placeholder": "[{\"source\":\"phone_number\",\"target\":\"phone\",\"format\":\"phone\",\"overwrite\":true}]"
         },
         "credentials": {
           "title": "Add credential",
-          "label": "Name",
+          "label": "Label",
           "status": "Status",
           "webhook_secret": "Webhook secret",
           "access_token": "Access token",
           "table": {
-            "label": "Name",
+            "label": "Label",
             "status": "Status",
-            "signature": "Signature"
+            "signature": "Signature",
+            "ad_id": "ad_id",
+            "page_id": "page_id"
           },
           "actions": {
             "rotate": "Rotate secret"
           },
-          "empty": "No saved credentials"
+          "empty": "No saved credentials",
+          "statuses": {
+            "active": "active",
+            "disabled": "disabled",
+            "rotation_pending": "rotation_pending"
+          },
+          "fields": {
+            "ad_account_id": "ad_account_id",
+            "page_id": "page_id"
+          }
         },
         "mapping": {
           "title": "Ad → vacancy mapping",
@@ -1758,11 +2180,19 @@
           "save": "Save mapping",
           "search_placeholder": "Search by ad_id or note",
           "created": "Created",
-          "empty": "No mappings"
+          "empty": "No mappings",
+          "fields": {
+            "ad_id": "ad_id",
+            "vacancy_id": "vacancy_id"
+          },
+          "table": {
+            "ad_id": "ad_id",
+            "vacancy_id": "vacancy_id"
+          }
         },
         "logs": {
-          "title": "Leads waiting for routing",
-          "subtitle": "Use manual routing for problematic leads.",
+          "title": "Lead logs",
+          "subtitle": "Leads with errors and routing problems. Use Retry/Reroute and the hints below.",
           "table": {
             "created": "Created",
             "status": "Status",
@@ -1771,11 +2201,46 @@
             "contacts": "Contacts",
             "error": "Error"
           },
-          "empty": "No leads in status needs_routing",
+          "empty": "No leads with errors",
           "actions": {
             "reroute": "Reroute",
             "retry": "Retry"
+          },
+          "suggestions": {
+            "company_not_resolved": {
+              "action": "Action",
+              "hint": "Hint"
+            },
+            "generic": {
+              "action": "Action",
+              "hint": "Hint"
+            },
+            "graph_no_token": {
+              "action": "Action",
+              "hint": "Hint"
+            },
+            "no_contacts": {
+              "action": "Action",
+              "hint": "Hint"
+            },
+            "vacancy_not_resolved": {
+              "action": "Action",
+              "hint": "Hint"
+            }
           }
+        },
+        "other_platforms": "Other platforms",
+        "quick_start": {
+          "subtitle": "Subtitle",
+          "title": "Title"
+        },
+        "unmapped": {
+          "attach_btn": "Attach btn",
+          "attach_modal_title": "Attach modal title",
+          "leads": "Leads",
+          "select_vacancy": "Select vacancy",
+          "subtitle": "Subtitle",
+          "title": "Title"
         }
       },
       "docs": {
@@ -1783,6 +2248,15 @@
           "passport": "Passport",
           "license": "Driver license",
           "insurance": "Insurance"
+        }
+      },
+      "candidate_profiles": {
+        "actions": {
+          "export_json": "Export profile to JSON"
+        },
+        "form": {
+          "code_placeholder": "driver_ce",
+          "name_placeholder": "CE Driver"
         }
       }
     },
@@ -1882,7 +2356,9 @@
     "companies": {
       "actions": {
         "new": "New company",
-        "back_to_list": "← Companies"
+        "back_to_list": "← Companies",
+        "new_client_company": "New client company",
+        "new_operating_company": "New operating company"
       },
       "messages": {
         "save_success": "Changes saved",
@@ -1974,7 +2450,13 @@
             "country": "Country",
             "city": "City",
             "archived": "Archived",
-            "actions": "Actions"
+            "actions": "Actions",
+            "kind": "Type",
+            "party_role": "Party role",
+            "stage": "Stage",
+            "owner": "Owner",
+            "active_orders": "Active orders",
+            "revenue": "Revenue (completed)"
           },
           "loading": "Loading…",
           "empty": "No companies found.",
@@ -1983,7 +2465,39 @@
             "archive": "Archive",
             "restore": "Restore"
           }
+        },
+        "filters": {
+          "party_role": "Party role",
+          "party_role_unset": "Not set",
+          "client_stage": "Client stage",
+          "owner": "Owner"
+        },
+        "client_only_hint": "This workspace shows client companies only.",
+        "kind_all": "All",
+        "kind_client": "Client",
+        "kind_counterparty": "Counterparty",
+        "kind_label": "Company type"
+      },
+      "party": {
+        "entity": {
+          "company": "Company",
+          "person": "Person"
+        },
+        "roles": {
+          "employer": "Employer",
+          "service_client": "Service client",
+          "both": "Employer + service client"
         }
+      },
+      "client_stage": {
+        "new_lead": "New lead",
+        "contacted": "Contacted",
+        "qualified": "Qualified",
+        "offer_sent": "Offer sent",
+        "negotiation": "Negotiation",
+        "contract_signed": "Contract signed",
+        "active": "Active",
+        "lost": "Lost"
       },
       "detail": {
         "defaults": {
@@ -2001,7 +2515,41 @@
           "add_portal_user": "Add portal user",
           "add_webhook": "Add webhook",
           "add_contract": "Add contract",
-          "add_order": "Add order"
+          "add_order": "Add order",
+          "add_policy": "Add policy",
+          "delete_confirm": "Delete confirm"
+        },
+        "workspace": {
+          "tabs": {
+            "overview": "Overview",
+            "orders": "Orders",
+            "invoices": "Invoices",
+            "activity": "Activity",
+            "profile": "Profile"
+          },
+          "open_profile": "Company profile & legal",
+          "open_profile_hint": "Billing, contacts, legal, integrations, and extended fields.",
+          "orders": {
+            "service_title": "Service orders",
+            "service_subtitle": "Additional services linked to this company (API).",
+            "open_services": "Open services",
+            "empty": "No service orders yet.",
+            "crm_subtitle": "Staffing / CRM order lines stored on this company profile.",
+            "col_status": "Status",
+            "col_amount": "Amount",
+            "col_items": "Lines",
+            "col_open": "Open",
+            "open": "Open"
+          },
+          "activity": {
+            "title": "Activity & shortcuts",
+            "subtitle": "Record metadata and quick links.",
+            "created": "Created",
+            "updated": "Last updated",
+            "link_invoices": "Invoices for this client",
+            "link_services": "Services workspace",
+            "link_vacancies": "Vacancies"
+          }
         },
         "kpis": {
           "candidates_total": "All candidates",
@@ -2013,7 +2561,17 @@
           "vacancies_active": "Active vacancies",
           "vacancies_active_hint": "Open positions for this client",
           "services_blocking": "Blocking services",
-          "services_blocking_hint": "Orders without schedule or documents"
+          "services_blocking_hint": "Orders without schedule or documents",
+          "bank_accounts": "Bank accounts",
+          "bank_accounts_hint": "Bank accounts hint",
+          "contacts_total": "Contacts total",
+          "contacts_total_hint": "Contacts total hint",
+          "contracts_total": "Contracts total",
+          "contracts_total_hint": "Contracts total hint",
+          "invoice_email": "Invoice email",
+          "invoice_email_hint": "Invoice email hint",
+          "orders_total": "Orders total",
+          "orders_total_hint": "Orders total hint"
         },
         "widgets": {
           "vacancies": {
@@ -2062,11 +2620,25 @@
             "subtitle": "Open slots",
             "assigned": "Assigned {hired} / {required}",
             "empty": "No active driver requests."
+          },
+          "invoice_workspace": {
+            "subtitle": "Subtitle",
+            "title": "Title"
+          },
+          "orders_workspace": {
+            "empty": "Empty",
+            "link": "Link",
+            "subtitle": "Subtitle",
+            "title": "Title"
           }
         },
         "sections": {
           "base": {
             "title": "Basic details"
+          },
+          "party_crm": {
+            "title": "Party & client pipeline",
+            "hint": "One Party record for recruiting and service revenue; roles and client stage drive CRM views and filters."
           },
           "legal": {
             "title": "Legal block"
@@ -2121,6 +2693,33 @@
           "raw_extra": {
             "title": "Raw payload",
             "description": "Shows the JSON payload that will be sent to the backend."
+          },
+          "advanced": {
+            "description": "Description",
+            "title": "Title"
+          },
+          "advanced_toggle": {
+            "description": "Description",
+            "hide": "Hide",
+            "show": "Show",
+            "title": "Title"
+          },
+          "document_policies": {
+            "alert_days": "Alert days",
+            "alert_days_label": "Alert days label",
+            "count": "Count",
+            "create_policy": "Create policy",
+            "description": "Description",
+            "disabled": "Disabled",
+            "document_type": "Document type",
+            "edit_policy": "Edit policy",
+            "empty": "Empty",
+            "enabled": "Enabled",
+            "notes": "Notes",
+            "notes_placeholder": "Notes placeholder",
+            "required": "Required",
+            "select_document_type": "Select document type",
+            "title": "Title"
           }
         },
         "groups": {
@@ -2131,7 +2730,7 @@
           "lanes": "Routes"
         },
         "fields": {
-          "name": "Display name",
+          "name": "Name",
           "legal_name": "Legal name",
           "tax_id": "Tax ID / NIP",
           "phone": "Phone",
@@ -2198,8 +2797,36 @@
           "hired_drivers": "Drivers hired",
           "id": "ID",
           "created_at": "Created at",
-          "updated_at": "Updated at"
-        }
+          "updated_at": "Updated at",
+          "company_kind": "Company kind",
+          "party_entity_type": "Entity type",
+          "party_business_roles": "Business roles",
+          "client_stage": "Client stage",
+          "client_source": "Acquisition source"
+        },
+        "placeholders": {
+          "client_source": "e.g. ads, referral, partner…",
+          "cargo_type_adr": "ADR",
+          "country_code_fr": "FR",
+          "country_code_pl": "PL",
+          "date_ymd": "YYYY-MM-DD",
+          "hex_color": "#004b8d",
+          "iso_datetime": "2025-01-01T00:00:00Z",
+          "language_pl": "pl",
+          "permissions_json": "{\"contracts\": {\"view\": true}}",
+          "roles_example": "developer, manager, …",
+          "tech_stack_example": "React, Node.js, …"
+        },
+        "compact_hint": "Compact hint"
+      },
+      "errors": {
+        "policies_load_failed": "Policies load failed",
+        "policy_create_failed": "Policy create failed",
+        "policy_delete_failed": "Policy delete failed",
+        "policy_update_failed": "Policy update failed"
+      },
+      "my_company": {
+        "open_billing": "Open billing"
       }
     },
     "services": {
@@ -2262,6 +2889,82 @@
           "vacancy": "Vacancy",
           "company": "Company",
           "unknown": "Unassigned"
+        },
+        "actions": {
+          "open_client": "Open client",
+          "open_invoices": "Open invoices"
+        },
+        "billing": {
+          "invoiced": "Invoiced",
+          "invoiced_hint": "Invoiced hint",
+          "outstanding": "Outstanding",
+          "outstanding_hint": "Outstanding hint",
+          "overdue": "Overdue",
+          "overdue_hint": "Overdue hint",
+          "paid": "Paid",
+          "paid_hint": "Paid hint"
+        },
+        "controls": {
+          "days_180": "Days 180",
+          "days_30": "Days 30",
+          "days_90": "Days 90",
+          "slice_client": "Slice client",
+          "slice_item": "Slice item",
+          "slice_manager": "Slice manager",
+          "slice_status": "Slice status",
+          "subtitle": "Subtitle",
+          "title": "Title",
+          "trend_month": "Trend month",
+          "trend_week": "Trend week"
+        },
+        "drilldown": {
+          "active": "Active",
+          "clear": "Clear"
+        },
+        "profile": {
+          "clients_total": "Clients total",
+          "counterparties_total": "Counterparties total",
+          "unknown_company_classification": "Unknown company classification"
+        },
+        "profitability": {
+          "confirmed": "Confirmed",
+          "cost_basis": "Cost basis",
+          "coverage": "Coverage",
+          "data_quality": "Data quality",
+          "estimated": "Estimated",
+          "gross_margin": "Gross margin",
+          "gross_profit": "Gross profit",
+          "missing": "Missing"
+        },
+        "slices": {
+          "dimension": "Dimension",
+          "empty": "Empty",
+          "orders": "Orders",
+          "profit": "Profit",
+          "revenue": "Revenue",
+          "subtitle": "Subtitle",
+          "title": "Title"
+        },
+        "top_clients": {
+          "client": "Client",
+          "empty": "Empty",
+          "orders": "Orders",
+          "profit": "Profit",
+          "revenue": "Revenue",
+          "subtitle": "Subtitle",
+          "title": "Title"
+        },
+        "trends": {
+          "bucket": "Bucket",
+          "delivered": "Delivered",
+          "empty": "Empty",
+          "invoiced": "Invoiced",
+          "orders": "Orders",
+          "paid": "Paid",
+          "profit": "Profit",
+          "revenue": "Revenue",
+          "subtitle": "Subtitle",
+          "title": "Title"
         }
       },
       "words": {
@@ -2280,7 +2983,9 @@
             "vat": "VAT %",
             "document": "Resulting document",
             "requires_schedule": "Requires schedule",
-            "requires_candidate": "Requires candidate"
+            "requires_candidate": "Requires candidate",
+            "cost_currency": "Cost currency",
+            "estimated_cost": "Estimated cost"
           },
           "placeholders": {
             "code": "unique_code",
@@ -2288,7 +2993,9 @@
             "category": "medical",
             "price": "350",
             "vat": "23",
-            "document": "medical"
+            "document": "medical",
+            "estimated_cost": "Estimated cost",
+            "cost_currency": "PLN"
           },
           "hint": "Only code and name are required. You can fill other fields later.",
           "submit": "Add service"
@@ -2298,6 +3005,8 @@
           "name": "Name",
           "category": "Category",
           "price": "Price",
+          "orders_count": "Orders",
+          "revenue_completed": "Revenue (completed)",
           "schedule": "Schedule",
           "candidate": "Candidate",
           "status": "Status",
@@ -2320,6 +3029,11 @@
         }
       },
       "orders": {
+        "scope": {
+          "company": "Showing orders for: {name}",
+          "clear": "Clear filter",
+          "open_client": "Open client"
+        },
         "new": {
           "title": "New order",
           "hint": "Search for a candidate and link the service order below.",
@@ -2340,7 +3054,10 @@
               "candidate": "Attach the service to a specific person.",
               "vacancy": "Link it with an open requisition.",
               "company": "Bill the company directly."
-            }
+            },
+            "default_agency": "Default agency",
+            "default_employer": "Default employer",
+            "default_services": "Default services"
           },
           "placeholders": {
             "candidate_search": "Name, email, phone…",
@@ -2351,7 +3068,10 @@
             "qty": "Qty",
             "unit_price": "Unit price",
             "vat": "VAT %",
-            "notes": "Internal notes"
+            "notes": "Internal notes",
+            "actual_cost": "Actual cost",
+            "cost_currency": "Cost currency",
+            "estimated_cost": "Estimated cost"
           },
           "states": {
             "searching": "Searching…",
@@ -2383,7 +3103,10 @@
             "company": "Company #{id}",
             "none": "No owner selected"
           },
-          "meta": "{count} items · {amount}"
+          "meta": "{count} items · {amount}",
+          "empty_cta_leads": "Empty CTA leads",
+          "empty_desc": "Empty desc",
+          "empty_title": "Empty title"
         },
         "messages": {
           "owner_required": "Select exactly one order owner (candidate, vacancy, or company).",
@@ -2434,18 +3157,44 @@
             "issued_placeholder": "Issue date",
             "expires_placeholder": "Valid until",
             "submit": "Mark as completed"
+          },
+          "create_invoice": "Create invoice",
+          "creating_invoice": "Creating invoice",
+          "invoice": {
+            "amounts": "Amounts",
+            "mark_paid": "Mark paid",
+            "none": "None",
+            "open": "Open",
+            "send": "Send",
+            "title": "Title"
           }
+        },
+        "actions": {
+          "export_csv": "Export csv"
+        },
+        "billing_bar": {
+          "linked": "Linked",
+          "none": "None",
+          "select_order": "Select order"
+        },
+        "saved_filters": {
+          "apply": "Apply",
+          "placeholder": "Placeholder",
+          "save": "Save"
         }
       },
       "status": {
         "order": {
           "draft": "Draft",
+          "confirmed": "Confirmed",
+          "in_progress": "In progress",
+          "on_hold": "On hold",
+          "completed": "Completed",
+          "cancelled": "Cancelled",
           "quoted": "Quoted",
           "approved": "Approved",
           "scheduled": "Scheduled",
-          "in_progress": "In progress",
           "delivered": "Delivered",
-          "cancelled": "Cancelled",
           "refunded": "Refunded"
         },
         "schedule": {
@@ -2467,6 +3216,60 @@
           "verified": "Verified",
           "pending_validation": "Pending validation"
         }
+      },
+      "actions": {
+        "create_invoice": "Create invoice",
+        "new_order": "New order",
+        "new_service": "New service"
+      },
+      "billing": {
+        "actions": {
+          "create_from_order": "Create from order",
+          "open_all": "Open all"
+        },
+        "create_invoice": {
+          "select_order": "Select order"
+        },
+        "empty": "Empty",
+        "filters": {
+          "overdue": "Overdue",
+          "unpaid": "Unpaid"
+        },
+        "row": {
+          "mark_paid": "Mark paid",
+          "send": "Send"
+        },
+        "subtitle": "Subtitle",
+        "subtitle_scoped": "Subtitle scoped",
+        "title": "Title"
+      },
+      "overview": {
+        "actions": {
+          "open_orders": "Open orders",
+          "open_unpaid": "Open unpaid"
+        },
+        "alerts": {
+          "cost_coverage": "Cost coverage",
+          "docs_missing": "Documents missing",
+          "none": "None",
+          "overdue": "Overdue",
+          "schedule_missing": "Schedule missing",
+          "title": "Title"
+        },
+        "kpi": {
+          "invoiced": "Invoiced",
+          "outstanding": "Outstanding",
+          "overdue": "Overdue",
+          "paid": "Paid"
+        },
+        "kpi_strip_hint": "KPI strip hint",
+        "ops": {
+          "approved": "Approved",
+          "delivered": "Delivered",
+          "title": "Title"
+        },
+        "subtitle": "Subtitle",
+        "title": "Title"
       }
     },
     "dashboard": {
@@ -2629,7 +3432,13 @@
           "subtitle": "Real data from DB",
           "total": "Total documents",
           "complete": "Candidates with complete",
-          "by_status": "By status"
+          "by_status": "By status",
+          "blockers_cost_hint": "Blockers cost hint",
+          "blockers_missing": "Blockers missing",
+          "blockers_problematic": "Blockers problematic",
+          "blockers_review": "Blockers review",
+          "blockers_title": "What blocks candidates",
+          "blockers_total_hint": "Blockers total hint"
         }
       },
       "retention": {
@@ -2807,6 +3616,104 @@
         "total": "Total",
         "empty": "Not enough data to build this slice.",
         "export": "Export CSV"
+      },
+      "business": {
+        "agency": {
+          "candidates_total": "Candidates total",
+          "companies_total": "Companies total",
+          "leads_total": "Leads total",
+          "vacancies_active": "Vacancies active"
+        },
+        "employer": {
+          "candidates_total": "Candidates total",
+          "companies_total": "Companies total",
+          "leads_total": "Leads total",
+          "vacancies_active": "Vacancies active"
+        },
+        "services": {
+          "clients_total": "Clients total",
+          "counterparties_total": "Counterparties total",
+          "orders_delivered": "Orders delivered",
+          "orders_in_progress": "Orders in progress"
+        },
+        "title": "Business snapshot",
+        "type": {
+          "agency": "Agency",
+          "employer": "Employer",
+          "services": "Services"
+        },
+        "type_label": "Type label"
+      },
+      "goals": {
+        "copy_share": "Copy share",
+        "empty": "Empty",
+        "subtitle": "Track target metrics and gaps",
+        "title": "Operational goals"
+      },
+      "ops": {
+        "automation_24h": "Automation 24h",
+        "automation_rules": "Automation rules",
+        "draft_intake": "Draft intake",
+        "drilldown": "Drilldown",
+        "leads_failed": "Leads failed",
+        "leads_needs_routing": "Leads needs routing",
+        "leads_no_next_action": "Leads no next action",
+        "leads_sla_nudges": "Leads SLA nudges",
+        "leads_stuck_nudges": "Leads stuck nudges",
+        "no_next_action": "No next action",
+        "note": "Note",
+        "overdue_reminders": "Overdue reminders",
+        "subtitle": "Next-action coverage and overdue control",
+        "title": "Operational hygiene"
+      },
+      "perf": {
+        "budget": "Budget",
+        "empty": "Empty",
+        "metric": "Metric",
+        "p50": "P50",
+        "p95": "P95",
+        "range": "Range",
+        "samples": "Samples",
+        "subtitle": "p50/p95 and budget compliance",
+        "title": "Performance baseline"
+      },
+      "stage_metrics": {
+        "empty": "Empty",
+        "readiness": "Readiness",
+        "stage_time": "Stage time",
+        "subtitle": "Readiness, stage time, and transitions",
+        "title": "Stage metrics",
+        "transitions": "Transitions",
+        "start_stage": "Start"
+      },
+      "trial_center": {
+        "badge": "Badge",
+        "legal_cookies": "Legal cookies",
+        "legal_prefix": "Legal prefix",
+        "legal_privacy": "Legal privacy",
+        "legal_terms": "Legal terms",
+        "open_billing": "Open billing",
+        "retention": {
+          "columns": {
+            "click": "Click",
+            "ctr": "Ctr",
+            "day": "Day",
+            "dismiss": "Dismiss",
+            "impression": "Impression"
+          },
+          "day1": "Day1",
+          "day2": "Day2",
+          "day3": "Day3",
+          "day7": "Day7",
+          "loading": "Loading",
+          "summary": "Summary",
+          "title": "Retention checkpoints"
+        },
+        "subtitle": "Activation and retention signals",
+        "title": "Trial center",
+        "title_with_days": "Trial center ({days} days)",
+        "urgency_critical": "Urgency critical",
+        "urgency_warning": "Urgency warning"
       }
     },
     "candidate_card": {
@@ -2826,7 +3733,11 @@
         "refreshing": "Refreshing…",
         "saving_note": "Saving…",
         "add_tag": "Add",
-        "remove_tag": "Remove tag {tag}"
+        "remove_tag": "Remove tag {tag}",
+        "add_favorite": "Add favorite",
+        "cancel_edit": "Cancel edit",
+        "edit": "Edit",
+        "remove_favorite": "Remove favorite"
       },
       "confirm": {
         "delete": "Delete this candidate?"
@@ -2839,7 +3750,9 @@
         "accepted": "Transferred to client",
         "processor": "Processor",
         "no_clients": "No clients with handoff enabled",
-        "created": "Transferred to client"
+        "created": "Transferred to client",
+        "locked": "Locked",
+        "transferred_at": "Transferred at"
       },
       "rodo": {
         "title": "RODO",
@@ -2847,7 +3760,12 @@
         "send_btn": "Send RODO information",
         "sent_at": "Sent",
         "to": "To",
-        "no_email": "Candidate has no email or no active RODO clause."
+        "no_email": "Candidate has no email or no active RODO clause.",
+        "ready_to_send_hint": "You can send the RODO information email from here.",
+        "reason_no_email_detail": "The candidate has no email on file. Add an email in the profile, then send RODO from the block above.",
+        "reason_no_template_detail": "There is no active RODO clause document for your organization. An administrator must publish a RODO text in Legal documents.",
+        "reason_send_unavailable_detail": "RODO cannot be sent automatically yet — check the candidate email and that an active RODO clause exists for your tenant.",
+        "reason_ready_to_send_detail": "RODO has not been sent yet. Use “Send RODO” in the block above."
       },
       "contact_attempts": {
         "title": "Contact attempts",
@@ -2855,7 +3773,22 @@
         "no_attempts": "No attempts",
         "max_reached": "Maximum attempts reached ({max})",
         "registered": "Contact attempt registered",
-        "rodo_required": "Send RODO information to candidate before registering contact attempts."
+        "rodo_required": "Send RODO information to candidate before registering contact attempts.",
+        "open_unavailable": "Contact attempts are unavailable right now. Try again in a moment.",
+        "feature_disabled": "Contact attempts are not enabled for this company.",
+        "why_blocked_title": "Why you can’t register an attempt right now",
+        "blocker_max_title": "Attempt limit",
+        "blocker_max_detail": "Maximum {max} contact attempts are configured for this client. Further attempts are not allowed by policy.",
+        "blocker_rodo_title": "RODO (GDPR information)",
+        "tracking_disabled_no_company": "Link this candidate to a company or vacancy so contact-attempt settings from the client agreement can apply.",
+        "tracking_disabled_no_link": "No active agency–client link was found for this company. Contact attempts stay off until handoff / tenant link and policy are configured.",
+        "tracking_disabled_in_link": "Contact attempt tracking is turned off in the client link settings (Handoff & contact attempts).",
+        "tracking_disabled_generic": "Contact attempt tracking is not available for this candidate.",
+        "fields": {
+          "channel": "Channel",
+          "result": "Result",
+          "note": "Note"
+        }
       },
       "contacts": {
         "options": {
@@ -2865,6 +3798,22 @@
           "viber": "Viber",
           "whatsapp": "WhatsApp"
         }
+      },
+      "stages": {
+        "new": "New",
+        "contacted": "Contact established",
+        "docs_wait": "Waiting for documents",
+        "docs_got": "Documents received",
+        "permit_ordered": "Permit ordered",
+        "permit_got": "Work permit received",
+        "visa": "Visa",
+        "red_paper_ordered": "Red paper ordered",
+        "arrival_planned": "Arrival planned",
+        "on_client_base": "On client base",
+        "left_to_trip": "Left for trip",
+        "probation_passed": "Probation passed",
+        "employed": "Employed",
+        "rejected": "Rejected"
       },
       "docs": {
         "disabled": "Save the candidate to enable documents.",
@@ -2898,7 +3847,19 @@
       },
       "next_action": {
         "docs_verify_title": "Verify uploaded documents",
-        "docs_verify_description": "Candidate uploaded documents. Verify and approve/reject before moving stage."
+        "docs_verify_description": "Candidate uploaded documents. Verify and approve/reject before moving stage.",
+        "complete": "Complete",
+        "create": "Create",
+        "create_task": "Create task",
+        "docs_blocking": "Documents blocking",
+        "docs_missing_badge": "Documents missing",
+        "docs_request_title": "Request documents",
+        "docs_review_required": "Documents review required",
+        "due": "Due",
+        "empty": "Empty",
+        "overdue": "Overdue",
+        "snooze": "Snooze",
+        "title": "Next action"
       },
       "reminders": {
         "title": "Candidate reminders",
@@ -2927,7 +3888,8 @@
         },
         "complete": "Complete",
         "snooze_15": "+15m",
-        "snooze_60": "+1h"
+        "snooze_60": "+1h",
+        "remind": "Remind"
       },
       "employment": {
         "title": "Employment history",
@@ -3076,7 +4038,10 @@
       },
       "labels": {
         "current_vacancy": "Current vacancy",
-        "short_id_badge": "ID: {id}"
+        "short_id_badge": "ID: {id}",
+        "no_profile": "No profile",
+        "no_profile_short": "No profile short",
+        "stage_days": "Stage days"
       },
       "hint": {
         "cyrillic_translit": "Cyrillic will be transliterated for client-facing view."
@@ -3103,7 +4068,13 @@
         "profile_fallback_default": "Profile not found; using default profile.",
         "profile_not_found": "Profile not found.",
         "vacancy_hint": "Vacancy defines the company and readiness summary.",
-        "favorite_toggle_failed": "Failed to toggle favorite status: {detail}"
+        "favorite_toggle_failed": "Failed to toggle favorite status: {detail}",
+        "delete_failed": "Delete failed",
+        "deleted": "Deleted",
+        "export_success": "Export success",
+        "note_added": "Note added",
+        "short_id_failed": "Short id failed",
+        "short_id_generated": "Short id generated"
       },
       "override": {
         "title": "Candidate-provided data protection",
@@ -3132,7 +4103,8 @@
         "status": "Status",
         "experience": "Experience",
         "employer": "Employer",
-        "notes": "Notes"
+        "notes": "Notes",
+        "custom_fields": "Custom fields"
       },
       "notes": {
         "placeholder": "Add an internal note…",
@@ -3237,15 +4209,147 @@
         "personal": "Profile",
         "docs": "Documents",
         "services": "Services"
+      },
+      "activity_feed": {
+        "title": "Activity"
+      },
+      "change_log": {
+        "changed": "Changed",
+        "details": "Details",
+        "diff_keys": "Diff keys",
+        "empty": "Empty",
+        "title": "Change log",
+        "updated": "Updated"
+      },
+      "docs_checklist": {
+        "expiring": "Expiring",
+        "missing": "Missing",
+        "ok": "Ok",
+        "open": "Open",
+        "problematic": "Problematic",
+        "title": "Docs checklist"
+      },
+      "docs_panel": {
+        "kpi": "KPI",
+        "open_full": "Open full",
+        "tabs": {
+          "blockers": "Blockers",
+          "workspace": "Workspace"
+        },
+        "title": "Documents"
+      },
+      "docs_readiness": {
+        "counts": "Counts",
+        "files": "Files",
+        "in_progress": "In progress",
+        "open": "Open",
+        "problem": "Problem",
+        "ready": "Ready",
+        "title": "Document readiness"
+      },
+      "docs_workspace": {
+        "hint": "Hint",
+        "title": "Documents workspace"
+      },
+      "documents": {
+        "blockers_subtitle": "Blockers stop the pipeline",
+        "empty": "Empty",
+        "missing_label": "Missing label",
+        "next_step": "Next step: -> Request documents",
+        "no_blocks": "No blocks",
+        "ok_subtitle": "Ready to move forward",
+        "status": {
+          "expiring": "Expiring",
+          "in_progress": "In progress",
+          "missing": "Missing",
+          "valid": "Valid"
+        },
+        "title": "Documents",
+        "upload_btn": "Upload",
+        "what_blocks_title": "What blocks this candidate"
+      },
+      "stage_blocked_by_docs": {
+        "description": "Resolve missing or problematic required documents to move forward.",
+        "description_generic": "Request or fix required documents first.",
+        "title": "Stage is blocked by documents"
+      },
+      "stage_blocked_by_vacancy": {
+        "title": "Assign a vacancy first",
+        "description": "Link this candidate to a vacancy (or client vacancy) before moving to the next stage."
+      },
+      "stage_blocked_by_contact_attempt": {
+        "title": "Log a contact attempt first",
+        "description": "Your client policy requires at least one registered contact attempt before leaving New."
+      },
+      "stage_decision": {
+        "blocked_title": "Blocked by required documents",
+        "blocked_title_vacancy": "Assign a vacancy before moving forward",
+        "blocked_title_contact_attempt": "Register a contact attempt before moving forward",
+        "docs_blocking_generic": "Documents block moving forward — see checklist",
+        "contact_attempt_required_chip": "Contact attempt logged",
+        "move_back": "Move back",
+        "move_forward": "Move forward",
+        "next_step_docs": "Next step: → Request documents",
+        "next_step_contact_candidate": "Next step: → Contact candidate",
+        "next_step_assign_vacancy": "Next step: → Assign vacancy / client",
+        "next_step_request_documents": "Next step: → Request documents",
+        "next_step_verify_documents": "Next step: → Verify documents",
+        "next_step_handoff_prep": "Next step: → Prepare handoff",
+        "next_step_advance": "Next step: → Move the case forward",
+        "open_contact_attempts_title": "Open contact attempts — record channel and result",
+        "vacancy_required_chip": "Vacancy / client",
+        "no_blockers": "No blockers",
+        "required": "Required",
+        "title": "Stage"
+      },
+      "stage_journey": {
+        "change_to": "Change to",
+        "current": "Current",
+        "outcomes": "Outcomes",
+        "since": "Since",
+        "title": "Stage journey"
+      },
+      "timeline": {
+        "collapsed_hint": "Collapsed hint",
+        "empty": "Empty",
+        "filters": {
+          "notes": "Notes",
+          "reminders": "Reminders",
+          "stage": "Stage"
+        },
+        "items": {
+          "note": "Note",
+          "stage_change": "Stage change"
+        }
+      },
+      "communication": {
+        "linked_messages": "Messages linked to candidate",
+        "open_latest_dialog": "Open latest dialog",
+        "open_inbox": "Open messages inbox",
+        "loading_dialogs": "Loading dialogs...",
+        "empty_dialogs": "No linked dialogs yet. Open Messages and link this candidate in dialog header."
       }
     },
     "candidates": {
+      "debug": {
+        "click_after_mousedown": "Debug: click AFTER mousedown",
+        "click_hit_bubble": "Debug: click hit (bubble)",
+        "client_view": "Debug: client view",
+        "current_preview_state": "Debug: current preview state",
+        "mousedown_hit": "Debug: mousedown hit",
+        "mouseup_hit": "Debug: mouseup hit",
+        "mouseup_hit_bubble": "Debug: mouseup hit (bubble)"
+      },
       "labels": {
         "untitled": "Untitled"
       },
       "header": {
         "title": "Candidates",
         "subtitle": "Visual pipeline by vacancies"
+      },
+      "activities_modal": {
+        "subtitle": "Your planned work — same list as on the Tasks page.",
+        "open_full_page": "Open full Tasks page"
       },
       "views": {
         "table": "Table",
@@ -3261,7 +4365,14 @@
           "name_label": "View name",
           "placeholder": "e.g. In progress / No vacancy",
           "hint": "Current filters will be stored: search, stages, vacancies, managers, reasons, document statuses, and orders."
-        }
+        },
+        "quick_docs_incomplete": "Quick Documents incomplete",
+        "quick_my_work_today": "Quick my work today",
+        "quick_new_this_week": "Quick new this week",
+        "quick_no_next_action": "Quick no next action",
+        "quick_overdue_next_action": "Quick overdue next action",
+        "quick_ready_for_handoff": "Quick ready for handoff",
+        "quick_views_title": "Quick views title"
       },
       "insights": {
         "title": "Insights",
@@ -3290,7 +4401,8 @@
         "reset_filters": "Reset filters",
         "more": "More actions",
         "new_candidate_title": "Create a new candidate",
-        "new_candidate": "New candidate"
+        "new_candidate": "New candidate",
+        "preview": "Preview"
       },
       "docs": {
         "readiness": {
@@ -3384,7 +4496,8 @@
         "contact_none": "No attempts",
         "contact_some": "1–2 attempts",
         "contact_limit": "3+ (limit)",
-        "contact_attempts_badge": "Attempts: {value}"
+        "contact_attempts_badge": "Attempts: {value}",
+        "handoff_rejected": "Handoff rejected"
       },
       "table": {
         "columns": {
@@ -3411,7 +4524,8 @@
           "docs_status": "Documents",
           "docs_ordered": "Order date",
           "docs_valid": "Valid from",
-          "docs_files": "Files"
+          "docs_files": "Files",
+          "risk": "Risk"
         },
         "experience_years": "years",
         "documents_count": "docs",
@@ -3426,7 +4540,30 @@
         "empty": "No candidates found.",
         "show_more": "Show more",
         "total": "Total: {count}",
-        "total_filtered": "Showing: {shown} of {total}"
+        "total_filtered": "Showing: {shown} of {total}",
+        "call": "Call",
+        "click_to_sort": "Click to sort",
+        "deselect": "Deselect",
+        "deselect_all": "Deselect all",
+        "empty_cta_leads": "Empty CTA leads",
+        "empty_cta_pipeline": "Empty CTA pipeline",
+        "empty_cta_reset": "Empty CTA reset",
+        "empty_no_data_desc": "Empty no data desc",
+        "empty_partial": "Empty partial",
+        "empty_title": "Empty title",
+        "empty_with_filters_desc": "Empty with filters desc",
+        "loading_hint": "Loading hint",
+        "masked_label": "Masked label",
+        "masked_label_short_id": "Masked label short id",
+        "open_card": "Open card",
+        "open_card_masked": "Open card masked",
+        "reorder_column": "Reorder column",
+        "resize_column": "Resize column",
+        "select": "Select",
+        "select_all": "Select all",
+        "select_candidate": "Select candidate",
+        "sort_by": "Sort by",
+        "updating": "Updating"
       },
       "bulk": {
         "selected": "Selected: {count}",
@@ -3459,6 +4596,11 @@
         "delete": {
           "title": "Delete selected candidates",
           "action": "Delete (selected)"
+        },
+        "activities": {
+          "action": "Action",
+          "default_title": "Default title",
+          "title": "Title"
         }
       },
       "row_actions": {
@@ -3512,7 +4654,16 @@
         "card_saving": "Saving…",
         "error_load": "Failed to load pipeline",
         "error_update_stage": "Failed to update candidate stage",
-        "error_update_stages": "Failed to update stages for some candidates"
+        "error_update_stages": "Failed to update stages for some candidates",
+        "column_empty_cta_candidates": "Column empty CTA candidates",
+        "column_empty_desc": "Column empty desc",
+        "column_empty_title": "Column empty title",
+        "empty_cta_candidates": "Empty CTA candidates",
+        "empty_cta_leads": "Empty CTA leads",
+        "empty_desc": "Empty desc",
+        "empty_title": "Empty title",
+        "title": "Title",
+        "view_in_list": "View in list"
       },
       "menu": {
         "open": "Open menu",
@@ -3525,6 +4676,9 @@
         "bulk_stage_partial": "Failed to update {failed} of {total} candidates.",
         "bulk_stage_rodo_blocked": "RODO is missing for {rodo} candidates out of {total}. Open candidate cards, send RODO, then retry bulk stage change.",
         "bulk_stage_handoff_docs_blocked": "Required document checklist is incomplete for {docs} candidates out of {total}. Example missing: {missing}.",
+        "bulk_stage_contact_attempt_blocked": "{contact} candidate(s) need a logged contact attempt (client policy) among {total} failed updates. Open those cards, register an attempt, then retry.",
+        "bulk_stage_vacancy_blocked": "{vacancy} candidate(s) must be linked to a vacancy before that stage change ({total} failed updates). Assign a vacancy on the card, then retry.",
+        "bulk_stage_pipeline_docs_blocked": "{docs} candidate(s) are blocked by required documents ({total} failed updates). Fix documents on the card, then retry.",
         "bulk_stage_loading": "Changing stage…",
         "bulk_manager_failed": "Failed to assign manager.",
         "bulk_manager_partial": "{count} candidates were not updated.",
@@ -3541,7 +4695,11 @@
         "bulk_tags_loading": "Updating tags...",
         "bulk_delete_failed": "Failed to delete candidates.",
         "bulk_delete_partial": "Failed to delete {count} of {total} candidates.",
-        "bulk_delete_loading": "Deleting candidates..."
+        "bulk_delete_loading": "Deleting candidates...",
+        "bulk_activities_failed": "Bulk activities failed",
+        "bulk_activities_loading": "Bulk activities loading",
+        "bulk_activities_partial": "Bulk activities partial",
+        "favorite_toggle_failed": "Favorite toggle failed"
       },
       "modals": {
         "manager": {
@@ -3585,6 +4743,12 @@
           "tags_label": "Tags",
           "tags_placeholder": "Enter tags separated by commas",
           "tags_hint": "Enter tags separated by commas. They will be added to or removed from selected candidates."
+        },
+        "activities": {
+          "due_label": "Due label",
+          "offset_label": "Offset label",
+          "title": "Title",
+          "title_label": "Title label"
         }
       },
       "select": {
@@ -3615,8 +4779,39 @@
         "ready_for_handoff": "Ready for handoff",
         "processing_by_client": "Processed by client",
         "docs_submitted_permit": "Documents submitted for permit",
-        "handoff_returned": "Returned"
+        "handoff_returned": "Returned",
+        "pending": "Pending",
+        "hired": "Hired"
+      },
+      "errors": {
+        "retry": "Retry",
+        "title": "Title"
+      },
+      "no_next_action": {
+        "actions": {
+          "add_next": "Add next"
+        },
+        "columns": {
+          "candidate": "Candidate",
+          "stage": "Stage",
+          "updated": "Updated"
+        },
+        "default_title": "Default title",
+        "empty": "Empty",
+        "search_placeholder": "Search placeholder",
+        "subtitle": "Subtitle",
+        "title": "Title"
+      },
+      "preview": {
+        "event": "Event",
+        "timeline_empty": "Timeline empty",
+        "timeline_title": "Timeline title",
+        "stage_scope_hint": "Stage changes, journey, and compliance gates — in the full card."
       }
+    },
+    "tasks": {
+      "hub_eyebrow": "Tasks",
+      "hub_title": "Work queue"
     },
     "reminders": {
       "title": "Reminders",
@@ -3642,6 +4837,18 @@
         "all": "All",
         "done": "Done"
       },
+      "assignee": {
+        "mine": "My tasks",
+        "team": "Team tasks"
+      },
+      "sla": {
+        "status": {
+          "on_track": "On track",
+          "at_risk": "Due soon",
+          "overdue": "Overdue SLA",
+          "resolved": "Resolved"
+        }
+      },
       "priority": {
         "low": "Low",
         "normal": "Normal",
@@ -3655,7 +4862,15 @@
         "due": "Due date",
         "remind_before": "Remind before",
         "remind_at": "Remind at",
-        "priority": "Priority"
+        "priority": "Priority",
+        "remind_offsets": {
+          "5m": "5m",
+          "15m": "15m",
+          "30m": "30m",
+          "1h": "1h",
+          "3h": "3h",
+          "1d": "1d"
+        }
       },
       "edit": {
         "title": "Edit reminder"
@@ -3680,19 +4895,30 @@
         "sync": "Sync",
         "mark_all": "Clear",
         "mark_one": "Mark as read",
-        "open_page": "Open reminders page",
-        "open_entity": "Open"
+        "open_page": "Open tasks",
+        "open_entity": "Open",
+        "complete": "Complete",
+        "create": "Create",
+        "open_comm": "Open comm"
       },
       "states": {
         "loading": "Loading…",
         "empty": "No reminders",
         "badge_direct": "for you",
-        "badge_new": "new"
+        "badge_new": "new",
+        "empty_cta_create": "Empty CTA create",
+        "empty_cta_leads": "Empty CTA leads",
+        "empty_desc": "Empty desc",
+        "empty_title": "Empty title",
+        "unread": "Unread"
       },
       "errors": {
         "load": "Failed to load reminders",
         "mark_one": "Failed to mark reminder as read",
-        "mark_all": "Failed to clear reminders"
+        "mark_all": "Failed to clear reminders",
+        "complete": "Complete",
+        "create": "Create",
+        "snooze": "Snooze"
       },
       "events": {
         "lead_processed": "New candidate from lead",
@@ -3715,6 +4941,25 @@
         "manager": "Manager",
         "recruiter": "Recruiter",
         "stage": "Stage"
+      },
+      "fields": {
+        "due_at": "Due at",
+        "remind_before": "Remind before",
+        "title": "Title"
+      },
+      "item": {
+        "untitled": "Untitled"
+      },
+      "messages": {
+        "completed": "Completed",
+        "created": "Created",
+        "snoozed": "Snoozed"
+      },
+      "status": {
+        "overdue": "Overdue"
+      },
+      "tabs": {
+        "events": "Events"
       }
     },
     "leads": {
@@ -3724,7 +4969,8 @@
         "status": "Status",
         "status_all": "All statuses",
         "stage": "Stage",
-        "stage_all": "All stages"
+        "stage_all": "All stages",
+        "next_action": "Next action"
       },
       "statuses": {
         "new": "New",
@@ -3749,18 +4995,1073 @@
         "contact": "Contact",
         "source": "Source",
         "candidate": "Candidate",
-        "error": "Error"
+        "error": "Error",
+        "client": "Client",
+        "fit": "Fit",
+        "next_action": "Next action",
+        "service_order": "Service order"
       },
       "states": {
-        "empty": "No leads found."
+        "empty": "No leads found.",
+        "empty_cta_clients": "Empty CTA clients",
+        "empty_cta_connect": "Empty CTA connect",
+        "empty_desc": "Empty desc",
+        "empty_desc_services": "Empty desc services",
+        "empty_title": "Empty title",
+        "empty_title_services": "Empty title services"
       },
       "messages": {
-        "load_failed": "Failed to load leads."
+        "load_failed": "Failed to load leads.",
+        "invoice_create_failed": "Invoice create failed",
+        "invoice_created": "Invoice created",
+        "invoice_created_desc": "Invoice created desc",
+        "needs_routing": "Needs routing",
+        "needs_routing_desc": "Needs routing desc",
+        "process_failed": "Process failed",
+        "processed": "Processed",
+        "processed_desc": "Processed desc",
+        "service_order_create_failed": "Service order create failed",
+        "service_order_created": "Service order created",
+        "service_order_created_desc": "Service order created desc"
       },
       "pagination": {
         "shown": "Showing {count} of {total}",
         "prev": "Previous",
         "next": "Next"
+      },
+      "actions": {
+        "create_invoice": "Create invoice",
+        "create_service_order": "Create service order",
+        "open_service_order": "Open service order",
+        "process": "Process"
+      },
+      "bulk": {
+        "activities": {
+          "action": "Action",
+          "created": "Created",
+          "default_title": "Default title",
+          "failed": "Failed",
+          "partial": "Partial",
+          "template_label": "Template label"
+        },
+        "apply": "Apply",
+        "clear": "Clear",
+        "retry_meta": "Retry meta",
+        "selected": "Selected",
+        "stage": "Stage",
+        "status": "Status",
+        "update_failed": "Update failed",
+        "updated": "Updated"
+      },
+      "inbox": {
+        "banner": {
+          "filtered": "Filtered",
+          "reset": "Reset"
+        },
+        "composer": {
+          "followup": "Followup",
+          "hint": "Hint"
+        },
+        "fix": {
+          "title": "Title"
+        },
+        "history": {
+          "empty": "Empty",
+          "event": "Event",
+          "timeline_title": "Timeline title"
+        },
+        "lead": "Lead",
+        "select_hint": "Select hint",
+        "tabs": {
+          "composer": "Composer",
+          "fix": "Fix",
+          "focus": "Focus",
+          "history": "History"
+        }
+      },
+      "next_action": {
+        "no_next_action": "No next action",
+        "overdue": "Overdue",
+        "scheduled": "Scheduled",
+        "stuck": "Stuck"
+      },
+      "subtitle_services": "Subtitle services",
+      "title_services": "Title services"
+    },
+    "common": {
+      "messages": {
+        "unexpected": "Unexpected error"
+      },
+      "retry_hint": "Try again in a few seconds.",
+      "you": "You"
+    },
+    "activities": {
+      "actions": {
+        "complete": "Complete",
+        "open": "Open"
+      },
+      "errors": {
+        "complete": "Complete",
+        "load": "Load"
+      },
+      "filters": {
+        "active": "Active",
+        "all": "All",
+        "done": "Done",
+        "search": "Search",
+        "type_all": "Type all"
+      },
+      "states": {
+        "completed": "Completed",
+        "empty": "Empty"
+      },
+      "subtitle": "Subtitle",
+      "title": "Title"
+    },
+    "automation_log": {
+      "empty": "Empty",
+      "errors": {
+        "load": "Load"
+      },
+      "filters": {
+        "action_prefix": "Action prefix",
+        "from": "From",
+        "target_id": "Target ID",
+        "target_type": "Target type",
+        "to": "To",
+        "target_id_placeholder": "UUID",
+        "action_prefix_placeholder": "automation."
+      },
+      "pagination": "Pagination",
+      "subtitle": "Subtitle",
+      "table": {
+        "action": "Action",
+        "payload": "Payload",
+        "target": "Target",
+        "when": "When"
+      },
+      "title": "Title"
+    },
+    "automation_rules": {
+      "columns": {
+        "actions": "Actions",
+        "conditions": "Conditions",
+        "enabled": "Enabled",
+        "title": "Title",
+        "trigger": "Trigger"
+      },
+      "create": "Create",
+      "empty": "Empty",
+      "fields": {
+        "due_in": "Due in",
+        "stage_to": "Stage to",
+        "title": "Title",
+        "trigger": "Trigger",
+        "stage_to_placeholder": "contacted"
+      },
+      "list": "List",
+      "subtitle": "Subtitle",
+      "title": "Title"
+    },
+    "client_portal": {
+      "empty": "Empty",
+      "errors": {
+        "bad_link": "Bad link",
+        "missing_token": "Missing token"
+      },
+      "subtitle": "Subtitle",
+      "title": "Title"
+    },
+    "communications": {
+      "actions": {
+        "back_to_calendar": "Back to calendar",
+        "back_to_hub": "Back to hub",
+        "mark_thread_read": "Mark thread read",
+        "open_thread": "Open thread",
+        "refresh": "Refresh"
+      },
+      "command_audit": {
+        "subtitle": "Execution log for workspace command templates.",
+        "filters": {
+          "actor_user_id": "Actor user ID",
+          "all": "All",
+          "channel": "Channel",
+          "command": "Command",
+          "thread_id": "Thread ID"
+        },
+        "actions": {
+          "apply": "Apply",
+          "reset": "Reset"
+        },
+        "records": "Records: {count}",
+        "pagination": {
+          "next": "Next",
+          "prev": "Prev"
+        },
+        "columns": {
+          "actions": "Actions",
+          "actor": "Actor",
+          "channel": "Channel",
+          "command": "Command",
+          "executed": "Executed",
+          "thread": "Thread"
+        },
+        "errors": {
+          "load": "Failed to load command audit"
+        }
+      },
+      "calendar": {
+        "navigation": {
+          "next": "Next",
+          "prev": "Prev"
+        },
+        "stats": {
+          "activities": "Activities: {count}",
+          "days": "Days: {count}",
+          "meetings": "Meetings: {count}",
+          "overdue": "Overdue: {count}",
+          "planner_items": "Planner items: {count}",
+          "tasks": "Tasks: {count}",
+          "time_off": "Time-off: {count}"
+        },
+        "actions": {
+          "move_plus_1d": "+1d",
+          "move_plus_1h": "+1h",
+          "open": "Open",
+          "priority_high": "P:high",
+          "priority_low": "P:low",
+          "priority_normal": "P:normal",
+          "snooze_30m": "Snooze 30m",
+          "start": "Start",
+          "reopen": "Reopen",
+          "cancel": "Cancel",
+          "duplicate": "Duplicate",
+          "manage": "Manage",
+          "complete": "Complete",
+          "quick_actions": "Quick actions",
+          "archive": "Archive"
+        },
+        "errors": {
+          "load_failed": "Failed to load calendar data",
+          "cannot_reassign": "Cannot reassign: {reason}.",
+          "update_planner_failed": "Failed to update planner event",
+          "batch_failed": "Batch action failed",
+          "cannot_move": "Cannot move: {reason}.",
+          "move_failed": "Failed to move planner event",
+          "cannot_duplicate": "Cannot duplicate: {reason}.",
+          "duplicate_failed": "Failed to duplicate planner event",
+          "complete_activity_failed": "Failed to complete activity",
+          "snooze_activity_failed": "Failed to snooze activity",
+          "cannot_resize": "Cannot resize: {reason}.",
+          "resize_failed": "Failed to resize planner event"
+        },
+        "labels": {
+          "assignee_with_value": "assignee: {value}",
+          "assignee_empty": "assignee: —",
+          "copy_suffix": "{title} (copy)",
+          "unassigned": "Unassigned",
+          "no_items": "No items"
+        },
+        "batch": {
+          "done": "Batch done: updated {updated}, skipped {skipped}.",
+          "no_selected": "No selected planner events.",
+          "enter_tag_first": "Enter tag value first.",
+          "preset_selected": "Preset selected: {count} event(s).",
+          "selected_by_filter": "Selected {count} events by filter.",
+          "title": "Batch actions for selected planner events ({count})",
+          "select_all_visible": "Select all visible",
+          "select_by_filter": "Select by filter",
+          "any_kind": "Any kind",
+          "any_priority": "Any priority",
+          "any_status": "Any status",
+          "select_by_filter_action": "Select by filter",
+          "presets": {
+            "meetings": "Meetings",
+            "high_priority": "High priority",
+            "unassigned": "Unassigned",
+            "in_progress": "In progress",
+            "due_soon": "Due soon (2h)"
+          },
+          "assign": "Assign",
+          "priority": "Priority",
+          "tags": "Tags",
+          "tag_placeholder": "tag",
+          "archive_selected": "Archive selected"
+        },
+        "views": {
+          "month": "Month view",
+          "day": "Day planner",
+          "week": "Week view",
+          "week_short": "Week",
+          "month_short": "Month"
+        },
+        "filters": {
+          "sources": {
+            "all": "All sources",
+            "timeoff": "Time-off",
+            "activities": "Activities",
+            "planner": "Planner"
+          },
+          "timeoff": {
+            "approved_only": "Time-off approved only",
+            "pending_only": "Time-off pending only",
+            "all": "Time-off approved + pending"
+          },
+          "managers": {
+            "all": "All managers"
+          },
+          "activity_types": {
+            "all": "All activity types"
+          },
+          "planner_kinds": {
+            "all": "All planner kinds"
+          }
+        },
+        "kinds": {
+          "meeting": "Meeting",
+          "task": "Task",
+          "followup": "Follow-up",
+          "call": "Call",
+          "shift": "Shift"
+        },
+        "month": {
+          "click_day_hint": "Click a day to open day planner."
+        },
+        "badges": {
+          "overdue_count": "overdue {count}",
+          "timeoff_count": "time-off {count}",
+          "rem_count": "rem {count}",
+          "planner_count": "planner {count}"
+        },
+        "legend": {
+          "timeoff": "Time-off",
+          "reminders": "Reminders",
+          "planner": "Planner"
+        },
+        "week": {
+          "range": "Week: {from} - {to}",
+          "slot": "Slot:",
+          "time": "Time",
+          "now": "now",
+          "all_day": "All-day",
+          "drag_to_slot": "Drag to another slot"
+        },
+        "day": {
+          "title": "Day planner: {day}",
+          "subtitle": "Meetings, tasks, reminders, and absence context.",
+          "slot_9": "+ 09:00 slot",
+          "slot_12": "+ 12:00 slot",
+          "slot_15": "+ 15:00 slot",
+          "slot_18": "+ 18:00 slot"
+        },
+        "priority": {
+          "low": "Low",
+          "normal": "Normal",
+          "high": "High"
+        },
+        "status": {
+          "planned": "Planned",
+          "in_progress": "In progress",
+          "done": "Done",
+          "cancelled": "Cancelled"
+        },
+        "timeline": {
+          "title": "Timeline drag & drop",
+          "now": "Now {time}",
+          "exit_resize": "Exit resize",
+          "drag_to_hour_or_day": "Drag to another hour/day",
+          "resize": "resize",
+          "drop_here": "drop here",
+          "set_end_here": "set end here",
+          "drag_to_timeline_or_week": "Drag to timeline or week days"
+        },
+        "day_buckets": {
+          "morning": "Morning (00:00-11:59)",
+          "midday": "Day (12:00-16:59)",
+          "evening": "Evening (17:00-23:59)"
+        },
+        "team_load": {
+          "title": "Team load for selected day",
+          "row": "total {total} | mtg {meetings} | task {tasks} | overdue {overdue}",
+          "empty": "No assigned workload for this day."
+        },
+        "forms": {
+          "create_planner": "Create meeting / task",
+          "all_day": "All day",
+          "outside_working_hours": "Create outside working hours",
+          "occurrences": "Occurrences",
+          "description": "Description",
+          "create_activity": "Create activity",
+          "quick_type": "Quick type",
+          "custom": "Custom",
+          "activity_title": "Activity title",
+          "offset_min": "Offset min"
+        },
+        "repeat": {
+          "none": "No repeat",
+          "daily": "Repeat daily",
+          "weekdays": "Repeat weekdays"
+        },
+        "upcoming": {
+          "title": "Upcoming events"
+        }
+      },
+      "timeoff": {
+        "stats": {
+          "approved": "Approved: {count}",
+          "pending": "Pending: {count}",
+          "rejected": "Rejected: {count}",
+          "reviewer": "Reviewer: {name}"
+        },
+        "filters": {
+          "all_statuses": "All statuses"
+        },
+        "status": {
+          "approved": "Approved",
+          "cancelled": "Cancelled",
+          "pending": "Pending",
+          "rejected": "Rejected"
+        },
+        "actions": {
+          "approve": "Approve",
+          "cancel": "Cancel",
+          "reject": "Reject"
+        },
+        "decision_note_optional": "Decision note (optional)",
+        "errors": {
+          "cancel": "Failed to cancel request",
+          "load": "Failed to load time-off requests",
+          "process": "Failed to process request"
+        }
+      },
+      "my_availability": {
+        "request_type": {
+          "day_off": "Day off",
+          "other": "Other",
+          "sick_leave": "Sick leave",
+          "vacation": "Vacation"
+        },
+        "partial_day": {
+          "first_half": "First half-day",
+          "full": "Full day(s)",
+          "second_half": "Second half-day"
+        },
+        "reason_placeholder": "Reason / comment",
+        "errors": {
+          "cancel_request": "Failed to cancel request",
+          "create_request": "Failed to create request",
+          "load_requests": "Failed to load requests",
+          "save_working_hours": "Failed to save working hours"
+        }
+      },
+      "team_availability": {
+        "timeoff_today": "Timeoff today",
+        "upcoming_timeoff": "Upcoming timeoff"
+      },
+      "email": {
+        "dispatch_failed": "Dispatch failed",
+        "errors": {
+          "bulk_action": "Bulk action failed",
+          "fetch_inbound": "Failed to fetch inbound email",
+          "load": "Failed to load email inbox",
+          "send": "Failed to send message"
+        },
+        "poll": {
+          "cta": "CTA",
+          "diagnostics": "Diagnostics",
+          "last": "Last",
+          "loading": "Loading",
+          "more_accounts": "More accounts",
+          "new_threads": "New threads",
+          "skipped": "Skipped",
+          "summary": "Summary"
+        },
+        "signature": {
+          "apply": "Apply"
+        },
+        "test_connection": "Test connection",
+        "actions": {
+          "hide_filters_commands": "Hide filters commands",
+          "move": "Move",
+          "reset_view": "Reset view",
+          "run_for_selected": "Run for selected",
+          "run_template": "Run template",
+          "select_all": "Select all",
+          "show_filters_commands": "Show filters commands",
+          "tag_add": "Tag add",
+          "tag_remove": "Tag remove"
+        },
+        "commands": {
+          "archive": "Archive",
+          "delete": "Delete",
+          "mark_read": "Mark read",
+          "priority_high": "Priority high",
+          "priority_normal": "Priority normal",
+          "quick": "Quick",
+          "restore": "Restore",
+          "unarchive": "Unarchive"
+        },
+        "folders": {
+          "archive": "Archive",
+          "deleted": "Deleted",
+          "inbox": "Inbox"
+        },
+        "labels": {
+          "commands": "Commands",
+          "conversations": "Conversations",
+          "folder": "Folder",
+          "folders": "Folders",
+          "move_to": "Move to",
+          "new_folder": "New folder",
+          "status_value": "Status: {status}",
+          "tag": "Tag",
+          "unread_count": "Unread: {count}"
+        },
+        "preview": {
+          "add_signature": "Add signature",
+          "assignee": "Assignee",
+          "body_placeholder": "Write your message",
+          "created": "Created",
+          "empty": "Select a conversation to preview.",
+          "forward": "Forward",
+          "insert_template": "Insert template",
+          "last_activity": "Last activity",
+          "recipient_placeholder": "Recipient email (optional if preconfigured)",
+          "reply": "Reply",
+          "reply_forward": "Reply / Forward",
+          "status": "Status",
+          "subject_placeholder": "Subject",
+          "title": "Preview & Reply"
+        },
+        "search": {
+          "placeholder": "Placeholder",
+          "placeholder_long": "Placeholder long"
+        },
+        "states": {
+          "no_match": "No match"
+        },
+        "subtitle": "Subtitle"
+      },
+      "errors": {
+        "load": "Load"
+      },
+      "ia": {
+        "calendar_subtitle": "Calendar subtitle",
+        "calendar_title": "Calendar title",
+        "email_title": "Email title",
+        "my_availability_subtitle": "My availability subtitle",
+        "my_availability_title": "My availability title",
+        "my_requests": "My requests",
+        "open_time_off": "Open time off",
+        "planner_subtitle": "Planner subtitle",
+        "planner_title": "Planner title",
+        "team_availability_subtitle": "Team availability subtitle",
+        "team_availability_title": "Team availability title",
+        "timeoff_subtitle": "Timeoff subtitle",
+        "timeoff_title": "Timeoff title",
+        "working_hours_subtitle": "Working hours subtitle",
+        "working_hours_title": "Working hours title"
+      },
+      "labels": {
+        "at_time": "At time",
+        "channel": "Channel",
+        "entity": "Entity",
+        "reason": "Reason",
+        "status": "Status",
+        "thread": "Thread",
+        "unread": "Unread"
+      },
+      "queue": {
+        "assignee": "Assignee",
+        "auto_assign": "Auto assign",
+        "auto_assign_failed": "Auto assign failed",
+        "fallback_to_manual": "Fallback to manual",
+        "items_count": "Items count",
+        "preview_result": "Preview result",
+        "rebalance_status": "Rebalance status",
+        "respect_availability": "Respect availability",
+        "respect_schedules": "Respect schedules",
+        "strategy": "Strategy"
+      },
+      "scheduler": {
+        "run_now": "Run now"
+      },
+      "setup": {
+        "actions": {
+          "connect_email": "Connect email",
+          "connect_telegram": "Connect telegram",
+          "enable_baseline": "Enable baseline",
+          "open_settings": "Open settings"
+        },
+        "banner_incomplete": "Banner incomplete",
+        "incomplete": "Incomplete",
+        "next_step": "Next step",
+        "next_title": "Next title",
+        "progress": "Progress",
+        "ready": "Ready",
+        "remaining": "Remaining",
+        "steps": {
+          "channels": "Channels",
+          "channels_hint": "Channels hint",
+          "email_connect": "Email connect",
+          "email_connect_hint": "Email connect hint",
+          "email_inbound": "Email inbound",
+          "email_inbound_hint": "Email inbound hint",
+          "messenger_connect": "Messenger connect",
+          "messenger_connect_hint": "Messenger connect hint",
+          "messenger_inbound": "Messenger inbound",
+          "messenger_inbound_hint": "Messenger inbound hint"
+        },
+        "subtitle": "Subtitle",
+        "title": "Title"
+      },
+      "states": {
+        "empty": "Empty",
+        "empty_cta_email": "Empty CTA email",
+        "empty_cta_setup": "Empty CTA setup",
+        "empty_desc": "Empty desc",
+        "empty_title": "Empty title"
+      },
+      "thread": {
+        "compose": "Compose",
+        "delivery_actions": "Delivery actions",
+        "dispatch_now": "Dispatch now",
+        "dispatch_queued": "Dispatch queued",
+        "internal_note": "Internal note",
+        "message": "Message",
+        "meta": "Meta",
+        "note": "Note",
+        "recipient": "Recipient",
+        "send": "Send",
+        "send_immediately": "Send immediately",
+        "subject": "Subject",
+        "timeline": "Timeline",
+        "workflow_actions": "Workflow actions"
+      },
+      "planner": {
+        "actions": {
+          "start": "Start"
+        },
+        "assignee": {
+          "label": "Label",
+          "unassigned": "Unassigned"
+        },
+        "errors": {
+          "create": "Create",
+          "load": "Load",
+          "outside_hours": "Outside hours",
+          "update": "Update"
+        },
+        "filters": {
+          "all_kinds": "All kinds",
+          "all_statuses": "All statuses"
+        },
+        "form": {
+          "fields": {
+            "all_day": "All day",
+            "description": "Description",
+            "outside_hours": "Outside hours",
+            "title": "Title"
+          },
+          "title": "Title"
+        },
+        "kind": {
+          "call": "Call",
+          "followup": "Followup",
+          "meeting": "Meeting",
+          "shift": "Shift",
+          "task": "Task"
+        },
+        "priority": {
+          "high": "High",
+          "low": "Low",
+          "normal": "Normal"
+        },
+        "stats": {
+          "done": "Done",
+          "in_progress": "In progress",
+          "planned": "Planned",
+          "total": "Total"
+        },
+        "status": {
+          "cancelled": "Cancelled",
+          "done": "Done",
+          "in_progress": "In progress",
+          "planned": "Planned"
+        }
+      }
+    },
+    "forgot_password": {
+      "back": "Back",
+      "errors": {
+        "generic": "Generic"
+      },
+      "sent": "Sent",
+      "submit": "Submit",
+      "subtitle": "Subtitle",
+      "title": "Title",
+      "fields": {
+        "email_placeholder": "email@example.com"
+      }
+    },
+    "invite_accept": {
+      "confirm": "Confirm",
+      "errors": {
+        "generic": "Generic",
+        "mismatch": "Mismatch",
+        "too_short": "Too short"
+      },
+      "full_name": "Full name",
+      "no_token": "No token",
+      "no_token_hint": "No token hint",
+      "password": "Password",
+      "short_id": "Short ID",
+      "submit": "Submit",
+      "subtitle": "Subtitle",
+      "success": "Success",
+      "title": "Title"
+    },
+    "invoices": {
+      "actions": "Actions",
+      "add_item": "Add item",
+      "all_statuses": "All statuses",
+      "already_paid": "Already paid",
+      "back": "Back",
+      "bank_account": "Bank account",
+      "bank_account_missing": "Bank account missing",
+      "bank_name": "Bank name",
+      "bulk_none": "Bulk none",
+      "bulk_partial_error": "Bulk partial error",
+      "bulk_remind": "Bulk remind",
+      "bulk_remind_success": "Bulk remind success",
+      "bulk_selected": "Bulk selected",
+      "bulk_send": "Bulk send",
+      "bulk_send_success": "Bulk send success",
+      "bulk_success": "Bulk success",
+      "cancel": "Cancel",
+      "cancel_success": "Cancel success",
+      "catalog_hint": "Catalog hint",
+      "catalog_item": "Catalog item",
+      "clear_filters": "Clear filters",
+      "client": "Client",
+      "client_address_required": "Client address required",
+      "client_help": "Client help",
+      "client_legal_name_required": "Client legal name required",
+      "client_operating_not_allowed": "Client operating not allowed",
+      "client_tax_id_required": "Client tax ID required",
+      "compose_send": "Compose send",
+      "context": "Context",
+      "context_subtitle": "Context subtitle",
+      "correction": "Correction",
+      "correction_chain": "Correction chain",
+      "correction_chain_error": "Correction chain error",
+      "correction_chain_subtitle": "Correction chain subtitle",
+      "correction_context": "Correction context",
+      "correction_notice": "Correction notice",
+      "correction_of": "Correction of",
+      "correction_original_required": "Correction original required",
+      "correction_reason": "Correction reason",
+      "correction_reason_placeholder": "Correction reason placeholder",
+      "correction_reason_required": "Correction reason required",
+      "create": "Create",
+      "create_company_required": "Create company required",
+      "create_correction": "Create correction",
+      "create_correction_subtitle": "Create correction subtitle",
+      "create_items_required": "Create items required",
+      "create_subtitle": "Create subtitle",
+      "create_summary": "Create summary",
+      "currency": "Currency",
+      "current": "Current",
+      "delivery": "Delivery",
+      "delivery_missing_recipient": "Delivery missing recipient",
+      "delivery_not_sent": "Delivery not sent",
+      "delta_total": "Delta total",
+      "drilldown": {
+        "company": "Company",
+        "service_order": "Service order",
+        "status": "Status"
+      },
+      "due_date": "Due date",
+      "edit": "Edit",
+      "edit_only_draft": "Edit only draft",
+      "edit_subtitle": "Edit subtitle",
+      "empty": "Empty",
+      "fields": {
+        "due": "Due",
+        "number": "Number",
+        "outstanding": "Outstanding",
+        "paid": "Paid",
+        "status": "Status",
+        "total": "Total"
+      },
+      "filter_status": "Filter status",
+      "immutable_notice": "Immutable notice",
+      "issue": "Issue",
+      "issue_date": "Issue date",
+      "issue_success": "Issue success",
+      "issuer": "Issuer",
+      "issuer_address": "Issuer address",
+      "issuer_address_required": "Issuer address required",
+      "issuer_bank_required": "Issuer bank required",
+      "issuer_help": "Issuer help",
+      "issuer_missing_hint": "Issuer missing hint",
+      "issuer_required": "Issuer required",
+      "issuer_tax_id": "Issuer tax ID",
+      "issuer_tax_id_required": "Issuer tax ID required",
+      "item_description": "Item description",
+      "items": "Items",
+      "items_subtitle": "Items subtitle",
+      "kind": {
+        "correction": "Correction",
+        "invoice": "Invoice",
+        "proforma": "Proforma",
+        "vat": "Vat"
+      },
+      "kind_correction": "Kind correction",
+      "kind_invoice": "Kind invoice",
+      "kind_proforma": "Kind proforma",
+      "kind_vat": "Kind vat",
+      "last_activity": "Last activity",
+      "locked": "Locked",
+      "mark_paid": "Mark paid",
+      "mark_paid_success": "Mark paid success",
+      "message": "Message",
+      "no_recipient": "No recipient",
+      "not_found": "Not found",
+      "notes": "Notes",
+      "number": "Number",
+      "open_client": "Open client",
+      "open_reminders": "Open reminders",
+      "open_service_order": "Open service order",
+      "original": "Original",
+      "original_total": "Original total",
+      "paid": "Paid",
+      "payment_terms": "Payment terms",
+      "pdf": "Pdf",
+      "queue": {
+        "all": "All",
+        "delivery_failed": "Delivery failed",
+        "missing_recipient": "Missing recipient",
+        "needs_correction": "Needs correction",
+        "overdue_unpaid": "Overdue unpaid"
+      },
+      "recipient": "Recipient",
+      "recipient_contact": "Recipient contact",
+      "recipient_contact_none": "Recipient contact none",
+      "recipient_invalid_for_send": "Recipient invalid for send",
+      "recipient_required_for_send": "Recipient required for send",
+      "remind": "Remind",
+      "remind_success": "Remind success",
+      "save_and_send": "Save and send",
+      "save_draft": "Save draft",
+      "select_client": "Select client",
+      "select_issuer": "Select issuer",
+      "send_failed_after_save": "Send failed after save",
+      "send_success": "Send success",
+      "snapshot": {
+        "follow_up": "Follow up",
+        "locked": "Locked",
+        "missing_recipient": "Missing recipient",
+        "outstanding": "Outstanding",
+        "overdue": "Overdue",
+        "paid": "Paid"
+      },
+      "status": "Status",
+      "subject": "Subject",
+      "summary": "Summary",
+      "swift": "Swift",
+      "tax_mode": "Tax mode",
+      "tax_mode_exempt": "Tax mode exempt",
+      "tax_mode_reverse": "Tax mode reverse",
+      "tax_mode_standard": "Tax mode standard",
+      "timeline": {
+        "cancelled": "Cancelled",
+        "created": "Created",
+        "issued": "Issued",
+        "paid": "Paid",
+        "reminder": "Reminder",
+        "reminder_completed": "Reminder completed",
+        "send_failed": "Send failed",
+        "sent": "Sent",
+        "status": "Status",
+        "subtitle": "Subtitle",
+        "title": "Title"
+      },
+      "title": "Title",
+      "total": "Total",
+      "type": "Type",
+      "kind_label": "Invoice type",
+      "placeholders": {
+        "billing_email": "billing@client.com"
+      }
+    },
+    "license": {
+      "expired_banner": "Expired banner"
+    },
+    "my_company": {
+      "card": {
+        "business_type": "Business type",
+        "email": "Email",
+        "manager": "Manager",
+        "owner": "Owner"
+      },
+      "cards": {
+        "available": "Available",
+        "limit": "Limit",
+        "operating_count": "Operating count",
+        "overflow_text": "Overflow text",
+        "overflow_title": "Overflow title"
+      },
+      "compact_hint": "Compact hint",
+      "company_type": "Company type",
+      "company_type_hint": "Company type hint",
+      "create": "Create",
+      "empty": {
+        "limit_reached": "Limit reached",
+        "subtitle": "Subtitle",
+        "title": "Title"
+      },
+      "manage_access": "Manage access",
+      "missing_tax_id": "Missing tax ID",
+      "open_billing": "Open billing",
+      "open_invoices": "Open invoices",
+      "subtitle": "Subtitle",
+      "title": "Title",
+      "workspace": {
+        "bank_accounts": "Bank accounts",
+        "billing": "Billing",
+        "branding": "Branding",
+        "legal": "Legal",
+        "subtitle": "Subtitle",
+        "title": "Title"
+      }
+    },
+    "onboarding": {
+      "company": {
+        "errors": {
+          "generic": "Generic",
+          "name_required": "Name required",
+          "operating_limit": "Operating limit",
+          "operating_limit_hint": "Operating limit hint",
+          "operating_limit_with_slots": "Operating limit with slots"
+        },
+        "name_label": "Name label",
+        "name_placeholder": "Name placeholder",
+        "signup_success": "Signup success",
+        "signup_success_billing": "Signup success billing",
+        "signup_success_cookies": "Signup success cookies",
+        "signup_success_email_not_sent": "Signup success email not sent",
+        "signup_success_email_sent": "Signup success email sent",
+        "signup_success_links_prefix": "Signup success links prefix",
+        "signup_success_privacy": "Signup success privacy",
+        "signup_success_terms": "Signup success terms",
+        "signup_success_with_trial": "Signup success with trial",
+        "slot_guard": {
+          "text": "Text",
+          "title": "Title"
+        },
+        "submit": "Submit",
+        "subtitle": "Subtitle",
+        "title": "Title",
+        "type_agency": "Type agency",
+        "type_agency_desc": "Type agency desc",
+        "type_agency_profile": "Type agency profile",
+        "type_employer": "Type employer",
+        "type_employer_desc": "Type employer desc",
+        "type_employer_profile": "Type employer profile",
+        "type_label": "Type label",
+        "type_services": "Type services",
+        "type_services_desc": "Type services desc",
+        "type_services_profile": "Type services profile",
+        "why_text": "Why text",
+        "why_title": "Why title"
+      },
+      "company_type": {
+        "agency": "Agency",
+        "employer": "Employer",
+        "services": "Services"
+      },
+      "first_value": {
+        "badge": "Badge",
+        "open": "Open",
+        "progress": "Progress",
+        "step_client": "Step client",
+        "step_company": "Step company",
+        "step_next_action": "Step next action",
+        "step_services_client": "Step services client",
+        "step_services_leads": "Step services leads",
+        "step_vacancy": "Step vacancy",
+        "subtitle": "Subtitle",
+        "title": "Title"
+      },
+      "getting_started": {
+        "badge": "Badge",
+        "done": "Done",
+        "go_dashboard": "Go dashboard",
+        "open": "Open",
+        "open_fallback": "Open fallback",
+        "primary_cta_agency": {
+          "desc": "Desc",
+          "title": "Title"
+        },
+        "primary_cta_employer": {
+          "desc": "Desc",
+          "title": "Title"
+        },
+        "primary_cta_launch": "Primary CTA launch",
+        "primary_cta_services": {
+          "desc": "Desc",
+          "title": "Title"
+        },
+        "progress": "Progress",
+        "step0": {
+          "desc": "Desc",
+          "title": "Title"
+        },
+        "step3": {
+          "desc": "Desc",
+          "title": "Title"
+        },
+        "step3_services": {
+          "desc": "Desc"
+        },
+        "step_agency": {
+          "desc_dynamic": "Desc dynamic",
+          "title_dynamic": "Title dynamic"
+        },
+        "step_employer": {
+          "desc": "Desc",
+          "title": "Title"
+        },
+        "step_services_client": {
+          "desc": "Desc",
+          "title": "Title"
+        },
+        "subtitle": "Subtitle",
+        "title": "Title"
+      }
+    },
+    "reset_password": {
+      "confirm": "Confirm",
+      "errors": {
+        "generic": "Generic",
+        "mismatch": "Mismatch",
+        "too_short": "Too short"
+      },
+      "new_password": "New password",
+      "no_token": "No token",
+      "no_token_hint": "No token hint",
+      "submit": "Submit",
+      "success": "Success",
+      "title": "Title"
+    },
+    "sidebar": {
+      "settings": {
+        "api_base": "API Base",
+        "api_base_placeholder": "http://localhost:8000/api/v1",
+        "docs_base": "Docs Base (read-only)",
+        "tenant_id": "Tenant ID",
+        "tenant_placeholder": "Tenant UUID"
       }
     }
   },
@@ -3771,6 +6072,280 @@
         "link": "Cookie policy",
         "more": "More information",
         "accept": "I accept"
+      }
+    },
+    "marketing": {
+      "common": {
+        "cta": {
+          "start_trial": "Start free trial",
+          "view_pricing": "View pricing"
+        },
+        "faq": "FAQ",
+        "related": {
+          "candidate_pipeline": "Candidate pipeline",
+          "crm_vs_ats": "Recruitment CRM vs ATS",
+          "document_control": "Document control",
+          "high_volume_onboarding": "High-volume onboarding",
+          "hostflow_vs_spreadsheets": "HostFlow vs spreadsheets",
+          "trucking_recruitment_use_case": "Trucking recruitment use-case"
+        }
+      },
+      "comparison_hostflow_vs_spreadsheets": {
+        "seo": {
+          "title": "HostFlow vs Spreadsheets for Recruitment",
+          "description": "Compare HostFlow CRM with spreadsheet-based recruitment operations across speed, visibility, and onboarding control."
+        },
+        "hero": {
+          "badge": "Comparison",
+          "title": "HostFlow vs Spreadsheets for Recruitment Ops",
+          "subtitle": "A practical comparison for teams deciding whether to keep manual spreadsheets or switch to an operational CRM."
+        },
+        "overview": {
+          "title": "Side-by-side overview",
+          "columns": {
+            "area": "Area",
+            "spreadsheets": "Spreadsheets",
+            "hostflow": "HostFlow"
+          },
+          "rows": {
+            "pipeline": {
+              "area": "Pipeline visibility",
+              "spreadsheets": "Manual updates, fragmented ownership",
+              "hostflow": "Shared stage flow with clear owners"
+            },
+            "documents": {
+              "area": "Document control",
+              "spreadsheets": "Separate trackers and reminders",
+              "hostflow": "Unified statuses and due-date reminders"
+            },
+            "scaling": {
+              "area": "Scaling team operations",
+              "spreadsheets": "Coordination overhead grows quickly",
+              "hostflow": "Role-aware workflow and audit trail"
+            }
+          }
+        },
+        "faq": {
+          "q1": {
+            "q": "Can spreadsheets still work for early stage teams?",
+            "a": "They can for very low volume, but coordination overhead grows quickly when pipeline and documents scale."
+          },
+          "q2": {
+            "q": "What is the biggest operational gain from CRM migration?",
+            "a": "Single-source workflow ownership and reminders, which removes hidden blockers from manual tracking."
+          },
+          "q3": {
+            "q": "Do we need a long implementation project?",
+            "a": "No. Teams can start with baseline onboarding and move active work immediately."
+          }
+        },
+        "related": {
+          "title": "Related pages"
+        }
+      },
+      "comparison_recruitment_crm_vs_ats": {
+        "seo": {
+          "title": "Recruitment CRM vs ATS Comparison",
+          "description": "Understand when a recruitment CRM outperforms ATS-only setup for operational pipeline, documents, and team coordination."
+        },
+        "hero": {
+          "badge": "Comparison",
+          "title": "Recruitment CRM vs ATS",
+          "subtitle": "Compare where ATS helps and where CRM-driven operations improve execution speed for active recruiting teams."
+        },
+        "decision": {
+          "title": "Decision lens",
+          "items": {
+            "1": "Use ATS when application intake and hiring administration are central.",
+            "2": "Use CRM when operational throughput, ownership, and multi-step follow-up are critical.",
+            "3": "Blend both when your process needs operational control and broader HR stack compatibility."
+          }
+        },
+        "faq": {
+          "q1": {
+            "q": "Is ATS enough for operational recruiting teams?",
+            "a": "ATS is strong for application tracking, but daily recruitment operations often need deeper workflow ownership and follow-up tooling."
+          },
+          "q2": {
+            "q": "Can CRM and ATS coexist?",
+            "a": "Yes. Many teams use CRM for operations and ATS for broader hiring records, depending on process maturity."
+          },
+          "q3": {
+            "q": "What if we start without ATS integration?",
+            "a": "You can start with CRM-first workflow and add integrations later when process baseline is stable."
+          }
+        },
+        "related": {
+          "title": "Related pages"
+        }
+      },
+      "use_case_trucking_recruitment": {
+        "seo": {
+          "title": "CRM for Trucking Recruitment Teams",
+          "description": "Manage driver recruitment, onboarding documents, and team coordination in one CRM workflow for trucking operations."
+        },
+        "hero": {
+          "badge": "Use-case",
+          "title": "CRM for Trucking Recruitment",
+          "subtitle": "Build a repeatable driver hiring process from lead to onboarding with document control and ownership clarity."
+        },
+        "challenges": {
+          "title": "Operational challenges",
+          "items": {
+            "1": "High candidate volume with multi-step qualification.",
+            "2": "Document readiness directly affects deployment timing.",
+            "3": "Recruiters and operations need shared status context."
+          }
+        },
+        "flow": {
+          "title": "Recommended flow in HostFlow",
+          "items": {
+            "1": "Capture and qualify incoming driver leads.",
+            "2": "Move candidates through standardized stage checkpoints.",
+            "3": "Track mandatory file statuses before dispatch.",
+            "4": "Use reminders to prevent missed follow-ups."
+          }
+        },
+        "faq": {
+          "q1": {
+            "q": "Is this relevant for driver CE hiring?",
+            "a": "Yes. The workflow is designed for trucking recruitment with document-heavy onboarding."
+          },
+          "q2": {
+            "q": "Can operations and recruiters collaborate in one workspace?",
+            "a": "Yes. Shared pipeline, reminders, and document states keep all roles aligned."
+          },
+          "q3": {
+            "q": "Can we start with a small team first?",
+            "a": "You can launch quickly and scale roles and permissions as volume grows."
+          }
+        },
+        "related": {
+          "title": "Related guides"
+        }
+      },
+      "feature_candidate_pipeline": {
+        "seo": {
+          "title": "Candidate Pipeline CRM for Recruitment",
+          "description": "Run candidate stages, ownership, and next actions in one recruitment pipeline CRM built for fast operations."
+        },
+        "hero": {
+          "badge": "Feature",
+          "title": "Candidate Pipeline CRM for Recruitment Teams",
+          "subtitle": "Keep every candidate moving with clear stages, owners, and next actions so your pipeline does not stall."
+        },
+        "problem": {
+          "title": "What this solves",
+          "body": "Teams lose time when candidate status lives across chats and spreadsheets. HostFlow centralizes stages, ownership, and reminders, so recruiters and managers work from the same source of truth."
+        },
+        "flow": {
+          "title": "How the workflow runs",
+          "items": {
+            "1": "Create or import candidates into the pipeline.",
+            "2": "Assign responsible users and due actions per stage.",
+            "3": "Track bottlenecks and SLA risks in dashboard and reminders.",
+            "4": "Move candidates forward with auditable stage history."
+          }
+        },
+        "faq": {
+          "q1": {
+            "q": "Can we configure pipeline stages for different teams?",
+            "a": "Yes. Teams can adapt stages and keep a shared operating model without losing reporting consistency."
+          },
+          "q2": {
+            "q": "Will managers see bottlenecks fast?",
+            "a": "The workflow highlights blocked candidates, overdue actions, and ownership gaps in one place."
+          },
+          "q3": {
+            "q": "Do we need extra onboarding before launch?",
+            "a": "No. You can start with default stages and refine them while work is already running."
+          }
+        },
+        "related": {
+          "title": "Related guides"
+        }
+      },
+      "feature_document_control": {
+        "seo": {
+          "title": "Recruitment Document Control Software",
+          "description": "Automate document collection, expiry checks, and reminders in one recruitment document control workflow."
+        },
+        "hero": {
+          "badge": "Feature",
+          "title": "Document Control for Recruitment Operations",
+          "subtitle": "Keep candidate files complete and valid with clear statuses, reminders, and shared visibility for teams."
+        },
+        "problem": {
+          "title": "Why teams need this",
+          "body": "Manual tracking of passports, permits, and certificates creates risk and delays. HostFlow organizes required documents by workflow stage and alerts users before issues become blockers."
+        },
+        "outcome": {
+          "title": "Workflow outcome",
+          "items": {
+            "1": "Standardized checklist for required files.",
+            "2": "Automatic status updates for missing/received/approved/expired documents.",
+            "3": "Reminder operations linked to candidate and owner context.",
+            "4": "Faster onboarding with less manual coordination."
+          }
+        },
+        "faq": {
+          "q1": {
+            "q": "Can we manage document deadlines automatically?",
+            "a": "Yes. HostFlow tracks statuses, deadlines, and reminders across required document sets."
+          },
+          "q2": {
+            "q": "Will teams see missing files quickly?",
+            "a": "Yes. Missing and overdue states are visible in candidate workflow and dashboard widgets."
+          },
+          "q3": {
+            "q": "Can this work with onboarding at scale?",
+            "a": "The flow is built for high candidate volume and reduces manual follow-up operations."
+          }
+        },
+        "related": {
+          "title": "Related guides"
+        }
+      },
+      "use_case_high_volume_onboarding": {
+        "seo": {
+          "title": "High-Volume Candidate Onboarding Workflow",
+          "description": "Run high-volume candidate onboarding with clear stages, reminders, and document readiness in one CRM flow."
+        },
+        "hero": {
+          "badge": "Use-case",
+          "title": "High-Volume Candidate Onboarding",
+          "subtitle": "Maintain speed and quality when many candidates move through onboarding at the same time."
+        },
+        "problem": {
+          "title": "Where teams get stuck",
+          "body": "Volume breaks onboarding when actions are not assigned and document follow-up is manual. HostFlow gives a shared operational layer for recruiters, coordinators, and managers."
+        },
+        "execution": {
+          "title": "Execution pattern",
+          "items": {
+            "1": "Standard stage path with ownership at every step.",
+            "2": "Document checklist attached to each candidate journey.",
+            "3": "Reminders and alerts for pending or overdue tasks.",
+            "4": "Manager visibility on throughput and blockers."
+          }
+        },
+        "faq": {
+          "q1": {
+            "q": "Can we onboard many candidates without losing control?",
+            "a": "Yes. Shared visibility and task ownership keep throughput stable under load."
+          },
+          "q2": {
+            "q": "Do reminders help reduce follow-up delays?",
+            "a": "Reminders and status cues reduce missed actions and speed up completion."
+          },
+          "q3": {
+            "q": "Can managers monitor progress in real time?",
+            "a": "Dashboard and workflow states show where teams are blocked and what to fix next."
+          }
+        },
+        "related": {
+          "title": "Related guides"
+        }
       }
     },
     "portal": {
@@ -3860,7 +6435,8 @@
             "rodo": "Przetwarzanie danych (RODO)"
           },
           "address_title": "Company details",
-          "company": "Host Flow Viktoriia Tatarynovich\nNIP: 7872153072 · REGON: 542991376\nwoj. WIELKOPOLSKIE, pow. szamotulski,\ngm. Szamotuły, miejsc. Przecław,\nul. Leśna 1A/2, 64-514\ninfo@hostflow.cc"
+          "company": "Host Flow Viktoriia Tatarynovich\nNIP: 7872153072 · REGON: 542991376\nwoj. WIELKOPOLSKIE, pow. szamotulski,\ngm. Szamotuły, miejsc. Przecław,\nul. Leśna 1A/2, 64-514\ninfo@hostflow.cc",
+          "copyright": "© 2026 HostFlow. All rights reserved."
         }
       },
       "form": {
@@ -3894,6 +6470,9 @@
           "telegram": "Telegram",
           "phone": "Phone call",
           "none": "Not specified"
+        },
+        "placeholders": {
+          "email": "you@example.com"
         }
       }
     },
@@ -4125,7 +6704,8 @@
           },
           "resend_missing": "Add email or phone in the contacts section.",
           "help": "Add phone or email so we can send you the link and updates.",
-          "required_hint": "Phone or email is required to continue."
+          "required_hint": "Phone or email is required to continue.",
+          "phone_country_code": "Phone country code"
         },
         "personal": {
           "full_name": "Full name",
@@ -4225,7 +6805,8 @@
         "upload_failed": "Could not upload document",
         "rotate_warning": "The old link will stop working. Create a new one?",
         "share_created": "New link created",
-        "share_failed": "Could not refresh the link"
+        "share_failed": "Could not refresh the link",
+        "scanner_failed": "Scanner failed"
       },
       "api": {
         "load_error": "Could not load the application",
@@ -4433,7 +7014,10 @@
           "open_status": "Open status page",
           "copy_link": "Copy link",
           "link_copied": "Link copied",
-          "qr_hint": "Scan to add link to your phone"
+          "qr_hint": "Scan to add link to your phone",
+          "telegram_hint": "Telegram hint",
+          "telegram_open": "Telegram open",
+          "telegram_title": "Telegram title"
         },
         "overview": {
           "title": "Overview",
@@ -4501,7 +7085,9 @@
       "cta": {
         "refresh": "Refresh",
         "get_new": "Get a new link"
-      }
+      },
+      "updating": "Updating",
+      "brand": "HostFlow"
     },
     "timeline": {
       "empty": "Statuses will appear after you start the application.",
@@ -4534,6 +7120,9 @@
         "title": "Documents uploaded",
         "description": "Required files per checklist",
         "progress": "Ready {ready}/{total}"
+      },
+      "progress": {
+        "label": "Label"
       }
     },
     "scan": {
@@ -4792,6 +7381,188 @@
     },
     "api": {
       "status_load_failed": "Could not load status"
+    },
+    "crm_landing": {
+      "audience": {
+        "items": {
+          "0": "0",
+          "1": "1",
+          "2": "2",
+          "3": "3"
+        },
+        "title": "Title"
+      },
+      "compare": {
+        "analytics": "Analytics",
+        "communications": "Communications",
+        "feature": "Feature",
+        "roles": "Roles",
+        "title": "Title",
+        "users": "Users"
+      },
+      "faq": {
+        "a1": "A1",
+        "a2": "A2",
+        "a3": "A3",
+        "q1": "Q1",
+        "q2": "Q2",
+        "q3": "Q3",
+        "title": "Title"
+      },
+      "final_cta": {
+        "button": "Button",
+        "subtitle": "Subtitle",
+        "title": "Title"
+      },
+      "guides": {
+        "title": "Explore product guides",
+        "subtitle": "Start with the page closest to your current challenge and move to the next linked guide."
+      },
+      "hero": {
+        "badge": "Badge",
+        "primary_cta": "Primary CTA",
+        "secondary_cta": "Secondary CTA",
+        "subtitle": "Subtitle",
+        "title": "Title",
+        "value_list": {
+          "0": "0",
+          "1": "1",
+          "2": "2"
+        },
+        "value_title": "Value title"
+      },
+      "objections": {
+        "0": "0",
+        "1": "1",
+        "2": "2",
+        "title": "Title"
+      },
+      "pricing": {
+        "badge": "Badge",
+        "note": "Note",
+        "pro": {
+          "best_for": "Best for",
+          "features": {
+            "0": "0",
+            "1": "1",
+            "2": "2"
+          },
+          "price": "Price",
+          "seats": "Seats"
+        },
+        "select_cta": "Select CTA",
+        "starter": {
+          "best_for": "Best for",
+          "features": {
+            "0": "0",
+            "1": "1",
+            "2": "2"
+          },
+          "price": "Price",
+          "seats": "Seats"
+        },
+        "team": {
+          "best_for": "Best for",
+          "features": {
+            "0": "0",
+            "1": "1",
+            "2": "2"
+          },
+          "price": "Price",
+          "seats": "Seats"
+        },
+        "title": "Title"
+      }
+    },
+    "documents_upload": {
+      "contact_required": "Contact required",
+      "description": "Description",
+      "no_docs": "No Documents",
+      "open_upload": "Open upload",
+      "ready": "Ready",
+      "required_list": "Required list",
+      "title": "Title",
+      "verified": "Verified",
+      "verify_button": "Verify button",
+      "verify_failed": "Verify failed",
+      "verifying": "Verifying"
+    },
+    "not_found": {
+      "badge": "Badge",
+      "go_home": "Go home",
+      "go_login": "Go login",
+      "subtitle": "Subtitle",
+      "title": "Title"
+    },
+    "notifications": {
+      "description": "Description",
+      "document_status": "Document status",
+      "email": "Email",
+      "errors": {
+        "email_or_phone_required": "Email or phone required",
+        "permission_denied": "Permission denied",
+        "push_not_configured": "Push not configured",
+        "push_not_configured_desc": "Push not configured desc",
+        "push_not_supported": "Push not supported",
+        "push_subscribe_failed": "Push subscribe failed",
+        "subscribe_failed": "Subscribe failed",
+        "unsubscribe_failed": "Unsubscribe failed"
+      },
+      "phone": "Phone",
+      "push": {
+        "active": "Active",
+        "description": "Description",
+        "disable": "Disable",
+        "enable": "Enable",
+        "inactive": "Inactive",
+        "permission_denied": "Permission denied",
+        "title": "Title"
+      },
+      "reminders": "Reminders",
+      "stage_changes": "Stage changes",
+      "subscribe": "Subscribe",
+      "subscribe_to": "Subscribe to",
+      "subscribed": "Subscribed",
+      "success": {
+        "push_subscribed": "Push subscribed",
+        "subscribed": "Subscribed",
+        "unsubscribed": "Unsubscribed"
+      },
+      "title": "Title",
+      "unsubscribe": "Unsubscribe",
+      "placeholders": {
+        "email": "your@email.com"
+      },
+      "labels": {
+        "email_colon": "Email:"
+      }
+    },
+    "landing": {
+      "errors": {
+        "link_missing": "Failed to get link",
+        "link_failed": "Failed to get link"
+      },
+      "title": "Start application",
+      "subtitle": "Enter contacts and we will open a temporary application link.",
+      "fields": {
+        "email_optional": "Email (optional)"
+      },
+      "placeholders": {
+        "email": "you@example.com"
+      },
+      "actions": {
+        "sending": "Sending…",
+        "get_link": "Get link"
+      }
+    },
+    "scanner": {
+      "camera": {
+        "capture": "Capture",
+        "upload_photo": "Upload a photo of the document"
+      }
+    },
+    "locale_switcher": {
+      "label": "Lang"
     }
   },
   "admin": {
@@ -4912,7 +7683,8 @@
         "template_applied": "Template applied: {created} created, {updated} updated",
         "notify_candidate_sent": "Email sent to candidate",
         "notify_candidate_no_email": "Candidate has no email",
-        "notify_candidate_failed": "Failed to send email"
+        "notify_candidate_failed": "Failed to send email",
+        "file_deleted": "File deleted"
       },
       "errors": {
         "type_missing": "Select a document type",
@@ -4940,7 +7712,8 @@
         "template_not_found": "Template not found",
         "template_apply_failed": "Failed to apply template",
         "download_failed": "Failed to download profile",
-        "notify_failed": "Failed to notify candidate"
+        "notify_failed": "Failed to notify candidate",
+        "no_file_to_delete": "No file to delete"
       },
       "actions": {
         "upload": "Upload",
@@ -4975,7 +7748,11 @@
         "refreshing": "Refreshing…",
         "saving": "Saving…",
         "uploading": "Uploading…",
-        "uploading_with_progress": "Uploading: {progress}%"
+        "uploading_with_progress": "Uploading: {progress}%",
+        "applying": "Applying",
+        "downloading": "Downloading",
+        "ordering": "Ordering",
+        "sending": "Sending"
       },
       "simple": {
         "upload_title": "Upload documents",
@@ -4997,7 +7774,14 @@
         "all_groups": "All groups",
         "any": "Any",
         "not_ordered": "Not ordered",
-        "ordered_only": "Ordered only"
+        "ordered_only": "Ordered only",
+        "all_kinds": "All kinds",
+        "all_statuses": "All statuses",
+        "expiring_soon": "Expiring soon",
+        "kind": "Kind",
+        "missing_only": "Missing only",
+        "passport_incomplete": "Passport incomplete",
+        "title": "Title"
       },
       "upcoming_deadlines": {
         "title": "Upcoming deadlines",
@@ -5230,7 +8014,8 @@
         "overdue": "Overdue",
         "missing_only": "Missing only",
         "passport_incomplete": "Passport incomplete",
-        "rejected": "Rejected"
+        "rejected": "Rejected",
+        "pending_verification": "Pending verification"
       },
       "labels": {
         "created_at": "Created",
@@ -5251,7 +8036,8 @@
         "no_data": "No order data yet — fill the form below"
       },
       "prompts": {
-        "reject_reason": "Enter the rejection reason"
+        "reject_reason": "Enter the rejection reason",
+        "delete_file_confirm": "Delete file confirm"
       },
       "scanner": {
         "accept_formats": "Formats: {formats}",
@@ -5267,6 +8053,16 @@
         "sides_order": "Sides order: {order}",
         "sides_title": "Both sides",
         "upload_title": "File upload"
+      },
+      "counters": {
+        "need_attention": "Need attention",
+        "ready": "Ready"
+      },
+      "hints": {
+        "review_required": "Review required"
+      },
+      "template": {
+        "select": "Select"
       }
     },
     "ruleset": {
@@ -5458,12 +8254,12 @@
       },
       "credentials": {
         "title": "Add credential",
-        "label": "Name",
+        "label": "Label",
         "status": "Status",
         "webhook_secret": "Webhook secret",
         "access_token": "Access token",
         "table": {
-          "label": "Name",
+          "label": "Label",
           "status": "Status",
           "signature": "Signature"
         },
@@ -5481,8 +8277,8 @@
         "empty": "No mappings"
       },
       "logs": {
-        "title": "Leads waiting for routing",
-        "subtitle": "Use manual routing for problematic leads.",
+        "title": "Lead logs",
+        "subtitle": "Leads with errors and routing problems. Use Retry/Reroute and the hints below.",
         "table": {
           "created": "Created",
           "status": "Status",
@@ -5491,7 +8287,7 @@
           "contacts": "Contacts",
           "error": "Error"
         },
-        "empty": "No leads in status needs_routing",
+        "empty": "No leads with errors",
         "actions": {
           "reroute": "Reroute",
           "retry": "Retry"
@@ -5508,14 +8304,51 @@
       "system_stages_help": "Default stages from the system. Custom stages are merged with these in Pipeline and Dashboard.",
       "edit_stage": "Edit stage",
       "create_stage": "Create stage",
-      "label_field": "Label",
+      "label_field": "Label field",
       "code_field": "Code",
       "order_field": "Order",
       "active_field": "Active",
       "code_readonly": "Code cannot be changed",
       "create": "Create",
       "validation_required": "Code and label are required",
-      "confirm_delete": "Delete stage \"{label}\"?"
+      "confirm_delete": "Delete stage \"{label}\"?",
+      "create_funnel": "Create funnel",
+      "default_funnel": "Default funnel",
+      "funnel_name": "Funnel name",
+      "new_funnel": "New funnel",
+      "no_funnels": "No funnels",
+      "no_stages": "No stages",
+      "pick_existing_code": "Pick existing code",
+      "reference_help": "Reference help",
+      "reference_stages": "Reference stages",
+      "select_funnel": "Select funnel",
+      "select_funnel_first": "Select funnel first",
+      "stages": "Stages",
+      "system_stage": "System stage",
+      "system_stage_declined_rejected": "System stage declined rejected",
+      "system_stage_hint": "System stage hint",
+      "system_stage_hired": "System stage hired",
+      "system_stage_in_progress": "System stage in progress",
+      "system_stage_new": "System stage new",
+      "terminal_stage": "Terminal stage",
+      "status_terminal": "Terminal",
+      "status_in_progress": "In progress",
+      "columns": {
+        "code": "Code",
+        "label": "Label",
+        "system": "System",
+        "order": "Order",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "placeholders": {
+        "stage_label": "e.g. Initial interview",
+        "stage_code": "initial_interview",
+        "funnel_name": "e.g. Driver Recruitment"
+      },
+      "errors": {
+        "unknown": "Unknown error"
+      }
     },
     "settings": {
       "title": "Workspace control center",
@@ -5591,6 +8424,82 @@
         "audit": {
           "label": "Audit log",
           "description": "Review admin actions and sensitive activity."
+        },
+        "communications_setup": {
+          "description": "Description"
+        },
+        "company_access": {
+          "description": "Description",
+          "label": "Label"
+        },
+        "notifications": {
+          "description": "Description",
+          "label": "Label"
+        },
+        "profile": {
+          "description": "Description",
+          "label": "Label"
+        }
+      },
+      "audit": {
+        "apply": "Apply",
+        "details": "Details",
+        "empty": "Empty",
+        "errors": {
+          "load": "Load"
+        },
+        "filters": {
+          "action": "Action",
+          "from": "From",
+          "to": "To",
+          "user_id": "User ID",
+          "user_id_placeholder": "UUID",
+          "action_placeholder": "action"
+        },
+        "loading": "Loading",
+        "pagination": "Pagination",
+        "refresh": "Refresh",
+        "refreshing": "Refreshing",
+        "table": {
+          "action": "Action",
+          "actor": "Actor",
+          "details": "Details",
+          "subject": "Subject",
+          "when": "When"
+        },
+        "tabs": {
+          "audit": "Audit",
+          "deletion": "Deletion"
+        }
+      },
+      "sections": {
+        "automations": {
+          "description": "Description",
+          "label": "Label"
+        },
+        "billing": {
+          "description": "Description",
+          "label": "Label"
+        },
+        "crm_setup": {
+          "description": "Description",
+          "label": "Label"
+        },
+        "integrations": {
+          "description": "Description",
+          "label": "Label"
+        },
+        "personal": {
+          "description": "Description",
+          "label": "Label"
+        },
+        "team": {
+          "description": "Description",
+          "label": "Label"
+        },
+        "workspace": {
+          "description": "Description",
+          "label": "Label"
         }
       }
     },
@@ -5722,6 +8631,22 @@
       "errors": {
         "load": "Failed to load SLA settings",
         "save": "Failed to save SLA settings"
+      },
+      "escalation_targets": "Escalation targets",
+      "escalation_targets_empty": "Escalation targets empty",
+      "escalation_targets_error_duplicate": "Escalation targets error duplicate",
+      "escalation_targets_error_format": "Escalation targets error format",
+      "escalation_targets_error_invalid": "Escalation targets error invalid",
+      "escalation_targets_error_invalid_existing": "Escalation targets error invalid existing",
+      "escalation_targets_error_reserved": "Escalation targets error reserved",
+      "escalation_targets_help": "Escalation targets help",
+      "escalation_targets_invalid_list": "Escalation targets invalid list",
+      "escalation_targets_normalized_preview": "Escalation targets normalized preview",
+      "escalation_targets_placeholder": "Escalation targets placeholder",
+      "recipient_modes": {
+        "assignee_or_owner": "assignee_or_owner",
+        "assignee_only": "assignee_only",
+        "owner_only": "owner_only"
       }
     },
     "legal": {
@@ -5762,7 +8687,10 @@
       "stage_change": "Change stage",
       "stage_code": "Stage",
       "type_company": "Team in our system",
-      "type_org": "Client's own portal"
+      "type_org": "Client's own portal",
+      "placeholders": {
+        "tenant_uuid": "517319d0-b53e-493d-9ac8-40f23091a35d"
+      }
     },
     "invoices": {
       "title": "Invoices",
@@ -5783,6 +8711,65 @@
       "total": "Total",
       "paid": "Paid",
       "empty": "No invoices found"
+    },
+    "email": {
+      "description": "Description",
+      "from_email": "From email",
+      "from_name": "From name",
+      "is_active": "Is active",
+      "load_error": "Load error",
+      "password_hint": "Password hint",
+      "save_error": "Save error",
+      "saved": "Saved",
+      "send_test": "Send test",
+      "smtp_host": "Smtp host",
+      "smtp_password": "Smtp password",
+      "smtp_port": "Smtp port",
+      "smtp_user": "Smtp user",
+      "test_error": "Test error",
+      "test_sent": "Test sent",
+      "test_title": "Test title",
+      "title": "Title",
+      "use_tls": "Use tls",
+      "validation": {
+        "from_required": "From required",
+        "host_required": "Host required",
+        "test_to_required": "Test to required"
+      },
+      "placeholders": {
+        "smtp_user": "email@example.com",
+        "from_email": "info@hostflow.cc",
+        "from_name": "HostFlow",
+        "test_to": "test@example.com"
+      }
+    },
+    "ttv": {
+      "actors": "Actors in sample: {count}",
+      "days_label": "Window (days)",
+      "max": "Max",
+      "min": "Min",
+      "p50": "Median (p50)",
+      "p90": "p90",
+      "samples": "Samples",
+      "step": {
+        "company_created": "Operating company created",
+        "email_connected": "Email connected",
+        "first_candidate_created": "First candidate created",
+        "first_client_created": "First client created",
+        "first_email_sent": "First email sent",
+        "plan_selected": "Plan selected / checkout started",
+        "signup": "Signup completed"
+      },
+      "subtitle": "Median and p90 time between signup and key milestones.",
+      "title": "Time To Value (North Star path)",
+      "step_label": "Step",
+      "load_error": "Failed to load TTV report"
+    },
+    "custom_fields": {
+      "form": {
+        "key_placeholder": "custom_field_key",
+        "option_placeholder": "Type option and press Enter"
+      }
     }
   }
 }

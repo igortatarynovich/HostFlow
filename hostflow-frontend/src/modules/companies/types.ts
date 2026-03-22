@@ -129,6 +129,10 @@ export interface CompanyDetailForm {
     country_code: string;
     city: string;
     address: string;
+    party_entity_type: 'company' | 'person';
+    party_business_roles: '' | 'employer' | 'service_client' | 'both';
+    client_stage: string;
+    client_source: string;
   };
   legal: {
     reg_no: string;

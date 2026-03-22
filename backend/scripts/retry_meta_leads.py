@@ -50,6 +50,7 @@ async def _run(
         outcomes = await service.retry_meta_leads(
             session,
             tenant_id=tenant_id,
+            own_company_id=None,
             lead_ids=lead_ids,
             statuses=statuses,
             limit=limit,

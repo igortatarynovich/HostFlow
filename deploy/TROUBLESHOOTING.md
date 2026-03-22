@@ -1,5 +1,29 @@
 # Troubleshooting hostflow.cc
 
+## Изменения во фронте не видны на hostflow.cc (старый UI)
+
+**Причина:** для домена статика отдаёт **контейнер `caddy`** из каталога `/var/www/hostflow-frontend` (см. `Caddyfile`). Образ Caddy собирается с **`COPY hostflow-frontend/dist`**. Пересборка **только `backend`** не обновляет JS/CSS.
+
+**Что сделать:**
+
+В `docker-compose.yml` сервис **caddy** монтирует `./hostflow-frontend/dist` → `/var/www/hostflow-frontend`. Достаточно:
+
+```bash
+cd /path/to/HostFlow/hostflow-frontend && npm run build
+cd .. && docker compose up -d caddy
+# или: docker compose restart caddy
+```
+
+**Важно:** одна только команда `docker compose restart caddy` **без bind-mount** dist в compose **не подхватывает** новый билд — тогда статика остаётся той, что была **запечена** в образ при `docker compose build caddy`. В этом случае после `npm run build` нужно:
+
+```bash
+docker compose build caddy && docker compose up -d caddy
+```
+
+Проверка: в DevTools → Network откройте любой `index-*.js` — время ответа и размер должны измениться после деплоя. Для `index.html` в Caddy уже выставлен `no-cache`.
+
+---
+
 ## 502 Bad Gateway на /api/*, /api/v1/auth/login, whoami-verify, users/me, uploads
 
 **Причина:** Nginx не получает ответ от бэкенда на `http://127.0.0.1:8000`. Код приложения здесь ни при чём — падает связка «прокси → бэкенд».

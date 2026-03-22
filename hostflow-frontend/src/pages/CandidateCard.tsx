@@ -1,5 +1,6 @@
 // src/pages/CandidateCard.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
 import type { InputHTMLAttributes } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -36,6 +37,13 @@ import { useMetaStages } from '../store/useMeta'
 import CandidateDocuments from '../modules/documents/CandidateDocuments'
 import { exportCandidateBundle } from '../api/documents'
 import { createCandidateUploadLink, type CandidateUploadLinkResponse } from '../api/candidates'
+import {
+  approveCandidatePipelineOverride,
+  createCandidatePipelineOverride,
+  listCandidatePipelineOverrides,
+  rejectCandidatePipelineOverride,
+  type CandidatePipelineOverride,
+} from '../api/candidatePipelineOverrides'
 import { getVacancy } from '../api/vacancies'
 import {
   getCandidateProfile,
@@ -51,9 +59,20 @@ import { useServiceOrders } from '../hooks/useAdditionalServices'
 import { useI18n } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
 import { canonicalStageKey, translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
+import {
+  contactAttemptPipelineBlocksForward,
+  docsIssuesPresent,
+  docsPipelineBlocksForwardResolved,
+  hiringPipelineGatesFromApi,
+  pipelineRelaxedTypesFromOverrides,
+  relaxDocBlockers,
+  vacancyPipelineBlocksForward,
+} from '../utils/candidateStageDocPolicy'
+import { useHiringPipelineGates } from '../contexts/HiringPipelineGatesContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { useToast } from '../components/Toast'
+import { Modal } from '../components/Modal'
 import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import CandidateHeader from '../components/candidate/CandidateHeader'
 import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
@@ -636,13 +655,14 @@ export default function CandidateCard(){
   const location = useLocation()
   const isNew = id === 'new'
   const nav = useNavigate()
-  const { can } = usePermissions()
+  const { can, role: permissionsRole, isClientTenant } = usePermissions()
+  const { gates: hiringGatesApi } = useHiringPipelineGates()
+  const hiringGatesRuntime = useMemo(() => hiringPipelineGatesFromApi(hiringGatesApi), [hiringGatesApi])
   const canRequestDelete = can('candidates.requestDelete')
   const canDeleteDirect = can('admin.deletionQueue') || can('admin.users')
   const { notify } = useToast()
 
   const meta = useMetaStages()
-  const { isClientTenant } = usePermissions()
   const originPath = useMemo(() => {
     const originFromState = (location.state as any)?.originPath
     if (typeof originFromState === 'string' && originFromState.startsWith('/app/')) {
@@ -744,6 +764,8 @@ export default function CandidateCard(){
   const [newNote, setNewNote] = useState('')
   const [noteSending, setNoteSending] = useState(false)
   const [rodoSentTrigger, setRodoSentTrigger] = useState(0)
+  /** Bumped to open contact-attempt register modal from stage panel (“Contact candidate”). */
+  const [contactAttemptOpenSignal, setContactAttemptOpenSignal] = useState(0)
 
   const lastSavedPayloadRef = useRef<string | null>(null)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -780,11 +802,9 @@ export default function CandidateCard(){
     inProgress: [],
   })
   const [docsBlockersLoading, setDocsBlockersLoading] = useState(false)
-  const docsBlockersActive = docsBlockersLoading
-    || docsBlockers.missing.length > 0
-    || docsBlockers.problematic.length > 0
-    || docsBlockers.inProgress.length > 0
   const [docsSummaryRefreshTrigger, setDocsSummaryRefreshTrigger] = useState(0)
+  const [pipelineOverrides, setPipelineOverrides] = useState<CandidatePipelineOverride[]>([])
+  const [pipelineOverrideBusy, setPipelineOverrideBusy] = useState(false)
   const [docsDrawerOpen, setDocsDrawerOpen] = useState(false)
   const [docsDrawerType, setDocsDrawerType] = useState<string | undefined>(undefined)
   const docsVerifyTaskSignatureRef = useRef<string | null>(null)
@@ -792,9 +812,11 @@ export default function CandidateCard(){
   const [handoffClients, setHandoffClients] = useState<AvailableClientOut[]>([])
   const [handoffLoading, setHandoffLoading] = useState(false)
   const [handoffModalOpen, setHandoffModalOpen] = useState(false)
+  const [activityModalOpen, setActivityModalOpen] = useState(false)
   const [handoffSubmitting, setHandoffSubmitting] = useState(false)
   const [handoffClientLinkId, setHandoffClientLinkId] = useState('')
-  const timelineLoadedRef = useRef(false)
+  const docsNeedsVerification = docsBlockers.inProgress.length > 0
+  const docsNeedsRequest = docsBlockers.missing.length > 0 || docsBlockers.problematic.length > 0
   const dateFnsLocale = useMemo(() => (locale === 'ru' ? ru : locale === 'pl' ? pl : enUS), [locale])
 
   const nextAction = useMemo(() => {
@@ -2083,20 +2105,25 @@ export default function CandidateCard(){
     }
   }, [model?.id, t, notify])
 
-  const generateUploadLink = useCallback(async () => {
+  const generateUploadLink = useCallback(async (opts?: { copyToClipboard?: boolean; notifyOnReady?: boolean }) => {
     if (!model?.id) return
+    const copyToClipboard = opts?.copyToClipboard ?? true
+    const notifyOnReady = opts?.notifyOnReady ?? true
     try {
       setUploadLinkBusy(true)
       const data = await createCandidateUploadLink(String(model.id))
       setUploadLink(data)
       setDocsSummaryRefreshTrigger((x) => x + 1)
-      const absoluteUrl = new URL(data.apply_url, window.location.origin).toString()
-      if (navigator?.clipboard?.writeText) {
+      const linkPath = data.documents_url || data.apply_url
+      const absoluteUrl = new URL(linkPath, window.location.origin).toString()
+      if (copyToClipboard && navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(absoluteUrl)
         setUploadLinkCopied(true)
         window.setTimeout(() => setUploadLinkCopied(false), 2000)
-        notify({ title: t('app.candidate_card.actions.upload_link_copied'), variant: 'success' })
-      } else {
+        if (notifyOnReady) {
+          notify({ title: t('app.candidate_card.actions.upload_link_copied'), variant: 'success' })
+        }
+      } else if (notifyOnReady) {
         notify({ title: t('app.candidate_card.actions.upload_link_ready'), description: absoluteUrl, variant: 'info' })
       }
     } catch (err: any) {
@@ -2343,13 +2370,24 @@ export default function CandidateCard(){
     }
   }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, t, notify])
 
-  const handleDocsRequestCreate = useCallback(() => {
-    // Prefill reminder form based on docs blockers.
+  const handleDocsNextActionCreate = useCallback(() => {
+    // Distinguish action by blocker type:
+    // - missing/problematic -> request docs from candidate
+    // - in_progress -> verify and approve/reject uploaded docs
     const dt = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
+    if (docsNeedsVerification) {
+      setReminderTitle(t('app.candidate_card.next_action.docs_verify_title', { defaultValue: 'Verify uploaded documents' }))
+      setReminderDueAt(dt)
+      return
+    }
     setReminderTitle(t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' }))
     setReminderDueAt(dt)
-    void generateUploadLink()
-  }, [generateUploadLink, t])
+    // Convenience only: pre-generate docs upload URL for recruiter, but keep
+    // "Create task" semantic as task creation (no auto-copy/toast side effects).
+    if (docsNeedsRequest) {
+      void generateUploadLink({ copyToClipboard: false, notifyOnReady: false })
+    }
+  }, [docsNeedsRequest, docsNeedsVerification, generateUploadLink, t])
 
   useEffect(() => {
     if (!model?.id || docsBlockersLoading) return
@@ -2593,6 +2631,92 @@ export default function CandidateCard(){
   }, [model, t, notify])
 
   const isMasked = model?.masked === true
+  // Use the same role source as the rest of the app (memberships[].role can override me.role).
+  const canRequestPipelineOverride = useMemo(() => {
+    if (!model?.id || isMasked || model.can_edit === false) return false
+    if (isClientTenant) return false
+    return can('candidates.manage') || can('documents.manage')
+  }, [model?.id, model?.can_edit, isMasked, isClientTenant, can])
+
+  const canApprovePipelineOverride = useMemo(() => {
+    if (!model?.id || isMasked) return false
+    if (isClientTenant) return false
+    return permissionsRole === 'supervisor' || permissionsRole === 'administrator'
+  }, [model?.id, isMasked, isClientTenant, permissionsRole])
+
+  const bumpPipelineAndDocsRefresh = useCallback(() => {
+    setDocsSummaryRefreshTrigger((x) => x + 1)
+  }, [])
+
+  const handleCreatePipelineOverride = useCallback(
+    async (input: { doc_type_code: string; reason: string; requested_scope: 'pipeline' | 'both' }) => {
+      if (!model?.id) return
+      setPipelineOverrideBusy(true)
+      try {
+        await createCandidatePipelineOverride(String(model.id), input)
+        notify({
+          title: t('app.candidate_card.pipeline_override.requested', { defaultValue: 'Waiver requested' }),
+          variant: 'success',
+        })
+        bumpPipelineAndDocsRefresh()
+      } catch (err: any) {
+        notify({
+          title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+          variant: 'error',
+        })
+      } finally {
+        setPipelineOverrideBusy(false)
+      }
+    },
+    [model?.id, notify, t, bumpPipelineAndDocsRefresh],
+  )
+
+  const handleApprovePipelineOverride = useCallback(
+    async (overrideId: string, granted: 'pipeline' | 'both') => {
+      if (!model?.id) return
+      setPipelineOverrideBusy(true)
+      try {
+        await approveCandidatePipelineOverride(String(model.id), overrideId, { granted_scope: granted })
+        notify({
+          title: t('app.candidate_card.pipeline_override.approved', { defaultValue: 'Waiver approved' }),
+          variant: 'success',
+        })
+        bumpPipelineAndDocsRefresh()
+      } catch (err: any) {
+        notify({
+          title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+          variant: 'error',
+        })
+      } finally {
+        setPipelineOverrideBusy(false)
+      }
+    },
+    [model?.id, notify, t, bumpPipelineAndDocsRefresh],
+  )
+
+  const handleRejectPipelineOverride = useCallback(
+    async (overrideId: string) => {
+      if (!model?.id) return
+      setPipelineOverrideBusy(true)
+      try {
+        await rejectCandidatePipelineOverride(String(model.id), overrideId, {})
+        notify({
+          title: t('app.candidate_card.pipeline_override.rejected', { defaultValue: 'Waiver rejected' }),
+          variant: 'success',
+        })
+        bumpPipelineAndDocsRefresh()
+      } catch (err: any) {
+        notify({
+          title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+          variant: 'error',
+        })
+      } finally {
+        setPipelineOverrideBusy(false)
+      }
+    },
+    [model?.id, notify, t, bumpPipelineAndDocsRefresh],
+  )
+
   const candidateDataReadOnly = !isNew && !candidateOverrideMode
   const handoffLocked = Boolean(handoffStatus?.pending || handoffStatus?.accepted || handoffLoading)
   const handoffRequestedAt = handoffStatus?.accepted?.requested_at || handoffStatus?.pending?.requested_at || null
@@ -2613,19 +2737,15 @@ export default function CandidateCard(){
     void loadStageHistoryQuiet(String(model.id))
   }, [loadStageHistoryQuiet, model?.id, model?.stage])
 
-  const ensureTimelineLoaded = useCallback(() => {
-    if (!model?.id) return
-    if (timelineLoadedRef.current) return
-    timelineLoadedRef.current = true
+  useEffect(() => {
+    setActivityModalOpen(false)
+  }, [model?.id])
+
+  useEffect(() => {
+    if (!activityModalOpen || !model?.id) return
     void loadTimelineReminders(String(model.id))
     void loadStageHistoryForTimeline(String(model.id))
-  }, [loadStageHistoryForTimeline, loadTimelineReminders, model?.id])
-
-  // Always load activity timeline once on candidate open.
-  useEffect(() => {
-    if (!model?.id) return
-    ensureTimelineLoaded()
-  }, [ensureTimelineLoaded, model?.id])
+  }, [activityModalOpen, model?.id, loadTimelineReminders, loadStageHistoryForTimeline])
 
   const openDocsDrawer = useCallback((typeCode?: string) => {
     setDocsDrawerType(typeCode)
@@ -2653,6 +2773,25 @@ export default function CandidateCard(){
     const type = sp.get('type') || undefined
     openDocsDrawer(type)
   }, [isMasked, location.pathname, location.search, model?.id, openDocsDrawer])
+
+  useEffect(() => {
+    if (!model?.id || model.masked === true) {
+      setPipelineOverrides([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const items = await listCandidatePipelineOverrides(String(model.id))
+        if (!cancelled) setPipelineOverrides(items)
+      } catch {
+        if (!cancelled) setPipelineOverrides([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [model?.id, model?.masked, docsSummaryRefreshTrigger])
 
   const { stageJourneyStages, stageOutcomeStages, stageJourneyDisplayStage, stageJourneyOutcomeStage, stageJourneySignals } = useMemo(() => {
     const codes = profileFunnelStages.length > 0 ? profileFunnelStages.map((s) => s.code) : stageOptions
@@ -2682,16 +2821,18 @@ export default function CandidateCard(){
       main.push({ code, label })
     })
 
-    const orderedMain = [...main].sort((a, b) => {
-      const aCanonical = canonicalStageKey(a.code, a.label) || ''
-      const bCanonical = canonicalStageKey(b.code, b.label) || ''
-      const aRank = journeyOrderRank.get(aCanonical)
-      const bRank = journeyOrderRank.get(bCanonical)
-      if (aRank === undefined && bRank === undefined) return 0
-      if (aRank === undefined) return 1
-      if (bRank === undefined) return -1
-      return aRank - bRank
-    })
+    const orderedMain = isClientJourneyView
+      ? [...main].sort((a, b) => {
+          const aCanonical = canonicalStageKey(a.code, a.label) || ''
+          const bCanonical = canonicalStageKey(b.code, b.label) || ''
+          const aRank = journeyOrderRank.get(aCanonical)
+          const bRank = journeyOrderRank.get(bCanonical)
+          if (aRank === undefined && bRank === undefined) return 0
+          if (aRank === undefined) return 1
+          if (bRank === undefined) return -1
+          return aRank - bRank
+        })
+      : main
 
     const currentCode = String(model?.stage || '')
     const currentCanonical = canonicalStageKey(currentCode, null) || ''
@@ -2723,6 +2864,126 @@ export default function CandidateCard(){
     }
   }, [profileFunnelStages, stageLabelIntl, stageOptions, model?.stage, (model as any)?.intake_status, (model as any)?.intake_submitted_at, t, isClientJourneyView])
 
+  /** Align doc policy with journey display (e.g. no_answer maps to contacted for gating). */
+  const effectiveStageForDocPolicy = useMemo(
+    () => String(stageJourneyDisplayStage || model?.stage || '').trim() || null,
+    [stageJourneyDisplayStage, model?.stage],
+  )
+
+  const pipelineRelaxedTypes = useMemo(
+    () => pipelineRelaxedTypesFromOverrides(pipelineOverrides),
+    [pipelineOverrides],
+  )
+
+  const effectiveDocsBlockersForPipeline = useMemo(
+    () => relaxDocBlockers(docsBlockers, pipelineRelaxedTypes),
+    [docsBlockers, pipelineRelaxedTypes],
+  )
+
+  const docsIssuesPresentValue = useMemo(
+    () => docsIssuesPresent(docsBlockers, docsBlockersLoading),
+    [docsBlockers, docsBlockersLoading],
+  )
+
+  const docPipelineResolved = useMemo(
+    () =>
+      docsPipelineBlocksForwardResolved(
+        effectiveStageForDocPolicy,
+        effectiveDocsBlockersForPipeline,
+        docsBlockersLoading,
+        hiringGatesRuntime,
+      ),
+    [effectiveStageForDocPolicy, effectiveDocsBlockersForPipeline, docsBlockersLoading, hiringGatesRuntime],
+  )
+  const docsPipelineBlockingValue = docPipelineResolved.hard
+  const docsPipelineSoftWarnValue = docPipelineResolved.softWarnOnly
+
+  /** Stored stage only — do not use journey display remap (e.g. no_answer → contacted). */
+  const vacancyPipelineBlockingValue = useMemo(
+    () => vacancyPipelineBlocksForward(model?.stage ?? null, model?.vacancy_id ?? null, hiringGatesRuntime),
+    [model?.stage, model?.vacancy_id, hiringGatesRuntime],
+  )
+
+  const contactAttemptPipelineBlockingValue = useMemo(
+    () =>
+      contactAttemptPipelineBlocksForward(
+        model?.stage ?? null,
+        model?.contact_policy_enabled === true,
+        Number(model?.contact_attempt_count ?? 0),
+        hiringGatesRuntime,
+      ),
+    [model?.stage, model?.contact_policy_enabled, model?.contact_attempt_count, hiringGatesRuntime],
+  )
+
+  /**
+   * Waiver rail only when documents can block the pipeline or there is override state to show.
+   * At early stages (e.g. New) recruiters do not need an empty waiver panel.
+   */
+  const showPipelineWaiverSection = useMemo(() => {
+    if (!model?.id || isMasked || isClientTenant) return false
+    if (pipelineOverrides.length > 0) return true
+    if (!docsPipelineBlockingValue && !docsPipelineSoftWarnValue) return false
+    if (!can('candidates.pipeline')) return false
+    return (
+      canApprovePipelineOverride || can('candidates.manage') || can('documents.manage')
+    )
+  }, [
+    model?.id,
+    isMasked,
+    isClientTenant,
+    pipelineOverrides.length,
+    canApprovePipelineOverride,
+    can,
+    docsPipelineBlockingValue,
+    docsPipelineSoftWarnValue,
+  ])
+
+  const pipelineWaiverReadOnlyCard = useMemo(
+    () =>
+      showPipelineWaiverSection &&
+      !canRequestPipelineOverride &&
+      (can('candidates.manage') || can('documents.manage')) &&
+      model?.can_edit === false,
+    [
+      showPipelineWaiverSection,
+      canRequestPipelineOverride,
+      can,
+      model?.can_edit,
+    ],
+  )
+
+  /** Canonical stage for operational hints (next action) — same normalization as doc policy. */
+  const canonicalStageForOps = useMemo(() => {
+    const raw = String(stageJourneyDisplayStage || model?.stage || '').trim()
+    if (!raw) return null
+    return canonicalStageKey(raw, null) || raw.toLowerCase()
+  }, [stageJourneyDisplayStage, model?.stage])
+
+  /** Same ordering as `CandidateStageDecisionPanel` — for resolved operational hints. */
+  const nextPipelineStageCodeForOps = useMemo(() => {
+    const main = stageJourneyStages || []
+    const outcomes = stageOutcomeStages || []
+    const pipelineSteps = [...main, ...outcomes]
+    const candidates = [model?.stage, stageJourneyDisplayStage, stageJourneyOutcomeStage].filter(Boolean).map(String)
+    const currentCode =
+      candidates.find((c) => pipelineSteps.some((s) => s.code === c)) ?? candidates[0] ?? null
+    if (!currentCode) return null
+    const idx = pipelineSteps.findIndex((s) => s.code === currentCode)
+    if (idx < 0 || idx >= pipelineSteps.length - 1) return null
+    return pipelineSteps[idx + 1]?.code ?? null
+  }, [stageJourneyStages, stageOutcomeStages, stageJourneyDisplayStage, stageJourneyOutcomeStage, model?.stage])
+
+  const pipelineWaiverBadgeCounts = useMemo(() => {
+    let pending = 0
+    let approved = 0
+    for (const o of pipelineOverrides) {
+      const s = String(o.status || '').toLowerCase()
+      if (s === 'pending') pending += 1
+      else if (s === 'approved') approved += 1
+    }
+    return { pending, approved }
+  }, [pipelineOverrides])
+
   const completedStageCodes = useMemo(() => {
     const set = new Set<string>()
     stageHistory.forEach((h) => {
@@ -2733,26 +2994,55 @@ export default function CandidateCard(){
   }, [stageHistory])
 
   const handleStageJourneyChange = useCallback(async (nextStage: string) => {
-    // Documents are part of the pipeline: blockers stop forward movement.
-    // We only block "forward" changes in the current stage journey.
-    if (docsBlockersActive && Array.isArray(stageJourneyStages)) {
+    // Documents + data gates: blockers stop forward movement in the current journey order.
+    if (Array.isArray(stageJourneyStages)) {
       const steps = [...(stageJourneyStages || []), ...(stageOutcomeStages || [])]
       const curCode = stageJourneyDisplayStage || model?.stage
       const curIdx = steps.findIndex((s) => s.code === curCode)
       const nextIdx = steps.findIndex((s) => s.code === nextStage)
       const isForward = curIdx >= 0 && nextIdx > curIdx
       if (isForward) {
-        const firstMissing = docsBlockers.missing[0] || docsBlockers.problematic[0] || docsBlockers.inProgress[0]
-        notify({
-          title: t('app.candidate_card.stage_blocked_by_docs.title', { defaultValue: 'Stage is blocked by documents' }),
-          description: firstMissing
-            ? t('app.candidate_card.stage_blocked_by_docs.description', {
-                defaultValue: `Missing or invalid document: ${firstMissing}`,
-              })
-            : t('app.candidate_card.stage_blocked_by_docs.description_generic', { defaultValue: 'Request missing documents first.' }),
-          variant: 'warning',
-        })
-        return
+        if (docsPipelineBlockingValue) {
+          const firstMissing =
+            effectiveDocsBlockersForPipeline.missing[0] ||
+            effectiveDocsBlockersForPipeline.problematic[0] ||
+            effectiveDocsBlockersForPipeline.inProgress[0]
+          notify({
+            title: t('app.candidate_card.stage_blocked_by_docs.title', { defaultValue: 'Stage is blocked by documents' }),
+            description: firstMissing
+              ? t('app.candidate_card.stage_blocked_by_docs.description', {
+                  defaultValue: `Missing or invalid document: ${firstMissing}`,
+                })
+              : t('app.candidate_card.stage_blocked_by_docs.description_generic', { defaultValue: 'Request missing documents first.' }),
+            variant: 'info',
+          })
+          return
+        }
+        if (contactAttemptPipelineBlockingValue) {
+          notify({
+            title: t('app.candidate_card.stage_blocked_by_contact_attempt.title', {
+              defaultValue: 'Log a contact attempt first',
+            }),
+            description: t('app.candidate_card.stage_blocked_by_contact_attempt.description', {
+              defaultValue:
+                'Your client policy requires at least one registered contact attempt before leaving New.',
+            }),
+            variant: 'info',
+          })
+          return
+        }
+        if (vacancyPipelineBlockingValue) {
+          notify({
+            title: t('app.candidate_card.stage_blocked_by_vacancy.title', {
+              defaultValue: 'Assign a vacancy first',
+            }),
+            description: t('app.candidate_card.stage_blocked_by_vacancy.description', {
+              defaultValue: 'Link this candidate to a vacancy (or client vacancy) before moving to the next stage.',
+            }),
+            variant: 'info',
+          })
+          return
+        }
       }
     }
 
@@ -2768,10 +3058,12 @@ export default function CandidateCard(){
     model?.stage,
     model?.status_reason,
     onStageChangePersist,
-    docsBlockersActive,
-    docsBlockers.missing,
-    docsBlockers.problematic,
-    docsBlockers.inProgress,
+    docsPipelineBlockingValue,
+    vacancyPipelineBlockingValue,
+    contactAttemptPipelineBlockingValue,
+    effectiveDocsBlockersForPipeline.missing,
+    effectiveDocsBlockersForPipeline.problematic,
+    effectiveDocsBlockersForPipeline.inProgress,
     stageJourneyStages,
     stageOutcomeStages,
     stageJourneyDisplayStage,
@@ -2814,6 +3106,9 @@ export default function CandidateCard(){
         candidateProfile={candidateProfile}
         profileLoading={profileLoading}
         stageSinceAt={stageSinceAt}
+        pipelineWaiverPendingCount={pipelineWaiverBadgeCounts.pending}
+        pipelineWaiverApprovedCount={pipelineWaiverBadgeCounts.approved}
+        onOpenActivity={!isNew && model?.id ? () => setActivityModalOpen(true) : undefined}
         focusContent={!isNew && model?.id ? (
           <div className="grid gap-2">
             <CandidateStageDecisionPanel
@@ -2828,9 +3123,13 @@ export default function CandidateCard(){
               currentStageCode={model.stage}
               stageLabelIntl={stageLabelIntl}
               docsBlockers={docsBlockers}
-              docsBlockersActive={docsBlockersActive}
+              docsPipelineBlocking={docsPipelineBlockingValue}
+              docsPipelineSoftWarn={docsPipelineSoftWarnValue}
+              vacancyPipelineBlocking={vacancyPipelineBlockingValue}
+              contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
               canEdit={model.can_edit !== false}
               onMoveStage={handleStageJourneyChange}
+              onOpenContactAttempts={() => setContactAttemptOpenSignal((n) => n + 1)}
             />
           </div>
         ) : null}
@@ -3024,9 +3323,14 @@ export default function CandidateCard(){
                 reminderDueAt={reminderDueAt}
                 reminderOffset={reminderOffset}
                 reminderBusy={reminderBusy}
-                docsBlockersActive={docsBlockersActive}
+                docsIssuesPresent={docsIssuesPresentValue}
+                docsPipelineBlocking={docsPipelineBlockingValue || docsPipelineSoftWarnValue}
+                docsRequestTitle={docsNeedsVerification
+                  ? t('app.candidate_card.next_action.docs_verify_title', { defaultValue: 'Verify uploaded documents' })
+                  : t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' })}
                 docsRequestDueLabel={t('common.today', { defaultValue: 'Today' })}
-                onDocsRequestCreate={handleDocsRequestCreate}
+                docsBlockerKind={docsNeedsVerification ? 'review' : (docsNeedsRequest ? 'request' : null)}
+                onDocsRequestCreate={handleDocsNextActionCreate}
                 hideToggle
                 hideRemindersList
                 onReminderTitleChange={setReminderTitle}
@@ -3035,6 +3339,10 @@ export default function CandidateCard(){
                 onReminderCreate={handleCreateReminder}
                 onReminderComplete={handleReminderComplete}
                 onReminderSnooze={handleReminderSnooze}
+                canonicalStageCode={canonicalStageForOps}
+                nextPipelineStageCode={nextPipelineStageCodeForOps}
+                vacancyPipelineBlocking={vacancyPipelineBlockingValue}
+                contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
               />
 
               {!isMasked ? (
@@ -3049,6 +3357,19 @@ export default function CandidateCard(){
                   refreshTrigger={docsSummaryRefreshTrigger}
                   onSelectType={(typeCode) => openDocsDrawer(typeCode)}
                   pollingEnabled={docsDrawerOpen}
+                  stageSummaryLabel={
+                    model.stage ? stageLabelIntl(String(model.stage)) : null
+                  }
+                  docsPipelineBlocking={docsPipelineBlockingValue || docsPipelineSoftWarnValue}
+                  pipelineOverrides={pipelineOverrides}
+                  pipelineOverrideBusy={pipelineOverrideBusy}
+                  canRequestPipelineOverride={canRequestPipelineOverride}
+                  canApprovePipelineOverride={canApprovePipelineOverride}
+                  showPipelineWaiverSection={showPipelineWaiverSection}
+                  pipelineWaiverReadOnlyCard={pipelineWaiverReadOnlyCard}
+                  onCreatePipelineOverride={handleCreatePipelineOverride}
+                  onApprovePipelineOverride={handleApprovePipelineOverride}
+                  onRejectPipelineOverride={handleRejectPipelineOverride}
                 />
               ) : null}
 
@@ -3063,22 +3384,6 @@ export default function CandidateCard(){
                   onRefreshNotes={() => model?.id && fetchNotes(String(model.id))}
                 />
               ) : null}
-
-              <CandidateTimelinePanel
-                locale={locale}
-                stageHistory={stageHistory}
-                notes={notes}
-                reminders={timelineReminders}
-                loading={timelineStageHistoryLoading || timelineRemindersLoading}
-                errorText={timelineError}
-                resolveStageLabel={stageLabelIntl}
-                includeStageChanges
-                hideToggle
-                hideFilters
-                variant="info"
-                collapsedCount={5}
-                itemsMaxHeightClass="max-h-[28rem]"
-              />
 
               <div className="rounded-2xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between gap-2">
@@ -3096,31 +3401,6 @@ export default function CandidateCard(){
                 </div>
               </div>
 
-              {candidateOverrideMode ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-3">
-                  <div className="text-xs font-semibold text-amber-900">
-                    {t('app.candidate_card.override_reason_label', { defaultValue: 'Reason for override' })}
-                  </div>
-                  <div className="mt-2">
-                    <select
-                      className="input w-full"
-                      value={candidateOverrideReason}
-                      onChange={(e) => setCandidateOverrideReason(e.target.value)}
-                    >
-                      <option value="">{t('app.candidate_card.override_reason_placeholder', { defaultValue: 'Why are you editing restricted fields?' })}</option>
-                      {overrideReasonOptions.map((reason) => (
-                        <option key={reason} value={reason}>{reason}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <button type="button" className="btn-primary btn-sm" onClick={() => void save()}>
-                      {t('common.actions.save', { defaultValue: 'Save' })}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-
               {/* RODO + attempts/contact: compliance + actions to allow stage changes */}
               <div className="space-y-3">
                 <CandidateRodoSection
@@ -3131,6 +3411,10 @@ export default function CandidateCard(){
                 <CandidateContactAttemptsSection
                   candidateId={String(model.id) as any}
                   refreshTrigger={rodoSentTrigger}
+                  openRegisterSignal={contactAttemptOpenSignal}
+                  onAttemptCreated={
+                    model?.id ? () => void fetchCandidate(String(model.id), model) : undefined
+                  }
                 />
               </div>
             </div>
@@ -3201,6 +3485,90 @@ export default function CandidateCard(){
         </div>
       ) : null}
 
+      {!isNew && model?.id ? (
+        <Modal
+          open={activityModalOpen}
+          onClose={() => setActivityModalOpen(false)}
+          size="xl"
+        >
+          <CandidateTimelinePanel
+            locale={locale}
+            stageHistory={stageHistory}
+            notes={notes}
+            reminders={timelineReminders}
+            loading={timelineStageHistoryLoading || timelineRemindersLoading}
+            errorText={timelineError}
+            resolveStageLabel={stageLabelIntl}
+            includeStageChanges
+            hideToggle
+            hideFilters={false}
+            variant="full"
+          />
+        </Modal>
+      ) : null}
+
+      {/* Manager override: portal → body so fixed/z-index work (layout transforms break in-page fixed). */}
+      {typeof document !== 'undefined' &&
+      !isNew &&
+      model?.id &&
+      candidateOverrideMode &&
+      !isMasked
+        ? createPortal(
+            <>
+              <div className="pointer-events-none fixed inset-0 z-[10000] bg-slate-900/30" aria-hidden />
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="candidate-override-save-title"
+                className="pointer-events-auto fixed left-1/2 top-1/2 z-[10001] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-amber-300 bg-white p-4 shadow-2xl ring-2 ring-amber-100"
+              >
+                <div id="candidate-override-save-title" className="text-sm font-semibold text-amber-950">
+                  {t('app.candidate_card.override_modal.title', { defaultValue: 'Confirm manager edit' })}
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                  {t('app.candidate_card.override_modal.hint', {
+                    defaultValue:
+                      'Protected fields are unlocked. Pick a reason, then save. You can still edit the form behind this dialog (clicks pass through the dimmed area).',
+                  })}
+                </p>
+                <label className="mt-3 block text-xs font-medium text-slate-700" htmlFor="candidate-override-reason">
+                  {t('app.candidate_card.override_reason_label', { defaultValue: 'Reason for override' })}
+                </label>
+                <select
+                  id="candidate-override-reason"
+                  className="input mt-1 w-full"
+                  value={candidateOverrideReason}
+                  onChange={(e) => setCandidateOverrideReason(e.target.value)}
+                >
+                  <option value="">{t('app.candidate_card.override_reason_placeholder', { defaultValue: 'Why are you editing restricted fields?' })}</option>
+                  {overrideReasonOptions.map((reason) => (
+                    <option key={reason} value={reason}>
+                      {reason}
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={saving}
+                    onClick={() => {
+                      setCandidateOverrideMode(false)
+                      setCandidateOverrideReason('')
+                    }}
+                  >
+                    {t('app.candidate_card.override_modal.cancel_edit', { defaultValue: 'Cancel editing' })}
+                  </button>
+                  <button type="button" className="btn-primary btn-sm" disabled={saving} onClick={() => void save()}>
+                    {saving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.actions.save', { defaultValue: 'Save' })}
+                  </button>
+                </div>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
+
       {/* Documents side panel */}
       {!isMasked && docsDrawerOpen && model?.id ? (
         <div className="fixed inset-0 z-50 bg-black/50 p-4" onClick={closeDocsDrawer}>
@@ -3246,7 +3614,7 @@ export default function CandidateCard(){
                   {t('app.candidate_card.actions.refresh', { defaultValue: 'Refresh' })}
                 </button>
               </div>
-              {uploadLink?.apply_url ? (
+              {(uploadLink?.documents_url || uploadLink?.apply_url) ? (
                 <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-700">
                   <div className="font-medium text-slate-800">
                     {t('app.candidate_card.docs.upload_link_label', {
@@ -3254,7 +3622,7 @@ export default function CandidateCard(){
                     })}
                   </div>
                   <div className="mt-1 break-all text-slate-600">
-                    {new URL(uploadLink.apply_url, window.location.origin).toString()}
+                    {new URL(uploadLink.documents_url || uploadLink.apply_url, window.location.origin).toString()}
                   </div>
                   {uploadLink.expires_at ? (
                     <div className="mt-1 text-[11px] text-slate-500">

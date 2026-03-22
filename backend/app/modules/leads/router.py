@@ -186,7 +186,8 @@ async def update_lead_stage_endpoint(
         id=PyUUID(lead.id),
         tenant_id=PyUUID(lead.tenant_id),
         business_type=business_type,
-        company_id=PyUUID(lead.company_id),
+        lead_type=(getattr(lead, "lead_type", None) or "candidate"),  # type: ignore[arg-type]
+        company_id=PyUUID(lead.company_id) if lead.company_id else None,
         company_name=None,
         vacancy_id=PyUUID(lead.vacancy_id) if lead.vacancy_id else None,
         vacancy_title=None,
@@ -321,6 +322,7 @@ async def process_lead_endpoint(
     lead_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
     _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
 ) -> MetaLeadResponse:
     """
@@ -358,11 +360,17 @@ async def process_lead_endpoint(
     except Exception:
         pass
 
+    # If the lead is marked as processed but has no resulting candidate,
+    # we must force re-processing. Otherwise the service will skip the pipeline.
+    force_existing = bool(getattr(lead, "candidate_id", None) is None) and getattr(lead, "status", None) in {"processed", "duplicated"}
+
     try:
         result = await service.process_meta_lead(
             db=db,
             tenant_id=tenant_id_str,
             payload=lead.payload,
+            own_company_id=own_company_id,
+            force_existing=force_existing,
         )
     except service.LeadProcessingError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc

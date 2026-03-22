@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
@@ -15,6 +15,13 @@ from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.user import UserOut
 from backend.app.services import users as users_service
 from backend.app.services import tenant_branding
+from backend.app.api.v1.settings.hiring_pipeline_gates_impl import (
+    HIRING_GATES_READ_ROLES,
+    HiringPipelineGatesPatch,
+    HiringPipelineGatesPublicOut,
+    get_hiring_pipeline_gates_core,
+    patch_hiring_pipeline_gates_core,
+)
 
 
 router = APIRouter(prefix="/team", tags=["settings-team"], redirect_slashes=False)
@@ -416,3 +423,28 @@ async def create_seat_request(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return SeatRequestOut.model_validate(entry)
+
+
+@router.get(
+    "/hiring-pipeline-gates",
+    response_model=HiringPipelineGatesPublicOut,
+    dependencies=[Depends(require_roles(*HIRING_GATES_READ_ROLES))],
+)
+async def get_hiring_pipeline_gates(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HiringPipelineGatesPublicOut:
+    return await get_hiring_pipeline_gates_core(ctx, db_tenant)
+
+
+@router.patch(
+    "/hiring-pipeline-gates",
+    response_model=HiringPipelineGatesPublicOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def patch_hiring_pipeline_gates(
+    payload: HiringPipelineGatesPatch,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HiringPipelineGatesPublicOut:
+    return await patch_hiring_pipeline_gates_core(payload, ctx, db_tenant)

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import { listDocuments } from '../api/documents'
 import { createReminder } from '../api/client'
@@ -10,6 +11,7 @@ const PAGE_SIZE = 20
 
 export default function DocumentsRegistryPage() {
   const { t } = useI18n()
+  const [searchParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<typeof QUICK_FILTERS[number] | null>('missing')
   const [documents, setDocuments] = useState<Document[]>([])
@@ -18,6 +20,7 @@ export default function DocumentsRegistryPage() {
   const [reloadKey, setReloadKey] = useState(0)
   const [docTypeFilter, setDocTypeFilter] = useState('')
   const [ownerKindFilter, setOwnerKindFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
   const [page, setPage] = useState(1)
   const [nowTs, setNowTs] = useState(() => Date.now())
@@ -51,6 +54,24 @@ export default function DocumentsRegistryPage() {
     // refresh relative time calculations when data changes
     setNowTs(Date.now())
   }, [documents])
+
+  useEffect(() => {
+    const quick = (searchParams.get('quick') || '').trim()
+    const status = (searchParams.get('status') || '').trim()
+    const docType = (searchParams.get('doc_type') || '').trim()
+    const ownerKind = (searchParams.get('owner_kind') || '').trim()
+    const q = (searchParams.get('q') || '').trim()
+
+    if (q) setQuery(q)
+    if (docType) setDocTypeFilter(docType)
+    if (ownerKind) setOwnerKindFilter(ownerKind)
+    setStatusFilter(status)
+    if (quick && (QUICK_FILTERS as readonly string[]).includes(quick)) {
+      setActiveFilter(quick as (typeof QUICK_FILTERS)[number])
+    } else if (status) {
+      setActiveFilter(null)
+    }
+  }, [searchParams])
 
   const handleCreateReminder = async () => {
     if (!reminderDocId || !reminderTitle || !reminderDueAt) {
@@ -140,6 +161,7 @@ export default function DocumentsRegistryPage() {
       .filter((doc) => {
         if (docTypeFilter && doc.doc_type !== docTypeFilter) return false
         if (ownerKindFilter && doc.kind !== ownerKindFilter) return false
+        if (statusFilter && String(doc.status || '').toLowerCase() !== statusFilter.toLowerCase()) return false
         return true
       })
       .sort((a, b) => {
@@ -147,7 +169,7 @@ export default function DocumentsRegistryPage() {
         const bTime = Date.parse(b.updated_at || b.created_at || '')
         return (bTime || 0) - (aTime || 0)
       })
-  }, [documents, activeFilter, query, docTypeFilter, ownerKindFilter])
+  }, [documents, activeFilter, query, docTypeFilter, ownerKindFilter, statusFilter])
 
   useEffect(() => {
     setPage(1)

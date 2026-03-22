@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.leads import admin_service
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
 from backend.app.modules.leads.schemas import (
     LeadImportJobListResponse,
     LeadImportJobOut,
@@ -299,12 +300,13 @@ async def reroute_lead_endpoint(
 async def retry_leads_endpoint(
     payload: MetaLeadRetryRequest,
     ctx: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ) -> MetaLeadRetryResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     _ensure_tenant(ctx, tenant_id)
-    result = await admin_service.retry_leads(db, tenant_id, payload)
+    result = await admin_service.retry_leads(db, tenant_id, own_company_id, payload)
     await db.commit()
     return result
 

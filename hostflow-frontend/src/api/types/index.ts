@@ -45,6 +45,8 @@ export type {
   TenantVacancyAccessUpdatePayload,
   TenantVacancyOption,
   TeamOverviewResponse,
+  HiringPipelineGatesPublic,
+  HiringPipelineGatesPatch,
   TenantBrandingResponse,
   TenantBrandingPayload,
   UserCompanyAccess,

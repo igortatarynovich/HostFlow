@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import { useI18n } from '../../i18n'
 import { getSummary } from '../../api/documents'
+import type { CandidatePipelineOverride } from '../../api/candidatePipelineOverrides'
+import {
+  effectiveNonOverridableDocTypesSet,
+  isNonOverridableDocTypeCode,
+} from '../../constants/pipelineOverridePolicy'
+import { useHiringPipelineGates } from '../../contexts/HiringPipelineGatesContext'
 
 type RequiredState = {
   missing: string[]
@@ -29,6 +36,29 @@ type Props = {
   onSelectType?: (typeCode: string) => void
   pollingEnabled?: boolean
   pollingIntervalMs?: number
+  /** Current candidate stage label (for “relevant blockers” copy). */
+  stageSummaryLabel?: string | null
+  /**
+   * When false, missing docs are shown as informational for this stage (not “blocking”).
+   * When omitted, falls back to legacy behavior (any missing/problematic looks blocking).
+   */
+  docsPipelineBlocking?: boolean
+  /** Document pipeline waivers (missing / review) — recruiter request → manager approve. */
+  pipelineOverrides?: CandidatePipelineOverride[]
+  pipelineOverrideBusy?: boolean
+  canRequestPipelineOverride?: boolean
+  canApprovePipelineOverride?: boolean
+  onCreatePipelineOverride?: (input: {
+    doc_type_code: string
+    reason: string
+    requested_scope: 'pipeline' | 'both'
+  }) => Promise<void>
+  onApprovePipelineOverride?: (overrideId: string, granted: 'pipeline' | 'both') => Promise<void>
+  onRejectPipelineOverride?: (overrideId: string) => Promise<void>
+  /** When set (e.g. from CandidateCard), controls visibility — includes managers on read-only cards. */
+  showPipelineWaiverSection?: boolean
+  /** Card is read-only: explain why “Request waiver” form is hidden. */
+  pipelineWaiverReadOnlyCard?: boolean
 }
 
 type RowStatus = 'missing' | 'expiring' | 'valid' | 'in_progress'
@@ -45,8 +75,24 @@ export default function CandidateDocsRailPanel({
   onSelectType,
   pollingEnabled = false,
   pollingIntervalMs = 30_000,
+  stageSummaryLabel,
+  docsPipelineBlocking,
+  pipelineOverrides = [],
+  pipelineOverrideBusy = false,
+  canRequestPipelineOverride = false,
+  canApprovePipelineOverride = false,
+  onCreatePipelineOverride,
+  onApprovePipelineOverride,
+  onRejectPipelineOverride,
+  showPipelineWaiverSection: showPipelineWaiverSectionProp,
+  pipelineWaiverReadOnlyCard = false,
 }: Props) {
   const { t, locale } = useI18n()
+  const { gates } = useHiringPipelineGates()
+  const nonOverridableEffective = useMemo(
+    () => effectiveNonOverridableDocTypesSet(gates?.effective_non_overridable_doc_types),
+    [gates?.effective_non_overridable_doc_types],
+  )
   const [loading, setLoading] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
@@ -60,12 +106,16 @@ export default function CandidateDocsRailPanel({
       const s = (res as any)?.summary as SummaryResponse | undefined
       setSummary(s ?? null)
     } catch (err: any) {
-      setErrorText(err?.response?.data?.detail ?? err?.message ?? 'Request failed')
+      setErrorText(
+        err?.response?.data?.detail ??
+          err?.message ??
+          t('common.errors.request_failed', { defaultValue: 'Request failed' }),
+      )
       setSummary(null)
     } finally {
       setLoading(false)
     }
-  }, [candidateId, ownerContext])
+  }, [candidateId, ownerContext, t])
 
   useEffect(() => {
     void load()
@@ -81,7 +131,35 @@ export default function CandidateDocsRailPanel({
   const inProgressTypes = useMemo(() => summary?.required?.in_progress_types ?? [], [summary])
   const expiringSoon = useMemo(() => summary?.expiring_soon ?? [], [summary])
 
-  const hasBlockers = missing.length > 0 || problematic.length > 0
+  const showMissingList = missing.length > 0 || problematic.length > 0
+  const showInProgressOnly = !showMissingList && inProgressTypes.length > 0
+  const pipelineBlockingEffective =
+    docsPipelineBlocking !== undefined
+      ? docsPipelineBlocking
+      : showMissingList || showInProgressOnly
+
+  /** Hide checklist / blockers / request waiver noise when parent says docs do not block (e.g. New). */
+  const hideEarlyStageDocDetails = docsPipelineBlocking === false
+
+  const waiverSectionVisible = useMemo(() => {
+    if (docsPipelineBlocking === false && pipelineOverrides.length === 0) {
+      return false
+    }
+    if (showPipelineWaiverSectionProp !== undefined) {
+      return Boolean(showPipelineWaiverSectionProp)
+    }
+    return (
+      pipelineOverrides.length > 0 ||
+      canRequestPipelineOverride ||
+      canApprovePipelineOverride
+    )
+  }, [
+    docsPipelineBlocking,
+    pipelineOverrides.length,
+    showPipelineWaiverSectionProp,
+    canRequestPipelineOverride,
+    canApprovePipelineOverride,
+  ])
 
   useEffect(() => {
     onLoadedBlockers?.({ missing, problematic, inProgress: inProgressTypes })
@@ -93,7 +171,14 @@ export default function CandidateDocsRailPanel({
   // after upload actions.
 
   const labelForType = useCallback(
-    (code: string) => t(`admin.documents.types.${code}`, { defaultValue: code }),
+    (code: string) => {
+      const fromTypeCodes = t(`admin.documents.type_codes.${code}`, { defaultValue: '' }).trim()
+      if (fromTypeCodes) return fromTypeCodes
+      const fromProcessTypes = t(`admin.documents.process_types.${code}`, { defaultValue: '' }).trim()
+      if (fromProcessTypes) return fromProcessTypes
+      const normalized = String(code || '').replace(/[_-]+/g, ' ').trim()
+      return normalized || code
+    },
     [t],
   )
 
@@ -133,20 +218,92 @@ export default function CandidateDocsRailPanel({
   }, [expiringSoon, inProgressTypes, missing, problematic, readyTypes])
 
   const statusPill = useCallback(
-    (s: RowStatus) => {
+    (s: RowStatus, opts?: { softChecklist?: boolean }) => {
+      const soft = Boolean(opts?.softChecklist)
       switch (s) {
         case 'missing':
-          return 'bg-rose-50 text-rose-800 border-rose-200'
+          return soft
+            ? 'bg-slate-50 text-slate-700 border-slate-200'
+            : 'bg-rose-50 text-rose-800 border-rose-200'
         case 'expiring':
           return 'bg-amber-50 text-amber-800 border-amber-200'
         case 'valid':
           return 'bg-emerald-50 text-emerald-800 border-emerald-200'
         case 'in_progress':
-          return 'bg-slate-50 text-slate-700 border-slate-200'
+          return soft
+            ? 'bg-slate-50 text-slate-600 border-slate-200'
+            : 'bg-slate-50 text-slate-700 border-slate-200'
       }
     },
     [],
   )
+
+  const normType = useCallback((c: string) => String(c || '').trim().toLowerCase(), [])
+
+  const pendingByType = useMemo(() => {
+    const m = new Map<string, CandidatePipelineOverride>()
+    for (const o of pipelineOverrides) {
+      if (String(o.status).toLowerCase() !== 'pending') continue
+      const k = normType(o.doc_type_code)
+      if (!k) continue
+      if (!m.has(k)) m.set(k, o)
+    }
+    return m
+  }, [pipelineOverrides, normType])
+
+  const blockerCodesForRequest = useMemo(() => {
+    const codes = [...missing, ...problematic, ...inProgressTypes].filter(Boolean)
+    const uniq: string[] = []
+    const seen = new Set<string>()
+    for (const c of codes) {
+      const k = normType(c)
+      if (!k || seen.has(k)) continue
+      seen.add(k)
+      uniq.push(c)
+    }
+    return uniq
+  }, [missing, problematic, inProgressTypes, normType])
+
+  /** Types that may appear in a waiver request (fail-safe types excluded — plan §12). */
+  const waiverEligibleCodes = useMemo(
+    () => blockerCodesForRequest.filter((c) => !isNonOverridableDocTypeCode(c, nonOverridableEffective)),
+    [blockerCodesForRequest, nonOverridableEffective],
+  )
+
+  const allPipelineBlockersAreNonOverridable = useMemo(
+    () =>
+      docsPipelineBlocking === true &&
+      blockerCodesForRequest.length > 0 &&
+      waiverEligibleCodes.length === 0,
+    [blockerCodesForRequest, waiverEligibleCodes, docsPipelineBlocking],
+  )
+
+  const [waiverDocType, setWaiverDocType] = useState<string>('')
+  const [waiverReason, setWaiverReason] = useState('')
+  const [waiverIncludeHandoff, setWaiverIncludeHandoff] = useState(false)
+
+  useEffect(() => {
+    if (!waiverDocType && waiverEligibleCodes.length) {
+      setWaiverDocType(waiverEligibleCodes[0])
+    }
+  }, [waiverEligibleCodes, waiverDocType])
+
+  const canOpenWaiverRequestModal = Boolean(
+    docsPipelineBlocking === true &&
+      canRequestPipelineOverride &&
+      onCreatePipelineOverride &&
+      waiverEligibleCodes.length &&
+      !pipelineWaiverReadOnlyCard,
+  )
+
+  const [waiverModalOpen, setWaiverModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (!waiverModalOpen || !waiverEligibleCodes.length) return
+    if (!waiverEligibleCodes.includes(waiverDocType)) {
+      setWaiverDocType(waiverEligibleCodes[0])
+    }
+  }, [waiverModalOpen, waiverEligibleCodes, waiverDocType])
 
   const formatExpDate = useCallback(
     (iso: string) => {
@@ -171,9 +328,17 @@ export default function CandidateDocsRailPanel({
           <div className="text-xs font-semibold text-slate-800">{t('app.candidate_card.documents.title', { defaultValue: 'Documents' })}</div>
 
           <div className="mt-1 text-[11px] text-slate-600">
-            {hasBlockers
-              ? t('app.candidate_card.documents.blockers_subtitle', { defaultValue: 'Blockers stop the pipeline' })
-              : t('app.candidate_card.documents.ok_subtitle', { defaultValue: 'Ready to move forward' })}
+            {hideEarlyStageDocDetails
+              ? t('app.candidate_card.documents.early_stage_hint', {
+                  defaultValue: 'Documents are not required at this stage (e.g. New). Upload / Open full — optional.',
+                })
+              : showMissingList || showInProgressOnly
+                ? pipelineBlockingEffective
+                  ? t('app.candidate_card.documents.blockers_subtitle', { defaultValue: 'Blockers stop the pipeline' })
+                  : t('app.candidate_card.documents.blockers_subtitle_soft', {
+                      defaultValue: 'Checklist visible — not blocking this stage',
+                    })
+                : t('app.candidate_card.documents.ok_subtitle', { defaultValue: 'Ready to move forward' })}
           </div>
         </div>
 
@@ -184,49 +349,192 @@ export default function CandidateDocsRailPanel({
         ) : null}
       </div>
 
-      <div className="mt-3">
-        {loading ? (
-          <div className="text-xs text-slate-500">{t('common.loading')}</div>
-        ) : errorText ? (
-          <div className="text-xs text-rose-600">{errorText}</div>
-        ) : (
-          <div className="space-y-1">
-            {rows.length ? (
-              rows.map((r, idx) => (
-                <button
-                  key={`${r.type}-${r.status}-${idx}`}
-                  type="button"
-                  className={clsx(
-                    'w-full rounded-xl border px-2 py-1.5 text-left transition hover:shadow-sm',
-                    statusPill(r.status),
-                  )}
-                  onClick={() => {
-                    if (r.type) onSelectType?.(r.type)
-                    onOpenDocs?.()
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 text-xs font-semibold text-slate-900 truncate">
-                      {labelForType(r.type)}
-                    </div>
-                    <div className="shrink-0 text-[11px] font-semibold">
-                      {r.status === 'missing'
-                        ? `→ ${t('app.candidate_card.documents.status.missing', { defaultValue: 'missing' })}`
-                        : r.status === 'valid'
-                          ? `→ ${t('app.candidate_card.documents.status.valid', { defaultValue: 'valid' })}`
-                          : r.status === 'expiring'
-                            ? `→ ${t('app.candidate_card.documents.status.expiring', { defaultValue: 'expiring' })}${r.meta ? ` · ${formatExpDate(r.meta)}` : ''}`
-                            : `→ ${t('app.candidate_card.documents.status.in_progress', { defaultValue: 'in progress' })}`}
-                    </div>
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="text-xs text-slate-500">{t('app.candidate_card.documents.empty', { defaultValue: 'No document data.' })}</div>
-            )}
+      {waiverSectionVisible ? (
+        <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-indigo-900">
+            {t('app.candidate_card.pipeline_override.section_title', { defaultValue: 'Document waivers' })}
           </div>
-        )}
-      </div>
+          <div className="mt-1 text-[11px] text-indigo-800/90">
+            {t('app.candidate_card.pipeline_override.section_hint', {
+              defaultValue: 'Recruiter requests → manager approves. Pipeline-only or including handoff gate.',
+            })}
+          </div>
+
+          {pipelineWaiverReadOnlyCard ? (
+            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2 py-1.5 text-[11px] text-amber-950">
+              {t('app.candidate_card.pipeline_override.read_only_card', {
+                defaultValue:
+                  'This candidate card is read-only (e.g. declined). New waiver requests are disabled; pending items can still be approved by a manager.',
+              })}
+            </div>
+          ) : null}
+
+          {pipelineOverrides.filter((o) => String(o.status).toLowerCase() === 'pending').length ? (
+            <div className="mt-2 space-y-2">
+              {pipelineOverrides
+                .filter((o) => String(o.status).toLowerCase() === 'pending')
+                .map((o) => (
+                  <div key={o.id} className="rounded-lg border border-indigo-200 bg-white p-2 text-xs">
+                    <div className="font-semibold text-slate-900">{labelForType(o.doc_type_code)}</div>
+                    <div className="mt-0.5 text-[11px] text-slate-600">
+                      {t('app.candidate_card.pipeline_override.requested_scope', {
+                        defaultValue: 'Requested',
+                      })}
+                      :{' '}
+                      {o.requested_scope === 'both'
+                        ? t('app.candidate_card.pipeline_override.scope_both', { defaultValue: 'pipeline + handoff' })
+                        : t('app.candidate_card.pipeline_override.scope_pipeline', { defaultValue: 'pipeline only' })}
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-700 line-clamp-3">{o.reason}</div>
+                    {canApprovePipelineOverride && onApprovePipelineOverride && onRejectPipelineOverride ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <button
+                          type="button"
+                          className="btn-secondary btn-xs"
+                          disabled={pipelineOverrideBusy}
+                          onClick={() => void onApprovePipelineOverride(o.id, 'pipeline')}
+                        >
+                          {t('app.candidate_card.pipeline_override.approve_pipeline', { defaultValue: 'Approve (pipeline)' })}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-primary btn-xs"
+                          disabled={pipelineOverrideBusy}
+                          onClick={() => void onApprovePipelineOverride(o.id, 'both')}
+                        >
+                          {t('app.candidate_card.pipeline_override.approve_both', { defaultValue: 'Approve + handoff' })}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-secondary btn-xs text-rose-800"
+                          disabled={pipelineOverrideBusy}
+                          onClick={() => void onRejectPipelineOverride(o.id)}
+                        >
+                          {t('app.candidate_card.pipeline_override.reject', { defaultValue: 'Reject' })}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-[11px] font-medium text-amber-800">
+                        {t('app.candidate_card.pipeline_override.awaiting_manager', {
+                          defaultValue: 'Awaiting manager approval',
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          ) : null}
+
+          {pipelineOverrides.some((o) => String(o.status).toLowerCase() === 'approved') ? (
+            <div className="mt-2 space-y-1">
+              <div className="text-[11px] font-semibold text-emerald-900">
+                {t('app.candidate_card.pipeline_override.active_title', { defaultValue: 'Active waivers' })}
+              </div>
+              <ul className="space-y-1">
+                {pipelineOverrides
+                  .filter((o) => String(o.status).toLowerCase() === 'approved')
+                  .map((o) => (
+                    <li key={o.id} className="text-[11px] text-emerald-900">
+                      {labelForType(o.doc_type_code)} —{' '}
+                      {o.granted_scope === 'both'
+                        ? t('app.candidate_card.pipeline_override.granted_both', { defaultValue: 'pipeline + handoff' })
+                        : t('app.candidate_card.pipeline_override.granted_pipeline', { defaultValue: 'pipeline' })}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {canOpenWaiverRequestModal ? (
+            <button
+              type="button"
+              className="btn-secondary btn-sm mt-3 w-full"
+              onClick={() => setWaiverModalOpen(true)}
+            >
+              {t('app.candidate_card.pipeline_override.open_request_modal', {
+                defaultValue: 'Request document waiver…',
+              })}
+            </button>
+          ) : loading && docsPipelineBlocking === true && canRequestPipelineOverride && onCreatePipelineOverride ? (
+            <div className="mt-2 text-[11px] text-indigo-800">
+              {t('app.candidate_card.pipeline_override.loading_blockers', {
+                defaultValue: 'Loading document list for waiver…',
+              })}
+            </div>
+          ) : docsPipelineBlocking === true &&
+            allPipelineBlockersAreNonOverridable &&
+            !pipelineOverrides.some((o) => String(o.status).toLowerCase() === 'pending') &&
+            !pipelineOverrides.some((o) => String(o.status).toLowerCase() === 'approved') ? (
+            <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/80 px-2 py-2 text-[11px] font-medium text-amber-950">
+              {t('app.candidate_card.pipeline_override.non_overridable_blockers', {
+                defaultValue:
+                  'These missing documents (identity / work authorization) cannot be waived. Upload valid files or adjust the case with your compliance process.',
+              })}
+            </div>
+          ) : docsPipelineBlocking === true &&
+            !pipelineOverrides.some((o) => String(o.status).toLowerCase() === 'pending') &&
+            !pipelineOverrides.some((o) => String(o.status).toLowerCase() === 'approved') &&
+            !canOpenWaiverRequestModal &&
+            !(loading && canRequestPipelineOverride && onCreatePipelineOverride) ? (
+            <div className="mt-2 text-[11px] text-indigo-900/85">
+              {t('app.candidate_card.pipeline_override.empty_state_blocking', {
+                defaultValue:
+                  'When documents block the pipeline, you can request a waiver here (opens a form). Supervisors approve pending items below.',
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!hideEarlyStageDocDetails ? (
+        <div className="mt-3">
+          {loading ? (
+            <div className="text-xs text-slate-500">{t('common.loading')}</div>
+          ) : errorText ? (
+            <div className="text-xs text-rose-600">{errorText}</div>
+          ) : (
+            <div className="space-y-1">
+              {rows.length ? (
+                rows.map((r, idx) => (
+                  <button
+                    key={`${r.type}-${r.status}-${idx}`}
+                    type="button"
+                    className={clsx(
+                      'w-full rounded-xl border px-2 py-1.5 text-left transition hover:shadow-sm',
+                      statusPill(r.status, { softChecklist: !pipelineBlockingEffective }),
+                    )}
+                    onClick={() => {
+                      if (r.type) onSelectType?.(r.type)
+                      onOpenDocs?.()
+                    }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 text-xs font-semibold text-slate-900 truncate">
+                        {labelForType(r.type)}
+                      </div>
+                      <div className="shrink-0 text-[11px] font-semibold">
+                        {r.status === 'missing'
+                          ? pipelineBlockingEffective
+                            ? `→ ${t('app.candidate_card.documents.status.missing', { defaultValue: 'missing' })}`
+                            : `→ ${t('app.candidate_card.documents.status.checklist_not_uploaded', { defaultValue: 'not uploaded yet' })}`
+                          : r.status === 'valid'
+                            ? `→ ${t('app.candidate_card.documents.status.valid', { defaultValue: 'valid' })}`
+                            : r.status === 'expiring'
+                              ? `→ ${t('app.candidate_card.documents.status.expiring', { defaultValue: 'expiring' })}${r.meta ? ` · ${formatExpDate(r.meta)}` : ''}`
+                              : pipelineBlockingEffective
+                                ? `→ ${t('app.candidate_card.documents.status.in_progress', { defaultValue: 'in progress' })}`
+                                : `→ ${t('app.candidate_card.documents.status.checklist_in_review', { defaultValue: 'uploaded — review later' })}`}
+                      </div>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="text-xs text-slate-500">{t('app.candidate_card.documents.empty', { defaultValue: 'No document data.' })}</div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {onOpenDocs ? (
         <div className="mt-2">
@@ -236,38 +544,221 @@ export default function CandidateDocsRailPanel({
         </div>
       ) : null}
 
-      {/* WHAT BLOCKS THIS CANDIDATE */}
-      <div className={clsx('mt-3 rounded-xl border p-3', hasBlockers ? 'border-rose-200 bg-rose-50' : 'border-slate-200 bg-slate-50')}>
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-          {t('app.candidate_card.documents.what_blocks_title', { defaultValue: 'What blocks this candidate' })}
-        </div>
+      {!hideEarlyStageDocDetails ? (
+        <div
+          className={clsx(
+            'mt-3 rounded-xl border p-3',
+            showMissingList || (showInProgressOnly && pipelineBlockingEffective)
+              ? pipelineBlockingEffective
+                ? 'border-rose-200 bg-rose-50'
+                : 'border-slate-200 bg-slate-50'
+              : 'border-slate-200 bg-slate-50',
+          )}
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-700">
+            {pipelineBlockingEffective
+              ? t('app.candidate_card.documents.what_blocks_title', { defaultValue: 'What blocks this candidate' })
+              : t('app.candidate_card.documents.checklist_panel_title', { defaultValue: 'Document checklist' })}
+          </div>
 
-        {hasBlockers ? (
-          <div className="mt-2 space-y-2">
-            <div>
-              <div className="text-xs font-semibold text-rose-800">
-                {t('app.candidate_card.documents.missing_label', { defaultValue: 'Missing' })}
+          {stageSummaryLabel ? (
+            <div className="mt-1 text-xs font-medium text-slate-600">
+              {t('app.candidate_card.documents.stage_context', { defaultValue: 'Stage' })}: {stageSummaryLabel}
+            </div>
+          ) : null}
+
+          {showMissingList ? (
+            <div className="mt-2 space-y-2">
+              <div>
+                <div
+                  className={clsx(
+                    'text-xs font-semibold',
+                    pipelineBlockingEffective ? 'text-rose-800' : 'text-slate-800',
+                  )}
+                >
+                  {pipelineBlockingEffective
+                    ? t('app.candidate_card.documents.missing_label', { defaultValue: 'Missing' })
+                    : t('app.candidate_card.documents.checklist_not_yet_required', {
+                        defaultValue: 'Not uploaded yet (not required at this stage)',
+                      })}
+                </div>
+                <ul className="mt-1 space-y-1">
+                  {[...missing, ...problematic].slice(0, 8).map((code) => (
+                    <li
+                      key={code}
+                      className={clsx('text-xs', pipelineBlockingEffective ? 'text-rose-800' : 'text-slate-800')}
+                    >
+                      {labelForType(code)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div
+                className={clsx(
+                  'text-xs font-medium',
+                  pipelineBlockingEffective ? 'text-rose-900' : 'text-slate-700',
+                )}
+              >
+                {pipelineBlockingEffective
+                  ? t('app.candidate_card.documents.next_step', { defaultValue: 'Next step: → Request documents' })
+                  : t('app.candidate_card.documents.next_step_not_blocking', {
+                      defaultValue: 'Not blocking pipeline at this stage — contact & qualify first.',
+                    })}
+              </div>
+            </div>
+          ) : showInProgressOnly ? (
+            <div className="mt-2 space-y-2">
+              <div className="text-xs font-semibold text-slate-800">
+                {t('app.candidate_card.documents.in_progress_label', { defaultValue: 'In progress / review' })}
               </div>
               <ul className="mt-1 space-y-1">
-                {[...missing, ...problematic].slice(0, 8).map((code) => (
-                  <li key={code} className="text-xs text-rose-800">
+                {inProgressTypes.slice(0, 8).map((code) => (
+                  <li key={code} className="text-xs text-slate-800">
                     {labelForType(code)}
                   </li>
                 ))}
               </ul>
+              <div
+                className={clsx(
+                  'text-xs font-medium',
+                  pipelineBlockingEffective ? 'text-amber-900' : 'text-slate-700',
+                )}
+              >
+                {pipelineBlockingEffective
+                  ? t('app.candidate_card.documents.next_step_verify', {
+                      defaultValue: 'Next step: → Verify documents before moving forward',
+                    })
+                  : t('app.candidate_card.documents.in_progress_not_blocking', {
+                      defaultValue: 'Uploads in progress — not blocking this stage.',
+                    })}
+              </div>
             </div>
+          ) : (
+            <div className="mt-2 text-xs text-slate-700">
+              {t('app.candidate_card.documents.no_blocks', { defaultValue: 'No blockers for this stage.' })}
+            </div>
+          )}
+        </div>
+      ) : null}
 
-            <div className="text-xs text-rose-900">
-              {t('app.candidate_card.documents.next_step', { defaultValue: 'Next step: → Request documents' })}
-            </div>
-          </div>
-        ) : (
-          <div className="mt-2 text-xs text-slate-700">
-            {t('app.candidate_card.documents.no_blocks', { defaultValue: 'No missing/problematic documents.' })}
-          </div>
-        )}
-      </div>
+      {waiverModalOpen && canOpenWaiverRequestModal && onCreatePipelineOverride && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[10060] flex items-center justify-center bg-black/40 p-4"
+              role="presentation"
+              onClick={() => !pipelineOverrideBusy && setWaiverModalOpen(false)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && !pipelineOverrideBusy) setWaiverModalOpen(false)
+              }}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-sm font-semibold text-slate-900">
+                  {t('app.candidate_card.pipeline_override.request_title', { defaultValue: 'Request waiver' })}
+                </div>
+                <p className="mt-1 text-xs text-slate-600">
+                  {t('app.candidate_card.pipeline_override.modal_hint', {
+                    defaultValue: 'Ask a supervisor to waive a document requirement for pipeline or handoff.',
+                  })}
+                </p>
+                <div className="mt-4 space-y-3">
+                  <label className="block text-xs text-slate-600">
+                    {t('app.candidate_card.pipeline_override.doc_type', { defaultValue: 'Document type' })}
+                    <select
+                      className="mt-1 w-full rounded-md border border-slate-200 px-2 py-1.5 text-sm"
+                      value={waiverDocType}
+                      onChange={(e) => setWaiverDocType(e.target.value)}
+                    >
+                      {waiverEligibleCodes.map((c) => (
+                        <option key={c} value={c} disabled={pendingByType.has(normType(c))}>
+                          {labelForType(c)}
+                          {pendingByType.has(normType(c))
+                            ? ` (${t('app.candidate_card.pipeline_override.pending_suffix', { defaultValue: 'pending' })})`
+                            : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block text-xs text-slate-600">
+                    {t('app.candidate_card.pipeline_override.reason', { defaultValue: 'Reason (min. 8 characters)' })}
+                    <textarea
+                      className={clsx(
+                        'mt-1 w-full rounded-md border px-2 py-1.5 text-sm',
+                        waiverReason.trim().length > 0 && waiverReason.trim().length < 8
+                          ? 'border-amber-300 bg-amber-50/50'
+                          : 'border-slate-200',
+                      )}
+                      rows={4}
+                      value={waiverReason}
+                      onChange={(e) => setWaiverReason(e.target.value)}
+                    />
+                    <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+                      <span>{waiverReason.trim().length}/8</span>
+                      {waiverReason.trim().length > 0 && waiverReason.trim().length < 8 ? (
+                        <span className="font-medium text-amber-800">
+                          {t('app.candidate_card.pipeline_override.reason_too_short', {
+                            defaultValue: 'Enter at least 8 characters to submit.',
+                          })}
+                        </span>
+                      ) : null}
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={waiverIncludeHandoff}
+                      onChange={(e) => setWaiverIncludeHandoff(e.target.checked)}
+                    />
+                    {t('app.candidate_card.pipeline_override.ask_handoff', {
+                      defaultValue: 'Also request handoff gate (ready_for_handoff)',
+                    })}
+                  </label>
+                </div>
+                <div className="mt-4 flex flex-wrap justify-end gap-2">
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={pipelineOverrideBusy}
+                    onClick={() => setWaiverModalOpen(false)}
+                  >
+                    {t('common.cancel', { defaultValue: 'Cancel' })}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    disabled={
+                      pipelineOverrideBusy ||
+                      !waiverDocType ||
+                      waiverReason.trim().length < 8 ||
+                      pendingByType.has(normType(waiverDocType))
+                    }
+                    onClick={() =>
+                      void onCreatePipelineOverride({
+                        doc_type_code: waiverDocType,
+                        reason: waiverReason.trim(),
+                        requested_scope: waiverIncludeHandoff ? 'both' : 'pipeline',
+                      }).then(() => {
+                        setWaiverReason('')
+                        setWaiverIncludeHandoff(false)
+                        setWaiverModalOpen(false)
+                      })
+                    }
+                  >
+                    {pipelineOverrideBusy
+                      ? t('common.saving', { defaultValue: 'Working...' })
+                      : t('app.candidate_card.pipeline_override.submit', { defaultValue: 'Submit request' })}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </section>
   )
 }
-

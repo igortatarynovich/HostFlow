@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import List, Optional, Tuple
 from uuid import UUID
 
@@ -52,12 +53,32 @@ def _ensure_single_owner(
 )
 async def list_services(
     include_inactive: bool = Query(False, description="Return inactive catalog items as well"),
+    include_metrics: bool = Query(
+        False,
+        description="Include per-service order counts and revenue from completed orders",
+    ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
     rows = await svc.list_services(include_inactive=include_inactive)
-    return [ServiceOut.model_validate(row, from_attributes=True) for row in rows]
+    metrics_map = await svc.catalog_usage_metrics_map() if include_metrics else None
+    out: List[ServiceOut] = []
+    for row in rows:
+        base = ServiceOut.model_validate(row, from_attributes=True)
+        if metrics_map is not None:
+            oc, rev = metrics_map.get(row.id, (0, Decimal("0")))
+            out.append(
+                base.model_copy(
+                    update={
+                        "metrics_orders_count": oc,
+                        "metrics_revenue_completed": rev,
+                    }
+                )
+            )
+        else:
+            out.append(base)
+    return out
 
 
 @router.post(
@@ -184,6 +205,12 @@ async def create_service_order(
     items_payload = [item.model_dump(exclude_unset=True) for item in payload.items]
 
     order = await svc.create_order(order_payload, items_payload)
+    try:
+        from backend.app.services import uos_auto_activities
+
+        await uos_auto_activities.ensure_service_order_confirm_task(db, str(tenant_id), str(current_user.sub), order)
+    except Exception:
+        pass
     await db.commit()
     order = await svc.get_order(order.id)
     return ServiceOrderOut.model_validate(order, from_attributes=True)

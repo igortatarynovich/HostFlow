@@ -680,9 +680,16 @@ async def list_pending_with_candidates(
     handoffs = await list_pending_for_client(
         db, client_company_id=client_company_id, client_tenant_id=client_tenant_id
     )
-    result = []
+    if not handoffs:
+        return []
+    candidate_ids = list({h.candidate_id for h in handoffs})
+    cand_rows = await db.execute(
+        select(Candidate).where(Candidate.id.in_(candidate_ids))
+    )
+    by_id = {c.id: c for c in cand_rows.scalars().all()}
+    result: list[dict] = []
     for h in handoffs:
-        cand = await db.get(Candidate, h.candidate_id)
+        cand = by_id.get(h.candidate_id)
         if cand is not None and getattr(cand, "deleted_at", None) is not None:
             continue
         fn = cand.first_name if cand else ""

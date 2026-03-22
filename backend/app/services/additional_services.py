@@ -11,7 +11,7 @@ try:
 except ImportError:  # pragma: no cover - SQLAlchemy < 1.4
     from sqlalchemy.sql import Select  # type: ignore
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -44,6 +44,24 @@ READY_DOCUMENT_STATUSES = {
     DocumentStatus.received,
     DocumentStatus.approved,
 }
+
+# Backward-compatible input mapping (DB stores canonical values after migration).
+_LEGACY_SERVICE_ORDER_STATUS: Dict[str, str] = {
+    "quoted": ServiceOrderStatus.confirmed.value,
+    "approved": ServiceOrderStatus.confirmed.value,
+    "scheduled": ServiceOrderStatus.in_progress.value,
+    "delivered": ServiceOrderStatus.completed.value,
+    "refunded": ServiceOrderStatus.cancelled.value,
+}
+
+
+def normalize_service_order_status(value: object) -> str:
+    raw = str(value or "").strip()
+    canon = _LEGACY_SERVICE_ORDER_STATUS.get(raw, raw)
+    try:
+        return ServiceOrderStatus(canon).value
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid service order status: {raw}") from exc
 
 
 def _now_utc() -> datetime:
@@ -102,6 +120,61 @@ class AdditionalServicesService:
             stmt = stmt.where(Service.is_active.is_(True))
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
+
+    async def catalog_usage_metrics_map(self) -> Dict[str, Tuple[int, Decimal]]:
+        """Per catalog service_id: (distinct active orders count, revenue on completed orders)."""
+        cancelled_o = ServiceOrderStatus.cancelled.value
+        cancelled_i = ServiceItemStatus.cancelled.value
+        completed_o = ServiceOrderStatus.completed.value
+
+        orders_expr = func.count(
+            func.distinct(
+                case(
+                    (
+                        and_(
+                            ServiceOrder.status != cancelled_o,
+                            ServiceItem.status != cancelled_i,
+                        ),
+                        ServiceItem.order_id,
+                    ),
+                )
+            )
+        )
+        revenue_expr = func.coalesce(
+            func.sum(
+                case(
+                    (
+                        and_(
+                            ServiceOrder.status == completed_o,
+                            ServiceItem.status != cancelled_i,
+                        ),
+                        ServiceItem.amount,
+                    ),
+                    else_=0,
+                )
+            ),
+            0,
+        )
+
+        stmt = (
+            select(
+                ServiceItem.service_id,
+                orders_expr.label("orders_count"),
+                revenue_expr.label("revenue_completed"),
+            )
+            .join(ServiceOrder, ServiceOrder.id == ServiceItem.order_id)
+            .where(
+                ServiceItem.tenant_id == self.tenant_id,
+                ServiceOrder.tenant_id == self.tenant_id,
+            )
+            .group_by(ServiceItem.service_id)
+        )
+        res = await self.db.execute(stmt)
+        out: Dict[str, Tuple[int, Decimal]] = {}
+        for sid, oc, rev in res.all():
+            rev_d = rev if isinstance(rev, Decimal) else Decimal(str(rev or 0))
+            out[str(sid)] = (int(oc or 0), rev_d.quantize(Decimal("0.01")))
+        return out
 
     async def get_service(self, service_id: str) -> Service:
         stmt = select(Service).where(
@@ -399,11 +472,15 @@ class AdditionalServicesService:
         order: ServiceOrder,
         status: str,
     ) -> ServiceOrder:
-        status_enum = ServiceOrderStatus(status)
-        if order.status == ServiceOrderStatus.draft.value and status_enum == ServiceOrderStatus.approved:
+        status_enum = ServiceOrderStatus(normalize_service_order_status(status))
+        current = normalize_service_order_status(order.status)
+        if current == ServiceOrderStatus.draft.value and status_enum == ServiceOrderStatus.confirmed:
             await self._freeze_prices(order)
 
-        if status_enum in (ServiceOrderStatus.scheduled, ServiceOrderStatus.in_progress, ServiceOrderStatus.delivered):
+        if status_enum in (
+            ServiceOrderStatus.in_progress,
+            ServiceOrderStatus.completed,
+        ):
             await self._ensure_required_documents(order)
 
         order.status = status_enum.value
@@ -421,6 +498,12 @@ class AdditionalServicesService:
         await self.db.flush()
         await self._recalculate_order_totals(item.order_id)
         await self.db.refresh(item)
+        order = getattr(item, "order", None)
+        if order is None:
+            try:
+                order = await self.get_order(item.order_id, with_items=False)
+            except Exception:
+                order = None
         if order is not None:
             try:
                 await self.db.refresh(order)

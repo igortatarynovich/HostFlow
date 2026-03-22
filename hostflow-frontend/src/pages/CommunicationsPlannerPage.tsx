@@ -78,11 +78,11 @@ export default function CommunicationsPlannerPage() {
       setItems(Array.isArray(eventsRes.items) ? eventsRes.items : [])
       if (wh) setWorkingHours(wh)
     } catch (err: any) {
-      setErrorText(errText(err, 'Failed to load planner'))
+      setErrorText(errText(err, t('app.communications.planner.errors.load', { defaultValue: 'Failed to load planner' })))
     } finally {
       setLoading(false)
     }
-  }, [kindFilter, statusFilter])
+  }, [kindFilter, statusFilter, t])
 
   useEffect(() => {
     void load()
@@ -112,7 +112,11 @@ export default function CommunicationsPlannerPage() {
         const mNow = toMin(hhmm)
         const inAny = day.windows.some((w) => mNow >= toMin(w.from) && mNow < toMin(w.to))
         if (!inAny) {
-          setErrorText('Selected start time is outside your working hours. Update My Availability or enable "Create outside hours".')
+          setErrorText(
+            t('app.communications.planner.errors.outside_hours', {
+              defaultValue: 'Selected start time is outside your working hours. Update My Availability or enable "Create outside hours".',
+            }),
+          )
           return
         }
       }
@@ -133,11 +137,11 @@ export default function CommunicationsPlannerPage() {
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errText(err, 'Failed to create planner event'))
+      setErrorText(errText(err, t('app.communications.planner.errors.create', { defaultValue: 'Failed to create planner event' })))
     } finally {
       setBusy(false)
     }
-  }, [allowOutsideHours, form, load, workingHours])
+  }, [allowOutsideHours, form, load, t, workingHours])
 
   const setEventStatus = useCallback(async (id: string, status: string) => {
     setBusy(true)
@@ -146,15 +150,15 @@ export default function CommunicationsPlannerPage() {
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errText(err, 'Failed to update planner event'))
+      setErrorText(errText(err, t('app.communications.planner.errors.update', { defaultValue: 'Failed to update planner event' })))
     } finally {
       setBusy(false)
     }
-  }, [load])
+  }, [load, t])
 
   return (
     <div className="space-y-4">
-      <WorkspaceTopNav active="planner" />
+      <WorkspaceTopNav active="calendar" />
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.planner_title', { defaultValue: 'Planner' })}</h1>
         <p className="text-sm text-slate-500">
@@ -163,15 +167,15 @@ export default function CommunicationsPlannerPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">Total: <strong>{stats.total}</strong></div>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Planned: <strong>{stats.planned}</strong></div>
-        <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">In progress: <strong>{stats.inProgress}</strong></div>
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Done: <strong>{stats.done}</strong></div>
+        <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">{t('app.communications.planner.stats.total', { defaultValue: 'Total' })}: <strong>{stats.total}</strong></div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.planner.stats.planned', { defaultValue: 'Planned' })}: <strong>{stats.planned}</strong></div>
+        <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-800">{t('app.communications.planner.stats.in_progress', { defaultValue: 'In progress' })}: <strong>{stats.inProgress}</strong></div>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.planner.stats.done', { defaultValue: 'Done' })}: <strong>{stats.done}</strong></div>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <div className="mb-3 text-sm font-semibold text-slate-900">New planner event</div>
+          <div className="mb-3 text-sm font-semibold text-slate-900">{t('app.communications.planner.form.title', { defaultValue: 'New planner event' })}</div>
           {errorText && (
             <div className="mb-3">
               <ErrorRecoveryBanner
@@ -188,38 +192,38 @@ export default function CommunicationsPlannerPage() {
             </div>
           )}
           <form className="space-y-2" onSubmit={handleCreate}>
-            <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} className="input" placeholder="Title" />
+            <input value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} className="input" placeholder={t('app.communications.planner.form.fields.title', { defaultValue: 'Title' })} />
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <select value={form.kind} onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value }))} className="input">
-                <option value="task">Task</option>
-                <option value="call">Call</option>
-                <option value="meeting">Meeting</option>
-                <option value="followup">Follow-up</option>
-                <option value="shift">Shift</option>
+                <option value="task">{t('app.communications.planner.kind.task', { defaultValue: 'Task' })}</option>
+                <option value="call">{t('app.communications.planner.kind.call', { defaultValue: 'Call' })}</option>
+                <option value="meeting">{t('app.communications.planner.kind.meeting', { defaultValue: 'Meeting' })}</option>
+                <option value="followup">{t('app.communications.planner.kind.followup', { defaultValue: 'Follow-up' })}</option>
+                <option value="shift">{t('app.communications.planner.kind.shift', { defaultValue: 'Shift' })}</option>
               </select>
               <select value={form.priority} onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))} className="input">
-                <option value="low">Low</option>
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
+                <option value="low">{t('app.communications.planner.priority.low', { defaultValue: 'Low' })}</option>
+                <option value="normal">{t('app.communications.planner.priority.normal', { defaultValue: 'Normal' })}</option>
+                <option value="high">{t('app.communications.planner.priority.high', { defaultValue: 'High' })}</option>
               </select>
             </div>
             <select value={form.assigneeId} onChange={(e) => setForm((p) => ({ ...p, assigneeId: e.target.value }))} className="input">
-              <option value="">Unassigned</option>
+              <option value="">{t('app.communications.planner.assignee.unassigned', { defaultValue: 'Unassigned' })}</option>
               {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={form.allDay} onChange={(e) => setForm((p) => ({ ...p, allDay: e.target.checked }))} />
-              All day
+              {t('app.communications.planner.form.fields.all_day', { defaultValue: 'All day' })}
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input type="checkbox" checked={allowOutsideHours} onChange={(e) => setAllowOutsideHours(e.target.checked)} />
-              Create outside working hours
+              {t('app.communications.planner.form.fields.outside_hours', { defaultValue: 'Create outside working hours' })}
             </label>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <input type={form.allDay ? 'date' : 'datetime-local'} value={form.startAt} onChange={(e) => setForm((p) => ({ ...p, startAt: e.target.value }))} className="input" />
               <input type={form.allDay ? 'date' : 'datetime-local'} value={form.endAt} onChange={(e) => setForm((p) => ({ ...p, endAt: e.target.value }))} className="input" />
             </div>
-            <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="textarea" placeholder="Description" />
+            <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="textarea" placeholder={t('app.communications.planner.form.fields.description', { defaultValue: 'Description' })} />
             <button type="submit" disabled={busy || !form.title.trim() || !form.startAt} className="btn-primary disabled:opacity-50">
               {busy ? t('common.loading', { defaultValue: 'Loading...' }) : t('common.actions.create', { defaultValue: 'Create' })}
             </button>
@@ -237,19 +241,19 @@ export default function CommunicationsPlannerPage() {
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input">
-              <option value="">All statuses</option>
-              <option value="planned">Planned</option>
-              <option value="in_progress">In progress</option>
-              <option value="done">Done</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="">{t('app.communications.planner.filters.all_statuses', { defaultValue: 'All statuses' })}</option>
+              <option value="planned">{t('app.communications.planner.status.planned', { defaultValue: 'Planned' })}</option>
+              <option value="in_progress">{t('app.communications.planner.status.in_progress', { defaultValue: 'In progress' })}</option>
+              <option value="done">{t('app.communications.planner.status.done', { defaultValue: 'Done' })}</option>
+              <option value="cancelled">{t('app.communications.planner.status.cancelled', { defaultValue: 'Cancelled' })}</option>
             </select>
             <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} className="input">
-              <option value="">All kinds</option>
-              <option value="task">Task</option>
-              <option value="call">Call</option>
-              <option value="meeting">Meeting</option>
-              <option value="followup">Follow-up</option>
-              <option value="shift">Shift</option>
+              <option value="">{t('app.communications.planner.filters.all_kinds', { defaultValue: 'All kinds' })}</option>
+              <option value="task">{t('app.communications.planner.kind.task', { defaultValue: 'Task' })}</option>
+              <option value="call">{t('app.communications.planner.kind.call', { defaultValue: 'Call' })}</option>
+              <option value="meeting">{t('app.communications.planner.kind.meeting', { defaultValue: 'Meeting' })}</option>
+              <option value="followup">{t('app.communications.planner.kind.followup', { defaultValue: 'Follow-up' })}</option>
+              <option value="shift">{t('app.communications.planner.kind.shift', { defaultValue: 'Shift' })}</option>
             </select>
             <button type="button" onClick={() => void load()} className="btn-secondary">
               {t('common.actions.refresh', { defaultValue: 'Refresh' })}
@@ -265,22 +269,22 @@ export default function CommunicationsPlannerPage() {
                   <div className="min-w-0">
                     <div className="text-sm font-medium text-slate-900">{row.title}</div>
                     <div className="mt-1 text-xs text-slate-500">
-                      {row.kind} · {row.status} · {row.priority} · {formatDateTime(row.start_at)}{row.end_at ? ` → ${formatDateTime(row.end_at)}` : ''}
+                      {t(`app.communications.planner.kind.${row.kind}`, { defaultValue: row.kind })} · {t(`app.communications.planner.status.${row.status}`, { defaultValue: row.status })} · {t(`app.communications.planner.priority.${row.priority}`, { defaultValue: row.priority })} · {formatDateTime(row.start_at)}{row.end_at ? ` → ${formatDateTime(row.end_at)}` : ''}
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
-                      assignee={row.assignee_id ? (labels.get(String(row.assignee_id)) || row.assignee_id) : '—'}
+                      {t('app.communications.planner.assignee.label', { defaultValue: 'Assignee' })}={row.assignee_id ? (labels.get(String(row.assignee_id)) || row.assignee_id) : '—'}
                     </div>
                     {row.description && <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{row.description}</div>}
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {row.status !== 'in_progress' && (
-                      <button type="button" onClick={() => void setEventStatus(row.id, 'in_progress')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">Start</button>
+                      <button type="button" onClick={() => void setEventStatus(row.id, 'in_progress')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.planner.actions.start', { defaultValue: 'Start' })}</button>
                     )}
                     {row.status !== 'done' && (
-                      <button type="button" onClick={() => void setEventStatus(row.id, 'done')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">Done</button>
+                      <button type="button" onClick={() => void setEventStatus(row.id, 'done')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.planner.status.done', { defaultValue: 'Done' })}</button>
                     )}
                     {row.status !== 'cancelled' && (
-                      <button type="button" onClick={() => void setEventStatus(row.id, 'cancelled')} disabled={busy} className="btn-danger btn-xs disabled:opacity-50">Cancel</button>
+                      <button type="button" onClick={() => void setEventStatus(row.id, 'cancelled')} disabled={busy} className="btn-danger btn-xs disabled:opacity-50">{t('common.actions.cancel', { defaultValue: 'Cancel' })}</button>
                     )}
                   </div>
                 </div>

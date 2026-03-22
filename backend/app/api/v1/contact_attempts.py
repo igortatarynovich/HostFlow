@@ -50,6 +50,8 @@ class ContactPolicyOut(BaseModel):
     post_action: str
     stage_code: Optional[str] = None
     rodo_sent: bool = False
+    # When enabled=false — machine code for UI (why tracking is off).
+    tracking_disabled_reason: Optional[str] = None
 
 
 @router.get("/{candidate_id}/contact-attempts", response_model=List[ContactAttemptOut])

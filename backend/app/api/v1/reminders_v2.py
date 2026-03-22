@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -10,8 +10,46 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.models.reminder import Reminder
+from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.services import reminder_tasks
+
+_SLA_REMINDER_TYPES = frozenset(
+    {
+        "leads_no_next_action",
+        "invoice_overdue_payment",
+        "uos_order_confirm",
+        "uos_invoice_follow_payment",
+        "uos_candidate_call",
+        "uos_inbound_reply",
+    }
+)
+
+
+def reminder_sla_projection(reminder: Reminder) -> Tuple[Optional[datetime], Optional[str]]:
+    """Derive SLA deadline + coarse status for UOS (no separate SLA table)."""
+    if reminder.status in (ReminderStatus.done, ReminderStatus.cancelled):
+        return None, "resolved"
+    payload = reminder.payload if isinstance(reminder.payload, dict) else {}
+    sla_due_at: Optional[datetime] = None
+    raw = payload.get("sla_due_at")
+    if isinstance(raw, str) and raw.strip():
+        try:
+            sla_due_at = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            sla_due_at = None
+    if sla_due_at is None and reminder.type in _SLA_REMINDER_TYPES:
+        sla_due_at = reminder.due_at
+    if sla_due_at is None:
+        return None, None
+    now = datetime.now(timezone.utc)
+    end = sla_due_at
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    if now > end:
+        return end, "overdue"
+    if (end - now).total_seconds() < 24 * 3600:
+        return end, "at_risk"
+    return end, "on_track"
 
 router = APIRouter(prefix="/reminders", tags=["reminders"])
 
@@ -73,9 +111,12 @@ class ReminderOut(BaseModel):
     payload: Dict[str, Any] = Field(default_factory=dict)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    sla_due_at: Optional[datetime] = None
+    sla_status: Optional[str] = None
 
     @classmethod
     def from_model(cls, reminder: Reminder) -> "ReminderOut":
+        sla_due_at, sla_status = reminder_sla_projection(reminder)
         return cls(
             id=UUID(reminder.id),
             title=reminder.title,
@@ -98,6 +139,8 @@ class ReminderOut(BaseModel):
             payload=reminder.payload or {},
             created_at=reminder.created_at,
             updated_at=reminder.updated_at,
+            sla_due_at=sla_due_at,
+            sla_status=sla_status,
         )
 
 
@@ -201,6 +244,7 @@ async def list_reminders(
     status_filter: Optional[List[str]] = Query(default=None),
     type_filter: Optional[List[str]] = Query(default=None),
     assignee_id: Optional[UUID] = Query(default=None),
+    assignee_scope: str = Query("mine", pattern="^(mine|team)$"),
     entity_type: Optional[str] = Query(default=None),
     entity_id: Optional[str] = Query(default=None),
     due_from: Optional[datetime] = Query(default=None),
@@ -215,10 +259,16 @@ async def list_reminders(
     due_range = None
     if due_from or due_to:
         due_range = (due_from or None, due_to or None)
+    aid = reminder_tasks.resolve_assignee_for_reminder_list(
+        explicit_assignee_id=str(assignee_id) if assignee_id else None,
+        assignee_scope=assignee_scope,
+        viewer_id=str(current_user.sub),
+        viewer_role=str(current_user.role),
+    )
     reminders = await reminder_tasks.list_reminders(
         db,
         tenant_id=str(tenant_id),
-        assignee_id=str(assignee_id) if assignee_id else str(current_user.sub),
+        assignee_id=aid,
         entity=entity,
         status_in=status_filter or None,
         type_in=type_filter or None,

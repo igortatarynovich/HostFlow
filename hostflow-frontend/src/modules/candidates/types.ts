@@ -46,6 +46,8 @@ export type UICandidate = Candidate & {
 };
 
 export type AugmentedCandidate = UICandidate & {
+  // Backend marks PII-masked candidates; frontend uses this flag for conditional rendering.
+  masked?: boolean;
   __docsMeta: DocsMeta;
   __extra: CandidateExtraNormalized;
   __reasonCodes: string[];
@@ -55,7 +57,18 @@ export type AugmentedCandidate = UICandidate & {
 export type ManagerItem = { id: string; name: string };
 
 // API may return either a plain array or a paginated object
-export type ListResp = { items?: UICandidate[]; total?: number } | UICandidate[];
+/** Aggregates from GET /candidates?include_insights=true (same filter scope as list). */
+export type CandidatesListInsights = {
+  total: number
+  new_count: number
+  docs_ready: number
+  docs_attention: number
+  docs_ordered: number
+}
+
+export type ListResp =
+  | { items?: UICandidate[]; total?: number; insights?: CandidatesListInsights }
+  | UICandidate[];
 
 export type CandidateFilterSnapshot = {
   stage: string[];
@@ -79,7 +92,12 @@ export type CandidateFilterSnapshot = {
   isFavorite: boolean | null;
 };
 
-export type CandidateListCacheEntry = { items: UICandidate[]; total: number; timestamp: number };
+export type CandidateListCacheEntry = {
+  items: UICandidate[]
+  total: number
+  timestamp: number
+  insights?: CandidatesListInsights
+};
 
 export type SortKey =
   | 'created_at'
@@ -92,6 +110,9 @@ export type SortKey =
   | 'manager'
   | 'stage'
   | 'reasons'
+  | 'risk_score'
+  | 'is_favorite'
+  | 'tags'
   | 'docs_status'
   | 'docs_ordered_at'
   | 'docs_valid_from'

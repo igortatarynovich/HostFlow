@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { IconPinned } from '@tabler/icons-react'
-import { api } from '../api/client'
+import { api, listCompanies } from '../api/client'
+import { getServiceOrder, listServiceOrders } from '../api/additionalServices'
+import type { AdditionalServiceOrder, Company } from '../api/types'
 import {
   createCommunicationMessage,
   createCommunicationPlannerEvent,
@@ -47,6 +49,12 @@ const DEFAULT_QUICK_TEMPLATES = [
   'Please send the requested documents.',
 ]
 const TAG_COLORS = ['#0284c7', '#0891b2', '#0f766e', '#15803d', '#ca8a04', '#c2410c', '#be123c', '#7c3aed', '#475569']
+
+function uosLinkedServiceOrderId(threadMeta: Record<string, any> | undefined | null): string {
+  const u = threadMeta?.uos
+  if (!u || typeof u !== 'object') return ''
+  return String((u as Record<string, unknown>).linked_service_order_id || '').trim()
+}
 
 type PersonalTag = { name: string; color: string; archived?: boolean }
 type OpsMode = CommunicationOpsMode
@@ -249,6 +257,13 @@ export default function CommunicationsMessagesPage() {
   const [dragThreadId, setDragThreadId] = useState<string | null>(null)
   const [activeToolsPanel, setActiveToolsPanel] = useState<'manager' | 'tags' | 'candidate' | null>(null)
   const [candidateNamesById, setCandidateNamesById] = useState<Record<string, string>>({})
+  const [companyQuery, setCompanyQuery] = useState('')
+  const [companyResults, setCompanyResults] = useState<Company[]>([])
+  const [companyPickId, setCompanyPickId] = useState('')
+  const [companySearching, setCompanySearching] = useState(false)
+  const [orderOptions, setOrderOptions] = useState<AdditionalServiceOrder[]>([])
+  const [orderPickId, setOrderPickId] = useState('')
+  const [orderIdManual, setOrderIdManual] = useState('')
   const [quickTemplates, setQuickTemplates] = useState<string[]>(DEFAULT_QUICK_TEMPLATES)
   const [opsModeFilter, setOpsModeFilter] = useState<OpsModeFilter>('all')
 
@@ -656,6 +671,10 @@ export default function CommunicationsMessagesPage() {
     setCandidateQuery('')
     setCandidatePickId('')
     setCandidateResults([])
+    setCompanyQuery('')
+    setCompanyPickId('')
+    setCompanyResults([])
+    setOrderIdManual('')
     setActiveToolsPanel(null)
     setOpenActionMenu(null)
   }, [selectedThread])
@@ -742,6 +761,39 @@ export default function CommunicationsMessagesPage() {
       canceled = true
     }
   }, [threads, candidateNamesById])
+
+  useEffect(() => {
+    if (!selectedThread) {
+      setOrderOptions([])
+      setOrderPickId('')
+      return
+    }
+    const linked = uosLinkedServiceOrderId(selectedThread.thread_meta)
+    setOrderPickId(linked)
+    const cid = String(selectedThread.linked_candidate_id || '').trim()
+    const comp = String(selectedThread.linked_company_id || '').trim()
+    if (!cid && !comp) {
+      setOrderOptions([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await listServiceOrders({
+          ...(cid ? { candidateId: cid } : {}),
+          ...(comp ? { companyId: comp } : {}),
+        })
+        if (cancelled) return
+        const list = Array.isArray(rows) ? rows.slice(0, 40) : []
+        setOrderOptions(list)
+      } catch {
+        if (!cancelled) setOrderOptions([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedThread])
 
   const saveAssignee = async () => {
     if (!selectedThread) return
@@ -929,6 +981,107 @@ export default function CommunicationsMessagesPage() {
       await loadThreads(true)
     } catch (err: any) {
       setErrorText(errorTextFrom(err, 'Failed to link candidate'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const runCompanySearch = async () => {
+    const q = companyQuery.trim()
+    if (q.length < 2) {
+      setCompanyResults([])
+      setCompanyPickId('')
+      return
+    }
+    setCompanySearching(true)
+    setErrorText(null)
+    try {
+      const rows = await listCompanies({ limit: 25, search: q })
+      const list = Array.isArray(rows) ? rows : []
+      setCompanyResults(list)
+      const firstId = list[0]?.id ? String(list[0].id) : ''
+      setCompanyPickId((prev) => (prev && list.some((x) => String(x.id) === prev) ? prev : firstId))
+    } catch (err: any) {
+      setErrorText(errorTextFrom(err, 'Failed to search companies'))
+    } finally {
+      setCompanySearching(false)
+    }
+  }
+
+  const bindCompany = async (companyId: string | null) => {
+    if (!selectedThread) return
+    setBusy(true)
+    setErrorText(null)
+    try {
+      const selectedCo =
+        companyId && companyResults.length ? companyResults.find((c) => String(c.id) === String(companyId)) : null
+      const linkedName = selectedCo ? String(selectedCo.legal_name || selectedCo.name || '').trim() : ''
+      const nextMeta = {
+        ...(selectedThread.thread_meta || {}),
+        linked_company_name: companyId ? linkedName || undefined : null,
+      }
+      await patchCommunicationThread(selectedThread.id, {
+        linked_company_id: companyId,
+        thread_meta: nextMeta,
+      })
+      await loadThreads(true)
+    } catch (err: any) {
+      setErrorText(errorTextFrom(err, 'Failed to link client company'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const persistLinkedServiceOrder = async (orderId: string | null) => {
+    if (!selectedThread) return
+    setBusy(true)
+    setErrorText(null)
+    try {
+      const meta = { ...(selectedThread.thread_meta || {}) }
+      const prevUos =
+        typeof meta.uos === 'object' && meta.uos && !Array.isArray(meta.uos)
+          ? { ...(meta.uos as Record<string, unknown>) }
+          : {}
+      if (orderId) {
+        const fromList = orderOptions.find((o) => String(o.id) === String(orderId))
+        prevUos.linked_service_order_id = orderId
+        prevUos.linked_service_order_label = fromList
+          ? `${String(fromList.status || 'order')} · ${String(fromList.id).slice(0, 8)}…`
+          : `${orderId.slice(0, 8)}…`
+      } else {
+        delete prevUos.linked_service_order_id
+        delete prevUos.linked_service_order_label
+      }
+      meta.uos = prevUos
+      await patchCommunicationThread(selectedThread.id, { thread_meta: meta })
+      await loadThreads(true)
+    } catch (err: any) {
+      setErrorText(errorTextFrom(err, 'Failed to link service order'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const linkServiceOrderByManualId = async () => {
+    const id = orderIdManual.trim()
+    if (!id || !selectedThread) return
+    setBusy(true)
+    setErrorText(null)
+    try {
+      await getServiceOrder(id)
+      const meta = { ...(selectedThread.thread_meta || {}) }
+      const prevUos =
+        typeof meta.uos === 'object' && meta.uos && !Array.isArray(meta.uos)
+          ? { ...(meta.uos as Record<string, unknown>) }
+          : {}
+      prevUos.linked_service_order_id = id
+      prevUos.linked_service_order_label = `${id.slice(0, 8)}…`
+      meta.uos = prevUos
+      await patchCommunicationThread(selectedThread.id, { thread_meta: meta })
+      setOrderIdManual('')
+      await loadThreads(true)
+    } catch (err: any) {
+      setErrorText(errorTextFrom(err, 'Order not found or access denied'))
     } finally {
       setBusy(false)
     }
@@ -1320,7 +1473,12 @@ export default function CommunicationsMessagesPage() {
         </div>
       )}
 
-      <div className={clsx('grid gap-4 xl:grid-cols-[340px_minmax(600px,1fr)]', isMobile && 'min-h-0 flex-1')}>
+      <div
+        className={clsx(
+          'grid gap-4 xl:grid-cols-[340px_minmax(400px,1fr)_minmax(260px,20rem)]',
+          isMobile && 'min-h-0 flex-1',
+        )}
+      >
         <section className={clsx('rounded-lg border border-slate-200 bg-white flex flex-col', isMobile && mobilePane === 'chat' && 'hidden', isMobile && 'min-h-[55vh]')}>
           <div className="border-b border-slate-100 px-4 py-3 shrink-0">
             <div className="flex items-center justify-between gap-2">
@@ -1441,7 +1599,23 @@ export default function CommunicationsMessagesPage() {
                     <span>•</span>
                     <span>{th.assignee_id ? (managerLabelById.get(String(th.assignee_id)) || 'assigned') : 'unassigned'}</span>
                     <span>•</span>
-                    <span>{th.linked_candidate_id ? 'candidate linked' : 'no candidate'}</span>
+                    <span>
+                      {th.linked_candidate_id
+                        ? t('app.communications_messages.uos.candidate_linked_short', { defaultValue: 'candidate' })
+                        : t('app.communications_messages.uos.candidate_missing_short', { defaultValue: 'no candidate' })}
+                    </span>
+                    <span>•</span>
+                    <span>
+                      {th.linked_company_id
+                        ? t('app.communications_messages.uos.client_linked_short', { defaultValue: 'client' })
+                        : t('app.communications_messages.uos.client_missing_short', { defaultValue: 'no client' })}
+                    </span>
+                    <span>•</span>
+                    <span>
+                      {uosLinkedServiceOrderId(th.thread_meta)
+                        ? t('app.communications_messages.uos.order_linked_short', { defaultValue: 'order' })
+                        : t('app.communications_messages.uos.order_missing_short', { defaultValue: 'no order' })}
+                    </span>
                     {tagsOf(th).length > 0 && (
                       <>
                         <span>•</span>
@@ -1872,7 +2046,7 @@ export default function CommunicationsMessagesPage() {
                       onClick={() => void removeThreadTag(tag)}
                       className="rounded px-2 py-0.5 text-xs font-medium"
                       style={{ backgroundColor: `${personalTagColor.get(tag.toLowerCase()) || '#94a3b8'}33`, color: personalTagColor.get(tag.toLowerCase()) || '#334155' }}
-                      title="Click to remove from dialog"
+                      title={t('app.communications_messages.tags.remove_from_dialog', { defaultValue: 'Click to remove from dialog' })}
                     >
                       {tag} ×
                     </button>
@@ -2000,6 +2174,193 @@ export default function CommunicationsMessagesPage() {
                   >
                     {t('app.communications_messages.actions.send')}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section
+          className={clsx(
+            'hidden max-h-[70vh] flex-col overflow-hidden rounded-lg border border-slate-200 bg-white xl:flex',
+            isMobile && 'hidden',
+          )}
+        >
+          {!selectedThread ? (
+            <div className="p-4 text-sm text-slate-500">
+              {t('app.communications_messages.uos.pick_thread', {
+                defaultValue: 'Select a dialog to link client and order.',
+              })}
+            </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+              <div className="border-b border-slate-100 px-4 py-3">
+                <div className="text-sm font-semibold text-slate-900">
+                  {t('app.communications_messages.uos.panel_title', { defaultValue: 'Context' })}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  {t('app.communications_messages.uos.panel_hint', {
+                    defaultValue: 'Link company and service order to this thread (UOS).',
+                  })}
+                </p>
+              </div>
+              <div className="space-y-4 p-4 text-sm">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t('app.communications_messages.uos.client', { defaultValue: 'Client (company)' })}
+                  </div>
+                  {selectedThread.linked_company_id ? (
+                    <div className="mt-2 rounded-md border border-slate-100 bg-slate-50 p-2 text-xs">
+                      <div className="font-medium text-slate-800">
+                        {String((selectedThread.thread_meta || {}).linked_company_name || selectedThread.linked_company_id)}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Link
+                          className="font-medium text-brand-700 hover:underline"
+                          to={`/app/clients/${selectedThread.linked_company_id}`}
+                        >
+                          {t('app.communications_messages.uos.open_client', { defaultValue: 'Open client' })}
+                        </Link>
+                        <button
+                          type="button"
+                          className="font-medium text-rose-700 hover:underline disabled:opacity-50"
+                          disabled={busy}
+                          onClick={() => void bindCompany(null)}
+                        >
+                          {t('app.communications_messages.uos.unlink_client', { defaultValue: 'Unlink' })}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <input
+                          value={companyQuery}
+                          onChange={(e) => setCompanyQuery(e.target.value)}
+                          placeholder={t('app.communications_messages.uos.client_search_placeholder', {
+                            defaultValue: 'Company name…',
+                          })}
+                          className="min-w-[160px] flex-1 input"
+                        />
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm disabled:opacity-50"
+                          disabled={busy || companySearching || companyQuery.trim().length < 2}
+                          onClick={() => void runCompanySearch()}
+                        >
+                          {companySearching ? t('common.loading', { defaultValue: 'Loading…' }) : t('app.communications_messages.actions.search')}
+                        </button>
+                      </div>
+                      {companyResults.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <select
+                            value={companyPickId}
+                            onChange={(e) => setCompanyPickId(e.target.value)}
+                            className="min-w-0 flex-1 input"
+                          >
+                            {companyResults.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {String(c.legal_name || c.name || c.id)}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn-primary btn-sm disabled:opacity-50"
+                            disabled={busy || !companyPickId}
+                            onClick={() => void bindCompany(companyPickId || null)}
+                          >
+                            {t('app.communications_messages.uos.link_client', { defaultValue: 'Link client' })}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t('app.communications_messages.uos.order', { defaultValue: 'Service order' })}
+                  </div>
+                  {uosLinkedServiceOrderId(selectedThread.thread_meta) ? (
+                    <div className="mt-2 rounded-md border border-slate-100 bg-slate-50 p-2 text-xs">
+                      <div className="font-medium text-slate-800">
+                        {String((selectedThread.thread_meta?.uos as Record<string, unknown>)?.linked_service_order_label || '').trim() ||
+                          uosLinkedServiceOrderId(selectedThread.thread_meta)}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Link
+                          className="font-medium text-brand-700 hover:underline"
+                          to={`/app/services?order_id=${encodeURIComponent(uosLinkedServiceOrderId(selectedThread.thread_meta))}`}
+                        >
+                          {t('app.communications_messages.uos.open_order', { defaultValue: 'Open order' })}
+                        </Link>
+                        <button
+                          type="button"
+                          className="font-medium text-rose-700 hover:underline disabled:opacity-50"
+                          disabled={busy}
+                          onClick={() => void persistLinkedServiceOrder(null)}
+                        >
+                          {t('app.communications_messages.uos.unlink_order', { defaultValue: 'Unlink' })}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      {!selectedThread.linked_candidate_id && !selectedThread.linked_company_id ? (
+                        <p className="text-xs text-slate-500">
+                          {t('app.communications_messages.uos.order_need_context', {
+                            defaultValue: 'Link a candidate or client to load recent orders, or paste order ID below.',
+                          })}
+                        </p>
+                      ) : orderOptions.length === 0 ? (
+                        <p className="text-xs text-slate-500">
+                          {t('app.communications_messages.uos.order_empty', { defaultValue: 'No orders found for this context.' })}
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <select
+                            value={orderPickId}
+                            onChange={(e) => setOrderPickId(e.target.value)}
+                            className="min-w-0 flex-1 input"
+                          >
+                            <option value="">{t('app.communications_messages.uos.order_select', { defaultValue: 'Select order…' })}</option>
+                            {orderOptions.map((o) => (
+                              <option key={o.id} value={o.id}>
+                                {String(o.status || 'order')} · {String(o.id).slice(0, 8)}…
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn-primary btn-sm disabled:opacity-50"
+                            disabled={busy || !orderPickId}
+                            onClick={() => void persistLinkedServiceOrder(orderPickId)}
+                          >
+                            {t('app.communications_messages.uos.link_order', { defaultValue: 'Link' })}
+                          </button>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          value={orderIdManual}
+                          onChange={(e) => setOrderIdManual(e.target.value)}
+                          placeholder={t('app.communications_messages.uos.order_id_placeholder', {
+                            defaultValue: 'Order UUID',
+                          })}
+                          className="min-w-[140px] flex-1 input font-mono text-xs"
+                        />
+                        <button
+                          type="button"
+                          className="btn-secondary btn-sm disabled:opacity-50"
+                          disabled={busy || !orderIdManual.trim()}
+                          onClick={() => void linkServiceOrderByManualId()}
+                        >
+                          {t('app.communications_messages.uos.link_order_by_id', { defaultValue: 'Link ID' })}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -75,8 +75,10 @@ async def get_effective_contact_policy(
         "post_action": DEFAULT_POST_ACTION,
         "stage_code": None,
         "rodo_sent": False,
+        "tracking_disabled_reason": None,
     }
-    
+    tenant_link_found = False
+
     # Determine if tenant is a client tenant
     is_client = await is_client_tenant(db, tenant_id)
     
@@ -126,6 +128,7 @@ async def get_effective_contact_policy(
             )
         
         if link:
+            tenant_link_found = True
             contact_policy = link.get_contact_policy()
             logger.info(
                 "get_effective_contact_policy: applying contact policy from link_id=%s enabled=%s max_attempts=%s",
@@ -152,14 +155,30 @@ async def get_effective_contact_policy(
     # RODO must be sent before contact attempts
     first_rodo = await get_first_rodo_sent(db, candidate.id)
     policy["rodo_sent"] = first_rodo is not None
-    
+
+    if not policy.get("enabled"):
+        if not company_id:
+            policy["tracking_disabled_reason"] = "no_company"
+        elif not tenant_link_found:
+            policy["tracking_disabled_reason"] = "no_tenant_link"
+        else:
+            policy["tracking_disabled_reason"] = "disabled_in_link"
+    else:
+        policy["tracking_disabled_reason"] = None
+
     logger.debug(
         "get_effective_contact_policy: final policy enabled=%s rodo_sent=%s",
         policy["enabled"],
         policy["rodo_sent"],
     )
-    
+
     return policy
+
+
+async def count_contact_attempts(db: AsyncSession, candidate_id: str) -> int:
+    """Number of logged contact attempts for candidate."""
+    stmt = select(func.count()).select_from(ContactAttempt).where(ContactAttempt.candidate_id == candidate_id)
+    return int((await db.scalar(stmt)) or 0)
 
 
 async def list_attempts(

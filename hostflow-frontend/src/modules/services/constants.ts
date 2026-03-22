@@ -6,13 +6,11 @@ import type { ServiceItemStatus, ServiceOrderStatus, ServiceScheduleStatus } fro
 
 export const ORDER_STATUSES: ServiceOrderStatus[] = [
   'draft',
-  'quoted',
-  'approved',
-  'scheduled',
+  'confirmed',
   'in_progress',
-  'delivered',
+  'on_hold',
+  'completed',
   'cancelled',
-  'refunded',
 ];
 
 export const SCHEDULE_STATUSES: ServiceScheduleStatus[] = [

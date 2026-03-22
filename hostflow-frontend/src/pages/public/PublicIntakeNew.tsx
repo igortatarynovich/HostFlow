@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, Navigate, useParams, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useToast } from '../../components/Toast'
 import { useI18n } from '../../i18n'
 import { PublicPageShell } from './components/PublicPageShell'
@@ -32,6 +32,7 @@ import type {
 export default function PublicIntakeNew() {
   useRobotsMeta({ index: false, follow: false })
   const { token } = useParams<{ token: string }>()
+  const [searchParams] = useSearchParams()
   const { t, locale, setLocale } = useI18n()
   const navigate = useNavigate()
   const { notify } = useToast()
@@ -82,6 +83,7 @@ export default function PublicIntakeNew() {
   
   // Флаг для отслеживания первой загрузки
   const [dataRestored, setDataRestored] = useState(false)
+  const documentsOnlyMode = searchParams.get('mode') === 'documents'
   
   // Восстановление данных из API при первой загрузке
   useEffect(() => {
@@ -237,6 +239,12 @@ export default function PublicIntakeNew() {
       setCurrentStep('contacts')
     }
   }, [setLocale])
+
+  useEffect(() => {
+    if (documentsOnlyMode) {
+      setCurrentStep('documents')
+    }
+  }, [documentsOnlyMode])
 
   // Получение текущего ответа на вопрос
   const getCurrentAnswer = useCallback(() => {

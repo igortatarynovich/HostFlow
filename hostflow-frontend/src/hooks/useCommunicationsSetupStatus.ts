@@ -6,6 +6,9 @@ import {
   type CommunicationChannelAccount,
   type CommunicationThread,
 } from '../api/communications'
+import { roleMayLoadFullCommunicationsSettings } from '../constants/communicationsSettingsAccess'
+import { useAuth } from '../store/useAuth'
+import { usePermissions } from './usePermissions'
 
 type SetupState = {
   channelsEnabled: boolean
@@ -33,6 +36,8 @@ function emptyState(): SetupState {
 }
 
 export function useCommunicationsSetupStatus() {
+  const { me } = useAuth()
+  const { role } = usePermissions()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [settings, setSettings] = useState<any | null>(null)
@@ -43,8 +48,11 @@ export function useCommunicationsSetupStatus() {
     setLoading(true)
     setError(null)
     try {
+      const canLoadSettings = Boolean(me?.tenant_id) && roleMayLoadFullCommunicationsSettings(role)
       const [cfg, acc, th] = await Promise.all([
-        getCommunicationsSettings(),
+        canLoadSettings
+          ? getCommunicationsSettings()
+          : Promise.resolve(null as Awaited<ReturnType<typeof getCommunicationsSettings>> | null),
         listCommunicationAccounts(),
         listCommunicationThreads({ limit: 300 }).catch(() => ({ items: [] as CommunicationThread[] })),
       ])
@@ -56,7 +64,7 @@ export function useCommunicationsSetupStatus() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [me?.tenant_id, role])
 
   useEffect(() => {
     void reload()

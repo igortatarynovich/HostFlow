@@ -76,3 +76,31 @@ async def test_seat_requests_create_and_list(client: AsyncClient) -> None:
     history = resp.json()
     assert len(history) >= 1
     assert history[0]["requested_count"] >= 1
+
+
+@pytest.mark.anyio
+async def test_hiring_pipeline_gates_get_and_patch(client: AsyncClient) -> None:
+    headers = await _headers(include_tenant=True)
+    resp = await client.get(f"{TEAM_BASE}/hiring-pipeline-gates", headers=headers)
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body.get("version") == 1
+    assert "new" in body.get("stages_without_doc_pipeline_block", [])
+    assert "contacted" in body.get("stages_require_vacancy_for_forward", [])
+    assert isinstance(body.get("effective_non_overridable_doc_types"), list)
+
+    patch = {"stages_doc_block_soft_only": ["docs_got"]}
+    resp = await client.patch(f"{TEAM_BASE}/hiring-pipeline-gates", headers=headers, json=patch)
+    assert resp.status_code == 200, resp.text
+    updated = resp.json()
+    assert "docs_got" in updated.get("stages_doc_block_soft_only", [])
+
+    resp = await client.get(f"{TEAM_BASE}/hiring-pipeline-gates", headers=headers)
+    assert resp.status_code == 200
+    again = resp.json()
+    assert "docs_got" in again.get("stages_doc_block_soft_only", [])
+
+    # Alias under /tenants/me (same payload as settings/team)
+    me_alias = await client.get("/api/v1/tenants/me/hiring-pipeline-gates", headers=headers)
+    assert me_alias.status_code == 200, me_alias.text
+    assert me_alias.json().get("version") == 1

@@ -275,15 +275,15 @@ export default function CrmLandingPage() {
                 <h3 className="text-sm font-semibold text-slate-900">{row.label}</h3>
                 <dl className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-700">
                   <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
-                    <dt className="font-medium text-slate-600">Starter</dt>
+                    <dt className="font-medium text-slate-600">{t('public.crm_landing.pricing.starter.name', { defaultValue: 'Starter' })}</dt>
                     <dd className="text-right">{row.starter}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
-                    <dt className="font-medium text-slate-600">Team</dt>
+                    <dt className="font-medium text-slate-600">{t('public.crm_landing.pricing.team.name', { defaultValue: 'Team' })}</dt>
                     <dd className="text-right">{row.team}</dd>
                   </div>
                   <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
-                    <dt className="font-medium text-slate-600">Pro</dt>
+                    <dt className="font-medium text-slate-600">{t('public.crm_landing.pricing.pro.name', { defaultValue: 'Pro' })}</dt>
                     <dd className="text-right">{row.pro}</dd>
                   </div>
                 </dl>
@@ -295,9 +295,9 @@ export default function CrmLandingPage() {
               <thead className="bg-slate-50 text-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-left">{t('public.crm_landing.compare.feature', { defaultValue: 'Feature' })}</th>
-                  <th className="px-4 py-3 text-left">Starter</th>
-                  <th className="px-4 py-3 text-left">Team</th>
-                  <th className="px-4 py-3 text-left">Pro</th>
+                  <th className="px-4 py-3 text-left">{t('public.crm_landing.pricing.starter.name', { defaultValue: 'Starter' })}</th>
+                  <th className="px-4 py-3 text-left">{t('public.crm_landing.pricing.team.name', { defaultValue: 'Team' })}</th>
+                  <th className="px-4 py-3 text-left">{t('public.crm_landing.pricing.pro.name', { defaultValue: 'Pro' })}</th>
                 </tr>
               </thead>
               <tbody>
@@ -354,17 +354,31 @@ export default function CrmLandingPage() {
         </section>
 
         <section className="cv-auto rounded-3xl border border-slate-200 bg-white p-6">
-          <h2 className="text-xl font-semibold text-slate-900">Explore product guides</h2>
+          <h2 className="text-xl font-semibold text-slate-900">
+            {t('public.crm_landing.guides.title', { defaultValue: 'Explore product guides' })}
+          </h2>
           <p className="mt-2 text-sm text-slate-600">
-            Start with the page closest to your current challenge and move to the next linked guide.
+            {t('public.crm_landing.guides.subtitle', { defaultValue: 'Start with the page closest to your current challenge and move to the next linked guide.' })}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('guide_pipeline', '/features/candidate-pipeline')}>Candidate pipeline feature</Link>
-            <Link to="/features/document-control" className="btn-secondary btn-sm" onClick={() => trackCta('guide_document_control', '/features/document-control')}>Document control feature</Link>
-            <Link to="/use-cases/trucking-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_trucking', '/use-cases/trucking-recruitment')}>Trucking recruitment use-case</Link>
-            <Link to="/use-cases/high-volume-onboarding" className="btn-secondary btn-sm" onClick={() => trackCta('guide_high_volume', '/use-cases/high-volume-onboarding')}>High-volume onboarding use-case</Link>
-            <Link to="/comparison/hostflow-vs-spreadsheets" className="btn-secondary btn-sm" onClick={() => trackCta('guide_vs_spreadsheets', '/comparison/hostflow-vs-spreadsheets')}>HostFlow vs spreadsheets</Link>
-            <Link to="/comparison/recruitment-crm-vs-ats" className="btn-secondary btn-sm" onClick={() => trackCta('guide_crm_vs_ats', '/comparison/recruitment-crm-vs-ats')}>Recruitment CRM vs ATS</Link>
+            <Link to="/features/candidate-pipeline" className="btn-secondary btn-sm" onClick={() => trackCta('guide_pipeline', '/features/candidate-pipeline')}>
+              {t('public.marketing.common.related.candidate_pipeline', { defaultValue: 'Candidate pipeline' })}
+            </Link>
+            <Link to="/features/document-control" className="btn-secondary btn-sm" onClick={() => trackCta('guide_document_control', '/features/document-control')}>
+              {t('public.marketing.common.related.document_control', { defaultValue: 'Document control' })}
+            </Link>
+            <Link to="/use-cases/trucking-recruitment" className="btn-secondary btn-sm" onClick={() => trackCta('guide_trucking', '/use-cases/trucking-recruitment')}>
+              {t('public.marketing.common.related.trucking_recruitment_use_case', { defaultValue: 'Trucking recruitment use-case' })}
+            </Link>
+            <Link to="/use-cases/high-volume-onboarding" className="btn-secondary btn-sm" onClick={() => trackCta('guide_high_volume', '/use-cases/high-volume-onboarding')}>
+              {t('public.marketing.common.related.high_volume_onboarding', { defaultValue: 'High-volume onboarding' })}
+            </Link>
+            <Link to="/comparison/hostflow-vs-spreadsheets" className="btn-secondary btn-sm" onClick={() => trackCta('guide_vs_spreadsheets', '/comparison/hostflow-vs-spreadsheets')}>
+              {t('public.marketing.common.related.hostflow_vs_spreadsheets', { defaultValue: 'HostFlow vs spreadsheets' })}
+            </Link>
+            <Link to="/comparison/recruitment-crm-vs-ats" className="btn-secondary btn-sm" onClick={() => trackCta('guide_crm_vs_ats', '/comparison/recruitment-crm-vs-ats')}>
+              {t('public.marketing.common.related.crm_vs_ats', { defaultValue: 'Recruitment CRM vs ATS' })}
+            </Link>
           </div>
         </section>
 

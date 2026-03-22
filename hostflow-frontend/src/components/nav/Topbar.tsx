@@ -38,9 +38,11 @@ type TopbarProps = {
   tenant: TenantTopbarSummary | null
   onLogout: () => void
   onToggleSidebar: () => void
+  compact?: boolean
 }
 
 const SUPPORTED_LOCALES: LocaleCode[] = ['ru', 'en', 'pl']
+const SEARCH_SHORTCUT_HINT = '\u2318K'
 
 const RESULT_LABEL_KEYS: Record<GlobalSearchResult['type'], string> = {
   candidate: 'app.topbar.search.results.candidate',
@@ -57,7 +59,37 @@ function humanizeEventType(eventType: string): string {
     .replace(/^\w/, (c) => c.toUpperCase())
 }
 
-export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
+/** UOS notification groups (top bar attention center). */
+type NotificationUosGroup = 'sla' | 'tasks' | 'messages' | 'system'
+
+function getNotificationUosGroup(item: NotificationItem): NotificationUosGroup {
+  const et = String(item.event_type || '').toLowerCase()
+  const payload = (item.payload || {}) as Record<string, unknown>
+  const source = String(payload.source || '').toLowerCase()
+
+  if (et === 'communications_sla_overdue') return 'sla'
+  if (et === 'lead_no_next_action' || et === 'lead_stuck_stage') return 'sla'
+  if (et === 'invoice_overdue' || source.includes('invoice_overdue')) return 'sla'
+  if (
+    source === 'leads_next_action_sla' ||
+    source === 'leads_stuck_stage_sla' ||
+    source === 'invoice_overdue_sla'
+  ) {
+    return 'sla'
+  }
+
+  if (et === 'reminder_due' || et === 'reminder_overdue') return 'tasks'
+  if (source === 'reminders') return 'tasks'
+
+  const threadId = payload.thread_id
+  if (threadId != null && String(threadId).trim() !== '') return 'messages'
+  if (et.includes('communication')) return 'messages'
+  if (et.includes('inbound') && (et.includes('email') || et.includes('message'))) return 'messages'
+
+  return 'system'
+}
+
+export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false }: TopbarProps) {
   const navigate = useNavigate()
   const { can } = usePermissions()
   const { locale, setLocale, t } = useI18n()
@@ -65,7 +97,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
   const { notify } = useToast()
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifItems, setNotifItems] = useState<NotificationItem[]>([])
-  const [notifFeedMode, setNotifFeedMode] = useState<'all' | 'sla' | 'events'>('all')
+  const [notifFeedMode, setNotifFeedMode] = useState<'all' | NotificationUosGroup>('all')
   const [notifLoading, setNotifLoading] = useState(false)
   const [notifError, setNotifError] = useState<string | null>(null)
   const notifRef = useRef<HTMLDivElement | null>(null)
@@ -121,12 +153,16 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
     const eventType = String(item.event_type || '').toLowerCase()
     const severity = String(payload.severity || '').toLowerCase()
     const requiresAction = Boolean(payload.requires_action)
+    const group = getNotificationUosGroup(item)
     let score = 0
     if (requiresAction) score += 100
+    if (group === 'sla') score += 90
     if (eventType === 'communications_sla_overdue') score += 90
     if (severity === 'high') score += 40
     else if (severity === 'medium') score += 20
     else if (severity === 'low') score += 5
+    if (group === 'tasks') score += 15
+    if (group === 'messages') score += 10
     return score
   }
 
@@ -195,21 +231,18 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
     return raw
   }
 
-  const isSlaNotification = (item: NotificationItem): boolean =>
-    String(item.event_type || '').trim().toLowerCase() === 'communications_sla_overdue'
+  const unreadByGroup = useMemo(() => {
+    const acc: Record<NotificationUosGroup, number> = { sla: 0, tasks: 0, messages: 0, system: 0 }
+    for (const i of notifItems) {
+      if (i.is_read) continue
+      acc[getNotificationUosGroup(i)] += 1
+    }
+    return acc
+  }, [notifItems])
 
-  const slaUnreadCount = useMemo(
-    () => notifItems.filter((i) => !i.is_read && isSlaNotification(i)).length,
-    [notifItems],
-  )
-  const eventsUnreadCount = useMemo(
-    () => notifItems.filter((i) => !i.is_read && !isSlaNotification(i)).length,
-    [notifItems],
-  )
   const visibleNotifItems = useMemo(() => {
-    if (notifFeedMode === 'sla') return notifItems.filter((i) => isSlaNotification(i))
-    if (notifFeedMode === 'events') return notifItems.filter((i) => !isSlaNotification(i))
-    return notifItems
+    if (notifFeedMode === 'all') return notifItems
+    return notifItems.filter((i) => getNotificationUosGroup(i) === notifFeedMode)
   }, [notifFeedMode, notifItems])
 
   useEffect(() => {
@@ -446,11 +479,19 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
 
   return (
     <>
-      <header className="relative z-50 flex h-16 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 shadow-sm sm:px-4 lg:px-6">
+      <header
+        className={[
+          'relative z-50 flex items-center justify-between gap-2 border-b border-slate-200 bg-white shadow-sm',
+          compact ? 'h-14 px-2 sm:px-3 lg:px-4' : 'h-16 px-3 sm:px-4 lg:px-6',
+        ].join(' ')}
+      >
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
             type="button"
-            className="rounded-md p-2 text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className={[
+              'rounded-md text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
+              compact ? 'p-1.5' : 'p-2',
+            ].join(' ')}
             aria-label={t('app.topbar.actions.open_menu')}
             onClick={onToggleSidebar}
           >
@@ -459,7 +500,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
           <img
             src="/logo_hf.svg"
             alt="HostFlow"
-            className="h-8 w-auto sm:h-9"
+            className={compact ? 'h-7 w-auto sm:h-8' : 'h-8 w-auto sm:h-9'}
             loading="lazy"
           />
           {isTrialTenant ? (
@@ -508,10 +549,13 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
           )}
           <button
             type="button"
-            className="hidden items-center gap-2 rounded-md border border-slate-200 px-4 py-2 text-sm text-slate-600 transition hover:bg-slate-50 lg:inline-flex"
+            className={[
+              'hidden items-center gap-2 rounded-md border border-slate-200 px-4 text-sm text-slate-600 transition hover:bg-slate-50 lg:inline-flex',
+              compact ? 'py-1.5' : 'py-2',
+            ].join(' ')}
             onClick={() => setSearchOpen(true)}
           >
-            <span className="text-slate-400">⌘K</span>
+            <span className="text-slate-400">{SEARCH_SHORTCUT_HINT}</span>
             <span>{t('app.topbar.search.open')}</span>
           </button>
 
@@ -521,7 +565,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
           <div className="relative hidden sm:block" ref={langRef}>
             <button
               type="button"
-              className="inline-flex items-center rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold uppercase text-slate-700 transition hover:bg-slate-50"
+              className={[
+                'inline-flex items-center rounded-md border border-slate-200 px-3 text-sm font-semibold uppercase text-slate-700 transition hover:bg-slate-50',
+                compact ? 'py-1.5' : 'py-2',
+              ].join(' ')}
               onClick={openLang}
               aria-haspopup="menu"
               aria-expanded={langOpen}
@@ -584,7 +631,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                 <button
                   type="button"
                   className="relative rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50"
-                  aria-label={t('app.topbar.actions.reminders')}
+                  aria-label={t('app.topbar.actions.notifications', { defaultValue: 'Notifications' })}
                   onClick={toggleNotifications}
                 >
                   <IconBell size={20} stroke={1.8} />
@@ -599,13 +646,14 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                   <div className="absolute right-0 top-10 z-50 w-[min(96vw,34rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                     <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">{t('app.reminders.title')}</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {t('app.topbar.notifications.title', { defaultValue: 'Notifications' })}
+                        </p>
                         <p className="text-xs text-slate-500 break-words">
                           {notifLoading
                             ? t('common.loading')
-                            : t('app.reminders.subtitle', {
+                            : t('app.topbar.notifications.subtitle', {
                                 values: {
-                                  scope: t('app.reminders.scope_labels.all'),
                                   total: notifItems.length,
                                   unread: notifItems.filter((i) => !i.is_read).length,
                                 },
@@ -614,10 +662,17 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                         {!notifLoading && (
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                              {t('app.sla_incidents.title')}: {slaUnreadCount}
+                              {t('app.topbar.notifications.groups.sla', { defaultValue: 'Urgent (SLA)' })}: {unreadByGroup.sla}
+                            </span>
+                            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                              {t('app.topbar.notifications.groups.tasks', { defaultValue: 'Tasks' })}: {unreadByGroup.tasks}
+                            </span>
+                            <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">
+                              {t('app.topbar.notifications.groups.messages', { defaultValue: 'Messages' })}:{' '}
+                              {unreadByGroup.messages}
                             </span>
                             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                              {t('app.reminders.states.unread', { defaultValue: 'Unread' })}: {notifItems.filter((i) => !i.is_read).length}
+                              {t('app.topbar.notifications.groups.system', { defaultValue: 'System' })}: {unreadByGroup.system}
                             </span>
                           </div>
                         )}
@@ -652,7 +707,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                           ].join(' ')}
                           onClick={() => setNotifFeedMode('all')}
                         >
-                          {t('app.reminders.scopes.all', { defaultValue: 'All' })} ({notifItems.length})
+                          {t('app.topbar.notifications.groups.all', { defaultValue: 'All' })} ({notifItems.length})
                         </button>
                         <button
                           type="button"
@@ -662,17 +717,39 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                           ].join(' ')}
                           onClick={() => setNotifFeedMode('sla')}
                         >
-                          {t('app.sla_incidents.title')} ({slaUnreadCount})
+                          {t('app.topbar.notifications.groups.sla', { defaultValue: 'Urgent (SLA)' })} ({unreadByGroup.sla})
                         </button>
                         <button
                           type="button"
                           className={[
                             'rounded-md px-2.5 py-1 text-[11px] font-medium',
-                            notifFeedMode === 'events' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+                            notifFeedMode === 'tasks' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800 hover:bg-amber-200',
                           ].join(' ')}
-                          onClick={() => setNotifFeedMode('events')}
+                          onClick={() => setNotifFeedMode('tasks')}
                         >
-                          {t('app.reminders.tabs.events', { defaultValue: 'Events' })} ({eventsUnreadCount})
+                          {t('app.topbar.notifications.groups.tasks', { defaultValue: 'Tasks' })} ({unreadByGroup.tasks})
+                        </button>
+                        <button
+                          type="button"
+                          className={[
+                            'rounded-md px-2.5 py-1 text-[11px] font-medium',
+                            notifFeedMode === 'messages'
+                              ? 'bg-sky-600 text-white'
+                              : 'bg-sky-100 text-sky-800 hover:bg-sky-200',
+                          ].join(' ')}
+                          onClick={() => setNotifFeedMode('messages')}
+                        >
+                          {t('app.topbar.notifications.groups.messages', { defaultValue: 'Messages' })} ({unreadByGroup.messages})
+                        </button>
+                        <button
+                          type="button"
+                          className={[
+                            'rounded-md px-2.5 py-1 text-[11px] font-medium',
+                            notifFeedMode === 'system' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
+                          ].join(' ')}
+                          onClick={() => setNotifFeedMode('system')}
+                        >
+                          {t('app.topbar.notifications.groups.system', { defaultValue: 'System' })} ({unreadByGroup.system})
                         </button>
                       </div>
                     </div>
@@ -688,8 +765,12 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                           : ''
                         const title = getNotificationTitle(item)
                         const isHandoff = item.event_type === 'handoff_requested' || item.event_type === 'handoff_accepted'
-                        const isSla = item.event_type === 'communications_sla_overdue'
+                        const uosGroup = getNotificationUosGroup(item)
                         const description = getNotificationDescription(item)
+                        const threadId =
+                          typeof (item.payload as any)?.thread_id === 'string'
+                            ? String((item.payload as any).thread_id).trim()
+                            : ''
                         return (
                           <div
                             key={item.id}
@@ -701,13 +782,21 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                             <div className="flex min-w-0 items-start justify-between gap-2">
                               <div className="min-w-0 space-y-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  {isSla ? (
+                                  {uosGroup === 'sla' ? (
                                     <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                                      {t('app.sla_incidents.title')}
+                                      {t('app.topbar.notifications.groups.sla', { defaultValue: 'Urgent (SLA)' })}
+                                    </span>
+                                  ) : uosGroup === 'tasks' ? (
+                                    <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                                      {t('app.topbar.notifications.groups.tasks', { defaultValue: 'Tasks' })}
+                                    </span>
+                                  ) : uosGroup === 'messages' ? (
+                                    <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">
+                                      {t('app.topbar.notifications.groups.messages', { defaultValue: 'Messages' })}
                                     </span>
                                   ) : (
                                     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                                      {t('app.reminders.tabs.events')}
+                                      {t('app.topbar.notifications.groups.system', { defaultValue: 'System' })}
                                     </span>
                                   )}
                                   <p className="max-w-full break-words text-sm font-semibold leading-snug text-slate-900 line-clamp-2">{title}</p>
@@ -730,7 +819,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                                     })}
                                   </button>
                                 )}
-                                {isSla && (
+                                {uosGroup === 'sla' && (
                                   <button
                                     type="button"
                                     className="mt-1 text-xs font-medium text-rose-700 hover:text-rose-800"
@@ -742,6 +831,30 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                                     {t('app.notifications.open_sla_incidents', {
                                       defaultValue: 'Открыть SLA-инциденты',
                                     })}
+                                  </button>
+                                )}
+                                {uosGroup === 'messages' && threadId && (
+                                  <button
+                                    type="button"
+                                    className="mt-1 text-xs font-medium text-sky-700 hover:text-sky-800"
+                                    onClick={() => {
+                                      setNotifOpen(false)
+                                      navigate(`/app/communications/threads/${encodeURIComponent(threadId)}`)
+                                    }}
+                                  >
+                                    {t('app.topbar.notifications.open_thread', { defaultValue: 'Open thread' })}
+                                  </button>
+                                )}
+                                {uosGroup === 'tasks' && (
+                                  <button
+                                    type="button"
+                                    className="mt-1 text-xs font-medium text-amber-800 hover:text-amber-900"
+                                    onClick={() => {
+                                      setNotifOpen(false)
+                                      navigate('/app/tasks')
+                                    }}
+                                  >
+                                    {t('app.reminders.actions.open_page')}
                                   </button>
                                 )}
                               </div>
@@ -782,7 +895,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar }: TopbarProps) {
                           className="text-sm font-semibold text-slate-700 hover:text-slate-800"
                           onClick={() => {
                             setNotifOpen(false)
-                            navigate('/app/reminders')
+                            navigate('/app/tasks')
                           }}
                         >
                           {t('app.reminders.actions.open_page')}
@@ -981,7 +1094,7 @@ function CandidatesMenuButton({ t }: { t: (key: string) => string }) {
     <button
       type="button"
       onClick={handleClick}
-      className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
+      className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
       title={sidebarOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
       aria-label={sidebarOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
     >

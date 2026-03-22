@@ -4,6 +4,7 @@ import { useI18n } from '../../i18n'
 import type { UUID } from '../../api/types'
 import { getRodoStatus, sendRodo } from '../../api/legalDocuments'
 import { formatDateTime } from '../../utils/dateFormat'
+import { explainWhyRodoNotSentYet } from '../../utils/contactAttemptRodoHints'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 
 interface CandidateRodoSectionProps {
@@ -134,9 +135,17 @@ function CandidateRodoSection({ candidateId, onSent, refreshTrigger = 0 }: Candi
               ? t('common.sending')
               : t('app.candidate_card.rodo.send_btn')}
           </button>
-          {!status.can_send && (
-            <p className="mt-1 text-xs text-slate-500">
-              {t('app.candidate_card.rodo.no_email')}
+          {!status.can_send ? (
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-amber-900/95">
+              {explainWhyRodoNotSentYet(status, t).map((line, idx) => (
+                <li key={idx}>{line}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-xs text-slate-600">
+              {t('app.candidate_card.rodo.ready_to_send_hint', {
+                defaultValue: 'You can send the RODO information email from here.',
+              })}
             </p>
           )}
         </div>

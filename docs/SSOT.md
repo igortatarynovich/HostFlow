@@ -12,6 +12,16 @@ Rules:
 - No new “tracker” markdown files should be added elsewhere.
 - Supporting docs like specs/blueprints may exist, but they are **not trackers**.
 
+### Working from any git branch
+
+`docs/SSOT.md` is **one file in the repo** — the same path on **every** branch. Treat it like shared code: edit it on your feature branch, merge/rebase as usual; there is no separate “SSOT branch” or secret tracker.
+
+- **Wording:** describe **product/code state** in branch-neutral terms (what is shipped, what is open, which paths). Avoid “only on `feature/…`” unless you also state whether it is merged to the integration branch you care about.
+- **Backlog / checkboxes:** open work is **global** to the product, not owned by a branch. Add or tick items here instead of leaving status only in PR descriptions.
+- **Merge conflicts:** resolve by **keeping both** substantive updates when possible (combine backlog lines, preserve distinct `[ ]` items). Do not drop the other side’s factual changelog or open tasks without reading them. Prefer **dated** statements over “latest wins” guessing.
+- **Change log:** **append** new dated bullets; do not rewrite or delete historical entries to “clean up” during a merge — that breaks auditability across branches.
+- **Code pointers:** use **stable paths** (e.g. `hostflow-frontend/src/...`) so the doc stays valid after merges; avoid line-number-only references when the surrounding section is volatile.
+
 ---
 
 ## Requirements sources (non-tracker)
@@ -22,7 +32,7 @@ Rules:
 
 ---
 
-## Current status (2026-03-17)
+## Current status (2026-03-22)
 
 ### Product readiness
 
@@ -31,7 +41,9 @@ Rules:
 
 ### Evidence (latest)
 
+- **Party + client workspace + services scoped URLs** (see section *Party model + client workspace + services deep links* below): shipped in app code; treat as canonical CRM/services UX for client companies until SSOT says otherwise.
 - **Frontend static gate**: `npm --prefix hostflow-frontend run qa:static` → **PASS**
+- **Production `vite build`**: default `npm run build` sets **`HOSTFLOW_LOW_MEM_BUILD=1`** + **`NODE_OPTIONS=--max-old-space-size=2048`**, no `experimentalMinChunkSize`. **`manualChunks`** only isolates **`@tabler/icons*`** (safe for React). Lazy bundles: CRM split into **`routeBundleCrmCore` / `routeBundleServices` / `routeBundleCrmMore`** plus other `src/app/routeBundles/*` — снижает пик RAM при `rendering chunks`. Для мощной машины: `npm run build:fast` (без low-mem I/O cap).
 - **Staging scenario automation (A/B/C)**: Playwright+API run artifacts exist (local evidence used during stabilization).
 - **Key fixes implemented** (high-level):
   - module visibility gating enforced via tenant module flags + effective role-module matrix
@@ -47,25 +59,18 @@ Rules:
 ### `docs/pipe.md` (product blueprint)
 
 - **Implemented / aligned**
-  - Topbar/Sidebar/Workspace layout exists and is used consistently.
-  - “Visible next action” is enforced operationally via reminders/next steps, and leads now create follow-up actions on processing.
-  - Minimal-click paths and empty-state guidance exist for key modules (measured/verified during stabilization).
-  - Global search exists (candidates/companies/documents).
-  - Document intelligence + compliance rulesets exist (completeness/expiry/missing, rules engine + ruleset versions).
-
-- **Partial / not yet proven as a first-class UX pattern (needs explicit product sign-off)**
-  - Candidate **quick preview side panel** for list workflows (fast context without navigation).
-  - A unified, always-available **timeline** for candidate/entity history (single chronological context surface).
-  - Explicit performance budgets in the doc (e.g. 200ms/100ms) are not captured as formal perf evidence in this SSOT.
+  - Shell layout (Topbar/Sidebar/Workspace); empty states; global search (candidates/companies/documents).
+  - Next action: reminders + leads follow-up; candidates **list preview** (work panel) with Composer/Focus/**History** (`GET /candidates/{id}/timeline`); **`/app/candidates/no-next-action`** view.
+  - Document intelligence + compliance rulesets; stage-aware pipeline gates and overrides (see **§3) Stage-based pipeline blockers** below).
+- **Still open vs pipe.md (tracked in Backlog)**
+  - **Command center v2** (R1.5): opinionated list defaults, tab-less card timeline, work-panel API — preview is triage, not full card parity.
+  - **Perf evidence** vs aggressive numeric targets in `pipe.md` (baseline exists; formal budgets — see R4).
 
 ### `docs/pipedesign.md` (landing/SEO/design system)
 
 - **Implemented / aligned**
-  - Public surface exists: `/`, `/pricing`, `/signup`, `/login`, feature/use-case/comparison pages.
-  - SEO meta system exists (`useSeoMeta`) and sitemap generation is part of the build/static gate.
-
-- **Partial**
-  - Design tokens (exact radii/spacing/color specs) need a single verified “tokens source” and a quick visual audit pass to confirm 1:1 alignment.
+  - Public routes, SEO meta (`useSeoMeta`), sitemap in static gate.
+  - **Tokens:** Tailwind `brand.*` + typography aligned to `pipedesign.md` (primary `#3FA3A8`, accent `#2E6F74`, section bg `#F4F8F9`; Inter canonical). Further drift checks = optional visual regression pass.
 
 ---
 
@@ -77,15 +82,16 @@ Rules:
   - Definition: execute run-sheet for scenario A in production and capture final PASS evidence.
   - Output: inline evidence block in this SSOT (timestamp, tenant, steps, result, and pointers to logs/screens where applicable).
 
-### Product gaps vs blueprint (pipe.md)
+### Product / architecture gaps (summary)
 
-- [ ] Implement and sign off **Candidate quick preview** (side panel) to reduce clicks in list workflows.
-- [ ] Implement and sign off **Candidate timeline** as a single unified history surface (events/documents/communications/reminders).
-- [ ] Add a minimal **performance evidence pack** for key screens (list load, open detail, create/send) to match blueprint expectations.
+- [ ] **UOS / IA:** close gaps in *Operating model* + *Screen-by-screen* (unified Inbox incl. email, Unlinked queue, Tasks sort-by-SLA, escalation, client pipeline auto-activities, notification badge tiers, optional default **Tasks** landing, full target sidebar) — see gap table under **Unified Operations System**.
+- [ ] **Candidates command center v2** (R1.5 below): efficiency-first table + card; product sign-off on “daily loop” vs `pipe.md`.
+- [ ] **Services module v2** (R3.3): sell → fulfill → invoice → collect + analytics.
+- [ ] **Performance:** extend evidence beyond current baseline (R4) if `pipe.md` numeric targets become contractual.
 
-### Marketing/SEO/design gaps vs `pipedesign.md`
+### Marketing/SEO/design vs `pipedesign.md`
 
-- [x] Confirm **design tokens** (spacing/radius/colors/typography) are implemented as a single source (and remove drift). (aligned Tailwind `brand.*` palette and base typography with `docs/pipedesign.md`: primary `#3FA3A8`, accent `#2E6F74`, section bg `#F4F8F9`; removed competing body font override so Inter is canonical)
+- [x] **Design tokens** baseline aligned (see Audit section).
 
 ### Hygiene / repo policy (must stay enforced)
 
@@ -93,11 +99,16 @@ Rules:
 - [ ] Ensure **no** `node_modules/` content is committed
 - [ ] Keep artifacts (screenshots/json) out of git; store externally if needed
 
+**Detailed tickets:** *Expanded backlog (R0–R4)* later in this file.
+
 ---
 
 ## Change log (SSOT-managed)
 
-- `2026-03-17`: Consolidated SSOT created (`docs/SSOT.md`). Legacy trackers and scattered run-records should be removed; all future updates go here.
+- `2026-03-22` (**Product / engineering**): Party + client workspace + services deep links; **UOS v1** — Tasks hub, Inbox context rail + linking, `/activities` + SLA projection, Topbar notification groups, `uos_auto_activities` + inbound reply task (+ refresh/dedupe). SSOT: Operating model + Screen-by-screen architecture. **Email:** `incomingEnabled` wired from setup; inbox banner + sync; threads `channel=email` → `/app/email` (not Messages); IMAP default `UNSEEN`.
+- `2026-03-22` (**SSOT maintenance**): Deduplicated UOS (single nav/UX pointer to Screen-by-screen), compressed shipped Steps 1–7 + M1–M4 into snapshots, merged contradictory pipe.md/preview backlog items, collapsed stage-gate implementation treatise into shipped summary + code pointers, removed duplicate Pipedrive-audit checklist, aligned Roadmap with Expanded backlog.
+- `2026-03-22` (**SSOT policy**): Added **Working from any git branch** — same `docs/SSOT.md` on all branches; neutral wording; merge-conflict + append-only changelog rules.
+- `2026-03-17`: Consolidated SSOT created; single tracker policy.
 
 ---
 
@@ -120,25 +131,9 @@ Success definition:
 
 ## What is already strong (current strengths)
 
-### Workflow skeleton & readiness gates
-
-- The core modules exist and are connected: candidates/companies/vacancies/leads/documents/communications/reminders/billing.
-- Navigation and access governance are hardened (permissions, module gating, role/module matrix).
-- Communications workspace is coherent (messages/email/calendar/planner/availability) with operational settings.
-- Leads ingestion path is operational (source → lead → assignment → action) with retry semantics.
-
-### Compliance/document engine foundations (differentiator)
-
-- Candidate documents module has:
-  - required docs / templates / workflow steps
-  - readiness-like meta (completeness, expiring soon threshold, negative statuses)
-  - ruleset engine foundations (backend) and versions UI
-
-### Product-led UX scaffolding
-
-- Empty states provide explanation + CTA + next step across key surfaces.
-- Global search exists (candidates/companies/documents).
-- Static QA gate exists and is kept passing.
+- **Core CRM loop:** candidates, companies, vacancies, leads, documents, communications, Tasks (`/app/tasks`), billing — wired with permissions and module gating.
+- **Differentiator:** document/requirements engine, readiness meta, rulesets + versions UI.
+- **Operator UX:** empty states, global search, `qa:static` gate; many Pipedrive-parity items shipped — see **Expanded backlog** `[x]` rows and **Party model** section.
 
 ---
 
@@ -146,75 +141,15 @@ Success definition:
 
 This list is written as “problem → why it matters → what we do”.
 
-### 1) Candidates screen must become the “daily command center”
+### 1) Candidates “command center” vs `pipe.md`
 
-**Problem**
+**Shipped (v1):** list **work panel** (preview) with next action, docs summary, **History** = unified **timeline** API (`GET /candidates/{id}/timeline`), handoff shortcuts; **`/app/candidates/no-next-action`**.
 
-`docs/pipe.md` describes a Candidates screen pattern that creates daily flow: pipeline summary → filter → table → preview → act. Today, we have the parts, but we do not yet have a single “command center” experience that feels inevitable and frictionless.
+**Remaining:** **R1.5** — v2 table + card (timeline in rail, no tab dead-end, opinionated quick views, optional work-panel API). **P0:** preview **click-blocker** fix (see R1).
 
-**Why it matters**
+### 2) Next action + SLA (leads + candidates)
 
-In Pipedrive, the list view is where work happens. If HostFlow forces too many page navigations or hides action context, teams churn.
-
-**Solution direction**
-
-Implement the missing Pipedrive-grade loop:
-
-- **Quick preview side panel** (list → preview without navigation)
-- **Inline next action** visibility and editing
-- **Fast bulk operations** that remain discoverable but not noisy
-
-**Acceptance (must be measurable)**
-
-- From Candidates list, user can: open preview, see docs + next action + timeline, and perform a key action in **≤ 2 clicks** from the list.
-
-### 2) Unified timeline must be the “truth layer”
-
-**Problem**
-
-We have events scattered across modules: reminders, docs, comms, candidate changes. `pipe.md` expects a single chronological timeline that provides instant context.
-
-**Why it matters**
-
-Pipedrive’s history is a major retention driver. Without it, operational ownership is fragile and team handoffs break.
-
-**Solution direction**
-
-Create a unified timeline surface and event schema:
-
-- normalized event types (created, stage change, doc uploaded/checked/expired, message/email sent/received, reminder created/completed, assignment changes)
-- consistent rendering in candidate preview and candidate profile
-- link-outs to the object that generated the event
-
-**Acceptance**
-
-- A supervisor can open a candidate and reconstruct the last 14 days of actions in 30 seconds without hunting across tabs.
-
-### 3) “Next action” must be enforced, not optional
-
-**Problem**
-
-`pipe.md` frames “entity without next action = risk”. We partially enforce next action through reminders and lead follow-up, but we do not yet guarantee that candidates always have a next action and that stale/stuck states generate interventions.
-
-**Why it matters**
-
-Pipedrive’s activity enforcement is a key differentiator. HostFlow must do the same, but in a recruitment-native way.
-
-**Solution direction**
-
-- Candidate-level next-action contract:
-  - required for certain stages, optional for others
-  - SLA for “no next action” and “stuck in stage”
-- Automations:
-  - create initial tasks on candidate creation
-  - generate stage-based checklists/tasks
-  - stuck detection (e.g., >7 days) → warning + suggested action + optional auto-reminder
-
-**Acceptance**
-
-- “Candidates without next action” becomes a first-class view and a KPI.
-
-**Implementation (current)**
+**Partially shipped:**
 
 - Leads-first next action loop:
   - Leads list exposes `next_action_status` (`scheduled` / `overdue` / `no_next_action`) and `next_action_due_at`.
@@ -244,115 +179,45 @@ Pipedrive’s activity enforcement is a key differentiator. HostFlow must do the
   - `GET /api/v1/analytics/ops-counters` includes `leads_sla_no_next_action_reminders` (active assigned SLA reminders).
   - `GET /api/v1/analytics/ops-counters` includes `leads_sla_stuck_stage_reminders` (active assigned stuck-stage reminders).
 
-### 4) Automation must be event-driven and user-visible
+### 3) Stage-based pipeline blockers (documents & gates) — **shipped**
 
-**Problem**
+**Principle:** stage-scoped requirements (not global doc blocking on `new`); overrides with approval + audit; non-overridable legal types; vacancy + contact-attempt gates; soft vs hard doc stages.
 
-We have automations surfaces (queue routing, SLA, rulesets). But Pipedrive-grade automation is:
+**Code entry points:** `candidateStageDocPolicy.ts`, `stageOperationalHints.ts`, `candidate_doc_pipeline_guard.py`, `pipeline_overrides_*`, `hiring_pipeline_gates`, **`GET/PATCH .../hiring-pipeline-gates`**.
 
-- event-driven (trigger → action)
-- understandable (why did this happen?)
-- editable (simple UI)
+| Hiring OS plan area | Status |
+|---------------------|--------|
+| §1–2 Stage-based doc blockers | Done |
+| §3 Gates in data (`hiring_stage_gates_v1`) | Done; hints still mostly code (`stageOperationalHints.ts`) |
+| §4–6 Stage panel + next action | Done |
+| §7–11 Overrides / audit / badges | Done |
+| §12–13 Non-overridable + soft stages | Done |
 
-Today, “why did the system do X?” is not fully transparent.
+**Stretch:** tenant-editable **stage → hints** matrix; richer custom requirements beyond gates.
 
-**Why it matters**
+### 4) Automation explainability
 
-Automation without explainability creates mistrust. Mistrust kills adoption.
+**Shipped:** automation log API/UI + DB rules builder + triggers (see R2.1–R2.2). **Remaining:** deeper “why” on every surface (e.g. comms threads), richer actions, guardrails.
 
-**Solution direction**
+### 5) Operational reporting
 
-- Introduce an “Automation log” per candidate/company/thread:
-  - what rule fired, input conditions, actions executed, failures
-- A minimal “rules builder” scope:
-  - start with a narrow set of triggers (candidate created, stage changed, doc missing/expiring, lead processed)
-  - actions (assign, create reminder, send template message/email, set tag)
+**Shipped:** ops counters + drilldowns, stage metrics, goals/share (Overview + public share). **Remaining:** **R3.3** Services v2 analytics; optional extra widgets per `pipe.md`.
 
-**Acceptance**
+### 6) Performance governance
 
-- Any automated action has a visible audit entry and a “disable rule / adjust rule” pathway for admins.
-
-### 5) Reporting must become operational (not vanity)
-
-**Problem**
-
-`pipe.md` expects operational visibility: stage conversion, average stage time, drop-off reasons, top recruiter, time to hire. We have some analytics and a TTV report, but we need a coherent operational reporting stack.
-
-**Why it matters**
-
-Pipedrive sells and retains on “see what’s happening”. HostFlow must do this, but for recruitment operations (docs/compliance/time-to-ready).
-
-**Solution direction**
-
-- Define 8–10 canonical widgets and metrics:
-  - pipeline counts + stage time
-  - “ready drivers” readiness distribution
-  - missing docs hotspots (by doc type)
-  - expiring soon alerts
-  - time-to-ready/time-to-hire
-  - recruiter workload and throughput
-- Ensure each widget has a drill-down path (click → filtered list view).
-
-**Acceptance**
-
-- A team lead can start their day on Dashboard and open the top 3 operational issues in ≤ 2 clicks each.
-
-### 6) Performance & UX budgets must be explicit
-
-**Problem**
-
-`pipe.md` gives aggressive performance targets (200ms/100ms). We do not have a formal “perf evidence pack” or budgets in CI.
-
-**Why it matters**
-
-Speed is usability. Usability is retention.
-
-**Solution direction**
-
-- Define performance budgets (realistic web targets):
-  - list load p95, detail load p95, search latency, inbox fetch time
-- Add lightweight measurements:
-  - client-side timing beacons (already have analytics scaffolding)
-  - periodic manual profiling on staging
-
-**Acceptance**
-
-- SSOT contains a living perf baseline table (p50/p95) and alerts when regressions happen.
+**Shipped:** perf events, baseline + budgets on Overview, breach signals (R4). **Remaining:** expand coverage / CI if product requires stricter `pipe.md` numbers.
 
 ---
 
-## Roadmap (how we evolve HostFlow into “Pipedrive+”)
+## Roadmap (phases R0–R4)
 
-This roadmap is sequenced to maximize adoption impact and minimize architecture churn.
-
-### Phase R0 — Release-pass (production)
-
-- Production scenario A (`services`) on `victoria-services` with PASS evidence captured inline in this SSOT.
-
-### Phase R1 — Daily command center
-
-- Candidates: quick preview side panel + action loop from list.
-- Candidate timeline v1: unify events from docs + reminders + comms.
-- “Next action” contract: views and warnings.
-
-### Phase R2 — Explainable automation
-
-- Automation log (“why did it happen?”).
-- Small rules builder scope for the most valuable triggers/actions.
-
-### Phase R3 — Operational reporting
-
-- Dashboard widgets + drill-down paths.
-- Stage conversion/time-to-hire/readiness reporting.
-
-### Phase R4 — Performance governance
-
-- Perf budgets + baseline capture in SSOT.
-- Regression detection and response playbook.
+Phases map 1:1 to **Expanded backlog** below. **R1** preview/timeline/next-action v1 items are largely **done**; focus shifts to **R1.5**, **R3.3**, **release-pass R0**.
 
 ---
 
-## Backlog (expanded, actionable)
+## Expanded backlog (R0–R4)
+
+`[x]` = shipped; `[ ]` = open. (Pipedrive-audit extras — hovercards, stage-time, documents rail v2, bulk activities, templates — are covered by the `[x]` rows in **R1–R2** and candidate modules.)
 
 ### R0
 
@@ -372,6 +237,7 @@ This roadmap is sequenced to maximize adoption impact and minimize architecture 
   - Verified manually in browser + network (clicks trigger expected requests/actions).  
   **Temporary safeguard accepted:** keep column DnD disabled in Candidates list until blocker is fully resolved.  
   **Mandatory follow-up after fix:** restore and re-validate column DnD behavior (drag, resize, persisted order) without reintroducing click blocking.
+ **Implemented so far:** gated `pointer-events` on the right preview rail (off-screen click-through), ensured the table reserves space for the fixed rail, and removed horizontal negative margins when the rail is open to prevent any visual/hit overlap.
 
 - [x] **R1.1 Candidates quick preview side panel** (implemented in Candidates right sidebar: select row → Composer/Focus/History + reminders)
 - [x] **R1.2 Candidate unified timeline v1** (Candidates list preview side panel `History` tab: unified view of `ActivityLog` (candidate events) + reminders (created/completed), via `GET /api/v1/candidates/{id}/timeline`)
@@ -444,7 +310,7 @@ Turn Candidates into the primary “work surface” (not a registry), with a cle
 
 - **Phase C — Table v2 row model (efficiency + fewer columns)**
   - Create a **default compact row schema** and relegate niche fields to optional columns.
-  - Add “Row quick actions” (stage dropdown, reminder quick add, open card) with hover-only to keep noise low.
+  - Add “Row quick actions” (stage dropdown, reminder quick add, open card) with hover-only where appropriate; list row currently ships **Open / Preview** under the name (see implementation notes).
   - Keep power features (DnD/resize/custom columns) but make them secondary (via “Customize” mode).
 
 - **Phase D — Data shaping + performance**
@@ -458,7 +324,7 @@ Turn Candidates into the primary “work surface” (not a registry), with a cle
 **Acceptance (measurable)**
 
 - From Candidates list, for a selected candidate:
-  - create a reminder OR change stage OR start handoff in **≤ 2 clicks** without leaving the page.
+  - create a reminder OR start handoff in **≤ 2 clicks** without leaving the page; **stage / journey** on the **full card** (preview stays lightweight by design).
 - On CandidateCard:
   - user can see: stage, docs readiness, next action, and last 10 events **without switching tabs**.
 - Timeline:
@@ -466,12 +332,8 @@ Turn Candidates into the primary “work surface” (not a registry), with a cle
 
 **Implementation notes (where to change)**
 
-- Frontend:
-  - Candidates list: `hostflow-frontend/src/pages/Candidates.tsx` (split into smaller components + a `WorkPanel` module; isolate table state from panel state).
-  - Candidate card: `hostflow-frontend/src/pages/CandidateCard.tsx` (remove `timeline` tab; extract timeline renderer into shared component used by list + card).
-- Backend:
-  - Confirm/extend `GET /api/v1/candidates/{id}/timeline` payload for “recent events” and include enough metadata for inline rendering.
-  - Add (or formalize) a “work panel” endpoint (candidate summary + next action + docs readiness + recent timeline) to avoid N+1 fetches.
+- **Frontend:** `Candidates.tsx` + `hostflow-frontend/src/modules/candidates/components/*` — work panel hooks (`useCandidatesWorkPanel*`), left rail (`CandidatesLeftRailPanel`), keyboard nav, insights hero; list preview = **triage only** (no stage **PATCH** from rail — `app.candidates.preview.stage_scope_hint`). **Candidate card:** `CandidateCard.tsx` — remove dedicated **Timeline** tab when v2 ships; share timeline component with rail.
+- **Backend:** list insights aggregate `GET /candidates?include_insights=true`; extend **`/candidates/{id}/timeline`**; optional single **work panel** payload to cut N+1.
 
 ### R2
 
@@ -675,7 +537,8 @@ Goal: make `/app/services` a **fast operational workspace** for selling services
   - 4–6 KPIs max; each KPI is clickable (filter/drill-down)
   - quick actions: “New order”, “New service”, “Create invoice”
 - [x] Split Services UI into smaller components (Overview/Orders/Catalog/Billing tabs)
-- [ ] Keep existing endpoints; focus on UX and clarity first
+- [x] Deep links on Services: URL sync for `tab`, `order_id`, `company_id` (scoped orders + banner + client card round-trip)
+- [ ] Keep existing endpoints; focus on UX and clarity first (endpoints extended where needed: `include_metrics`, company filters — see Party section)
 
 #### Phase C — Billing inside Services (invoice-first integration)
 
@@ -705,6 +568,57 @@ Goal: make `/app/services` a **fast operational workspace** for selling services
   - “How much revenue/profit last 30/90 days?”
   - “What’s paid vs outstanding?”
   - “Which services/clients drive revenue?”
+
+#### Catalog usage metrics (API + UI)
+
+- `GET /api/v1/services?include_metrics=true` adds per–catalog-row aggregates from `service_items` ⨝ `service_orders`:
+  - **`metrics_orders_count`**: `COUNT(DISTINCT order_id)` where order status ≠ `cancelled` and line status ≠ `cancelled`
+  - **`metrics_revenue_completed`**: `SUM(line.amount)` where order status = `completed` and line status ≠ `cancelled`  
+  (numeric sum only; mixed currencies on one tenant are summed as numbers — documented on the schema.)
+- HostFlow UI: **Services → Catalog** requests metrics by default; table columns **Orders** / **Revenue (completed)**.
+
+---
+
+## Party model + client workspace + services deep links (implemented 2026-03-22)
+
+Single **Party** record for a client lives in **`companies`** (no duplicate client/employer tables). Recruiting and **additional services** revenue attach to the same company where applicable.
+
+### Data model (Alembic / ORM)
+
+- **`companies`**: `party_entity_type` (`company` | `person`), `party_business_roles` (`employer` | `service_client` | `both`), `client_stage` (pipeline codes, e.g. `new_lead` … `lost`), `client_source` (free text).
+- **`leads`**: `lead_type`; `company_id` required when type implies candidate-employer link (validated in API).
+- **`service_orders`**: canonical statuses `draft`, `confirmed`, `in_progress`, `completed`, `cancelled`, `on_hold`; optional `start_date` / `end_date`; legacy status values normalized at API boundary where needed.
+- **`invoices`**: optional `service_order_id` → `service_orders` (when present).
+
+### API — companies list & metrics
+
+- `GET /api/v1/companies` supports filters: `party_business_roles`, `client_stage`, `owner_user_id`, plus existing list filters.
+- `GET /api/v1/companies?include_service_metrics=true` adds per company (where implemented): **`service_active_orders`**, **`service_revenue_completed`** (from service orders for that `company_id`).
+
+### Frontend — client company card (`/app/clients/:id`, not operating profile)
+
+- **Workspace tabs** (query param **`ctab`**; default = overview when omitted):
+  - **`overview`**: relationship summary, vacancies widget, blocking service orders widget.
+  - **`orders`**: **Additional services** orders for this company (`GET /service-orders?company_id=`) + legacy **CRM / staffing order lines** editor (stored on company profile).
+  - **`invoices`**: `ClientInvoicesBlock` (list/create for this `company_id`).
+  - **`activity`**: created/updated metadata + shortcuts (invoices list with `company_id`, **Services** with `company_id`, vacancies list with `company` filter).
+  - **`profile`**: full company editor — base & Party fields, billing, contacts, legal, contracts, document policies, system block, etc.
+- Deep links **`?section=legal|billing|bank_accounts|branding`** force **`ctab=profile`** and scroll to matching `section-*` anchors.
+- i18n: `app.companies.party.*`, `app.companies.client_stage.*`, `app.companies.detail.workspace.*`, catalog metric labels under `app.services.catalog.table.*`.
+
+### Frontend — Services workspace (`/app/services`)
+
+- **`?tab=`** (`overview` | `orders` | `catalog` | `analytics` | `billing`) and **`?order_id=`** are read from the URL on load so shared links open the right tab and selected order.
+- **`?company_id=<uuid>`** (with **`tab=orders`** in links from CRM):
+  - applies **client drilldown** (company-scoped order list),
+  - prefills **new order** owner as that company,
+  - shows a **scope banner** (name from `GET /companies/:id`) with link back to **`/app/clients/:id`** and **Clear filter** (removes `company_id` from the query),
+  - clearing order-list drilldown to “all” while `company_id` is present also strips **`company_id`** from the URL to avoid hidden filters.
+- Client card **Orders** panel and **Activity → Services** use these query params consistently.
+
+### Spec cross-reference
+
+- Additional services domain tables and flows: `docs/specs/modules/additional_services.md` (status enum names in prose may lag; **SSOT + migration + API** win for canonical enums).
 
 ---
 
@@ -844,121 +758,229 @@ HostFlow takeaway:
 
 ---
 
-## Backlog additions (from live Pipedrive audit)
+## Unified Operations System (target architecture)
 
-- [x] **R1.4 Lead/Candidate side panel: Composer + Focus + History** (Pipedrive Leads Inbox pattern — implemented for Leads list with reminders-based Composer/Focus and metadata History)
-- [x] **R1.5 Hovercards** for candidate/company/user to reduce navigation cost
-- [x] **R1.6 Stage-time visualization** (days in stage) on candidate/vacancy pipeline entities
-- [x] **R1.7 Candidate card documents UX v2 (two-layer model)**  
-  Implemented in candidate card as:
-  - Right-rail **Quick Documents** panel for fast status + blockers + one-click upload/open.
-  - Preserved full **Document Center** access (not removed): opens full candidate documents workspace for approve/reject/edit/replace/delete, upload link generation, and profile export.
-  - Document Center drawer header now exposes explicit quick actions: `Upload link`, `Download candidate profile`, `Refresh`, plus inline display of the latest generated upload link + expiry.
-  - Document decision flow hardened in Document Center cards: uploaded-but-unverified docs are visually emphasized and surface explicit primary decisions (`Approve` / `Reject`) with a review-required hint.
-  - Pipeline gating tightened: candidate stage progression is blocked not only for missing/problematic docs, but also for uploaded-yet-unverified (`in_progress`) required docs.
-  - `Request documents` next action now also generates candidate upload link; once candidate has uploaded required docs and they remain unverified (`in_progress`), system auto-creates follow-up verification activity (`Verify uploaded documents`).
-  - Candidate card rail rebalanced for operators: activity moved to right rail (up to 5 visible with scroll), messages isolated into its own widget, edit control paired with red delete action, edit action auto-scrolls to candidate data section, and override reason switched to predefined dropdown options.
-  - Candidate header action model simplified: primary actions moved to hero (`Transfer to client`, `Edit`, `Delete`), with transfer modal (client picker), transfer timestamp lock (no repeat transfer), and removal of duplicated control/handoff actions from side rail.
-  - Side rail ordering updated for workflow scanning: `Notes` now renders before `Activity`.
-- [x] **R2.3 Activities bulk creation** from list views (Candidates bulk action “Create activity” → creates reminders in bulk via `POST /api/v1/reminders/bulk`)
-- [x] **R3.3 Goals system** (activity compliance + readiness) and dashboard sharing (added `/api/v1/analytics/goals` + Overview block; public share endpoint `/api/v1/public/goals/{share_token}` when tenant sharing is enabled)
-- [x] **Activity templates/types** (Call, Email, Document request, Follow-up): quick-type buttons in bulk-activity modal (Candidates + Leads); reminder `type` sent to API; defaults for title and reminder offset per template
+**Status:** product north star — not fully implemented in navigation/data model yet.  
+**Intent:** one operational center for attention, actions, and money — not a pile of disconnected screens.
+
+### Core model (three primitives)
+
+1. **Activity** — what must be done (SLA is a property of Activity, not a separate domain object).
+2. **Conversation** — where the interaction lives (replaces fragmented “Messages” + “Email” mentally; may remain multiple channels technically).
+3. **Notification** — what demands attention now (no full-page module; top bar: badge + grouped dropdown).
+
+**Calendar** is a **view** over Activities (meetings, calls, deadlines), not a second source of truth.
+
+### Navigation (shipped vs target)
+
+- **Target IA** (full sidebar: Dashboard, Core work, Business incl. Vacancies/Invoices/Documents/Leads, System Automations, unified Inbox, …): **Screen-by-screen system architecture** → § *Target sidebar + shell* + consolidation table.
+- **Shipped (v1):** **Tasks** `/app/tasks`; **Inbox** → `/app/messages`; **email** still **`/app/email`**; `/app/planner`, `/app/reminders`, `/app/activities` → redirects; **Calendar** `/app/calendar`; **SLA** incidents page; **Overview** + **Leads** remain in nav; Topbar **notification groups**.
+- **Still target:** one **Communication Center** shell for messages+email; availability/time-off not top-level daily modules.
+
+### Activity types (canonical)
+
+`call` | `message` | `email` | `meeting` | `task` | `follow_up` | `document_request`
+
+**Fields (target):** `related_to` (candidate | client | order), `assigned_to`, `status`, `due_date`, `sla_due_at`, `sla_status`, `priority`, plus provenance (manual / automation / comms).
+
+### Per-surface UX
+
+Target contracts (filters, columns, control room): **Screen-by-screen** § *Screen contracts (summary)*. **v1:** Messages page matches a **subset** (3-col + link rail); Tasks = my/team + SLA chip + filters; SLA page not yet full “Activity-derived control room” (see gap table).
+
+### Quick actions (everywhere)
+
+On Candidate / Client / Order surfaces: Call, Message, Request document, Create task, Schedule meeting — **all create Activities** (same pipeline as Tasks).
+
+### Automation (critical)
+
+System-generated Activities examples:
+
+- Candidate created → task: call candidate.
+- Inbound message → task: reply.
+- Order created → task: confirm.
+- Invoice created → task: follow payment.
+
+### UOS Steps 1–7 — v1 shipped (2026-03-22)
+
+**Reminder** = persisted Activity; **`GET /activities`** + **`assignee_scope`**; Inbox **3-column** + link company/order; IA **redirects** (planner/reminders/activities → calendar/tasks); **Tasks** hub; **`sla_due_at` / `sla_status`** + UI chip; Topbar **notification groups**; **`uos_auto_activities`** + inbound **`uos_inbound_reply`** (dedupe/refresh). **Remaining work** = *Honest gap* table + Screen-by-screen rollout (not re-listing steps here).
+
+### Current code pointers (today)
+
+- Nav items: `hostflow-frontend/src/app/routes.tsx` (`NAV_ITEMS`), shell grouping: `hostflow-frontend/src/components/nav/Sidebar.tsx`.
+- Messages / email pages: `CommunicationsMessagesPage`, `CommunicationsEmailInboxPage`; work queue: `RemindersPage` mounted at **`/app/tasks`**; legacy `ActivitiesPage` component unused by router (redirect only); `CommunicationsPlannerPage` retained in bundle, route redirects to calendar.
+- SLA: `CommunicationsSlaIncidentsPage`, settings `CommunicationsSlaSettingsPage`.
+
+### Relationship to Pipedrive+ milestones
+
+**M1–M4** are reference labels; much of **M1/M2/M3** scope is already in production (see **Expanded backlog** `[x]`). **M4** import/prefs/dedupe still open in places — see milestone snapshot below.
+
+### Operating model — full system interaction logic (target, production-ready)
+
+**How work is driven** and **how revenue path ties together**. **UOS Steps 1–7 v1** shipped; gaps = table below + IA in *Screen-by-screen*.
+
+**North-star principle:** the system is judged by **actions enforced**, not only by data stored. The baseline chain:
+
+`Event → Activity → SLA → Notification → Action → Outcome → Money`
+
+**Four cores (conceptual):**
+
+1. **Entity** — Candidate, Client (company), Order, Invoice, …
+2. **Conversation** — thread + channel (messages, email as integrated surface over time)
+3. **Activity** — persisted work item with owner, due, provenance (today: **`Reminder`** / activities API)
+4. **Control** — SLA + notifications + escalation policies
+
+**Event → Activity (target rule):** meaningful events (message, new candidate/client, order, invoice, stage change, …) should **materialize or refresh** an Activity so the queue never depends on the manager “remembering”.
+
+**Activity (target invariant):** always has **assignee**, **deadline**, and **SLA projection** (OK / warning / breach) where the type is time-bound.
+
+**If Activity is not completed:** SLA warning → breach → **notification** → **escalation** (per tenant policy); surfaced in **Tasks**, **SLA dashboard**, and **bell**.
+
+**Reference workflows (targets):**
+
+- **Lead / candidate:** create entity → auto Activities (e.g. call, intro) with **short SLA**; breach surfaces in Tasks + notifications.
+- **Manager opens Tasks:** sees overdue, SLA risk, today — **work is assigned**, not discovered by browsing Candidates/Clients/Orders (those screens support execution, not queue discovery).
+- **Completion:** mark Activity done → **next Activity** / pipeline update where rules apply.
+- **Inbox:** not “just chat”; each dialog should be **linked** to an entity, have **ops/SLA state**; message → conversation → **reply Activity**. **Unlinked** conversations are a **first-class queue** until linked (target UX).
+- **Order → money:** order → Activities (confirm, assign, schedule, …) → delivery → invoice → payment follow-up Activity; unpaid → SLA → notification → escalation.
+- **Client:** not only a directory — **pipeline + Activities + SLA** (e.g. “offer sent” → follow-up in N days).
+
+**SLA (target):** levels **OK / warning / breach** drive **sort order** (hotter = higher), notifications, escalation — not only color.
+
+**Notifications (target attention model):** tiered **CRITICAL** (SLA breach, unpaid invoice) / **HIGH** (overdue tasks, waiting reply) / **NORMAL** (new lead, new message); **badge** emphasizes critical+high; dropdown shows full feed.
+
+**Automation (target):** prefer **behavior** over screens — rule engine expresses: if *event* then *create/update Activity* with *SLA* (today: **`uos_auto_activities`**, communications scheduler, `automation_rules`, comms SLA — **converge** toward one explicit policy model).
+
+**Honest gap — target vs shipped (snapshot 2026-03-22):**
+
+| Target | Today |
+|--------|--------|
+| Every meaningful event → Activity | **Partial:** candidate, service order, invoice, inbound message (thread) via **`uos_auto_activities`**; not exhaustive (e.g. arbitrary stage changes, all email-only flows). |
+| Unified Inbox including email | **Partial:** **Messages** = non-email; **email** = `/app/email` (by design until unified thread list). |
+| Inbox “Unlinked” queue + mandatory link | **Partial:** linking panel **v1** (candidate, company, order meta); no dedicated **Unlinked** filter/work queue. |
+| Tasks sorted by SLA severity first | **Partial:** SLA **chip** + groups; not full **global sort-by-breach** as primary UX. |
+| SLA breach → unified escalation from Activities | **Partial:** comms SLA + reminders; **one** cross-domain escalation story still **M1/M4**. |
+| Client pipeline auto Activities | **Light / missing** as a systematic layer (vs candidate/order/invoice hooks). |
+| Notification badge = critical+high only | **Partial:** Topbar groups **v1**; badge policy not fully aligned to CRITICAL/HIGH spec. |
+| Default post-login = Tasks | **Not yet** (still `/app/overview` optional). |
+
+**Intended shift:** from “screens for each module” to **operations control** — the system proposes and pressures work; the manager **executes** the queue.
+
+### Screen-by-screen system architecture (target, final)
+
+This subsection is the **IA + screen contract** companion to *Operating model* above: same north star (**process engine** for recruitment, clients, services, money), but **route-by-route** so engineering and design do not ship unrelated pages.
+
+**Principle:** HostFlow is not a CRM directory or a pile of forms — it is a **process engine**. The universal spine:
+
+`Event → Activity → owner → due / SLA → surfaces in Tasks / Inbox / Calendar → pipeline advances`
+
+**Four cores (IA-facing names):**
+
+1. **Entity** — Candidate, Client/employer (party), Vacancy, Order, Invoice (and related).
+2. **Process** — pipeline stage, blockers, next action, overrides/approvals.
+3. **Work** — Activities, Inbox, Tasks, Calendar (Calendar = **view** over timed work, not a second truth).
+4. **Control** — SLA, notifications, approvals, automation.
+
+#### Consolidation — remove duplicate “daily” modules
+
+**Problem (to eliminate):** Messages, Email, Planner, Reminders, Availability, Time off, Activity, and Calendar partially duplicating planner each feel like separate products.
+
+**Target:** absorb into **Inbox**, **Tasks**, **Calendar**, **SLA**, and **settings** (user/team scheduling context). Standalone routes may remain technically but **must not** be first-class daily nav.
+
+| Remove as first-class module | Becomes part of |
+|-----------------------------|-----------------|
+| Planner, Reminders, Activity list | **Tasks** (+ Calendar as time view) |
+| Messages + Email as peers | **Inbox** (Communication Center) |
+| My / team availability, time off | **User profile**, **Calendar** filters, team workload — not top-level ops nav |
+| Weak standalone “SLA incidents” feel | **SLA dashboard** as **control room** over Activities |
+
+#### Target sidebar + shell (canonical)
+
+**Sidebar — Core workspace**
+
+1. Dashboard  
+2. Inbox  
+3. Tasks  
+4. Calendar  
+5. SLA  
+
+**Sidebar — Business**
+
+6. Candidates  
+7. Clients  
+8. Vacancies  
+9. Orders  
+10. Services  
+11. Invoices  
+12. Documents  
+13. Leads  
+
+**Sidebar — System**
+
+14. Automations  
+15. Settings (sub-areas: communication, workspace, users/roles; profile entry)
+
+**Top bar:** global search, notifications, **quick create**, workspace switcher, user menu.
+
+**Quick create (top bar):** Candidate, Client, Vacancy, Order, Task, Meeting, Invoice.
+
+**Reconciliation:** § *Navigation (shipped vs target)* above is the **minimal shipped slice**; this subsection is the **full target IA**. Until shipped, some routes stay combined (e.g. **Finance** vs **Invoices**) — track in top **Backlog**.
+
+#### Screen contracts (summary)
+
+- **Dashboard** — operational summary in ~5s: what is on fire, where money is, bottlenecks, first action. Sections: my urgent work (overdue, SLA breach, waiting replies, unpaid due), recruitment + client/revenue pipeline summaries, KPI cards, quick actions, recent activity / approvals / expiring docs / overdue invoices.
+- **Inbox** — single **Communication Center** (replaces separate Messages vs Email mental model). Three columns: list + filters (**Unassigned**, **Waiting reply**, **New**, **SLA risk**, **Closed**, **Linked / Unlinked**), thread + notes, **control panel** (linked entity, owner, status, SLA, quick actions: link, task, docs, order, schedule, escalate, close). No separate “email app” vs “messages app” for daily work.
+- **Tasks** — **primary execution engine** (not “reminders”). Filters: My, Team, Today, Overdue, Upcoming, High priority, SLA risk. Table: type, title, entity, stage/context, assignee, due, SLA, priority, status (`planned` / `in_progress` / `waiting` / `done` / `cancelled`). Actions: complete, reassign, snooze, open entity, escalate; optional drawer for quick creates.
+- **Calendar** — **only** a view of Activities (meetings, calls, deadlines, timed tasks, time off). Filters by user, type, entity, priority; scheduling respects availability. **Does not** duplicate Tasks as a second queue.
+- **SLA dashboard** — **control room** for ops/leads: overdue, at-risk, breached conversations, unassigned urgent, ignored critical; KPIs; table with actions (assign, reassign, escalate, resolve, open entity).
+- **Candidates list** — flow control, not a dumb table: table + pipeline counters + saved filters; columns include next action, blocking, docs, time in stage; **right preview** with summary, blockers, quick actions.
+- **Candidate card** — hero (stage, next step, move forward/back, override blocker); main: key info, timeline; sticky rail: next action, documents, blockers, quick actions, notes, related comms; tabs Overview / Documents / Services·Orders / History; stage-aware blockers and **approval** for overrides.
+- **Vacancies list & card** — same **operational** bar as candidates (vacancy = recruitment container): columns for pipeline distribution, blockers, last activity; card links candidates scoped to vacancy, headcount, bottleneck, next action.
+- **Clients list & card** — **party** with roles (employer, service client, both); pipeline + money signals; card emphasizes vacancies+candidates for employers, orders+invoices for service clients, both when mixed.
+- **Leads** — strong standalone **qualification** before Candidates/Clients; types candidate vs client; convert / reject / assign.
+- **Services catalog** — **templates** only (code, price, margin, usage, scheduling/VAT); not the execution surface.
+- **Orders** — full **process module** (status draft → confirmed → in progress → completed / cancelled); list + card with next action, invoice/payment blocks, SLA.
+- **Invoices** — **money control**: amounts, due, delay, follow-ups; Activities + SLA on overdue; quick actions (send, mark paid, follow-up, escalate).
+- **Documents** — **center** across candidate, client/legal, and generated service/invoice docs; expiring/missing filters; approve/reject/replace.
+- **Automations** — system **spine**: rules, hiring gates/stage requirements, notification rules, SLA policies, templates — not a peripheral screen.
+- **Communication settings** — under **Settings**: channels, accounts, templates, signatures, routing, assignment, SLA policies (not daily nav).
+- **Availability / time off** — **profile** + calendar/scheduling consumption; optional HR-lite requests — not top-level modules.
+- **Notifications** — **center only** (top bar): groups Urgent, Tasks, Messages, System, Finance; priority critical/high/normal; actions open, read, snooze, assign.
+- **Global search** — grouped results: candidates, clients, vacancies, orders, invoices, conversations, documents, tasks.
+
+#### Global next-action rule
+
+Every entity surface (table, preview, card) should expose **state, blockers, next action, owner, deadline/SLA** consistently.
+
+#### Reference scenarios (cross-screen)
+
+1. **Candidate path:** Lead → convert → auto call task → SLA → notification → stage/doc gates → Activities.  
+2. **Client + money path:** Lead → client → qualify → offer → contract → order → invoice → payment follow-up + SLA if overdue.  
+3. **Inbound comms:** thread in Inbox → unlinked queue → link + assign → Activity + SLA → escalate if stuck.
+
+#### Rollout order (IA / product)
+
+1. Lock **sidebar architecture** (this doc).  
+2. **Unified Inbox** (messages + email one center).  
+3. **Tasks** as execution hub (behaviors + sort/priority).  
+4. **Calendar** strictly as Activity view.  
+5. Strong **Vacancy** list + card.  
+6. **Clients** around pipeline + money.  
+7. **Orders + Invoices** as process + money control.  
+8. **Automations** as dedicated system module.  
+9. Remove **availability / time off** from first-level nav (absorb per above).
 
 ---
 
-## Implementation plan (next milestones to reach “Pipedrive+”)
+## Milestones M1–M4 (reference snapshot)
 
-This is the concrete plan that turns the “deltas” above into shippable increments. It is written to be executable: each item has a result, scope boundaries, and acceptance signals.
+Original milestone specs are archived in git history if needed. **Current truth:**
 
-### Milestone M1 — Activities become first-class (beyond reminders)
-
-**Goal**
-
-Make “activities” a core operational surface like in Pipedrive: schedule UX + calendar/list views + consistent linking, so “next action” is not a special-case reminder.
-
-**Scope**
-
-- Introduce an `Activity` entity (or evolve `Reminder` into an activity model) with:
-  - `type`, `title`, `due_at`, `duration_minutes`, `status` (planned/done/canceled), `owner_id`
-  - linking: `entity_type` + `entity_id` (lead/candidate/company/vacancy) and optional `company_id`
-  - source: manual / automation / communication-sync
-- UI surfaces:
-  - Create activity from list row, side panel, and detail pages
-  - Activity list view with filters (type, owner, status, due window)
-  - Calendar view (week/day) with conflict hints (at least for same owner)
-- Bulk creation uses templates as defaults (already done) and writes activities
-
-**Acceptance**
-
-- “Next action” is derived from the next planned activity (not a reminders-only shortcut).
-- Activity surfaces exist for Leads and Candidates and are consistent (same filters, same quick-create).
-- We can reliably answer: “what’s next”, “what’s overdue”, “what got done last week” per owner and per entity.
-
-### Milestone M2 — Leads inbox becomes a true qualification workspace
-
-**Goal**
-
-Match the Pipedrive Leads Inbox pattern: left = structured lead fields; right = Composer/Focus/History, with explicit conversion outcomes and bulk ops.
-
-**Scope**
-
-- Leads UI parity upgrades:
-  - Side panel “Focus” that highlights: next activity, overdue count, last activity, owner, SLA nudges
-  - Bulk edit key lead fields + bulk status change (keep enforcement on stage change only)
-  - “Convert” actions: lead → company/client + optionally create first vacancy/candidate context (per tenant mode)
-  - Duplicate detection and merge (basic: email/phone + name heuristic; ops review UI)
-- Backend:
-  - conversion endpoints with audit logs and idempotency
-  - duplicate candidates/companies/leads resolution strategy documented here
-
-**Acceptance**
-
-- Qualification loop is fast: lead → next activity → convert/archive with minimal navigation.
-- Conversions are audited and reversible where safe (soft delete / archive, not hard delete).
-
-### Milestone M3 — Reporting: operational + drill-down + benchmarks
-
-**Goal**
-
-Reach “Insights-grade” reporting: operational dashboards that answer “what’s broken now?” and “what changed over time?”, with drill-down and shareable views where appropriate.
-
-**Scope**
-
-- Add report primitives:
-  - saved filters (shareable internally)
-  - time-series for: created, converted, stage transitions, activity completion rate, SLA incidents
-  - cohort-style funnels for recruitment: lead→processed→candidate stages, time-to-ready distributions
-- Drill-down paths:
-  - every top KPI widget links to an item list filtered to the underlying cohort
-- Goals:
-  - per-team/per-owner activity compliance + readiness compliance goals
-  - weekly progress and alerting (in-app)
-
-**Acceptance**
-
-- Every “red widget” can be explained by a list of items (no dead-end dashboards).
-- Ops can answer in < 60 seconds: “why did our throughput drop this week?” using built-in slices.
-
-### Milestone M4 — Integrations & lifecycle hygiene (minimum viable “real CRM”)
-
-**Goal**
-
-Cover the boring-but-critical CRM mechanics that drive retention: import, dedupe, auditability, and operational guardrails.
-
-**Scope**
-
-- Import/export:
-  - CSV import for leads/candidates with mapping and validation
-  - export current filtered lists (CSV)
-- Lifecycle hygiene:
-  - archive vs delete semantics for all major entities
-  - strict audit log coverage for critical mutations (owner/stage/status/links)
-- Notifications:
-  - consistent notification taxonomy and user preferences (mute types, digests)
-
-**Acceptance**
-
-- A team can migrate in and keep data clean over months without “manual spreadsheets”.
+| Milestone | Intent | Status |
+|-----------|--------|--------|
+| **M1** Activities | Pipedrive-grade activity spine + calendar/list | **Largely shipped** via **Reminder** + `/activities` + Tasks + calendar + bulk/templates; optional future rename/evolve model. |
+| **M2** Leads inbox | Qualification workspace + convert + SLA | **Partially shipped** — side panel, fit-check, enforcement/SLA nudges; **duplicate merge** / heavy bulk still open. |
+| **M3** Reporting | Operational dashboards + drill-down | **Largely shipped** — ops counters, stage metrics, goals/share; **open:** Services analytics = **R3.3**. |
+| **M4** Hygiene | Import/export, dedupe, notification prefs | **Partial** — taxonomy/groups v1; **CSV import**, dedupe UX, digests/mute prefs TBD. |
 
 ---
 
@@ -1010,3 +1032,433 @@ Current public entry is `hostflow-frontend/src/pages/public/CrmLandingPage.tsx` 
   - p95 LCP < 2.5s on mid-tier mobile (or explicit budget we set) and no heavy JS regressions
 - **Quality**
   - Content is consistent with product truth (no claims we can’t demonstrate inside the app)
+
+---
+
+## Risk intelligence v1 (response-delay decay model)
+
+### Why this matters now
+
+HostFlow already enforces next action and SLA nudges, but we still mostly answer "what is overdue?" and not "what is likely to fail soon?".  
+For recruitment and sales-like workflows, delay itself is a strong predictive signal:
+
+- if a candidate was not contacted on day 0/1, motivation and conversion probability decay each day;
+- if a client did not receive a timely response, deal-close probability drops and cycle length increases.
+
+The goal of this section is to define a practical, rollout-safe way to move from rule-based alerts to risk-aware operations.
+
+### Conceptual model (simple and useful)
+
+Treat risk as a probability of negative outcome over a time horizon, updated whenever key events happen.
+
+- For candidates: risk of "won't reach target stage in X days" (e.g., not hired/not ready).
+- For leads/clients: risk of "won't close/won't advance to next milestone in X days".
+
+Minimum viable framing:
+
+- `p_success_now`: estimated probability to reach target outcome from current state.
+- `risk_score`: normalized urgency score 0..100 where higher means "intervene now".
+- `risk_drivers`: human-readable top reasons (e.g., "no first response for 36h", "7d in stage without movement", "2 overdue actions").
+
+### Core metric family (start here)
+
+Use a small metrics set first; each metric must be explainable and actionable.
+
+1. **Response latency metrics**
+   - `first_response_minutes`: time from entity creation/inbound event to first human response.
+   - `last_response_gap_hours`: now - last meaningful outbound/bi-directional touch.
+   - `inbound_unanswered_hours`: unanswered inbound age.
+
+2. **Action discipline metrics**
+   - `has_next_action` (bool)
+   - `next_action_overdue_hours`
+   - `overdue_actions_count_7d`
+
+3. **Flow stagnation metrics**
+   - `days_in_stage`
+   - `days_since_stage_change`
+   - `stage_reopen_count_30d` (stage ping-pong as friction signal)
+
+4. **Outcome context metrics**
+   - `current_stage` / `funnel_position`
+   - `owner_workload_open_items`
+   - `interaction_count_7d` (too low can indicate cold process)
+
+5. **Quality metrics (later, optional)**
+   - communication sentiment/quality proxy (if available)
+   - profile/data completeness index
+
+### Time-decay logic (the heart of the model)
+
+Use explicit decay curves so the system "understands" that each day of silence hurts odds.
+
+For each delay-sensitive signal, define a half-life:
+
+- `candidate_first_response_half_life_hours` (example: 24-36h)
+- `client_inbound_reply_half_life_hours` (example: 8-24h)
+- `stage_stagnation_half_life_days` (example: 5-10d depending on stage)
+
+Apply decay factor:
+
+- `decay(t, h) = 0.5^(t / h)` where `t` is delay and `h` is half-life.
+- As `t` grows, contribution to success falls smoothly and predictably.
+
+Practical interpretation:
+
+- at `t = h`: signal contribution drops by 50%;
+- at `t = 2h`: by 75%;
+- the model encodes "each day late reduces chance" without hard cliffs.
+
+### Risk score design (v1 transparent scoring, not black box)
+
+Start with weighted scoring instead of a complex ML model.
+
+Example v1 score:
+
+- `risk_score = clamp(0..100, w1*response_risk + w2*stagnation_risk + w3*action_risk + w4*context_risk)`
+- each component is normalized 0..100 and uses decay/time thresholds.
+- initial weights can be expert-defined, then calibrated on historical outcomes.
+
+Severity bands:
+
+- `0-34`: low (normal monitoring)
+- `35-64`: medium (show warning + suggested next best action)
+- `65-84`: high (escalate to owner + manager digest)
+- `85-100`: critical (immediate intervention workflow)
+
+### Suggested initial thresholds (to be tuned)
+
+These are rollout defaults, not final truth:
+
+- Candidate first response:
+  - medium risk after 24h
+  - high risk after 48h
+  - critical after 72h
+- Client inbound unanswered:
+  - medium after 4h (working hours)
+  - high after 12h
+  - critical after 24h
+- Stage stagnation:
+  - per-stage baseline SLA (e.g., qualified max 5d, interview max 7d, offer max 3d)
+  - risk grows after baseline breach, then accelerates with decay
+
+### Validation strategy when metrics are not finalized yet
+
+You can start now without perfect schema by using an iterative evidence loop.
+
+1. **Define target outcomes**
+   - Candidate: reached target stage/hired within horizon.
+   - Client/lead: advanced/closed-won within horizon.
+
+2. **Backfill baseline from existing logs**
+   - Use `ActivityLog`, reminders, stage changes, communication timestamps.
+   - Build a retrospective dataset for last 60-180 days.
+
+3. **Measure signal power**
+   - For each candidate signal, compute success rate by delay buckets:
+     - 0-24h, 24-48h, 48-72h, 72h+.
+   - If success declines monotonically with delay, keep the signal.
+
+4. **Calibrate thresholds and weights**
+   - Choose cutoffs that separate "healthy" vs "at risk" cohorts.
+   - Prefer stable, interpretable settings over overfitted precision.
+
+5. **Run shadow mode**
+   - Compute risk silently for 2-4 weeks.
+   - Compare predicted high-risk cohorts vs real outcomes before enforcement.
+
+### Product integration (where risk must appear)
+
+1. **List surfaces (Candidates/Leads/Services)**
+   - Add `risk_badge` (Low/Med/High/Critical) and sortable `risk_score`.
+   - Provide quick filter: `risk>=high`.
+
+2. **Work panel / Candidate card**
+   - Show top 3 `risk_drivers` with plain language.
+   - Add "recommended next action" generated from strongest driver.
+
+3. **Dashboard widgets**
+   - "Critical risk entities now"
+   - "Risk trend 7d/30d"
+   - "Intervention success rate" (high-risk rescued after action)
+
+4. **Automation log linkage**
+   - Every risk escalation must create a visible audit entry:
+     - why score changed,
+     - what rule triggered,
+     - what action was suggested/executed.
+
+### Automation policy (graduated response)
+
+Map risk bands to interventions:
+
+- Medium:
+  - owner notification + suggested playbook action
+- High:
+  - auto-create reminder with due soon + manager visibility
+- Critical:
+  - escalation to backup owner / team lead queue
+  - optional SLA breach incident counter
+
+Guardrails:
+
+- strict deduping windows to avoid alert spam;
+- cooldown after manual action;
+- "snooze with reason" to capture operator intent and improve model later.
+
+### Data contract additions (minimal)
+
+Add risk fields to key API outputs:
+
+- `risk_score: number (0..100)`
+- `risk_band: low|medium|high|critical`
+- `risk_updated_at: datetime`
+- `risk_drivers: string[]` (max 3-5)
+- `risk_version: string` (for traceability)
+
+Analytics additions:
+
+- `risk_distribution_by_stage`
+- `high_risk_volume`
+- `high_risk_success_rate` (rescued vs not rescued)
+- `time_to_first_response_distribution`
+
+### Governance and quality controls
+
+- **Versioned model configs** per tenant or segment (`risk_model_v1`, `risk_model_v1.1`).
+- **Explainability required**: no score without drivers.
+- **Fairness checks**: ensure risk is not proxying protected attributes.
+- **Operational KPI coupling**:
+  - `% entities with first response within SLA`
+  - `% high-risk touched within 24h`
+  - conversion uplift on previously high-risk cohort.
+
+### Phased rollout plan
+
+Phase A (2-3 weeks): instrumentation and baseline
+
+- unify timestamps/events needed for response and stage-gap metrics;
+- build retrospective risk table/job;
+- publish read-only analytics (no user-facing alerts yet).
+
+Phase B (2 weeks): shadow scoring + dashboard
+
+- calculate `risk_score` daily/hourly;
+- show risk widgets to ops leads only;
+- validate precision/recall on recent outcomes.
+
+Phase C (2-4 weeks): assisted operations
+
+- expose risk badge + drivers in list/card;
+- enable medium/high nudges and recommended next action;
+- no hard blocking yet.
+
+Phase D (after confidence): controlled enforcement
+
+- enable critical escalation automations;
+- optionally block sensitive stage transitions when risk is critical and no mitigation action exists (tenant-configurable).
+
+### Acceptance criteria (must be measurable)
+
+- For high-risk cohorts, median time-to-first-intervention improves by at least 30%.
+- `first_response_within_target` improves by at least 20% in pilot teams.
+- Conversion for previously high-risk entities improves vs pre-rollout baseline.
+- Less than 10% of risk alerts are marked as "noise" by operators after tuning period.
+
+### Immediate next step (this week)
+
+Run a focused discovery sprint and produce a one-page evidence table:
+
+- top 5 delay signals,
+- their bucketized success curves,
+- proposed half-lives and initial thresholds,
+- expected intervention policy per signal.
+
+After this, lock `risk_model_v1` config and start Phase A instrumentation.
+
+### Operational matrix: risk → signals → thresholds → automation (v1 draft)
+
+Use this matrix as the implementation-ready source for analytics, API fields, dashboard widgets, and automation rules.
+
+#### 1) Candidate engagement decay risk
+
+- **Risk definition**: candidate is losing motivation and likely to drop off before target stage.
+- **Primary signals**:
+  - `first_response_minutes`
+  - `last_response_gap_hours`
+  - `inbound_unanswered_hours`
+  - `interaction_count_7d`
+- **Initial thresholds**:
+  - medium: first response > 24h
+  - high: first response > 48h OR unanswered inbound > 24h
+  - critical: first response > 72h OR unanswered inbound > 48h
+- **Automation**:
+  - medium: notify owner + suggest "contact now with template X"
+  - high: auto-reminder due in 2h + manager digest entry
+  - critical: escalate to backup owner queue + incident tag `risk_engagement_critical`
+- **Success KPI**:
+  - `% first response within 24h`
+  - conversion from high-risk cohort vs baseline
+
+#### 2) Stage stagnation / bottleneck risk
+
+- **Risk definition**: entity is stuck in stage beyond healthy cycle and unlikely to progress without intervention.
+- **Primary signals**:
+  - `days_in_stage`
+  - `days_since_stage_change`
+  - `stage_reopen_count_30d`
+- **Initial thresholds**:
+  - stage baseline breach (per-stage SLA map) = medium
+  - baseline * 1.5 = high
+  - baseline * 2.0 = critical
+- **Automation**:
+  - medium: owner prompt with "next best action by stage"
+  - high: require overdue reason code (`waiting_client`, `waiting_docs`, `no_response`, `internal_block`)
+  - critical: auto-escalate to team lead board + force review task in 24h
+- **Success KPI**:
+  - median `days_in_stage` by stage
+  - stage transition rate after intervention
+
+#### 3) Next-action discipline risk
+
+- **Risk definition**: work is not operationally controlled; no clear next step exists.
+- **Primary signals**:
+  - `has_next_action`
+  - `next_action_overdue_hours`
+  - `overdue_actions_count_7d`
+- **Initial thresholds**:
+  - no next action for > 24h = medium
+  - overdue next action > 24h or 2+ overdue actions in 7d = high
+  - overdue next action > 72h = critical
+- **Automation**:
+  - medium: one-click quick-create next action panel
+  - high: auto-create fallback reminder and pin in work panel
+  - critical: block non-terminal stage change until mitigation action exists (tenant-configurable)
+- **Success KPI**:
+  - `% entities with active next action`
+  - `% high-risk touched within 24h`
+
+#### 4) Owner capacity / overload risk
+
+- **Risk definition**: assigned owner load is too high; SLA and quality degrade.
+- **Primary signals**:
+  - `owner_open_entities_count`
+  - `owner_overdue_actions_count`
+  - `owner_high_risk_entities_count`
+- **Initial thresholds** (team-relative, percentile-based):
+  - medium: owner above P75 on any 2 load signals
+  - high: owner above P90 on any 2 load signals
+  - critical: above P95 + rising overdue trend 7d
+- **Automation**:
+  - medium: recommend rebalance candidates/leads
+  - high: notify manager with "reassign shortlist"
+  - critical: auto-route new assignments away from overloaded owner until recovered
+- **Success KPI**:
+  - owner SLA compliance variance
+  - overdue ratio before/after rebalancing
+
+#### 5) Handoff failure risk
+
+- **Risk definition**: ownership handoff happened, but new owner did not establish control quickly.
+- **Primary signals**:
+  - `hours_since_reassignment`
+  - `first_action_after_reassignment_hours`
+  - `messages_after_reassignment_24h`
+- **Initial thresholds**:
+  - no action within 8h after reassignment = medium
+  - no action within 24h = high
+  - no action within 48h = critical
+- **Automation**:
+  - medium: remind new owner to acknowledge handoff
+  - high: notify previous owner + manager
+  - critical: re-open handoff checklist and escalate
+- **Success KPI**:
+  - `% handoffs with first action < 8h`
+  - post-handoff conversion vs baseline
+
+#### 6) Readiness / document failure risk
+
+- **Risk definition**: candidate cannot progress due to critical missing/expiring documents.
+- **Primary signals**:
+  - `missing_critical_docs_count`
+  - `expiring_docs_count_14d`
+  - `readiness_score`
+- **Initial thresholds**:
+  - medium: 1 critical missing doc OR >=2 expiring in 14d
+  - high: >=2 critical missing docs OR any doc expiring in <=7d at active stage
+  - critical: blocking document missing at decision/offer/onboarding stage
+- **Automation**:
+  - medium: trigger request-docs template flow
+  - high: owner + compliance role notification
+  - critical: prevent stage progression to dependent stages until resolved
+- **Success KPI**:
+  - readiness completion rate
+  - delay caused by document blockers
+
+#### 7) Communication quality risk
+
+- **Risk definition**: communication exists but is ineffective (no progress signals).
+- **Primary signals**:
+  - `outbound_without_reply_count_7d`
+  - `thread_age_open_days`
+  - `resolution_event_absent` (bool)
+- **Initial thresholds**:
+  - medium: 3 outbound touches without reply in 7d
+  - high: 5 touches without reply OR open thread > 10d
+  - critical: open thread > 14d without resolution in active funnel stage
+- **Automation**:
+  - medium: suggest channel switch (email -> call/whatsapp/etc.)
+  - high: suggest escalation template / manager outreach
+  - critical: mark as "recovery playbook required" and queue specialized intervention
+- **Success KPI**:
+  - reply rate per channel after suggested switch
+  - resolution time per thread
+
+#### 8) Deal health / financial risk (services)
+
+- **Risk definition**: service pipeline advances but commercial outcome degrades.
+- **Primary signals**:
+  - `invoice_overdue_amount`
+  - `invoice_overdue_days_p95`
+  - `margin_delta_vs_quote`
+  - `delivered_not_invoiced_count`
+- **Initial thresholds**:
+  - medium: overdue amount > tenant threshold OR margin drop > 10%
+  - high: overdue > 30d OR margin drop > 20%
+  - critical: overdue > 60d OR negative margin forecast
+- **Automation**:
+  - medium: finance reminder + owner nudge
+  - high: manager review task and payment recovery workflow
+  - critical: freeze new discretionary work for account until review
+- **Success KPI**:
+  - outstanding-to-paid ratio
+  - recovery rate for overdue cohort
+
+### Cross-risk prioritization logic
+
+When one entity has multiple risks, show a single priority queue score:
+
+- `priority_score = 0.45*risk_score + 0.25*business_impact + 0.20*urgency + 0.10*recovery_potential`
+
+Where:
+
+- `business_impact` reflects expected value (revenue/hiring impact);
+- `urgency` reflects time-to-deadline proximity;
+- `recovery_potential` estimates chance to rescue if touched now.
+
+### Implementation notes (v1)
+
+- Keep all thresholds tenant-configurable in one namespace: `Tenant.settings.risk_model_v1`.
+- Log every automated intervention with `risk_rule_id`, old/new band, and selected driver.
+- Add operator feedback actions: `helpful`, `not_helpful`, `wrong_reason`; use this for monthly tuning.
+
+### Suggested rollout order (lowest complexity to highest value)
+
+1. Candidate engagement decay risk
+2. Next-action discipline risk
+3. Stage stagnation risk
+4. Readiness/document failure risk
+5. Owner overload risk
+6. Handoff failure risk
+7. Communication quality risk
+8. Deal health/financial risk

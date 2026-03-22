@@ -23,6 +23,7 @@ type Props = {
   onStageChange?: (stage: string) => void | Promise<void>
   onOpenStageHistory?: () => void
   onOpenChangeLog?: () => void
+  blocked?: boolean
 }
 
 export default function CandidateStageJourneyPanel({
@@ -41,6 +42,7 @@ export default function CandidateStageJourneyPanel({
   onStageChange,
   onOpenStageHistory,
   onOpenChangeLog,
+  blocked = false,
 }: Props) {
   const { t } = useI18n()
   const dateFnsLocale = useMemo(() => (locale === 'ru' ? ru : locale === 'pl' ? pl : enUS), [locale])
@@ -143,7 +145,7 @@ export default function CandidateStageJourneyPanel({
                   const isCurrent = currentStage ? s.code === currentStage : idx === 0
                   const isCompleted = completedStageCodes?.has(s.code) || (currentIdx >= 0 && idx < currentIdx)
                   const dotClass = isCurrent
-                    ? 'bg-brand-600 ring-brand-200'
+                    ? (blocked ? 'bg-rose-600 ring-rose-200' : 'bg-brand-600 ring-brand-200')
                     : isCompleted
                       ? 'bg-emerald-500 ring-emerald-100'
                       : 'bg-slate-300 ring-slate-100'
@@ -185,7 +187,7 @@ export default function CandidateStageJourneyPanel({
               const isCurrent = currentStage ? s.code === currentStage : idx === 0
               const isCompleted = completedStageCodes?.has(s.code) || (currentIdx >= 0 && idx < currentIdx)
               const dotClass = isCurrent
-                ? 'bg-brand-600 ring-brand-200'
+                ? (blocked ? 'bg-rose-600 ring-rose-200' : 'bg-brand-600 ring-brand-200')
                 : isCompleted
                   ? 'bg-emerald-500 ring-emerald-100'
                   : 'bg-slate-300 ring-slate-100'

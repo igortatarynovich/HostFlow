@@ -858,6 +858,7 @@ export async function reconcileTenantNotifications(maxUsers = 2000) {
 export async function listReminders(opts?: {
   status?: string[];
   assigneeId?: string;
+  assigneeScope?: 'mine' | 'team';
   entityType?: string;
   entityId?: string;
   types?: string[];
@@ -868,6 +869,7 @@ export async function listReminders(opts?: {
   if (opts?.status) params.status_filter = opts.status;
   if (opts?.types) params.type_filter = opts.types;
   if (opts?.assigneeId) params.assignee_id = opts.assigneeId;
+  if (opts?.assigneeScope) params.assignee_scope = opts.assigneeScope;
   if (opts?.entityType) params.entity_type = opts.entityType;
   if (opts?.entityId) params.entity_id = opts.entityId;
   if (opts?.dueFrom) params.due_from = opts.dueFrom;
@@ -909,6 +911,7 @@ export async function completeReminder(id: string) {
 export async function listActivities(opts?: {
   status?: string[];
   assigneeId?: string;
+  assigneeScope?: 'mine' | 'team';
   entityType?: string;
   entityId?: string;
   types?: string[];
@@ -919,6 +922,7 @@ export async function listActivities(opts?: {
   if (opts?.status) params.status_filter = opts.status;
   if (opts?.types) params.type_filter = opts.types;
   if (opts?.assigneeId) params.assignee_id = opts.assigneeId;
+  if (opts?.assigneeScope) params.assignee_scope = opts.assigneeScope;
   if (opts?.entityType) params.entity_type = opts.entityType;
   if (opts?.entityId) params.entity_id = opts.entityId;
   if (opts?.dueFrom) params.due_from = opts.dueFrom;

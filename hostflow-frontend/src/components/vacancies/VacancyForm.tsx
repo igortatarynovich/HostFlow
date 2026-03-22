@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useI18n } from '../../i18n'
 
 import { EMPLOYMENT_TYPES } from '../../api/vacancies'
 import type { EmploymentType } from '../../api/vacancies'
@@ -40,6 +41,7 @@ type Props = {
 }
 
 export default function VacancyForm({ open, title, companies, initial, onClose, onSubmit }: Props) {
+  const { t } = useI18n()
   const defaultValues: FormValues = useMemo(
     () => ({
       company_id: initial.company_id ?? companies[0]?.id ?? '',
@@ -170,7 +172,12 @@ export default function VacancyForm({ open, title, companies, initial, onClose, 
 
           <div>
             <label className="label" htmlFor="vf-currency">Валюта</label>
-            <input id="vf-currency" className="input" {...register('currency')} placeholder="PLN / EUR / USD" />
+            <input
+              id="vf-currency"
+              className="input"
+              {...register('currency')}
+              placeholder={t('app.vacancies.detail.placeholders.currency_codes', { defaultValue: 'PLN / EUR / USD' })}
+            />
           </div>
 
           <div>

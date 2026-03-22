@@ -7,13 +7,11 @@ import type { UUID } from './common';
 export type ServiceItemStatus = 'pending' | 'scheduled' | 'in_progress' | 'delivered' | 'cancelled';
 export type ServiceOrderStatus =
   | 'draft'
-  | 'quoted'
-  | 'approved'
-  | 'scheduled'
+  | 'confirmed'
   | 'in_progress'
-  | 'delivered'
+  | 'completed'
   | 'cancelled'
-  | 'refunded';
+  | 'on_hold';
 
 export type ServiceScheduleStatus =
   | 'reserved'
@@ -46,6 +44,10 @@ export interface AdditionalService {
   meta?: Record<string, any> | null;
   created_at: string;
   updated_at: string;
+  /** Distinct non-cancelled orders that include this service (when `include_metrics` on list API). */
+  metrics_orders_count?: number;
+  /** Sum of line amounts on completed orders (same query). */
+  metrics_revenue_completed?: number;
 }
 
 export interface AdditionalServiceAttachment {
@@ -102,6 +104,7 @@ export interface AdditionalServiceOrder {
   candidate_id?: UUID | null;
   vacancy_id?: UUID | null;
   company_id?: UUID | null;
+  client_id?: UUID | null;
   status: ServiceOrderStatus;
   total_amount: number;
   currency: string;

@@ -252,6 +252,27 @@ export interface TeamOverviewResponse {
   modules: TenantModuleSettings;
 }
 
+/** `GET/PATCH /settings/team/hiring-pipeline-gates` — tenant hiring pipeline gates (FINAL plan §3 / §12 / §13). */
+export interface HiringPipelineGatesPublic {
+  version: number;
+  stages_without_doc_pipeline_block: string[];
+  stages_verify_uploads_block_forward: string[];
+  stages_require_vacancy_for_forward: string[];
+  contact_attempt_gate_stages: string[];
+  stages_doc_block_soft_only: string[];
+  non_overridable_doc_types_extra: string[];
+  effective_non_overridable_doc_types: string[];
+}
+
+export type HiringPipelineGatesPatch = Partial<{
+  stages_without_doc_pipeline_block: string[] | null;
+  stages_verify_uploads_block_forward: string[] | null;
+  stages_require_vacancy_for_forward: string[] | null;
+  contact_attempt_gate_stages: string[] | null;
+  stages_doc_block_soft_only: string[] | null;
+  non_overridable_doc_types_extra: string[] | null;
+}>;
+
 export interface TenantBrandingResponse {
   id: string;
   name: string;

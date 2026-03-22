@@ -43,6 +43,8 @@ export interface ReminderRecord {
   payload: Record<string, any>;
   created_at?: string | null;
   updated_at?: string | null;
+  sla_due_at?: string | null;
+  sla_status?: string | null;
 }
 
 export interface ReminderListResponse {

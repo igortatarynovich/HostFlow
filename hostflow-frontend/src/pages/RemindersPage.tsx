@@ -35,6 +35,7 @@ type InboxTab = 'tasks' | 'events'
 type TaskStatusFilter = 'active' | 'all' | 'done'
 type NotificationsScopeFilter = 'all' | 'direct'
 type NotificationsReadFilter = 'unread' | 'all'
+type AssigneeScopeFilter = 'mine' | 'team'
 
 type TaskFiltersState = {
   search: string
@@ -53,6 +54,7 @@ type PersistedInboxState = {
   activeTab: InboxTab
   taskFilters: TaskFiltersState
   eventsFilters: EventsFiltersState
+  assigneeScope?: AssigneeScopeFilter
 }
 
 type TaskRow = ReminderRecord & {
@@ -60,6 +62,8 @@ type TaskRow = ReminderRecord & {
   remindDate: Date | null
   dueTs: number
   remindTs: number
+  slaDate: Date | null
+  slaTs: number
 }
 
 type EditState = {
@@ -138,6 +142,8 @@ function reminderEntityHref(item: ReminderRecord): string | null {
       return `/app/leads`
     case 'company':
       return `/app/companies/${entityId}`
+    case 'communication_thread':
+      return `/app/messages?threadId=${encodeURIComponent(entityId)}`
     default:
       return null
   }
@@ -157,6 +163,8 @@ function notificationEntityHref(item: NotificationItem): string | null {
       return '/app/leads'
     case 'company':
       return `/app/companies/${entityId}`
+    case 'communication_thread':
+      return `/app/messages?threadId=${encodeURIComponent(entityId)}`
     default:
       return null
   }
@@ -210,11 +218,17 @@ function notificationRank(item: NotificationItem): number {
   return score
 }
 
+const TEAM_ASSIGNEE_ROLES = new Set(['administrator', 'supervisor', 'superadmin', 'admin', 'manager'])
+
 export default function RemindersPage() {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { me } = useAuth()
+  const canUseTeamAssigneeScope = useMemo(() => {
+    const r = String(me?.role || '').trim().toLowerCase()
+    return TEAM_ASSIGNEE_ROLES.has(r)
+  }, [me?.role])
   const dateLocale = DATE_LOCALES[locale as keyof typeof DATE_LOCALES] || enUS
   const tenantId = (me as any)?.tenant_id || 'default'
   const storageKey = `${STORAGE_KEY}:${tenantId}`
@@ -223,6 +237,7 @@ export default function RemindersPage() {
   const [activeTab, setActiveTab] = useState<InboxTab>('tasks')
   const [taskFilters, setTaskFilters] = useState<TaskFiltersState>(DEFAULT_TASK_FILTERS)
   const [eventsFilters, setEventsFilters] = useState<EventsFiltersState>(DEFAULT_EVENTS_FILTERS)
+  const [assigneeScope, setAssigneeScope] = useState<AssigneeScopeFilter>('mine')
 
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
   const [remindersState, setRemindersState] = useState<LoadState>('idle')
@@ -261,6 +276,8 @@ export default function RemindersPage() {
     value === 'all' || value === 'direct' ? value : null
   const parseNotifRead = (value: string | null): NotificationsReadFilter | null =>
     value === 'unread' || value === 'all' ? value : null
+  const parseAssigneeScope = (value: string | null): AssigneeScopeFilter | null =>
+    value === 'mine' || value === 'team' ? value : null
 
   useEffect(() => {
     try {
@@ -273,6 +290,7 @@ export default function RemindersPage() {
       if (parsed?.activeTab) setActiveTab(parsed.activeTab)
       if (parsed?.taskFilters) setTaskFilters({ ...DEFAULT_TASK_FILTERS, ...parsed.taskFilters })
       if (parsed?.eventsFilters) setEventsFilters({ ...DEFAULT_EVENTS_FILTERS, ...parsed.eventsFilters })
+      if (parsed?.assigneeScope === 'mine' || parsed?.assigneeScope === 'team') setAssigneeScope(parsed.assigneeScope)
     } catch {
       // ignore malformed storage
     }
@@ -286,6 +304,7 @@ export default function RemindersPage() {
       const eScope = parseNotifScope(searchParams.get('e_scope'))
       const eRead = parseNotifRead(searchParams.get('e_read'))
       const eQ = searchParams.get('e_q')
+      const tAssignee = parseAssigneeScope(searchParams.get('t_assignee'))
 
       if (urlTab) setActiveTab(urlTab)
       if (tStatus || tQ != null || tEntity != null || tPriority != null) {
@@ -305,6 +324,7 @@ export default function RemindersPage() {
           ...(eQ != null ? { search: eQ } : {}),
         }))
       }
+      if (tAssignee) setAssigneeScope(tAssignee)
     } catch {
       // ignore malformed URL state
     } finally {
@@ -319,12 +339,13 @@ export default function RemindersPage() {
         activeTab,
         taskFilters,
         eventsFilters,
+        assigneeScope,
       }
       localStorage.setItem(storageKey, JSON.stringify(payload))
     } catch {
       // ignore storage errors
     }
-  }, [activeTab, taskFilters, eventsFilters, hydrated, storageKey])
+  }, [activeTab, assigneeScope, taskFilters, eventsFilters, hydrated, storageKey])
 
   useEffect(() => {
     if (!hydrated) return
@@ -340,6 +361,8 @@ export default function RemindersPage() {
     else next.delete('t_entity')
     if (taskFilters.priority) next.set('t_priority', taskFilters.priority)
     else next.delete('t_priority')
+    if (assigneeScope !== 'mine') next.set('t_assignee', assigneeScope)
+    else next.delete('t_assignee')
 
     if (eventsFilters.scope !== DEFAULT_EVENTS_FILTERS.scope) next.set('e_scope', eventsFilters.scope)
     else next.delete('e_scope')
@@ -351,7 +374,11 @@ export default function RemindersPage() {
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true })
     }
-  }, [activeTab, eventsFilters, hydrated, searchParams, setSearchParams, taskFilters])
+  }, [activeTab, assigneeScope, eventsFilters, hydrated, searchParams, setSearchParams, taskFilters])
+
+  useEffect(() => {
+    if (!canUseTeamAssigneeScope && assigneeScope === 'team') setAssigneeScope('mine')
+  }, [assigneeScope, canUseTeamAssigneeScope])
 
   const loadReminders = useCallback(async () => {
     setRemindersState('loading')
@@ -363,14 +390,15 @@ export default function RemindersPage() {
           : taskFilters.status === 'done'
             ? ['done', 'cancelled']
             : undefined
-      const data = (await listReminders({ status: statusList })) as ReminderListResponse
+      const scope = canUseTeamAssigneeScope ? assigneeScope : 'mine'
+      const data = (await listReminders({ status: statusList, assigneeScope: scope })) as ReminderListResponse
       setReminders(Array.isArray(data?.items) ? data.items : [])
       setRemindersState('idle')
     } catch (err: any) {
       setRemindersState('error')
       setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.load', { defaultValue: 'Failed to load reminders' })))
     }
-  }, [t, taskFilters.status])
+  }, [assigneeScope, canUseTeamAssigneeScope, t, taskFilters.status])
 
   const loadNotificationsFeed = useCallback(async () => {
     setNotificationsState('loading')
@@ -446,12 +474,15 @@ export default function RemindersPage() {
     return reminders.map((item) => {
       const dueDate = parseDate(item.due_at)
       const remindDate = parseDate(item.snoozed_until || item.remind_at)
+      const slaDate = parseDate(item.sla_due_at)
       return {
         ...item,
         dueDate,
         remindDate,
         dueTs: dueDate?.getTime() || 0,
         remindTs: remindDate?.getTime() || 0,
+        slaDate,
+        slaTs: slaDate?.getTime() || 0,
       }
     })
   }, [reminders])
@@ -683,15 +714,15 @@ export default function RemindersPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <WorkspaceTopNav active="reminders" />
+      <WorkspaceTopNav active="tasks" />
       <header className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.reminders.title', { defaultValue: 'Reminders' })}
+              {t('app.tasks.hub_eyebrow', { defaultValue: 'Tasks' })}
             </p>
             <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-              {t('app.reminders.inbox_title', { defaultValue: 'Inbox: reminders and notifications' })}
+              {t('app.tasks.hub_title', { defaultValue: 'Work queue' })}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               {activeTab === 'tasks'
@@ -778,12 +809,12 @@ export default function RemindersPage() {
                     {t('app.reminders.form.remind_before', { defaultValue: 'Remind before' })}
                   </label>
                   <select className="input mt-1 w-full" value={remindOffset} onChange={(e) => setRemindOffset(Number(e.target.value))}>
-                    <option value={5}>5m</option>
-                    <option value={15}>15m</option>
-                    <option value={30}>30m</option>
-                    <option value={60}>1h</option>
-                    <option value={180}>3h</option>
-                    <option value={1440}>1d</option>
+                    <option value={5}>{t('app.reminders.form.remind_offsets.5m', { defaultValue: '5m' })}</option>
+                    <option value={15}>{t('app.reminders.form.remind_offsets.15m', { defaultValue: '15m' })}</option>
+                    <option value={30}>{t('app.reminders.form.remind_offsets.30m', { defaultValue: '30m' })}</option>
+                    <option value={60}>{t('app.reminders.form.remind_offsets.1h', { defaultValue: '1h' })}</option>
+                    <option value={180}>{t('app.reminders.form.remind_offsets.3h', { defaultValue: '3h' })}</option>
+                    <option value={1440}>{t('app.reminders.form.remind_offsets.1d', { defaultValue: '1d' })}</option>
                   </select>
                 </div>
                 <div className="lg:col-span-2">
@@ -853,7 +884,10 @@ export default function RemindersPage() {
               <button
                 type="button"
                 className="btn-secondary btn-sm"
-                onClick={() => setTaskFilters(DEFAULT_TASK_FILTERS)}
+                onClick={() => {
+                  setTaskFilters(DEFAULT_TASK_FILTERS)
+                  setAssigneeScope('mine')
+                }}
               >
                 {t('common.actions.reset', { defaultValue: 'Reset' })}
               </button>
@@ -881,6 +915,34 @@ export default function RemindersPage() {
                 <span className="inline-flex items-center rounded-md bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700">
                   {t('app.reminders.status.overdue', { defaultValue: 'Overdue' })}: {taskCounts.overdue}
                 </span>
+              )}
+              {canUseTeamAssigneeScope && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setAssigneeScope('mine')}
+                    className={clsx(
+                      'rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                      assigneeScope === 'mine'
+                        ? 'border-brand-600 bg-brand-600 text-white'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    )}
+                  >
+                    {t('app.reminders.assignee.mine', { defaultValue: 'My tasks' })}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssigneeScope('team')}
+                    className={clsx(
+                      'rounded-md border px-3 py-1.5 text-xs font-medium transition',
+                      assigneeScope === 'team'
+                        ? 'border-brand-600 bg-brand-600 text-white'
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                    )}
+                  >
+                    {t('app.reminders.assignee.team', { defaultValue: 'Team tasks' })}
+                  </button>
+                </>
               )}
             </div>
 
@@ -933,6 +995,17 @@ export default function RemindersPage() {
                           const busy = taskBusyId === item.id
                           const statusPill = TASK_STATUS_COLORS[item.status] || 'bg-slate-100 text-slate-700'
                           const priorityPill = PRIORITY_COLORS[item.priority || 'normal'] || PRIORITY_COLORS.normal
+                          const slaSt = String(item.sla_status || '').toLowerCase()
+                          const slaPill =
+                            slaSt === 'overdue'
+                              ? 'bg-rose-100 text-rose-800'
+                              : slaSt === 'at_risk'
+                                ? 'bg-amber-100 text-amber-900'
+                                : slaSt === 'on_track'
+                                  ? 'bg-emerald-50 text-emerald-800'
+                                  : slaSt === 'resolved'
+                                    ? 'bg-slate-100 text-slate-600'
+                                    : ''
                           return (
                             <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -947,6 +1020,15 @@ export default function RemindersPage() {
                                     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
                                       {item.entity_type}
                                     </span>
+                                    {item.sla_due_at && item.sla_status && slaPill && (
+                                      <span
+                                        className={clsx('rounded-md px-2 py-0.5 text-[11px] font-semibold', slaPill)}
+                                        title={formatTs(item.slaDate)}
+                                      >
+                                        {t(`app.reminders.sla.status.${slaSt}`, { defaultValue: item.sla_status })}{' '}
+                                        · {formatTs(item.slaDate)}
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="flex flex-wrap items-center gap-2">
                                     <h4 className="truncate text-sm font-semibold text-slate-900">{item.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Untitled' })}</h4>

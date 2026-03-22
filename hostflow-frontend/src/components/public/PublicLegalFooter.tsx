@@ -64,12 +64,15 @@ export function PublicLegalFooter({ variant = 'inline', className }: PublicLegal
       </div>
     </div>
   )
+  const copyright = t('public.portal.landing.footer.copyright', {
+    defaultValue: '© 2026 HostFlow. All rights reserved.',
+  })
 
   if (variant === 'card') {
     return (
       <section className={clsx('rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-card', className)}>
         {content}
-        <p className="mt-6 text-xs text-slate-500">© 2026 HostFlow. All rights reserved.</p>
+        <p className="mt-6 text-xs text-slate-500">{copyright}</p>
       </section>
     )
   }
@@ -77,7 +80,7 @@ export function PublicLegalFooter({ variant = 'inline', className }: PublicLegal
   return (
     <footer className={clsx('border-t border-slate-200 pt-8 text-sm text-slate-600', className)}>
       {content}
-      <p className="mt-6 text-xs text-slate-500">© 2026 HostFlow. All rights reserved.</p>
+      <p className="mt-6 text-xs text-slate-500">{copyright}</p>
     </footer>
   )
 }

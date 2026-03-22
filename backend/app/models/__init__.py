@@ -187,6 +187,11 @@ FinalNoContactNotification = _load_model_module("final_no_contact_notification")
 # Handoff
 CandidateHandoff = _load_model_module("candidate_handoff").CandidateHandoff  # type: ignore[attr-defined]
 
+# Pipeline document overrides (recruiter request / manager approval)
+CandidatePipelineOverride = _load_model_module(
+    "candidate_pipeline_override"
+).CandidatePipelineOverride  # type: ignore[attr-defined]
+
 # Tenant email (SMTP)
 TenantEmailConfig = _load_model_module("tenant_email_config").TenantEmailConfig  # type: ignore[attr-defined]
 
@@ -280,6 +285,7 @@ __all__ = [
     "ContactAttempt",
     "FinalNoContactNotification",
     "CandidateHandoff",
+    "CandidatePipelineOverride",
     "TenantEmailConfig",
     "CommunicationThread",
     "CommunicationMessage",

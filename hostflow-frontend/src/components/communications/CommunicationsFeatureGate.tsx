@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useCommunicationsAccess, type CommunicationsFeatureKey } from '../../hooks/useCommunicationsAccess'
+import { useI18n } from '../../i18n'
 
 type Props = PropsWithChildren<{
   feature?: CommunicationsFeatureKey
@@ -14,10 +15,11 @@ export default function CommunicationsFeatureGate({
   fallbackPath = '/app/overview',
   children,
 }: Props) {
+  const { t } = useI18n()
   const { loading, canUseCommunicationsFeature } = useCommunicationsAccess()
 
   if (loading) {
-    return <div className="p-6 text-sm text-slate-500">Loading...</div>
+    return <div className="p-6 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
   }
 
   const allowed = feature
@@ -32,4 +34,3 @@ export default function CommunicationsFeatureGate({
 
   return <>{children}</>
 }
-

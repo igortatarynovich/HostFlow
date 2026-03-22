@@ -654,6 +654,11 @@ export interface Candidate {
   docs_last_ordered_at?: string | null;
   docs_next_valid_from?: string | null;
   docs_has_files?: boolean | null;
+  risk_score?: number | null;
+  risk_band?: string | null;
+  risk_drivers?: string[] | null;
+  risk_updated_at?: string | null;
+  risk_version?: string | null;
   personal_data?: Record<string, any> | null;
   contacts?: Record<string, any> | null;
   intake_status?: string | null;
@@ -662,15 +667,22 @@ export interface Candidate {
   intake_personal?: Record<string, any> | null;
   intake_experience?: Record<string, any> | null;
   intake_agreements?: Record<string, any> | null;
+
+  /** From GET candidate: client link contact policy (for stage gates). */
+  contact_policy_enabled?: boolean | null;
+  /** From GET candidate: logged contact attempts count. */
+  contact_attempt_count?: number | null;
 }
 
 export type LeadStatus = 'new' | 'processed' | 'duplicated' | 'failed' | 'needs_routing';
+export type LeadType = 'candidate' | 'client';
 
 export interface Lead {
   id: UUID;
   tenant_id: UUID;
   business_type?: 'agency' | 'employer' | 'services' | null;
-  company_id: UUID;
+  lead_type?: LeadType;
+  company_id?: UUID | null;
   company_name?: string | null;
   vacancy_id?: UUID | null;
   vacancy_title?: string | null;
@@ -822,13 +834,11 @@ export interface MetaLeadReroutePayload {
 export type ServiceUnit = 'piece' | 'person' | 'hour' | 'package';
 export type ServiceOrderStatus =
   | 'draft'
-  | 'quoted'
-  | 'approved'
-  | 'scheduled'
+  | 'confirmed'
   | 'in_progress'
-  | 'delivered'
+  | 'completed'
   | 'cancelled'
-  | 'refunded';
+  | 'on_hold';
 
 export type ServiceItemStatus =
   | 'pending'
@@ -941,6 +951,8 @@ export interface AdditionalService {
   meta?: Record<string, any> | null;
   created_at: string;
   updated_at: string;
+  metrics_orders_count?: number;
+  metrics_revenue_completed?: number;
 }
 
 export interface AdditionalServiceAttachment {
@@ -997,6 +1009,8 @@ export interface AdditionalServiceOrder {
   candidate_id?: UUID | null;
   vacancy_id?: UUID | null;
   company_id?: UUID | null;
+  /** Party (client) id — same as company_id when the billable counterparty is a company. */
+  client_id?: UUID | null;
   status: ServiceOrderStatus;
   total_amount: number;
   currency: string;
@@ -1190,6 +1204,10 @@ export interface ReminderRecord {
   payload: Record<string, any>;
   created_at?: string | null;
   updated_at?: string | null;
+  /** UOS: derived SLA deadline (API projection). */
+  sla_due_at?: string | null;
+  /** UOS: coarse SLA state — on_track | at_risk | overdue | resolved. */
+  sla_status?: string | null;
 }
 
 export interface ReminderListResponse {

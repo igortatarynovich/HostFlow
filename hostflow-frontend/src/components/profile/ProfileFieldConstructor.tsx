@@ -24,6 +24,7 @@ import {
   type CustomFieldType,
 } from '../../api/custom_fields'
 import { Modal } from '../Modal'
+import { useI18n } from '../../i18n'
 
 export interface FieldConfig {
   field_key: string
@@ -44,27 +45,141 @@ interface ProfileFieldConstructorProps {
 
 // Field categories for grouping
 export const FIELD_CATEGORIES = {
-  personal: { label: 'Личные данные', icon: '👤', order: 1 },
-  contact: { label: 'Контакты', icon: '📞', order: 2 },
-  experience: { label: 'Опыт работы', icon: '💼', order: 3 },
-  documents: { label: 'Документы', icon: '📄', order: 4 },
-  status: { label: 'Статус', icon: '🛂', order: 5 },
-  other: { label: 'Прочее', icon: '📝', order: 6 },
+  personal: {
+    labelKey: 'app.settings.candidate_profiles.field_constructor.groups.personal',
+    defaultLabel: 'Личные данные',
+    icon: '👤',
+    order: 1,
+  },
+  contact: {
+    labelKey: 'app.settings.candidate_profiles.field_constructor.groups.contact',
+    defaultLabel: 'Контакты',
+    icon: '📞',
+    order: 2,
+  },
+  experience: {
+    labelKey: 'app.settings.candidate_profiles.field_constructor.groups.experience',
+    defaultLabel: 'Опыт работы',
+    icon: '💼',
+    order: 3,
+  },
+  documents: {
+    labelKey: 'app.settings.candidate_profiles.field_constructor.groups.documents',
+    defaultLabel: 'Документы',
+    icon: '📄',
+    order: 4,
+  },
+  status: {
+    labelKey: 'app.settings.candidate_profiles.field_constructor.groups.status',
+    defaultLabel: 'Статус',
+    icon: '🛂',
+    order: 5,
+  },
+  other: {
+    labelKey: 'app.settings.candidate_profiles.field_constructor.groups.other',
+    defaultLabel: 'Прочее',
+    icon: '📝',
+    order: 6,
+  },
 } as const
 
 // System fields (always available, free)
-const SYSTEM_FIELDS: Array<{ key: string; type: string; label: string; category: string; field_category: keyof typeof FIELD_CATEGORIES }> = [
-  { key: 'first_name', type: 'text', label: 'Имя', category: 'system', field_category: 'personal' },
-  { key: 'last_name', type: 'text', label: 'Фамилия', category: 'system', field_category: 'personal' },
-  { key: 'birth_date', type: 'date', label: 'Дата рождения', category: 'simple', field_category: 'personal' },
-  { key: 'citizenship', type: 'select', label: 'Гражданство', category: 'medium', field_category: 'personal' },
-  { key: 'address', type: 'address', label: 'Адрес', category: 'medium', field_category: 'personal' },
-  { key: 'email', type: 'text', label: 'Email', category: 'system', field_category: 'contact' },
-  { key: 'phone', type: 'text', label: 'Телефон', category: 'system', field_category: 'contact' },
-  { key: 'languages', type: 'multiselect', label: 'Языки', category: 'medium', field_category: 'contact' },
-  { key: 'license_number', type: 'text', label: 'Номер водительского удостоверения', category: 'simple', field_category: 'documents' },
-  { key: 'license_categories', type: 'multiselect', label: 'Категории прав', category: 'medium', field_category: 'documents' },
-  { key: 'employment_history', type: 'employment_history', label: 'История трудоустройства', category: 'resource', field_category: 'experience' },
+const SYSTEM_FIELDS: Array<{
+  key: string
+  type: string
+  labelKey: string
+  defaultLabel: string
+  category: string
+  field_category: keyof typeof FIELD_CATEGORIES
+}> = [
+  {
+    key: 'first_name',
+    type: 'text',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.first_name',
+    defaultLabel: 'Имя',
+    category: 'system',
+    field_category: 'personal',
+  },
+  {
+    key: 'last_name',
+    type: 'text',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.last_name',
+    defaultLabel: 'Фамилия',
+    category: 'system',
+    field_category: 'personal',
+  },
+  {
+    key: 'birth_date',
+    type: 'date',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.birth_date',
+    defaultLabel: 'Дата рождения',
+    category: 'simple',
+    field_category: 'personal',
+  },
+  {
+    key: 'citizenship',
+    type: 'select',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.citizenship',
+    defaultLabel: 'Гражданство',
+    category: 'medium',
+    field_category: 'personal',
+  },
+  {
+    key: 'address',
+    type: 'address',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.address',
+    defaultLabel: 'Адрес',
+    category: 'medium',
+    field_category: 'personal',
+  },
+  {
+    key: 'email',
+    type: 'text',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.email',
+    defaultLabel: 'Email',
+    category: 'system',
+    field_category: 'contact',
+  },
+  {
+    key: 'phone',
+    type: 'text',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.phone',
+    defaultLabel: 'Телефон',
+    category: 'system',
+    field_category: 'contact',
+  },
+  {
+    key: 'languages',
+    type: 'multiselect',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.languages',
+    defaultLabel: 'Языки',
+    category: 'medium',
+    field_category: 'contact',
+  },
+  {
+    key: 'license_number',
+    type: 'text',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.license_number',
+    defaultLabel: 'Номер водительского удостоверения',
+    category: 'simple',
+    field_category: 'documents',
+  },
+  {
+    key: 'license_categories',
+    type: 'multiselect',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.license_categories',
+    defaultLabel: 'Категории прав',
+    category: 'medium',
+    field_category: 'documents',
+  },
+  {
+    key: 'employment_history',
+    type: 'employment_history',
+    labelKey: 'app.settings.candidate_profiles.field_constructor.system_fields.employment_history',
+    defaultLabel: 'История трудоустройства',
+    category: 'resource',
+    field_category: 'experience',
+  },
 ]
 
 // Component for grouped fields by category
@@ -79,7 +194,7 @@ const FieldCategoryGroup = memo(function FieldCategoryGroup({
   disabled,
 }: {
   category: string
-  categoryInfo: { label: string; icon: string; order: number }
+  categoryInfo: { labelKey: string; defaultLabel: string; icon: string; order: number }
   fields: FieldConfig[]
   value: FieldConfig[]
   limits: ProfileLimits | null
@@ -87,6 +202,7 @@ const FieldCategoryGroup = memo(function FieldCategoryGroup({
   onRemove: (index: number) => void
   disabled?: boolean
 }) {
+  const { t } = useI18n()
   const [expanded, setExpanded] = useState(true)
 
   return (
@@ -98,7 +214,9 @@ const FieldCategoryGroup = memo(function FieldCategoryGroup({
       >
         <div className="flex items-center gap-2">
           <span className="text-lg">{categoryInfo.icon}</span>
-          <span className="text-sm font-semibold text-slate-900">{categoryInfo.label}</span>
+          <span className="text-sm font-semibold text-slate-900">
+            {t(categoryInfo.labelKey, { defaultValue: categoryInfo.defaultLabel })}
+          </span>
           <span className="rounded-md bg-slate-200 px-2 py-0.5 text-xs text-slate-600">{fields.length}</span>
         </div>
         <svg
@@ -147,6 +265,7 @@ function SortableFieldItem({
   onRemove: () => void
   disabled?: boolean
 }) {
+  const { t } = useI18n()
   const {
     attributes,
     listeners,
@@ -164,7 +283,13 @@ function SortableFieldItem({
 
   const fieldCategory = limits?.field_categories[field.field_type] || 'simple'
   const isSystemField = ['first_name', 'last_name', 'email', 'phone'].includes(field.field_key)
-  const categoryLabel = fieldCategory === 'simple' ? 'Простое' : fieldCategory === 'medium' ? 'Среднее' : fieldCategory === 'resource' ? 'Ресурсоемкое' : 'Системное'
+  const categoryLabel = fieldCategory === 'simple'
+    ? t('app.settings.candidate_profiles.field_constructor.category.simple', { defaultValue: 'Простое' })
+    : fieldCategory === 'medium'
+      ? t('app.settings.candidate_profiles.field_constructor.category.medium', { defaultValue: 'Среднее' })
+      : fieldCategory === 'resource'
+        ? t('app.settings.candidate_profiles.field_constructor.category.resource', { defaultValue: 'Ресурсоемкое' })
+        : t('app.settings.candidate_profiles.field_constructor.category.system', { defaultValue: 'Системное' })
 
   return (
     <div
@@ -200,7 +325,7 @@ function SortableFieldItem({
             )}
             {isSystemField && (
               <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                Системное
+                {t('app.settings.candidate_profiles.field_constructor.category.system', { defaultValue: 'Системное' })}
               </span>
             )}
           </div>
@@ -214,7 +339,7 @@ function SortableFieldItem({
               disabled={disabled || isSystemField}
               className="rounded border-slate-300"
             />
-            <span className="text-xs text-slate-600">Обязательно</span>
+            <span className="text-xs text-slate-600">{t('common.required', { defaultValue: 'Обязательно' })}</span>
           </label>
           {!isSystemField && (
             <button
@@ -223,7 +348,7 @@ function SortableFieldItem({
               disabled={disabled}
               className="btn-danger btn-xs"
             >
-              Удалить
+              {t('common.actions.delete', { defaultValue: 'Удалить' })}
             </button>
           )}
         </div>
@@ -237,6 +362,7 @@ export default function ProfileFieldConstructor({
   onChange,
   disabled = false,
 }: ProfileFieldConstructorProps) {
+  const { t } = useI18n()
   const [limits, setLimits] = useState<ProfileLimits | null>(null)
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([])
   const [loading, setLoading] = useState(true)
@@ -322,7 +448,13 @@ export default function ProfileFieldConstructor({
     // System fields (always available)
     SYSTEM_FIELDS.forEach((field) => {
       if (!usedKeys.has(field.key)) {
-        available.push(field)
+        available.push({
+          key: field.key,
+          type: field.type,
+          label: t(field.labelKey, { defaultValue: field.defaultLabel }),
+          category: field.category,
+          field_category: field.field_category,
+        })
       }
     })
 
@@ -341,7 +473,7 @@ export default function ProfileFieldConstructor({
     })
 
     return available.sort((a, b) => a.label.localeCompare(b.label))
-  }, [value, customFields, limits])
+  }, [value, customFields, limits, t])
 
   const handleAddField = useCallback(
     (fieldKey: string, fieldType: string, label: string, category: string, fieldCategory?: keyof typeof FIELD_CATEGORIES) => {
@@ -357,20 +489,20 @@ export default function ProfileFieldConstructor({
         
         const errors: string[] = []
         if (newSimple > limits.limits.simple.limit) {
-          errors.push(`простых: ${newSimple}/${limits.limits.simple.limit}`)
+          errors.push(`${t('app.settings.candidate_profiles.field_constructor.limits.simple', { defaultValue: 'простых' }).toLowerCase()}: ${newSimple}/${limits.limits.simple.limit}`)
         }
         if (newMedium > limits.limits.medium.limit) {
-          errors.push(`средних: ${newMedium}/${limits.limits.medium.limit}`)
+          errors.push(`${t('app.settings.candidate_profiles.field_constructor.limits.medium', { defaultValue: 'средних' }).toLowerCase()}: ${newMedium}/${limits.limits.medium.limit}`)
         }
         if (newResource > limits.limits.resource.limit) {
-          errors.push(`ресурсоемких: ${newResource}/${limits.limits.resource.limit}`)
+          errors.push(`${t('app.settings.candidate_profiles.field_constructor.limits.resource', { defaultValue: 'ресурсоемких' }).toLowerCase()}: ${newResource}/${limits.limits.resource.limit}`)
         }
         if (newTotal > limits.limits.total_custom.limit) {
-          errors.push(`всего кастомных: ${newTotal}/${limits.limits.total_custom.limit}`)
+          errors.push(`${t('app.settings.candidate_profiles.field_constructor.limits.total_custom', { defaultValue: 'всего кастомных' }).toLowerCase()}: ${newTotal}/${limits.limits.total_custom.limit}`)
         }
         
         if (errors.length > 0) {
-          alert(`Превышены лимиты: ${errors.join(', ')}`)
+          alert(`${t('app.settings.candidate_profiles.field_constructor.limits_exceeded', { defaultValue: 'Превышены лимиты' })}: ${errors.join(', ')}`)
           return
         }
       }
@@ -390,7 +522,7 @@ export default function ProfileFieldConstructor({
 
       onChange([...value, newField])
     },
-    [value, onChange, limits, customFields, calculateCurrentCounts]
+    [value, onChange, limits, customFields, calculateCurrentCounts, t]
   )
 
   const handleToggleRequired = useCallback(
@@ -418,7 +550,7 @@ export default function ProfileFieldConstructor({
   const currentCounts = calculateCurrentCounts()
 
   if (loading) {
-    return <div className="text-sm text-slate-500">Загрузка...</div>
+    return <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
   }
 
   return (
@@ -427,44 +559,36 @@ export default function ProfileFieldConstructor({
       {limits && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
           <div className="mb-2 text-sm font-semibold text-blue-900">
-            Лимиты полей (план: {limits.plan})
+            {t('app.settings.candidate_profiles.field_constructor.limits_title', { defaultValue: 'Лимиты полей' })} ({t('common.plan', { defaultValue: 'план' })}: {limits.plan})
           </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <div>
-              <div className="text-xs text-blue-700">Простые</div>
+              <div className="text-xs text-blue-700">{t('app.settings.candidate_profiles.field_constructor.limits.simple', { defaultValue: 'Простые' })}</div>
               <div className="text-sm font-medium text-blue-900">
                 {limits.limits.simple.used + currentCounts.simple}/{limits.limits.simple.limit}
               </div>
-              <div className="text-xs text-blue-600">
-                Доступно: {Math.max(0, limits.limits.simple.available - currentCounts.simple)}
-              </div>
+              <div className="text-xs text-blue-600">{t('common.available', { defaultValue: 'Доступно' })}: {Math.max(0, limits.limits.simple.available - currentCounts.simple)}</div>
             </div>
             <div>
-              <div className="text-xs text-blue-700">Средние</div>
+              <div className="text-xs text-blue-700">{t('app.settings.candidate_profiles.field_constructor.limits.medium', { defaultValue: 'Средние' })}</div>
               <div className="text-sm font-medium text-blue-900">
                 {limits.limits.medium.used + currentCounts.medium}/{limits.limits.medium.limit}
               </div>
-              <div className="text-xs text-blue-600">
-                Доступно: {Math.max(0, limits.limits.medium.available - currentCounts.medium)}
-              </div>
+              <div className="text-xs text-blue-600">{t('common.available', { defaultValue: 'Доступно' })}: {Math.max(0, limits.limits.medium.available - currentCounts.medium)}</div>
             </div>
             <div>
-              <div className="text-xs text-blue-700">Ресурсоемкие</div>
+              <div className="text-xs text-blue-700">{t('app.settings.candidate_profiles.field_constructor.limits.resource', { defaultValue: 'Ресурсоемкие' })}</div>
               <div className="text-sm font-medium text-blue-900">
                 {limits.limits.resource.used + currentCounts.resource}/{limits.limits.resource.limit}
               </div>
-              <div className="text-xs text-blue-600">
-                Доступно: {Math.max(0, limits.limits.resource.available - currentCounts.resource)}
-              </div>
+              <div className="text-xs text-blue-600">{t('common.available', { defaultValue: 'Доступно' })}: {Math.max(0, limits.limits.resource.available - currentCounts.resource)}</div>
             </div>
             <div>
-              <div className="text-xs text-blue-700">Всего кастомных</div>
+              <div className="text-xs text-blue-700">{t('app.settings.candidate_profiles.field_constructor.limits.total_custom', { defaultValue: 'Всего кастомных' })}</div>
               <div className="text-sm font-medium text-blue-900">
                 {limits.limits.total_custom.used + currentCounts.total}/{limits.limits.total_custom.limit}
               </div>
-              <div className="text-xs text-blue-600">
-                Доступно: {Math.max(0, limits.limits.total_custom.available - currentCounts.total)}
-              </div>
+              <div className="text-xs text-blue-600">{t('common.available', { defaultValue: 'Доступно' })}: {Math.max(0, limits.limits.total_custom.available - currentCounts.total)}</div>
             </div>
           </div>
           {(limits.limits.simple.available - currentCounts.simple < 0 ||
@@ -472,7 +596,7 @@ export default function ProfileFieldConstructor({
             limits.limits.resource.available - currentCounts.resource < 0 ||
             limits.limits.total_custom.available - currentCounts.total < 0) && (
             <div className="mt-2 rounded bg-rose-100 px-2 py-1 text-xs font-medium text-rose-800">
-              Превышены лимиты!
+              {t('app.settings.candidate_profiles.field_constructor.limits_exceeded', { defaultValue: 'Превышены лимиты!' })}
             </div>
           )}
         </div>
@@ -480,9 +604,9 @@ export default function ProfileFieldConstructor({
 
       {/* Active fields (sortable, grouped by category) */}
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">Поля в профиле</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('app.settings.candidate_profiles.field_constructor.in_profile', { defaultValue: 'Поля в профиле' })}</h3>
         {value.length === 0 ? (
-          <p className="text-sm text-slate-500">Нет полей. Добавьте поля из списка ниже.</p>
+          <p className="text-sm text-slate-500">{t('app.settings.candidate_profiles.field_constructor.empty', { defaultValue: 'Нет полей. Добавьте поля из списка ниже.' })}</p>
         ) : (() => {
           // Group fields by category
           const groupedFields = value.reduce((acc, field) => {
@@ -547,15 +671,15 @@ export default function ProfileFieldConstructor({
           disabled={disabled}
           className="btn-secondary text-sm"
         >
-          + Создать новое кастомное поле
+          + {t('app.settings.candidate_profiles.field_constructor.create_new', { defaultValue: 'Создать новое кастомное поле' })}
         </button>
       </div>
 
       {/* Available fields */}
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">Доступные поля</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('app.settings.candidate_profiles.field_constructor.available', { defaultValue: 'Доступные поля' })}</h3>
         {availableFields.length === 0 ? (
-          <p className="text-sm text-slate-500">Все поля добавлены</p>
+          <p className="text-sm text-slate-500">{t('app.settings.candidate_profiles.field_constructor.all_added', { defaultValue: 'Все поля добавлены' })}</p>
         ) : (
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
             {availableFields.map((field) => {
@@ -590,7 +714,13 @@ export default function ProfileFieldConstructor({
                 newTotal <= limits.limits.total_custom.limit
               )
               
-              const categoryLabel = fieldCategory === 'simple' ? 'Простое' : fieldCategory === 'medium' ? 'Среднее' : fieldCategory === 'resource' ? 'Ресурсоемкое' : 'Системное'
+              const categoryLabel = fieldCategory === 'simple'
+                ? t('app.settings.candidate_profiles.field_constructor.category.simple', { defaultValue: 'Простое' })
+                : fieldCategory === 'medium'
+                  ? t('app.settings.candidate_profiles.field_constructor.category.medium', { defaultValue: 'Среднее' })
+                  : fieldCategory === 'resource'
+                    ? t('app.settings.candidate_profiles.field_constructor.category.resource', { defaultValue: 'Ресурсоемкое' })
+                    : t('app.settings.candidate_profiles.field_constructor.category.system', { defaultValue: 'Системное' })
               
               return (
                 <button
@@ -654,7 +784,7 @@ export default function ProfileFieldConstructor({
               
               setShowCreateFieldModal(false)
             } catch (err: any) {
-              alert(`Не удалось создать поле: ${err?.message || 'Неизвестная ошибка'}`)
+              alert(t('app.settings.candidate_profiles.field_constructor.errors.create_failed', { defaultValue: 'Не удалось создать поле' }) + `: ${err?.message || t('common.errors.unknown', { defaultValue: 'Неизвестная ошибка' })}`)
             } finally {
               setCreatingField(false)
             }
@@ -683,6 +813,7 @@ function CreateCustomFieldModal({
   }) => Promise<void>
   disabled?: boolean
 }) {
+  const { t } = useI18n()
   const [key, setKey] = useState('')
   const [label, setLabel] = useState('')
   const [fieldType, setFieldType] = useState<CustomFieldType>('TEXT')
@@ -692,20 +823,20 @@ function CreateCustomFieldModal({
   const [newOption, setNewOption] = useState('')
 
   const fieldTypeOptions: Array<{ value: CustomFieldType; label: string }> = [
-    { value: 'TEXT', label: 'Текст' },
-    { value: 'TEXTAREA', label: 'Многострочный текст' },
-    { value: 'NUMBER', label: 'Число' },
-    { value: 'DATE', label: 'Дата' },
-    { value: 'CHECKBOX', label: 'Чекбокс' },
-    { value: 'SELECT', label: 'Выбор (один)' },
-    { value: 'MULTISELECT', label: 'Выбор (несколько)' },
+    { value: 'TEXT', label: t('app.settings.candidate_profiles.field_constructor.types.text', { defaultValue: 'Текст' }) },
+    { value: 'TEXTAREA', label: t('app.settings.candidate_profiles.field_constructor.types.textarea', { defaultValue: 'Многострочный текст' }) },
+    { value: 'NUMBER', label: t('app.settings.candidate_profiles.field_constructor.types.number', { defaultValue: 'Число' }) },
+    { value: 'DATE', label: t('app.settings.candidate_profiles.field_constructor.types.date', { defaultValue: 'Дата' }) },
+    { value: 'CHECKBOX', label: t('app.settings.candidate_profiles.field_constructor.types.checkbox', { defaultValue: 'Чекбокс' }) },
+    { value: 'SELECT', label: t('app.settings.candidate_profiles.field_constructor.types.select', { defaultValue: 'Выбор (один)' }) },
+    { value: 'MULTISELECT', label: t('app.settings.candidate_profiles.field_constructor.types.multiselect', { defaultValue: 'Выбор (несколько)' }) },
   ]
 
   const needsOptions = fieldType === 'SELECT' || fieldType === 'MULTISELECT'
 
   const handleSubmit = async () => {
     if (!key.trim() || !label.trim()) {
-      alert('Ключ и название обязательны')
+      alert(t('app.settings.candidate_profiles.field_constructor.errors.key_label_required', { defaultValue: 'Ключ и название обязательны' }))
       return
     }
 
@@ -734,11 +865,11 @@ function CreateCustomFieldModal({
   }
 
   return (
-    <Modal open={true} onClose={onClose} title="Создать новое кастомное поле">
+    <Modal open={true} onClose={onClose} title={t('app.settings.candidate_profiles.field_constructor.modal.title', { defaultValue: 'Создать новое кастомное поле' })}>
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Название поля (пользовательское название) *
+            {t('app.settings.candidate_profiles.field_constructor.modal.field_label', { defaultValue: 'Название поля (пользовательское название) *' })}
           </label>
           <input
             type="text"
@@ -756,29 +887,29 @@ function CreateCustomFieldModal({
               }
             }}
             className="input w-full"
-            placeholder="Например: Дополнительная информация"
+            placeholder={t('app.settings.candidate_profiles.field_constructor.modal.field_label_placeholder', { defaultValue: 'Например: Дополнительная информация' })}
             disabled={disabled}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Ключ (техническое имя) *
+            {t('app.settings.candidate_profiles.field_constructor.modal.key_label', { defaultValue: 'Ключ (техническое имя) *' })}
           </label>
           <input
             type="text"
             value={key}
             onChange={(e) => setKey(e.target.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
             className="input w-full font-mono text-sm"
-            placeholder="custom_field_1"
+            placeholder={t('app.settings.candidate_profiles.field_constructor.key_placeholder', { defaultValue: 'custom_field_1' })}
             disabled={disabled}
           />
-          <p className="mt-1 text-xs text-slate-500">Используется для технической идентификации поля</p>
+          <p className="mt-1 text-xs text-slate-500">{t('app.settings.candidate_profiles.field_constructor.modal.key_hint', { defaultValue: 'Используется для технической идентификации поля' })}</p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Тип поля *
+            {t('app.settings.candidate_profiles.field_constructor.modal.type_label', { defaultValue: 'Тип поля *' })}
           </label>
           <select
             value={fieldType}
@@ -797,7 +928,7 @@ function CreateCustomFieldModal({
         {needsOptions && (
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Варианты выбора
+              {t('app.settings.candidate_profiles.field_constructor.modal.options_label', { defaultValue: 'Варианты выбора' })}
             </label>
             <div className="space-y-2">
               {options.map((opt, index) => (
@@ -819,7 +950,7 @@ function CreateCustomFieldModal({
                     disabled={disabled}
                     className="btn-danger btn-xs"
                   >
-                    Удалить
+                    {t('common.actions.delete', { defaultValue: 'Удалить' })}
                   </button>
                 </div>
               ))}
@@ -835,7 +966,7 @@ function CreateCustomFieldModal({
                     }
                   }}
                   className="input flex-1"
-                  placeholder="Добавить вариант..."
+                  placeholder={t('app.settings.candidate_profiles.field_constructor.modal.add_option_placeholder', { defaultValue: 'Добавить вариант...' })}
                   disabled={disabled}
                 />
                 <button
@@ -844,7 +975,7 @@ function CreateCustomFieldModal({
                   disabled={disabled || !newOption.trim()}
                   className="btn-secondary text-sm"
                 >
-                  Добавить
+                  {t('common.actions.add', { defaultValue: 'Добавить' })}
                 </button>
               </div>
             </div>
@@ -860,20 +991,20 @@ function CreateCustomFieldModal({
               disabled={disabled}
               className="rounded border-slate-300"
             />
-            <span className="text-sm text-slate-700">Обязательное поле</span>
+            <span className="text-sm text-slate-700">{t('app.settings.candidate_profiles.field_constructor.modal.required_label', { defaultValue: 'Обязательное поле' })}</span>
           </label>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Подсказка (help text)
+            {t('app.settings.candidate_profiles.field_constructor.modal.help_label', { defaultValue: 'Подсказка (help text)' })}
           </label>
           <textarea
             value={helpText}
             onChange={(e) => setHelpText(e.target.value)}
             className="input w-full"
             rows={2}
-            placeholder="Текст подсказки для пользователей..."
+            placeholder={t('app.settings.candidate_profiles.field_constructor.modal.help_placeholder', { defaultValue: 'Текст подсказки для пользователей...' })}
             disabled={disabled}
           />
         </div>
@@ -885,7 +1016,7 @@ function CreateCustomFieldModal({
             disabled={disabled}
             className="btn-secondary"
           >
-            Отмена
+            {t('common.actions.cancel', { defaultValue: 'Отмена' })}
           </button>
           <button
             type="button"
@@ -893,7 +1024,9 @@ function CreateCustomFieldModal({
             disabled={disabled || !label.trim() || !key.trim()}
             className="btn-primary"
           >
-            {disabled ? 'Создание...' : 'Создать поле'}
+            {disabled
+              ? t('app.settings.candidate_profiles.field_constructor.modal.creating', { defaultValue: 'Создание...' })
+              : t('app.settings.candidate_profiles.field_constructor.modal.create', { defaultValue: 'Создать поле' })}
           </button>
         </div>
       </div>

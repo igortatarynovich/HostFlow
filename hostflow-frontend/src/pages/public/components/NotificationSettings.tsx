@@ -260,7 +260,7 @@ export function NotificationSettings({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              placeholder="your@email.com"
+              placeholder={t('public.notifications.placeholders.email', { defaultValue: 'your@email.com' })}
             />
           </div>
           <div>
@@ -334,7 +334,7 @@ export function NotificationSettings({
           </div>
           {email && (
             <div className="text-sm text-slate-600">
-              <span className="font-medium">Email:</span> {email}
+              <span className="font-medium">{t('public.notifications.labels.email_colon', { defaultValue: 'Email:' })}</span> {email}
             </div>
           )}
           {phone && (
@@ -412,4 +412,3 @@ export function NotificationSettings({
     </div>
   )
 }
-

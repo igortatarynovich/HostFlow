@@ -6,6 +6,8 @@ from uuid import UUID, uuid4
 
 CompanyTypeLiteral = Literal["agency", "employer", "services"]
 CompanyRoleLiteral = Literal["operating", "client"]
+PartyEntityTypeLiteral = Literal["company", "person"]
+PartyBusinessRolesLiteral = Literal["employer", "service_client", "both"]
 
 try:
     from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -50,6 +52,10 @@ except ImportError:  # pragma: no cover - Pydantic < 2 compatibility
 class CompanyMutableFields(BaseModel):
     owner_user_id: Optional[UUID] = None
     manager_user_id: Optional[UUID] = None
+    party_entity_type: PartyEntityTypeLiteral = "company"
+    party_business_roles: Optional[PartyBusinessRolesLiteral] = None
+    client_stage: Optional[str] = Field(None, max_length=32)
+    client_source: Optional[str] = Field(None, max_length=64)
     name: Optional[str] = Field(None, max_length=255)
     legal_name: Optional[str] = Field(None, max_length=255)
     tax_id: Optional[str] = Field(None, max_length=64)
@@ -103,6 +109,9 @@ class CompanyOut(CompanyBase):
     extra: dict[str, Any] = Field(default_factory=dict)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    # Populated when list endpoint is called with include_service_metrics=true
+    service_active_orders: Optional[int] = None
+    service_revenue_completed: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
 

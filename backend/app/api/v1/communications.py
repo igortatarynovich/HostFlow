@@ -4957,6 +4957,15 @@ async def create_thread_message(
     db.add(msg)
     await db.flush()
     _touch_thread_from_message(thread, msg, tenant=tenant)
+    if body.direction == "inbound" and not body.is_internal_note:
+        try:
+            from backend.app.services import uos_auto_activities
+
+            aid = str(current_user.sub) if getattr(current_user, "sub", None) else ""
+            if aid:
+                await uos_auto_activities.ensure_inbound_thread_reply_task(db, tenant_id, aid, thread)
+        except Exception:
+            pass
     await db.commit()
     await db.refresh(msg)
     return _message_out(msg)
@@ -6117,6 +6126,13 @@ async def ingest_email(
         auto_assigned = bool(alloc.get("assigned"))
         auto_assign_reason = None if auto_assigned else str(alloc.get("reason") or "no_eligible_managers")
 
+    try:
+        from backend.app.services import uos_auto_activities
+
+        await uos_auto_activities.ensure_inbound_thread_reply_task(db, tenant_id, actor_id, thread)
+    except Exception:
+        pass
+
     await db.commit()
     await db.refresh(thread)
     await db.refresh(msg)
@@ -6277,6 +6293,13 @@ async def ingest_generic_channel(
         alloc = await allocate_thread(db, tenant=tenant, thread=thread, actor_user_id=actor_id)
         auto_assigned = bool(alloc.get("assigned"))
         auto_assign_reason = None if auto_assigned else str(alloc.get("reason") or "no_eligible_managers")
+
+    try:
+        from backend.app.services import uos_auto_activities
+
+        await uos_auto_activities.ensure_inbound_thread_reply_task(db, tenant_id, actor_id, thread)
+    except Exception:
+        pass
 
     await db.commit()
     await db.refresh(thread)

@@ -91,7 +91,9 @@ export default function PublicStatusPage() {
           <PublicLocaleSwitcher />
         </div>
         <header className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">HostFlow</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+            {t('public.status_page.brand', { defaultValue: 'HostFlow' })}
+          </p>
           <h1 className="mt-2 text-2xl font-semibold text-slate-900">{t('public.status_page.title')}</h1>
           <p className="mt-2 text-sm text-slate-600">{t('public.status_page.description')}</p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm">

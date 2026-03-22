@@ -38,10 +38,16 @@ class Lead(Base):
         index=True,
         nullable=True,
     )
-    company_id: Mapped[str] = mapped_column(
+    lead_type: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="candidate",
+        server_default=text("'candidate'"),
+    )
+    company_id: Mapped[Optional[str]] = mapped_column(
         String(36),
         ForeignKey("companies.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
     )
     vacancy_id: Mapped[Optional[str]] = mapped_column(
         String(36),

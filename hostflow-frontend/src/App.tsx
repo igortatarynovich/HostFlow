@@ -32,6 +32,7 @@ import {
 const PublicApplyPage = lazy(() => import('./pages/public/PublicApplyPage'))
 const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
 const PublicStatusPage = lazy(() => import('./pages/public/PublicStatusPage'))
+const PublicDocumentsUploadPage = lazy(() => import('./pages/public/PublicDocumentsUploadPage'))
 const PublicScanPage = lazy(() => import('./pages/public/PublicScanPage'))
 const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage'))
 
@@ -73,6 +74,7 @@ export default function App(){
       <Route path="/public/portal" element={<PublicPortalLanding />} />
       <Route path="/public/intake" element={<PublicIntakeStart />} />
       <Route path="/public/apply/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicIntakeNew /></LazyRoute>} />
+      <Route path="/public/documents/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicDocumentsUploadPage /></LazyRoute>} />
       <Route path="/public/apply-old/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicApplyPage /></LazyRoute>} />
       <Route path="/public/scan" element={<LazyRoute loadingLabel={t('common.loading')}><PublicScanPage /></LazyRoute>} />
       <Route path="/public/scan-sessions" element={<Navigate to="/public/scan" replace />} />
@@ -113,7 +115,9 @@ export default function App(){
                 path={path}
                 element={
                   <RoutePermissionGuard permission={permission}>
-                    <Component />
+                    <LazyRoute loadingLabel={t('common.loading')}>
+                      <Component />
+                    </LazyRoute>
                   </RoutePermissionGuard>
                 }
               />

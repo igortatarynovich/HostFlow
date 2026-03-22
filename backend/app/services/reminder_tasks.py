@@ -92,6 +92,23 @@ def _normalize_remind_at(
     return remind_at
 
 
+def resolve_assignee_for_reminder_list(
+    *,
+    explicit_assignee_id: Optional[str],
+    assignee_scope: str,
+    viewer_id: str,
+    viewer_role: Optional[str],
+) -> Optional[str]:
+    """Filter reminders by assignee, or None = whole team (supervisor/admin/manager only)."""
+    if explicit_assignee_id and str(explicit_assignee_id).strip():
+        return str(explicit_assignee_id).strip()
+    scope = str(assignee_scope or "mine").strip().lower()
+    role = str(viewer_role or "").strip().lower()
+    if scope == "team" and role in ("administrator", "supervisor", "superadmin", "admin", "manager"):
+        return None
+    return str(viewer_id).strip()
+
+
 async def create_reminder(
     db: AsyncSession,
     *,
@@ -226,6 +243,53 @@ async def _get_reminder(db: AsyncSession, tenant_id: str, reminder_id: str) -> R
     if reminder is None:
         raise HTTPException(status_code=404, detail="Reminder not found")
     return reminder
+
+
+async def refresh_open_typed_reminder_due(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    entity_type: str,
+    entity_id: str,
+    reminder_type: str,
+    new_due_at: datetime,
+) -> bool:
+    """Automation-only: move due_at forward for one open reminder (no user ACL). Used for UOS inbound follow-ups."""
+    active = (
+        ReminderStatus.pending,
+        ReminderStatus.new,
+        ReminderStatus.sent,
+        ReminderStatus.overdue,
+    )
+    stmt = (
+        select(Reminder)
+        .where(
+            Reminder.tenant_id == tenant_id,
+            Reminder.entity_type == entity_type,
+            Reminder.entity_id == entity_id,
+            Reminder.type == reminder_type,
+            Reminder.status.in_(list(active)),
+        )
+        .order_by(Reminder.created_at.asc())
+        .limit(1)
+    )
+    r = (await db.execute(stmt)).scalars().first()
+    if r is None:
+        return False
+    nd = new_due_at if new_due_at.tzinfo else new_due_at.replace(tzinfo=timezone.utc)
+    r.due_at = nd
+    r.remind_at = _normalize_remind_at(r.due_at, None, DEFAULT_REMIND_OFFSET_MINUTES)
+    if r.status == ReminderStatus.overdue:
+        r.status = ReminderStatus.pending
+    await db.flush()
+    _log_event(
+        db,
+        reminder_id=r.id,
+        tenant_id=tenant_id,
+        event_type="due_refreshed",
+        payload={"reason": "uos_inbound_followup", "due_at": nd.isoformat()},
+    )
+    return True
 
 
 async def update_reminder(

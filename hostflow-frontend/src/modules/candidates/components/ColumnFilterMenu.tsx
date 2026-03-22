@@ -73,6 +73,19 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
     setOpen(false)
   }
 
+  // Закрываем меню без применения изменений (если пользователь открыл превью и нам нужно убрать оверлей).
+  const forceClose = useCallback(() => {
+    setOpen(false)
+  }, [])
+
+  useEffect(() => {
+    const handler = () => forceClose()
+    window.addEventListener('hf:close-column-filter-menus', handler)
+    return () => {
+      window.removeEventListener('hf:close-column-filter-menus', handler)
+    }
+  }, [forceClose])
+
   useEffect(() => {
     if (!open) {
       setMenuPosition(null)
@@ -138,15 +151,11 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
     'children' in props && props.children
       ? props.count ?? 0
       : props.selected?.length ?? 0
+  const isActive = open || badgeCount > 0
 
   const menuContent = open && menuPosition && (
     <>
-      {/* Overlay для закрытия по клику вне */}
-      <div 
-        className="fixed inset-0 z-[45]" 
-        onClick={handleClose}
-        style={{ pointerEvents: 'auto' }}
-      />
+      {/* Без full-screen fixed inset-0: перекрывал всю страницу (в т.ч. таблицу кандидатов) и ломал клики. Закрытие по клику снаружи — document mousedown capture ниже. */}
       <div
         ref={menuRef}
         className="fixed z-[50] w-72 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-2xl"
@@ -214,14 +223,19 @@ export function ColumnFilterMenu(props: ColumnFilterMenuProps) {
         <button
           ref={buttonRef}
           type="button"
-          className="btn-icon"
+          className={`inline-flex h-5 w-5 items-center justify-center rounded leading-none transition-all ${
+            isActive
+              ? 'opacity-100 text-brand-600 bg-brand-50/70'
+              : 'opacity-0 text-slate-400 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-slate-200 hover:text-slate-600'
+          }`}
           onClick={toggle}
           onMouseDown={(e) => e.stopPropagation()}
           aria-label={props.title}
+          aria-pressed={isActive}
         >
-          <IconFilter size={14} className="text-slate-500" />
+          <IconFilter size={13} className={isActive ? 'text-brand-600' : 'text-slate-500'} />
           {badgeCount > 0 && (
-            <span className="ml-1 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700">
+            <span className="absolute -right-1.5 -top-1 rounded bg-brand-50 px-1 text-[10px] font-semibold text-brand-700 leading-4">
               {badgeCount}
             </span>
           )}

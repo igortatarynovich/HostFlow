@@ -102,7 +102,12 @@ export default function AutomationRulesPage() {
           </label>
           <label className="text-sm">
             <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.stage_to', { defaultValue: 'Stage to (optional)' })}</div>
-            <input className="input w-full" value={newStageTo} onChange={(e) => setNewStageTo(e.target.value)} placeholder="contacted" />
+            <input
+              className="input w-full"
+              value={newStageTo}
+              onChange={(e) => setNewStageTo(e.target.value)}
+              placeholder={t('app.automation_rules.fields.stage_to_placeholder', { defaultValue: 'contacted' })}
+            />
           </label>
         </div>
         <div className="flex gap-2">
@@ -169,4 +174,3 @@ export default function AutomationRulesPage() {
     </div>
   )
 }
-

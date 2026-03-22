@@ -812,6 +812,7 @@ export default function Dashboard() {
   const stageLabels = useMemo<StageLabelConfig>(() => STAGE_HIGHLIGHT_CODES, [])
   const untitledLabel = t('app.dashboard.labels.no_title')
   const notAvailableLabel = t('common.labels.not_available')
+  const startStageLabel = t('app.dashboard.stage_metrics.start_stage', { defaultValue: 'Start' })
 
   const translateStageLabel = useCallback(
     (code?: string | null, fallback?: string | null) => {
@@ -1406,28 +1407,71 @@ export default function Dashboard() {
     return { ...counts, total }
   }, [slices?.snapshot])
 
+  const documentBlockerAnalytics = useMemo(() => {
+    if (!documentStats) {
+      return {
+        total: 0,
+        missingOrRequested: 0,
+        awaitingReview: 0,
+        problematic: 0,
+        estimatedBlockedRevenue: 0,
+      }
+    }
+    const byStatus = Object.entries(documentStats.by_status || {}).reduce<Record<string, number>>((acc, [k, v]) => {
+      acc[String(k || '').toLowerCase()] = Number(v || 0)
+      return acc
+    }, {})
+    const sumBy = (keys: string[]) => keys.reduce((sum, key) => sum + (byStatus[key] || 0), 0)
+    const missingOrRequested = sumBy(['missing', 'requested', 'not_uploaded'])
+    const awaitingReview = sumBy(['in_progress', 'uploaded', 'submitted', 'pending_verification'])
+    const problematic = sumBy(['rejected', 'expired', 'invalid', 'problematic', 'needs_attention'])
+    const total = missingOrRequested + awaitingReview + problematic
+
+    const serviceOrdersInProgress = Number(profileSummary?.kpis?.service_orders_in_progress || 0)
+    const avgOrderRevenue = Number(
+      profileSummary?.kpis?.avg_order_revenue ||
+      profileSummary?.kpis?.service_order_avg_revenue ||
+      0,
+    )
+    const docsTotal = Math.max(Number(documentStats.total_docs || 0), 1)
+    const blockedShare = total > 0 ? Math.min(total / docsTotal, 1) : 0
+    const estimatedBlockedRevenue = serviceOrdersInProgress > 0 && avgOrderRevenue > 0
+      ? blockedShare * serviceOrdersInProgress * avgOrderRevenue
+      : 0
+
+    return {
+      total,
+      missingOrRequested,
+      awaitingReview,
+      problematic,
+      estimatedBlockedRevenue,
+    }
+  }, [documentStats, profileSummary?.kpis])
+
   const stageVelocityRows = useMemo(() => {
     if (!slices?.snapshot?.length) return []
     const now = Date.now()
-    const store = new Map<string, number[]>()
+    const store = new Map<string, { label: string; values: number[] }>()
     slices.snapshot.forEach((row) => {
       if (!row.created_at) return
       const ts = Date.parse(row.created_at)
       if (Number.isNaN(ts)) return
       const days = Math.max((now - ts) / DAY_MS, 0)
+      const canonical = canonicalStageKey(row.stage, row.stage_label) || String(row.stage || '')
+      if (!canonical) return
       const label = translateStageLabel(row.stage, row.stage_label) || notAvailableLabel
-      const list = store.get(label)
-      if (list) list.push(days)
-      else store.set(label, [days])
+      const entry = store.get(canonical)
+      if (entry) entry.values.push(days)
+      else store.set(canonical, { label, values: [days] })
     })
-    const rows = Array.from(store.entries())
-      .map(([label, values]) => {
+    const rows = Array.from(store.entries()).map(([stageCode, payload]) => {
+        const values = payload.values
         const total = values.length
         const avgDays = values.reduce((sum, value) => sum + value, 0) / total
         const sorted = values.slice().sort((a, b) => a - b)
         const index = Math.min(sorted.length - 1, Math.max(0, Math.floor(0.9 * (sorted.length - 1))))
         const p90 = sorted[index] ?? avgDays
-        return { label, total, avgDays, p90 }
+        return { stageCode, label: payload.label, total, avgDays, p90 }
       })
       .sort((a, b) => b.total - a.total)
       .slice(0, 6)
@@ -1466,6 +1510,48 @@ export default function Dashboard() {
     ]
   }, [profileSummary, t])
 
+  const businessCardHref = useCallback((key: string): string => {
+    switch (key) {
+      case 'service_orders_in_progress':
+        return '/app/services?status=in_progress'
+      case 'service_orders_delivered':
+        return '/app/services?status=delivered'
+      case 'clients_total':
+      case 'counterparties_total':
+      case 'companies_total':
+        return '/app/clients'
+      case 'vacancies_active':
+        return '/app/vacancies'
+      case 'candidates_total':
+        return '/app/candidates'
+      case 'leads_total':
+        return '/app/leads'
+      default:
+        return '/app/overview'
+    }
+  }, [])
+
+  const documentQuickFilterHref = useCallback((statusKey: string): string => {
+    const key = String(statusKey || '').toLowerCase()
+    if (['missing', 'not_uploaded'].includes(key)) return '/app/documents?quick=missing'
+    if (['requested'].includes(key)) return '/app/documents?quick=requested'
+    if (['approved', 'ready', 'received', 'delivered', 'completed'].includes(key)) return '/app/documents?quick=ready'
+    if (['in_progress', 'uploaded', 'submitted', 'pending_verification'].includes(key)) return '/app/documents?quick=in_progress'
+    return `/app/documents?status=${encodeURIComponent(key)}`
+  }, [])
+
+  const makeCandidatesHref = useCallback((params: Record<string, string | null | undefined>) => {
+    const sp = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => {
+      const value = String(v || '').trim()
+      if (value) sp.set(k, value)
+    })
+    const qs = sp.toString()
+    return qs ? `/app/candidates?${qs}` : '/app/candidates'
+  }, [])
+  const drilldownTitle = t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })
+  const drillInlineClass = 'cursor-pointer hover:underline underline-offset-2 decoration-dotted'
+
   const dashboardCompanyLabels = useMemo(() => {
     const bt = profileSummary?.business_type
     if (bt === 'employer') {
@@ -1492,7 +1578,7 @@ export default function Dashboard() {
     if (!slices?.snapshot?.length) return []
     const rows = new Map<
       string,
-      { label: string; total: number; pipeline: number; managerLabel: string }
+      { label: string; total: number; pipeline: number; managerIdForFilter: string | null }
     >()
     slices.snapshot.forEach((row) => {
       const label =
@@ -1500,9 +1586,10 @@ export default function Dashboard() {
         row.manager ||
         row.manager_short ||
         t('app.dashboard.manager_load.unknown')
+      const managerIdForFilter = String(row.manager || row.manager_short || '').trim() || null
       const canonical = canonicalStageKey(row.stage, row.stage_label)
       const outcome = determineStageOutcome(canonical, stageLabels)
-      const entry = rows.get(label) ?? { label, total: 0, pipeline: 0, managerLabel: label }
+      const entry = rows.get(label) ?? { label, total: 0, pipeline: 0, managerIdForFilter }
       entry.total += 1
       if (outcome === 'pipeline') entry.pipeline += 1
       rows.set(label, entry)
@@ -1565,13 +1652,14 @@ export default function Dashboard() {
       const firstOriginalStage = slices?.stages?.find(
         (s) => (translateStageLabel(s.key, s.label) || s.label) === stage.label
       )
+      const stageKeyForFilter = firstOriginalStage?.key || stage.keys[0] || ''
       const canonical = firstOriginalStage
         ? canonicalStageKey(firstOriginalStage.key, firstOriginalStage.label)
         : null
       const outcome = determineStageOutcome(canonical, stageLabels)
       const value = stage.count
       const percent = total ? Math.round((value / total) * 1000) / 10 : 0
-      return { label: stage.label, value, percent, outcome }
+      return { label: stage.label, value, percent, outcome, stageKeyForFilter }
     })
   }, [groupedStages, slices?.stages, stageLabels, translateStageLabel])
 
@@ -1697,55 +1785,55 @@ export default function Dashboard() {
           </div>
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Link to="/app/candidates/no-next-action" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+            <Link to="/app/candidates/no-next-action" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.no_next_action', { defaultValue: 'No next action' })}</div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.no_next_action_candidates ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/reminders" className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50">
+            <Link to="/app/tasks" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50">
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.overdue_reminders', { defaultValue: 'Overdue reminders' })}</div>
               <div className="mt-1 text-2xl font-semibold text-rose-700">{opsCounters?.overdue_reminders ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/leads?status=needs_routing" className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50">
+            <Link to="/app/leads?status=needs_routing" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50">
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.leads_needs_routing', { defaultValue: 'Leads need routing' })}</div>
               <div className="mt-1 text-2xl font-semibold text-amber-700">{opsCounters?.leads_needs_routing ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/leads?status=failed" className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50">
+            <Link to="/app/leads?status=failed" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50">
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.leads_failed', { defaultValue: 'Leads failed' })}</div>
               <div className="mt-1 text-2xl font-semibold text-rose-700">{opsCounters?.leads_failed ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/leads?status=processed&next_action=no_next_action" className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50">
+            <Link to="/app/leads?status=processed&next_action=no_next_action" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50">
               <div className="text-xs text-slate-500">
                 {t('app.dashboard.ops.leads_no_next_action', { defaultValue: 'Leads: no next action' })}
               </div>
               <div className="mt-1 text-2xl font-semibold text-amber-700">{opsCounters?.leads_no_next_action ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/reminders?type=leads_no_next_action" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+            <Link to="/app/tasks?type=leads_no_next_action" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
               <div className="text-xs text-slate-500">
                 {t('app.dashboard.ops.leads_sla_nudges', { defaultValue: 'Leads SLA nudges (assigned)' })}
               </div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.leads_sla_no_next_action_reminders ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/leads?status=processed&next_action=stuck" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+            <Link to="/app/leads?status=processed&next_action=stuck" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
               <div className="text-xs text-slate-500">
                 {t('app.dashboard.ops.leads_stuck_nudges', { defaultValue: 'Leads stuck nudges (assigned)' })}
               </div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.leads_sla_stuck_stage_reminders ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/candidates?debug=1" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+            <Link to="/app/candidates?debug=1" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.draft_intake', { defaultValue: 'Draft intake stale (24h+)' })}</div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.draft_intake_stale ?? '—'}</div>
               <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.note', { defaultValue: 'Operational signal' })}</div>
@@ -1754,7 +1842,7 @@ export default function Dashboard() {
             <Link to="/app/automation-rules" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.automation_rules', { defaultValue: 'Automation rules enabled' })}</div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.automation_rules_enabled ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
 
             <Link to="/app/automation-log" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
@@ -1850,7 +1938,14 @@ export default function Dashboard() {
                     .slice(0, 8)
                     .map(([k, v]) => (
                       <div key={k} className="flex justify-between">
-                        <span className="text-slate-600">{k}</span>
+                        <span className="text-slate-600">
+                          {(() => {
+                            const readinessLabel = t(`admin.documents.readiness_labels.${k}`, { defaultValue: '' }).trim()
+                            if (readinessLabel) return readinessLabel
+                            const stageLabel = translateStageLabel(k, k)
+                            return stageLabel || k
+                          })()}
+                        </span>
                         <span className="font-semibold text-slate-900">{String(v)}</span>
                       </div>
                     ))}
@@ -1862,7 +1957,9 @@ export default function Dashboard() {
                 <div className="mt-2 space-y-1 text-sm">
                   {(stageMetrics.stage_time || []).slice(0, 8).map((s) => (
                     <div key={s.stage} className="flex items-center justify-between gap-2">
-                      <span className="truncate text-slate-600" title={s.stage}>{s.stage}</span>
+                      <span className="truncate text-slate-600" title={translateStageLabel(s.stage, s.stage) || s.stage}>
+                        {translateStageLabel(s.stage, s.stage) || s.stage}
+                      </span>
                       <span className="shrink-0 font-semibold text-slate-900">{s.avg_days}d</span>
                     </div>
                   ))}
@@ -1872,14 +1969,21 @@ export default function Dashboard() {
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.transitions', { defaultValue: 'Top transitions' })}</div>
                 <div className="mt-2 space-y-1 text-sm">
-                  {(stageMetrics.transitions || []).slice(0, 10).map((tr, idx) => (
+                  {(stageMetrics.transitions || []).slice(0, 10).map((tr, idx) => {
+                    const fromLabel = translateStageLabel(tr.from_stage, tr.from_stage) || startStageLabel
+                    const toLabel = translateStageLabel(tr.to_stage, tr.to_stage) || notAvailableLabel
+                    return (
                     <div key={`${tr.from_stage || 'none'}-${tr.to_stage}-${idx}`} className="flex items-center justify-between gap-2">
-                      <span className="truncate text-slate-600" title={`${tr.from_stage || '—'} → ${tr.to_stage}`}>
-                        {(tr.from_stage || '—') + ' → ' + tr.to_stage}
+                      <span
+                        className="truncate text-slate-600"
+                        title={`${fromLabel} → ${toLabel}`}
+                      >
+                        {`${fromLabel} → ${toLabel}`}
                       </span>
                       <span className="shrink-0 font-semibold text-slate-900">{tr.count}</span>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -2500,10 +2604,38 @@ export default function Dashboard() {
                 <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.handoff.title', { defaultValue: 'Передачи' })}</div>
                 <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.handoff.subtitle', { defaultValue: 'По запросам за период' })}</div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div className="rounded-lg bg-slate-50 p-2"><span className="text-slate-500">{t('app.dashboard.widgets.handoff.requested', { defaultValue: 'Запросов' })}</span><div className="font-semibold">{formatNumber(handoffStats.total_requested)}</div></div>
-                  <div className="rounded-lg bg-emerald-50 p-2"><span className="text-slate-500">{t('app.dashboard.widgets.handoff.accepted', { defaultValue: 'Принято' })}</span><div className="font-semibold text-emerald-700">{formatNumber(handoffStats.total_accepted)}</div></div>
-                  <div className="rounded-lg bg-rose-50 p-2"><span className="text-slate-500">{t('app.dashboard.widgets.handoff.rejected', { defaultValue: 'Отклонено' })}</span><div className="font-semibold text-rose-700">{formatNumber(handoffStats.total_rejected)}</div></div>
-                  <div className="rounded-lg bg-amber-50 p-2"><span className="text-slate-500">{t('app.dashboard.widgets.handoff.returned', { defaultValue: 'Возвращено' })}</span><div className="font-semibold text-amber-700">{formatNumber(handoffStats.total_returned)}</div></div>
+                  <Link
+                    to="/app/candidates?handoff_status=pending"
+                    className="rounded-lg bg-slate-50 p-2 hover:bg-slate-100"
+                    title={drilldownTitle}
+                  >
+                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.requested', { defaultValue: 'Запросов' })}</span>
+                    <div className="font-semibold">{formatNumber(handoffStats.total_requested)}</div>
+                  </Link>
+                  <Link
+                    to="/app/candidates?handoff_status=accepted"
+                    className="rounded-lg bg-emerald-50 p-2 hover:bg-emerald-100"
+                    title={drilldownTitle}
+                  >
+                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.accepted', { defaultValue: 'Принято' })}</span>
+                    <div className="font-semibold text-emerald-700">{formatNumber(handoffStats.total_accepted)}</div>
+                  </Link>
+                  <Link
+                    to="/app/candidates?handoff_status=rejected"
+                    className="rounded-lg bg-rose-50 p-2 hover:bg-rose-100"
+                    title={drilldownTitle}
+                  >
+                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.rejected', { defaultValue: 'Отклонено' })}</span>
+                    <div className="font-semibold text-rose-700">{formatNumber(handoffStats.total_rejected)}</div>
+                  </Link>
+                  <Link
+                    to="/app/candidates?handoff_status=returned"
+                    className="rounded-lg bg-amber-50 p-2 hover:bg-amber-100"
+                    title={drilldownTitle}
+                  >
+                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.returned', { defaultValue: 'Возвращено' })}</span>
+                    <div className="font-semibold text-amber-700">{formatNumber(handoffStats.total_returned)}</div>
+                  </Link>
                 </div>
               </div>
             )}
@@ -2512,9 +2644,22 @@ export default function Dashboard() {
                 <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.contact_attempts.title', { defaultValue: 'Попытки контакта' })}</div>
                 <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.contact_attempts.subtitle', { defaultValue: 'По кандидатам за период' })}</div>
                 <div className="mt-3 space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.total', { defaultValue: 'Всего попыток' })}</span><span className="font-semibold">{formatNumber(contactStats.total_attempts)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.avg', { defaultValue: 'Ср. на кандидата' })}</span><span className="font-semibold">{contactStats.avg_per_candidate.toFixed(1)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.limit_reached', { defaultValue: 'Достигнут лимит 3+' })}</span><span className="font-semibold">{formatNumber(contactStats.limit_reached_count)}</span></div>
+                  <Link to="/app/candidates?contact_attempts=some" className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50" title={drilldownTitle}>
+                    <span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.total', { defaultValue: 'Всего попыток' })}</span>
+                    <span className="font-semibold">{formatNumber(contactStats.total_attempts)}</span>
+                  </Link>
+                  <Link to="/app/candidates?contact_attempts=some" className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50" title={drilldownTitle}>
+                    <span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.avg', { defaultValue: 'Ср. на кандидата' })}</span>
+                    <span className="font-semibold">{contactStats.avg_per_candidate.toFixed(1)}</span>
+                  </Link>
+                  <Link
+                    to="/app/candidates?contact_attempts=limit_reached"
+                    className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50"
+                    title={drilldownTitle}
+                  >
+                    <span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.limit_reached', { defaultValue: 'Достигнут лимит 3+' })}</span>
+                    <span className="font-semibold">{formatNumber(contactStats.limit_reached_count)}</span>
+                  </Link>
                 </div>
               </div>
             )}
@@ -2523,18 +2668,68 @@ export default function Dashboard() {
                 <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.documents.title', { defaultValue: 'Документы' })}</div>
                 <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.documents.subtitle', { defaultValue: 'Реальные данные из БД' })}</div>
                 <div className="mt-3 space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-slate-500">{t('app.dashboard.widgets.documents.total', { defaultValue: 'Всего документов' })}</span><span className="font-semibold">{formatNumber(documentStats.total_docs)}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">{t('app.dashboard.widgets.documents.complete', { defaultValue: 'Кандидатов с готовыми' })}</span><span className="font-semibold">{formatNumber(documentStats.candidates_with_complete_docs)}</span></div>
+                  <Link to="/app/documents" title={drilldownTitle} className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50">
+                    <span className="text-slate-500">{t('app.dashboard.widgets.documents.total', { defaultValue: 'Всего документов' })} <span className="text-[10px]">↗</span></span>
+                    <span className="font-semibold">{formatNumber(documentStats.total_docs)}</span>
+                  </Link>
+                  <Link to="/app/documents?quick=ready" title={drilldownTitle} className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50">
+                    <span className="text-slate-500">{t('app.dashboard.widgets.documents.complete', { defaultValue: 'Кандидатов с готовыми' })} <span className="text-[10px]">↗</span></span>
+                    <span className="font-semibold">{formatNumber(documentStats.candidates_with_complete_docs)}</span>
+                  </Link>
                   {Object.keys(documentStats.by_status || {}).length > 0 && (
                     <div className="mt-2 pt-2 border-t border-slate-100">
                       <span className="text-xs text-slate-500">{t('app.dashboard.widgets.documents.by_status', { defaultValue: 'По статусу' })}</span>
                       <ul className="mt-1 space-y-0.5 text-xs">
                         {Object.entries(documentStats.by_status || {}).slice(0, 5).map(([status, count]) => (
-                          <li key={status} className="flex justify-between"><span>{status}</span><span>{formatNumber(count)}</span></li>
+                          <li key={status} className="flex justify-between">
+                            <Link className="hover:underline" to={documentQuickFilterHref(status)}>{status}</Link>
+                            <span>{formatNumber(count)}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
                   )}
+                  <div className="mt-2 pt-2 border-t border-slate-100">
+                    <div className="text-xs text-slate-500">
+                      {t('app.dashboard.widgets.documents.blockers_title', { defaultValue: 'Blockers: where and why' })}
+                    </div>
+                    <div className="mt-1 grid grid-cols-1 gap-1.5 text-xs">
+                      <Link to="/app/documents?quick=missing" className="flex items-center justify-between rounded bg-blue-50 px-2 py-1 text-blue-800 hover:bg-blue-100">
+                        <span>{t('app.dashboard.widgets.documents.blockers_missing', { defaultValue: 'Missing/requested docs' })}</span>
+                        <span className="font-semibold">{formatNumber(documentBlockerAnalytics.missingOrRequested)}</span>
+                      </Link>
+                      <Link to="/app/documents?quick=in_progress" className="flex items-center justify-between rounded bg-amber-50 px-2 py-1 text-amber-800 hover:bg-amber-100">
+                        <span>{t('app.dashboard.widgets.documents.blockers_review', { defaultValue: 'Uploaded, waiting review' })}</span>
+                        <span className="font-semibold">{formatNumber(documentBlockerAnalytics.awaitingReview)}</span>
+                      </Link>
+                      <Link to="/app/documents?status=rejected" className="flex items-center justify-between rounded bg-rose-50 px-2 py-1 text-rose-800 hover:bg-rose-100">
+                        <span>{t('app.dashboard.widgets.documents.blockers_problematic', { defaultValue: 'Rejected/expired/problematic' })}</span>
+                        <span className="font-semibold">{formatNumber(documentBlockerAnalytics.problematic)}</span>
+                      </Link>
+                    </div>
+                    {documentBlockerAnalytics.total > 0 ? (
+                      <div className="mt-2 text-[11px] text-slate-600">
+                        {t('app.dashboard.widgets.documents.blockers_total_hint', {
+                          defaultValue: 'Total blocker documents: {count}. Focus: remove blockers and prevent repeats.',
+                          values: { count: formatNumber(documentBlockerAnalytics.total) },
+                        })}
+                      </div>
+                    ) : null}
+                    {profileSummary?.business_type === 'services' && documentBlockerAnalytics.estimatedBlockedRevenue > 0 ? (
+                      <div className="mt-2 rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-800">
+                        {t('app.dashboard.widgets.documents.blockers_cost_hint', {
+                          defaultValue: 'Estimated revenue at risk due to document blockers: {amount}',
+                          values: {
+                            amount: new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : 'en-US', {
+                              style: 'currency',
+                              currency: 'EUR',
+                              maximumFractionDigits: 0,
+                            }).format(documentBlockerAnalytics.estimatedBlockedRevenue),
+                          },
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             )}
@@ -2559,12 +2754,16 @@ export default function Dashboard() {
             </div>
             <div className="grid gap-2 text-xs text-slate-600 sm:grid-cols-2 lg:grid-cols-3">
               {stageStackSegments.slice(0, 6).map((segment) => (
-                <div key={`legend-${segment.label}`} className="flex items-center gap-2">
+                <Link
+                  key={`legend-${segment.label}`}
+                  to={makeCandidatesHref({ stage: segment.stageKeyForFilter })}
+                  className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-slate-50"
+                >
                   <span className={`h-2 w-2 rounded-full ${STAGE_STACK_COLORS[segment.outcome]}`} />
                   <span className="truncate">
                     {segment.label} · {segment.percent}%
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -2582,19 +2781,19 @@ export default function Dashboard() {
 
         {isWidgetVisible('globalStats') && (
         <div className="grid w-full gap-4 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
-          <div className="card p-4">
+          <Link to="/app/candidates" className="card block p-4 hover:border-brand-200">
             <div className="text-slate-500 text-sm mb-1">{t('app.dashboard.stats.candidates_total')}</div>
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.candidates)}</div>
-          </div>
-          <div className="card p-4">
+          </Link>
+          <Link to="/app/clients" className="card block p-4 hover:border-brand-200">
             <div className="text-slate-500 text-sm mb-1">{dashboardCompanyLabels.plural}</div>
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.companies)}</div>
-          </div>
-          <div className="card p-4">
+          </Link>
+          <Link to="/app/vacancies" className="card block p-4 hover:border-brand-200">
             <div className="text-slate-500 text-sm mb-1">{t('app.dashboard.stats.vacancies')}</div>
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.vacancies)}</div>
-          </div>
-          <div className="card p-4 border border-brand-100">
+          </Link>
+          <Link to="/app/candidates" className="card block p-4 border border-brand-100 hover:border-brand-200">
             <div className="text-slate-500 text-sm mb-1">{t('app.dashboard.stats.period')}</div>
             <div className="text-2xl font-semibold">{formatNumber(periodTotal)}</div>
             <div className="text-xs text-slate-500 mt-1">
@@ -2602,7 +2801,7 @@ export default function Dashboard() {
                 ? t('app.dashboard.stats.period_suffix_created')
                 : t('app.dashboard.stats.period_suffix_updated')}
             </div>
-          </div>
+          </Link>
         </div>
         )}
 
@@ -2618,10 +2817,10 @@ export default function Dashboard() {
             </div>
             <div className="grid w-full gap-3 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
               {businessProfileCards.map((card) => (
-                <div key={card.key} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <Link key={card.key} to={businessCardHref(card.key)} className="block rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 hover:border-brand-200">
                   <div className="text-xs text-slate-500">{card.label}</div>
                   <div className="mt-1 text-xl font-semibold text-slate-900">{formatNumber(card.value)}</div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -2648,7 +2847,11 @@ export default function Dashboard() {
                 <tbody>
                 {groupedStages.map((stage, index) => (
                   <tr key={`grouped-stage-${index}-${stage.keys.join('-')}`}>
-                    <td>{stage.label}</td>
+                    <td>
+                          <Link to={makeCandidatesHref({ stage: stage.keys[0] })} title={drilldownTitle} className={drillInlineClass}>
+                        {stage.label}
+                      </Link>
+                    </td>
                     <td className="text-right font-medium">{formatNumber(stage.count)}</td>
                   </tr>
                 ))}
@@ -2667,7 +2870,12 @@ export default function Dashboard() {
                 <ul className="space-y-1 text-sm">
                   {groupedRejectedReasons.slice(0, 8).map((item, index) => (
                     <li key={`rejected-grouped-${index}-${Array.from(item.codes).join('-') || item.label}`} className="flex justify-between gap-2">
-                      <span className="truncate">{item.label}</span>
+                      <Link
+                        to={makeCandidatesHref({ stage: 'rejected', status_reason: Array.from(item.codes)[0] || item.label })}
+                        className="truncate hover:underline"
+                      >
+                        {item.label}
+                      </Link>
                       <span className="font-medium">{formatNumber(item.count)}</span>
                     </li>
                   ))}
@@ -2682,7 +2890,12 @@ export default function Dashboard() {
                 <ul className="space-y-1 text-sm">
                   {groupedDeclinedReasons.slice(0, 8).map((item, index) => (
                     <li key={`declined-grouped-${index}-${Array.from(item.codes).join('-') || item.label}`} className="flex justify-between gap-2">
-                      <span className="truncate">{item.label}</span>
+                      <Link
+                        to={makeCandidatesHref({ stage: 'declined', status_reason: Array.from(item.codes)[0] || item.label })}
+                        className="truncate hover:underline"
+                      >
+                        {item.label}
+                      </Link>
                       <span className="font-medium">{formatNumber(item.count)}</span>
                     </li>
                   ))}
@@ -2730,12 +2943,30 @@ export default function Dashboard() {
                     const highlight = stageHighlights(item.by_stage, stageLabels)
                     return (
                       <tr key={`company-${item.key}`}>
-                        <td className="truncate">{item.label}</td>
-                        <td className="text-right font-medium">{formatNumber(item.count)}</td>
-                        <td className="text-right">{formatNumber(highlight.pipeline)}</td>
-                        <td className="text-right text-emerald-600">{formatNumber(highlight.hired)}</td>
+                        <td className="truncate">
+                          <Link to={makeCandidatesHref({ q: item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {item.label}
+                          </Link>
+                        </td>
+                        <td className="text-right font-medium">
+                          <Link to={makeCandidatesHref({ q: item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {formatNumber(item.count)}
+                          </Link>
+                        </td>
+                        <td className="text-right">
+                          <Link to={makeCandidatesHref({ q: item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {formatNumber(highlight.pipeline)}
+                          </Link>
+                        </td>
+                        <td className="text-right text-emerald-600">
+                          <Link to={makeCandidatesHref({ q: item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {formatNumber(highlight.hired)}
+                          </Link>
+                        </td>
                         <td className="text-right text-red-600">
-                          {formatNumber(highlight.rejected + highlight.declined)}
+                          <Link to={makeCandidatesHref({ q: item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {formatNumber(highlight.rejected + highlight.declined)}
+                          </Link>
                         </td>
                       </tr>
                     )
@@ -2774,12 +3005,30 @@ export default function Dashboard() {
                     const highlight = stageHighlights(item.by_stage, stageLabels)
                     return (
                       <tr key={`vacancy-${item.key}`}>
-                        <td className="truncate">{item.label}</td>
-                        <td className="text-right font-medium">{formatNumber(item.count)}</td>
-                        <td className="text-right">{formatNumber(highlight.pipeline)}</td>
-                        <td className="text-right text-emerald-600">{formatNumber(highlight.hired)}</td>
+                        <td className="truncate">
+                          <Link to={makeCandidatesHref({ vacancy: item.key || item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {item.label}
+                          </Link>
+                        </td>
+                        <td className="text-right font-medium">
+                          <Link to={makeCandidatesHref({ vacancy: item.key || item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {formatNumber(item.count)}
+                          </Link>
+                        </td>
+                        <td className="text-right">
+                          <Link to={makeCandidatesHref({ vacancy: item.key || item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {formatNumber(highlight.pipeline)}
+                          </Link>
+                        </td>
+                        <td className="text-right text-emerald-600">
+                          <Link to={makeCandidatesHref({ vacancy: item.key || item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {formatNumber(highlight.hired)}
+                          </Link>
+                        </td>
                         <td className="text-right text-red-600">
-                          {formatNumber(highlight.rejected + highlight.declined)}
+                          <Link to={makeCandidatesHref({ vacancy: item.key || item.label })} title={drilldownTitle} className={drillInlineClass}>
+                            {formatNumber(highlight.rejected + highlight.declined)}
+                          </Link>
                         </td>
                       </tr>
                     )
@@ -2816,13 +3065,51 @@ export default function Dashboard() {
                   <tbody>
                     {sourceStageRows.map((row) => (
                       <tr key={`source-${row.label}`}>
-                        <td className="truncate">{row.label}</td>
-                        <td className="text-right">{formatNumber(row.highlight.pipeline)}</td>
-                        <td className="text-right text-emerald-600">{formatNumber(row.highlight.hired)}</td>
-                        <td className="text-right text-rose-600">
-                          {formatNumber(row.highlight.rejected + row.highlight.declined)}
+                        <td className="truncate">
+                          <Link
+                            to={makeCandidatesHref({ preferred_channel: row.label })}
+                            title={drilldownTitle}
+                            className={drillInlineClass}
+                          >
+                            {row.label}
+                          </Link>
                         </td>
-                        <td className="text-right font-semibold">{formatNumber(row.total)}</td>
+                        <td className="text-right">
+                          <Link
+                            to={makeCandidatesHref({ preferred_channel: row.label })}
+                            title={drilldownTitle}
+                            className={drillInlineClass}
+                          >
+                            {formatNumber(row.highlight.pipeline)}
+                          </Link>
+                        </td>
+                        <td className="text-right text-emerald-600">
+                          <Link
+                            to={makeCandidatesHref({ preferred_channel: row.label })}
+                            title={drilldownTitle}
+                            className={drillInlineClass}
+                          >
+                            {formatNumber(row.highlight.hired)}
+                          </Link>
+                        </td>
+                        <td className="text-right text-rose-600">
+                          <Link
+                            to={makeCandidatesHref({ preferred_channel: row.label })}
+                            title={drilldownTitle}
+                            className={drillInlineClass}
+                          >
+                            {formatNumber(row.highlight.rejected + row.highlight.declined)}
+                          </Link>
+                        </td>
+                        <td className="text-right font-semibold">
+                          <Link
+                            to={makeCandidatesHref({ preferred_channel: row.label })}
+                            title={drilldownTitle}
+                            className={drillInlineClass}
+                          >
+                            {formatNumber(row.total)}
+                          </Link>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -2852,7 +3139,16 @@ export default function Dashboard() {
                     return (
                       <div key={bucket} className="space-y-1">
                         <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-                          <span>{t(`app.dashboard.docs_risk.${bucket}`)}</span>
+                          <Link
+                            to={bucket === 'ready'
+                              ? '/app/documents?quick=ready'
+                              : bucket === 'attention'
+                                ? '/app/documents?status=rejected'
+                                : '/app/documents?quick=requested'}
+                            className="hover:underline"
+                          >
+                            {t(`app.dashboard.docs_risk.${bucket}`)}
+                          </Link>
                           <span>{percent}%</span>
                         </div>
                         <div className="h-2 rounded-full bg-slate-100">
@@ -2882,12 +3178,16 @@ export default function Dashboard() {
               {stageVelocityRows.length ? (
                 <div className="space-y-2">
                   {stageVelocityRows.map((row) => (
-                    <div key={row.label} className="relative overflow-hidden rounded-xl border border-brand-50">
+                    <div key={row.stageCode} className="relative overflow-hidden rounded-xl border border-brand-50">
                       <div
                         className="absolute inset-y-0 left-0 bg-brand-500/20"
                         style={{ width: `${Math.max(row.intensity * 100, 8)}%` }}
                       />
-                      <div className="relative flex items-center justify-between px-3 py-2 text-sm">
+                      <Link
+                        to={makeCandidatesHref({ stage: row.stageCode })}
+                        className="relative flex items-center justify-between px-3 py-2 text-sm"
+                        title={drilldownTitle}
+                      >
                         <div>
                           <div className="font-medium">{row.label}</div>
                           <div className="text-xs text-slate-500">
@@ -2899,7 +3199,7 @@ export default function Dashboard() {
                         <div className="text-xs text-slate-500">
                           {t('app.dashboard.velocity.count', { values: { value: formatNumber(row.total) } })}
                         </div>
-                      </div>
+                      </Link>
                     </div>
                   ))}
                 </div>
@@ -2931,9 +3231,45 @@ export default function Dashboard() {
                 <tbody>
                   {managerLoadRows.map((row) => (
                     <tr key={row.label}>
-                      <td>{row.label}</td>
-                      <td className="text-right font-semibold">{formatNumber(row.pipeline)}</td>
-                      <td className="text-right text-slate-600">{formatNumber(row.total)}</td>
+                      <td>
+                        {row.managerIdForFilter ? (
+                          <Link
+                            to={makeCandidatesHref({ manager_id: row.managerIdForFilter })}
+                            title={drilldownTitle}
+                            className={drillInlineClass}
+                          >
+                            {row.label}
+                          </Link>
+                        ) : (
+                          <span>{row.label}</span>
+                        )}
+                      </td>
+                      <td className="text-right font-semibold">
+                        {row.managerIdForFilter ? (
+                          <Link
+                            to={makeCandidatesHref({ manager_id: row.managerIdForFilter })}
+                            title={drilldownTitle}
+                            className={drillInlineClass}
+                          >
+                            {formatNumber(row.pipeline)}
+                          </Link>
+                        ) : (
+                          <span>{formatNumber(row.pipeline)}</span>
+                        )}
+                      </td>
+                      <td className="text-right text-slate-600">
+                        {row.managerIdForFilter ? (
+                          <Link
+                            to={makeCandidatesHref({ manager_id: row.managerIdForFilter })}
+                            title={drilldownTitle}
+                            className={drillInlineClass}
+                          >
+                            {formatNumber(row.total)}
+                          </Link>
+                        ) : (
+                          <span>{formatNumber(row.total)}</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

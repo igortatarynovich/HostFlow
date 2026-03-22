@@ -24,6 +24,7 @@ import {
   type CandidateStage,
 } from '../../api/candidate_stages'
 import { Modal } from '../Modal'
+import { useI18n } from '../../i18n'
 
 export interface StageConfig {
   stage_code: string
@@ -54,6 +55,7 @@ function SortableStageItem({
   onRemove: () => void
   disabled?: boolean
 }) {
+  const { t } = useI18n()
   const {
     attributes,
     listeners,
@@ -98,12 +100,12 @@ function SortableStageItem({
             <span className="text-xs text-slate-500 font-mono">({stage.stage_code})</span>
             {!stage.active && (
               <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                Неактивен
+                {t('app.settings.candidate_profiles.stage_constructor.badges.inactive', { defaultValue: 'Неактивен' })}
               </span>
             )}
             {stage.stage_id && (
               <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                Кастомный
+                {t('app.settings.candidate_profiles.stage_constructor.badges.custom', { defaultValue: 'Кастомный' })}
               </span>
             )}
           </div>
@@ -117,7 +119,7 @@ function SortableStageItem({
               disabled={disabled}
               className="rounded border-slate-300"
             />
-            <span className="text-xs text-slate-600">Активен</span>
+            <span className="text-xs text-slate-600">{t('common.active', { defaultValue: 'Активен' })}</span>
           </label>
           <button
             type="button"
@@ -125,7 +127,7 @@ function SortableStageItem({
             disabled={disabled}
             className="btn-secondary btn-xs"
           >
-            Редактировать
+            {t('common.actions.edit', { defaultValue: 'Редактировать' })}
           </button>
           {stage.stage_id && (
             <button
@@ -134,7 +136,7 @@ function SortableStageItem({
               disabled={disabled}
               className="btn-danger btn-xs"
             >
-              Удалить
+              {t('common.actions.delete', { defaultValue: 'Удалить' })}
             </button>
           )}
         </div>
@@ -148,6 +150,7 @@ export default function StageConstructor({
   onChange,
   disabled = false,
 }: StageConstructorProps) {
+  const { t } = useI18n()
   const [customStages, setCustomStages] = useState<CandidateStage[]>([])
   const [loading, setLoading] = useState(true)
   const [editingStage, setEditingStage] = useState<StageConfig | null>(null)
@@ -218,7 +221,7 @@ export default function StageConstructor({
       const stage = value[index]
       if (!stage.stage_id) return
 
-      if (!confirm(`Удалить этап "${stage.stage_label}"?`)) return
+      if (!confirm(t('app.settings.candidate_profiles.stage_constructor.prompts.delete', { defaultValue: `Удалить этап "${stage.stage_label}"?` }))) return
 
       try {
         await deleteCandidateStage(stage.stage_id)
@@ -236,10 +239,10 @@ export default function StageConstructor({
         // Notify that stages have been updated (to refresh meta cache)
         window.dispatchEvent(new CustomEvent('candidate-stage-updated'))
       } catch (err: any) {
-        alert(`Не удалось удалить этап: ${err?.message || 'Неизвестная ошибка'}`)
+        alert(t('app.settings.candidate_profiles.stage_constructor.errors.delete_failed', { defaultValue: 'Не удалось удалить этап' }) + `: ${err?.message || t('common.errors.unknown', { defaultValue: 'Неизвестная ошибка' })}`)
       }
     },
-    [value, onChange]
+    [value, onChange, t]
   )
 
   const handleCreateStage = useCallback(
@@ -274,12 +277,12 @@ export default function StageConstructor({
         // Notify that stages have been updated (to refresh meta cache)
         window.dispatchEvent(new CustomEvent('candidate-stage-updated'))
       } catch (err: any) {
-        alert(`Не удалось создать этап: ${err?.message || 'Неизвестная ошибка'}`)
+        alert(t('app.settings.candidate_profiles.stage_constructor.errors.create_failed', { defaultValue: 'Не удалось создать этап' }) + `: ${err?.message || t('common.errors.unknown', { defaultValue: 'Неизвестная ошибка' })}`)
       } finally {
         setCreatingStage(false)
       }
     },
-    [value, onChange]
+    [value, onChange, t]
   )
 
   const handleUpdateStage = useCallback(
@@ -319,36 +322,36 @@ export default function StageConstructor({
         // Notify that stages have been updated (to refresh meta cache)
         window.dispatchEvent(new CustomEvent('candidate-stage-updated'))
       } catch (err: any) {
-        alert(`Не удалось обновить этап: ${err?.message || 'Неизвестная ошибка'}`)
+        alert(t('app.settings.candidate_profiles.stage_constructor.errors.update_failed', { defaultValue: 'Не удалось обновить этап' }) + `: ${err?.message || t('common.errors.unknown', { defaultValue: 'Неизвестная ошибка' })}`)
       } finally {
         setCreatingStage(false)
       }
     },
-    [editingStage, value, onChange]
+    [editingStage, value, onChange, t]
   )
 
   const availableSystemStages = useMemo(() => {
     // System stages that are not yet in the profile
     const usedCodes = new Set(value.map((s) => s.stage_code))
     const systemStages: Array<{ code: string; label: string }> = [
-      { code: 'new', label: 'Новый' },
-      { code: 'contacted', label: 'Контакт установлен' },
-      { code: 'docs_wait', label: 'Ожидаем документы' },
-      { code: 'docs_got', label: 'Документы получены' },
-      { code: 'permit_ordered', label: 'Заказ разрешения на работу' },
-      { code: 'permit_got', label: 'Разрешение на работу получено' },
-      { code: 'visa', label: 'Виза' },
-      { code: 'red_paper_ordered', label: 'Красная бумага заказана' },
-      { code: 'arrival_planned', label: 'Планируем приезд' },
-      { code: 'on_client_base', label: 'На базе клиента' },
-      { code: 'left_to_trip', label: 'Выехал в рейс' },
-      { code: 'probation_passed', label: 'Прошел пробный период' },
-      { code: 'employed', label: 'Трудоустроен' },
-      { code: 'rejected', label: 'Отклонён' },
+      { code: 'new', label: t('app.candidate_card.stages.new', { defaultValue: 'Новый' }) },
+      { code: 'contacted', label: t('app.candidate_card.stages.contacted', { defaultValue: 'Контакт установлен' }) },
+      { code: 'docs_wait', label: t('app.candidate_card.stages.docs_wait', { defaultValue: 'Ожидаем документы' }) },
+      { code: 'docs_got', label: t('app.candidate_card.stages.docs_got', { defaultValue: 'Документы получены' }) },
+      { code: 'permit_ordered', label: t('app.candidate_card.stages.permit_ordered', { defaultValue: 'Заказ разрешения на работу' }) },
+      { code: 'permit_got', label: t('app.candidate_card.stages.permit_got', { defaultValue: 'Разрешение на работу получено' }) },
+      { code: 'visa', label: t('app.candidate_card.stages.visa', { defaultValue: 'Виза' }) },
+      { code: 'red_paper_ordered', label: t('app.candidate_card.stages.red_paper_ordered', { defaultValue: 'Красная бумага заказана' }) },
+      { code: 'arrival_planned', label: t('app.candidate_card.stages.arrival_planned', { defaultValue: 'Планируем приезд' }) },
+      { code: 'on_client_base', label: t('app.candidate_card.stages.on_client_base', { defaultValue: 'На базе клиента' }) },
+      { code: 'left_to_trip', label: t('app.candidate_card.stages.left_to_trip', { defaultValue: 'Выехал в рейс' }) },
+      { code: 'probation_passed', label: t('app.candidate_card.stages.probation_passed', { defaultValue: 'Прошел пробный период' }) },
+      { code: 'employed', label: t('app.candidate_card.stages.employed', { defaultValue: 'Трудоустроен' }) },
+      { code: 'rejected', label: t('app.candidate_card.stages.rejected', { defaultValue: 'Отклонён' }) },
     ]
 
     return systemStages.filter((stage) => !usedCodes.has(stage.code))
-  }, [value])
+  }, [value, t])
 
   const handleAddSystemStage = useCallback(
     (code: string, label: string) => {
@@ -376,7 +379,7 @@ export default function StageConstructor({
   )
 
   if (loading) {
-    return <div className="text-sm text-slate-500">Загрузка...</div>
+    return <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
   }
 
   return (
@@ -392,15 +395,15 @@ export default function StageConstructor({
           disabled={disabled}
           className="btn-secondary text-sm"
         >
-          + Создать новый кастомный этап
+          + {t('app.settings.candidate_profiles.stage_constructor.create_new', { defaultValue: 'Создать новый кастомный этап' })}
         </button>
       </div>
 
       {/* Active stages (sortable) */}
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">Этапы в воронке</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('app.settings.candidate_profiles.stage_constructor.in_funnel', { defaultValue: 'Этапы в воронке' })}</h3>
         {value.length === 0 ? (
-          <p className="text-sm text-slate-500">Нет этапов. Добавьте этапы из списка ниже.</p>
+          <p className="text-sm text-slate-500">{t('app.settings.candidate_profiles.stage_constructor.empty', { defaultValue: 'Нет этапов. Добавьте этапы из списка ниже.' })}</p>
         ) : (
           <DndContext
             sensors={sensors}
@@ -428,9 +431,9 @@ export default function StageConstructor({
 
       {/* Available system stages */}
       <div>
-        <h3 className="mb-2 text-sm font-semibold text-slate-900">Доступные системные этапы</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('app.settings.candidate_profiles.stage_constructor.available_system', { defaultValue: 'Доступные системные этапы' })}</h3>
         {availableSystemStages.length === 0 ? (
-          <p className="text-sm text-slate-500">Все системные этапы добавлены</p>
+          <p className="text-sm text-slate-500">{t('app.settings.candidate_profiles.stage_constructor.all_system_added', { defaultValue: 'Все системные этапы добавлены' })}</p>
         ) : (
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
             {availableSystemStages.map((stage) => (
@@ -452,7 +455,7 @@ export default function StageConstructor({
       {/* Custom stages from database */}
       {customStages.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-slate-900">Доступные кастомные этапы</h3>
+          <h3 className="mb-2 text-sm font-semibold text-slate-900">{t('app.settings.candidate_profiles.stage_constructor.available_custom', { defaultValue: 'Доступные кастомные этапы' })}</h3>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
             {customStages
               .filter((cs) => !value.some((s) => s.stage_id === cs.id))
@@ -513,6 +516,7 @@ function CreateStageModal({
   onSave: (data: { code: string; label: string; order?: number; active?: boolean }) => Promise<void>
   disabled?: boolean
 }) {
+  const { t } = useI18n()
   const [code, setCode] = useState(stage?.stage_code || '')
   const [label, setLabel] = useState(stage?.stage_label || '')
   const [order, setOrder] = useState(stage?.order || 0)
@@ -520,7 +524,7 @@ function CreateStageModal({
 
   const handleSubmit = async () => {
     if (!code.trim() || !label.trim()) {
-      alert('Код и название обязательны')
+      alert(t('app.settings.candidate_profiles.stage_constructor.errors.code_label_required', { defaultValue: 'Код и название обязательны' }))
       return
     }
 
@@ -536,12 +540,14 @@ function CreateStageModal({
     <Modal
       open={true}
       onClose={onClose}
-      title={stage ? 'Редактировать этап' : 'Создать новый кастомный этап'}
+      title={stage
+        ? t('app.settings.candidate_profiles.stage_constructor.modal.edit_title', { defaultValue: 'Редактировать этап' })
+        : t('app.settings.candidate_profiles.stage_constructor.modal.create_title', { defaultValue: 'Создать новый кастомный этап' })}
     >
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Название этапа (пользовательское название) *
+            {t('app.settings.candidate_profiles.stage_constructor.modal.label_field', { defaultValue: 'Название этапа (пользовательское название) *' })}
           </label>
           <input
             type="text"
@@ -559,31 +565,31 @@ function CreateStageModal({
               }
             }}
             className="input w-full"
-            placeholder="Например: Первичное собеседование"
+            placeholder={t('app.settings.candidate_profiles.stage_constructor.modal.label_placeholder', { defaultValue: 'Например: Первичное собеседование' })}
             disabled={disabled}
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Код этапа (техническое имя) *
+            {t('app.settings.candidate_profiles.stage_constructor.modal.code_field', { defaultValue: 'Код этапа (техническое имя) *' })}
           </label>
           <input
             type="text"
             value={code}
             onChange={(e) => setCode(e.target.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
             className="input w-full font-mono text-sm"
-            placeholder="initial_interview"
+            placeholder={t('app.settings.candidate_profiles.stage_constructor.code_placeholder', { defaultValue: 'initial_interview' })}
             disabled={disabled || !!stage}
           />
           <p className="mt-1 text-xs text-slate-500">
-            Используется для технической идентификации этапа {stage && '(нельзя изменить)'}
+            {t('app.settings.candidate_profiles.stage_constructor.modal.code_hint', { defaultValue: 'Используется для технической идентификации этапа' })} {stage && `(${t('app.settings.candidate_profiles.stage_constructor.modal.code_locked', { defaultValue: 'нельзя изменить' })})`}
           </p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            Порядок сортировки
+            {t('app.settings.candidate_profiles.stage_constructor.modal.order_field', { defaultValue: 'Порядок сортировки' })}
           </label>
           <input
             type="number"
@@ -604,13 +610,13 @@ function CreateStageModal({
               disabled={disabled}
               className="rounded border-slate-300"
             />
-            <span className="text-sm text-slate-700">Активен</span>
+            <span className="text-sm text-slate-700">{t('common.active', { defaultValue: 'Активен' })}</span>
           </label>
         </div>
 
         <div className="flex gap-2 justify-end pt-4">
           <button type="button" onClick={onClose} disabled={disabled} className="btn-secondary">
-            Отмена
+            {t('common.actions.cancel', { defaultValue: 'Отмена' })}
           </button>
           <button
             type="button"
@@ -618,7 +624,11 @@ function CreateStageModal({
             disabled={disabled || !label.trim() || !code.trim()}
             className="btn-primary"
           >
-            {disabled ? 'Сохранение...' : stage ? 'Сохранить' : 'Создать этап'}
+            {disabled
+              ? t('common.saving', { defaultValue: 'Сохранение...' })
+              : stage
+                ? t('common.actions.save', { defaultValue: 'Сохранить' })
+                : t('app.settings.candidate_profiles.stage_constructor.modal.create_action', { defaultValue: 'Создать этап' })}
           </button>
         </div>
       </div>

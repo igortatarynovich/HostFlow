@@ -290,6 +290,37 @@ class PublicPresignRequest(BaseModel):
     filename: str
 
 
+class PublicStatusDocumentsAccessRequest(BaseModel):
+    email: Optional[EmailStr] = None
+    phone_country_code: Optional[str] = None
+    phone: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _ensure_contact(cls, data: "PublicStatusDocumentsAccessRequest") -> "PublicStatusDocumentsAccessRequest":
+        if not (data.email or data.phone):
+            raise ValueError("email or phone is required")
+        return data
+
+
+class PublicStatusDocumentsAccessResponse(BaseModel):
+    verified: bool = True
+    upload_url: str
+    questionnaire_url: str
+    expires_at: datetime
+
+
+class PublicStatusPresignRequest(PublicPresignRequest):
+    email: Optional[EmailStr] = None
+    phone_country_code: Optional[str] = None
+    phone: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _ensure_contact(cls, data: "PublicStatusPresignRequest") -> "PublicStatusPresignRequest":
+        if not (data.email or data.phone):
+            raise ValueError("email or phone is required")
+        return data
+
+
 class PublicPresignResponse(BaseModel):
     key: str
     url: str
@@ -469,6 +500,51 @@ def _normalize_phone_digits(
     number_digits = ''.join(ch for ch in (phone or '') if ch.isdigit())
     combined = f"{code_digits}{number_digits}".strip()
     return combined or None
+
+
+def _candidate_contact_matches(
+    candidate: Candidate,
+    *,
+    email: Optional[str],
+    phone_country_code: Optional[str],
+    phone: Optional[str],
+) -> bool:
+    normalized_email = _normalize_email(email)
+    normalized_phone_parts = _normalize_phone_parts(phone_country_code, phone)
+    normalized_phone_digits = _normalize_phone_digits(phone_country_code, phone)
+
+    contacts = candidate._get_contacts() if hasattr(candidate, "_get_contacts") else {}
+    candidate_email_values = {
+        _normalize_email(getattr(candidate, "email", None)),
+        _normalize_email(contacts.get("email") if isinstance(contacts, dict) else None),
+    }
+    candidate_email_values = {x for x in candidate_email_values if x}
+
+    candidate_phone_variants: set[tuple[Optional[str], str]] = set()
+    primary_phone = _normalize_phone_parts(getattr(candidate, "phone_country_code", None), getattr(candidate, "phone", None))
+    if primary_phone:
+        candidate_phone_variants.add(primary_phone)
+    contacts_phone = _normalize_phone_parts(
+        (contacts.get("phone_country_code") if isinstance(contacts, dict) else None),
+        (contacts.get("phone") if isinstance(contacts, dict) else None),
+    )
+    if contacts_phone:
+        candidate_phone_variants.add(contacts_phone)
+
+    candidate_phone_digits = {
+        _normalize_phone_digits(code, number)
+        for code, number in candidate_phone_variants
+    }
+    candidate_phone_digits = {x for x in candidate_phone_digits if x}
+
+    if normalized_email and normalized_email not in candidate_email_values:
+        return False
+    if normalized_phone_parts:
+        _, normalized_number = normalized_phone_parts
+        numbers = {number for _, number in candidate_phone_variants if number}
+        if normalized_number not in numbers and (normalized_phone_digits not in candidate_phone_digits):
+            return False
+    return bool(normalized_email or normalized_phone_parts)
 
 
 def _looks_like_uuid(value: Optional[str]) -> bool:
@@ -2047,6 +2123,59 @@ async def presign_public_document_upload(
     )
 
 
+@router.post("/status/{share_token}/documents/access", response_model=PublicStatusDocumentsAccessResponse)
+async def get_public_documents_access(
+    share_token: str,
+    payload: PublicStatusDocumentsAccessRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> PublicStatusDocumentsAccessResponse:
+    db, tenant_id = db_tenant
+    candidate = await _load_candidate_by_status_token(db, tenant_id, share_token)
+    if not _candidate_contact_matches(
+        candidate,
+        email=payload.email,
+        phone_country_code=payload.phone_country_code,
+        phone=payload.phone,
+    ):
+        raise HTTPException(status_code=403, detail="Contact verification failed")
+    _ensure_intake_token(candidate)
+    await db.commit()
+    expires_at = candidate.intake_token_expires_at or (_now() + timedelta(days=INTAKE_TOKEN_TTL_DAYS))
+    return PublicStatusDocumentsAccessResponse(
+        verified=True,
+        upload_url=f"/public/apply/{candidate.intake_token}?mode=documents",
+        questionnaire_url=f"/public/apply/{candidate.intake_token}",
+        expires_at=expires_at,
+    )
+
+
+@router.post("/status/{share_token}/documents/presign", response_model=PublicPresignResponse)
+async def presign_status_document_upload(
+    share_token: str,
+    payload: PublicStatusPresignRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> PublicPresignResponse:
+    db, tenant_id = db_tenant
+    candidate = await _load_candidate_by_status_token(db, tenant_id, share_token)
+    if not _candidate_contact_matches(
+        candidate,
+        email=payload.email,
+        phone_country_code=payload.phone_country_code,
+        phone=payload.phone,
+    ):
+        raise HTTPException(status_code=403, detail="Contact verification failed")
+    filename = payload.filename.strip() or f"{payload.doc_type}.bin"
+    key = _build_storage_key(candidate, filename)
+    url = f"/api/v1/public/uploads/{share_token}/{key}"
+    return PublicPresignResponse(
+        key=key,
+        url=url,
+        method="PUT",
+        headers={"Content-Type": "application/octet-stream"},
+        fields={},
+    )
+
+
 @router.post("/apply/{token}/documents/upload", response_model=PublicIntakeState)
 async def upload_public_document(
     token: str,
@@ -2101,6 +2230,54 @@ async def upload_public_document(
     employments = await _list_employments(db, tenant_id, candidate.id)
     checklist, documents = await _build_checklist_and_docs(db, tenant_id, candidate)
     return _response_payload(candidate, employments, checklist, documents)
+
+
+@router.post("/status/{share_token}/documents/upload", response_model=PublicStatusState)
+async def upload_status_document(
+    share_token: str,
+    doc_type: str = Form(...),
+    email: Optional[str] = Form(None),
+    phone_country_code: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None),
+    storage_key: Optional[str] = Form(None),
+    user_comment: Optional[str] = Form(None),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> PublicStatusState:
+    if not doc_type.strip():
+        raise HTTPException(status_code=422, detail="doc_type is required")
+    if not file and not storage_key:
+        raise HTTPException(status_code=422, detail="file or storage_key is required")
+    if not (email or phone):
+        raise HTTPException(status_code=422, detail="email or phone is required")
+
+    db, tenant_id = db_tenant
+    candidate = await _load_candidate_by_status_token(db, tenant_id, share_token)
+    if not _candidate_contact_matches(
+        candidate,
+        email=email,
+        phone_country_code=phone_country_code,
+        phone=phone,
+    ):
+        raise HTTPException(status_code=403, detail="Contact verification failed")
+
+    await _save_public_document_upload(
+        db,
+        candidate,
+        doc_type.strip(),
+        upload_file=file,
+        storage_key=storage_key,
+        user_comment=user_comment,
+    )
+    employments = await _list_employments(db, tenant_id, candidate.id)
+    checklist, documents = await _build_checklist_and_docs(
+        db,
+        tenant_id,
+        candidate,
+        download_scope="status",
+        download_token=share_token,
+    )
+    return _status_response_payload(candidate, employments, checklist, documents)
 
 
 @router.get("/apply/{token}/documents/{doc_id}/file")

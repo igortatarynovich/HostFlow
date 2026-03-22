@@ -121,6 +121,7 @@ async def list_activities(
     status_filter: Optional[List[str]] = Query(default=None),
     type_filter: Optional[List[str]] = Query(default=None),
     assignee_id: Optional[UUID] = Query(default=None),
+    assignee_scope: str = Query("mine", pattern="^(mine|team)$"),
     entity_type: Optional[str] = Query(default=None),
     entity_id: Optional[str] = Query(default=None),
     due_from: Optional[datetime] = Query(default=None),
@@ -131,10 +132,16 @@ async def list_activities(
     db, tenant_id = db_tenant
     entity = (entity_type, entity_id) if (entity_type and entity_id) else None
     due_range = (due_from or None, due_to or None) if (due_from or due_to) else None
+    aid = reminder_tasks.resolve_assignee_for_reminder_list(
+        explicit_assignee_id=str(assignee_id) if assignee_id else None,
+        assignee_scope=assignee_scope,
+        viewer_id=str(current_user.sub),
+        viewer_role=str(current_user.role),
+    )
     reminders = await reminder_tasks.list_reminders(
         db,
         tenant_id=str(tenant_id),
-        assignee_id=str(assignee_id) if assignee_id else str(current_user.sub),
+        assignee_id=aid,
         entity=entity,
         status_in=status_filter or None,
         type_in=type_filter or None,

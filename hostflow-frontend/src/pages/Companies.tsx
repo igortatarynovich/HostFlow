@@ -54,6 +54,7 @@ import {
   combinePhone,
 } from '../modules/companies/utils'
 import { ClientInvoicesBlock } from '../components/companies/ClientInvoicesBlock'
+import { CompanyServiceOrdersPanel } from '../components/companies/CompanyServiceOrdersPanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { listVacancies } from '../api/vacancies'
 
@@ -116,6 +117,42 @@ function getCompanyKindFromAny(company: AnyRecord): 'client' | 'counterparty' {
   return normalizeCompanyKind(raw)
 }
 
+/** Client pipeline (Party CRM) — codes match API `client_stage`; labels from `app.companies.client_stage.*`. */
+const CLIENT_PIPELINE_STAGE_CODES = [
+  'new_lead',
+  'contacted',
+  'qualified',
+  'offer_sent',
+  'negotiation',
+  'contract_signed',
+  'active',
+  'lost',
+] as const
+
+function formatPartyBusinessRoleCell(
+  tr: (key: string, opts?: { defaultValue?: string }) => string,
+  raw: string | null | undefined,
+): string {
+  if (!raw) return '—'
+  const defaults: Record<string, string> = {
+    employer: 'Employer',
+    service_client: 'Service client',
+    both: 'Employer + client',
+  }
+  return tr(`app.companies.party.roles.${raw}`, { defaultValue: defaults[raw] ?? raw })
+}
+
+function formatClientStageCell(
+  tr: (key: string, opts?: { defaultValue?: string }) => string,
+  raw: string | null | undefined,
+): string {
+  if (!raw) return '—'
+  return tr(`app.companies.client_stage.${raw}`, { defaultValue: raw.replace(/_/g, ' ') })
+}
+
+const CLIENT_WORKSPACE_TABS = ['overview', 'orders', 'invoices', 'activity', 'profile'] as const
+type ClientWorkspaceTab = (typeof CLIENT_WORKSPACE_TABS)[number]
+
 export default function Companies(){
   const { t } = useI18n()
   const location = useLocation()
@@ -143,6 +180,22 @@ export default function Companies(){
   const handleCreateOperatingCompany = useCallback(() => {
     navigate('/app/onboarding/company')
   }, [navigate])
+
+  const rawClientWorkspaceTab = String(searchParams.get('ctab') || 'overview').trim().toLowerCase()
+  const clientWorkspaceTab: ClientWorkspaceTab = CLIENT_WORKSPACE_TABS.includes(rawClientWorkspaceTab as ClientWorkspaceTab)
+    ? (rawClientWorkspaceTab as ClientWorkspaceTab)
+    : 'overview'
+
+  const navigateClientWorkspaceTab = useCallback(
+    (next: ClientWorkspaceTab) => {
+      const nextParams = new URLSearchParams(searchParams)
+      if (next === 'overview') nextParams.delete('ctab')
+      else nextParams.set('ctab', next)
+      const q = nextParams.toString()
+      navigate(q ? `${location.pathname}?${q}` : location.pathname, { replace: true })
+    },
+    [navigate, location.pathname, searchParams],
+  )
 
   // list state
   const [items, setItems] = useState<Company[]>([])
@@ -179,6 +232,31 @@ export default function Companies(){
   const [showArchived, setShowArchived] = useState(false)
   const [companyKindFilter, setCompanyKindFilter] = useState<'all' | 'client' | 'counterparty'>('all')
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'city_asc' | 'city_desc'>('name_asc')
+  const [partyRoleListFilter, setPartyRoleListFilter] = useState<'all' | 'employer' | 'service_client' | 'both' | 'unset'>(
+    'all',
+  )
+  const [clientStageListFilter, setClientStageListFilter] = useState<string>('all')
+  const [ownerListFilter, setOwnerListFilter] = useState<string>('all')
+
+  const ownerUserLabelMap = useMemo(() => {
+    const m = new Map<string, string>()
+    companyUsers.forEach((u) => {
+      const id = u.user_id
+      if (!id) return
+      const label = (u.full_name || '').trim() || u.email || id.slice(0, 8)
+      m.set(id, label)
+    })
+    return m
+  }, [companyUsers])
+
+  const clientPipelineStageOptions = useMemo(
+    () =>
+      CLIENT_PIPELINE_STAGE_CODES.map((code) => ({
+        value: code,
+        label: t(`app.companies.client_stage.${code}`),
+      })),
+    [t],
+  )
 
   const updateField = useCallback(
     <K extends keyof CompanyDetailForm, F extends keyof CompanyDetailForm[K]>(
@@ -224,6 +302,19 @@ export default function Companies(){
     if (companyKindFilter !== 'all') {
       arr = arr.filter((it: any) => getCompanyKindFromAny(it) === companyKindFilter)
     }
+    if (partyRoleListFilter !== 'all') {
+      if (partyRoleListFilter === 'unset') {
+        arr = arr.filter((it: any) => !it.party_business_roles)
+      } else {
+        arr = arr.filter((it: any) => String(it.party_business_roles || '') === partyRoleListFilter)
+      }
+    }
+    if (clientStageListFilter !== 'all') {
+      arr = arr.filter((it: any) => String(it.client_stage || '') === clientStageListFilter)
+    }
+    if (ownerListFilter !== 'all') {
+      arr = arr.filter((it: any) => String(it.owner_user_id || '') === ownerListFilter)
+    }
     if (query.trim()){
       const q = query.trim().toLowerCase()
       arr = arr.filter((it:any) => (
@@ -236,7 +327,16 @@ export default function Companies(){
     if (sortBy === 'city_asc') arr = [...arr].sort((a,b)=> get(a,'city').localeCompare(get(b,'city')))
     if (sortBy === 'city_desc') arr = [...arr].sort((a,b)=> get(b,'city').localeCompare(get(a,'city')))
     return arr
-  }, [items, showArchived, companyKindFilter, query, sortBy])
+  }, [
+    items,
+    showArchived,
+    companyKindFilter,
+    partyRoleListFilter,
+    clientStageListFilter,
+    ownerListFilter,
+    query,
+    sortBy,
+  ])
 
   const currentAny: AnyRecord | null = current ? (current as unknown as AnyRecord) : null
 
@@ -482,6 +582,14 @@ export default function Companies(){
       country_code: (currentAny.country_code ?? currentAny.country ?? '') as string,
       city: (currentAny.city as string) ?? '',
       address: (currentAny.address as string) ?? '',
+      party_entity_type: currentAny.party_entity_type === 'person' ? 'person' : 'company',
+      party_business_roles: (['employer', 'service_client', 'both'].includes(
+        String(currentAny.party_business_roles || ''),
+      )
+        ? (currentAny.party_business_roles as CompanyDetailForm['base']['party_business_roles'])
+        : ''),
+      client_stage: (currentAny.client_stage as string) ?? '',
+      client_source: (currentAny.client_source as string) ?? '',
     }
 
     const legal: CompanyDetailForm['legal'] = {
@@ -1060,6 +1168,12 @@ export default function Companies(){
         country_code: normalizeString(detailForm.base.country_code),
         city: normalizeString(detailForm.base.city),
         address: normalizeString(detailForm.base.address),
+        party_entity_type: detailForm.base.party_entity_type,
+        party_business_roles: detailForm.base.party_business_roles
+          ? detailForm.base.party_business_roles
+          : null,
+        client_stage: detailForm.base.client_stage?.trim() ? detailForm.base.client_stage.trim() : null,
+        client_source: detailForm.base.client_source?.trim() ? detailForm.base.client_source.trim() : null,
       }
 
       Object.keys(payload).forEach((key) => {
@@ -1410,7 +1524,7 @@ export default function Companies(){
   async function loadList(){
     setLoading(true)
     try{
-      const { data } = await api.get('/companies/')
+      const { data } = await api.get('/companies/', { params: { include_service_metrics: true } })
       const arr = Array.isArray(data) ? data : (data?.items || [])
       setItems(arr)
     } finally { setLoading(false) }
@@ -1521,7 +1635,7 @@ export default function Companies(){
   }, [id, currentAny, buildDetailForm])
 
   useEffect(() => {
-    if (!id || id === 'new' || !detailForm || !sectionFocus) return
+    if (!id || id === 'new' || !detailForm || !sectionFocus || !current) return
     const sectionToNodeId: Record<string, string> = {
       legal: 'section-legal',
       billing: 'section-billing',
@@ -1530,14 +1644,22 @@ export default function Companies(){
     }
     const nodeId = sectionToNodeId[sectionFocus]
     if (!nodeId) return
+
+    if (getCompanyRoleFromAny(asRecord(current)) !== 'operating') {
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.set('ctab', 'profile')
+      const q = nextParams.toString()
+      navigate(`${location.pathname}?${q}`, { replace: true })
+    }
+
     const timer = window.setTimeout(() => {
       const element = document.getElementById(nodeId)
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
-    }, 60)
+    }, 120)
     return () => window.clearTimeout(timer)
-  }, [id, detailForm, sectionFocus])
+  }, [id, detailForm, sectionFocus, current, searchParams, navigate, location.pathname])
 
 
   const pageContent = useMemo(() => {
@@ -1606,6 +1728,9 @@ export default function Companies(){
     const locationLine = [detailForm.base.country_code, detailForm.base.city].filter(Boolean).join(', ')
 
     const isOperatingCompany = getCompanyRoleFromAny(currentAny) === 'operating'
+    const showClientProfileEditor =
+      isOperatingCompany ||
+      (Boolean(id && id !== 'new') && !isOperatingCompany && clientWorkspaceTab === 'profile')
 
     const clientContactsCount = detailForm.contacts.filter((contact) =>
       Boolean((contact.full_name || contact.email || contact.phone).trim()),
@@ -1807,9 +1932,13 @@ export default function Companies(){
                       defaultValue: 'Orders, contracts and invoices are managed in this card.',
                     })}
                   </p>
-                  <a href="#section-orders" className="text-sm text-brand-600 hover:underline">
+                  <button
+                    type="button"
+                    className="text-sm text-brand-600 hover:underline"
+                    onClick={() => navigateClientWorkspaceTab('orders')}
+                  >
                     {t('app.companies.detail.overview.orders_workspace.link', { defaultValue: 'Open orders section' })}
-                  </a>
+                  </button>
                   <div>
                     <Link
                       to={`/app/invoices/new?company_id=${currentAny?.id ?? ''}`}
@@ -1826,9 +1955,13 @@ export default function Companies(){
                       defaultValue: 'No orders yet. Add order details below and issue first invoice.',
                     })}
                   </p>
-                  <a href="#section-orders" className="text-sm text-brand-600 hover:underline">
+                  <button
+                    type="button"
+                    className="text-sm text-brand-600 hover:underline"
+                    onClick={() => navigateClientWorkspaceTab('orders')}
+                  >
                     {t('app.companies.detail.overview.orders_workspace.link', { defaultValue: 'Open orders section' })}
-                  </a>
+                  </button>
                 </div>
               ),
             },
@@ -1926,131 +2059,322 @@ export default function Companies(){
           </div>
         </section>
 
-        {!isOperatingCompany && (
-          <SectionCard
-            title={t('app.companies.detail.overview.title')}
-            description={t('app.companies.detail.overview.subtitle')}
-          >
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {overviewCards.map((card) => (
-                <div
-                  key={card.key}
-                  className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
+        {!isOperatingCompany && id && id !== 'new' && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
+              {CLIENT_WORKSPACE_TABS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    clientWorkspaceTab === key
+                      ? 'bg-slate-900 text-white'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                  onClick={() => navigateClientWorkspaceTab(key)}
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{card.title}</p>
-                  <div className="mt-2 text-sm text-slate-600">{card.content}</div>
-                </div>
+                  {t(`app.companies.detail.workspace.tabs.${key}`)}
+                </button>
               ))}
             </div>
-          </SectionCard>
-        )}
 
-        {!isOperatingCompany && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {isOperatingCompany && (
-          <SectionCard title={t('app.companies.detail.widgets.vacancies.title')} description={t('app.companies.detail.widgets.vacancies.subtitle')}>
-            <div className="flex items-baseline justify-between">
-              <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.total')}</p>
-              <p className="text-3xl font-semibold text-slate-900">{vacancyAnalytics.total}</p>
-            </div>
-            {vacancyAnalytics.statusRows.length ? (
-              <ul className="divide-y divide-slate-100 text-sm text-slate-700">
-                {vacancyAnalytics.statusRows.map((row) => (
-                  <li key={row.status} className="flex items-center justify-between py-2">
-                    <span>{humanizeStatus(row.status) || t('app.companies.detail.widgets.vacancies.status_unknown')}</span>
-                    <span className="font-semibold">{row.count}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
-            )}
-            {vacancyAnalytics.latest.length > 0 && (
-              <div className="rounded-2xl bg-slate-50/60 p-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {t('app.companies.detail.widgets.vacancies.latest_title')}
-                </div>
-                <ul className="mt-2 space-y-2 text-sm">
-                  {vacancyAnalytics.latest.map((vacancy, index) => {
-                    const vacId = (vacancy.id as string) ?? (vacancy.code as string)
-                    return (
-                      <li key={vacId ?? `vacancy-${index}`} className="rounded-xl border border-slate-100 bg-white/80 p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <Link
-                            to={vacId ? `/app/vacancies/${vacId}` : '/app/vacancies'}
-                            className="font-semibold text-slate-900 hover:text-brand-600 hover:underline"
-                          >
-                            {(vacancy.title as string) ?? (vacancy.position as string) ?? t('common.labels.unnamed')}
-                          </Link>
-                          <span className="text-xs text-slate-500">
-                            {fmtDateTime((vacancy.updated_at as string | undefined) ?? (vacancy.created_at as string | undefined))}
-                          </span>
+            {clientWorkspaceTab === 'overview' && (
+              <>
+                <SectionCard
+                  title={t('app.companies.detail.overview.title')}
+                  description={t('app.companies.detail.overview.subtitle')}
+                >
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {overviewCards.map((card) => (
+                      <div
+                        key={card.key}
+                        className="rounded-2xl border border-slate-100 bg-white/80 p-4 shadow-sm shadow-brand-900/5"
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{card.title}</p>
+                        <div className="mt-2 text-sm text-slate-600">{card.content}</div>
+                      </div>
+                    ))}
+                  </div>
+                </SectionCard>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <SectionCard
+                    title={t('app.companies.detail.widgets.vacancies.title')}
+                    description={t('app.companies.detail.widgets.vacancies.subtitle')}
+                  >
+                    <div className="flex items-baseline justify-between">
+                      <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.total')}</p>
+                      <p className="text-3xl font-semibold text-slate-900">{vacancyAnalytics.total}</p>
+                    </div>
+                    {vacancyAnalytics.statusRows.length ? (
+                      <ul className="divide-y divide-slate-100 text-sm text-slate-700">
+                        {vacancyAnalytics.statusRows.map((row) => (
+                          <li key={row.status} className="flex items-center justify-between py-2">
+                            <span>{humanizeStatus(row.status) || t('app.companies.detail.widgets.vacancies.status_unknown')}</span>
+                            <span className="font-semibold">{row.count}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-500">{t('app.companies.detail.widgets.vacancies.empty')}</p>
+                    )}
+                    {vacancyAnalytics.latest.length > 0 && (
+                      <div className="rounded-2xl bg-slate-50/60 p-3">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {t('app.companies.detail.widgets.vacancies.latest_title')}
                         </div>
-                        <div className="mt-1 flex items-center justify-between gap-2">
-                          <span className="text-xs text-slate-500">
-                            {t('app.companies.detail.widgets.vacancies.status_label', {
-                              values: {
-                                status:
-                                  humanizeStatus((vacancy.status as string | undefined) ?? (vacancy.stage as string | undefined)) ||
-                                  t('app.companies.detail.widgets.vacancies.status_unknown'),
-                              },
-                            })}
-                          </span>
-                          {vacId && (
-                            <Link
-                              to={`/app/candidates?view=kanban&vacancy=${vacId}`}
-                              className="text-xs font-medium text-brand-600 hover:underline"
-                            >
-                              {t('app.companies.detail.widgets.vacancies.pipeline_link', { defaultValue: 'Пайплайн' })}
-                            </Link>
+                        <ul className="mt-2 space-y-2 text-sm">
+                          {vacancyAnalytics.latest.map((vacancy, index) => {
+                            const vacId = (vacancy.id as string) ?? (vacancy.code as string)
+                            return (
+                              <li key={vacId ?? `vacancy-${index}`} className="rounded-xl border border-slate-100 bg-white/80 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <Link
+                                    to={vacId ? `/app/vacancies/${vacId}` : '/app/vacancies'}
+                                    className="font-semibold text-slate-900 hover:text-brand-600 hover:underline"
+                                  >
+                                    {(vacancy.title as string) ?? (vacancy.position as string) ?? t('common.labels.unnamed')}
+                                  </Link>
+                                  <span className="text-xs text-slate-500">
+                                    {fmtDateTime((vacancy.updated_at as string | undefined) ?? (vacancy.created_at as string | undefined))}
+                                  </span>
+                                </div>
+                                <div className="mt-1 flex items-center justify-between gap-2">
+                                  <span className="text-xs text-slate-500">
+                                    {t('app.companies.detail.widgets.vacancies.status_label', {
+                                      values: {
+                                        status:
+                                          humanizeStatus((vacancy.status as string | undefined) ?? (vacancy.stage as string | undefined)) ||
+                                          t('app.companies.detail.widgets.vacancies.status_unknown'),
+                                      },
+                                    })}
+                                  </span>
+                                  {vacId && (
+                                    <Link
+                                      to={`/app/candidates?view=kanban&vacancy=${vacId}`}
+                                      className="text-xs font-medium text-brand-600 hover:underline"
+                                    >
+                                      {t('app.companies.detail.widgets.vacancies.pipeline_link', { defaultValue: 'Пайплайн' })}
+                                    </Link>
+                                  )}
+                                </div>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                  </SectionCard>
+
+                  {blockingOrders.length > 0 && (
+                    <SectionCard
+                      title={t('app.companies.detail.widgets.blockers.title')}
+                      description={t('app.companies.detail.widgets.blockers.subtitle')}
+                      collapsible
+                      defaultOpen={true}
+                    >
+                      <ul className="space-y-3 text-sm">
+                        {blockingOrders.map((entry) => (
+                          <li key={entry.key} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-slate-900">{entry.title}</span>
+                              <span className="text-xs text-slate-500">{humanizeStatus(entry.status) || t('common.labels.not_available')}</span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {entry.reasons.map((reason) => (
+                                <span
+                                  key={`${entry.key}-${reason}`}
+                                  className="inline-flex items-center rounded-md bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
+                                >
+                                  {t(`app.companies.detail.widgets.blockers.reason.${reason}`)}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {entry.updatedAt ? fmtDateTime(entry.updatedAt) : t('common.labels.not_available')}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </SectionCard>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
+                  <button
+                    type="button"
+                    className="font-medium text-brand-600 hover:underline"
+                    onClick={() => navigateClientWorkspaceTab('profile')}
+                  >
+                    {t('app.companies.detail.workspace.open_profile')}
+                  </button>
+                  <span className="text-slate-500"> — {t('app.companies.detail.workspace.open_profile_hint')}</span>
+                </div>
+              </>
+            )}
+
+            {clientWorkspaceTab === 'orders' && (
+              <div id="section-orders" className="space-y-4">
+                <section className="card p-4">
+                  <CompanyServiceOrdersPanel companyId={String(currentAny?.id ?? '')} />
+                </section>
+                <SectionCard
+                  title={t('app.companies.detail.sections.orders.title')}
+                  description={t('app.companies.detail.workspace.orders.crm_subtitle')}
+                  collapsible
+                  defaultOpen={true}
+                >
+                  <div className="space-y-4">
+                    {detailForm.orders.map((order, index) => {
+                      const orderTypeId = (order.order_type_id ?? 'transport') as string
+                      const orderType = ORDER_TYPE_OPTIONS.find((o) => o.id === orderTypeId) ?? ORDER_TYPE_OPTIONS[0]
+                      const isTransport = orderTypeId === 'transport'
+                      const customFields = order.custom_fields ?? {}
+                      return (
+                        <div key={`order-${index}`} className="rounded-lg border border-slate-100 bg-slate-50/50 p-4 space-y-3">
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
+                            <TextField
+                              label={t('app.companies.detail.fields.name')}
+                              value={order.title}
+                              onChange={(value) => setOrderField(index, { title: value })}
+                            />
+                            <div>
+                              <label className="label">{t('app.companies.detail.sections.order_type', { defaultValue: 'Тип заявки' })}</label>
+                              <select
+                                className="input w-full"
+                                value={orderTypeId}
+                                onChange={(e) => setOrderField(index, { order_type_id: e.target.value as string })}
+                              >
+                                {ORDER_TYPE_OPTIONS.map((opt) => (
+                                  <option key={opt.id} value={opt.id}>
+                                    {t(opt.labelKey)}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <TextField
+                              label={t('app.companies.detail.fields.status')}
+                              value={order.status}
+                              onChange={(value) => setOrderField(index, { status: value })}
+                            />
+                            <TextField
+                              label={t('app.companies.detail.fields.date_start')}
+                              value={order.starts_at}
+                              onChange={(value) => setOrderField(index, { starts_at: value })}
+                              placeholder={t('app.companies.detail.placeholders.date_ymd', { defaultValue: 'YYYY-MM-DD' })}
+                            />
+                            <TextField
+                              label={t('app.companies.detail.fields.date_end')}
+                              value={order.ends_at}
+                              onChange={(value) => setOrderField(index, { ends_at: value })}
+                              placeholder={t('app.companies.detail.placeholders.date_ymd', { defaultValue: 'YYYY-MM-DD' })}
+                            />
+                            <div className="flex items-end gap-2">
+                              <TextField
+                                label={t('app.companies.detail.fields.reference')}
+                                value={order.client_reference}
+                                onChange={(value) => setOrderField(index, { client_reference: value })}
+                              />
+                              <button className="btn-danger shrink-0" type="button" onClick={() => removeOrder(index)}>
+                                {t('common.actions.delete')}
+                              </button>
+                            </div>
+                          </div>
+                          {isTransport && (
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              <TextField
+                                label={t('app.companies.detail.fields.required_drivers')}
+                                value={order.required_drivers}
+                                onChange={(value) => setOrderField(index, { required_drivers: value })}
+                                type="number"
+                              />
+                              <TextField
+                                label={t('app.companies.detail.fields.hired_drivers')}
+                                value={order.hired_drivers}
+                                onChange={(value) => setOrderField(index, { hired_drivers: value })}
+                                type="number"
+                              />
+                            </div>
+                          )}
+                          {!isTransport && orderType.schema.length > 0 && (
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                              {orderType.schema.map((field) => (
+                                <TextField
+                                  key={field.key}
+                                  label={t(field.labelKey)}
+                                  value={String(customFields[field.key] ?? '')}
+                                  onChange={(value) =>
+                                    setOrderCustomField(index, field.key, field.type === 'number' ? (Number(value) || 0) : value)
+                                  }
+                                  type={field.type === 'number' ? 'number' : 'text'}
+                                />
+                              ))}
+                            </div>
                           )}
                         </div>
-                      </li>
-                    )
-                  })}
-                </ul>
+                      )
+                    })}
+                    <button className="btn-secondary" type="button" onClick={addOrder}>
+                      {t('app.companies.detail.actions.add_order')}
+                    </button>
+                  </div>
+                </SectionCard>
               </div>
             )}
-          </SectionCard>
-          )}
 
-          {blockingOrders.length > 0 && (
-            <SectionCard title={t('app.companies.detail.widgets.blockers.title')} description={t('app.companies.detail.widgets.blockers.subtitle')} collapsible defaultOpen={true}>
-              <ul className="space-y-3 text-sm">
-                {blockingOrders.map((entry) => (
-                  <li key={entry.key} className="rounded-2xl border border-amber-100 bg-amber-50/50 p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-slate-900">{entry.title}</span>
-                      <span className="text-xs text-slate-500">{humanizeStatus(entry.status) || t('common.labels.not_available')}</span>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {entry.reasons.map((reason) => (
-                        <span
-                          key={`${entry.key}-${reason}`}
-                          className="inline-flex items-center rounded-md bg-white/80 px-3 py-1 text-xs font-medium text-amber-700"
-                        >
-                          {t(`app.companies.detail.widgets.blockers.reason.${reason}`)}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-1 text-xs text-slate-500">
-                      {entry.updatedAt ? fmtDateTime(entry.updatedAt) : t('common.labels.not_available')}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </SectionCard>
-          )}
-        </div>
-        )}
+            {clientWorkspaceTab === 'invoices' && (
+              <section className="card p-4">
+                <ClientInvoicesBlock
+                  companyId={currentAny?.id ?? ''}
+                  companyName={detailForm.base.name || t('app.companies.detail.defaults.untitled')}
+                />
+              </section>
+            )}
 
-        {!isOperatingCompany && (
-          <section className="card p-4">
-            <ClientInvoicesBlock
-              companyId={currentAny?.id ?? ''}
-              companyName={detailForm.base.name || t('app.companies.detail.defaults.untitled')}
-            />
-          </section>
+            {clientWorkspaceTab === 'activity' && (
+              <SectionCard
+                title={t('app.companies.detail.workspace.activity.title')}
+                description={t('app.companies.detail.workspace.activity.subtitle')}
+              >
+                <div className="space-y-4 text-sm text-slate-600">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {t('app.companies.detail.workspace.activity.created')}
+                      </p>
+                      <p className="mt-1">{fmtDateTime(currentAny?.created_at as string | undefined)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        {t('app.companies.detail.workspace.activity.updated')}
+                      </p>
+                      <p className="mt-1">{fmtDateTime(currentAny?.updated_at as string | undefined)}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      className="btn-secondary btn-sm"
+                      to={`/app/invoices?company_id=${encodeURIComponent(String(currentAny?.id ?? ''))}`}
+                    >
+                      {t('app.companies.detail.workspace.activity.link_invoices')}
+                    </Link>
+                    <Link
+                      className="btn-secondary btn-sm"
+                      to={`/app/services?tab=orders&company_id=${encodeURIComponent(String(currentAny?.id ?? ''))}`}
+                    >
+                      {t('app.companies.detail.workspace.activity.link_services')}
+                    </Link>
+                    <Link
+                      className="btn-secondary btn-sm"
+                      to={`/app/vacancies?company=${encodeURIComponent(String(currentAny?.id ?? ''))}&page=1`}
+                    >
+                      {t('app.companies.detail.workspace.activity.link_vacancies')}
+                    </Link>
+                  </div>
+                </div>
+              </SectionCard>
+            )}
+          </div>
         )}
 
         {ENABLE_READINESS && showExtendedSections && !isOperatingCompany && (
@@ -2088,6 +2412,8 @@ export default function Companies(){
           </SectionCard>
         )}
 
+        {showClientProfileEditor && (
+        <>
         <SectionCard title={t('app.companies.detail.sections.base.title')}>
           <div className="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
             {isOperatingCompany
@@ -2166,6 +2492,66 @@ export default function Companies(){
             onChange={(value) => updateField('base', 'notes', value)}
             rows={4}
           />
+          {!isOperatingCompany && (
+            <div className="mt-4 border-t border-slate-200 pt-4">
+              <p className="mb-3 text-sm font-semibold text-slate-800">
+                {t('app.companies.detail.sections.party_crm.title', { defaultValue: 'Party & client pipeline' })}
+              </p>
+              <p className="mb-3 text-xs text-slate-500">
+                {t('app.companies.detail.sections.party_crm.hint', {
+                  defaultValue: 'Recruiting vs service revenue: one Party record; roles and client stage drive CRM views.',
+                })}
+              </p>
+              <FieldGrid cols={2}>
+                <SelectField
+                  label={t('app.companies.detail.fields.party_entity_type', { defaultValue: 'Entity type' })}
+                  value={detailForm.base.party_entity_type}
+                  onChange={(value) => updateField('base', 'party_entity_type', value as 'company' | 'person')}
+                  options={[
+                    { value: 'company', label: t('app.companies.party.entity.company', { defaultValue: 'Company' }) },
+                    { value: 'person', label: t('app.companies.party.entity.person', { defaultValue: 'Person' }) },
+                  ]}
+                />
+                <SelectField
+                  label={t('app.companies.detail.fields.party_business_roles', { defaultValue: 'Business roles' })}
+                  value={detailForm.base.party_business_roles || ''}
+                  onChange={(value) =>
+                    updateField(
+                      'base',
+                      'party_business_roles',
+                      (value || '') as CompanyDetailForm['base']['party_business_roles'],
+                    )
+                  }
+                  options={[
+                    { value: '', label: '—' },
+                    { value: 'employer', label: t('app.companies.party.roles.employer', { defaultValue: 'Employer' }) },
+                    {
+                      value: 'service_client',
+                      label: t('app.companies.party.roles.service_client', { defaultValue: 'Service client' }),
+                    },
+                    { value: 'both', label: t('app.companies.party.roles.both', { defaultValue: 'Both' }) },
+                  ]}
+                />
+                <SelectField
+                  label={t('app.companies.detail.fields.client_stage', { defaultValue: 'Client stage' })}
+                  value={detailForm.base.client_stage || ''}
+                  onChange={(value) => updateField('base', 'client_stage', value)}
+                  options={[
+                    { value: '', label: '—' },
+                    ...clientPipelineStageOptions.map((o) => ({ value: o.value, label: o.label })),
+                  ]}
+                />
+                <TextField
+                  label={t('app.companies.detail.fields.client_source', { defaultValue: 'Acquisition source' })}
+                  value={detailForm.base.client_source}
+                  onChange={(value) => updateField('base', 'client_source', value)}
+                  placeholder={t('app.companies.detail.placeholders.client_source', {
+                    defaultValue: 'ads, referral, manual…',
+                  })}
+                />
+              </FieldGrid>
+            </div>
+          )}
         </SectionCard>
 
         {!isOperatingCompany && (
@@ -2387,7 +2773,7 @@ export default function Companies(){
               label={t('app.companies.detail.fields.established_at')}
               value={detailForm.legal.established_at}
               onChange={(value) => updateFormState('legal', (prev) => ({ ...prev, established_at: value }))}
-              placeholder="YYYY-MM-DD"
+              placeholder={t('app.companies.detail.placeholders.date_ymd', { defaultValue: 'YYYY-MM-DD' })}
             />
             {(detailForm.rawExtra?.operational_profile_type ?? 'transport') === 'transport' && (
               <>
@@ -2620,7 +3006,7 @@ export default function Companies(){
                     lanes: { ...prev.lanes, origins: values },
                   }))
                 }
-                placeholder="PL"
+                placeholder={t('app.companies.detail.placeholders.country_code_pl', { defaultValue: 'PL' })}
               />
               <ArrayInputField
                 label={t('app.companies.detail.fields.lanes_destinations')}
@@ -2631,7 +3017,7 @@ export default function Companies(){
                     lanes: { ...prev.lanes, destinations: values },
                   }))
                 }
-                placeholder="FR"
+                placeholder={t('app.companies.detail.placeholders.country_code_fr', { defaultValue: 'FR' })}
               />
             </div>
           </div>
@@ -2639,13 +3025,13 @@ export default function Companies(){
             label={t('app.companies.detail.fields.cargo_types')}
             values={detailForm.operations.cargo_types}
             onChange={(values) => updateFormState('operations', (prev) => ({ ...prev, cargo_types: values }))}
-            placeholder="ADR"
+            placeholder={t('app.companies.detail.placeholders.cargo_type_adr', { defaultValue: 'ADR' })}
           />
           <ArrayInputField
             label={t('app.companies.detail.fields.languages')}
             values={detailForm.operations.languages}
             onChange={(values) => updateFormState('operations', (prev) => ({ ...prev, languages: values }))}
-            placeholder="pl"
+            placeholder={t('app.companies.detail.placeholders.language_pl', { defaultValue: 'pl' })}
           />
           <ArrayInputField
             label={t('app.companies.detail.fields.preferred_nationalities')}
@@ -2653,7 +3039,7 @@ export default function Companies(){
             onChange={(values) =>
               updateFormState('operations', (prev) => ({ ...prev, preferred_nationalities: values }))
             }
-            placeholder="PL"
+            placeholder={t('app.companies.detail.placeholders.country_code_pl', { defaultValue: 'PL' })}
           />
             </>
           )}
@@ -2669,13 +3055,13 @@ export default function Companies(){
                 label={t('app.companies.detail.sections.operations_profile.office_fields.roles')}
                 value={detailForm.operations.roles}
                 onChange={(value) => updateFormState('operations', (prev) => ({ ...prev, roles: value }))}
-                placeholder="developer, manager, …"
+                placeholder={t('app.companies.detail.placeholders.roles_example', { defaultValue: 'developer, manager, …' })}
               />
               <TextField
                 label={t('app.companies.detail.sections.operations_profile.office_fields.tech_stack')}
                 value={detailForm.operations.tech_stack}
                 onChange={(value) => updateFormState('operations', (prev) => ({ ...prev, tech_stack: value }))}
-                placeholder="React, Node.js, …"
+                placeholder={t('app.companies.detail.placeholders.tech_stack_example', { defaultValue: 'React, Node.js, …' })}
               />
             </FieldGrid>
           )}
@@ -2764,7 +3150,7 @@ export default function Companies(){
                   label={t('app.companies.detail.fields.docs_valid_until')}
                   value={detailForm.compliance.doc_valid_until}
                   onChange={(value) => updateFormState('compliance', (prev) => ({ ...prev, doc_valid_until: value }))}
-                  placeholder="YYYY-MM-DD"
+                  placeholder={t('app.companies.detail.placeholders.date_ymd', { defaultValue: 'YYYY-MM-DD' })}
                 />
                 <TextField
                   label={t('app.companies.detail.fields.last_check')}
@@ -2772,7 +3158,7 @@ export default function Companies(){
                   onChange={(value) =>
                     updateFormState('compliance', (prev) => ({ ...prev, last_compliance_check_at: value }))
                   }
-                  placeholder="2025-01-01T00:00:00Z"
+                  placeholder={t('app.companies.detail.placeholders.iso_datetime', { defaultValue: '2025-01-01T00:00:00Z' })}
                 />
               </FieldGrid>
             </div>
@@ -2795,7 +3181,7 @@ export default function Companies(){
                   label={t('app.companies.detail.fields.last_sync')}
                   value={detailForm.portal.last_sync_at}
                   onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, last_sync_at: value }))}
-                  placeholder="2025-01-01T00:00:00Z"
+                  placeholder={t('app.companies.detail.placeholders.iso_datetime', { defaultValue: '2025-01-01T00:00:00Z' })}
                 />
                 <div className="space-y-3">
                   {detailForm.portal.portal_roles.map((user, index) => (
@@ -2831,7 +3217,7 @@ export default function Companies(){
                   value={detailForm.portal.permissions}
                   onChange={(value) => updateFormState('portal', (prev) => ({ ...prev, permissions: value }))}
                   rows={4}
-                  placeholder='{"contracts": {"view": true}}'
+                  placeholder={t('app.companies.detail.placeholders.permissions_json', { defaultValue: '{"contracts": {"view": true}}' })}
                 />
               </div>
             </div>
@@ -2864,7 +3250,7 @@ export default function Companies(){
                   branding: { ...prev.branding, primary_color: value },
                 }))
               }
-              placeholder="#004b8d"
+              placeholder={t('app.companies.detail.placeholders.hex_color', { defaultValue: '#004b8d' })}
             />
           </FieldGrid>
           <div className="space-y-3">
@@ -2941,109 +3327,6 @@ export default function Companies(){
             </button>
           </div>
         </SectionCard>}
-
-        {!isOperatingCompany && <div id="section-orders">
-        <SectionCard
-          title={t('app.companies.detail.sections.orders.title')}
-          collapsible
-          defaultOpen={false}
-        >
-          <div className="space-y-4">
-            {detailForm.orders.map((order, index) => {
-              const orderTypeId = (order.order_type_id ?? 'transport') as string
-              const orderType = ORDER_TYPE_OPTIONS.find((o) => o.id === orderTypeId) ?? ORDER_TYPE_OPTIONS[0]
-              const isTransport = orderTypeId === 'transport'
-              const customFields = order.custom_fields ?? {}
-              return (
-                <div key={`order-${index}`} className="rounded-lg border border-slate-100 bg-slate-50/50 p-4 space-y-3">
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
-                    <TextField
-                      label={t('app.companies.detail.fields.name')}
-                      value={order.title}
-                      onChange={(value) => setOrderField(index, { title: value })}
-                    />
-                    <div>
-                      <label className="label">{t('app.companies.detail.sections.order_type', { defaultValue: 'Тип заявки' })}</label>
-                      <select
-                        className="input w-full"
-                        value={orderTypeId}
-                        onChange={(e) => setOrderField(index, { order_type_id: e.target.value as string })}
-                      >
-                        {ORDER_TYPE_OPTIONS.map((opt) => (
-                          <option key={opt.id} value={opt.id}>
-                            {t(opt.labelKey)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <TextField
-                      label={t('app.companies.detail.fields.status')}
-                      value={order.status}
-                      onChange={(value) => setOrderField(index, { status: value })}
-                    />
-                    <TextField
-                      label={t('app.companies.detail.fields.date_start')}
-                      value={order.starts_at}
-                      onChange={(value) => setOrderField(index, { starts_at: value })}
-                      placeholder="YYYY-MM-DD"
-                    />
-                    <TextField
-                      label={t('app.companies.detail.fields.date_end')}
-                      value={order.ends_at}
-                      onChange={(value) => setOrderField(index, { ends_at: value })}
-                      placeholder="YYYY-MM-DD"
-                    />
-                    <div className="flex items-end gap-2">
-                      <TextField
-                        label={t('app.companies.detail.fields.reference')}
-                        value={order.client_reference}
-                        onChange={(value) => setOrderField(index, { client_reference: value })}
-                      />
-                      <button className="btn-danger shrink-0" type="button" onClick={() => removeOrder(index)}>
-                        {t('common.actions.delete')}
-                      </button>
-                    </div>
-                  </div>
-                  {isTransport && (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <TextField
-                        label={t('app.companies.detail.fields.required_drivers')}
-                        value={order.required_drivers}
-                        onChange={(value) => setOrderField(index, { required_drivers: value })}
-                        type="number"
-                      />
-                      <TextField
-                        label={t('app.companies.detail.fields.hired_drivers')}
-                        value={order.hired_drivers}
-                        onChange={(value) => setOrderField(index, { hired_drivers: value })}
-                        type="number"
-                      />
-                    </div>
-                  )}
-                  {!isTransport && orderType.schema.length > 0 && (
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-                      {orderType.schema.map((field) => (
-                        <TextField
-                          key={field.key}
-                          label={t(field.labelKey)}
-                          value={String(customFields[field.key] ?? '')}
-                          onChange={(value) =>
-                            setOrderCustomField(index, field.key, field.type === 'number' ? (Number(value) || 0) : value)
-                          }
-                          type={field.type === 'number' ? 'number' : 'text'}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-            <button className="btn-secondary" type="button" onClick={addOrder}>
-              {t('app.companies.detail.actions.add_order')}
-            </button>
-          </div>
-        </SectionCard>
-        </div>}
 
         {!isOperatingCompany && showExtendedSections && <SectionCard
           title={t('app.companies.detail.sections.document_policies.title', { defaultValue: 'Document Policies' })}
@@ -3201,6 +3484,8 @@ export default function Companies(){
             <InfoItem label={t('app.companies.detail.fields.updated_at')} value={fmtDateTime(currentAny?.updated_at as string | undefined)} />
           </FieldGrid>
         </SectionCard>}
+        </>
+        )}
 
       </div>
     )
@@ -3212,7 +3497,21 @@ export default function Companies(){
       void loadList()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, detailForm, isDirty, saving, saveError, saveSuccess, readiness, readinessLoading, readinessUnavailable, readinessError, t])
+  }, [
+    id,
+    detailForm,
+    isDirty,
+    saving,
+    saveError,
+    saveSuccess,
+    readiness,
+    readinessLoading,
+    readinessUnavailable,
+    readinessError,
+    t,
+    clientWorkspaceTab,
+    navigateClientWorkspaceTab,
+  ])
 
   useEffect(() => {
     const built = buildDetailForm()
@@ -3379,6 +3678,56 @@ export default function Companies(){
             {t('app.companies.list.show_archived')}
           </label>
         </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.companies.list.filters.party_role', { defaultValue: 'Party role' })}
+            </span>
+            <select
+              className="input"
+              value={partyRoleListFilter}
+              onChange={(e) => setPartyRoleListFilter(e.target.value as typeof partyRoleListFilter)}
+            >
+              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
+              <option value="unset">{t('app.companies.list.filters.party_role_unset', { defaultValue: 'Not set' })}</option>
+              <option value="employer">{t('app.companies.party.roles.employer', { defaultValue: 'Employer' })}</option>
+              <option value="service_client">{t('app.companies.party.roles.service_client', { defaultValue: 'Service client' })}</option>
+              <option value="both">{t('app.companies.party.roles.both', { defaultValue: 'Both' })}</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.companies.list.filters.client_stage', { defaultValue: 'Client stage' })}
+            </span>
+            <select
+              className="input"
+              value={clientStageListFilter}
+              onChange={(e) => setClientStageListFilter(e.target.value)}
+            >
+              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
+              {clientPipelineStageOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t('app.companies.list.filters.owner', { defaultValue: 'Owner' })}
+            </span>
+            <select className="input" value={ownerListFilter} onChange={(e) => setOwnerListFilter(e.target.value)}>
+              <option value="all">{t('app.companies.list.kind_all', { defaultValue: 'All' })}</option>
+              {companyUsers
+                .filter((u) => u.user_id && u.status !== 'invited')
+                .map((u) => (
+                  <option key={u.user_id!} value={u.user_id!}>
+                    {(u.full_name || '').trim() || u.email}
+                  </option>
+                ))}
+            </select>
+          </label>
+        </div>
         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
           <span>
             {t('app.companies.list.insights.visible_hint', { values: { count: filteredItems.length } })}
@@ -3386,7 +3735,13 @@ export default function Companies(){
           <span>
             {t('app.companies.list.client_only_hint', { defaultValue: 'This workspace shows client companies only.' })}
           </span>
-          {(query || showArchived || companyKindFilter !== 'all' || sortBy !== 'name_asc') && (
+          {(query ||
+            showArchived ||
+            companyKindFilter !== 'all' ||
+            sortBy !== 'name_asc' ||
+            partyRoleListFilter !== 'all' ||
+            clientStageListFilter !== 'all' ||
+            ownerListFilter !== 'all') && (
             <button
               className="btn-secondary"
               onClick={() => {
@@ -3394,6 +3749,9 @@ export default function Companies(){
                 setShowArchived(false)
                 setCompanyKindFilter('all')
                 setSortBy('name_asc')
+                setPartyRoleListFilter('all')
+                setClientStageListFilter('all')
+                setOwnerListFilter('all')
               }}
             >
               {t('app.companies.list.reset')}
@@ -3409,6 +3767,21 @@ export default function Companies(){
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.name')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.legal_name')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.kind', { defaultValue: 'Type' })}</th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.party_role', { defaultValue: 'Party role' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.stage', { defaultValue: 'Stage' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.owner', { defaultValue: 'Owner' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.active_orders', { defaultValue: 'Active orders' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.revenue', { defaultValue: 'Revenue (completed)' })}
+              </th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.country')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.city')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.archived')}</th>
@@ -3418,7 +3791,7 @@ export default function Companies(){
           <tbody>
             {loading && (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
+                <td className="px-4 py-6 text-center text-slate-500" colSpan={12}>
                   {t('app.companies.list.table.loading')}
                 </td>
               </tr>
@@ -3436,6 +3809,29 @@ export default function Companies(){
                     {getCompanyKindFromAny(it) === 'counterparty'
                       ? t('app.companies.list.kind_counterparty', { defaultValue: 'Counterparty' })
                       : t('app.companies.list.kind_client', { defaultValue: 'Client' })}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {formatPartyBusinessRoleCell(t, (it as any).party_business_roles)}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {formatClientStageCell(t, (it as any).client_stage)}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3">
+                    {(it as any).owner_user_id
+                      ? ownerUserLabelMap.get(String((it as any).owner_user_id)) ||
+                        String((it as any).owner_user_id).slice(0, 8)
+                      : '—'}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
+                    {(it as any).service_active_orders != null ? Number((it as any).service_active_orders) : '—'}
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
+                    {(it as any).service_revenue_completed != null
+                      ? Number((it as any).service_revenue_completed).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })
+                      : '—'}
                   </td>
                   <td className="border-r border-slate-200 px-4 py-3">{(it as any).country_code || (it as any).country || '—'}</td>
                   <td className="border-r border-slate-200 px-4 py-3">{(it as any).city || '—'}</td>
@@ -3459,7 +3855,7 @@ export default function Companies(){
               ))}
             {!loading && filteredItems.length === 0 && (
               <tr>
-                <td className="px-4 py-8 text-center text-slate-500" colSpan={7}>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={12}>
                   {t('app.companies.list.table.empty')}
                 </td>
               </tr>

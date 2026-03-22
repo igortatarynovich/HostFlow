@@ -23,7 +23,8 @@ function isManagedByUser(company: Company, userId: string) {
 export default function MyCompanyPage() {
   const { t } = useI18n()
   const { me } = useAuth()
-  const { can } = usePermissions()
+  const { can, role } = usePermissions()
+  const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
   const navigate = useNavigate()
   const [companies, setCompanies] = useState<Company[]>([])
   const [billing, setBilling] = useState<BillingSummary | null>(null)
@@ -40,7 +41,7 @@ export default function MyCompanyPage() {
         const [companiesData, billingData, team] = await Promise.all([
           listCompanies({ limit: 500 }),
           getBillingSummary(),
-          getTeamOverview().catch(() => null),
+          canLoadTeamOverview ? getTeamOverview().catch(() => null) : Promise.resolve(null),
         ])
         if (!mounted) return
         setCompanies(Array.isArray(companiesData) ? companiesData : [])
@@ -64,7 +65,7 @@ export default function MyCompanyPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [canLoadTeamOverview])
 
   const managedOperatingCompanies = useMemo(() => {
     const userId = String((me as any)?.sub || '').trim()

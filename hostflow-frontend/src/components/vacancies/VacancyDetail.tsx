@@ -146,15 +146,25 @@ function StatPill({ stageCode, value }:{ stageCode: string; value: React.ReactNo
   )
 }
 
-function MiniTable({ rows }:{ rows: React.ReactNode }){
+function MiniTable({
+  rows,
+  labels,
+}:{
+  rows: React.ReactNode
+  labels: {
+    candidate: string
+    email: string
+    stage: string
+  }
+}){
   return (
     <div className="overflow-x-auto">
       <table className="table">
         <thead>
           <tr>
-            <th>Кандидат</th>
-            <th>Email</th>
-            <th>Этап</th>
+            <th>{labels.candidate}</th>
+            <th>{labels.email}</th>
+            <th>{labels.stage}</th>
           </tr>
         </thead>
         <tbody className="align-top">{rows}</tbody>
@@ -165,6 +175,8 @@ function MiniTable({ rows }:{ rows: React.ReactNode }){
 
 export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemove }: Props) {
   const { t } = useI18n()
+  const leadFieldExperience = 'experience_eu_years'
+  const leadFieldDocuments = 'documents[]'
   const { id: routeId } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const companyFromUrl = searchParams.get('company') || ''
@@ -657,7 +669,11 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
             <label className="block">
               <div className="label">Валюта</div>
-              <input className="input" {...register('currency')} placeholder="PLN / EUR / USD" />
+              <input
+                className="input"
+                {...register('currency')}
+                placeholder={t('app.vacancies.detail.placeholders.currency_codes', { defaultValue: 'PLN / EUR / USD' })}
+              />
             </label>
 
             <label className="block">
@@ -700,7 +716,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
             <Input label="Создана" value={formatDate(model?.created_at)} readOnly />
             <Input label="Изменена" value={formatDate(model?.updated_at)} readOnly />
-            <Input label="ID" value={model?.id || '—'} mono readOnly />
+            <Input label={t('app.vacancies.detail.fields.id', { defaultValue: 'ID' })} value={model?.id || '—'} mono readOnly />
 
             <div className="md:col-span-2">
               <label className="block">
@@ -719,7 +735,9 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               </label>
             </div>
             <div className="md:col-span-2">
-              <div className="mb-2 text-sm font-semibold text-slate-800">Критерии для лидов (авто‑qualification)</div>
+              <div className="mb-2 text-sm font-semibold text-slate-800">
+                {t('app.vacancies.detail.criteria.title', { defaultValue: 'Критерии для лидов (авто‑qualification)' })}
+              </div>
               {requirementsPresets.length > 0 && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <select
@@ -764,11 +782,17 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 </label>
                 <label className="block">
                   <div className="label">Требуемые документы (коды, через запятую)</div>
-                  <input className="input" {...register('criteria_requires_documents')} placeholder="np. karta_pobytu, wp_a" />
+                  <input
+                    className="input"
+                    {...register('criteria_requires_documents')}
+                    placeholder={t('app.vacancies.detail.criteria.documents_placeholder', { defaultValue: 'np. karta_pobytu, wp_a' })}
+                  />
                 </label>
               </div>
               <div className="mt-2 text-xs text-slate-500">
-                Сейчас проверяем по полям лида: <span className="font-mono">experience_eu_years</span> и <span className="font-mono">documents[]</span> (если есть).
+                {t('app.vacancies.detail.criteria.lead_fields', { defaultValue: 'Сейчас проверяем по полям лида:' })}{' '}
+                <span className="font-mono">{leadFieldExperience}</span> {t('common.and', { defaultValue: 'и' })}{' '}
+                <span className="font-mono">{leadFieldDocuments}</span> ({t('common.words.if_available', { defaultValue: 'если есть' })}).
               </div>
             </div>
               </div>
@@ -788,7 +812,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                   {t('app.nav.items.documents', { defaultValue: 'Documents' })}
                 </Link>
                 <Link to="/app/settings/candidate-profiles" className="btn-secondary btn-xs">
-                  {t('app.settings.candidate_profiles', { defaultValue: 'Candidate profiles' })}
+                  {t('admin.settings.cards.candidate_profiles.label', { defaultValue: 'Candidate profiles' })}
                 </Link>
               </div>
             </div>
@@ -804,6 +828,11 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <div className="text-slate-500">Кандидатов для этой вакансии пока нет.</div>
           ) : (
             <MiniTable
+              labels={{
+                candidate: t('app.vacancies.detail.table.candidate', { defaultValue: 'Кандидат' }),
+                email: t('app.vacancies.detail.table.email', { defaultValue: 'Email' }),
+                stage: t('app.vacancies.detail.table.stage', { defaultValue: 'Этап' }),
+              }}
               rows={(
                 candItems.map((c:any) => (
                   <tr key={c.id}>

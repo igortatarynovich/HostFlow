@@ -4,6 +4,7 @@ import {
   getCommunicationsSettings,
   type CommunicationsWorkspaceSettings,
 } from '../api/communications'
+import { roleMayLoadFullCommunicationsSettings } from '../constants/communicationsSettingsAccess'
 import { useAuth } from '../store/useAuth'
 import { usePermissions } from './usePermissions'
 
@@ -69,6 +70,21 @@ export function useCommunicationsAccess() {
 
   useEffect(() => {
     let mounted = true
+
+    if (!me?.tenant_id) {
+      setState({ loading: false, settings: DEFAULT_COMMUNICATIONS_SETTINGS, error: null })
+      return () => {
+        mounted = false
+      }
+    }
+
+    if (!roleMayLoadFullCommunicationsSettings(role)) {
+      setState({ loading: false, settings: DEFAULT_COMMUNICATIONS_SETTINGS, error: null })
+      return () => {
+        mounted = false
+      }
+    }
+
     ;(async () => {
       try {
         const settings = await getCommunicationsSettings()
@@ -83,7 +99,7 @@ export function useCommunicationsAccess() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [me?.tenant_id, role])
 
   const userIdSet = useMemo(() => {
     const ids = new Set<string>()

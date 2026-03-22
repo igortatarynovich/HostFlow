@@ -60,7 +60,7 @@ export default function MyAvailabilityPage() {
       setItems(Array.isArray(res.items) ? res.items : [])
       if (wh) setWorkingHours(wh)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to load requests'))
+      setErrorText(errorTextFrom(err, t('app.communications.my_availability.errors.load_requests', { defaultValue: 'Failed to load requests' })))
     } finally {
       setLoading(false)
     }
@@ -141,7 +141,7 @@ export default function MyAvailabilityPage() {
       setWorkingHours(saved)
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to save working hours'))
+      setErrorText(errorTextFrom(err, t('app.communications.my_availability.errors.save_working_hours', { defaultValue: 'Failed to save working hours' })))
     } finally {
       setWorkingBusy(false)
     }
@@ -177,7 +177,7 @@ export default function MyAvailabilityPage() {
       await loadMine()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to create request'))
+      setErrorText(errorTextFrom(err, t('app.communications.my_availability.errors.create_request', { defaultValue: 'Failed to create request' })))
     } finally {
       setBusy(false)
     }
@@ -190,7 +190,7 @@ export default function MyAvailabilityPage() {
       await loadMine()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to cancel request'))
+      setErrorText(errorTextFrom(err, t('app.communications.my_availability.errors.cancel_request', { defaultValue: 'Failed to cancel request' })))
     } finally {
       setBusy(false)
     }
@@ -306,15 +306,15 @@ export default function MyAvailabilityPage() {
         <form className="mt-3 grid gap-2" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <select value={form.requestType} onChange={(e) => setForm((p) => ({ ...p, requestType: e.target.value }))} className="input">
-              <option value="vacation">Vacation</option>
-              <option value="day_off">Day off</option>
-              <option value="sick_leave">Sick leave</option>
-              <option value="other">Other</option>
+              <option value="vacation">{t('app.communications.my_availability.request_type.vacation', { defaultValue: 'Vacation' })}</option>
+              <option value="day_off">{t('app.communications.my_availability.request_type.day_off', { defaultValue: 'Day off' })}</option>
+              <option value="sick_leave">{t('app.communications.my_availability.request_type.sick_leave', { defaultValue: 'Sick leave' })}</option>
+              <option value="other">{t('app.communications.my_availability.request_type.other', { defaultValue: 'Other' })}</option>
             </select>
             <select value={form.partialDay} onChange={(e) => setForm((p) => ({ ...p, partialDay: e.target.value }))} className="input">
-              <option value="">Full day(s)</option>
-              <option value="first_half">First half-day</option>
-              <option value="second_half">Second half-day</option>
+              <option value="">{t('app.communications.my_availability.partial_day.full', { defaultValue: 'Full day(s)' })}</option>
+              <option value="first_half">{t('app.communications.my_availability.partial_day.first_half', { defaultValue: 'First half-day' })}</option>
+              <option value="second_half">{t('app.communications.my_availability.partial_day.second_half', { defaultValue: 'Second half-day' })}</option>
             </select>
           </div>
           {form.partialDay && (
@@ -327,7 +327,13 @@ export default function MyAvailabilityPage() {
             <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} className="input" />
             <input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} className="input" />
           </div>
-          <textarea rows={3} value={form.reason} onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))} className="textarea" placeholder="Reason / comment" />
+          <textarea
+            rows={3}
+            value={form.reason}
+            onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))}
+            className="textarea"
+            placeholder={t('app.communications.my_availability.reason_placeholder', { defaultValue: 'Reason / comment' })}
+          />
           <button type="submit" disabled={busy || !form.startDate || !form.endDate} className="btn-primary disabled:opacity-50">
             {busy ? t('common.loading', { defaultValue: 'Loading...' }) : t('common.actions.create', { defaultValue: 'Create' })}
           </button>

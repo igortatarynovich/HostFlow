@@ -1062,6 +1062,11 @@ async def list_companies(
     q: Optional[str] = None,
     include_archived: bool = False,
     allowed_company_ids: set[str] | None = None,
+    *,
+    party_business_roles: Optional[str] = None,
+    client_stage: Optional[str] = None,
+    owner_user_id: Optional[str] = None,
+    client_source: Optional[str] = None,
 ) -> List[Company]:
     tenant_id = _tenant_id_from_session(db)
 
@@ -1126,6 +1131,17 @@ async def list_companies(
                 Company.legal_name.ilike(like),
             )
         )
+
+    if party_business_roles:
+        stmt = stmt.where(Company.party_business_roles == party_business_roles)
+    if client_stage:
+        stmt = stmt.where(Company.client_stage == client_stage)
+    if owner_user_id:
+        stmt = stmt.where(Company.owner_user_id == owner_user_id)
+    if client_source:
+        stmt = stmt.where(Company.client_source == client_source)
+
+    stmt = stmt.order_by(Company.name.asc())
 
     result = await _extract_session(db).execute(stmt)
     companies = cast(List[Company], result.scalars().all())
@@ -1340,6 +1356,42 @@ async def update_company(db: AsyncSession, company_id: UUID, data) -> Optional[C
         )
 
     company.updated_at = _now_utc()
+
+    # Keep tenant.business_type in sync when operating company type changes.
+    # Without this, Leads/Onboarding may use stale tenant.settings and show wrong actions.
+    try:
+        tenant_id = _tenant_id_from_session(session)
+        company_role = updated_extra.get("company_role")
+        company_type = updated_extra.get("company_type")
+        if company_role == "operating" and company_type in ("agency", "employer", "services"):
+            tenant = (
+                await session.execute(
+                    select(Tenant).where(Tenant.id == tenant_id).limit(1)
+                )
+            ).scalar_one_or_none()
+            if tenant is not None:
+                if company_type == "employer":
+                    tenant_type = TenantType.company
+                else:
+                    # "services" keeps full workspace behavior (same as agency tenant type).
+                    tenant_type = TenantType.agency
+                tenant.type = tenant_type
+                tenant.settings = _bootstrap_tenant_settings_for_company_type(
+                    tenant.settings,
+                    company_type=company_type,
+                )
+                session.add(tenant)
+
+                tenant_modules = _ensure_dict(tenant.settings.get("modules")) if isinstance(tenant.settings, dict) else {}
+                await _bootstrap_default_funnels_for_business_type(
+                    session,
+                    tenant_id=tenant_id,
+                    company_type=company_type,
+                    modules=tenant_modules,
+                )
+    except Exception:
+        # Best-effort: company update should not fail due to tenant bootstrap sync.
+        pass
 
     session.add(company)
     await session.commit()

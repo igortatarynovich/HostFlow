@@ -6,6 +6,7 @@ import { getOnboardingStatus, settings, type OnboardingStatus } from '../api/cli
 import { setTenantId } from '../api/http'
 import { CurrentTenantProvider } from '../contexts/CurrentTenant'
 import { TenantInfoProvider } from '../contexts/TenantInfo'
+import { HiringPipelineGatesProvider } from '../contexts/HiringPipelineGatesContext'
 import type { NavItem } from './routes'
 import { Sidebar } from '../components/nav/Sidebar'
 import { Topbar } from '../components/nav/Topbar'
@@ -30,6 +31,10 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const path = location.pathname
   const isOnboardingPage = location.pathname.startsWith('/app/onboarding/')
   const isSettingsArea = location.pathname.startsWith('/app/settings')
+  /** Вся зона кандидатов (список, карточка и вложенные): compact topbar + единый плотный режим workspace. */
+  const isCandidatesArea = path === '/app/candidates' || path.startsWith('/app/candidates/')
+  /** Список кандидатов (таблица): убираем scroll у main — иначе два скролла (main + TableVirtuoso) ломают hit-testing/клики. */
+  const isCandidatesTablePage = path === '/app/candidates'
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
 
@@ -147,6 +152,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   return (
     <CurrentTenantProvider value={currentTenantId}>
       <TenantInfoProvider tenant={tenant}>
+        <HiringPipelineGatesProvider tenantId={currentTenantId}>
         <div className="flex h-screen bg-slate-50 text-slate-900">
           <Sidebar
             tenant={tenant}
@@ -180,18 +186,34 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
               tenant={tenant}
               onLogout={onLogout}
               onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+              compact={isCandidatesArea}
             />
 
-            <main className="flex-1 overflow-y-auto">
-              <div className="w-full px-6 py-6 lg:px-10">
+            <main
+              className={
+                isCandidatesTablePage
+                  ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+                  : 'min-h-0 flex-1 overflow-y-auto'
+              }
+            >
+              <div
+                className={
+                  isCandidatesTablePage
+                    ? 'flex min-h-0 w-full flex-1 flex-col overflow-hidden px-0 py-0'
+                    : 'w-full px-6 py-6 lg:px-10'
+                }
+              >
                 {isSettingsArea && <SettingsChrome pathname={location.pathname} compactMode={guidedTrialWorkspace} />}
-                <div className={`app-ui ${isSettingsArea ? 'settings-surface' : ''}`.trim()}>
+                <div
+                  className={`app-ui min-h-0 ${isSettingsArea ? 'settings-surface' : ''} ${isCandidatesTablePage ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : ''}`.trim()}
+                >
                   <Outlet />
                 </div>
               </div>
             </main>
           </div>
         </div>
+        </HiringPipelineGatesProvider>
       </TenantInfoProvider>
     </CurrentTenantProvider>
   )

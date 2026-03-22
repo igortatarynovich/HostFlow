@@ -83,11 +83,21 @@ export default function AutomationLogPage() {
           </label>
           <label className="flex flex-col text-sm gap-1">
             {t('app.automation_log.filters.target_id', { defaultValue: 'Target id' })}
-            <input className="input w-64" value={targetId} onChange={(e) => setTargetId(e.target.value)} placeholder="UUID" />
+            <input
+              className="input w-64"
+              value={targetId}
+              onChange={(e) => setTargetId(e.target.value)}
+              placeholder={t('app.automation_log.filters.target_id_placeholder', { defaultValue: 'UUID' })}
+            />
           </label>
           <label className="flex flex-col text-sm gap-1">
             {t('app.automation_log.filters.action_prefix', { defaultValue: 'Action prefix' })}
-            <input className="input w-40" value={actionPrefix} onChange={(e) => setActionPrefix(e.target.value)} placeholder="automation." />
+            <input
+              className="input w-40"
+              value={actionPrefix}
+              onChange={(e) => setActionPrefix(e.target.value)}
+              placeholder={t('app.automation_log.filters.action_prefix_placeholder', { defaultValue: 'automation.' })}
+            />
           </label>
           <label className="flex flex-col text-sm gap-1">
             {t('app.automation_log.filters.from', { defaultValue: 'From' })}
@@ -218,4 +228,3 @@ export default function AutomationLogPage() {
     </div>
   )
 }
-

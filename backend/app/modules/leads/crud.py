@@ -24,7 +24,7 @@ async def create_lead(
     *,
     tenant_id: str,
     own_company_id: Optional[str] = None,
-    company_id: str,
+    company_id: Optional[str],
     vacancy_id: Optional[str],
     payload: Dict[str, Any],
     normalized: Optional[Dict[str, Any]],
@@ -32,11 +32,18 @@ async def create_lead(
     ad_id: Optional[int] = None,
     last_routed_at: Optional[datetime] = None,
     external_id: Optional[str] = None,
+    lead_type: str = "candidate",
 ) -> Lead:
+    lt = str(lead_type or "candidate").strip().lower()
+    if lt not in {"candidate", "client"}:
+        lt = "candidate"
+    if lt == "candidate" and not company_id:
+        raise ValueError("company_id is required for candidate leads")
     lead = Lead(
         id=str(uuid.uuid4()),
         tenant_id=tenant_id,
         own_company_id=own_company_id,
+        lead_type=lt,
         company_id=company_id,
         vacancy_id=vacancy_id,
         source=source,
@@ -612,6 +619,11 @@ async def update_meta_settings(
     **updates: Any,
 ) -> MetaLeadSettings:
     for key, value in updates.items():
+        # FastAPI/Pydantic может передавать UUID как тип данных, но в БД
+        # поля settings сейчас хранятся строками (VARCHAR(36)).
+        # Поэтому приводим к строке, чтобы asyncpg не падал с DataError.
+        if value is not None and isinstance(value, uuid.UUID):
+            value = str(value)
         if hasattr(entry, key) and value is not None:
             setattr(entry, key, value)
         elif hasattr(entry, key) and value is None:

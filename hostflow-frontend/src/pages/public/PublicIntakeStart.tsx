@@ -92,7 +92,7 @@ export default function PublicIntakeStart() {
             <input
               type="email"
               className="w-full rounded-xl border border-brand-100 px-3 py-2 focus:border-brand-400 focus:outline-none focus:ring"
-              placeholder="you@example.com"
+              placeholder={t('public.start.form.placeholders.email', { defaultValue: 'you@example.com' })}
               value={form.email}
               onChange={(e) => handleChange('email', e.target.value)}
             />

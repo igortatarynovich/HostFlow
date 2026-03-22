@@ -50,6 +50,7 @@ __all__ = [
     "list_candidates",
     "delete_candidate",
     "count_candidates",
+    "count_candidates_insights",
     "fetch_candidates_with_labels",
     "get_candidate_with_labels",
     "count_by_stage",
@@ -674,6 +675,91 @@ async def count_candidates(
     base_query = select(Candidate).where(and_(*conds))
     res = await db.execute(select(func.count()).select_from(base_query.subquery()))
     return int(res.scalar_one() or 0)
+
+
+async def count_candidates_insights(
+    db: AsyncSession,
+    tenant_id: str,
+    filters: Dict[str, Any],
+    visibility: TenantVisibility | None = None,
+) -> dict[str, int]:
+    """
+    Single-query aggregates for list UI: same filter scope as list/count_candidates.
+    Mirrors frontend insight cards + docs readiness semantics from fetch_candidates_with_labels.
+    """
+    conds = _build_conditions(tenant_id, filters, visibility)
+
+    def _doc_exists(*extra_conditions):
+        return (
+            exists()
+            .where(Document.candidate_id == Candidate.id)
+            .where(Document.tenant_id == Candidate.tenant_id)
+            .where(Document.deleted_at.is_(None))
+            .where(*extra_conditions)
+        )
+
+    ready_exists = _doc_exists(Document.status.in_(READY_STATUSES))
+    problem_exists = _doc_exists(Document.status.in_(PROBLEM_STATUSES))
+    awaiting_exists = _doc_exists(Document.status.in_(AWAITING_REVIEW_STATUSES))
+    in_progress_exists = _doc_exists(Document.status.in_(IN_PROGRESS_STATUSES))
+    ordered_exists = _doc_exists(
+        or_(
+            Document.ordered_at.isnot(None),
+            Document.status.in_(ORDERED_STATUSES),
+        )
+    )
+
+    readiness_expr = case(
+        (problem_exists, literal("problem")),
+        (ready_exists, literal("ready")),
+        (awaiting_exists, literal("awaiting_review")),
+        (in_progress_exists, literal("in_progress")),
+        (ordered_exists, literal("ordered")),
+        else_=literal("pending"),
+    )
+
+    stage_lower = func.lower(func.coalesce(Candidate.stage, ""))
+    is_new_stage = or_(
+        stage_lower == literal("new"),
+        stage_lower.like("new_%"),
+        stage_lower.like("%new%"),
+    )
+
+    new_cnt = case((is_new_stage, 1), else_=0)
+    docs_ready = case((readiness_expr == literal("ready"), 1), else_=0)
+    docs_attention = case(
+        (
+            or_(
+                readiness_expr == literal("in_progress"),
+                readiness_expr == literal("awaiting_review"),
+                readiness_expr == literal("problem"),
+            ),
+            1,
+        ),
+        else_=0,
+    )
+    docs_ordered = case((ordered_exists, 1), else_=0)
+
+    stmt = (
+        select(
+            func.count().label("total"),
+            func.coalesce(func.sum(new_cnt), 0).label("new_count"),
+            func.coalesce(func.sum(docs_ready), 0).label("docs_ready"),
+            func.coalesce(func.sum(docs_attention), 0).label("docs_attention"),
+            func.coalesce(func.sum(docs_ordered), 0).label("docs_ordered"),
+        )
+        .select_from(Candidate)
+        .where(and_(*conds))
+    )
+    row = await db.execute(stmt)
+    r = row.one()
+    return {
+        "total": int(r.total or 0),
+        "new_count": int(r.new_count or 0),
+        "docs_ready": int(r.docs_ready or 0),
+        "docs_attention": int(r.docs_attention or 0),
+        "docs_ordered": int(r.docs_ordered or 0),
+    }
 
 
 async def fetch_candidates_with_labels(

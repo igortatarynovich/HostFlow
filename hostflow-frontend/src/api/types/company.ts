@@ -5,11 +5,21 @@
 import type { UUID } from './common';
 
 /** Компания */
+export type PartyEntityType = 'company' | 'person';
+export type PartyBusinessRoles = 'employer' | 'service_client' | 'both';
+
 export interface Company {
   id: UUID;
   name: string;
   owner_user_id?: UUID | null;
   manager_user_id?: UUID | null;
+  party_entity_type?: PartyEntityType | null;
+  party_business_roles?: PartyBusinessRoles | null;
+  client_stage?: string | null;
+  client_source?: string | null;
+  /** Filled when GET /companies/?include_service_metrics=true */
+  service_active_orders?: number | null;
+  service_revenue_completed?: number | null;
   legal_name?: string | null;
   reg_no?: string | null;
   tax_id?: string | null;

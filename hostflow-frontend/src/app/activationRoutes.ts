@@ -10,7 +10,7 @@ export const ACTIVATION_PATHS = {
   services: '/app/services',
   messages: '/app/messages',
   invoices: '/app/invoices',
-  reminders: '/app/reminders',
+  reminders: '/app/tasks',
   billing: '/app/settings/billing',
   legal: '/app/settings/legal',
 } as const

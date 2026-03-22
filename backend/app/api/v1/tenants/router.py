@@ -1,12 +1,19 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Tuple
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.api.v1.settings.hiring_pipeline_gates_impl import (
+    HIRING_GATES_READ_ROLES,
+    HiringPipelineGatesPatch,
+    HiringPipelineGatesPublicOut,
+    get_hiring_pipeline_gates_core,
+    patch_hiring_pipeline_gates_core,
+)
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant, get_db
 from backend.app.api.v1.tenants import schemas
@@ -31,6 +38,33 @@ async def get_me(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     return {"tenant": schemas.TenantOut.model_validate(tenant)}
+
+
+@router.get(
+    "/me/hiring-pipeline-gates",
+    response_model=HiringPipelineGatesPublicOut,
+    dependencies=[Depends(require_roles(*HIRING_GATES_READ_ROLES))],
+)
+async def get_hiring_pipeline_gates_me(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HiringPipelineGatesPublicOut:
+    """Alias of `GET /api/v1/settings/team/hiring-pipeline-gates` (same auth & payload)."""
+    return await get_hiring_pipeline_gates_core(ctx, db_tenant)
+
+
+@router.patch(
+    "/me/hiring-pipeline-gates",
+    response_model=HiringPipelineGatesPublicOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def patch_hiring_pipeline_gates_me(
+    payload: HiringPipelineGatesPatch,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> HiringPipelineGatesPublicOut:
+    """Alias of `PATCH /api/v1/settings/team/hiring-pipeline-gates`."""
+    return await patch_hiring_pipeline_gates_core(payload, ctx, db_tenant)
 
 
 @router.post(

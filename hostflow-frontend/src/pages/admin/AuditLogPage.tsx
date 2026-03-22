@@ -111,7 +111,7 @@ export default function AuditLogPage() {
             <input
               type="text"
               className="input w-40"
-              placeholder="UUID"
+              placeholder={t('admin.settings.audit.filters.user_id_placeholder', { defaultValue: 'UUID' })}
               value={userIdFilter}
               onChange={(e) => setUserIdFilter(e.target.value)}
             />
@@ -121,7 +121,7 @@ export default function AuditLogPage() {
             <input
               type="text"
               className="input w-32"
-              placeholder="action"
+              placeholder={t('admin.settings.audit.filters.action_placeholder', { defaultValue: 'action' })}
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
             />

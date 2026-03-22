@@ -189,6 +189,14 @@ async def create_invoice(
             actor_id=current_user.sub,
             payload={"source": "manual"},
         )
+        try:
+            from backend.app.services import uos_auto_activities
+
+            await uos_auto_activities.ensure_invoice_follow_payment_task(
+                db, str(tenant_id), str(current_user.sub), invoice
+            )
+        except Exception:
+            pass
         await db.commit()
         await db.refresh(invoice)
         return InvoiceOut.model_validate(invoice)
@@ -370,6 +378,12 @@ async def create_invoice_from_service_order(
         actor_id=current_user.sub,
         payload={"source": "service_order", "service_order_id": order.id},
     )
+    try:
+        from backend.app.services import uos_auto_activities
+
+        await uos_auto_activities.ensure_invoice_follow_payment_task(db, tenant_id_str, current_user.sub, invoice)
+    except Exception:
+        pass
     await db.commit()
     await db.refresh(invoice)
     return InvoiceOut.model_validate(invoice)

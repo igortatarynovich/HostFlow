@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import type { ReminderRecord } from '../../api/types'
 import { useI18n } from '../../i18n'
 import CandidateRemindersSection from './CandidateRemindersSection'
+import {
+  operationalHintForStageResolved,
+  type StageOperationalHintKind,
+} from '../../utils/stageOperationalHints'
 
 function parseTs(value?: string | null): number {
   if (!value) return 0
@@ -43,19 +47,78 @@ export default function CandidateNextActionPanel(props: {
   candidateId: string
   hideToggle?: boolean
   hideRemindersList?: boolean
+  /** @deprecated Prefer docsIssuesPresent + docsPipelineBlocking */
   docsBlockersActive?: boolean
+  /** Checklist has gaps (missing / problematic / in review). */
+  docsIssuesPresent?: boolean
+  /** When true, documents are a hard gate for the pipeline at this stage. */
+  docsPipelineBlocking?: boolean
   docsRequestTitle?: string
   docsRequestDueLabel?: string
+  docsBlockerKind?: 'request' | 'review' | null
   onDocsRequestCreate?: () => void
   /**
    * When set to a value > 0, forces the embedded reminders editor
    * (create/snooze/complete) to open.
    */
   detailsOpenTrigger?: number
+  /** Canonical stage (e.g. `contacted`, `docs_wait`) for suggested next step when no reminder. */
+  canonicalStageCode?: string | null
+  /** Next stage in journey order — used to advance operational hints after gates are satisfied. */
+  nextPipelineStageCode?: string | null
+  vacancyPipelineBlocking?: boolean
+  contactAttemptPipelineBlocking?: boolean
 }) {
   const { t, locale } = useI18n()
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [nowTs, setNowTs] = useState<number>(0)
+
+  const issuesPresent = props.docsIssuesPresent ?? props.docsBlockersActive ?? false
+  const pipelineBlocking = props.docsPipelineBlocking ?? props.docsBlockersActive ?? false
+
+  const stageHint = useMemo(
+    () =>
+      operationalHintForStageResolved(
+        props.canonicalStageCode ?? undefined,
+        props.nextPipelineStageCode ?? undefined,
+        {
+          vacancyPipelineBlocking: props.vacancyPipelineBlocking,
+          contactAttemptPipelineBlocking: props.contactAttemptPipelineBlocking,
+        },
+      ),
+    [
+      props.canonicalStageCode,
+      props.nextPipelineStageCode,
+      props.vacancyPipelineBlocking,
+      props.contactAttemptPipelineBlocking,
+    ],
+  )
+
+  const stageHintTitle = useCallback(
+    (kind: StageOperationalHintKind) => {
+      switch (kind) {
+        case 'call_candidate':
+          return t('app.candidate_card.next_action.stage_hint.call', { defaultValue: 'Call / contact the candidate' })
+        case 'assign_vacancy':
+          return t('app.candidate_card.next_action.stage_hint.assign', {
+            defaultValue: 'Qualify & assign vacancy / client',
+          })
+        case 'request_documents':
+          return t('app.candidate_card.next_action.stage_hint.request_docs', { defaultValue: 'Collect required documents' })
+        case 'verify_documents':
+          return t('app.candidate_card.next_action.stage_hint.verify_docs', { defaultValue: 'Verify uploaded documents' })
+        case 'handoff_prep':
+          return t('app.candidate_card.next_action.stage_hint.handoff', {
+            defaultValue: 'Complete checks before handoff',
+          })
+        case 'advance_pipeline':
+          return t('app.candidate_card.next_action.stage_hint.advance', { defaultValue: 'Move the case forward' })
+        default:
+          return ''
+      }
+    },
+    [t],
+  )
 
   useEffect(() => {
     // Keep "overdue" state stable without calling impure Date.now() inside hook callbacks.
@@ -91,6 +154,21 @@ export default function CandidateNextActionPanel(props: {
     return ts > 0 && (nowTs ? ts < nowTs : false)
   }, [next, nowTs])
 
+  const docsBlockingTitle = useMemo(() => {
+    if (props.docsRequestTitle) return props.docsRequestTitle
+    if (stageHint?.kind === 'request_documents') return stageHintTitle('request_documents')
+    if (stageHint?.kind === 'verify_documents') return stageHintTitle('verify_documents')
+    return t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' })
+  }, [props.docsRequestTitle, stageHint, stageHintTitle, t])
+
+  const docsSoftTitle = useMemo(() => {
+    if (stageHint?.kind === 'call_candidate') return stageHintTitle('call_candidate')
+    if (stageHint?.kind === 'assign_vacancy') return stageHintTitle('assign_vacancy')
+    return t('app.candidate_card.next_action.contact_first_title', {
+      defaultValue: 'Contact & qualify candidate',
+    })
+  }, [stageHint, stageHintTitle, t])
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-3">
       <div className="flex items-start justify-between gap-3">
@@ -116,22 +194,59 @@ export default function CandidateNextActionPanel(props: {
                 ) : null}
               </div>
             </>
-          ) : props.docsBlockersActive ? (
+          ) : issuesPresent ? (
             <>
               <div className="mt-1 text-sm font-semibold text-slate-900 truncate">
-                {props.docsRequestTitle || t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' })}
+                {pipelineBlocking ? docsBlockingTitle : docsSoftTitle}
               </div>
-              <div className="mt-0.5 text-xs text-slate-600">
-                {t('app.candidate_card.next_action.due', { defaultValue: 'Due' })}: {props.docsRequestDueLabel || t('common.today', { defaultValue: 'Today' })}
-                <span className="ml-2 inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
-                  {t('app.candidate_card.next_action.docs_blocking', { defaultValue: 'Blocking' })}
-                </span>
+              <div className="mt-2 space-y-2">
+                <div className="text-xs text-slate-600">
+                  {t('app.candidate_card.next_action.due', { defaultValue: 'Due' })}:{' '}
+                  {props.docsRequestDueLabel || t('common.today', { defaultValue: 'Today' })}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {pipelineBlocking ? (
+                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold leading-tight text-amber-700">
+                      {t('app.candidate_card.next_action.docs_blocking', { defaultValue: 'Blocking' })}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold leading-tight text-slate-700">
+                      {t('app.candidate_card.next_action.docs_not_blocking_stage', {
+                        defaultValue: 'Not blocking at this stage',
+                      })}
+                    </span>
+                  )}
+                  {props.docsBlockerKind === 'review' ? (
+                    <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold leading-tight text-rose-700">
+                      {t('app.candidate_card.next_action.docs_review_required', { defaultValue: 'Review required' })}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold leading-tight text-blue-700">
+                      {t('app.candidate_card.next_action.docs_missing_badge', { defaultValue: 'Documents missing' })}
+                    </span>
+                  )}
+                </div>
               </div>
             </>
           ) : (
-            <div className="mt-1 text-xs text-slate-500">
-              {t('app.candidate_card.next_action.empty', { defaultValue: 'No active reminders.' })}
-            </div>
+            <>
+              <div className="mt-1 text-sm font-semibold text-slate-900">
+                {stageHint
+                  ? stageHintTitle(stageHint.kind)
+                  : t('app.candidate_card.next_action.empty_title', { defaultValue: 'No active reminders' })}
+              </div>
+              {stageHint ? (
+                <div className="mt-0.5 text-xs text-slate-600">
+                  {t('app.candidate_card.next_action.stage_hint.footer', {
+                    defaultValue: 'Suggested focus for this stage (add a reminder to track it).',
+                  })}
+                </div>
+              ) : (
+                <div className="mt-0.5 text-xs text-slate-500">
+                  {t('app.candidate_card.next_action.empty', { defaultValue: 'Create a reminder to track the next step.' })}
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -155,7 +270,7 @@ export default function CandidateNextActionPanel(props: {
                 {t('app.candidate_card.next_action.snooze', { defaultValue: 'Snooze 1h' })}
               </button>
             </>
-          ) : props.docsBlockersActive ? (
+          ) : issuesPresent ? (
             <button
               type="button"
               className="btn-secondary btn-sm"
@@ -164,7 +279,11 @@ export default function CandidateNextActionPanel(props: {
                 setDetailsOpen(true)
               }}
             >
-              {t('app.candidate_card.next_action.create_task', { defaultValue: 'Create task' })}
+              {pipelineBlocking
+                ? t('app.candidate_card.next_action.create_task', { defaultValue: 'Create task' })
+                : t('app.candidate_card.next_action.create_contact_task', {
+                    defaultValue: 'Create follow-up',
+                  })}
             </button>
           ) : (
             <button type="button" className="btn-secondary btn-sm" onClick={() => setDetailsOpen(true)}>

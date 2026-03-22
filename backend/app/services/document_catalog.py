@@ -82,6 +82,9 @@ def normalize_doc_type(raw: str | None) -> str:
     value = (raw or "").strip().lower()
     if not value:
         return "additional_document"
+    # Primary codes (e.g. "passport") are not listed in ALIASES — only alias → canonical.
+    if value in DOCUMENT_TYPE_DEFAULTS:
+        return value
     return DOCUMENT_TYPE_ALIASES.get(value, "additional_document")
 
 

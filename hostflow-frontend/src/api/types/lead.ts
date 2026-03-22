@@ -5,6 +5,7 @@
 import type { UUID } from './common';
 
 export type LeadStatus = 'new' | 'processed' | 'duplicated' | 'failed' | 'needs_routing';
+export type LeadType = 'candidate' | 'client';
 export type LeadStage = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
 export type LeadNextActionStatus = 'scheduled' | 'overdue' | 'no_next_action';
 
@@ -12,7 +13,8 @@ export interface Lead {
   id: UUID;
   tenant_id: UUID;
   business_type?: 'agency' | 'employer' | 'services' | null;
-  company_id: UUID;
+  lead_type?: LeadType;
+  company_id?: UUID | null;
   company_name?: string | null;
   vacancy_id?: UUID | null;
   vacancy_title?: string | null;

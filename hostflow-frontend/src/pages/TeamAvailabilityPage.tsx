@@ -59,7 +59,7 @@ export default function TeamAvailabilityPage() {
         setLabels(new Map((Array.isArray(managers) ? managers : []).map((m: any) => [String(m.id), String(m.label || m.full_name || m.email || m.id)])))
         setApprovedTimeOff(Array.isArray(timeOffRes.items) ? timeOffRes.items : [])
       } catch (err: any) {
-        if (mounted) setErrorText(errorTextFrom(err, 'Failed to load team availability'))
+        if (mounted) setErrorText(errorTextFrom(err, t('app.communications.team_availability.errors.load', { defaultValue: 'Failed to load team availability' })))
       } finally {
         if (mounted) setLoading(false)
       }
@@ -107,10 +107,10 @@ export default function TeamAvailabilityPage() {
         </p>
       </div>
       <div className="grid grid-cols-4 gap-3">
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Available: <strong>{summary.available}</strong></div>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Busy: <strong>{summary.busy}</strong></div>
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Time-off today: <strong>{summary.onTimeOffToday}</strong></div>
-        <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">Total: <strong>{summary.total}</strong></div>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.team_availability.stats.available', { defaultValue: 'Available: {count}', values: { count: summary.available } })}</div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.team_availability.stats.busy', { defaultValue: 'Busy: {count}', values: { count: summary.busy } })}</div>
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{t('app.communications.team_availability.stats.timeoff_today', { defaultValue: 'Time-off today: {count}', values: { count: summary.onTimeOffToday } })}</div>
+        <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">{t('app.communications.team_availability.stats.total', { defaultValue: 'Total: {count}', values: { count: summary.total } })}</div>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white">

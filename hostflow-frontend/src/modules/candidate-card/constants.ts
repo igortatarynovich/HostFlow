@@ -31,13 +31,11 @@ export const PATCH_AFTER_CREATE_FIELDS = new Set([
 export const MAX_EMPLOYMENTS = 3;
 export const SERVICE_ORDER_STATUSES: ServiceOrderStatus[] = [
   'draft',
-  'quoted',
-  'approved',
-  'scheduled',
+  'confirmed',
   'in_progress',
-  'delivered',
+  'on_hold',
+  'completed',
   'cancelled',
-  'refunded',
 ];
 export const SERVICE_ITEM_STATUSES: ServiceItemStatus[] = [
   'pending',

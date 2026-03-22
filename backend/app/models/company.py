@@ -54,6 +54,20 @@ class Company(Base):
     city: Mapped[Optional[str]] = mapped_column(String(128))
     address: Mapped[Optional[str]] = mapped_column(String(255))
 
+    # Party (unified B2B/B2C counterparty) — companies row is the canonical Party record.
+    party_entity_type: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="company",
+        server_default=text("'company'"),
+    )
+    party_business_roles: Mapped[Optional[str]] = mapped_column(
+        String(32),
+        nullable=True,
+    )
+    client_stage: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    client_source: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+
     # JSON-поля: используем SQLite JSON + PostgreSQL JSONB
     _JSONType = MutableDict.as_mutable(SQLiteJSON().with_variant(JSONB, "postgresql"))
 

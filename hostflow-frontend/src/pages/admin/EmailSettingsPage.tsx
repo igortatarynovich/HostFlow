@@ -190,7 +190,7 @@ export default function EmailSettingsPage() {
               type="text"
               value={smtpUser}
               onChange={(e) => setSmtpUser(e.target.value)}
-              placeholder="email@example.com"
+              placeholder={t('admin.email.placeholders.smtp_user', { defaultValue: 'email@example.com' })}
               className="input mt-1"
             />
           </div>
@@ -215,7 +215,7 @@ export default function EmailSettingsPage() {
               type="email"
               value={fromEmail}
               onChange={(e) => setFromEmail(e.target.value)}
-              placeholder="info@hostflow.cc"
+              placeholder={t('admin.email.placeholders.from_email', { defaultValue: 'info@hostflow.cc' })}
               className="input mt-1"
             />
           </div>
@@ -225,7 +225,7 @@ export default function EmailSettingsPage() {
               type="text"
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
-              placeholder="HostFlow"
+              placeholder={t('admin.email.placeholders.from_name', { defaultValue: 'HostFlow' })}
               className="input mt-1"
             />
           </div>
@@ -275,7 +275,7 @@ export default function EmailSettingsPage() {
               type="email"
               value={testTo}
               onChange={(e) => setTestTo(e.target.value)}
-              placeholder="test@example.com"
+              placeholder={t('admin.email.placeholders.test_to', { defaultValue: 'test@example.com' })}
               className="input flex-1"
             />
             <button

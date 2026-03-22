@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from backend.app.auth.deps import require_roles, Role, get_current_user, UserCtx
@@ -6,6 +6,7 @@ from backend.app.api.v1.utils.access import resolve_restricted_acl
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.companies import schemas, crud
 from backend.app.modules.companies.counters import get_company_counters
+from backend.app.modules.companies.service_order_metrics import company_service_order_metrics
 from backend.app.modules.companies.service import (
     add_company_bank_account_service,
     add_company_contact_service,
@@ -60,18 +61,58 @@ async def list_companies(
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)),
     q: str = Query(None, description="Search query"),
     include_archived: bool = Query(False, description="Include archived companies"),
+    party_business_roles: Optional[str] = Query(
+        None,
+        description="Filter by party business role: employer | service_client | both",
+    ),
+    client_stage: Optional[str] = Query(None, description="Filter by client pipeline stage code"),
+    owner_user_id: Optional[UUID] = Query(None, description="Filter by company owner user id"),
+    client_source: Optional[str] = Query(None, description="Filter by acquisition source"),
+    include_service_metrics: bool = Query(
+        False,
+        description="Include per-company service order counts and completed revenue",
+    ),
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id = db_tenant
     acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
     allowed_company_ids = None if acl is None else set(acl.company_ids)
-    return await list_companies_service(
+    companies = await list_companies_service(
         db=db,
         q=q,
         include_archived=include_archived,
         allowed_company_ids=allowed_company_ids,
+        party_business_roles=party_business_roles,
+        client_stage=client_stage,
+        owner_user_id=str(owner_user_id) if owner_user_id else None,
+        client_source=client_source,
     )
+
+    metrics: Dict[str, Dict[str, object]] = {}
+    if include_service_metrics and companies:
+        metrics = await company_service_order_metrics(
+            db,
+            tenant_id=str(tenant_id),
+            company_ids=[str(c.id) for c in companies],
+        )
+
+    result: List[schemas.CompanyOut] = []
+    for c in companies:
+        row = schemas.CompanyOut.model_validate(c)
+        if include_service_metrics:
+            m = metrics.get(str(c.id), {"active_orders": 0, "revenue_completed": 0.0})
+            result.append(
+                row.model_copy(
+                    update={
+                        "service_active_orders": int(m["active_orders"]),
+                        "service_revenue_completed": float(m["revenue_completed"]),
+                    }
+                )
+            )
+        else:
+            result.append(row)
+    return result
 
 
 @router.post(

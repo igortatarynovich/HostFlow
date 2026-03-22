@@ -620,8 +620,8 @@ export default function InvoiceDetailPage() {
               <h2 className="text-lg font-semibold text-slate-900">{t('app.invoices.timeline.title', { defaultValue: 'Timeline' })}</h2>
               <p className="text-sm text-slate-500">{t('app.invoices.timeline.subtitle', { defaultValue: 'Status, reminders and payment activity.' })}</p>
             </div>
-            <Link to="/app/reminders" className="text-sm text-brand-700 hover:underline">
-              {t('app.invoices.open_reminders', { defaultValue: 'Open reminders' })}
+            <Link to="/app/tasks" className="text-sm text-brand-700 hover:underline">
+              {t('app.invoices.open_tasks', { defaultValue: 'Open tasks' })}
             </Link>
           </div>
           <div className="space-y-3">

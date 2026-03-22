@@ -28,8 +28,10 @@ import type {
   MetaLeadSettingsPatch,
 } from '../../api/types'
 import { useI18n } from '../../i18n'
+import { useLocation } from 'react-router-dom'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { getLeadErrorSuggestion } from '../../utils/leadErrorSuggestion'
 
 type TabKey = 'settings' | 'credentials' | 'mapping' | 'logs'
 
@@ -72,6 +74,7 @@ const formatDateTime = (value?: string | null) => {
 
 export default function MetaLeadsAdminPage() {
   const { t } = useI18n()
+  const location = useLocation()
   const [tab, setTab] = useState<TabKey>('settings')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
@@ -106,15 +109,45 @@ export default function MetaLeadsAdminPage() {
     return recruiterOptions.find((option) => option.id === selectedRecruiterId)?.name ?? null
   }, [recruiterOptions, selectedRecruiterId])
 
+  const mergeLeadsForLogs = (leadsNeedsRoutingResp: any, leadsFailedResp: any): Lead[] => {
+    const needsItems: Lead[] = Array.isArray(leadsNeedsRoutingResp?.items) ? leadsNeedsRoutingResp.items : []
+    const failedItems: Lead[] = Array.isArray(leadsFailedResp?.items) ? leadsFailedResp.items : []
+
+    // Meta Leads Admin should only operate on `source=meta` leads.
+    const merged = [...needsItems, ...failedItems].filter((l) => l?.source === 'meta')
+
+    // Dedupe by id (a lead can theoretically appear in both lists depending on pipeline transitions).
+    const deduped = Array.from(new Map(merged.map((l) => [l.id, l])).values())
+
+    deduped.sort((a, b) => {
+      const ta = new Date(a.created_at).getTime()
+      const tb = new Date(b.created_at).getTime()
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0)
+    })
+
+    return deduped
+  }
+
   const refreshAll = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [settingsData, credsData, mapData, leadsResp, unmappedResp, companiesResp, vacanciesResp, adminUsers] = await Promise.all([
+      const [
+        settingsData,
+        credsData,
+        mapData,
+        leadsNeedsRoutingResp,
+        leadsFailedResp,
+        unmappedResp,
+        companiesResp,
+        vacanciesResp,
+        adminUsers,
+      ] = await Promise.all([
         getMetaLeadSettings(),
         listMetaLeadCredentials(),
         listMetaAdsMap({ limit: 200 }),
         listLeads({ status: 'needs_routing', limit: 100, offset: 0 }),
+        listLeads({ status: 'failed', limit: 100, offset: 0 }),
         getUnmappedLeads({ status: 'needs_routing', limit_per_ad: 5 }).catch(() => ({ groups: [] })),
         listCompanies({ limit: 200 }),
         listVacancies({ limit: 200 }).catch(() => ({ items: [] })),
@@ -125,7 +158,7 @@ export default function MetaLeadsAdminPage() {
       setFieldMappingText(JSON.stringify(settingsData?.field_mapping ?? [], null, 2))
       setCredentials(credsData)
       setMapping(mapData)
-      setLeads(Array.isArray(leadsResp.items) ? leadsResp.items : [])
+      setLeads(mergeLeadsForLogs(leadsNeedsRoutingResp, leadsFailedResp))
       setUnmappedGroups(unmappedResp.groups || [])
       const vacList: any[] = Array.isArray(vacanciesResp?.items) ? vacanciesResp.items : Array.isArray(vacanciesResp) ? vacanciesResp : []
       setVacancyOptions(vacList.map((v: any) => ({ id: v?.id, title: v?.title || v?.vacancy_title || t('common.labels.unnamed') })).filter((v: any) => v.id))
@@ -176,8 +209,14 @@ export default function MetaLeadsAdminPage() {
   }, [t])
 
   useEffect(() => {
+    // Deep-linking support: /app/settings/integrations?tab=settings|credentials|mapping|logs
+    const sp = new URLSearchParams(location.search || '')
+    const next = sp.get('tab')
+    if (next && ['settings', 'credentials', 'mapping', 'logs'].includes(next)) {
+      setTab(next as TabKey)
+    }
     void refreshAll()
-  }, [refreshAll])
+  }, [refreshAll, location.search])
 
   const handleSettingsChange = useCallback(<K extends keyof MetaLeadSettingsPatch>(key: K, value: MetaLeadSettingsPatch[K]) => {
     setSettingsDraft((prev) => ({ ...prev, [key]: value }))
@@ -345,8 +384,11 @@ export default function MetaLeadsAdminPage() {
     try {
       await rerouteMetaLead(lead.id, payload)
       setNotice(t('app.admin.meta_leads.notices.lead_rerouted'))
-      const refreshed = await listLeads({ status: 'needs_routing', limit: 100, offset: 0 })
-      setLeads(Array.isArray(refreshed.items) ? refreshed.items : [])
+      const [refreshedNeeds, refreshedFailed] = await Promise.all([
+        listLeads({ status: 'needs_routing', limit: 100, offset: 0 }),
+        listLeads({ status: 'failed', limit: 100, offset: 0 }),
+      ])
+      setLeads(mergeLeadsForLogs(refreshedNeeds, refreshedFailed))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] reroute failed', err)
       setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.reroute')))
@@ -365,13 +407,18 @@ export default function MetaLeadsAdminPage() {
           hint: t('app.admin.meta_leads.errors.retry', { defaultValue: 'Retry failed. Check mapping and try again.' }),
         })
       }
-      const refreshed = await listLeads({ status: 'needs_routing', limit: 100, offset: 0 })
-      setLeads(Array.isArray(refreshed.items) ? refreshed.items : [])
+      const [refreshedNeeds, refreshedFailed] = await Promise.all([
+        listLeads({ status: 'needs_routing', limit: 100, offset: 0 }),
+        listLeads({ status: 'failed', limit: 100, offset: 0 }),
+      ])
+      setLeads(mergeLeadsForLogs(refreshedNeeds, refreshedFailed))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] retry failed', err)
       setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.retry', { defaultValue: 'Retry failed' })))
     }
   }, [t])
+
+  // getLeadErrorSuggestion is extracted into shared util.
 
   useEffect(() => {
     if (notice) {
@@ -615,7 +662,9 @@ export default function MetaLeadsAdminPage() {
                 className="textarea mt-1 min-h-[180px] w-full font-mono text-xs"
                 value={fieldMappingText}
                 onChange={(event) => setFieldMappingText(event.target.value)}
-                placeholder='[{"source":"phone_number","target":"phone","format":"phone","overwrite":true}]'
+                placeholder={t('app.admin.meta_leads.settings.field_mapping_placeholder', {
+                  defaultValue: '[{"source":"phone_number","target":"phone","format":"phone","overwrite":true}]',
+                })}
               />
               <div className="mt-1 text-xs text-slate-500">
                 {t('app.admin.meta_leads.settings.field_mapping_hint', {
@@ -662,9 +711,9 @@ export default function MetaLeadsAdminPage() {
                   value={credentialForm.status}
                   onChange={(event) => setCredentialForm((prev) => ({ ...prev, status: event.target.value as CredentialFormState['status'] }))}
                 >
-                  <option value="active">active</option>
-                  <option value="disabled">disabled</option>
-                  <option value="rotation_pending">rotation_pending</option>
+                  <option value="active">{t('app.admin.meta_leads.credentials.statuses.active', { defaultValue: 'active' })}</option>
+                  <option value="disabled">{t('app.admin.meta_leads.credentials.statuses.disabled', { defaultValue: 'disabled' })}</option>
+                  <option value="rotation_pending">{t('app.admin.meta_leads.credentials.statuses.rotation_pending', { defaultValue: 'rotation_pending' })}</option>
                 </select>
               </label>
               <label className="text-sm text-slate-700">
@@ -686,7 +735,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                ad_account_id
+                {t('app.admin.meta_leads.credentials.fields.ad_account_id', { defaultValue: 'ad_account_id' })}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -695,7 +744,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                page_id
+                {t('app.admin.meta_leads.credentials.fields.page_id', { defaultValue: 'page_id' })}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -719,8 +768,8 @@ export default function MetaLeadsAdminPage() {
                 <tr>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.label')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.status')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">ad_id</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">page_id</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.ad_id', { defaultValue: 'ad_id' })}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.page_id', { defaultValue: 'page_id' })}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.signature')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
                 </tr>
@@ -775,7 +824,7 @@ export default function MetaLeadsAdminPage() {
             <h2 className="text-lg font-semibold text-slate-900">{t('app.admin.meta_leads.mapping.title')}</h2>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               <label className="text-sm text-slate-700">
-                ad_id
+                {t('app.admin.meta_leads.mapping.fields.ad_id', { defaultValue: 'ad_id' })}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -784,7 +833,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                vacancy_id
+                {t('app.admin.meta_leads.mapping.fields.vacancy_id', { defaultValue: 'vacancy_id' })}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -825,8 +874,8 @@ export default function MetaLeadsAdminPage() {
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">ad_id</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">vacancy_id</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.mapping.table.ad_id', { defaultValue: 'ad_id' })}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.mapping.table.vacancy_id', { defaultValue: 'vacancy_id' })}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.mapping.note')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.mapping.created')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
@@ -924,6 +973,7 @@ export default function MetaLeadsAdminPage() {
                   const contactEmail = normalized.email
                   const contactPhone = normalized.phone
                   const contact = [contactName, contactEmail, contactPhone].filter(Boolean).join(' · ')
+                  const suggestion = getLeadErrorSuggestion(lead.error, t)
                   return (
                     <tr key={lead.id}>
                       <td className="px-4 py-2 text-slate-600">{formatDateTime(lead.created_at)}</td>
@@ -931,7 +981,21 @@ export default function MetaLeadsAdminPage() {
                       <td className="px-4 py-2 text-slate-700">{lead.company_name ?? lead.company_id}</td>
                       <td className="px-4 py-2 text-slate-700">{lead.vacancy_title ?? lead.vacancy_id ?? '—'}</td>
                       <td className="px-4 py-2 text-slate-600">{contact || '—'}</td>
-                      <td className="px-4 py-2 text-red-500">{lead.error ?? '—'}</td>
+                      <td className="px-4 py-2">
+                        <div className="text-red-500">{lead.error ?? '—'}</div>
+                        {suggestion && (
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            <span>{suggestion.hint}</span>
+                            <button
+                              type="button"
+                              className="btn-secondary btn-xs"
+                              onClick={() => setTab(suggestion.tab)}
+                            >
+                              {suggestion.actionLabel}
+                            </button>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-2">
                         <div className="flex gap-2">
                           <button

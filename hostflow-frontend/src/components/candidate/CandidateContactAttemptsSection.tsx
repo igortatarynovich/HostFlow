@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { UUID } from '../../api/types'
 import {
@@ -9,7 +9,12 @@ import {
   type ContactPolicyOut,
   type ContactAttemptCreate,
 } from '../../api/contactAttempts'
+import { getRodoStatus, type RodoStatusOut } from '../../api/legalDocuments'
 import { formatDateTime } from '../../utils/dateFormat'
+import {
+  explainContactTrackingDisabled,
+  explainWhyRodoNotSentYet,
+} from '../../utils/contactAttemptRodoHints'
 import { useToast } from '../Toast'
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -32,19 +37,27 @@ interface CandidateContactAttemptsSectionProps {
   onAttemptCreated?: () => void
   /** When this value changes, policy and attempts are refetched (e.g. after RODO sent) */
   refreshTrigger?: number
+  /**
+   * Increment (e.g. from stage panel “Contact candidate”) to open the register-attempt modal
+   * when policy allows. Waits until policy is loaded if still fetching.
+   */
+  openRegisterSignal?: number
 }
 
 function CandidateContactAttemptsSection({
   candidateId,
   onAttemptCreated,
   refreshTrigger = 0,
+  openRegisterSignal = 0,
 }: CandidateContactAttemptsSectionProps) {
   const { t } = useI18n()
   const { notify } = useToast()
   const [policy, setPolicy] = useState<ContactPolicyOut | null>(null)
   const [attempts, setAttempts] = useState<ContactAttemptOut[]>([])
+  const [rodoStatus, setRodoStatus] = useState<RodoStatusOut | null>(null)
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const lastConsumedOpenSignal = useRef(0)
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState<ContactAttemptCreate>({
     channel: 'call',
@@ -55,15 +68,18 @@ function CandidateContactAttemptsSection({
   const fetchData = useCallback(async () => {
     try {
       setLoading(true)
-      const [pol, att] = await Promise.all([
+      const [pol, att, rodo] = await Promise.all([
         getContactPolicy(candidateId),
         listContactAttempts(candidateId),
+        getRodoStatus(candidateId).catch(() => null),
       ])
       setPolicy(pol)
       setAttempts(att)
+      setRodoStatus(rodo)
     } catch (e: any) {
       setPolicy(null)
       setAttempts([])
+      setRodoStatus(null)
     } finally {
       setLoading(false)
     }
@@ -72,6 +88,64 @@ function CandidateContactAttemptsSection({
   useEffect(() => {
     void fetchData()
   }, [fetchData, refreshTrigger])
+
+  /** Open register modal when parent bumps `openRegisterSignal` (after policy is known). */
+  useEffect(() => {
+    if (!openRegisterSignal || openRegisterSignal <= lastConsumedOpenSignal.current) return
+    if (loading) return
+
+    lastConsumedOpenSignal.current = openRegisterSignal
+
+    if (!policy) {
+      notify({
+        title: t('app.candidate_card.contact_attempts.open_unavailable', {
+          defaultValue: 'Contact attempts are unavailable right now. Try again in a moment.',
+        }),
+        variant: 'error',
+      })
+      return
+    }
+
+    if (!policy.enabled) {
+      notify({
+        title: t('app.candidate_card.contact_attempts.feature_disabled', {
+          defaultValue: 'Contact attempts are not enabled for this company.',
+        }),
+        variant: 'info',
+      })
+      return
+    }
+
+    if (!policy.rodo_sent) {
+      const lines = rodoStatus ? explainWhyRodoNotSentYet(rodoStatus, t) : []
+      notify({
+        title: t('app.candidate_card.contact_attempts.rodo_required', {
+          defaultValue: 'RODO must be sent before contact attempts',
+        }),
+        description:
+          lines.length > 0
+            ? lines.join(' ')
+            : t('app.candidate_card.contact_attempts.rodo_required', {
+                defaultValue: 'Send RODO information to the candidate before registering contact attempts.',
+              }),
+        variant: 'info',
+      })
+      return
+    }
+
+    if (attempts.length >= policy.max_attempts) {
+      notify({
+        title: t('app.candidate_card.contact_attempts.max_reached', {
+          defaultValue: 'Maximum number of contact attempts reached.',
+          values: { max: policy.max_attempts },
+        }),
+        variant: 'info',
+      })
+      return
+    }
+
+    setModalOpen(true)
+  }, [openRegisterSignal, loading, policy, attempts, rodoStatus, notify, t])
 
   const handleSubmit = async () => {
     setSubmitting(true)
@@ -116,11 +190,23 @@ function CandidateContactAttemptsSection({
   }
 
   if (!policy.enabled) {
-    return null
+    return (
+      <section className="card w-full border border-slate-200 bg-slate-50/60 p-4">
+        <h3 className="text-sm font-medium text-slate-800">
+          {t('app.candidate_card.contact_attempts.title', {
+            defaultValue: 'Contact attempts',
+          })}
+        </h3>
+        <p className="mt-2 text-sm text-slate-600">
+          {explainContactTrackingDisabled(policy.tracking_disabled_reason, t)}
+        </p>
+      </section>
+    )
   }
 
   const canAdd = attempts.length < policy.max_attempts
   const rodoRequired = !policy.rodo_sent
+  const showWhyCannotRegister = !canAdd || rodoRequired
 
   return (
     <section className="card w-full p-4">
@@ -146,13 +232,52 @@ function CandidateContactAttemptsSection({
           </button>
         )}
       </div>
-      {rodoRequired && (
-        <p className="mt-2 text-sm text-amber-600">
-          {t('app.candidate_card.contact_attempts.rodo_required', {
-            defaultValue: 'Wyślij informację RODO kandydatowi przed rejestracją prób kontaktu.',
-          })}
-        </p>
-      )}
+      {showWhyCannotRegister ? (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/90 p-3">
+          <div className="text-xs font-semibold text-amber-950">
+            {t('app.candidate_card.contact_attempts.why_blocked_title', {
+              defaultValue: 'Why you can’t register an attempt right now',
+            })}
+          </div>
+          {!canAdd ? (
+            <div className="mt-2">
+              <div className="text-[11px] font-medium text-amber-900">
+                {t('app.candidate_card.contact_attempts.blocker_max_title', {
+                  defaultValue: 'Attempt limit',
+                })}
+              </div>
+              <p className="mt-1 text-xs text-amber-950/90">
+                {t('app.candidate_card.contact_attempts.blocker_max_detail', {
+                  defaultValue:
+                    'Maximum {{max}} contact attempts are configured for this client. Further attempts are not allowed by policy.',
+                  values: { max: policy.max_attempts },
+                })}
+              </p>
+            </div>
+          ) : null}
+          {rodoRequired ? (
+            <div className={!canAdd ? 'mt-3 border-t border-amber-200/80 pt-3' : 'mt-2'}>
+              <div className="text-[11px] font-medium text-amber-900">
+                {t('app.candidate_card.contact_attempts.blocker_rodo_title', {
+                  defaultValue: 'RODO (GDPR information)',
+                })}
+              </div>
+              <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-amber-950/90">
+                {(rodoStatus ? explainWhyRodoNotSentYet(rodoStatus, t) : []).map((line, idx) => (
+                  <li key={idx}>{line}</li>
+                ))}
+                {!rodoStatus ? (
+                  <li>
+                    {t('app.candidate_card.contact_attempts.rodo_required', {
+                      defaultValue: 'Send RODO information to the candidate before registering contact attempts.',
+                    })}
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <div className="mt-2 space-y-2">
         {attempts.length === 0 ? (
           <p className="text-sm text-slate-500">
@@ -180,15 +305,6 @@ function CandidateContactAttemptsSection({
           ))
         )}
       </div>
-      {!canAdd && (
-        <p className="mt-2 text-xs text-slate-500">
-          {t('app.candidate_card.contact_attempts.max_reached', {
-            defaultValue: 'Osiągnięto maksymalną liczbę prób',
-            values: { max: policy.max_attempts },
-          })}
-        </p>
-      )}
-
       {modalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
@@ -205,7 +321,9 @@ function CandidateContactAttemptsSection({
             </h4>
             <div className="mt-4 space-y-3">
               <div>
-                <label className="label">Kanał</label>
+                <label className="label">
+                  {t('app.candidate_card.contact_attempts.fields.channel', { defaultValue: 'Kanał' })}
+                </label>
                 <select
                   value={form.channel}
                   onChange={(e) =>
@@ -221,7 +339,9 @@ function CandidateContactAttemptsSection({
                 </select>
               </div>
               <div>
-                <label className="label">Wynik</label>
+                <label className="label">
+                  {t('app.candidate_card.contact_attempts.fields.result', { defaultValue: 'Wynik' })}
+                </label>
                 <select
                   value={form.result}
                   onChange={(e) =>
@@ -239,7 +359,9 @@ function CandidateContactAttemptsSection({
                 </select>
               </div>
               <div>
-                <label className="label">Notatka</label>
+                <label className="label">
+                  {t('app.candidate_card.contact_attempts.fields.note', { defaultValue: 'Notatka' })}
+                </label>
                 <textarea
                   value={form.note ?? ''}
                   onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}

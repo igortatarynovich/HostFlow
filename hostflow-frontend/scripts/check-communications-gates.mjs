@@ -11,7 +11,6 @@ const EXPECTED_COMM_GATES = {
   'messages-inbox': { type: 'feature', features: ['messages'] },
   'email-inbox': { type: 'feature', features: ['email'] },
   calendar: { type: 'feature', features: ['calendar'] },
-  planner: { type: 'feature', features: ['planner'] },
   'sla-incidents': { type: 'any', features: ['messages', 'email'] },
   'command-audit': { type: 'feature', features: ['communicationsAdmin'] },
   'team-availability': { type: 'feature', features: ['teamAvailability'] },

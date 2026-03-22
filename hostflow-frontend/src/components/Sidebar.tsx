@@ -1,8 +1,10 @@
 // src/components/Sidebar.tsx
 import { Link } from "react-router-dom";
 import { settings, resolveApiBase, apiBaseSettings } from "../api/client";
+import { useI18n } from "../i18n";
 
 export function Sidebar() {
+  const { t } = useI18n();
   // просто показать, откуда сейчас ходят запросы
   const storedApiBase = apiBaseSettings.get();
   const apiBase = storedApiBase ?? resolveApiBase();
@@ -32,11 +34,11 @@ export function Sidebar() {
 
         <div className="space-y-3">
           <div>
-            <div className="mb-1">API Base</div>
+            <div className="mb-1">{t('app.sidebar.settings.api_base', { defaultValue: 'API Base' })}</div>
             <input
               className="w-full rounded bg-brand-800 px-2 py-1"
               defaultValue={apiBase}
-              placeholder="http://localhost:8000/api/v1"
+              placeholder={t('app.sidebar.settings.api_base_placeholder', { defaultValue: 'http://localhost:8000/api/v1' })}
               onBlur={(e) => {
                 const next = e.currentTarget.value.trim();
                 if (!next) {
@@ -61,7 +63,7 @@ export function Sidebar() {
           </div>
 
           <div>
-            <div className="mb-1">Docs Base (read-only)</div>
+            <div className="mb-1">{t('app.sidebar.settings.docs_base', { defaultValue: 'Docs Base (read-only)' })}</div>
             <input
               className="w-full rounded bg-brand-800 px-2 py-1 opacity-80"
               value={docsBase}
@@ -70,11 +72,11 @@ export function Sidebar() {
           </div>
 
           <div>
-            <div className="mb-1">Tenant ID</div>
+            <div className="mb-1">{t('app.sidebar.settings.tenant_id', { defaultValue: 'Tenant ID' })}</div>
             <input
               className="w-full rounded bg-brand-800 px-2 py-1"
               defaultValue={settings.get()}
-              placeholder="UUID тенанта"
+              placeholder={t('app.sidebar.settings.tenant_placeholder', { defaultValue: 'Tenant UUID' })}
               onBlur={(e) => {
                 const v = e.currentTarget.value.trim();
                 if (v) {

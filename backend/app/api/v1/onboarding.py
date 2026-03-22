@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import Company, Lead, OwnCompany, Reminder, ServiceOrder, Tenant, Vacancy
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -47,6 +48,7 @@ def _normalize_company_role(extra: object) -> str | None:
 async def get_onboarding_status(
     _user: UserCtx = Depends(get_current_user),
     db_tenant=Depends(get_db_with_tenant),
+    own_company_id: str | None = Depends(resolve_active_own_company_id_optional),
 ):
     """Onboarding/activation state for path `signup -> company -> first value`."""
     db, tenant_uuid = db_tenant
@@ -106,11 +108,37 @@ async def get_onboarding_status(
     service_orders_count = int(service_order_count_row.scalar_one() or 0)
     reminders_count = int(reminder_count_row.scalar_one() or 0)
 
-    raw_business_type = (
-        (tenant.settings or {}).get("business_type")
-        if tenant is not None and isinstance(getattr(tenant, "settings", None), dict)
-        else None
-    )
+    # Prefer operating profile type from Company.extra (operating company).
+    # OwnCompany.extra may be empty/stale (only affects billing/legal brand),
+    # while Leads behavior is controlled by the operating profile's company_type.
+    raw_business_type = None
+    try:
+        rows = await db.execute(
+            select(Company.extra)
+            .where(Company.tenant_id == tenant_id, Company.is_archived.is_(False))
+            .order_by(Company.created_at.asc())
+            .limit(50)
+        )
+        for (extra,) in rows.all():
+            if not isinstance(extra, dict):
+                continue
+            role = str(extra.get("company_role") or "").strip().lower()
+            if role != "operating":
+                continue
+            ct = extra.get("company_type") or extra.get("business_type") or extra.get("company_kind") or extra.get("kind")
+            if isinstance(ct, str) and ct.strip().lower() in {"agency", "employer", "services"}:
+                raw_business_type = ct.strip().lower()
+                break
+    except Exception:
+        raw_business_type = None
+
+    if raw_business_type is None:
+        raw_business_type = (
+            (tenant.settings or {}).get("business_type")
+            if tenant is not None and isinstance(getattr(tenant, "settings", None), dict)
+            else None
+        )
+
     business_type = str(raw_business_type or "").strip().lower()
     if business_type not in ("agency", "employer", "services"):
         tenant_type_value = str(getattr(getattr(tenant, "type", None), "value", getattr(tenant, "type", ""))).strip().lower()

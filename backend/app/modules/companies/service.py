@@ -21,12 +21,21 @@ async def list_companies_service(
     q: str | None = None,
     include_archived: bool = False,
     allowed_company_ids: set[str] | None = None,
+    *,
+    party_business_roles: str | None = None,
+    client_stage: str | None = None,
+    owner_user_id: str | None = None,
+    client_source: str | None = None,
 ) -> Sequence[Company]:
     return await crud.list_companies(
         db,
         q=q,
         include_archived=include_archived,
         allowed_company_ids=allowed_company_ids,
+        party_business_roles=party_business_roles,
+        client_stage=client_stage,
+        owner_user_id=owner_user_id,
+        client_source=client_source,
     )
 
 

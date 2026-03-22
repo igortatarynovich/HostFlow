@@ -335,11 +335,11 @@ export default function CommunicationsCalendarPage() {
       setPlannerEvents(Array.isArray(plannerRes?.items) ? plannerRes.items : [])
       if (wh) setWorkingHours(wh)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to load calendar data'))
+      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.load_failed', { defaultValue: 'Failed to load calendar data' })))
     } finally {
       setLoading(false)
     }
-  }, [activityTypeFilter, assigneeFilter, monthCursor, selectedDay, sourceFilter, statusFilter, viewMode, weekCursor])
+  }, [activityTypeFilter, assigneeFilter, monthCursor, selectedDay, sourceFilter, statusFilter, t, viewMode, weekCursor])
 
   useEffect(() => {
     void load()
@@ -400,7 +400,12 @@ export default function CommunicationsCalendarPage() {
         source: 'reminder',
         status: sourceStatus,
         title: String(rem?.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Untitled' })),
-        subtitle: rem?.assignee_id ? `assignee: ${labels.get(String(rem.assignee_id)) || String(rem.assignee_id)}` : 'assignee: —',
+        subtitle: rem?.assignee_id
+          ? t('app.communications.calendar.labels.assignee_with_value', {
+              defaultValue: 'assignee: {value}',
+              values: { value: labels.get(String(rem.assignee_id)) || String(rem.assignee_id) },
+            })
+          : t('app.communications.calendar.labels.assignee_empty', { defaultValue: 'assignee: —' }),
         detail: rem?.description || undefined,
         at: dueAt,
         endAt: null,
@@ -775,7 +780,12 @@ export default function CommunicationsCalendarPage() {
         ignorePlannerId: event.plannerId,
       })
       if (conflictReason) {
-        setErrorText(`Cannot reassign: ${conflictReason}.`)
+        setErrorText(
+          t('app.communications.calendar.errors.cannot_reassign', {
+            defaultValue: 'Cannot reassign: {reason}.',
+            values: { reason: conflictReason },
+          }),
+        )
         return
       }
     }
@@ -785,7 +795,7 @@ export default function CommunicationsCalendarPage() {
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to update planner event'))
+      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.update_planner_failed', { defaultValue: 'Failed to update planner event' })))
     } finally {
       setBusy(false)
     }
@@ -857,9 +867,14 @@ export default function CommunicationsCalendarPage() {
       }
       await load()
       setErrorText(null)
-      setInfoText(`Batch done: updated ${updated}, skipped ${skipped}.`)
+      setInfoText(
+        t('app.communications.calendar.batch.done', {
+          defaultValue: 'Batch done: updated {updated}, skipped {skipped}.',
+          values: { updated, skipped },
+        }),
+      )
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Batch action failed'))
+      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.batch_failed', { defaultValue: 'Batch action failed' })))
     } finally {
       setBusy(false)
     }
@@ -882,7 +897,7 @@ export default function CommunicationsCalendarPage() {
       }
       await patchCommunicationPlannerEvent(event.plannerId, { assignee_id: batchAssigneeId || null })
       return 'updated'
-    }, 'No selected planner events.')
+    }, t('app.communications.calendar.batch.no_selected', { defaultValue: 'No selected planner events.' }))
   }, [applyBatchToSelected, batchAssigneeId, findSchedulingConflict])
 
   const runBatchPriority = useCallback(async (priority: 'low' | 'normal' | 'high') => {
@@ -890,7 +905,7 @@ export default function CommunicationsCalendarPage() {
       if (!event.plannerId) return 'skipped'
       await patchCommunicationPlannerEvent(event.plannerId, { priority })
       return 'updated'
-    }, 'No selected planner events.')
+    }, t('app.communications.calendar.batch.no_selected', { defaultValue: 'No selected planner events.' }))
   }, [applyBatchToSelected])
 
   const runBatchArchive = useCallback(async () => {
@@ -898,13 +913,13 @@ export default function CommunicationsCalendarPage() {
       if (!event.plannerId || event.plannerStatus === 'cancelled') return 'skipped'
       await patchCommunicationPlannerEvent(event.plannerId, { status: 'cancelled' })
       return 'updated'
-    }, 'No selected planner events.')
+    }, t('app.communications.calendar.batch.no_selected', { defaultValue: 'No selected planner events.' }))
   }, [applyBatchToSelected])
 
   const runBatchTag = useCallback(async (mode: 'add' | 'remove') => {
     const tag = batchTagValue.trim().replace(/^#/, '')
     if (!tag) {
-      setInfoText('Enter tag value first.')
+      setInfoText(t('app.communications.calendar.batch.enter_tag_first', { defaultValue: 'Enter tag value first.' }))
       return
     }
     await applyBatchToSelected(async (event) => {
@@ -923,8 +938,8 @@ export default function CommunicationsCalendarPage() {
         },
       })
       return 'updated'
-    }, 'No selected planner events.')
-  }, [applyBatchToSelected, batchTagValue, plannerById])
+    }, t('app.communications.calendar.batch.no_selected', { defaultValue: 'No selected planner events.' }))
+  }, [applyBatchToSelected, batchTagValue, plannerById, t])
 
   const applySelectionPreset = useCallback((preset: 'meetings' | 'high' | 'unassigned' | 'in_progress' | 'due_soon') => {
     const now = new Date()
@@ -949,8 +964,13 @@ export default function CommunicationsCalendarPage() {
       .map((event) => String(event.plannerId || ''))
       .filter(Boolean)
     setSelectedPlannerIds(ids)
-    setInfoText(`Preset selected: ${ids.length} event(s).`)
-  }, [dayPlannerEvents])
+    setInfoText(
+      t('app.communications.calendar.batch.preset_selected', {
+        defaultValue: 'Preset selected: {count} event(s).',
+        values: { count: ids.length },
+      }),
+    )
+  }, [dayPlannerEvents, t])
 
   const selectByCurrentBatchFilter = useCallback(() => {
     const ids = dayPlannerEvents
@@ -963,8 +983,13 @@ export default function CommunicationsCalendarPage() {
       .map((event) => String(event.plannerId || ''))
       .filter(Boolean)
     setSelectedPlannerIds(ids)
-    setInfoText(`Selected ${ids.length} events by filter.`)
-  }, [batchSelectKind, batchSelectPriority, batchSelectStatus, dayPlannerEvents])
+    setInfoText(
+      t('app.communications.calendar.batch.selected_by_filter', {
+        defaultValue: 'Selected {count} events by filter.',
+        values: { count: ids.length },
+      }),
+    )
+  }, [batchSelectKind, batchSelectPriority, batchSelectStatus, dayPlannerEvents, t])
 
   useEffect(() => {
     try {
@@ -1024,7 +1049,12 @@ export default function CommunicationsCalendarPage() {
       ignorePlannerId: event.plannerId || null,
     })
     if (conflictReason) {
-      setErrorText(`Cannot move: ${conflictReason}.`)
+      setErrorText(
+        t('app.communications.calendar.errors.cannot_move', {
+          defaultValue: 'Cannot move: {reason}.',
+          values: { reason: conflictReason },
+        }),
+      )
       return
     }
     if (event.detail !== undefined) patch.description = event.detail
@@ -1034,7 +1064,7 @@ export default function CommunicationsCalendarPage() {
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to move planner event'))
+      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.move_failed', { defaultValue: 'Failed to move planner event' })))
     } finally {
       setBusy(false)
     }
@@ -1055,13 +1085,21 @@ export default function CommunicationsCalendarPage() {
       ignorePlannerId: null,
     })
     if (conflictReason) {
-      setErrorText(`Cannot duplicate: ${conflictReason}.`)
+      setErrorText(
+        t('app.communications.calendar.errors.cannot_duplicate', {
+          defaultValue: 'Cannot duplicate: {reason}.',
+          values: { reason: conflictReason },
+        }),
+      )
       return
     }
     setBusy(true)
     try {
       await createCommunicationPlannerEvent({
-        title: `${event.title} (copy)`,
+        title: t('app.communications.calendar.labels.copy_suffix', {
+          defaultValue: '{title} (copy)',
+          values: { title: event.title },
+        }),
         description: event.detail || undefined,
         kind: event.kind || 'task',
         priority: event.priority || 'normal',
@@ -1072,7 +1110,7 @@ export default function CommunicationsCalendarPage() {
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to duplicate planner event'))
+      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.duplicate_failed', { defaultValue: 'Failed to duplicate planner event' })))
     } finally {
       setBusy(false)
     }
@@ -1085,7 +1123,7 @@ export default function CommunicationsCalendarPage() {
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to complete activity'))
+      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.complete_activity_failed', { defaultValue: 'Failed to complete activity' })))
     } finally {
       setBusy(false)
     }
@@ -1098,7 +1136,7 @@ export default function CommunicationsCalendarPage() {
       await load()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to snooze activity'))
+      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.snooze_activity_failed', { defaultValue: 'Failed to snooze activity' })))
     } finally {
       setBusy(false)
     }
@@ -1137,7 +1175,12 @@ export default function CommunicationsCalendarPage() {
       ignorePlannerId: event.plannerId,
     })
     if (conflictReason) {
-      setErrorText(`Cannot move: ${conflictReason}.`)
+      setErrorText(
+        t('app.communications.calendar.errors.cannot_move', {
+          defaultValue: 'Cannot move: {reason}.',
+          values: { reason: conflictReason },
+        }),
+      )
       return
     }
 
@@ -1151,7 +1194,7 @@ export default function CommunicationsCalendarPage() {
       if (dayKeyAfterMove) setSelectedDay(dayKeyAfterMove)
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to move planner event'))
+      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.move_failed', { defaultValue: 'Failed to move planner event' })))
     } finally {
       setBusy(false)
     }
@@ -1179,7 +1222,12 @@ export default function CommunicationsCalendarPage() {
       ignorePlannerId: event.plannerId,
     })
     if (conflictReason) {
-      setErrorText(`Cannot resize: ${conflictReason}.`)
+      setErrorText(
+        t('app.communications.calendar.errors.cannot_resize', {
+          defaultValue: 'Cannot resize: {reason}.',
+          values: { reason: conflictReason },
+        }),
+      )
       return
     }
 
@@ -1194,7 +1242,7 @@ export default function CommunicationsCalendarPage() {
       setErrorText(null)
       setResizePlannerEvent(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to resize planner event'))
+      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.resize_failed', { defaultValue: 'Failed to resize planner event' })))
     } finally {
       setBusy(false)
     }
@@ -1221,13 +1269,13 @@ export default function CommunicationsCalendarPage() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Time-off: <strong>{stats.timeOff}</strong></div>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Activities: <strong>{stats.reminders}</strong></div>
-        <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-800">Planner items: <strong>{stats.planner}</strong></div>
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">Meetings: <strong>{stats.meetings}</strong></div>
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Tasks: <strong>{stats.tasks}</strong></div>
-        <div className="rounded-lg border border-rose-200 bg-white p-3 text-sm text-rose-700">Overdue: <strong>{stats.overdue}</strong></div>
-        <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">Days: <strong>{stats.daysWithEvents}</strong></div>
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{t('app.communications.calendar.stats.time_off', { defaultValue: 'Time-off: {count}', values: { count: stats.timeOff } })}</div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.calendar.stats.activities', { defaultValue: 'Activities: {count}', values: { count: stats.reminders } })}</div>
+        <div className="rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-800">{t('app.communications.calendar.stats.planner_items', { defaultValue: 'Planner items: {count}', values: { count: stats.planner } })}</div>
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800">{t('app.communications.calendar.stats.meetings', { defaultValue: 'Meetings: {count}', values: { count: stats.meetings } })}</div>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.calendar.stats.tasks', { defaultValue: 'Tasks: {count}', values: { count: stats.tasks } })}</div>
+        <div className="rounded-lg border border-rose-200 bg-white p-3 text-sm text-rose-700">{t('app.communications.calendar.stats.overdue', { defaultValue: 'Overdue: {count}', values: { count: stats.overdue } })}</div>
+        <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">{t('app.communications.calendar.stats.days', { defaultValue: 'Days: {count}', values: { count: stats.daysWithEvents } })}</div>
       </div>
 
       <section className="rounded-lg border border-slate-200 bg-white p-4">
@@ -1237,53 +1285,53 @@ export default function CommunicationsCalendarPage() {
             onClick={() => setViewMode('month')}
             className={clsx('btn-secondary', viewMode === 'month' && 'border-brand-600 bg-brand-50 text-brand-700')}
           >
-            Month view
+            {t('app.communications.calendar.views.month', { defaultValue: 'Month view' })}
           </button>
           <button
             type="button"
             onClick={() => setViewMode('day')}
             className={clsx('btn-secondary', viewMode === 'day' && 'border-brand-600 bg-brand-50 text-brand-700')}
           >
-            Day planner
+            {t('app.communications.calendar.views.day', { defaultValue: 'Day planner' })}
           </button>
           <button
             type="button"
             onClick={() => setViewMode('week')}
             className={clsx('btn-secondary', viewMode === 'week' && 'border-brand-600 bg-brand-50 text-brand-700')}
           >
-            Week view
+            {t('app.communications.calendar.views.week', { defaultValue: 'Week view' })}
           </button>
 
           <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as CalendarSourceFilter)} className="input">
-            <option value="all">All sources</option>
-            <option value="timeoff">Time-off</option>
-            <option value="reminders">Activities</option>
-            <option value="planner">Planner</option>
+            <option value="all">{t('app.communications.calendar.filters.sources.all', { defaultValue: 'All sources' })}</option>
+            <option value="timeoff">{t('app.communications.calendar.filters.sources.timeoff', { defaultValue: 'Time-off' })}</option>
+            <option value="reminders">{t('app.communications.calendar.filters.sources.activities', { defaultValue: 'Activities' })}</option>
+            <option value="planner">{t('app.communications.calendar.filters.sources.planner', { defaultValue: 'Planner' })}</option>
           </select>
 
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TimeOffStatusFilter)} className="input">
-            <option value="approved">Time-off approved only</option>
-            <option value="pending">Time-off pending only</option>
-            <option value="all">Time-off approved + pending</option>
+            <option value="approved">{t('app.communications.calendar.filters.timeoff.approved_only', { defaultValue: 'Time-off approved only' })}</option>
+            <option value="pending">{t('app.communications.calendar.filters.timeoff.pending_only', { defaultValue: 'Time-off pending only' })}</option>
+            <option value="all">{t('app.communications.calendar.filters.timeoff.all', { defaultValue: 'Time-off approved + pending' })}</option>
           </select>
 
           <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} className="input">
-            <option value="">All managers</option>
+            <option value="">{t('app.communications.calendar.filters.managers.all', { defaultValue: 'All managers' })}</option>
             {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
           <select value={activityTypeFilter} onChange={(e) => setActivityTypeFilter(e.target.value)} className="input">
-            <option value="">All activity types</option>
+            <option value="">{t('app.communications.calendar.filters.activity_types.all', { defaultValue: 'All activity types' })}</option>
             {Array.from(new Set(reminders.map((r) => String(r?.type || '')).filter(Boolean))).sort().map((opt) => (
               <option key={opt} value={opt}>{opt}</option>
             ))}
           </select>
           <select value={plannerKindFilter} onChange={(e) => setPlannerKindFilter(e.target.value)} className="input">
-            <option value="">All planner kinds</option>
-            <option value="meeting">Meeting</option>
-            <option value="task">Task</option>
-            <option value="followup">Follow-up</option>
-            <option value="call">Call</option>
-            <option value="shift">Shift</option>
+            <option value="">{t('app.communications.calendar.filters.planner_kinds.all', { defaultValue: 'All planner kinds' })}</option>
+            <option value="meeting">{t('app.communications.calendar.kinds.meeting', { defaultValue: 'Meeting' })}</option>
+            <option value="task">{t('app.communications.calendar.kinds.task', { defaultValue: 'Task' })}</option>
+            <option value="followup">{t('app.communications.calendar.kinds.followup', { defaultValue: 'Follow-up' })}</option>
+            <option value="call">{t('app.communications.calendar.kinds.call', { defaultValue: 'Call' })}</option>
+            <option value="shift">{t('app.communications.calendar.kinds.shift', { defaultValue: 'Shift' })}</option>
           </select>
 
           <button type="button" onClick={() => void load()} className="btn-secondary">
@@ -1312,15 +1360,25 @@ export default function CommunicationsCalendarPage() {
             <section className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <button type="button" className="btn-secondary" onClick={() => setMonthCursor((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}>←</button>
+                  <button type="button" className="btn-secondary" onClick={() => setMonthCursor((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}>
+                    {t('app.communications.calendar.navigation.prev', { defaultValue: 'Prev' })}
+                  </button>
                   <div className="min-w-40 text-sm font-semibold text-slate-900 capitalize">{monthMeta.title}</div>
-                  <button type="button" className="btn-secondary" onClick={() => setMonthCursor((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}>→</button>
+                  <button type="button" className="btn-secondary" onClick={() => setMonthCursor((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}>
+                    {t('app.communications.calendar.navigation.next', { defaultValue: 'Next' })}
+                  </button>
                 </div>
-                <div className="text-xs text-slate-500">Click a day to open day planner.</div>
+                <div className="text-xs text-slate-500">
+                  {t('app.communications.calendar.month.click_day_hint', { defaultValue: 'Click a day to open day planner.' })}
+                </div>
               </div>
 
               <div className="mt-3 grid grid-cols-7 gap-1 text-xs text-slate-500">
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => <div key={d} className="px-2 py-1 text-center font-medium">{d}</div>)}
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
+                  <div key={d} className="px-2 py-1 text-center font-medium">
+                    {t(`app.communications.calendar.weekdays.${d.toLowerCase()}` as any, { defaultValue: d })}
+                  </div>
+                ))}
               </div>
 
               <div className="grid grid-cols-7 gap-1">
@@ -1352,10 +1410,10 @@ export default function CommunicationsCalendarPage() {
                         {dayEvents.length > 0 && <span className="text-[10px] text-slate-500">{dayEvents.length}</span>}
                       </div>
                       <div className="mt-2 space-y-1">
-                        {counts.overdue > 0 && <div className="badge max-w-full overflow-hidden bg-rose-100 text-rose-800">overdue {counts.overdue}</div>}
-                        {counts.timeoff > 0 && <div className="badge max-w-full overflow-hidden bg-rose-50 text-rose-700">time-off {counts.timeoff}</div>}
-                        {counts.reminders > 0 && <div className="badge max-w-full overflow-hidden bg-amber-100 text-amber-800">rem {counts.reminders}</div>}
-                        {counts.planner > 0 && <div className="badge max-w-full overflow-hidden bg-violet-100 text-violet-800">planner {counts.planner}</div>}
+                        {counts.overdue > 0 && <div className="badge max-w-full overflow-hidden bg-rose-100 text-rose-800">{t('app.communications.calendar.badges.overdue_count', { defaultValue: 'overdue {count}', values: { count: counts.overdue } })}</div>}
+                        {counts.timeoff > 0 && <div className="badge max-w-full overflow-hidden bg-rose-50 text-rose-700">{t('app.communications.calendar.badges.timeoff_count', { defaultValue: 'time-off {count}', values: { count: counts.timeoff } })}</div>}
+                        {counts.reminders > 0 && <div className="badge max-w-full overflow-hidden bg-amber-100 text-amber-800">{t('app.communications.calendar.badges.rem_count', { defaultValue: 'rem {count}', values: { count: counts.reminders } })}</div>}
+                        {counts.planner > 0 && <div className="badge max-w-full overflow-hidden bg-violet-100 text-violet-800">{t('app.communications.calendar.badges.planner_count', { defaultValue: 'planner {count}', values: { count: counts.planner } })}</div>}
                       </div>
                     </button>
                   )
@@ -1363,9 +1421,9 @@ export default function CommunicationsCalendarPage() {
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-rose-500" />Time-off</span>
-                <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-amber-500" />Reminders</span>
-                <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-violet-500" />Planner</span>
+                <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-rose-500" />{t('app.communications.calendar.legend.timeoff', { defaultValue: 'Time-off' })}</span>
+                <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-amber-500" />{t('app.communications.calendar.legend.reminders', { defaultValue: 'Reminders' })}</span>
+                <span className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1"><span className="h-2 w-2 rounded-full bg-violet-500" />{t('app.communications.calendar.legend.planner', { defaultValue: 'Planner' })}</span>
               </div>
             </section>
           )}
@@ -1374,14 +1432,21 @@ export default function CommunicationsCalendarPage() {
             <section className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <button type="button" className="btn-secondary" onClick={() => setWeekCursor((d) => addDays(d, -7))}>←</button>
+                  <button type="button" className="btn-secondary" onClick={() => setWeekCursor((d) => addDays(d, -7))}>
+                    {t('app.communications.calendar.navigation.prev', { defaultValue: 'Prev' })}
+                  </button>
                   <div className="text-sm font-semibold text-slate-900">
-                    Week: {formatDayLabel(dateIso(weekDays[0]))} - {formatDayLabel(dateIso(weekDays[6]))}
+                    {t('app.communications.calendar.week.range', {
+                      defaultValue: 'Week: {from} - {to}',
+                      values: { from: formatDayLabel(dateIso(weekDays[0])), to: formatDayLabel(dateIso(weekDays[6])) },
+                    })}
                   </div>
-                  <button type="button" className="btn-secondary" onClick={() => setWeekCursor((d) => addDays(d, 7))}>→</button>
+                  <button type="button" className="btn-secondary" onClick={() => setWeekCursor((d) => addDays(d, 7))}>
+                    {t('app.communications.calendar.navigation.next', { defaultValue: 'Next' })}
+                  </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
-                  <span className="text-[11px] text-slate-500">Slot:</span>
+                  <span className="text-[11px] text-slate-500">{t('app.communications.calendar.week.slot', { defaultValue: 'Slot:' })}</span>
                   {[15, 30, 60].map((step) => (
                     <button
                       key={`week-step-${step}`}
@@ -1397,7 +1462,7 @@ export default function CommunicationsCalendarPage() {
               <div className="mt-3 overflow-auto">
                 <div className="min-w-[980px]">
                   <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-b border-slate-200">
-                    <div className="px-2 py-2 text-[10px] font-semibold uppercase text-slate-500">Time</div>
+                    <div className="px-2 py-2 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.week.time', { defaultValue: 'Time' })}</div>
                     {weekDays.map((day) => {
                       const key = dateIso(day)
                       return (
@@ -1413,7 +1478,7 @@ export default function CommunicationsCalendarPage() {
                         <div className="truncate text-xs font-semibold text-slate-900">{new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(day)}</div>
                         <div className="truncate text-[11px] text-slate-500">
                           {formatDayLabel(key)}
-                          {key === nowMeta.dayKey && <span className="ml-1 badge bg-rose-100 text-rose-700">now</span>}
+                          {key === nowMeta.dayKey && <span className="ml-1 badge bg-rose-100 text-rose-700">{t('app.communications.calendar.week.now', { defaultValue: 'now' })}</span>}
                         </div>
                       </button>
                     )
@@ -1421,7 +1486,7 @@ export default function CommunicationsCalendarPage() {
                   </div>
 
                   <div className="grid grid-cols-[64px_repeat(7,minmax(0,1fr))] border-b border-slate-200">
-                    <div className="px-2 py-2 text-[10px] font-semibold uppercase text-slate-500">All-day</div>
+                    <div className="px-2 py-2 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.week.all_day', { defaultValue: 'All-day' })}</div>
                     {weekDays.map((day) => {
                       const key = dateIso(day)
                       const allDayEvents = (eventsByDay.get(key) || []).filter((event) => !event.at).slice(0, 3)
@@ -1494,7 +1559,7 @@ export default function CommunicationsCalendarPage() {
                                       }}
                                       onDragEnd={() => setDragPlannerEvent(null)}
                                       className={clsx('badge border', plannerKindTone(event.kind), 'block w-full overflow-hidden', event.plannerId ? 'cursor-move' : '')}
-                                      title={event.plannerId ? 'Drag to another slot' : undefined}
+                                      title={event.plannerId ? t('app.communications.calendar.week.drag_to_slot', { defaultValue: 'Drag to another slot' }) : undefined}
                                     >
                                       <div className="truncate font-medium">{event.title}</div>
                                       <div className="truncate text-slate-600">{formatDateTime(event.at)}</div>
@@ -1517,107 +1582,115 @@ export default function CommunicationsCalendarPage() {
             <section className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <div>
-                  <div className="text-sm font-semibold text-slate-900">Day planner: {formatDayLabel(selectedDay)}</div>
-                  <div className="text-xs text-slate-500">Meetings, tasks, reminders, and absence context.</div>
+                  <div className="text-sm font-semibold text-slate-900">
+                    {t('app.communications.calendar.day.title', {
+                      defaultValue: 'Day planner: {day}',
+                      values: { day: formatDayLabel(selectedDay) },
+                    })}
+                  </div>
+                  <div className="text-xs text-slate-500">{t('app.communications.calendar.day.subtitle', { defaultValue: 'Meetings, tasks, reminders, and absence context.' })}</div>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  <button type="button" onClick={() => setViewMode('week')} className="btn-secondary btn-xs">Week</button>
-                  <button type="button" onClick={() => setViewMode('month')} className="btn-secondary btn-xs">Month</button>
+                  <button type="button" onClick={() => setViewMode('week')} className="btn-secondary btn-xs">{t('app.communications.calendar.views.week_short', { defaultValue: 'Week' })}</button>
+                  <button type="button" onClick={() => setViewMode('month')} className="btn-secondary btn-xs">{t('app.communications.calendar.views.month_short', { defaultValue: 'Month' })}</button>
                 </div>
               </div>
               <div className="mb-3 flex flex-wrap gap-1">
-                <button type="button" onClick={() => setPlannerSlot(selectedDay, 9)} className="btn-secondary btn-xs">+ 09:00 slot</button>
-                <button type="button" onClick={() => setPlannerSlot(selectedDay, 12)} className="btn-secondary btn-xs">+ 12:00 slot</button>
-                <button type="button" onClick={() => setPlannerSlot(selectedDay, 15)} className="btn-secondary btn-xs">+ 15:00 slot</button>
-                <button type="button" onClick={() => setPlannerSlot(selectedDay, 18)} className="btn-secondary btn-xs">+ 18:00 slot</button>
+                <button type="button" onClick={() => setPlannerSlot(selectedDay, 9)} className="btn-secondary btn-xs">{t('app.communications.calendar.day.slot_9', { defaultValue: '+ 09:00 slot' })}</button>
+                <button type="button" onClick={() => setPlannerSlot(selectedDay, 12)} className="btn-secondary btn-xs">{t('app.communications.calendar.day.slot_12', { defaultValue: '+ 12:00 slot' })}</button>
+                <button type="button" onClick={() => setPlannerSlot(selectedDay, 15)} className="btn-secondary btn-xs">{t('app.communications.calendar.day.slot_15', { defaultValue: '+ 15:00 slot' })}</button>
+                <button type="button" onClick={() => setPlannerSlot(selectedDay, 18)} className="btn-secondary btn-xs">{t('app.communications.calendar.day.slot_18', { defaultValue: '+ 18:00 slot' })}</button>
               </div>
               <div className="mb-3 rounded border border-slate-200 p-3">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                    Batch actions for selected planner events ({selectedPlannerEvents.length})
+                    {t('app.communications.calendar.batch.title', {
+                      defaultValue: 'Batch actions for selected planner events ({count})',
+                      values: { count: selectedPlannerEvents.length },
+                    })}
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    <button type="button" onClick={selectAllVisiblePlanner} className="btn-secondary btn-xs">Select all visible</button>
-                    <button type="button" onClick={clearPlannerSelection} className="btn-secondary btn-xs">Clear</button>
+                    <button type="button" onClick={selectAllVisiblePlanner} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.select_all_visible', { defaultValue: 'Select all visible' })}</button>
+                    <button type="button" onClick={clearPlannerSelection} className="btn-secondary btn-xs">{t('common.clear', { defaultValue: 'Clear' })}</button>
                   </div>
                 </div>
                 <div className="mb-2 rounded border border-slate-200 p-2">
-                  <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">Select by filter</div>
+                  <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.select_by_filter', { defaultValue: 'Select by filter' })}</div>
                   <div className="grid gap-1 md:grid-cols-4">
                     <select value={batchSelectKind} onChange={(e) => setBatchSelectKind(e.target.value)} className="input">
-                      <option value="">Any kind</option>
-                      <option value="meeting">Meeting</option>
-                      <option value="task">Task</option>
-                      <option value="followup">Follow-up</option>
-                      <option value="call">Call</option>
-                      <option value="shift">Shift</option>
+                      <option value="">{t('app.communications.calendar.batch.any_kind', { defaultValue: 'Any kind' })}</option>
+                      <option value="meeting">{t('app.communications.calendar.kinds.meeting', { defaultValue: 'Meeting' })}</option>
+                      <option value="task">{t('app.communications.calendar.kinds.task', { defaultValue: 'Task' })}</option>
+                      <option value="followup">{t('app.communications.calendar.kinds.followup', { defaultValue: 'Follow-up' })}</option>
+                      <option value="call">{t('app.communications.calendar.kinds.call', { defaultValue: 'Call' })}</option>
+                      <option value="shift">{t('app.communications.calendar.kinds.shift', { defaultValue: 'Shift' })}</option>
                     </select>
                     <select value={batchSelectPriority} onChange={(e) => setBatchSelectPriority(e.target.value)} className="input">
-                      <option value="">Any priority</option>
-                      <option value="low">Low</option>
-                      <option value="normal">Normal</option>
-                      <option value="high">High</option>
+                      <option value="">{t('app.communications.calendar.batch.any_priority', { defaultValue: 'Any priority' })}</option>
+                      <option value="low">{t('app.communications.calendar.priority.low', { defaultValue: 'Low' })}</option>
+                      <option value="normal">{t('app.communications.calendar.priority.normal', { defaultValue: 'Normal' })}</option>
+                      <option value="high">{t('app.communications.calendar.priority.high', { defaultValue: 'High' })}</option>
                     </select>
                     <select value={batchSelectStatus} onChange={(e) => setBatchSelectStatus(e.target.value as BatchSelectStatusFilter)} className="input">
-                      <option value="">Any status</option>
-                      <option value="planned">Planned</option>
-                      <option value="in_progress">In progress</option>
-                      <option value="done">Done</option>
-                      <option value="cancelled">Cancelled</option>
+                      <option value="">{t('app.communications.calendar.batch.any_status', { defaultValue: 'Any status' })}</option>
+                      <option value="planned">{t('app.communications.calendar.status.planned', { defaultValue: 'Planned' })}</option>
+                      <option value="in_progress">{t('app.communications.calendar.status.in_progress', { defaultValue: 'In progress' })}</option>
+                      <option value="done">{t('app.communications.calendar.status.done', { defaultValue: 'Done' })}</option>
+                      <option value="cancelled">{t('app.communications.calendar.status.cancelled', { defaultValue: 'Cancelled' })}</option>
                     </select>
                     <button type="button" onClick={selectByCurrentBatchFilter} className="btn-secondary btn-xs">
-                      Select by filter
+                      {t('app.communications.calendar.batch.select_by_filter_action', { defaultValue: 'Select by filter' })}
                     </button>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1">
-                    <button type="button" onClick={() => applySelectionPreset('meetings')} className="btn-secondary btn-xs">Meetings</button>
-                    <button type="button" onClick={() => applySelectionPreset('high')} className="btn-secondary btn-xs">High priority</button>
-                    <button type="button" onClick={() => applySelectionPreset('unassigned')} className="btn-secondary btn-xs">Unassigned</button>
-                    <button type="button" onClick={() => applySelectionPreset('in_progress')} className="btn-secondary btn-xs">In progress</button>
-                    <button type="button" onClick={() => applySelectionPreset('due_soon')} className="btn-secondary btn-xs">Due soon (2h)</button>
+                    <button type="button" onClick={() => applySelectionPreset('meetings')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.meetings', { defaultValue: 'Meetings' })}</button>
+                    <button type="button" onClick={() => applySelectionPreset('high')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.high_priority', { defaultValue: 'High priority' })}</button>
+                    <button type="button" onClick={() => applySelectionPreset('unassigned')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.unassigned', { defaultValue: 'Unassigned' })}</button>
+                    <button type="button" onClick={() => applySelectionPreset('in_progress')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.in_progress', { defaultValue: 'In progress' })}</button>
+                    <button type="button" onClick={() => applySelectionPreset('due_soon')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.due_soon', { defaultValue: 'Due soon (2h)' })}</button>
                   </div>
                 </div>
                 <div className="grid gap-2 md:grid-cols-2">
                   <div className="rounded border border-slate-200 p-2">
-                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">Assign</div>
+                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.assign', { defaultValue: 'Assign' })}</div>
                     <div className="flex gap-1">
                       <select value={batchAssigneeId} onChange={(e) => setBatchAssigneeId(e.target.value)} className="w-full input">
-                        <option value="">Unassigned</option>
+                        <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
                         {managers.map((m) => <option key={`batch-assignee-${m.id}`} value={m.id}>{m.label}</option>)}
                       </select>
-                      <button type="button" onClick={() => void runBatchAssign()} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">Apply</button>
+                      <button type="button" onClick={() => void runBatchAssign()} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.apply', { defaultValue: 'Apply' })}</button>
                     </div>
                   </div>
                   <div className="rounded border border-slate-200 p-2">
-                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">Priority</div>
+                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.priority', { defaultValue: 'Priority' })}</div>
                     <div className="flex flex-wrap gap-1">
-                      <button type="button" onClick={() => void runBatchPriority('low')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">Low</button>
-                      <button type="button" onClick={() => void runBatchPriority('normal')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">Normal</button>
-                      <button type="button" onClick={() => void runBatchPriority('high')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">High</button>
+                      <button type="button" onClick={() => void runBatchPriority('low')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.priority.low', { defaultValue: 'Low' })}</button>
+                      <button type="button" onClick={() => void runBatchPriority('normal')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.priority.normal', { defaultValue: 'Normal' })}</button>
+                      <button type="button" onClick={() => void runBatchPriority('high')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.priority.high', { defaultValue: 'High' })}</button>
                     </div>
                   </div>
                   <div className="rounded border border-slate-200 p-2 md:col-span-2">
-                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">Tags</div>
+                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.tags', { defaultValue: 'Tags' })}</div>
                     <div className="flex flex-wrap gap-1">
-                      <input value={batchTagValue} onChange={(e) => setBatchTagValue(e.target.value)} placeholder="tag" className="input" />
-                      <button type="button" onClick={() => void runBatchTag('add')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">Add</button>
-                      <button type="button" onClick={() => void runBatchTag('remove')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">Remove</button>
-                      <button type="button" onClick={() => void runBatchArchive()} disabled={busy || !selectedPlannerEvents.length} className="ml-auto btn-danger btn-xs disabled:opacity-50">Archive selected</button>
+                      <input value={batchTagValue} onChange={(e) => setBatchTagValue(e.target.value)} placeholder={t('app.communications.calendar.batch.tag_placeholder', { defaultValue: 'tag' })} className="input" />
+                      <button type="button" onClick={() => void runBatchTag('add')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.actions.add', { defaultValue: 'Add' })}</button>
+                      <button type="button" onClick={() => void runBatchTag('remove')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.actions.remove', { defaultValue: 'Remove' })}</button>
+                      <button type="button" onClick={() => void runBatchArchive()} disabled={busy || !selectedPlannerEvents.length} className="ml-auto btn-danger btn-xs disabled:opacity-50">{t('app.communications.calendar.batch.archive_selected', { defaultValue: 'Archive selected' })}</button>
                     </div>
                   </div>
                 </div>
               </div>
               <div className="mb-3 rounded border border-slate-200 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">Timeline drag & drop</div>
-                  {selectedDay === nowMeta.dayKey && <span className="badge bg-rose-100 text-rose-700">Now {nowMeta.label}</span>}
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">{t('app.communications.calendar.timeline.title', { defaultValue: 'Timeline drag & drop' })}</div>
+                  {selectedDay === nowMeta.dayKey && <span className="badge bg-rose-100 text-rose-700">{t('app.communications.calendar.timeline.now', { defaultValue: 'Now {time}', values: { time: nowMeta.label } })}</span>}
                   {resizePlannerEvent?.plannerId && (
                     <button
                       type="button"
                       onClick={() => setResizePlannerEvent(null)}
                       className="btn-secondary btn-xs"
                     >
-                      Exit resize
+                      {t('app.communications.calendar.timeline.exit_resize', { defaultValue: 'Exit resize' })}
                     </button>
                   )}
                 </div>
@@ -1671,7 +1744,7 @@ export default function CommunicationsCalendarPage() {
                               }}
                               onDragEnd={() => setDragPlannerEvent(null)}
                               className={clsx('badge border', plannerKindTone(event.kind), 'cursor-move')}
-                              title="Drag to another hour/day"
+                              title={t('app.communications.calendar.timeline.drag_to_hour_or_day', { defaultValue: 'Drag to another hour/day' })}
                             >
                               <span>{event.title}</span>
                               {event.plannerId && (
@@ -1683,13 +1756,13 @@ export default function CommunicationsCalendarPage() {
                                   }}
                                   className={clsx('ml-1 btn-secondary btn-xs', resizePlannerEvent?.plannerId === event.plannerId && 'border-brand-400 bg-brand-50 text-brand-700')}
                                 >
-                                  resize
+                                  {t('app.communications.calendar.timeline.resize', { defaultValue: 'resize' })}
                                 </button>
                               )}
                             </div>
                           ))}
-                          {slotEvents.length === 0 && <span className="text-[10px] text-slate-400">drop here</span>}
-                          {resizePlannerEvent?.plannerId && <span className="text-[10px] text-brand-700">set end here</span>}
+                          {slotEvents.length === 0 && <span className="text-[10px] text-slate-400">{t('app.communications.calendar.timeline.drop_here', { defaultValue: 'drop here' })}</span>}
+                          {resizePlannerEvent?.plannerId && <span className="text-[10px] text-brand-700">{t('app.communications.calendar.timeline.set_end_here', { defaultValue: 'set end here' })}</span>}
                         </div>
                       </div>
                     )
@@ -1699,9 +1772,9 @@ export default function CommunicationsCalendarPage() {
 
               <div className="grid gap-3 md:grid-cols-3">
                 {[
-                  { key: 'morning', label: 'Morning (00:00-11:59)', items: dayBoard.morning },
-                  { key: 'midday', label: 'Day (12:00-16:59)', items: dayBoard.midday },
-                  { key: 'evening', label: 'Evening (17:00-23:59)', items: dayBoard.evening },
+                  { key: 'morning', label: t('app.communications.calendar.day_buckets.morning', { defaultValue: 'Morning (00:00-11:59)' }), items: dayBoard.morning },
+                  { key: 'midday', label: t('app.communications.calendar.day_buckets.midday', { defaultValue: 'Day (12:00-16:59)' }), items: dayBoard.midday },
+                  { key: 'evening', label: t('app.communications.calendar.day_buckets.evening', { defaultValue: 'Evening (17:00-23:59)' }), items: dayBoard.evening },
                 ].map((bucket) => (
                   <div key={bucket.key} className="rounded border border-slate-200 p-3">
                     <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">{bucket.label}</div>
@@ -1715,7 +1788,7 @@ export default function CommunicationsCalendarPage() {
                           }}
                           onDragEnd={() => setDragPlannerEvent(null)}
                           className={clsx('rounded-lg border px-2 py-2 text-xs', plannerKindTone(event.kind), event.plannerId ? 'cursor-move' : '')}
-                          title={event.plannerId ? 'Drag to timeline or week days' : undefined}
+                          title={event.plannerId ? t('app.communications.calendar.timeline.drag_to_timeline_or_week', { defaultValue: 'Drag to timeline or week days' }) : undefined}
                         >
                           <div className="flex items-center gap-2">
                             {event.plannerId && (
@@ -1742,47 +1815,61 @@ export default function CommunicationsCalendarPage() {
                           <div className="mt-2 flex flex-wrap gap-1">
                             {event.plannerId && (
                               <>
-                                <button type="button" onClick={() => void setPlannerStatus(event.plannerId!, 'in_progress')} disabled={busy || event.plannerStatus === 'in_progress'} className="btn-secondary btn-xs disabled:opacity-50">Start</button>
-                                <button type="button" onClick={() => void setPlannerStatus(event.plannerId!, 'done')} disabled={busy || event.plannerStatus === 'done'} className="btn-primary btn-xs disabled:opacity-50">Done</button>
-                                <button type="button" onClick={() => void setPlannerStatus(event.plannerId!, 'planned')} disabled={busy || event.plannerStatus === 'planned'} className="btn-secondary btn-xs disabled:opacity-50">Reopen</button>
-                                <button type="button" onClick={() => void setPlannerStatus(event.plannerId!, 'cancelled')} disabled={busy || event.plannerStatus === 'cancelled'} className="btn-secondary btn-xs disabled:opacity-50">Cancel</button>
-                                <button type="button" onClick={() => void movePlannerEvent(event, 60)} disabled={busy || !event.at} className="btn-secondary btn-xs disabled:opacity-50">+1h</button>
-                                <button type="button" onClick={() => void movePlannerEvent(event, 1440)} disabled={busy || !event.at} className="btn-secondary btn-xs disabled:opacity-50">+1d</button>
-                                <button type="button" onClick={() => void duplicatePlannerEvent(event)} disabled={busy || !event.at} className="btn-secondary btn-xs disabled:opacity-50">Duplicate</button>
+                                <button type="button" onClick={() => void setPlannerStatus(event.plannerId!, 'in_progress')} disabled={busy || event.plannerStatus === 'in_progress'} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.actions.start', { defaultValue: 'Start' })}</button>
+                                <button type="button" onClick={() => void setPlannerStatus(event.plannerId!, 'done')} disabled={busy || event.plannerStatus === 'done'} className="btn-primary btn-xs disabled:opacity-50">{t('app.communications.calendar.status.done', { defaultValue: 'Done' })}</button>
+                                <button type="button" onClick={() => void setPlannerStatus(event.plannerId!, 'planned')} disabled={busy || event.plannerStatus === 'planned'} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.actions.reopen', { defaultValue: 'Reopen' })}</button>
+                                <button type="button" onClick={() => void setPlannerStatus(event.plannerId!, 'cancelled')} disabled={busy || event.plannerStatus === 'cancelled'} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.actions.cancel', { defaultValue: 'Cancel' })}</button>
+                                <button type="button" onClick={() => void movePlannerEvent(event, 60)} disabled={busy || !event.at} className="btn-secondary btn-xs disabled:opacity-50">
+                                  {t('app.communications.calendar.actions.move_plus_1h', { defaultValue: '+1h' })}
+                                </button>
+                                <button type="button" onClick={() => void movePlannerEvent(event, 1440)} disabled={busy || !event.at} className="btn-secondary btn-xs disabled:opacity-50">
+                                  {t('app.communications.calendar.actions.move_plus_1d', { defaultValue: '+1d' })}
+                                </button>
+                                <button type="button" onClick={() => void duplicatePlannerEvent(event)} disabled={busy || !event.at} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.actions.duplicate', { defaultValue: 'Duplicate' })}</button>
                                 <button
                                   type="button"
                                   onClick={() => setResizePlannerEvent(event)}
                                   disabled={busy}
                                   className={clsx('btn-secondary btn-xs disabled:opacity-50', resizePlannerEvent?.plannerId === event.plannerId && 'border-brand-400 bg-brand-50 text-brand-700')}
                                 >
-                                  Resize
+                                  {t('app.communications.calendar.timeline.resize', { defaultValue: 'resize' })}
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setActivePlannerMenuId((prev) => (prev === event.plannerId ? null : event.plannerId!))}
                                   className={clsx('btn-secondary btn-xs', activePlannerMenuId === event.plannerId && 'border-brand-400 bg-brand-50 text-brand-700')}
                                 >
-                                  Manage
+                                  {t('app.communications.calendar.actions.manage', { defaultValue: 'Manage' })}
                                 </button>
                               </>
                             )}
                             {event.reminderId && (
                               <>
-                                <button type="button" onClick={() => void completeDayReminder(event.reminderId!)} disabled={busy || ['done', 'completed', 'cancelled'].includes(String(event.reminderStatus || '').toLowerCase())} className="btn-primary btn-xs disabled:opacity-50">Complete</button>
-                                <button type="button" onClick={() => void snoozeDayReminder(event.reminderId!, 30)} disabled={busy || ['done', 'completed', 'cancelled'].includes(String(event.reminderStatus || '').toLowerCase())} className="btn-secondary btn-xs disabled:opacity-50">Snooze 30m</button>
+                                <button type="button" onClick={() => void completeDayReminder(event.reminderId!)} disabled={busy || ['done', 'completed', 'cancelled'].includes(String(event.reminderStatus || '').toLowerCase())} className="btn-primary btn-xs disabled:opacity-50">{t('app.communications.calendar.actions.complete', { defaultValue: 'Complete' })}</button>
+                                <button type="button" onClick={() => void snoozeDayReminder(event.reminderId!, 30)} disabled={busy || ['done', 'completed', 'cancelled'].includes(String(event.reminderStatus || '').toLowerCase())} className="btn-secondary btn-xs disabled:opacity-50">
+                                  {t('app.communications.calendar.actions.snooze_30m', { defaultValue: 'Snooze 30m' })}
+                                </button>
                               </>
                             )}
                             {event.entityPath && (
-                              <Link to={event.entityPath} className="btn-secondary btn-xs">Open</Link>
+                              <Link to={event.entityPath} className="btn-secondary btn-xs">
+                                {t('app.communications.calendar.actions.open', { defaultValue: 'Open' })}
+                              </Link>
                             )}
                           </div>
                           {event.plannerId && activePlannerMenuId === event.plannerId && (
                             <div className="mt-2 rounded border border-slate-200 bg-white p-2 text-[10px] text-slate-700">
-                              <div className="mb-1 font-semibold text-slate-800">Quick actions</div>
+                              <div className="mb-1 font-semibold text-slate-800">{t('app.communications.calendar.actions.quick_actions', { defaultValue: 'Quick actions' })}</div>
                               <div className="mb-1 flex flex-wrap gap-1">
-                                <button type="button" onClick={() => void setPlannerPriorityByEvent(event, 'low')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">P:low</button>
-                                <button type="button" onClick={() => void setPlannerPriorityByEvent(event, 'normal')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">P:normal</button>
-                                <button type="button" onClick={() => void setPlannerPriorityByEvent(event, 'high')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">P:high</button>
+                                <button type="button" onClick={() => void setPlannerPriorityByEvent(event, 'low')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">
+                                  {t('app.communications.calendar.actions.priority_low', { defaultValue: 'P:low' })}
+                                </button>
+                                <button type="button" onClick={() => void setPlannerPriorityByEvent(event, 'normal')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">
+                                  {t('app.communications.calendar.actions.priority_normal', { defaultValue: 'P:normal' })}
+                                </button>
+                                <button type="button" onClick={() => void setPlannerPriorityByEvent(event, 'high')} disabled={busy} className="btn-secondary btn-xs disabled:opacity-50">
+                                  {t('app.communications.calendar.actions.priority_high', { defaultValue: 'P:high' })}
+                                </button>
                               </div>
                               <div className="mb-1">
                                 <select
@@ -1791,7 +1878,7 @@ export default function CommunicationsCalendarPage() {
                                   disabled={busy}
                                   className="w-full input disabled:bg-slate-100"
                                 >
-                                  <option value="">Unassigned</option>
+                                  <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
                                   {managers.map((m) => <option key={`${event.id}:mgr:${m.id}`} value={m.id}>{m.label}</option>)}
                                 </select>
                               </div>
@@ -1809,28 +1896,33 @@ export default function CommunicationsCalendarPage() {
                                 ))}
                               </div>
                               <div className="flex flex-wrap gap-1">
-                                <button type="button" onClick={() => { void archivePlannerByEvent(event) }} disabled={busy || event.plannerStatus === 'cancelled'} className="btn-danger btn-xs disabled:opacity-50">Archive</button>
-                                <button type="button" onClick={() => setActivePlannerMenuId(null)} className="btn-secondary btn-xs">Close</button>
+                                <button type="button" onClick={() => { void archivePlannerByEvent(event) }} disabled={busy || event.plannerStatus === 'cancelled'} className="btn-danger btn-xs disabled:opacity-50">{t('app.communications.calendar.actions.archive', { defaultValue: 'Archive' })}</button>
+                                <button type="button" onClick={() => setActivePlannerMenuId(null)} className="btn-secondary btn-xs">{t('common.actions.close', { defaultValue: 'Close' })}</button>
                               </div>
                             </div>
                           )}
                         </div>
                       ))}
-                      {bucket.items.length === 0 && <div className="text-xs text-slate-500">No items</div>}
+                      {bucket.items.length === 0 && <div className="text-xs text-slate-500">{t('app.communications.calendar.labels.no_items', { defaultValue: 'No items' })}</div>}
                     </div>
                   </div>
                 ))}
               </div>
               <div className="mt-3 rounded border border-slate-200 p-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">Team load for selected day</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">{t('app.communications.calendar.team_load.title', { defaultValue: 'Team load for selected day' })}</div>
                 <div className="mt-2 space-y-1">
                   {loadByAssigneeToday.map((row) => (
                     <div key={row.label} className="flex items-center justify-between gap-2 rounded border border-slate-100 px-2 py-1 text-xs">
                       <span className="truncate text-slate-700">{row.label}</span>
-                      <span className="text-slate-500">total {row.total} | mtg {row.meetings} | task {row.tasks} | overdue {row.overdue}</span>
+                      <span className="text-slate-500">
+                        {t('app.communications.calendar.team_load.row', {
+                          defaultValue: 'total {total} | mtg {meetings} | task {tasks} | overdue {overdue}',
+                          values: { total: row.total, meetings: row.meetings, tasks: row.tasks, overdue: row.overdue },
+                        })}
+                      </span>
                     </div>
                   ))}
-                  {loadByAssigneeToday.length === 0 && <div className="text-xs text-slate-500">No assigned workload for this day.</div>}
+                  {loadByAssigneeToday.length === 0 && <div className="text-xs text-slate-500">{t('app.communications.calendar.team_load.empty', { defaultValue: 'No assigned workload for this day.' })}</div>}
                 </div>
               </div>
             </section>
@@ -1839,40 +1931,42 @@ export default function CommunicationsCalendarPage() {
 
         <div className="space-y-4">
           <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-2 text-sm font-semibold text-slate-900">Create meeting / task</div>
+            <div className="mb-2 text-sm font-semibold text-slate-900">
+              {t('app.communications.calendar.forms.create_planner', { defaultValue: 'Create meeting / task' })}
+            </div>
             <form className="space-y-2" onSubmit={createPlanner}>
-              <input value={plannerForm.title} onChange={(e) => setPlannerForm((p) => ({ ...p, title: e.target.value }))} className="w-full input" placeholder="Title" />
+              <input value={plannerForm.title} onChange={(e) => setPlannerForm((p) => ({ ...p, title: e.target.value }))} className="w-full input" placeholder={t('common.actions.title', { defaultValue: 'Title' })} />
               <div className="grid grid-cols-2 gap-2">
                 <select value={plannerForm.kind} onChange={(e) => setPlannerForm((p) => ({ ...p, kind: e.target.value }))} className="input">
-                  <option value="meeting">Meeting</option>
-                  <option value="task">Task</option>
-                  <option value="followup">Follow-up</option>
-                  <option value="call">Call</option>
-                  <option value="shift">Shift</option>
+                  <option value="meeting">{t('app.communications.calendar.kinds.meeting', { defaultValue: 'Meeting' })}</option>
+                  <option value="task">{t('app.communications.calendar.kinds.task', { defaultValue: 'Task' })}</option>
+                  <option value="followup">{t('app.communications.calendar.kinds.followup', { defaultValue: 'Follow-up' })}</option>
+                  <option value="call">{t('app.communications.calendar.kinds.call', { defaultValue: 'Call' })}</option>
+                  <option value="shift">{t('app.communications.calendar.kinds.shift', { defaultValue: 'Shift' })}</option>
                 </select>
                 <select value={plannerForm.priority} onChange={(e) => setPlannerForm((p) => ({ ...p, priority: e.target.value }))} className="input">
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
+                  <option value="low">{t('app.communications.calendar.priority.low', { defaultValue: 'Low' })}</option>
+                  <option value="normal">{t('app.communications.calendar.priority.normal', { defaultValue: 'Normal' })}</option>
+                  <option value="high">{t('app.communications.calendar.priority.high', { defaultValue: 'High' })}</option>
                 </select>
               </div>
               <select value={plannerForm.assigneeId} onChange={(e) => setPlannerForm((p) => ({ ...p, assigneeId: e.target.value }))} className="w-full input">
-                <option value="">Unassigned</option>
+                <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
                 {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
               </select>
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" checked={plannerForm.allDay} onChange={(e) => setPlannerForm((p) => ({ ...p, allDay: e.target.checked }))} />
-                All day
+                {t('app.communications.calendar.forms.all_day', { defaultValue: 'All day' })}
               </label>
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <input type="checkbox" checked={allowOutsideHours} onChange={(e) => setAllowOutsideHours(e.target.checked)} />
-                Create outside working hours
+                {t('app.communications.calendar.forms.outside_working_hours', { defaultValue: 'Create outside working hours' })}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <select value={plannerForm.repeatMode} onChange={(e) => setPlannerForm((p) => ({ ...p, repeatMode: e.target.value as PlannerRepeatMode }))} className="input">
-                  <option value="none">No repeat</option>
-                  <option value="daily">Repeat daily</option>
-                  <option value="weekdays">Repeat weekdays</option>
+                  <option value="none">{t('app.communications.calendar.repeat.none', { defaultValue: 'No repeat' })}</option>
+                  <option value="daily">{t('app.communications.calendar.repeat.daily', { defaultValue: 'Repeat daily' })}</option>
+                  <option value="weekdays">{t('app.communications.calendar.repeat.weekdays', { defaultValue: 'Repeat weekdays' })}</option>
                 </select>
                 <input
                   type="number"
@@ -1882,14 +1976,14 @@ export default function CommunicationsCalendarPage() {
                   onChange={(e) => setPlannerForm((p) => ({ ...p, repeatCount: Number(e.target.value || 1) }))}
                   disabled={plannerForm.repeatMode === 'none'}
                   className="input disabled:bg-slate-100"
-                  placeholder="Occurrences"
+                  placeholder={t('app.communications.calendar.forms.occurrences', { defaultValue: 'Occurrences' })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <input type={plannerForm.allDay ? 'date' : 'datetime-local'} value={plannerForm.startAt} onChange={(e) => setPlannerForm((p) => ({ ...p, startAt: e.target.value }))} className="input" />
                 <input type={plannerForm.allDay ? 'date' : 'datetime-local'} value={plannerForm.endAt} onChange={(e) => setPlannerForm((p) => ({ ...p, endAt: e.target.value }))} className="input" />
               </div>
-              <textarea rows={3} value={plannerForm.description} onChange={(e) => setPlannerForm((p) => ({ ...p, description: e.target.value }))} className="w-full textarea" placeholder="Description" />
+              <textarea rows={3} value={plannerForm.description} onChange={(e) => setPlannerForm((p) => ({ ...p, description: e.target.value }))} className="w-full textarea" placeholder={t('app.communications.calendar.forms.description', { defaultValue: 'Description' })} />
               <button type="submit" disabled={busy || !plannerForm.title.trim() || !plannerForm.startAt} className="btn-primary disabled:opacity-50">
                 {busy ? t('common.loading', { defaultValue: 'Loading...' }) : t('common.actions.create', { defaultValue: 'Create' })}
               </button>
@@ -1897,10 +1991,12 @@ export default function CommunicationsCalendarPage() {
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="mb-2 text-sm font-semibold text-slate-900">Create activity</div>
+            <div className="mb-2 text-sm font-semibold text-slate-900">
+              {t('app.communications.calendar.forms.create_activity', { defaultValue: 'Create activity' })}
+            </div>
             <form className="space-y-2" onSubmit={createDayReminder}>
               <div>
-                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Quick type</div>
+                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.communications.calendar.forms.quick_type', { defaultValue: 'Quick type' })}</div>
                 <div className="flex flex-wrap gap-2">
                   {ACTIVITY_TEMPLATES.map((tmpl) => (
                     <button
@@ -1936,27 +2032,27 @@ export default function CommunicationsCalendarPage() {
                     disabled={busy}
                     onClick={() => setReminderForm((p) => ({ ...p, type: 'custom' }))}
                   >
-                    Custom
+                    {t('app.communications.calendar.forms.custom', { defaultValue: 'Custom' })}
                   </button>
                 </div>
               </div>
-              <input value={reminderForm.title} onChange={(e) => setReminderForm((p) => ({ ...p, title: e.target.value }))} className="w-full input" placeholder="Activity title" />
+              <input value={reminderForm.title} onChange={(e) => setReminderForm((p) => ({ ...p, title: e.target.value }))} className="w-full input" placeholder={t('app.communications.calendar.forms.activity_title', { defaultValue: 'Activity title' })} />
               <div className="grid grid-cols-2 gap-2">
                 <input type="datetime-local" value={reminderForm.dueAt} onChange={(e) => setReminderForm((p) => ({ ...p, dueAt: e.target.value }))} className="input" />
-                <input type="number" min={1} value={String(reminderForm.offsetMinutes)} onChange={(e) => setReminderForm((p) => ({ ...p, offsetMinutes: Number(e.target.value || 30) }))} className="input" placeholder="Offset min" />
+                <input type="number" min={1} value={String(reminderForm.offsetMinutes)} onChange={(e) => setReminderForm((p) => ({ ...p, offsetMinutes: Number(e.target.value || 30) }))} className="input" placeholder={t('app.communications.calendar.forms.offset_min', { defaultValue: 'Offset min' })} />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <select value={reminderForm.assigneeId} onChange={(e) => setReminderForm((p) => ({ ...p, assigneeId: e.target.value }))} className="input">
-                  <option value="">Unassigned</option>
+                  <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
                   {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
                 </select>
                 <select value={reminderForm.priority} onChange={(e) => setReminderForm((p) => ({ ...p, priority: e.target.value }))} className="input">
-                  <option value="low">Low</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">High</option>
+                  <option value="low">{t('app.communications.calendar.priority.low', { defaultValue: 'Low' })}</option>
+                  <option value="normal">{t('app.communications.calendar.priority.normal', { defaultValue: 'Normal' })}</option>
+                  <option value="high">{t('app.communications.calendar.priority.high', { defaultValue: 'High' })}</option>
                 </select>
               </div>
-              <textarea rows={3} value={reminderForm.description} onChange={(e) => setReminderForm((p) => ({ ...p, description: e.target.value }))} className="w-full textarea" placeholder="Description" />
+              <textarea rows={3} value={reminderForm.description} onChange={(e) => setReminderForm((p) => ({ ...p, description: e.target.value }))} className="w-full textarea" placeholder={t('app.communications.calendar.forms.description', { defaultValue: 'Description' })} />
               <button type="submit" disabled={busy || !reminderForm.title.trim() || !reminderForm.dueAt} className="btn-primary disabled:opacity-50">
                 {busy ? t('common.loading', { defaultValue: 'Loading...' }) : t('common.actions.create', { defaultValue: 'Create' })}
               </button>
@@ -1964,7 +2060,9 @@ export default function CommunicationsCalendarPage() {
           </section>
 
           <section className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="text-sm font-semibold text-slate-900">Upcoming events</div>
+            <div className="text-sm font-semibold text-slate-900">
+              {t('app.communications.calendar.upcoming.title', { defaultValue: 'Upcoming events' })}
+            </div>
             <div className="mt-3 max-h-[26rem] space-y-2 overflow-auto">
               {upcoming.map((event) => (
                 <div key={`up:${event.id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
@@ -1979,14 +2077,8 @@ export default function CommunicationsCalendarPage() {
               {!upcoming.length && <div className="text-sm text-slate-500">{t('app.communications.states.empty', { defaultValue: 'No activity yet' })}</div>}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link to="/app/planner" className="btn-secondary">
-                {t('app.nav.items.planner', { defaultValue: 'Planner' })}
-              </Link>
-              <Link to="/app/activities" className="btn-secondary">
-                {t('app.nav.items.activities', { defaultValue: 'Activities' })}
-              </Link>
-              <Link to="/app/reminders" className="btn-secondary">
-                {t('app.nav.items.reminders', { defaultValue: 'Reminders' })}
+              <Link to="/app/tasks" className="btn-secondary">
+                {t('app.nav.items.tasks', { defaultValue: 'Tasks' })}
               </Link>
             </div>
           </section>

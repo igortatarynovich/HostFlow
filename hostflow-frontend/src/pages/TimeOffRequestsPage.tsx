@@ -44,7 +44,7 @@ export default function TimeOffRequestsPage() {
       })
       setItems(Array.isArray(res.items) ? res.items : [])
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to load time-off requests'))
+      setErrorText(errorTextFrom(err, t('app.communications.timeoff.errors.load', { defaultValue: 'Failed to load time-off requests' })))
     } finally {
       setLoading(false)
     }
@@ -70,7 +70,7 @@ export default function TimeOffRequestsPage() {
       await loadAll()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to process request'))
+      setErrorText(errorTextFrom(err, t('app.communications.timeoff.errors.process', { defaultValue: 'Failed to process request' })))
     } finally {
       setBusyId(null)
     }
@@ -83,7 +83,7 @@ export default function TimeOffRequestsPage() {
       await loadAll()
       setErrorText(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to cancel request'))
+      setErrorText(errorTextFrom(err, t('app.communications.timeoff.errors.cancel', { defaultValue: 'Failed to cancel request' })))
     } finally {
       setBusyId(null)
     }
@@ -99,20 +99,22 @@ export default function TimeOffRequestsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Pending: <strong>{summary.pending}</strong></div>
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">Approved: <strong>{summary.approved}</strong></div>
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">Rejected: <strong>{summary.rejected}</strong></div>
-        <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">Reviewer: <strong>{me?.full_name || me?.email || '—'}</strong></div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.timeoff.stats.pending', { defaultValue: 'Pending: {count}', values: { count: summary.pending } })}</div>
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.timeoff.stats.approved', { defaultValue: 'Approved: {count}', values: { count: summary.approved } })}</div>
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{t('app.communications.timeoff.stats.rejected', { defaultValue: 'Rejected: {count}', values: { count: summary.rejected } })}</div>
+        <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
+          {t('app.communications.timeoff.stats.reviewer', { defaultValue: 'Reviewer: {name}', values: { name: me?.full_name || me?.email || '—' } })}
+        </div>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input">
-            <option value="">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="">{t('app.communications.timeoff.filters.all_statuses', { defaultValue: 'All statuses' })}</option>
+            <option value="pending">{t('app.communications.timeoff.status.pending', { defaultValue: 'Pending' })}</option>
+            <option value="approved">{t('app.communications.timeoff.status.approved', { defaultValue: 'Approved' })}</option>
+            <option value="rejected">{t('app.communications.timeoff.status.rejected', { defaultValue: 'Rejected' })}</option>
+            <option value="cancelled">{t('app.communications.timeoff.status.cancelled', { defaultValue: 'Cancelled' })}</option>
           </select>
           <button type="button" onClick={() => void loadAll()} className="btn-secondary">
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
@@ -155,17 +157,17 @@ export default function TimeOffRequestsPage() {
                       value={decisionNotes[row.id] || ''}
                       onChange={(e) => setDecisionNotes((p) => ({ ...p, [row.id]: e.target.value }))}
                       className="textarea"
-                      placeholder="Decision note (optional)"
+                      placeholder={t('app.communications.timeoff.decision_note_optional', { defaultValue: 'Decision note (optional)' })}
                     />
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => void handleDecision(row.id, 'approved')} disabled={busyId === row.id} className="btn-primary btn-sm disabled:opacity-50">
-                        {busyId === row.id ? t('common.loading', { defaultValue: 'Loading...' }) : 'Approve'}
+                        {busyId === row.id ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.timeoff.actions.approve', { defaultValue: 'Approve' })}
                       </button>
                       <button type="button" onClick={() => void handleDecision(row.id, 'rejected')} disabled={busyId === row.id} className="btn-danger btn-sm disabled:opacity-50">
-                        {busyId === row.id ? t('common.loading', { defaultValue: 'Loading...' }) : 'Reject'}
+                        {busyId === row.id ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.timeoff.actions.reject', { defaultValue: 'Reject' })}
                       </button>
                       <button type="button" onClick={() => void handleCancel(row.id)} disabled={busyId === row.id} className="btn-secondary btn-sm disabled:opacity-50">
-                        Cancel
+                        {t('app.communications.timeoff.actions.cancel', { defaultValue: 'Cancel' })}
                       </button>
                     </div>
                   </div>

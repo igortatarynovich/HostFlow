@@ -206,9 +206,15 @@ export default function CommunicationsSlaSettingsPage() {
                   disabled={saveBusy}
                   className="input"
                 >
-                  <option value="assignee_or_owner">assignee_or_owner</option>
-                  <option value="assignee_only">assignee_only</option>
-                  <option value="owner_only">owner_only</option>
+                  <option value="assignee_or_owner">
+                    {t('admin.communications_sla.recipient_modes.assignee_or_owner', { defaultValue: 'assignee_or_owner' })}
+                  </option>
+                  <option value="assignee_only">
+                    {t('admin.communications_sla.recipient_modes.assignee_only', { defaultValue: 'assignee_only' })}
+                  </option>
+                  <option value="owner_only">
+                    {t('admin.communications_sla.recipient_modes.owner_only', { defaultValue: 'owner_only' })}
+                  </option>
                 </select>
               </label>
               <div className="rounded border border-slate-200 px-3 py-2 text-xs text-slate-600">

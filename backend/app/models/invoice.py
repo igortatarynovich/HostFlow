@@ -115,6 +115,7 @@ class Invoice(Base):
     )
     service_order_id: Mapped[Optional[str]] = mapped_column(
         String(36),
+        ForeignKey("service_orders.id", ondelete="SET NULL"),
         nullable=True,
     )
 

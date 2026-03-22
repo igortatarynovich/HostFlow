@@ -275,7 +275,7 @@ async def test_from_service_order_maps_recipient_guardrail_to_400(
         id=str(uuid4()),
         tenant_id=TENANT_ID,
         company_id=str(issuer.id),  # Intentional: recipient cannot be operating company.
-        status="approved",
+        status="confirmed",
         total_amount=1000,
         vat_total=230,
         currency="PLN",
@@ -360,7 +360,7 @@ async def test_from_service_order_creates_invoice_success(
         id=str(uuid4()),
         tenant_id=TENANT_ID,
         company_id=str(client_company.id),
-        status="approved",
+        status="confirmed",
         total_amount=1000,
         vat_total=230,
         currency="PLN",

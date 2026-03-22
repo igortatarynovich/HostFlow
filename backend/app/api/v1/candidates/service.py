@@ -60,6 +60,12 @@ from backend.app.modules.documents.rules_engine import compute_candidate_checkli
 from backend.app.services.document_orders import missing_base_requirements
 from backend.app.services.document_ruleset import load_default_ruleset
 from backend.app.services.ruleset_versioning import normalize_ruleset_payload
+from backend.app.services.candidate_doc_pipeline_guard import (
+    enforce_pipeline_contact_attempt_forward_block,
+    enforce_pipeline_doc_forward_block,
+    enforce_pipeline_vacancy_forward_block,
+)
+from backend.app.services.hiring_pipeline_gates import resolve_hiring_pipeline_gates
 
 _UNSET = object()
 
@@ -90,6 +96,17 @@ async def _enforce_rodo_before_contact_stage(
         status_code=409,
         detail="RODO must be sent to candidate before moving to contact/screening stage",
     )
+
+
+def _effective_vacancy_id_from_patch_payload(c: Candidate, payload: dict) -> Optional[str]:
+    """Vacancy as seen when validating a stage change in PATCH (may come from payload or DB)."""
+    if "vacancy_id" in payload:
+        v = payload["vacancy_id"]
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
+    return getattr(c, "vacancy_id", None)
 
 
 def _candidate_owner_context_for_docs(
@@ -144,6 +161,15 @@ async def _enforce_docs_ready_for_handoff_stage(
     existing_docs = await documents_crud.list_candidate_documents(db, tenant_id, candidate_id)
     active_docs = [doc for doc in existing_docs if getattr(doc, "deleted_at", None) is None]
     missing = missing_base_requirements(checklist, active_docs)
+    from backend.app.api.v1.candidates.pipeline_overrides_service import (
+        approved_handoff_relaxed_types,
+    )
+
+    relaxed = await approved_handoff_relaxed_types(
+        db, tenant_id=tenant_id, candidate_id=candidate_id
+    )
+    if relaxed:
+        missing = [m for m in missing if m not in relaxed]
     if missing:
         raise HTTPException(
             status_code=409,
@@ -498,6 +524,9 @@ async def create_candidate_full(
         "status_reason": status_reason_values,
         "company_id": company_id_val,
         "vacancy_id": vacancy_id_val,
+        # UI visibility depends on own_company_id (resolved from Topbar).
+        # If not set explicitly, list endpoints will filter it out.
+        "own_company_id": own_company_id_val,
         "created_at": _now_naive(),
         "updated_at": _now_naive(),
     }
@@ -601,6 +630,17 @@ async def create_candidate_full(
         await db.commit()
     except Exception:
         await db.rollback()
+    # UOS: default “call candidate” activity (deduped; tenant may disable via settings.uos_auto_activities_v1).
+    try:
+        from backend.app.services import uos_auto_activities
+
+        await uos_auto_activities.ensure_candidate_created_call_task(db, tenant_id, actor_id, c)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+    # `commit()` expires ORM instances; callers in async code must not touch columns
+    # via implicit lazy load (MissingGreenlet). Reload before return.
+    await db.refresh(c)
     return c
 
 
@@ -871,6 +911,31 @@ async def update_candidate_full(
                 _as_dict_safe(changes.get("personal_data"))
                 if "personal_data" in changes
                 else _as_dict_safe(getattr(c, "personal_data", None))
+            )
+            hiring_gates = await resolve_hiring_pipeline_gates(db, tenant_id)
+            await enforce_pipeline_doc_forward_block(
+                db,
+                tenant_id=tenant_id,
+                candidate_id=candidate_id,
+                old_stage=getattr(c, "stage", None),
+                new_stage=new_stage_code,
+                extra=effective_extra,
+                personal=effective_personal,
+                gates=hiring_gates,
+            )
+            enforce_pipeline_vacancy_forward_block(
+                old_stage=getattr(c, "stage", None),
+                new_stage=new_stage_code,
+                vacancy_id=_effective_vacancy_id_from_patch_payload(c, payload),
+                gates=hiring_gates,
+            )
+            await enforce_pipeline_contact_attempt_forward_block(
+                db,
+                tenant_id=tenant_id,
+                candidate=c,
+                old_stage=getattr(c, "stage", None),
+                new_stage=new_stage_code,
+                gates=hiring_gates,
             )
             await _enforce_docs_ready_for_handoff_stage(
                 db,
@@ -1258,6 +1323,7 @@ async def bulk_update_stage(
 
     target_stage = _normalize_stage_to_code(stage) or stage
     client_tenant = await _is_client_tenant(db, tenant_id)
+    hiring_gates = await resolve_hiring_pipeline_gates(db, tenant_id)
     out: list[BulkStageResult] = []
     status_reason_explicit = status_reason is not _UNSET and status_reason is not None
     status_reason_codes_input = (
@@ -1309,6 +1375,42 @@ async def bulk_update_stage(
                 candidate_id=cid,
                 target_stage_code=normalized,
             )
+            try:
+                await enforce_pipeline_doc_forward_block(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate_id=cid,
+                    old_stage=getattr(c, "stage", None),
+                    new_stage=normalized,
+                    extra=_as_dict_safe(getattr(c, "extra", None)),
+                    personal=_as_dict_safe(getattr(c, "personal_data", None)),
+                    gates=hiring_gates,
+                )
+                enforce_pipeline_vacancy_forward_block(
+                    old_stage=getattr(c, "stage", None),
+                    new_stage=normalized,
+                    vacancy_id=getattr(c, "vacancy_id", None),
+                    gates=hiring_gates,
+                )
+                await enforce_pipeline_contact_attempt_forward_block(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate=c,
+                    old_stage=getattr(c, "stage", None),
+                    new_stage=normalized,
+                    gates=hiring_gates,
+                )
+            except HTTPException as exc:
+                out.append(
+                    {
+                        "candidate_id": cid,
+                        "stage": normalized,
+                        "ok": False,
+                        "error": _bulk_error_value(exc.detail),
+                    }
+                )
+                continue
+
             await _enforce_docs_ready_for_handoff_stage(
                 db,
                 tenant_id=tenant_id,

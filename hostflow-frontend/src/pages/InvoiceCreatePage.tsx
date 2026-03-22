@@ -903,7 +903,12 @@ export default function InvoiceCreatePage() {
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {t('app.invoices.recipient', { defaultValue: 'Recipient' })}
               </span>
-              <input className="input" value={billingEmail} onChange={(event) => setBillingEmail(event.target.value)} placeholder="billing@client.com" />
+              <input
+                className="input"
+                value={billingEmail}
+                onChange={(event) => setBillingEmail(event.target.value)}
+                placeholder={t('app.invoices.placeholders.billing_email', { defaultValue: 'billing@client.com' })}
+              />
             </label>
 
             <label className="flex flex-col gap-1 text-sm">
@@ -927,7 +932,7 @@ export default function InvoiceCreatePage() {
 
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                {t('app.invoices.kind', { defaultValue: 'Invoice type' })}
+                {t('app.invoices.kind_label', { defaultValue: 'Invoice type' })}
               </span>
               <select className="input" value={invoiceKind} onChange={(event) => setInvoiceKind(event.target.value)}>
                 <option value="vat">{t('app.invoices.kind_vat', { defaultValue: 'VAT invoice' })}</option>
@@ -1103,7 +1108,7 @@ export default function InvoiceCreatePage() {
           </div>
           <dl className="space-y-3 text-sm">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.kind', { defaultValue: 'Invoice type' })}</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.invoices.kind_label', { defaultValue: 'Invoice type' })}</dt>
               <dd className="mt-1 text-slate-900">{invoiceKind || '-'}</dd>
             </div>
             <div>

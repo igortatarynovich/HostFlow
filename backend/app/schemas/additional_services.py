@@ -4,18 +4,16 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 ServiceUnitLiteral = Literal["piece", "person", "hour", "package"]
 ServiceOrderStatusLiteral = Literal[
     "draft",
-    "quoted",
-    "approved",
-    "scheduled",
+    "confirmed",
     "in_progress",
-    "delivered",
+    "completed",
     "cancelled",
-    "refunded",
+    "on_hold",
 ]
 ServiceItemStatusLiteral = Literal[
     "pending",
@@ -87,6 +85,14 @@ class ServiceOut(ServiceBase):
     tenant_id: str
     created_at: datetime
     updated_at: datetime
+    metrics_orders_count: int = Field(
+        0,
+        description="Distinct non-cancelled orders that include this catalog service (non-cancelled lines).",
+    )
+    metrics_revenue_completed: Decimal = Field(
+        Decimal("0"),
+        description="Sum of line amounts on completed orders (excludes cancelled lines). Mixed currencies are summed numerically.",
+    )
 
 
 class ServiceAttachmentOut(BaseModel):
@@ -167,6 +173,8 @@ class ServiceOrderBase(BaseModel):
     vacancy_id: Optional[str] = None
     company_id: Optional[str] = None
     currency: str = Field("PLN", min_length=3, max_length=3)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
     notes: Optional[str] = None
     assigned_to: Optional[str] = None
     audit: Optional[Dict[str, Any]] = None
@@ -178,9 +186,12 @@ class ServiceOrderCreate(ServiceOrderBase):
 
 
 class ServiceOrderUpdate(BaseModel):
-    status: Optional[ServiceOrderStatusLiteral] = None
+    # Accepts canonical statuses plus legacy aliases (quoted/approved/scheduled/delivered/refunded).
+    status: Optional[str] = None
     notes: Optional[str] = None
     assigned_to: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
     audit: Optional[Dict[str, Any]] = None
 
 
@@ -199,6 +210,10 @@ class ServiceOrderOut(ServiceOrderBase):
     created_at: datetime
     updated_at: datetime
     items: List[ServiceItemOut] = Field(default_factory=list)
+
+    @computed_field
+    def client_id(self) -> Optional[str]:
+        return self.company_id
 
     @model_validator(mode="before")
     @classmethod

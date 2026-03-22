@@ -486,7 +486,8 @@ async def list_unmapped_leads(
                     id=UUID(lead.id),
                     tenant_id=UUID(lead.tenant_id),
                     business_type=business_type,
-                    company_id=UUID(lead.company_id),
+                    lead_type=(getattr(lead, "lead_type", None) or "candidate"),  # type: ignore[arg-type]
+                    company_id=_to_uuid(lead.company_id),
                     company_name=None,
                     vacancy_id=_to_uuid(lead.vacancy_id),
                     vacancy_title=None,
@@ -538,6 +539,7 @@ async def reroute_lead(
 async def retry_leads(
     db: AsyncSession,
     tenant_id: str,
+    own_company_id: Optional[str],
     payload: MetaLeadRetryRequest,
 ) -> MetaLeadRetryResponse:
     lead_ids = [str(value) for value in payload.lead_ids] if payload.lead_ids else None
@@ -546,6 +548,7 @@ async def retry_leads(
     outcomes = await service.retry_meta_leads(
         db,
         tenant_id=tenant_id,
+        own_company_id=own_company_id,
         lead_ids=lead_ids,
         statuses=statuses,
         limit=payload.limit,

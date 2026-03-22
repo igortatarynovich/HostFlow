@@ -7,6 +7,7 @@ services:
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
-      - ./hostflow-frontend/dist:/srv
+      # Должно совпадать с root в Caddyfile (/var/www/hostflow-frontend)
+      - ./hostflow-frontend/dist:/var/www/hostflow-frontend:ro
     depends_on:
       - backend

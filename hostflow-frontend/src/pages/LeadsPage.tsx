@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { IconFilter, IconRefresh, IconTable } from '@tabler/icons-react'
 
 import {
@@ -11,11 +11,13 @@ import {
   bulkUpdateLeads,
   getLeadTimeline,
   getOnboardingStatus,
+  listVacancies,
   listLeads,
   listReminders,
   processLead,
   type OnboardingStatus,
 } from '../api/client'
+import { retryLeads, rerouteMetaLead } from '../api/metaLeads'
 import type { Lead, LeadListResponse, LeadStatus, LeadStage } from '../api/types'
 import type { ReminderRecord } from '../api/types/notification'
 import { recordPerfMeasurement } from '../api/analytics'
@@ -25,6 +27,7 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { BulkActivitiesModal } from '../modules/candidates/components'
 import { useToast } from '../components/Toast'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { getLeadErrorSuggestion } from '../utils/leadErrorSuggestion'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
 const STATUS_FILTERS: Array<'' | LeadStatus> = ['', 'new', 'processed', 'duplicated', 'needs_routing', 'failed']
@@ -55,6 +58,7 @@ export default function LeadsPage() {
   const { notify } = useToast()
   const { entitySingular, openEntityLabel } = useBusinessTerminology()
   const location = useLocation()
+  const navigate = useNavigate()
   const [status, setStatus] = useState<'' | LeadStatus>('')
   const [stage, setStage] = useState<'' | LeadStage>('')
   const [nextAction, setNextAction] = useState<'' | 'no_next_action' | 'overdue' | 'scheduled' | 'stuck'>('')
@@ -66,10 +70,17 @@ export default function LeadsPage() {
   const [creatingOrderLeadId, setCreatingOrderLeadId] = useState<string | null>(null)
   const [creatingInvoiceOrderId, setCreatingInvoiceOrderId] = useState<string | null>(null)
   const [processingLeadId, setProcessingLeadId] = useState<string | null>(null)
+  const [retryingLeadId, setRetryingLeadId] = useState<string | null>(null)
+  const [bulkRetryingMetaLeads, setBulkRetryingMetaLeads] = useState(false)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
+  const [vacanciesLoading, setVacanciesLoading] = useState(false)
+  const [vacanciesError, setVacanciesError] = useState<string | null>(null)
+  const [vacancyOptions, setVacancyOptions] = useState<Array<{ id: string; title: string }>>([])
+  const [rerouteVacancyId, setRerouteVacancyId] = useState<string>('')
+  const [reroutingLeadId, setReroutingLeadId] = useState<string | null>(null)
 
   // Lead Inbox side panel (Pipedrive-like: Composer / Focus / History)
-  const [panelTab, setPanelTab] = useState<'composer' | 'focus' | 'history'>('composer')
+  const [panelTab, setPanelTab] = useState<'composer' | 'fix' | 'focus' | 'history'>('composer')
   const [remindersLoading, setRemindersLoading] = useState(false)
   const [remindersError, setRemindersError] = useState<string | null>(null)
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
@@ -86,6 +97,16 @@ export default function LeadsPage() {
   const [checked, setChecked] = useState<Record<string, boolean>>({})
   const selectedCount = useMemo(() => Object.values(checked).filter(Boolean).length, [checked])
   const allSelectedLeadIds = useMemo(() => data.items.filter((l) => checked[l.id]).map((l) => l.id), [checked, data.items])
+  const selectedMetaProblemLeadIds = useMemo(() => {
+    return data.items
+      .filter((l) => checked[l.id])
+      .filter((lead) => {
+        const metaSource = String(lead.source || '').toLowerCase() === 'meta'
+        const metaErrorCode = (lead.error ?? '').trim()
+        return metaSource && metaErrorCode.length > 0 && (lead.status === 'failed' || lead.status === 'needs_routing')
+      })
+      .map((l) => l.id)
+  }, [checked, data.items])
   const toggleChecked = useCallback((id: string) => setChecked((s) => ({ ...s, [id]: !s[id] })), [])
 
   const [bulkActivitiesOpen, setBulkActivitiesOpen] = useState(false)
@@ -143,6 +164,101 @@ export default function LeadsPage() {
     }
   }, [allSelectedLeadIds, bulkActivityDueAt, bulkActivityOffsetMinutes, bulkActivityTitle, bulkActivityType, notify, t])
 
+  const limit = 20
+  const offset = (page - 1) * limit
+
+  // Drill-down support: /app/leads?status=needs_routing&stage=qualified
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search || '')
+    const nextStatus = (sp.get('status') || '').trim()
+    const nextStage = (sp.get('stage') || '').trim()
+    const nextNextAction = (sp.get('next_action') || '').trim()
+    if (nextStatus && (STATUS_FILTERS as string[]).includes(nextStatus) && nextStatus !== status) {
+      setStatus(nextStatus as any)
+      setPage(1)
+    }
+    if (nextStage && (STAGE_FILTERS as string[]).includes(nextStage) && nextStage !== stage) {
+      setStage(nextStage as any)
+      setPage(1)
+    }
+    if (nextNextAction && (NEXT_ACTION_FILTERS as string[]).includes(nextNextAction) && nextNextAction !== nextAction) {
+      setNextAction(nextNextAction as any)
+      setPage(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search])
+
+  const drilldownInfo = useMemo(() => {
+    const sp = new URLSearchParams(location.search || '')
+    const nextStatus = (sp.get('status') || '').trim()
+    const nextStage = (sp.get('stage') || '').trim()
+    const nextNextAction = (sp.get('next_action') || '').trim()
+    return {
+      status: nextStatus,
+      stage: nextStage,
+      nextAction: nextNextAction,
+      hasFilters: Boolean(nextStatus || nextStage || nextNextAction),
+    }
+  }, [location.search])
+
+  const loadLeads = useCallback(
+    async (nextOffset: number = offset) => {
+      setLoading(true)
+      setError(null)
+      const perfT0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
+      let perfOk = true
+      try {
+        const payload = await listLeads({
+          status: status || undefined,
+          stage: stage || undefined,
+          nextAction: nextAction || undefined,
+          limit,
+          offset: nextOffset,
+        })
+        const items = Array.isArray((payload as any)?.items) ? ((payload as any).items as Lead[]) : []
+        const problemFirstItems = [...items].sort((a, b) => {
+          const aMetaSource = String(a.source || '').toLowerCase() === 'meta'
+          const bMetaSource = String(b.source || '').toLowerCase() === 'meta'
+          const aErrorCode = (a.error ?? '').trim()
+          const bErrorCode = (b.error ?? '').trim()
+          const aIsProblem = aMetaSource && aErrorCode.length > 0 && (a.status === 'failed' || a.status === 'needs_routing')
+          const bIsProblem = bMetaSource && bErrorCode.length > 0 && (b.status === 'failed' || b.status === 'needs_routing')
+          if (aIsProblem !== bIsProblem) return aIsProblem ? -1 : 1
+          const ta = a.created_at ? new Date(a.created_at).getTime() : 0
+          const tb = b.created_at ? new Date(b.created_at).getTime() : 0
+          return tb - ta
+        })
+        setData({ ...(payload as LeadListResponse), items: problemFirstItems })
+      } catch (err: any) {
+        perfOk = false
+        setError(getFriendlyErrorInfo(err, t('app.leads.messages.load_failed')))
+      } finally {
+        const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - perfT0
+        void recordPerfMeasurement({
+          metricKey: 'leads.list.load',
+          durationMs,
+          route: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : undefined,
+          meta: { ok: perfOk, status: status || null, stage: stage || null, next_action: nextAction || null, limit, offset: nextOffset },
+        }).catch(() => {})
+        setLoading(false)
+      }
+    },
+    [limit, nextAction, offset, stage, status, t],
+  )
+
+  const resetDrilldown = useCallback(() => {
+    setStatus('')
+    setStage('')
+    setNextAction('')
+    setPage(1)
+    setSelectedLeadId(null)
+    navigate('/app/leads', { replace: true })
+    // Let state updates apply before re-loading the first page.
+    setTimeout(() => {
+      void loadLeads(0)
+    }, 0)
+  }, [loadLeads, navigate])
+
   const doBulkUpdateLeads = useCallback(async () => {
     const ids = allSelectedLeadIds
     if (ids.length === 0) return
@@ -175,61 +291,42 @@ export default function LeadsPage() {
     }
   }, [allSelectedLeadIds, bulkStage, bulkStatus, loadLeads, notify, offset, t])
 
-  const limit = 20
-  const offset = (page - 1) * limit
+  const doBulkRetryMetaLeads = useCallback(async () => {
+    const ids = selectedMetaProblemLeadIds
+    if (!ids.length) return
 
-  // Drill-down support: /app/leads?status=needs_routing&stage=qualified
-  useEffect(() => {
-    const sp = new URLSearchParams(location.search || '')
-    const nextStatus = (sp.get('status') || '').trim()
-    const nextStage = (sp.get('stage') || '').trim()
-    const nextNextAction = (sp.get('next_action') || '').trim()
-    if (nextStatus && (STATUS_FILTERS as string[]).includes(nextStatus) && nextStatus !== status) {
-      setStatus(nextStatus as any)
-      setPage(1)
-    }
-    if (nextStage && (STAGE_FILTERS as string[]).includes(nextStage) && nextStage !== stage) {
-      setStage(nextStage as any)
-      setPage(1)
-    }
-    if (nextNextAction && (NEXT_ACTION_FILTERS as string[]).includes(nextNextAction) && nextNextAction !== nextAction) {
-      setNextAction(nextNextAction as any)
-      setPage(1)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search])
+    setBulkRetryingMetaLeads(true)
+    try {
+      const result = await retryLeads({ lead_ids: ids, refresh_graph: true })
 
-  const loadLeads = useCallback(
-    async (nextOffset: number = offset) => {
-      setLoading(true)
-      setError(null)
-      const perfT0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
-      let perfOk = true
-      try {
-        const payload = await listLeads({
-          status: status || undefined,
-          stage: stage || undefined,
-          nextAction: nextAction || undefined,
-          limit,
-          offset: nextOffset,
+      if (result.processed > 0) {
+        notify({
+          title: t('app.leads.messages.processed', { defaultValue: 'Lead processed' }),
+          description: `${result.processed} / ${ids.length}`,
+          variant: 'success',
         })
-        setData(payload as LeadListResponse)
-      } catch (err: any) {
-        perfOk = false
-        setError(getFriendlyErrorInfo(err, t('app.leads.messages.load_failed')))
-      } finally {
-        const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - perfT0
-        void recordPerfMeasurement({
-          metricKey: 'leads.list.load',
-          durationMs,
-          route: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : undefined,
-          meta: { ok: perfOk, status: status || null, stage: stage || null, next_action: nextAction || null, limit, offset: nextOffset },
-        }).catch(() => {})
-        setLoading(false)
       }
-    },
-    [limit, nextAction, offset, stage, status, t],
-  )
+      if (result.failed > 0) {
+        notify({
+          title: t('app.leads.messages.process_failed', { defaultValue: 'Failed to process lead' }),
+          description: `${result.failed} failed, ${result.skipped} skipped`,
+          variant: 'error',
+        })
+      }
+
+      await loadLeads(offset)
+      setChecked({})
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail ?? err?.message ?? 'Retry failed'
+      notify({
+        title: t('app.admin.meta_leads.errors.retry', { defaultValue: 'Retry failed' }),
+        description: String(detail),
+        variant: 'error',
+      })
+    } finally {
+      setBulkRetryingMetaLeads(false)
+    }
+  }, [loadLeads, notify, offset, retryLeads, selectedMetaProblemLeadIds, t])
 
   useEffect(() => {
     void loadLeads(offset)
@@ -300,6 +397,62 @@ export default function LeadsPage() {
   }, [nextAction, offset, stage, status])
 
   const selectedLead = useMemo(() => (selectedLeadId ? items.find((item) => item.id === selectedLeadId) ?? null : null), [items, selectedLeadId])
+  const selectedIsMetaProblemLead = useMemo(() => {
+    if (!selectedLead) return false
+    const metaSource = String(selectedLead.source || '').toLowerCase() === 'meta'
+    const metaErrorCode = (selectedLead.error ?? '').trim()
+    return metaSource && metaErrorCode.length > 0 && (selectedLead.status === 'failed' || selectedLead.status === 'needs_routing')
+  }, [selectedLead])
+
+  const selectedLeadSuggestion = useMemo(() => {
+    if (!selectedIsMetaProblemLead) return null
+    return getLeadErrorSuggestion(selectedLead?.error, t)
+  }, [selectedIsMetaProblemLead, selectedLead, t])
+
+  const loadRerouteVacancies = useCallback(async () => {
+    setVacanciesLoading(true)
+    setVacanciesError(null)
+    try {
+      const res = await listVacancies({ limit: 200, offset: 0 })
+      const items = Array.isArray((res as any)?.items)
+        ? (res as any).items
+        : Array.isArray(res as any)
+          ? (res as any)
+          : []
+      const normalized = items
+        .map((v: any) => ({
+          id: String(v?.id ?? ''),
+          title: String(v?.title ?? v?.vacancy_title ?? ''),
+        }))
+        .filter((v: any) => v.id && v.title)
+      setVacancyOptions(normalized)
+    } catch (err: any) {
+      setVacanciesError(String(err?.response?.data?.detail ?? err?.message ?? 'Failed to load vacancies'))
+      notify({
+        title: t('app.vacancies.load_failed', { defaultValue: 'Failed to load vacancies' }),
+        description: String(err?.response?.data?.detail ?? err?.message ?? 'Failed to load vacancies'),
+        variant: 'error',
+      })
+    } finally {
+      setVacanciesLoading(false)
+    }
+  }, [listVacancies, notify, t])
+
+  useEffect(() => {
+    const needsVacancies = panelTab === 'fix' && selectedIsMetaProblemLead && selectedLeadSuggestion?.tab === 'mapping'
+    if (!needsVacancies) return
+    if (vacancyOptions.length > 0) return
+    if (vacanciesLoading) return
+    void loadRerouteVacancies()
+  }, [panelTab, selectedIsMetaProblemLead, selectedLeadSuggestion?.tab, vacancyOptions.length, vacanciesLoading, loadRerouteVacancies])
+
+  useEffect(() => {
+    const shouldReset = panelTab === 'fix' && selectedIsMetaProblemLead && selectedLeadSuggestion?.tab === 'mapping'
+    if (!shouldReset) return
+    const pre = selectedLead?.vacancy_id ? String(selectedLead.vacancy_id) : ''
+    setRerouteVacancyId(pre)
+  }, [panelTab, selectedIsMetaProblemLead, selectedLeadSuggestion?.tab, selectedLeadId, selectedLead])
+
   const statusOptions = useMemo<Array<{ value: '' | LeadStatus; label: string }>>(
     () =>
       STATUS_FILTERS.map((value) => ({
@@ -362,7 +515,9 @@ export default function LeadsPage() {
     if (panelTab === 'history' && selectedLeadId) {
       void loadLeadTimeline(selectedLeadId)
     }
-  }, [loadLeadTimeline, panelTab, selectedLeadId])
+  // Intentionally omit `loadLeadTimeline` to avoid TDZ at render-time.
+  // The callback is executed after component initialization.
+  }, [panelTab, selectedLeadId])
   const formatDateValue = (value?: string) => {
     if (!value) return '—'
     try {
@@ -513,13 +668,41 @@ export default function LeadsPage() {
     async (leadId: string) => {
       setProcessingLeadId(leadId)
       try {
-        await processLead(leadId)
+        const result = await processLead(leadId)
         await loadLeads(offset)
-        notify({
-          title: t('app.leads.messages.processed', { defaultValue: 'Lead processed' }),
-          description: t('app.leads.messages.processed_desc', { defaultValue: 'Lead was processed and routed.' }),
-          variant: 'success',
-        })
+        if (result?.status === 'needs_routing') {
+          notify({
+            title: t('app.leads.messages.needs_routing', { defaultValue: 'Lead needs routing' }),
+            description:
+              typeof result?.error === 'string' && result.error.trim()
+                ? result.error
+                : t('app.leads.messages.needs_routing_desc', {
+                    defaultValue: 'Please choose a vacancy (or re-route the lead) to continue.',
+                  }),
+            variant: 'success',
+          })
+        } else if (result?.status === 'processed' || result?.status === 'duplicated') {
+          notify({
+            title: t('app.leads.messages.processed', { defaultValue: 'Lead processed' }),
+            description: t('app.leads.messages.processed_desc', { defaultValue: 'Lead was processed and routed.' }),
+            variant: 'success',
+          })
+        } else if (result?.status === 'failed') {
+          notify({
+            title: t('app.leads.messages.process_failed', { defaultValue: 'Failed to process lead' }),
+            description:
+              typeof result?.error === 'string' && result.error.trim()
+                ? result.error
+                : t('app.leads.messages.process_failed', { defaultValue: 'Try again.' }),
+            variant: 'error',
+          })
+        } else {
+          notify({
+            title: t('app.leads.messages.processed', { defaultValue: 'Lead processed' }),
+            description: t('app.leads.messages.processed_desc', { defaultValue: 'Lead was processed.' }),
+            variant: 'success',
+          })
+        }
       } catch (err: any) {
         const detail =
           err?.response?.data?.detail ??
@@ -537,6 +720,80 @@ export default function LeadsPage() {
       }
     },
     [loadLeads, notify, offset, t],
+  )
+
+  const handleRetryMetaLead = useCallback(
+    async (leadId: string) => {
+      setRetryingLeadId(leadId)
+      try {
+        const result = await retryLeads({ lead_ids: [String(leadId)], refresh_graph: true })
+        const item = result.items?.[0]
+        if (item?.processed) {
+          notify({
+            title: t('app.leads.messages.processed', { defaultValue: 'Lead processed' }),
+            variant: 'success',
+          })
+        } else if (item?.message) {
+          notify({
+            title: t('app.leads.messages.process_failed', { defaultValue: 'Failed to process lead' }),
+            description: item.message,
+            variant: 'error',
+          })
+        } else {
+          notify({
+            title: t('app.leads.messages.process_failed', { defaultValue: 'Failed to process lead' }),
+            variant: 'error',
+          })
+        }
+        await loadLeads(offset)
+      } catch (err: any) {
+        const detail = err?.response?.data?.detail ?? err?.message ?? 'Retry failed'
+        notify({
+          title: t('app.admin.meta_leads.errors.retry', { defaultValue: 'Retry failed' }),
+          description: String(detail),
+          variant: 'error',
+        })
+      } finally {
+        setRetryingLeadId(null)
+      }
+    },
+    [loadLeads, notify, offset, t],
+  )
+
+  const handleRerouteSelectedLead = useCallback(async () => {
+    if (!selectedLead) return
+    if (!rerouteVacancyId.trim()) return
+    setReroutingLeadId(selectedLead.id)
+    try {
+      await rerouteMetaLead(selectedLead.id, {
+        vacancy_id: rerouteVacancyId.trim() as any,
+        company_id: (selectedLead.company_id as any) || undefined,
+        force_process: true,
+      })
+      notify({
+        title: t('app.admin.meta_leads.notices.lead_rerouted', { defaultValue: 'Lead sent for processing' }),
+        variant: 'success',
+      })
+      await loadLeads(offset)
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail ?? err?.message ?? 'Reroute failed'
+      notify({
+        title: t('app.admin.meta_leads.errors.reroute', { defaultValue: 'Could not reroute lead' }),
+        description: String(detail),
+        variant: 'error',
+      })
+    } finally {
+      setReroutingLeadId(null)
+    }
+  }, [selectedLead, rerouteVacancyId, rerouteMetaLead, notify, t, loadLeads, offset])
+
+  const handleRerouteMetaLeadFromError = useCallback(
+    (leadId: string, _leadCompanyId?: string) => {
+      // No `window.prompt`: we open Fix tab where user can pick vacancy from dropdown.
+      setSelectedLeadId(leadId)
+      setPanelTab('fix')
+    },
+    [],
   )
 
   const handleCreateInvoice = useCallback(
@@ -656,6 +913,32 @@ export default function LeadsPage() {
         </div>
       </header>
 
+      {drilldownInfo.hasFilters && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-xs text-slate-700">
+              <span className="font-medium">{t('app.leads.inbox.banner.filtered', { defaultValue: 'Filtered leads:' })}</span>{' '}
+              {[
+                drilldownInfo.status ? statusLabels[drilldownInfo.status as any] ?? drilldownInfo.status : null,
+                drilldownInfo.stage ? stageLabels[drilldownInfo.stage as any] ?? drilldownInfo.stage : null,
+                drilldownInfo.nextAction
+                  ? nextActionOptions.find((o) => o.value === (drilldownInfo.nextAction as any))?.label ?? drilldownInfo.nextAction
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </div>
+            <button
+              type="button"
+              className="btn-secondary h-8 rounded-lg px-2 text-xs"
+              onClick={() => resetDrilldown()}
+            >
+              {t('app.leads.inbox.banner.reset', { defaultValue: 'All leads' })}
+            </button>
+          </div>
+        </div>
+      )}
+
       <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           {selectedCount > 0 && (
@@ -697,6 +980,21 @@ export default function LeadsPage() {
               >
                 {bulkUpdating ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.leads.bulk.apply', { defaultValue: 'Apply' })}
               </button>
+              {selectedMetaProblemLeadIds.length > 0 && (
+                <button
+                  type="button"
+                  className="btn-secondary rounded-lg px-2.5 py-1 text-xs"
+                  onClick={() => void doBulkRetryMetaLeads()}
+                  disabled={bulkRetryingMetaLeads}
+                >
+                  {bulkRetryingMetaLeads
+                    ? t('common.loading', { defaultValue: 'Loading...' })
+                    : t('app.leads.bulk.retry_meta', {
+                        defaultValue: 'Retry meta errors ({{count}})',
+                        values: { count: selectedMetaProblemLeadIds.length },
+                      })}
+                </button>
+              )}
               <button
                 type="button"
                 className="btn-secondary rounded-lg px-2.5 py-1 text-xs"
@@ -795,6 +1093,14 @@ export default function LeadsPage() {
                     const contactPhone = normalized.phone
                     const contact = [contactName, contactEmail, contactPhone].filter(Boolean).join(' · ')
                     const isSelected = selectedLeadId === lead.id
+                    const metaSource = String(lead.source || '').toLowerCase() === 'meta'
+                    const metaErrorCode = (lead.error ?? '').trim()
+                    const isMetaProblemLead =
+                      metaSource && metaErrorCode.length > 0 && (lead.status === 'failed' || lead.status === 'needs_routing')
+                    const leadSuggestion = isMetaProblemLead ? getLeadErrorSuggestion(lead.error, t) : null
+                    const openCredentialsHref = '/app/settings/integrations?tab=credentials'
+                    const openMappingHref = '/app/settings/integrations?tab=mapping'
+                    const openSettingsHref = '/app/settings/integrations?tab=settings'
                     const fitStatus = (lead as any).fit_status as string | undefined
                     const fitReasons = Array.isArray((lead as any).fit_reasons) ? ((lead as any).fit_reasons as string[]) : []
                     const fitLabel =
@@ -822,13 +1128,13 @@ export default function LeadsPage() {
                         tabIndex={0}
                         onClick={() => {
                           setSelectedLeadId(lead.id)
-                          setPanelTab('composer')
+                          setPanelTab(isMetaProblemLead ? 'fix' : 'composer')
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault()
                             setSelectedLeadId(lead.id)
-                            setPanelTab('composer')
+                            setPanelTab(isMetaProblemLead ? 'fix' : 'composer')
                           }
                         }}
                       >
@@ -893,7 +1199,68 @@ export default function LeadsPage() {
                           </span>
                         </td>
                         <td className="text-brand-700">
-                          {isServicesTenant ? (
+                          {isMetaProblemLead ? (
+                            <div className="flex flex-col items-start gap-1">
+                              <div className="text-xs text-red-500">{metaErrorCode}</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  className="btn-secondary rounded-lg px-2 py-1 text-[11px]"
+                                  disabled={retryingLeadId === lead.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    void handleRetryMetaLead(lead.id)
+                                  }}
+                                >
+                                  {retryingLeadId === lead.id
+                                    ? t('common.loading', { defaultValue: 'Loading...' })
+                                    : t('app.admin.meta_leads.logs.actions.retry', { defaultValue: 'Retry' })}
+                                </button>
+
+                                {leadSuggestion?.tab === 'mapping' ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="btn-secondary rounded-lg px-2 py-1 text-[11px]"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        void handleRerouteMetaLeadFromError(lead.id, lead.company_id)
+                                      }}
+                                    >
+                                      {t('app.admin.meta_leads.logs.actions.reroute', { defaultValue: 'Reroute' })}
+                                    </button>
+                                    <Link
+                                      to={openMappingHref}
+                                      className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {t('app.admin.meta_leads.tabs.mapping', { defaultValue: 'Mapping' })}
+                                    </Link>
+                                  </>
+                                ) : null}
+
+                                {leadSuggestion?.tab === 'credentials' ? (
+                                  <Link
+                                    to={openCredentialsHref}
+                                    className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {t('app.admin.meta_leads.tabs.credentials', { defaultValue: 'Credentials' })}
+                                  </Link>
+                                ) : null}
+
+                                {leadSuggestion?.tab === 'settings' ? (
+                                  <Link
+                                    to={openSettingsHref}
+                                    className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {t('app.admin.meta_leads.tabs.settings', { defaultValue: 'Settings' })}
+                                  </Link>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : isServicesTenant ? (
                             <div className="flex flex-col items-start gap-1">
                               {lead.outcome_entity_id ? (
                                 <Link to={`/app/clients/${lead.outcome_entity_id}`} onClick={(e) => e.stopPropagation()}>
@@ -1049,6 +1416,15 @@ export default function LeadsPage() {
                 </div>
 
                 <div className="mt-2 flex gap-2">
+                  {selectedIsMetaProblemLead && (
+                    <button
+                      type="button"
+                      className={panelTab === 'fix' ? 'btn-primary h-8 rounded-lg px-2 text-xs' : 'btn-secondary h-8 rounded-lg px-2 text-xs'}
+                      onClick={() => setPanelTab('fix')}
+                    >
+                      {t('app.leads.inbox.tabs.fix', { defaultValue: 'Fix' })}
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={panelTab === 'composer' ? 'btn-primary h-8 rounded-lg px-2 text-xs' : 'btn-secondary h-8 rounded-lg px-2 text-xs'}
@@ -1074,6 +1450,123 @@ export default function LeadsPage() {
               </div>
 
               <div className="flex-1 overflow-auto p-3">
+                {panelTab === 'fix' && selectedLead && selectedIsMetaProblemLead && (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-rose-200 bg-rose-50 p-3">
+                      <div className="text-xs font-semibold text-rose-700">
+                        {t('app.leads.inbox.fix.title', { defaultValue: 'Fix / Troubleshoot' })}
+                      </div>
+                      <div className="mt-1 text-xs text-red-500">{(selectedLead.error ?? '').trim() || '—'}</div>
+                      {selectedLeadSuggestion?.hint ? (
+                        <div className="mt-2 text-sm text-slate-800">{selectedLeadSuggestion.hint}</div>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        className="btn-primary rounded-lg px-2 py-1 text-[11px] disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={retryingLeadId === selectedLead.id}
+                        onClick={() => void handleRetryMetaLead(selectedLead.id)}
+                      >
+                        {retryingLeadId === selectedLead.id
+                          ? t('common.loading', { defaultValue: 'Loading...' })
+                          : t('app.admin.meta_leads.logs.actions.retry', { defaultValue: 'Retry' })}
+                      </button>
+
+                      <Link
+                        to="/app/automation-rules"
+                        className="text-[11px] text-slate-500 hover:text-brand-700 hover:underline"
+                      >
+                        {t('app.admin.meta_leads.tabs.automation_rules', { defaultValue: 'Automation Rules' })}
+                      </Link>
+                    </div>
+
+                    {selectedLeadSuggestion?.tab === 'mapping' ? (
+                      <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+                        <div className="text-xs font-semibold text-slate-700">
+                          {t('app.admin.meta_leads.logs.actions.reroute', { defaultValue: 'Reroute' })}
+                        </div>
+
+                        {vacanciesError ? (
+                          <div className="text-xs text-rose-600">{vacanciesError}</div>
+                        ) : null}
+
+                        <label className="text-xs font-medium text-slate-600">
+                          <div className="mb-1">{t('app.admin.meta_leads.logs.table.vacancy', { defaultValue: 'Vacancy' })}</div>
+                          <select
+                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                            value={rerouteVacancyId}
+                            onChange={(e) => setRerouteVacancyId(e.target.value)}
+                            disabled={vacanciesLoading}
+                          >
+                            <option value="">
+                              {vacanciesLoading
+                                ? t('common.loading', { defaultValue: 'Loading...' })
+                                : t('app.admin.meta_leads.prompts.reroute_vacancy', { defaultValue: 'Select vacancy_id' })}
+                            </option>
+                            {vacancyOptions.map((v) => (
+                              <option key={v.id} value={v.id}>
+                                {v.title}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        {vacancyOptions.length === 0 && !vacanciesLoading ? (
+                          <Link
+                            to="/app/vacancies"
+                            className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
+                          >
+                            {t('app.vacancies.actions.create', { defaultValue: 'Create vacancy' })}
+                          </Link>
+                        ) : null}
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            className="btn-primary rounded-lg px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled={!rerouteVacancyId || reroutingLeadId === selectedLead.id || vacanciesLoading}
+                            onClick={() => void handleRerouteSelectedLead()}
+                          >
+                            {reroutingLeadId === selectedLead.id
+                              ? t('common.loading', { defaultValue: 'Routing...' })
+                              : t('app.admin.meta_leads.logs.actions.reroute', { defaultValue: 'Reroute' })}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {selectedLeadSuggestion ? (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {selectedLeadSuggestion.tab === 'credentials' ? (
+                          <Link
+                            to="/app/settings/integrations?tab=credentials"
+                            className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
+                          >
+                            {selectedLeadSuggestion.actionLabel}
+                          </Link>
+                        ) : null}
+                        {selectedLeadSuggestion.tab === 'mapping' ? (
+                          <Link
+                            to="/app/settings/integrations?tab=mapping"
+                            className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
+                          >
+                            {selectedLeadSuggestion.actionLabel}
+                          </Link>
+                        ) : null}
+                        {selectedLeadSuggestion.tab === 'settings' ? (
+                          <Link
+                            to="/app/settings/integrations?tab=settings"
+                            className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
+                          >
+                            {selectedLeadSuggestion.actionLabel}
+                          </Link>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
                 {panelTab === 'composer' && (
                   <div className="space-y-3">
                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">

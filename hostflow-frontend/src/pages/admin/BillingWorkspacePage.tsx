@@ -169,15 +169,15 @@ function getHistoryToneClasses(status: string) {
   return 'border-slate-200 bg-slate-50 text-slate-700'
 }
 
-function openCheckoutTab() {
+function openCheckoutTab(title: string, bodyText: string) {
   if (typeof window === 'undefined') return null
   const popup = window.open('about:blank', '_blank')
   if (!popup) return null
   try {
     popup.opener = null
-    popup.document.title = 'HostFlow Billing'
+    popup.document.title = title
     popup.document.body.innerHTML =
-      '<div style="font-family: sans-serif; padding: 24px; color: #0f172a;">Opening Stripe checkout...</div>'
+      `<div style="font-family: sans-serif; padding: 24px; color: #0f172a;">${bodyText}</div>`
   } catch {
     // Cross-window writes can fail in some browsers; navigation is still enough.
   }
@@ -349,7 +349,10 @@ export default function BillingWorkspacePage() {
   )
 
   const startCheckout = async (plan: PlanCode) => {
-    const checkoutWindow = openCheckoutTab()
+    const checkoutWindow = openCheckoutTab(
+      t('app.settings.billing.checkout.popup_title', { defaultValue: 'HostFlow Billing' }),
+      t('app.settings.billing.checkout.popup_opening', { defaultValue: 'Opening Stripe checkout...' }),
+    )
     setIsCheckoutLoading(true)
     setError(null)
     setActionNotice(null)
@@ -445,7 +448,10 @@ export default function BillingWorkspacePage() {
       await startCheckout(plan)
       return
     }
-    const checkoutWindow = openCheckoutTab()
+    const checkoutWindow = openCheckoutTab(
+      t('app.settings.billing.checkout.popup_title', { defaultValue: 'HostFlow Billing' }),
+      t('app.settings.billing.checkout.popup_opening', { defaultValue: 'Opening Stripe checkout...' }),
+    )
     setIsMutationLoading(true)
     setError(null)
     setActionNotice(null)

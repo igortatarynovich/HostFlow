@@ -8,15 +8,26 @@ import {
   IconBookmark,
   IconBookmarkFilled,
   IconClipboardList,
+  IconListCheck,
 } from '@tabler/icons-react'
-import api, { completeActivity, completeReminder, createActivity, createBulkActivities, createReminder, listReminders, withTenant, getCandidateTimeline } from '../api/client'
+import api, {
+  completeActivity,
+  completeReminder,
+  createActivity,
+  createBulkActivities,
+  createReminder,
+  listReminders,
+  withTenant,
+  getCandidateTimeline,
+  snoozeActivity,
+} from '../api/client'
 import { recordPerfMeasurement } from '../api/analytics'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
-import { patchUserMe } from '../api/users'
 import type { Candidate, UserSavedView, Vacancy } from '../api/types'
 import type { ReminderRecord } from '../api/types/notification'
 import StageTag from '../components/StageTag'
 import { Modal } from '../components/Modal'
+import { ActivitiesPanel } from '../components/activities/ActivitiesPanel'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useMetaStages } from '../store/useMeta'
@@ -31,10 +42,6 @@ import {
 } from '../utils/stageLabels'
 import { getRegionDisplayName } from '../utils/catalogLocale'
 import Pipeline from './Pipeline'
-import CandidateNextActionPanel from '../components/candidate/CandidateNextActionPanel'
-import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
-import CandidateHandoffSection from '../components/candidate/CandidateHandoffSection'
-import { TableVirtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import {
   DOC_READINESS_META,
   DOC_READINESS_ORDER,
@@ -47,15 +54,12 @@ import {
   CANDIDATE_LIST_STORAGE_KEY,
   CANDIDATE_CACHE_TTL_MS,
   SCROLL_STATE_KEY,
-  SCROLL_STATE_TTL_MS,
   APP_SCROLL_SELECTOR,
-  RESTORE_SCROLL_MAX_ATTEMPTS,
   EMPTY_OPTION_VALUE,
   SORTABLE_KEYS,
   DEFAULT_VISIBLE_COLS,
   DEFAULT_COLUMN_ORDER,
 } from '../modules/candidates/constants'
-import { toCSV } from '../modules/candidates/candidateUtils'
 import type {
   DateRangeFilter,
   ColumnTextFilters,
@@ -68,6 +72,7 @@ import type {
   ListResp,
   CandidateFilterSnapshot,
   CandidateListCacheEntry,
+  CandidatesListInsights,
   SortKey,
 } from '../modules/candidates/types'
 import { makeEmptyTextFilters } from '../modules/candidates/types'
@@ -107,13 +112,39 @@ import {
   BulkDeleteModal,
   ColumnFilterMenu,
   FilterBadges,
+  CandidatesSummaryHero,
+  CandidatesWorkPanel,
+  CandidatesSelectedPanel,
+  CandidatesFiltersActionsPanel,
+  CandidatesSavedViewsPanel,
+  CandidatesLeftRailPanel,
+  CandidatesTableCheckboxCell,
+  CandidatesTableRowQuickActions,
 } from '../modules/candidates/components'
-import { getAvailableClients, createBulkHandoff } from '../api/handoffs'
+import { useCandidatesWorkPanel } from '../modules/candidates/hooks/useCandidatesWorkPanel'
+import { useCandidatesInsightsHero } from '../modules/candidates/hooks/useCandidatesInsightsHero'
+import { useCandidatesSavedViews } from '../modules/candidates/hooks/useCandidatesSavedViews'
+import { useCandidatesQuickViews } from '../modules/candidates/hooks/useCandidatesQuickViews'
+import { useCandidatesTableData } from '../modules/candidates/hooks/useCandidatesTableData'
+import { useCandidatesTableKeyboardNavigation } from '../modules/candidates/hooks/useCandidatesTableKeyboardNavigation'
+import { useCandidatesTableColumnsDnDResize } from '../modules/candidates/hooks/useCandidatesTableColumnsDnDResize'
+import { useCandidatesScrollRestoration } from '../modules/candidates/hooks/useCandidatesScrollRestoration'
+import { getAvailableClients, createBulkHandoff, type AvailableClientOut } from '../api/handoffs'
 
 // Cache for candidate lists
 const candidateListCache = new Map<string, CandidateListCacheEntry>()
 
-// All utility functions, types, and constants are now imported from modules/candidates
+function normalizeListInsights(raw: unknown): CandidatesListInsights | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  return {
+    total: Number(o.total) || 0,
+    new_count: Number(o.new_count) || 0,
+    docs_ready: Number(o.docs_ready) || 0,
+    docs_attention: Number(o.docs_attention) || 0,
+    docs_ordered: Number(o.docs_ordered) || 0,
+  }
+}
 
 // универсальный фетчер (tenantId = X-Tenant-Id для запроса, чтобы список совпадал с аналитикой для клиента)
 async function getWithFallbacks<T = any>(
@@ -124,26 +155,15 @@ async function getWithFallbacks<T = any>(
   const client = tenantId ? withTenant(tenantId) : api
   const limit = params.limit ?? 50
   const offset = params.offset ?? 0
-  const vacancy = params.vacancy_id ?? params.vacancy ?? undefined
-  const scopeTid = params.scope_tenant_id ?? undefined
-  const common = {
-    q: params.q,
-    stage: params.stage,
-    order_by: params.order_by,
-    desc: params.desc,
-    status_reason: params.status_reason,
-    tags: params.tags,
-    vacancy_id: vacancy,
-    vacancy: vacancy,
-    ...(scopeTid ? { scope_tenant_id: scopeTid } : {}),
-  }
+  // Пробрасываем все query-параметры (фильтры, include_insights, compact, …), а не урезанный common
+  const baseParams = { ...params }
 
   const attempts = [
-    { ...common, limit, offset },
-    { ...common, limit, skip: offset },
-    { ...common, page: Math.floor(offset / limit) + 1, per_page: limit },
-    { ...common, limit },
-    { ...common },
+    { ...baseParams, limit, offset },
+    { ...baseParams, limit, skip: offset },
+    { ...baseParams, page: Math.floor(offset / limit) + 1, per_page: limit },
+    { ...baseParams, limit },
+    { ...baseParams },
   ]
 
   let lastErr: any = null
@@ -178,40 +198,72 @@ export default function Candidates(){
   const [docsOrderedFilter, setDocsOrderedFilter] = useState<string[]>([])
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
 
-  const [items, setItems] = useState<UICandidate[]>([])
-  const [limit] = useState(100)
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [limit] = useState(200)
+  // items/total/loading/errorText/listInsights are managed by SSOT hook.
 
-  // R1.1: candidate quick preview side panel (in existing right sidebar)
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
-  const [previewRemindersLoading, setPreviewRemindersLoading] = useState(false)
-  const [previewRemindersError, setPreviewRemindersError] = useState<string | null>(null)
-  const [previewReminders, setPreviewReminders] = useState<ReminderRecord[]>([])
-  const [nextActionDetailsOpenTrigger] = useState(0)
-  const [previewReminderTitle, setPreviewReminderTitle] = useState('')
-  const [previewReminderDueAt, setPreviewReminderDueAt] = useState(() =>
-    new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16),
-  )
-  const [previewReminderBusy, setPreviewReminderBusy] = useState<string | null>(null)
-  const [previewReminderOffset, setPreviewReminderOffset] = useState<number>(15)
-  const [previewTimelineLoading, setPreviewTimelineLoading] = useState(false)
-  const [previewTimelineError, setPreviewTimelineError] = useState<string | null>(null)
-  const [previewTimelineExpanded, setPreviewTimelineExpanded] = useState(false)
+  const {
+    // Work panel selection + open/close state.
+    selectedCandidateId,
+    setSelectedCandidateId,
+    sidebarOpen,
+    setSidebarOpen,
+    workPanelOpen,
+
+    // Preview state + handlers.
+    nextActionDetailsOpenTrigger,
+    previewReminders,
+    previewRemindersLoading,
+    previewRemindersError,
+    previewReminderBusy,
+    previewReminderTitle,
+    previewReminderDueAt,
+    previewReminderOffset,
+    setPreviewReminderTitle,
+    setPreviewReminderDueAt,
+    setPreviewReminderOffset,
+    previewTimelineItems,
+    previewTimelineLoading,
+    previewTimelineError,
+    previewTimelineExpanded,
+    setPreviewTimelineExpanded,
+    loadPreviewTimeline,
+    docsBlockers,
+    docsBlockersLoading,
+    setDocsBlockers,
+    setDocsBlockersLoading,
+    handleCreatePreviewReminder,
+    handleDocsRequestCreate,
+    handleCompletePreviewReminder,
+    handlePreviewReminderSnooze,
+    previewCandidateExtra,
+  } = useCandidatesWorkPanel({ t })
+
+  // Keep the latest values for stable row click/context handlers.
+  const sidebarOpenRef = useRef<boolean>(sidebarOpen)
+  const selectedCandidateIdRef = useRef<string | null>(selectedCandidateId)
+  useEffect(() => {
+    sidebarOpenRef.current = sidebarOpen
+  }, [sidebarOpen])
+  useEffect(() => {
+    selectedCandidateIdRef.current = selectedCandidateId
+  }, [selectedCandidateId])
+
   const PREVIEW_TIMELINE_COLLAPSED_COUNT = 15
-  const [previewTimelineItems, setPreviewTimelineItems] = useState<
-    { at: string; kind: string; source: string; title?: string | null; description?: string | null }[]
-  >([])
-
-  const [docsBlockers, setDocsBlockers] = useState<{ missing: string[]; problematic: string[] }>({ missing: [], problematic: [] })
-  const [docsBlockersLoading, setDocsBlockersLoading] = useState(false)
-  const docsBlockersActive = docsBlockersLoading || docsBlockers.missing.length > 0 || docsBlockers.problematic.length > 0
 
   const [debugClientView, setDebugClientView] = useState<Record<string, unknown> | null>(null)
   const [debugClientViewLoading, setDebugClientViewLoading] = useState(false)
   const [debugClientViewError, setDebugClientViewError] = useState<string | null>(null)
   const showDebugPanel = searchParams.get('debug') === '1'
+  const [debugHit, setDebugHit] = useState<{
+    tag?: string
+    className?: string
+    pointerEvents?: string
+    insideTable?: boolean
+  } | null>(null)
+  const [debugClickHit, setDebugClickHit] = useState<typeof debugHit>(null)
+  const [debugMouseUpHit, setDebugMouseUpHit] = useState<typeof debugHit>(null)
+  const [debugClickHitBubble, setDebugClickHitBubble] = useState<typeof debugHit>(null)
+  const [debugMouseUpHitBubble, setDebugMouseUpHitBubble] = useState<typeof debugHit>(null)
 
   const [checked, setChecked] = useState<Record<string, boolean>>({})
   const [bulkOpen, setBulkOpen] = useState(false)
@@ -264,9 +316,11 @@ export default function Candidates(){
   const [bulkActivityType, setBulkActivityType] = useState('custom')
 
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [activitiesModalOpen, setActivitiesModalOpen] = useState(false)
+  const [activitiesModalRefresh, setActivitiesModalRefresh] = useState(0)
 
   const [bulkHandoffOpen, setBulkHandoffOpen] = useState(false)
-  const [handoffClients, setHandoffClients] = useState<Array<{ link_id: string; client_company_id: string; company_name: string }>>([])
+  const [handoffClients, setHandoffClients] = useState<AvailableClientOut[]>([])
   const [handoffClientsLoading, setHandoffClientsLoading] = useState(false)
   const [bulkHandoffClientId, setBulkHandoffClientId] = useState('')
 
@@ -322,12 +376,7 @@ export default function Candidates(){
   )
   const scrollKey = useMemo(() => `${SCROLL_STATE_KEY}:${tenantScopeKey}:${viewMode}`, [tenantScopeKey, viewMode])
 
-  const vacancySavedViews = useMemo(() => preferences?.saved_views?.vacancies ?? [], [preferences?.saved_views?.vacancies])
-  const [savedViews, setSavedViews] = useState<UserSavedView[]>(preferences?.saved_views?.candidates ?? [])
-  const [saveViewOpen, setSaveViewOpen] = useState(false)
-  const [saveViewName, setSaveViewName] = useState('')
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
-  const appliedDefaultIdRef = useRef<string | null>(null)
   const actionsMenuRef = useRef<HTMLDivElement | null>(null)
   
   // Контекстное меню для строк
@@ -350,10 +399,6 @@ export default function Candidates(){
   }, [managers, me])
 
   useEffect(() => {
-    setSavedViews(preferences?.saved_views?.candidates ?? [])
-  }, [preferences?.saved_views?.candidates])
-
-  useEffect(() => {
     if (!actionsMenuOpen) return
     const handleClick = (event: MouseEvent) => {
       if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
@@ -374,24 +419,6 @@ export default function Candidates(){
       setBulkHandoffClientId('')
     }
   }, [bulkHandoffOpen])
-
-  const syncCandidateViews = useCallback(async (next: UserSavedView[]) => {
-    setSavedViews(next)
-    try {
-      const result = await patchUserMe({
-        preferences: {
-          saved_views: {
-            candidates: next,
-            vacancies: vacancySavedViews,
-          },
-        },
-      })
-      updatePreferences(result.preferences)
-    } catch (err) {
-      console.warn('[Candidates] failed to persist saved views', err)
-      setSavedViews(preferences?.saved_views?.candidates ?? [])
-    }
-  }, [updatePreferences, vacancySavedViews, preferences?.saved_views?.candidates])
 
   const normalizeReasonList = useCallback((value: any): string[] => {
     if (value == null) return []
@@ -504,24 +531,23 @@ export default function Candidates(){
   const [filtersHydrated, setFiltersHydrated] = useState(false)
   const persistedFiltersRef = useRef(false)
 
-  useEffect(() => {
-    if (!filtersHydrated) return
-    if (persistedFiltersRef.current) return
-    const defaultView = savedViews.find((view) => view.is_default)
-    if (defaultView && appliedDefaultIdRef.current !== defaultView.id) {
-      applyViewFilters(defaultView.filters ?? {})
-      appliedDefaultIdRef.current = defaultView.id
-    }
-  }, [filtersHydrated, savedViews, applyViewFilters])
-
-  const applyView = (view: UserSavedView) => {
-    applyViewFilters(view.filters ?? {})
-  }
-
-  const deleteView = async (id: string) => {
-    const next = savedViews.filter((view) => view.id !== id)
-    await syncCandidateViews(next)
-  }
+  const {
+    savedViews,
+    saveViewOpen,
+    setSaveViewOpen,
+    saveViewName,
+    setSaveViewName,
+    syncCandidateViews,
+    applyView,
+    deleteView,
+  } = useCandidatesSavedViews({
+    preferences,
+    updatePreferences,
+    filtersHydrated,
+    // If user already restored persisted filters, don't auto-apply default view.
+    applyViewFilters,
+    skipDefaultView: persistedFiltersRef.current,
+  })
 
   const meta = useMetaStages()
   const { role, isClientTenant } = usePermissions()
@@ -756,6 +782,7 @@ export default function Candidates(){
       short: 'Short ID',
       manager: t('app.candidates.table.columns.manager'),
       stage: t('app.candidates.table.columns.stage'),
+      risk: t('app.candidates.table.columns.risk', { defaultValue: 'Risk' }) || 'Risk',
       created: t('app.candidates.table.columns.created'),
       firstContact: t('app.candidates.table.columns.first_contact'),
       preferredChannel: t('app.candidates.table.columns.preferred_channel'),
@@ -781,6 +808,7 @@ export default function Candidates(){
     'short',
     'manager',
     'stage',
+    'risk',
     'created',
     'firstContact',
     'preferredChannel',
@@ -842,130 +870,20 @@ export default function Candidates(){
     setVisibleCols({ ...DEFAULT_VISIBLE_COLS })
   }, [visibleColsStorageKey])
 
-  // Дефолтные ширины колонок (в пикселях) - константа, не нужно мемоизировать
-  const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-    name: 200,
-    email: 180,
-    phone: 150,
-    citizenship: 140,
-    vacancy: 180,
-    short: 120,
-    manager: 160,
-    stage: 160,
-    created: 140,
-    firstContact: 140,
-    preferredChannel: 150,
-    inPoland: 120,
-    polandBasis: 220,
-    trailerTypes: 160,
-    reasons: 200,
-    is_favorite: 80,
-    docsStatus: 140,
-    docsOrdered: 140,
-    docsValid: 140,
-    docsFiles: 120,
-  }
-
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const raw = localStorage.getItem(columnWidthsStorageKey)
-      const parsed = raw ? JSON.parse(raw) : {}
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        return { ...DEFAULT_COLUMN_WIDTHS, ...parsed }
-      }
-    } catch {
-      /* ignore malformed storage */
-    }
-    return { ...DEFAULT_COLUMN_WIDTHS }
+  const {
+    orderedVisibleColumns,
+    getColumnWidth,
+    draggingColumn,
+    setDraggingColumn,
+    dragOverColumn,
+    setDragOverColumn,
+    reorderColumns,
+    handleResizeStart,
+  } = useCandidatesTableColumnsDnDResize({
+    visibleCols,
+    columnWidthsStorageKey,
+    columnOrderStorageKey,
   })
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(columnWidthsStorageKey, JSON.stringify(columnWidths))
-    } catch {
-      /* ignore storage errors */
-    }
-  }, [columnWidths, columnWidthsStorageKey])
-
-  // Порядок колонок для drag & drop
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem(columnOrderStorageKey)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed
-        }
-      }
-    } catch {
-      /* ignore malformed storage */
-    }
-    return [...DEFAULT_COLUMN_ORDER]
-  })
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(columnOrderStorageKey, JSON.stringify(columnOrder))
-    } catch {
-      /* ignore storage errors */
-    }
-  }, [columnOrder, columnOrderStorageKey])
-
-  // Получаем видимые колонки в правильном порядке
-  const orderedVisibleColumns = useMemo(() => {
-    const visible = columnOrder.filter((key) => visibleCols[key])
-    // Добавляем колонки, которые есть в visibleCols, но отсутствуют в columnOrder
-    const missing = Object.keys(visibleCols)
-      .filter((key) => visibleCols[key] && !columnOrder.includes(key))
-    return [...visible, ...missing]
-  }, [columnOrder, visibleCols])
-
-  // Состояние для ресайза колонок
-  const [resizingColumn, setResizingColumn] = useState<string | null>(null)
-  const [resizeStartX, setResizeStartX] = useState<number>(0)
-  const [resizeStartWidth, setResizeStartWidth] = useState<number>(0)
-
-  // Обработчик начала ресайза
-  const handleResizeStart = useCallback((columnKey: string, startX: number) => {
-    setResizingColumn(columnKey)
-    setResizeStartX(startX)
-    setResizeStartWidth(columnWidths[columnKey] || DEFAULT_COLUMN_WIDTHS[columnKey] || 150)
-  }, [columnWidths])
-
-  // Обработчик ресайза
-  useEffect(() => {
-    if (!resizingColumn) return
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const diff = e.clientX - resizeStartX
-      const newWidth = Math.max(80, resizeStartWidth + diff) // Минимальная ширина 80px
-      setColumnWidths((prev) => ({
-        ...prev,
-        [resizingColumn]: newWidth,
-      }))
-    }
-
-    const handleMouseUp = () => {
-      setResizingColumn(null)
-    }
-
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-  }, [resizingColumn, resizeStartX, resizeStartWidth])
-
-  // Функция для получения ширины колонки
-  const getColumnWidth = useCallback((columnKey: string): number => {
-    return columnWidths[columnKey] || DEFAULT_COLUMN_WIDTHS[columnKey] || 150
-  }, [columnWidths])
 
   // Компонент для ресайза колонки
   const ColumnResizeHandle = ({ columnKey }: { columnKey: string }) => {
@@ -991,13 +909,13 @@ export default function Candidates(){
       setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'))
     } else {
       setSortKey(key)
-      setSortDir(key === 'created_at' ? 'desc' : 'asc')
+      setSortDir(key === 'created_at' || key === 'risk_score' ? 'desc' : 'asc')
     }
   }
   const renderSortButton = (label: string, key: SortKey) => (
     <button
       type="button"
-      className="flex items-center gap-1 font-semibold text-left text-slate-700 hover:text-brand-600 transition-colors group relative"
+      className="inline-flex h-5 min-w-0 shrink items-center gap-1 whitespace-nowrap font-semibold leading-none text-left text-slate-700 hover:text-brand-600 transition-colors group/sort relative"
       onClick={() => handleSortChange(key)}
       title={
         sortKey === key
@@ -1005,14 +923,17 @@ export default function Candidates(){
           : t('app.candidates.table.click_to_sort', { values: { column: label } }) || `Кликните для сортировки по ${label}`
       }
     >
-      <span>{label}</span>
+      <span className="truncate">{label}</span>
       {sortKey === key && (
-        <span className="text-xs text-brand-600 font-bold" title={sortDir === 'asc' ? t('common.sort.asc') || 'По возрастанию' : t('common.sort.desc') || 'По убыванию'}>
+        <span
+          className="inline-flex h-4 w-4 items-center justify-center text-[11px] text-brand-600/90 font-semibold"
+          title={sortDir === 'asc' ? t('common.sort.asc') || 'По возрастанию' : t('common.sort.desc') || 'По убыванию'}
+        >
           {sortDir === 'asc' ? '▲' : '▼'}
         </span>
       )}
       {sortKey !== key && (
-        <span className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">↕</span>
+        <span className="inline-flex h-4 w-4 items-center justify-center text-[10px] text-slate-300 opacity-0 transition-opacity group-hover/sort:opacity-100 group-focus-visible/sort:opacity-100">↕</span>
       )}
     </button>
   )
@@ -1100,9 +1021,9 @@ export default function Candidates(){
   const searchRef = useRef<HTMLInputElement>(null)
   const scrollContainerRef = useRef<HTMLElement | null>(null)
   const outerScrollRef = useRef<HTMLElement | null>(null)
-  const virtuosoRef = useRef<VirtuosoHandle | null>(null)
   const { can } = usePermissions()
   const canManage = can('candidates.manage')
+  const canViewActivities = can('notifications.view')
   const [recentlyOpenedId, setRecentlyOpenedId] = useState<string | null>(null)
   const restoredScrollRef = useRef(false)
   const restoreAttemptsRef = useRef(0)
@@ -1111,60 +1032,55 @@ export default function Candidates(){
   const retriedEmptyItemsRef = useRef(false)
   const loadIdRef = useRef(0)
   const loadInProgressRef = useRef(false)
-  const lastSuccessfulListRef = useRef<{ items: UICandidate[]; total: number } | null>(null)
-  const [tableHeight, setTableHeight] = useState<number | undefined>(undefined)
+  const lastSuccessfulListRef = useRef<{
+    items: UICandidate[]
+    total: number
+    insights?: CandidatesListInsights
+  } | null>(null)
   const tableContainerRef = useRef<HTMLDivElement | null>(null)
-  const QUICK_FILTERS_STORAGE_KEY = 'hf:candidates:quickFiltersExpanded'
-  const [quickFiltersExpanded, setQuickFiltersExpanded] = useState(() => {
-    try {
-      return window.localStorage.getItem(QUICK_FILTERS_STORAGE_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(QUICK_FILTERS_STORAGE_KEY, quickFiltersExpanded ? '1' : '0')
-    } catch {
-      /* ignore */
-    }
-  }, [quickFiltersExpanded])
   const getScrollContainer = useCallback((): HTMLElement | null => {
     return scrollContainerRef.current
   }, [])
 
+  const {
+    items,
+    setItems,
+    total,
+    setTotal,
+    listInsights,
+    setListInsights,
+    loading,
+    setLoading,
+    errorText,
+    setErrorText,
+    load,
+  } = useCandidatesTableData({
+    candidateListCache,
+    cacheKey,
+    listStorageKey,
+    filtersHydrated,
+    limit,
+    t,
+    q,
+    stageFilter,
+    statusReasonFilter,
+    tagsFilter,
+    vacancyFilter,
+    managerFilter,
+    docsOrderedFilter,
+    handoffStatusFilter,
+    contactAttemptsFilter,
+    processorFilter,
+    createdRange,
+    isFavoriteFilter,
+    currentTenantId,
+    meTenantId: me?.tenant_id,
+    restoredScrollRef,
+  })
+
   useEffect(() => {
     setViewMode(searchParams.get('view') === 'kanban' ? 'kanban' : 'table')
   }, [searchParams])
-
-  // Обновляем список при возврате на страницу (например, после редактирования кандидата)
-  useEffect(() => {
-    if (items.length > 0) return
-    try {
-      const raw = localStorage.getItem(listStorageKey)
-      if (!raw) return
-      const parsed = JSON.parse(raw)
-      if (!parsed || typeof parsed !== 'object') return
-      if (typeof parsed.total === 'number' && parsed.total === 0) return
-      // Do not restore broken state: total>0 but items empty
-      if (typeof parsed.total === 'number' && parsed.total > 0 && (!Array.isArray(parsed.items) || parsed.items.length === 0)) return
-      const ts = typeof parsed.timestamp === 'number' ? parsed.timestamp : 0
-      if (Date.now() - ts > CANDIDATE_CACHE_TTL_MS) return
-      if (!Array.isArray(parsed.items)) return
-      const cachedEntry = {
-        items: parsed.items as UICandidate[],
-        total: typeof parsed.total === 'number' ? parsed.total : parsed.items.length,
-        timestamp: ts,
-      }
-      candidateListCache.set(cacheKey, cachedEntry)
-      setItems(cachedEntry.items)
-      setTotal(cachedEntry.total)
-      setErrorText(null)
-      setLoading(false)
-    } catch (err) {
-      console.warn('[Candidates] failed to restore list cache', err)
-    }
-  }, [cacheKey, listStorageKey, items.length])
 
   useEffect(() => {
     let applied = false
@@ -1239,7 +1155,7 @@ export default function Candidates(){
           applied = applied || restoredDocsFiles.length > 0
 
           const restoredHandoffStatus = typeof parsed.handoffStatus === 'string' ? parsed.handoffStatus.trim() : ''
-          if (['none', 'pending', 'accepted', 'returned'].includes(restoredHandoffStatus)) {
+          if (['none', 'pending', 'accepted', 'returned', 'rejected'].includes(restoredHandoffStatus)) {
             setHandoffStatusFilter(restoredHandoffStatus)
             applied = applied || true
           }
@@ -1280,20 +1196,71 @@ export default function Candidates(){
     }
   }, [filterStorageKey, normalizeArrayFilter, normalizeRangeFilter, normalizeReasonList, normalizeTextFilterState, normalizeOpsModeList])
 
-  // Deep-link from Dashboard pivot: apply URL params (stage, vacancy_id, status_reason, citizenship)
+  // Deep-link from Dashboard pivot: apply URL params.
+  // Keep it robust to allow drill-down from Overview/Dashboard widgets.
   useEffect(() => {
     if (!filtersHydrated) return
+    const qParam = searchParams.get('q') || searchParams.get('query')
     const stageParam = searchParams.get('stage')
     const vacancyParam = searchParams.get('vacancy_id') || searchParams.get('vacancy')
     const reasonParam = searchParams.get('status_reason')
     const citizenshipParam = searchParams.get('citizenship')
-    const hasDeepLink = stageParam || vacancyParam || reasonParam || citizenshipParam
+    const managerParam = searchParams.get('manager_id') || searchParams.get('manager')
+    const preferredChannelParam = searchParams.get('preferred_channel')
+    const opsModeParam = searchParams.get('ops_mode') || searchParams.get('opsMode')
+    const inPolandParam = searchParams.get('in_poland')
+    const handoffStatusParam = searchParams.get('handoff_status') || searchParams.get('handoffStatus')
+    const contactAttemptsParam = searchParams.get('contact_attempts') || searchParams.get('contactAttempts')
+
+    const hasDeepLink =
+      Boolean(qParam && String(qParam).trim()) ||
+      stageParam ||
+      vacancyParam ||
+      reasonParam ||
+      citizenshipParam ||
+      managerParam ||
+      preferredChannelParam ||
+      opsModeParam ||
+      inPolandParam ||
+      handoffStatusParam ||
+      contactAttemptsParam
     if (!hasDeepLink) return
+    // Drill-down must be deterministic: ignore previously persisted filters.
+    handleResetFilters()
+    if (qParam && String(qParam).trim()) setQ(String(qParam).trim())
     if (stageParam) setStageFilter(normalizeArrayFilter([stageParam]))
     if (vacancyParam) setVacancyFilter(normalizeArrayFilter([vacancyParam]))
     if (reasonParam) setStatusReasonFilter(normalizeReasonList([reasonParam]))
     if (citizenshipParam) setTextFilter('citizenship', String(citizenshipParam).trim())
-  }, [filtersHydrated, searchParams, normalizeArrayFilter, normalizeReasonList, setTextFilter])
+
+    if (managerParam) setManagerFilter(normalizeArrayFilter([managerParam]))
+    if (preferredChannelParam) setPreferredChannelFilter(normalizeArrayFilter([preferredChannelParam]))
+    if (opsModeParam) setOpsModeFilter(normalizeOpsModeList([opsModeParam]))
+    if (inPolandParam) setInPolandFilter(normalizeArrayFilter([inPolandParam]))
+
+    if (handoffStatusParam) {
+      const v = String(handoffStatusParam).trim()
+      if (['none', 'pending', 'accepted', 'returned', 'rejected'].includes(v)) setHandoffStatusFilter(v)
+    }
+    if (contactAttemptsParam) {
+      const v = String(contactAttemptsParam).trim()
+      if (['none', 'some', 'limit_reached'].includes(v)) setContactAttemptsFilter(v)
+    }
+  }, [
+    filtersHydrated,
+    searchParams,
+    normalizeArrayFilter,
+    normalizeReasonList,
+    normalizeOpsModeList,
+    setTextFilter,
+    setQ,
+    setManagerFilter,
+    setPreferredChannelFilter,
+    setOpsModeFilter,
+    setInPolandFilter,
+    setHandoffStatusFilter,
+    setContactAttemptsFilter,
+  ])
 
   useEffect(() => {
     if (!canManage) {
@@ -1706,6 +1673,24 @@ export default function Candidates(){
     }
   }, [filteredItems])
 
+  /** Карточки инсайтов: с сервера по фильтрам списка; иначе fallback по загруженным строкам (старый API без include_insights). */
+  const insightSource = useMemo(() => {
+    if (listInsights) {
+      return {
+        total: listInsights.total,
+        newCount: listInsights.new_count,
+        docsReady: listInsights.docs_ready,
+        docsAttention: listInsights.docs_attention,
+      }
+    }
+    return {
+      total: candidateInsights.total,
+      newCount: candidateInsights.newCount,
+      docsReady: candidateInsights.docsReady,
+      docsAttention: candidateInsights.docsAttention,
+    }
+  }, [listInsights, candidateInsights])
+
   const displayedItems = useMemo<AugmentedCandidate[]>(() => {
     const sorted = [...filteredItems]
     sorted.sort((a, b) => {
@@ -1744,6 +1729,10 @@ export default function Candidates(){
           break
         case 'reasons':
           cmp = compareStrings(a.__reasonCodes.join(','), b.__reasonCodes.join(','))
+          break
+        case 'risk_score':
+          // backend may send null; treat as 0 for sorting
+          cmp = compareNumbers(a.risk_score ?? 0, b.risk_score ?? 0)
           break
         case 'docs_status':
           if (a.__docsMeta.rank !== b.__docsMeta.rank) {
@@ -1793,148 +1782,28 @@ export default function Candidates(){
     return sorted
   }, [filteredItems, sortKey, sortDir])
 
-  const selectedCandidate = useMemo(
-    () => (selectedCandidateId ? displayedItems.find((c) => c.id === selectedCandidateId) ?? null : null),
-    [displayedItems, selectedCandidateId],
-  )
+  const selectedCandidate = useMemo(() => {
+    const base =
+      selectedCandidateId ? displayedItems.find((c) => c.id === selectedCandidateId) ?? null : null
+    if (!base || !previewCandidateExtra) return base
+    return {
+      ...base,
+      contact_policy_enabled: previewCandidateExtra.contact_policy_enabled,
+      contact_attempt_count: previewCandidateExtra.contact_attempt_count,
+    }
+  }, [displayedItems, selectedCandidateId, previewCandidateExtra])
+
+  const openActivitiesModal = useCallback(() => {
+    setActivitiesModalRefresh((n) => n + 1)
+    setActivitiesModalOpen(true)
+  }, [])
 
   const docsOwnerContext = useMemo(() => {
     const citizenship = String((selectedCandidate as any)?.__extra?.citizenship || '')
     return { citizenship }
   }, [(selectedCandidate as any)?.__extra?.citizenship])
 
-  useEffect(() => {
-    // Reset blockers state on candidate change to avoid showing stale UI.
-    setDocsBlockers({ missing: [], problematic: [] })
-    setDocsBlockersLoading(false)
-  }, [selectedCandidateId])
-
-  const loadPreviewReminders = useCallback(
-    async (candidateId: string) => {
-      setPreviewRemindersLoading(true)
-      setPreviewRemindersError(null)
-      try {
-        const res = await listReminders({ entityType: 'candidate', entityId: candidateId, status: ['pending', 'new', 'overdue'] })
-        const list = Array.isArray(res?.items) ? (res.items as ReminderRecord[]) : []
-        setPreviewReminders(list)
-      } catch (err: any) {
-        setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to load reminders')
-        setPreviewReminders([])
-      } finally {
-        setPreviewRemindersLoading(false)
-      }
-    },
-    [],
-  )
-
-  const loadPreviewTimeline = useCallback(
-    async (candidateId: string) => {
-      setPreviewTimelineLoading(true)
-      setPreviewTimelineError(null)
-      try {
-        const res = await getCandidateTimeline(candidateId)
-        const items = Array.isArray(res?.items) ? res.items : []
-        setPreviewTimelineItems(
-          items.map((item: any) => ({
-            at: item.at,
-            kind: String(item.kind || ''),
-            source: String(item.source || ''),
-            title: item.title,
-            description: item.description,
-          })),
-        )
-      } catch (err: any) {
-        setPreviewTimelineError(err?.response?.data?.detail ?? err?.message ?? 'Failed to load timeline')
-        setPreviewTimelineItems([])
-      } finally {
-        setPreviewTimelineLoading(false)
-      }
-    },
-    [],
-  )
-
-  useEffect(() => {
-    if (!selectedCandidateId) {
-      setPreviewReminders([])
-      setPreviewRemindersError(null)
-      setPreviewRemindersLoading(false)
-      return
-    }
-    void loadPreviewReminders(selectedCandidateId)
-  }, [loadPreviewReminders, selectedCandidateId])
-
-  useEffect(() => {
-    if (!selectedCandidateId) {
-      setPreviewTimelineItems([])
-      setPreviewTimelineError(null)
-      setPreviewTimelineLoading(false)
-      return
-    }
-    setPreviewTimelineExpanded(false)
-    void loadPreviewTimeline(selectedCandidateId)
-  }, [loadPreviewTimeline, selectedCandidateId])
-
-  const handleCreatePreviewReminder = useCallback(async () => {
-    if (!selectedCandidateId || !previewReminderTitle || !previewReminderDueAt) return
-    try {
-      const due = new Date(previewReminderDueAt)
-      const remindAt = new Date(due.getTime() - previewReminderOffset * 60 * 1000)
-      await createActivity({
-        title: previewReminderTitle,
-        description: '',
-        type: 'custom',
-        entity_type: 'candidate',
-        entity_id: selectedCandidateId,
-        due_at: due.toISOString(),
-        remind_at: remindAt.toISOString(),
-        priority: 'normal',
-        source: 'manual',
-      })
-      setPreviewReminderTitle('')
-      setPreviewReminderDueAt(new Date(due.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16))
-      await loadPreviewReminders(selectedCandidateId)
-    } catch (err: any) {
-      setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to create reminder')
-    }
-  }, [loadPreviewReminders, previewReminderDueAt, previewReminderOffset, previewReminderTitle, selectedCandidateId])
-
-  const handleDocsRequestCreate = useCallback(() => {
-    const dt = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
-    setPreviewReminderTitle(
-      t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' }),
-    )
-    setPreviewReminderDueAt(dt)
-  }, [t])
-
-  const handleCompletePreviewReminder = useCallback(
-    async (id: string) => {
-      try {
-        setPreviewReminderBusy(id)
-        await completeActivity(id)
-        if (selectedCandidateId) await loadPreviewReminders(selectedCandidateId)
-      } catch (err: any) {
-        setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to complete reminder')
-      } finally {
-        setPreviewReminderBusy((prev) => (prev === id ? null : prev))
-      }
-    },
-    [loadPreviewReminders, selectedCandidateId],
-  )
-
-  const handlePreviewReminderSnooze = useCallback(
-    async (id: string, minutes: number) => {
-      try {
-        setPreviewReminderBusy(id)
-        await snoozeActivity(id, { minutes })
-        if (selectedCandidateId) await loadPreviewReminders(selectedCandidateId)
-      } catch (err: any) {
-        setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to snooze reminder')
-      } finally {
-        setPreviewReminderBusy((prev) => (prev === id ? null : prev))
-      }
-    },
-    [loadPreviewReminders, selectedCandidateId],
-  )
+  // Preview side-panel state + handlers are centralized in `useCandidatesWorkPanelPreview`.
 
   const allVisibleSelected =
     displayedItems.length > 0 && displayedItems.every((candidate) => checked[candidate.id])
@@ -2121,20 +1990,6 @@ export default function Candidates(){
     return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
   }, [enrichedItems, getTrailerTypeLabel, trailerTypesFilter])
 
-  const quickDocFilters = useMemo(() => {
-    const entries: Array<{ key: keyof typeof QUICK_DOC_STATUS_SETS; label: string; statuses: string[] }> = [
-      { key: 'ready', label: t('app.candidates.filters.quick_docs_ready'), statuses: QUICK_DOC_STATUS_SETS.ready },
-      { key: 'attention', label: t('app.candidates.filters.quick_docs_attention'), statuses: QUICK_DOC_STATUS_SETS.attention },
-      { key: 'pending', label: t('app.candidates.filters.quick_docs_pending'), statuses: QUICK_DOC_STATUS_SETS.pending },
-    ]
-    return entries.map((entry) => {
-      const active =
-        docsStatusFilter.length === entry.statuses.length &&
-        entry.statuses.every((status) => docsStatusFilter.includes(status))
-      return { ...entry, active }
-    })
-  }, [docsStatusFilter, t])
-
   // Функция для рендеринга содержимого заголовка колонки
   const renderColumnHeaderContent = useCallback((columnKey: string) => {
     switch (columnKey) {
@@ -2233,6 +2088,8 @@ export default function Candidates(){
             />
           </>
         )
+      case 'risk':
+        return <>{renderSortButton(columnLabelMap.risk, 'risk_score')}</>
       case 'created':
         return (
           <>
@@ -2459,9 +2316,13 @@ export default function Candidates(){
     stickyLeft?: string
   }) => {
     const className = clsx(
-      'px-4 py-3 border-r border-slate-200',
+      'group px-4 py-2.5 border-r border-slate-200 align-middle whitespace-nowrap',
       isSticky ? 'sticky bg-slate-50 z-[25]' : 'relative',
-      'cursor-default'
+      'cursor-default',
+      columnKey !== 'checkbox' && 'pl-7',
+      dragOverColumn === columnKey && draggingColumn && draggingColumn !== columnKey && 'bg-brand-100/70',
+      // thead с pointer-events:none — интерактив в ячейках должен снова ловить события
+      'pointer-events-auto',
     )
 
     const dynamicStyle: React.CSSProperties = {
@@ -2499,9 +2360,53 @@ export default function Candidates(){
       <th
         className={className}
         style={dynamicStyle}
+        onDragOver={(e) => {
+          if (!draggingColumn || draggingColumn === columnKey) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+          if (dragOverColumn !== columnKey) setDragOverColumn(columnKey)
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          const from = draggingColumn || e.dataTransfer.getData('text/plain')
+          if (from) reorderColumns(from, columnKey)
+          setDragOverColumn(null)
+          setDraggingColumn(null)
+        }}
+        onDragLeave={() => {
+          if (dragOverColumn === columnKey) setDragOverColumn(null)
+        }}
       >
-        <div className="flex items-center justify-between gap-2">
-          {content}
+        <div className="flex h-5 items-center justify-between gap-2">
+          <div className="flex h-5 items-center gap-1.5 min-w-0 w-full whitespace-nowrap overflow-hidden">
+            <span
+              role="button"
+              tabIndex={0}
+              draggable
+              className="absolute left-1 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 items-center justify-center rounded text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-slate-200 hover:text-slate-600 cursor-grab active:cursor-grabbing select-none"
+              title={t('app.candidates.table.reorder_column') || 'Перетащите, чтобы поменять порядок колонок'}
+              onDragStart={(e) => {
+                setDraggingColumn(columnKey)
+                setDragOverColumn(null)
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', columnKey)
+              }}
+              onDragEnd={() => {
+                setDraggingColumn(null)
+                setDragOverColumn(null)
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                }
+              }}
+            >
+              ⋮⋮
+            </span>
+            <div className="min-w-0 flex h-5 items-center gap-1.5 whitespace-nowrap overflow-hidden">{content}</div>
+          </div>
         </div>
         <ColumnResizeHandle columnKey={columnKey} />
       </th>
@@ -2552,7 +2457,7 @@ export default function Candidates(){
     })()
   }, [])
 
-  const load = useCallback(async (options?: { force?: boolean; allowCache?: boolean }) => {
+  const legacyLoad = useCallback(async (options?: { force?: boolean; allowCache?: boolean }) => {
     if (!filtersHydrated) return
     // Временно всегда перезагружаем список с сервера (без раннего выхода по кешу),
     // чтобы скоуп кандидатов и маскирование соответствовали актуальной backend-логике.
@@ -2570,6 +2475,7 @@ export default function Candidates(){
     if (cacheValid && cached.total !== 0) {
       setItems(cached.items)
       setTotal(cached.total)
+      setListInsights(cached.insights ?? null)
       setErrorText(null)
       setLoading(false)
       if (cacheIsFresh && !forceReload) return
@@ -2592,6 +2498,8 @@ export default function Candidates(){
       let accumulated: UICandidate[] = []
       let totalCount: number | null = null
       let keepFetching = true
+      /** Агрегаты с сервера — только с первой страницы (include_insights). */
+      let normalizedInsights: CandidatesListInsights | null = null
 
       while (keepFetching) {
         const params: Record<string, any> = {
@@ -2600,6 +2508,8 @@ export default function Candidates(){
           order_by: 'created_at',
           desc: true,
           compact: true,
+          include_risk: true,
+          include_insights: nextOffset === 0,
           q: q || undefined,
           stage: stageFilter.length === 1 ? stageFilter[0] : undefined,
           stages: stageFilter.length > 0 ? stageFilter.join(',') : undefined,
@@ -2644,13 +2554,16 @@ export default function Candidates(){
         if (typeof dataAny?.total === 'number' && batch.length === 0 && dataAny.total > 0) {
           console.warn('[Candidates] response total=', dataAny.total, 'but items batch empty; keys=', dataAny ? Object.keys(dataAny) : [], 'sample=', dataAny?.items != null ? typeof dataAny.items : 'missing')
         }
-        // Ignore responses with 1 item when we requested limit=100 (e.g. from Dashboard limit=1 poll)
         const effectiveBatch =
           limit > 1 && typeof dataAny?.total === 'number' && dataAny.total > 1 && batch.length === 1
             ? []
             : batch
         if (effectiveBatch.length === 0 && batch.length === 1) {
           console.warn('[Candidates] ignoring response with 1 item (requested limit=', limit, ', total=', dataAny?.total, ')')
+        }
+
+        if (nextOffset === 0) {
+          normalizedInsights = normalizeListInsights(dataAny?.insights)
         }
 
         if (effectiveBatch.length > 0) {
@@ -2676,10 +2589,14 @@ export default function Candidates(){
       }
 
       const finalTotal = totalCount ?? accumulated.length
-      // Do not persist broken state (total>0 but no items) so we never restore it
       const persistOk = finalTotal === 0 || accumulated.length > 0
       if (persistOk) {
-        const cachedEntry = { items: accumulated, total: finalTotal, timestamp: Date.now() }
+        const cachedEntry: CandidateListCacheEntry = {
+          items: accumulated,
+          total: finalTotal,
+          timestamp: Date.now(),
+          ...(normalizedInsights ? { insights: normalizedInsights } : {}),
+        }
         candidateListCache.set(cacheKey, cachedEntry)
         try {
           localStorage.setItem(listStorageKey, JSON.stringify(cachedEntry))
@@ -2691,23 +2608,24 @@ export default function Candidates(){
       if (myLoadId === loadIdRef.current) {
         console.info('[Candidates] applying state (myLoadId matches): items=', accumulated.length, 'total=', finalTotal)
         setTotal(finalTotal)
-        if (accumulated.length > 0) {
-          setItems(accumulated)
-        } else if (finalTotal === 0) {
-          setItems([])
-        }
+        setItems(accumulated)
+        setListInsights(normalizedInsights)
       } else {
         console.warn('[Candidates] NOT applying state: myLoadId', myLoadId, '!= current', loadIdRef.current)
       }
       if (accumulated.length > 0) {
-        lastSuccessfulListRef.current = { items: accumulated, total: finalTotal }
+        lastSuccessfulListRef.current = {
+          items: accumulated,
+          total: finalTotal,
+          ...(normalizedInsights ? { insights: normalizedInsights } : {}),
+        }
         const toApply = accumulated.slice()
         const tot = finalTotal
-        console.info('[Candidates] scheduling queueMicrotask: items=', toApply.length, 'total=', tot)
+        const ins = normalizedInsights
         queueMicrotask(() => {
-          console.info('[Candidates] queueMicrotask executing: applying items=', toApply.length, 'total=', tot)
           setItems(toApply)
           setTotal(tot)
+          setListInsights(ins)
         })
       }
     } catch (e: any) {
@@ -2721,6 +2639,7 @@ export default function Candidates(){
         setErrorText(formattedMessage)
         setItems([])
         setTotal(0)
+        setListInsights(null)
       }
       console.error('[Candidates] Load error:', errorInfo)
     } finally {
@@ -2764,22 +2683,9 @@ export default function Candidates(){
     isFavoriteFilter,
   ])
 
-  // После окончания загрузки: если в state пусто, но последняя успешная загрузка принесла данные — применить из ref
-  const prevLoadingRef = useRef(loading)
-  useEffect(() => {
-    const wasLoading = prevLoadingRef.current
-    prevLoadingRef.current = loading
-    if (wasLoading && !loading) {
-      console.info('[Candidates] loading finished effect: items.length=', items.length, 'total=', total)
-      const pending = lastSuccessfulListRef.current
-      console.info('[Candidates] lastSuccessfulListRef:', pending ? `items=${pending.items.length} total=${pending.total}` : 'null')
-      if (pending && pending.items.length > 0 && items.length === 0) {
-        console.info('[Candidates] applying from ref: items=', pending.items.length, 'total=', pending.total)
-        setItems(pending.items)
-        setTotal(pending.total)
-      }
-    }
-  }, [loading, items.length, total])
+  // Transitional: legacy load implementation is kept for now,
+  // but real fetches now go through the SSOT hook `useCandidatesTableData.load`.
+  void legacyLoad
 
   // Отслеживаем изменения items для диагностики
   useEffect(() => {
@@ -2796,17 +2702,6 @@ export default function Candidates(){
       }
     }
   }, [isFavoriteFilter, enrichedItems.length])
-
-  // Если total > 0 но items пустой — один раз принудительно перезапросить после короткой задержки
-  // (даём первой загрузке время завершиться и обновить state, чтобы не гонять две загрузки)
-  useEffect(() => {
-    if (loading || items.length > 0 || total <= 0 || retriedEmptyItemsRef.current) return
-    retriedEmptyItemsRef.current = true
-    const t = setTimeout(() => {
-      void load({ force: true, allowCache: false })
-    }, 500)
-    return () => clearTimeout(t)
-  }, [total, items.length, loading, load])
 
   // Обновляем список при возврате на страницу (например, после редактирования кандидата)
   useEffect(() => {
@@ -2953,119 +2848,15 @@ export default function Candidates(){
     }
   }, [cacheKey, listStorageKey, load])
 
-  const persistScrollState = useCallback(
-    (candidateId?: string) => {
-      try {
-        const container = getScrollContainer()
-        const containerTop = container?.scrollTop ?? null
-        const outer = outerScrollRef.current
-        const outerTop = (outer?.scrollTop ?? window.scrollY) || 0
-        const idx = candidateId ? displayedItems.findIndex((it) => it.id === candidateId) : -1
-        const payload = {
-          top: outerTop,
-          id: candidateId ?? null,
-          ts: Date.now(),
-          scrollContainerTop: containerTop,
-          index: idx >= 0 ? idx : null,
-          windowTop: outerTop,
-        }
-        localStorage.setItem(scrollKey, JSON.stringify(payload))
-      } catch {/* ignore storage errors */}
-    },
-    [displayedItems, getScrollContainer, scrollKey]
-  )
-
-  const restoreScrollState = useCallback(() => {
-    if (restoredScrollRef.current) return
-    restoredScrollRef.current = true
-    try {
-      const raw = localStorage.getItem(scrollKey)
-      if (!raw) return
-      const parsed = JSON.parse(raw)
-      if (!parsed || typeof parsed !== 'object') return
-      const ts = typeof parsed.ts === 'number' ? parsed.ts : 0
-      if (Date.now() - ts > SCROLL_STATE_TTL_MS) {
-        // Удаляем устаревшее состояние
-        try { localStorage.removeItem(scrollKey) } catch {/* ignore */}
-        return
-      }
-
-      const top = typeof parsed.top === 'number' ? parsed.top : 0
-      const containerTop = typeof parsed.scrollContainerTop === 'number' ? parsed.scrollContainerTop : null
-      const windowTop = typeof parsed.windowTop === 'number' ? parsed.windowTop : null
-      const savedIndex = typeof parsed.index === 'number' ? parsed.index : null
-      const id = typeof parsed.id === 'string' ? parsed.id : null
-      if (id) setRecentlyOpenedId(id)
-
-      const attemptRestore = () => {
-        const container = getScrollContainer()
-        if (windowTop !== null && windowTop > 0) {
-          const outer = outerScrollRef.current
-          if (outer) {
-            outer.scrollTo({ top: windowTop, behavior: 'auto' })
-          } else {
-            window.scrollTo({ top: windowTop, behavior: 'auto' })
-          }
-        }
-        const rowSelector = id ? `[data-candidate-id="${id}"]` : null
-        const rowEl = rowSelector ? document.querySelector(rowSelector) as HTMLElement | null : null
-        const targetRow = rowEl?.closest('tr') as HTMLElement | null ?? rowEl
-        if (targetRow) {
-          targetRow.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' })
-          return true
-        }
-
-        // если строка не отрендерена, попробуем виртуализатором проскроллить по индексу
-        if (virtuosoRef.current) {
-          const idx =
-            savedIndex !== null
-              ? savedIndex
-              : id
-                ? displayedItems.findIndex((item) => item.id === id)
-                : -1
-          if (idx >= 0) {
-            virtuosoRef.current.scrollToIndex({ index: idx, align: 'center' })
-            return true
-          }
-        }
-
-        if (container && containerTop !== null) {
-          container.scrollTo({ top: containerTop, behavior: 'auto' })
-          return true
-        }
-
-        return top === 0 ? false : true
-      }
-
-      const finalize = () => {
-        // НЕ удаляем сохраненное состояние, чтобы оно сохранилось для следующего возврата
-        // Удалим его только если это устаревшее состояние (уже проверено выше)
-        restoreAttemptsRef.current = 0
-      }
-
-      const tryLater = () => {
-        restoreAttemptsRef.current += 1
-        restoredScrollRef.current = false
-        if (restoreAttemptsRef.current >= RESTORE_SCROLL_MAX_ATTEMPTS) {
-          finalize()
-          restoredScrollRef.current = true
-          return
-        }
-        // give virtuoso time to render more rows
-        window.setTimeout(() => restoreScrollState(), 150)
-      }
-
-      requestAnimationFrame(() => {
-        const ok = attemptRestore()
-        if (ok) {
-          finalize()
-          restoredScrollRef.current = true
-        } else {
-          tryLater()
-        }
-      })
-    } catch {/* ignore malformed storage */}
-  }, [displayedItems, getScrollContainer, scrollKey])
+  const { persistScrollState, restoreScrollState } = useCandidatesScrollRestoration({
+    displayedItems,
+    setRecentlyOpenedId,
+    getScrollContainer,
+    outerScrollRef,
+    scrollKey,
+    restoredScrollRef,
+    restoreAttemptsRef,
+  })
 
   const handleCandidateOpen = useCallback(
     (id: string) => {
@@ -3127,10 +2918,6 @@ export default function Candidates(){
   useEffect(() => {
     const el = document.querySelector(APP_SCROLL_SELECTOR) as HTMLElement | null
     outerScrollRef.current = el
-    if (el) {
-      const h = el.clientHeight
-      if (h > 0) setTableHeight(Math.max(900, h - 40))
-    }
   }, [])
 
   // Сбрасываем флаг восстановления при изменении пути (возврат к списку)
@@ -3145,125 +2932,146 @@ export default function Candidates(){
     }
   }, [location.pathname, location.state])
 
+  // (debug removed)
+
   useEffect(() => {
     if (!filtersHydrated) return
     if (loading) return
+    // При открытом превью кандидата не восстанавливаем скролл по сохраненному
+    // состоянию: это вызывает scrollTo/scrollIntoView и провоцирует
+    // пере-рендер/виртуализацию ровно в момент взаимодействия с таблицей.
+    if (selectedCandidateId) return
     restoreScrollState()
-  }, [filtersHydrated, loading, restoreScrollState, items.length, recentlyOpenedId])
+  }, [filtersHydrated, loading, restoreScrollState, items.length, recentlyOpenedId, selectedCandidateId])
+
+  // Диагностика "что перекрывает таблицу":
+  // при ?debug=1 на клик показываем DOM-элемент под курсором.
+  // ВАЖНО: не вызывать setState синхронно в capture на window для mousedown —
+  // это перерисовывает Candidates до фазы target, TableVirtuoso пересобирает DOM,
+  // и onMouseDown/onClick на кнопках в таблице не срабатывают (ложный "оверлей").
+  useEffect(() => {
+    if (!showDebugPanel) return
+    const onMouseDownCapture = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugHit({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
+      })
+    }
+
+    const onClickCapture = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugClickHit({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
+      })
+    }
+
+    const onClickBubble = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugClickHitBubble({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
+      })
+    }
+
+    const onMouseUpCapture = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugMouseUpHit({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
+      })
+    }
+
+    const onMouseUpBubble = (e: MouseEvent) => {
+      const x = e.clientX
+      const y = e.clientY
+      queueMicrotask(() => {
+        const hit = document.elementFromPoint(x, y) as HTMLElement | null
+        const table = tableContainerRef.current
+        const insideTable = hit ? Boolean(table?.contains(hit)) : false
+        const style = hit ? window.getComputedStyle(hit) : null
+        setDebugMouseUpHitBubble({
+          tag: hit?.tagName,
+          className: hit?.className ? String(hit.className).slice(0, 120) : undefined,
+          pointerEvents: style?.pointerEvents,
+          insideTable,
+        })
+      })
+    }
+
+    window.addEventListener('mousedown', onMouseDownCapture, true)
+    window.addEventListener('click', onClickCapture, true)
+    window.addEventListener('click', onClickBubble, false)
+    window.addEventListener('mouseup', onMouseUpCapture, true)
+    window.addEventListener('mouseup', onMouseUpBubble, false)
+    return () => {
+      window.removeEventListener('mousedown', onMouseDownCapture, true)
+      window.removeEventListener('click', onClickCapture, true)
+      window.removeEventListener('click', onClickBubble, false)
+      window.removeEventListener('mouseup', onMouseUpCapture, true)
+      window.removeEventListener('mouseup', onMouseUpBubble, false)
+    }
+  }, [showDebugPanel])
 
   // Состояние для клавиатурной навигации
-  const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null)
-  const focusedRowRef = useRef<HTMLTableRowElement | null>(null)
-
-  // Расширенная клавиатурная навигация
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      // Проверяем, не находится ли фокус в поле ввода (input, textarea, select)
-      const target = e.target as HTMLElement
-      const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT'
-      const isContentEditable = target.isContentEditable || target.closest('[contenteditable]')
-
-      // Ctrl/Cmd + K - фокус на поиск
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k' && !e.shiftKey) {
-        e.preventDefault()
-        searchRef.current?.focus()
-        return
-      }
-
-      // Игнорируем горячие клавиши если фокус в поле ввода
-      if (isInput || isContentEditable) {
-        // Разрешаем Ctrl+A для выбора всех только в текстовых полях
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && (target.tagName === 'INPUT' && (target as HTMLInputElement).type !== 'checkbox')) {
-          return
-        }
-        // Разрешаем Escape для закрытия модальных окон
-        if (e.key === 'Escape') {
-          return
-        }
-      }
-
-      // Escape - сброс выбора и фокуса
-      if (e.key === 'Escape' && !isInput && !isContentEditable) {
-        e.preventDefault()
-        setChecked({})
-        setFocusedRowIndex(null)
-        focusedRowRef.current = null
-        return
-      }
-
-      // Ctrl/Cmd + A - выбрать все видимые кандидаты
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !isInput && !isContentEditable) {
-        e.preventDefault()
-        if (!canManage) return
-        const newChecked: Record<string, boolean> = {}
-        displayedItems.forEach((candidate) => {
-          newChecked[candidate.id] = true
-        })
-        setChecked(newChecked)
-        return
-      }
-
-      // Клавиатурная навигация работает только если нет фокуса в полях ввода
-      if (isInput || isContentEditable) return
-
-      // Стрелки вверх/вниз - навигация по строкам
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        const currentIndex = focusedRowIndex !== null ? focusedRowIndex : -1
-        let nextIndex: number
-
-        if (e.key === 'ArrowDown') {
-          nextIndex = currentIndex < displayedItems.length - 1 ? currentIndex + 1 : displayedItems.length - 1
-        } else {
-          nextIndex = currentIndex > 0 ? currentIndex - 1 : 0
-        }
-
-        setFocusedRowIndex(nextIndex)
-        // Прокручиваем к выбранной строке
-        if (virtuosoRef.current && nextIndex >= 0 && nextIndex < displayedItems.length) {
-          virtuosoRef.current.scrollToIndex({ index: nextIndex, align: 'center', behavior: 'smooth' })
-        }
-        return
-      }
-
-      // Space или Enter - выбрать/отменить выбор кандидата
-      if ((e.key === ' ' || e.key === 'Enter') && focusedRowIndex !== null && focusedRowIndex >= 0 && focusedRowIndex < displayedItems.length) {
-        e.preventDefault()
-        const candidate = displayedItems[focusedRowIndex]
-        if (candidate && canManage) {
-          toggle(candidate.id)
-        }
-        return
-      }
-
-      // Enter на выбранном кандидате - открыть карточку
-      if (e.key === 'Enter' && focusedRowIndex !== null && focusedRowIndex >= 0 && focusedRowIndex < displayedItems.length) {
-        e.preventDefault()
-        const candidate = displayedItems[focusedRowIndex]
-        if (candidate) {
-          handleCandidateOpen(candidate.id)
-          navigate(`/app/candidates/${candidate.id}`)
-        }
-        return
-      }
-
-
-      // '/' - фокус на поиск (только если не в поле ввода)
-      if (e.key === '/' && !isInput && !isContentEditable) {
-        e.preventDefault()
-        searchRef.current?.focus()
-        return
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, displayedItems.length, Object.keys(checked).length, focusedRowIndex])
+  // На случай drag-to-select: запоминаем координаты mousedown на строке,
+  // чтобы onClick по строке не срабатывал после выделения текста.
+  const lastRowMouseDownRef = useRef<{ x: number; y: number; t: number } | null>(null)
 
   const toggle = useCallback((id: string) => {
     if (!canManage) return
-    setChecked(s => ({ ...s, [id]: !s[id] }))
+    setChecked((s) => ({ ...s, [id]: !s[id] }))
   }, [canManage])
+
+  const { focusedRowIndex, focusedRowRef } = useCandidatesTableKeyboardNavigation({
+    searchRef,
+    canManage,
+    displayedItems,
+    checked,
+    setChecked,
+    toggle,
+    handleCandidateOpen,
+    navigate,
+  })
+
+  // (toggle moved above keyboard hook)
 
   const allSelected = useCallback(() => {
     return items.filter(i => checked[i.id]).map(i => i.id)
@@ -3366,6 +3174,18 @@ export default function Candidates(){
           if (String(parsed?.code || '') === 'handoff_docs_incomplete') return true
           return String(item?.error || '').toLowerCase().includes('handoff_docs_incomplete')
         })
+        const contactAttemptFailures = failures.filter((item) => {
+          const parsed = parseErrorObject(item?.error)
+          return String(parsed?.code || '') === 'stage_blocked_by_contact_attempt'
+        })
+        const vacancyGateFailures = failures.filter((item) => {
+          const parsed = parseErrorObject(item?.error)
+          return String(parsed?.code || '') === 'stage_blocked_by_vacancy'
+        })
+        const pipelineDocFailures = failures.filter((item) => {
+          const parsed = parseErrorObject(item?.error)
+          return String(parsed?.code || '') === 'stage_blocked_by_documents'
+        })
         if (rodoBlockedCount > 0) {
           alert(
             t('app.candidates.messages.bulk_stage_rodo_blocked', {
@@ -3387,6 +3207,30 @@ export default function Candidates(){
                 total: failures.length,
                 missing: missingLabels || '—',
               },
+            }),
+          )
+        } else if (contactAttemptFailures.length > 0) {
+          alert(
+            t('app.candidates.messages.bulk_stage_contact_attempt_blocked', {
+              defaultValue:
+                '{contact} candidate(s) need a logged contact attempt (client policy) out of {total} failures. Open cards, register an attempt, then retry.',
+              values: { contact: contactAttemptFailures.length, total: failures.length },
+            }),
+          )
+        } else if (vacancyGateFailures.length > 0) {
+          alert(
+            t('app.candidates.messages.bulk_stage_vacancy_blocked', {
+              defaultValue:
+                '{vacancy} candidate(s) must be linked to a vacancy before that stage change ({total} failures). Assign vacancy on the card, then retry.',
+              values: { vacancy: vacancyGateFailures.length, total: failures.length },
+            }),
+          )
+        } else if (pipelineDocFailures.length > 0) {
+          alert(
+            t('app.candidates.messages.bulk_stage_pipeline_docs_blocked', {
+              defaultValue:
+                '{docs} candidate(s) are blocked by required documents ({total} failures). Fix documents on the card, then retry.',
+              values: { docs: pipelineDocFailures.length, total: failures.length },
             }),
           )
         } else {
@@ -3563,8 +3407,8 @@ export default function Candidates(){
     setBulkOperationLoading('handoff')
     try {
       const result = await createBulkHandoff({
-        candidate_ids: ids as import('../api/types').UUID[],
-        client_company_id: bulkHandoffClientId as import('../api/types').UUID,
+        candidate_ids: ids,
+        client_company_id: bulkHandoffClientId,
       })
       if (result.failed > 0) {
         const details = result.errors.slice(0, 5).map((e) => `${e.candidate_id}: ${e.error}`).join('\n')
@@ -3749,80 +3593,26 @@ export default function Candidates(){
     } catch {/* ignore */}
   }
 
-  type QuickViewKey = 'my_work_today' | 'overdue_next_action' | 'no_next_action' | 'docs_incomplete' | 'ready_for_handoff' | 'new_this_week'
-
-  const quickViewParam = searchParams.get('qv') || ''
-  const applyQuickViewFilters = useCallback(
-    (key: QuickViewKey, opts?: { syncUrl?: boolean }) => {
-      const syncUrl = opts?.syncUrl ?? false
-
-      const next = new URLSearchParams(searchParams)
-      if (syncUrl) next.set('qv', key)
-      if (syncUrl) setSearchParams(next, { replace: true })
-
-      const setTodayRange = (start: Date, end: Date) => {
-        setCreatedRange({
-          from: start.toISOString().slice(0, 10),
-          to: end.toISOString().slice(0, 10),
-        })
-      }
-
-      // Всегда начинаем с "чистого" листа, чтобы пресет был предсказуемым.
-      handleResetFilters()
-
-      switch (key) {
-        case 'my_work_today': {
-          const todayStart = new Date()
-          todayStart.setHours(0, 0, 0, 0)
-          const todayEnd = new Date()
-          todayEnd.setHours(23, 59, 59, 999)
-          setManagerFilter(preferredManagerId ? [preferredManagerId] : [])
-          setTodayRange(todayStart, todayEnd)
-          break
-        }
-        case 'new_this_week': {
-          const end = new Date()
-          end.setHours(23, 59, 59, 999)
-          const start = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-          start.setHours(0, 0, 0, 0)
-          setTodayRange(start, end)
-          break
-        }
-        case 'docs_incomplete': {
-          // incomplete = attention + pending
-          setDocsStatusFilter([...QUICK_DOC_STATUS_SETS.attention, ...QUICK_DOC_STATUS_SETS.pending])
-          break
-        }
-        case 'ready_for_handoff': {
-          setHandoffStatusFilter('pending')
-          setDocsStatusFilter(['ready'])
-          break
-        }
-        default:
-          break
-      }
-    },
-    [
-      QUICK_DOC_STATUS_SETS,
-      handleResetFilters,
-      preferredManagerId,
-      searchParams,
-      setCreatedRange,
-      setDocsStatusFilter,
-      setHandoffStatusFilter,
-      setManagerFilter,
-      setSearchParams,
-    ]
-  )
-
-  useEffect(() => {
-    if (!filtersHydrated) return
-    if (!quickViewParam) return
-    const key = quickViewParam as QuickViewKey
-    if (['my_work_today', 'docs_incomplete', 'ready_for_handoff', 'new_this_week'].includes(key)) {
-      applyQuickViewFilters(key, { syncUrl: false })
-    }
-  }, [filtersHydrated, quickViewParam, applyQuickViewFilters])
+  const {
+    quickViewParam,
+    quickFiltersExpanded,
+    setQuickFiltersExpanded,
+    quickDocFilters,
+    toggleQuickDocFilter,
+    applyQuickViewFilters,
+  } = useCandidatesQuickViews({
+    t,
+    searchParams,
+    setSearchParams,
+    filtersHydrated,
+    handleResetFilters,
+    preferredManagerId,
+    docsStatusFilter,
+    setDocsStatusFilter,
+    setManagerFilter,
+    setCreatedRange,
+    setHandoffStatusFilter,
+  })
 
   // Reusable secondary button style for top/filter actions
   const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
@@ -3848,32 +3638,6 @@ export default function Candidates(){
     isRangeActive(firstContactRange) ||
     isRangeActive(docsValidRange) ||
     Object.values(textFilters).some((value) => value.trim().length > 0)
-
-  // Вычисляем высоту таблицы динамически (после определения hasFilterBadges)
-  useEffect(() => {
-    const updateHeight = () => {
-      if (!tableContainerRef.current) return
-      const container = tableContainerRef.current
-      const rect = container.getBoundingClientRect()
-      // Вычитаем высоту заголовка фильтров (если есть) и отступы
-      const filterBadgesHeight = hasFilterBadges ? 64 : 0 // Примерная высота
-      const bulkActionsHeight = canManage && Object.values(checked).some(Boolean) ? 64 : 0
-      const padding = 32 // Отступы карточки (m-4 = 16px * 2)
-      const headerHeight = 56 // Высота заголовка таблицы
-      const calculatedHeight = rect.height - filterBadgesHeight - bulkActionsHeight - padding - headerHeight
-      setTableHeight(Math.max(400, calculatedHeight))
-    }
-    updateHeight()
-    const resizeObserver = new ResizeObserver(updateHeight)
-    if (tableContainerRef.current) {
-      resizeObserver.observe(tableContainerRef.current)
-    }
-    window.addEventListener('resize', updateHeight)
-    return () => {
-      resizeObserver.disconnect()
-      window.removeEventListener('resize', updateHeight)
-    }
-  }, [hasFilterBadges, canManage, checked])
 
   const changeView = (mode: 'table' | 'kanban') => {
     setViewMode(mode)
@@ -3910,89 +3674,19 @@ export default function Candidates(){
       </button>
     </div>
   )
-  const insightCards = [
-    {
-      label: t('app.candidates.insights.total'),
-      value: candidateInsights.total,
-      hint: t('app.candidates.insights.total_hint', { values: { count: candidateInsights.total } }),
-    },
-    {
-      label: t('app.candidates.insights.new'),
-      value: candidateInsights.newCount,
-      hint: t('app.candidates.insights.new_hint', { values: { count: candidateInsights.newCount } }),
-    },
-    {
-      label: t('app.candidates.insights.docs_ready'),
-      value: candidateInsights.docsReady,
-      hint: t('app.candidates.insights.docs_ready_hint', { values: { count: candidateInsights.docsReady } }),
-    },
-    {
-      label: t('app.candidates.insights.docs_attention'),
-      value: candidateInsights.docsAttention,
-      hint: t('app.candidates.insights.docs_attention_hint', {
-        values: { count: candidateInsights.docsAttention },
-      }),
-    },
-  ]
-  const HERO_STORAGE_KEY = 'hf:candidates:heroExpanded'
-  const [heroExpanded, setHeroExpanded] = useState(() => {
-    try {
-      return window.localStorage.getItem(HERO_STORAGE_KEY) === '1'
-    } catch {
-      return false
-    }
+  const {
+    heroExpanded,
+    setHeroExpanded,
+    insightCards,
+    handleInsightDrillDown,
+  } = useCandidatesInsightsHero({
+    t,
+    insightSource,
+    enrichedItems,
+    handleResetFilters,
+    setStageFilter,
+    setDocsStatusFilter,
   })
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(HERO_STORAGE_KEY, heroExpanded ? '1' : '0')
-    } catch {
-      /* ignore */
-    }
-  }, [heroExpanded])
-
-  // Состояние для бокового меню
-  const SIDEBAR_STORAGE_KEY = 'hf:candidates:sidebarOpen'
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try {
-      return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarOpen ? '1' : '0')
-    } catch {
-      /* ignore */
-    }
-    // Отправляем состояние в Topbar
-    window.dispatchEvent(new CustomEvent('candidates-sidebar-state', { detail: { open: sidebarOpen } }))
-  }, [sidebarOpen])
-
-  // Слушаем события от Topbar
-  const sidebarOpenRef = useRef(sidebarOpen)
-  useEffect(() => {
-    sidebarOpenRef.current = sidebarOpen
-  }, [sidebarOpen])
-
-  useEffect(() => {
-    const handleToggle = (e: CustomEvent<{ open: boolean }>) => {
-      setSidebarOpen(e.detail.open)
-    }
-
-    const handleRequestState = () => {
-      // Используем ref для получения актуального значения
-      window.dispatchEvent(new CustomEvent('candidates-sidebar-state', { detail: { open: sidebarOpenRef.current } }))
-    }
-
-    window.addEventListener('candidates-sidebar-toggle', handleToggle as EventListener)
-    window.addEventListener('candidates-sidebar-request-state', handleRequestState)
-
-    return () => {
-      window.removeEventListener('candidates-sidebar-toggle', handleToggle as EventListener)
-      window.removeEventListener('candidates-sidebar-request-state', handleRequestState)
-    }
-  }, [])
 
   // Закрытие контекстного меню при клике вне его и Escape
   useEffect(() => {
@@ -4021,41 +3715,29 @@ export default function Candidates(){
   }, [contextMenu, displayedItems])
 
   const summaryHero = (
-    <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900">{t('app.candidates.insights.title')}</h2>
+    <CandidatesSummaryHero
+      title={t('app.candidates.insights.title')}
+      subtitle={t('app.candidates.insights.subtitle')}
+      expandLabel={t('common.actions.expand')}
+      collapseLabel={t('common.actions.collapse')}
+      expanded={heroExpanded}
+      cards={insightCards}
+      onToggleExpanded={() => setHeroExpanded((prev) => !prev)}
+      onCardClick={(key) => handleInsightDrillDown(key as 'total' | 'new' | 'docs_ready' | 'docs_attention')}
+      headerActions={
+        canViewActivities ? (
           <button
             type="button"
-            className="text-[10px] text-slate-500 underline hover:text-slate-800"
-            onClick={() => setHeroExpanded((prev) => !prev)}
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm hover:border-brand-300 hover:bg-brand-50/50"
+            onClick={openActivitiesModal}
+            title={t('app.nav.items.tasks', { defaultValue: 'Tasks' })}
           >
-            {heroExpanded ? t('common.actions.collapse') : t('common.actions.expand')}
+            <IconListCheck size={14} className="text-slate-500" aria-hidden />
+            {t('app.nav.items.tasks', { defaultValue: 'Tasks' })}
           </button>
-        </div>
-        <p className="text-[10px] text-slate-500 leading-tight">{t('app.candidates.insights.subtitle')}</p>
-      </div>
-      <div
-        className={clsx(
-          'mt-2 grid gap-1.5 transition-all duration-200',
-          heroExpanded ? 'grid-cols-2' : 'grid-cols-2'
-        )}
-      >
-        {insightCards.map((card) => (
-          <div
-            key={card.label}
-            className={clsx(
-              'rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5',
-              !heroExpanded && 'py-1.5'
-            )}
-          >
-            <div className="text-[9px] uppercase tracking-wide text-slate-500 leading-tight">{card.label}</div>
-            <div className="text-lg font-semibold leading-tight text-slate-900">{card.value}</div>
-            {heroExpanded && <div className="text-[9px] text-slate-500 leading-tight mt-0.5">{card.hint}</div>}
-          </div>
-        ))}
-      </div>
-    </section>
+        ) : null
+      }
+    />
   )
 
   const visibleCandidatesCount = displayedItems.length
@@ -4067,250 +3749,7 @@ export default function Candidates(){
     return <Pipeline />
   }
 
-  const toggleQuickDocFilter = (statuses: string[], active: boolean) => {
-    if (active) {
-      setDocsStatusFilter([])
-    } else {
-      setDocsStatusFilter(statuses)
-    }
-  }
-
-  return (
-    <div className="relative flex flex-col -mx-6 -my-6" style={{ height: 'calc(100vh - 4rem)', minHeight: 0 }}>
-      {/* Основной контент - таблица */}
-      <div className={clsx("flex-1 transition-all duration-300 min-h-0 flex flex-col", sidebarOpen ? "mr-96" : "mr-0")}>
-        <div ref={tableContainerRef} className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          {/* Debug: client view handoffs (only when ?debug=1, uses same auth as list) */}
-          {showDebugPanel && (
-            <div className="mx-4 mt-2 mb-2 p-3 rounded-lg border border-amber-200 bg-amber-50 text-sm">
-              <div className="font-medium text-amber-900 mb-2">Debug: client view</div>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <button
-                  type="button"
-                  className="px-3 py-1.5 rounded border border-amber-400 bg-white hover:bg-amber-100 text-amber-900 disabled:opacity-50"
-                  disabled={debugClientViewLoading}
-                  onClick={async () => {
-                    setDebugClientViewError(null)
-                    setDebugClientViewLoading(true)
-                    try {
-                      const { data } = await api.get<Record<string, unknown>>('candidates/debug-client-view')
-                      setDebugClientView(data)
-                    } catch (e: any) {
-                      setDebugClientViewError(e?.response?.data?.detail ?? e?.message ?? 'Request failed')
-                      setDebugClientView(null)
-                    } finally {
-                      setDebugClientViewLoading(false)
-                    }
-                  }}
-                >
-                  {debugClientViewLoading ? '…' : 'Проверить handoffs'}
-                </button>
-                <button
-                  type="button"
-                  className="px-3 py-1.5 rounded border border-amber-600 bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50"
-                  disabled={debugClientViewLoading}
-                  onClick={async () => {
-                    setDebugClientViewError(null)
-                    setDebugClientViewLoading(true)
-                    try {
-                      const { data } = await api.post<{ updated?: number; message?: string }>('candidates/debug-client-view/force-two')
-                      setDebugClientView(data as Record<string, unknown>)
-                      load({ force: true })
-                    } catch (e: any) {
-                      setDebugClientViewError(e?.response?.data?.detail ?? e?.message ?? 'Request failed')
-                      setDebugClientView(null)
-                    } finally {
-                      setDebugClientViewLoading(false)
-                    }
-                  }}
-                >
-                  Оставить 2 handoff и обновить список
-                </button>
-              </div>
-              {debugClientViewError && <div className="text-red-600 mb-1">{debugClientViewError}</div>}
-              {debugClientView && <pre className="text-xs bg-white p-2 rounded border overflow-auto max-h-32">{JSON.stringify(debugClientView, null, 2)}</pre>}
-            </div>
-          )}
-
-          {/* Active filter badges */}
-          {hasFilterBadges && (
-            <FilterBadges
-              q={q}
-              textFilters={textFilters}
-              stageFilter={stageFilter}
-              vacancyFilter={vacancyFilter}
-              managerFilter={managerFilter}
-              statusReasonFilter={statusReasonFilter}
-              docsStatusFilter={docsStatusFilter}
-              docsOrderedFilter={docsOrderedFilter}
-              preferredChannelFilter={preferredChannelFilter}
-              inPolandFilter={inPolandFilter}
-              opsModeFilter={opsModeFilter}
-              polandBasisFilter={polandBasisFilter}
-              trailerTypesFilter={trailerTypesFilter}
-              createdRange={createdRange}
-              firstContactRange={firstContactRange}
-              docsValidRange={docsValidRange}
-              docsHasFilesFilter={docsHasFilesFilter}
-              handoffStatusFilter={handoffStatusFilter}
-              contactAttemptsFilter={contactAttemptsFilter}
-              processorFilter={processorFilter}
-              stageLabelMap={stageLabelMap}
-              vacancyLabelMap={vacancyLabelMap}
-              managerLabelMap={managerLabelMap}
-              reasonLabelMap={reasonLabelMap}
-              reasonStageMap={reasonStageMap}
-              preferredChannelLabelMap={preferredChannelLabelMap}
-              inPolandLabelMap={inPolandLabelMap}
-              opsModeLabelMap={opsModeLabelMap}
-              getPolandBasisLabel={getPolandBasisLabel}
-              getTrailerTypeLabel={getTrailerTypeLabel}
-              docsStatusOptions={docsStatusFilterOptions}
-              docsOrderFilterOptions={docsOrderFilterOptions}
-              locale={locale}
-              onQChange={setQ}
-              onTextFilterChange={setTextFilter}
-              onStageFilterChange={setStageFilter}
-              onVacancyFilterChange={setVacancyFilter}
-              onManagerFilterChange={setManagerFilter}
-              onStatusReasonFilterChange={setStatusReasonFilter}
-              onDocsStatusFilterChange={setDocsStatusFilter}
-              onDocsOrderedFilterChange={setDocsOrderedFilter}
-              onPreferredChannelFilterChange={setPreferredChannelFilter}
-              onInPolandFilterChange={setInPolandFilter}
-              onOpsModeFilterChange={setOpsModeFilter}
-              onPolandBasisFilterChange={setPolandBasisFilter}
-              onTrailerTypesFilterChange={setTrailerTypesFilter}
-              onCreatedRangeChange={setCreatedRange}
-              onFirstContactRangeChange={setFirstContactRange}
-              onDocsValidRangeChange={setDocsValidRange}
-              onDocsHasFilesFilterChange={setDocsHasFilesFilter}
-              onHandoffStatusFilterChange={setHandoffStatusFilter}
-              onContactAttemptsFilterChange={setContactAttemptsFilter}
-              onProcessorFilterChange={setProcessorFilter}
-            />
-          )}
-
-          {/* Bulk actions appear only when there is a selection */}
-          {canManage && Object.values(checked).some(Boolean) && (
-            <div className="card p-3 flex flex-wrap items-center gap-2 m-4">
-              <div className="text-sm">
-                {t('app.candidates.bulk.selected', { values: { count: Object.values(checked).filter(Boolean).length } })}
-              </div>
-              <button
-                className="btn-primary"
-                title={t('app.candidates.bulk.stage.title')}
-                onClick={()=>{ setBulkStage(stageOptions[0] || 'new'); setBulkReasons([]); setBulkOpen(true) }}
-              >
-                {t('app.candidates.bulk.stage.action')}
-              </button>
-              <button
-                className="btn"
-                title={t('app.candidates.bulk.manager.title')}
-                onClick={()=>{ setBulkManagerId(preferredManagerId); setBulkManagerOpen(true) }}
-              >
-                {t('app.candidates.bulk.manager.action')}
-              </button>
-              <button
-                className="btn"
-                title={t('app.candidates.bulk.vacancy.title')}
-                onClick={()=>{ setBulkVacancyId(vacancies[0]?.id || ''); setBulkVacancyOpen(true) }}
-              >
-                {t('app.candidates.bulk.vacancy.action')}
-              </button>
-              <button
-                className="btn"
-                title={t('app.candidates.bulk.handoff.title', { defaultValue: 'Przekaż wybranych do klienta' })}
-                onClick={()=> setBulkHandoffOpen(true)}
-              >
-                {t('app.candidates.bulk.handoff.action', { defaultValue: 'Przekaż do klienta (wybrani)' })}
-              </button>
-              <button
-                className="btn"
-                title={t('app.candidates.bulk.tags.title')}
-                onClick={()=>{ setBulkTagsOperation('add'); setBulkTagsList(''); setBulkTagsOpen(true) }}
-              >
-                {t('app.candidates.bulk.tags.action')}
-              </button>
-              <button
-                className="btn"
-                title={t('app.candidates.bulk.activities.title', { defaultValue: 'Create activities for selected' })}
-                onClick={() => {
-                  setBulkActivityTitle(t('app.candidates.bulk.activities.default_title', { defaultValue: 'Follow up' }))
-                  setBulkActivityDueAt(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16))
-                  setBulkActivityOffsetMinutes(60)
-                  setBulkActivitiesOpen(true)
-                }}
-              >
-                {t('app.candidates.bulk.activities.action', { defaultValue: 'Create activity' })}
-              </button>
-              <button
-                className="btn bg-red-600 hover:bg-red-700 text-white"
-                title={t('app.candidates.bulk.delete.title')}
-                onClick={()=>{ setBulkDeleteOpen(true) }}
-              >
-                {t('app.candidates.bulk.delete.action')}
-              </button>
-              <div className="flex-1" />
-              <button
-                className="btn-secondary"
-                title={t('app.candidates.bulk.clear_title')}
-                onClick={()=> setChecked({})}
-              >
-                {t('app.candidates.bulk.clear_action')}
-              </button>
-            </div>
-          )}
-
-          {errorText && (
-            <div className="m-4">
-              <ErrorRecoveryBanner
-                info={{
-                  title: t('app.candidates.errors.title') || 'Ошибка загрузки',
-                  detail: errorText,
-                  hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-                }}
-                onRetry={() => void load({ force: true })}
-                retryLabel={t('app.candidates.errors.retry') || 'Повторить попытку'}
-              />
-            </div>
-          )}
-
-          <div className="card overflow-hidden m-4 relative flex-1 min-h-0 flex flex-col">
-        {loading && displayedItems.length > 0 && (
-          <div className="absolute top-2 right-2 z-30 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-1.5 shadow-lg">
-            <div className="flex items-center gap-2 text-xs text-slate-600">
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-brand-600"></div>
-              <span className="font-medium">{t('app.candidates.table.updating') || 'Обновление...'}</span>
-            </div>
-          </div>
-        )}
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <TableVirtuoso
-            ref={virtuosoRef}
-            scrollerRef={(ref: HTMLElement | Window | null) => {
-              if (ref && ref instanceof HTMLElement) scrollContainerRef.current = ref
-            }}
-            style={{ height: tableHeight ?? '100%', minHeight: 400 }}
-            totalCount={displayedItems.length}
-            data={displayedItems}
-            increaseViewportBy={{ top: 400, bottom: 800 }}
-            fixedHeaderContent={() => (
-              <tr className="bg-slate-50 text-left">
-                <DraggableColumnHeader columnKey="checkbox" isSticky={true} stickyLeft="0" />
-                {orderedVisibleColumns.map((columnKey) => {
-                  if (columnKey === 'name') {
-                    return (
-                      <DraggableColumnHeader key={columnKey} columnKey={columnKey} isSticky={true} stickyLeft="56px" />
-                    )
-                  }
-                  return (
-                    <DraggableColumnHeader key={columnKey} columnKey={columnKey} />
-                  )
-                })}
-              </tr>
-            )}
-          itemContent={(index, item) => {
+  const renderCandidateRowTds = (index: number, item: AugmentedCandidate) => {
             const c = item as AugmentedCandidate
             const phoneDisplay = c.phone || '—'
             const href = phoneDisplay && phoneDisplay !== '—' ? asTelHref(phoneDisplay) : undefined
@@ -4320,38 +3759,21 @@ export default function Candidates(){
             const isFocused = focusedRowIndex === index
             return (
               <>
-                <td className={clsx("px-4 py-3 sticky left-0 top-0 z-[5] border-r border-slate-200", isFocused ? "bg-brand-100" : "bg-white")} data-candidate-id={c.id} style={{ width: '56px', minWidth: '56px', maxWidth: '56px', position: 'sticky', left: 0, top: 0 }}>
-                  <div className="flex items-center justify-center">
-                    <input 
-                      type="checkbox" 
-                      checked={!!checked[c.id]} 
-                      disabled={!canManage} 
-                      onChange={()=>toggle(c.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="cursor-pointer w-4 h-4"
-                      title={checked[c.id] ? (t('app.candidates.table.deselect') || 'Снять выделение') : (t('app.candidates.table.select') || 'Выделить')}
-                      aria-label={t('app.candidates.table.select_candidate', {
-                        values: {
-                          name: (c as AugmentedCandidate).masked === true
-                            ? (c.short_id ? t('app.candidates.table.masked_label_short_id', { defaultValue: 'Кандидат {short_id}', values: { short_id: c.short_id } }) : t('app.candidates.table.masked_label', { defaultValue: 'Кандидат #{id}', values: { id: (c.id ?? '').slice(0, 8) } }))
-                            : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim(),
-                        },
-                      }) || 'Select candidate'}
-                    />
-                  </div>
-                </td>
+                {/* Без sticky на body-cells: любой sticky у tbody + sticky thead в Virtuoso давал битый hit-testing (клики/mouseup уходили в шапку). */}
+                <CandidatesTableCheckboxCell
+                  c={c}
+                  isFocused={isFocused}
+                  checked={checked}
+                  canManage={canManage}
+                  toggle={toggle}
+                  t={t}
+                />
                 {orderedVisibleColumns.map((columnKey) => {
                   if (!visibleCols[columnKey]) return null
                   
                   let cellContent: ReactNode = null
-                  let stickyProps: React.CSSProperties = {}
-                  
+
                   if (columnKey === 'name') {
-                    stickyProps.position = 'sticky'
-                    stickyProps.left = '56px'
-                    stickyProps.top = 0
-                    stickyProps.zIndex = 5
-                    stickyProps.backgroundColor = '#ffffff' // bg-white
                     const candidateLabel =
                       (c as AugmentedCandidate).masked === true
                         ? (c.short_id
@@ -4360,50 +3782,43 @@ export default function Candidates(){
                         : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || t('common.labels.not_available')
                     const isMasked = (c as AugmentedCandidate).masked === true
                     cellContent = (
-                      <div className="flex flex-col gap-0.5 min-w-0 group">
-                        <div className="flex items-start justify-between gap-2 min-w-0">
-                          <div className="min-w-0 flex-1">
-                            <Link
-                              to={`/app/candidates/${c.id}`}
-                              className="font-medium text-brand-600 hover:text-brand-700 hover:underline"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                handleCandidateOpen(c.id)
-                                navigate(`/app/candidates/${c.id}`)
-                              }}
-                              title={t('app.candidates.table.open_card') || ((c as AugmentedCandidate).masked === true ? t('app.candidates.table.open_card_masked', { defaultValue: 'Открыть карточку кандидата' }) : `Открыть карточку кандидата ${c.first_name} ${c.last_name}`)}
+                      <div className="flex min-w-0 flex-col gap-2 group">
+                        <div className="min-w-0 overflow-hidden">
+                          <Link
+                            to={`/app/candidates/${c.id}`}
+                            className="block truncate whitespace-nowrap font-medium text-brand-600 hover:text-brand-700 hover:underline"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handleCandidateOpen(c.id)
+                              navigate(`/app/candidates/${c.id}`)
+                            }}
+                            title={t('app.candidates.table.open_card') || ((c as AugmentedCandidate).masked === true ? t('app.candidates.table.open_card_masked', { defaultValue: 'Открыть карточку кандидата' }) : `Открыть карточку кандидата ${c.first_name} ${c.last_name}`)}
+                          >
+                            {candidateLabel}
+                          </Link>
+                          {isMasked ? (
+                            <div
+                              className="text-xs text-slate-500 truncate"
+                              title={
+                                c.short_id || ((c as AugmentedCandidate).masked && (c.id ?? '').slice(0, 8))
+                                  ? `Short ID: ${c.short_id || (c.id ?? '').slice(0, 8)}`
+                                  : undefined
+                              }
                             >
-                              {candidateLabel}
-                            </Link>
-                            {isMasked ? (
-                              <div
-                                className="text-xs text-slate-500 truncate"
-                                title={
-                                  c.short_id || ((c as AugmentedCandidate).masked && (c.id ?? '').slice(0, 8))
-                                    ? `Short ID: ${c.short_id || (c.id ?? '').slice(0, 8)}`
-                                    : undefined
-                                }
-                              >
-                                {c.short_id ? `ID ${c.short_id}` : `ID ${(c.id ?? '').slice(0, 8)}`}
-                              </div>
-                            ) : null}
-                          </div>
-
-                          {/* Row quick actions: visible on hover for explicit preview/open actions */}
-                          <div className="hidden group-hover:flex flex-col gap-0 shrink-0">
-                            <button
-                              type="button"
-                              className="text-[12px] font-medium text-slate-500 hover:text-slate-700 hover:underline px-1 py-0.5"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setSelectedCandidateId(c.id)
-                                setSidebarOpen(true)
-                              }}
-                            >
-                              {t('app.candidates.actions.preview', { defaultValue: 'Preview' })}
-                            </button>
-                          </div>
+                              {c.short_id ? `ID ${c.short_id}` : `ID ${(c.id ?? '').slice(0, 8)}`}
+                            </div>
+                          ) : null}
                         </div>
+
+                        <CandidatesTableRowQuickActions
+                          c={c}
+                          isFocused={isFocused}
+                          handleCandidateOpen={handleCandidateOpen}
+                          navigate={navigate}
+                          setSelectedCandidateId={setSelectedCandidateId}
+                          setSidebarOpen={setSidebarOpen}
+                          t={t}
+                        />
 
                         {/* opsMode badge moved into HoverCard to reduce scan noise */}
                       </div>
@@ -4439,6 +3854,56 @@ export default function Candidates(){
                     cellContent = managerName || t('common.labels.not_available')
                   } else if (columnKey === 'stage') {
                     cellContent = <StageTag code={c.stage} />
+                  } else if (columnKey === 'risk') {
+                    const score = (c as any).risk_score
+                    const bandRaw: string | null | undefined = (c as any).risk_band
+                    const band =
+                      bandRaw ||
+                      (typeof score === 'number'
+                        ? score >= 85
+                          ? 'critical'
+                          : score >= 65
+                            ? 'high'
+                            : score >= 35
+                              ? 'medium'
+                              : 'low'
+                        : null)
+
+                    const bandLabel =
+                      band === 'critical'
+                        ? 'Критический'
+                        : band === 'high'
+                          ? 'Высокий'
+                          : band === 'medium'
+                            ? 'Средний'
+                            : band === 'low'
+                              ? 'Низкий'
+                              : '—'
+
+                    const drivers: string[] = Array.isArray((c as any).risk_drivers) ? (c as any).risk_drivers : []
+                    const tooltip = drivers.length ? drivers.join(' | ') : undefined
+                    const badgeCls =
+                      band === 'critical'
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : band === 'high'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                          : band === 'medium'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : band === 'low'
+                              ? 'bg-slate-100 text-slate-700 border-slate-200'
+                              : 'bg-slate-50 text-slate-500 border-slate-200'
+
+                    cellContent =
+                      typeof score === 'number' ? (
+                        <div className="flex items-center gap-2">
+                          <span className={clsx('text-[11px] px-2 py-0.5 rounded border font-medium truncate', badgeCls)} title={tooltip}>
+                            {bandLabel}
+                          </span>
+                          <span className="text-[11px] text-slate-500">{score}</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )
                   } else if (columnKey === 'created') {
                     cellContent = c.created_at ? formatDateSafe(c.created_at, locale) : t('common.labels.not_available')
                   } else if (columnKey === 'firstContact') {
@@ -4591,22 +4056,26 @@ export default function Candidates(){
                     <td
                       key={columnKey}
                       className={clsx(
-                        "border-r border-slate-200 overflow-hidden",
+                        'border-r border-slate-200',
+                        // Name column: quick actions stay inside the cell (no bleed into neighbors).
+                        'overflow-hidden',
                         // Compact operational defaults: reduce padding in the most-used columns.
                         ['stage', 'docsStatus', 'vacancy', 'manager'].includes(columnKey)
-                          ? 'px-3 py-2'
-                          : 'px-4 py-3',
+                          ? 'px-3 py-2.5 align-middle'
+                          : 'px-4 py-2.5 align-middle',
                         isFocused ? "bg-brand-100" : "bg-white",
-                        columnKey === 'name' && "sticky font-medium z-[5]"
+                        columnKey === 'name' && "font-medium"
                       )}
                       style={{
-                        ...stickyProps,
                         width: `${getColumnWidth(columnKey)}px`,
                         minWidth: `${getColumnWidth(columnKey)}px`,
                         maxWidth: `${getColumnWidth(columnKey)}px`
                       } as React.CSSProperties}
                     >
-                      <div className="min-w-0 overflow-hidden" title={typeof cellContent === 'string' ? cellContent : undefined}>
+                      <div
+                        className="min-w-0 overflow-hidden"
+                        title={typeof cellContent === 'string' ? cellContent : undefined}
+                      >
                         {cellContent}
                       </div>
                     </td>
@@ -4614,89 +4083,423 @@ export default function Candidates(){
                 })}
               </>
             )
-          }}
-          components={{
-            Table: forwardRef<HTMLTableElement, React.ComponentPropsWithoutRef<'table'>>(
-              ({ className, ...props }, ref) => (
-                <table
-                  {...props}
-                  ref={ref}
-                  className={clsx('min-w-full text-sm border-separate border-spacing-0', className)}
-                />
-              )
-            ),
-            TableHead: forwardRef<HTMLTableSectionElement, React.ComponentPropsWithoutRef<'thead'>>(
-              ({ className, style, ...props }, ref) => (
-                <thead 
-                  ref={ref} 
-                  style={{ ...style, position: 'sticky', top: 0, zIndex: 15, backgroundColor: '#f9fafb' }} 
-                  className={clsx('bg-slate-50 border-b-2 border-slate-200', className)} 
-                  {...props} 
-                />
-              )
-            ),
-            TableBody: forwardRef<HTMLTableSectionElement, React.ComponentPropsWithoutRef<'tbody'>>(
-              ({ style, ...props }, ref) => <tbody ref={ref} style={style} {...props} />
-            ),
-            TableRow: forwardRef<
-              HTMLTableRowElement,
-              React.ComponentPropsWithoutRef<'tr'> & { item?: AugmentedCandidate; 'data-index'?: number }
-            >(({ className, style, item, 'data-index': dataIndex, ...props }, ref) => {
-              const id = item?.id
-              const index = typeof dataIndex === 'number' ? dataIndex : (id ? displayedItems.findIndex(c => c.id === id) : -1)
-              const isFocused = focusedRowIndex === index && index >= 0
-              
-              return (
-                <tr
-                  ref={(node) => {
-                    if (typeof ref === 'function') {
-                      ref(node)
-                    } else if (ref) {
-                      ref.current = node
-                    }
-                    if (isFocused && node) {
-                      focusedRowRef.current = node
-                      // Скроллим к выбранной строке при фокусе
-                      setTimeout(() => {
-                        node.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-                      }, 50)
+  }
+
+  return (
+    <div
+      data-hf-ui="candidates-native-table-v7-overlay-rail"
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+    >
+      {/* Таблица в стабильной ширине; preview-rail поверх справа, без изменения геометрии таблицы. */}
+      <div className="relative flex flex-1 min-h-0 min-w-0">
+        <div className="flex flex-1 min-h-0 min-w-0 flex flex-col">
+        <div
+          ref={tableContainerRef}
+          className="flex-1 min-h-0 overflow-hidden flex flex-col"
+          data-candidates-table-container
+        >
+          {/* Debug: client view handoffs (only when ?debug=1, uses same auth as list) */}
+          {showDebugPanel && (
+            <div className="mx-4 mt-2 mb-2 p-3 rounded-lg border border-amber-200 bg-amber-50 text-sm">
+              <div className="font-medium text-amber-900 mb-2">
+                {t('app.candidates.debug.client_view', { defaultValue: 'Debug: client view' })}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded border border-amber-400 bg-white hover:bg-amber-100 text-amber-900 disabled:opacity-50"
+                  disabled={debugClientViewLoading}
+                  onClick={async () => {
+                    setDebugClientViewError(null)
+                    setDebugClientViewLoading(true)
+                    try {
+                      const { data } = await api.get<Record<string, unknown>>('candidates/debug-client-view')
+                      setDebugClientView(data)
+                    } catch (e: any) {
+                      setDebugClientViewError(e?.response?.data?.detail ?? e?.message ?? t('common.errors.request_failed', { defaultValue: 'Request failed' }))
+                      setDebugClientView(null)
+                    } finally {
+                      setDebugClientViewLoading(false)
                     }
                   }}
-                  style={style}
-                  data-candidate-id={id}
-                  data-index={index}
-                  tabIndex={-1}
-                  onClick={(e) => {
-                    if (!id) return
-                    const target = e.target as HTMLElement | null
-                    if (target?.closest('a,button,input[type="checkbox"],select,textarea')) return
-                    // Keep row click safe: it only switches candidate when rail is already open.
-                    if (sidebarOpenRef.current) {
-                      setSelectedCandidateId(id)
-                      setSidebarOpen(true)
+                >
+                  {debugClientViewLoading ? '…' : 'Проверить handoffs'}
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded border border-amber-600 bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-50"
+                  disabled={debugClientViewLoading}
+                  onClick={async () => {
+                    setDebugClientViewError(null)
+                    setDebugClientViewLoading(true)
+                    try {
+                      const { data } = await api.post<{ updated?: number; message?: string }>('candidates/debug-client-view/force-two')
+                      setDebugClientView(data as Record<string, unknown>)
+                      load({ force: true })
+                    } catch (e: any) {
+                      setDebugClientViewError(e?.response?.data?.detail ?? e?.message ?? t('common.errors.request_failed', { defaultValue: 'Request failed' }))
+                      setDebugClientView(null)
+                    } finally {
+                      setDebugClientViewLoading(false)
                     }
                   }}
-                  onContextMenu={(e) => {
-                    if (id && canManage) {
-                      e.preventDefault()
-                      setContextMenu({ x: e.clientX, y: e.clientY, candidateId: id })
-                    }
-                  }}
-                  className={clsx(
-                    'border-t border-slate-200 transition-all duration-150 cursor-pointer',
-                    isFocused && 'ring-2 ring-brand-500 ring-inset outline-none',
-                    !isFocused && 'hover:bg-brand-50/50',
-                    id && selectedCandidateId === id && !isFocused && 'bg-brand-50',
-                    id && recentlyOpenedId === id && !isFocused && 'bg-amber-50/60',
-                    id && (items.find(c => c.id === id)?.is_favorite) && !isFocused && 'bg-yellow-50/40 border-l-2 border-l-yellow-400',
-                    className
-                  )}
-                  {...props}
-                />
-              )
-            }),
-          }}
-          />
+                >
+                  Оставить 2 handoff и обновить список
+                </button>
+              </div>
+              {debugClientViewError && <div className="text-red-600 mb-1">{debugClientViewError}</div>}
+              {debugClientView && <pre className="text-xs bg-white p-2 rounded border overflow-auto max-h-32">{JSON.stringify(debugClientView, null, 2)}</pre>}
+
+              {debugHit && (
+                <div className="mt-2 p-2 rounded border border-amber-200 bg-amber-100/50">
+                  <div className="text-xs font-semibold text-amber-900 mb-1">
+                    {t('app.candidates.debug.mousedown_hit', { defaultValue: 'Debug: mousedown hit' })}
+                  </div>
+                  <div className="text-[11px] text-amber-900">
+                    <div>
+                      tag: <span className="font-mono">{debugHit.tag ?? '—'}</span>
+                    </div>
+                    <div>
+                      pointer-events: <span className="font-mono">{debugHit.pointerEvents ?? '—'}</span>
+                    </div>
+                    <div>
+                      insideTable: <span className="font-mono">{String(Boolean(debugHit.insideTable))}</span>
+                    </div>
+                    {debugHit.className ? (
+                      <div className="mt-1">
+                        class: <span className="font-mono">{debugHit.className}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+
+              {debugClickHit && (
+                <div className="mt-2 p-2 rounded border border-indigo-200 bg-indigo-100/40">
+                  <div className="text-xs font-semibold text-indigo-900 mb-1">
+                    {t('app.candidates.debug.click_after_mousedown', { defaultValue: 'Debug: click AFTER mousedown' })}
+                  </div>
+                  <div className="text-[11px] text-indigo-900">
+                    <div>
+                      tag: <span className="font-mono">{debugClickHit.tag ?? '—'}</span>
+                    </div>
+                    <div>
+                      pointer-events: <span className="font-mono">{debugClickHit.pointerEvents ?? '—'}</span>
+                    </div>
+                    <div>
+                      insideTable: <span className="font-mono">{String(Boolean(debugClickHit.insideTable))}</span>
+                    </div>
+                    {debugClickHit.className ? (
+                      <div className="mt-1">
+                        class: <span className="font-mono">{debugClickHit.className}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+
+              {showDebugPanel && (
+                <div className="mt-2 p-2 rounded border border-slate-200 bg-white/60">
+                  <div className="text-xs font-semibold text-slate-900 mb-1">
+                    {t('app.candidates.debug.current_preview_state', { defaultValue: 'Debug: current preview state' })}
+                  </div>
+                  <div className="text-[11px] text-slate-900">
+                    <div>
+                      sidebarOpen: <span className="font-mono">{String(sidebarOpen)}</span>
+                    </div>
+                    <div>
+                      selectedCandidateId: <span className="font-mono">{selectedCandidateId ?? 'null'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {debugMouseUpHit && (
+                <div className="mt-2 p-2 rounded border border-cyan-200 bg-cyan-100/30">
+                  <div className="text-xs font-semibold text-cyan-900 mb-1">
+                    {t('app.candidates.debug.mouseup_hit', { defaultValue: 'Debug: mouseup hit' })}
+                  </div>
+                  <div className="text-[11px] text-cyan-900">
+                    <div>
+                      tag: <span className="font-mono">{debugMouseUpHit.tag ?? '—'}</span>
+                    </div>
+                    <div>
+                      pointer-events: <span className="font-mono">{debugMouseUpHit.pointerEvents ?? '—'}</span>
+                    </div>
+                    <div>
+                      insideTable: <span className="font-mono">{String(Boolean(debugMouseUpHit.insideTable))}</span>
+                    </div>
+                    {debugMouseUpHit.className ? (
+                      <div className="mt-1">
+                        class: <span className="font-mono">{debugMouseUpHit.className}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+
+              {debugClickHitBubble && (
+                <div className="mt-2 p-2 rounded border border-violet-200 bg-violet-100/30">
+                  <div className="text-xs font-semibold text-violet-900 mb-1">
+                    {t('app.candidates.debug.click_hit_bubble', { defaultValue: 'Debug: click hit (bubble)' })}
+                  </div>
+                  <div className="text-[11px] text-violet-900">
+                    <div>
+                      tag: <span className="font-mono">{debugClickHitBubble.tag ?? '—'}</span>
+                    </div>
+                    <div>
+                      pointer-events: <span className="font-mono">{debugClickHitBubble.pointerEvents ?? '—'}</span>
+                    </div>
+                    <div>
+                      insideTable: <span className="font-mono">{String(Boolean(debugClickHitBubble.insideTable))}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {debugMouseUpHitBubble && (
+                <div className="mt-2 p-2 rounded border border-sky-200 bg-sky-100/20">
+                  <div className="text-xs font-semibold text-sky-900 mb-1">
+                    {t('app.candidates.debug.mouseup_hit_bubble', { defaultValue: 'Debug: mouseup hit (bubble)' })}
+                  </div>
+                  <div className="text-[11px] text-sky-900">
+                    <div>
+                      tag: <span className="font-mono">{debugMouseUpHitBubble.tag ?? '—'}</span>
+                    </div>
+                    <div>
+                      pointer-events: <span className="font-mono">{debugMouseUpHitBubble.pointerEvents ?? '—'}</span>
+                    </div>
+                    <div>
+                      insideTable: <span className="font-mono">{String(Boolean(debugMouseUpHitBubble.insideTable))}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Active filter badges */}
+          {hasFilterBadges && (
+            <FilterBadges
+              q={q}
+              textFilters={textFilters}
+              stageFilter={stageFilter}
+              vacancyFilter={vacancyFilter}
+              managerFilter={managerFilter}
+              statusReasonFilter={statusReasonFilter}
+              docsStatusFilter={docsStatusFilter}
+              docsOrderedFilter={docsOrderedFilter}
+              preferredChannelFilter={preferredChannelFilter}
+              inPolandFilter={inPolandFilter}
+              opsModeFilter={opsModeFilter}
+              polandBasisFilter={polandBasisFilter}
+              trailerTypesFilter={trailerTypesFilter}
+              createdRange={createdRange}
+              firstContactRange={firstContactRange}
+              docsValidRange={docsValidRange}
+              docsHasFilesFilter={docsHasFilesFilter}
+              handoffStatusFilter={handoffStatusFilter}
+              contactAttemptsFilter={contactAttemptsFilter}
+              processorFilter={processorFilter}
+              stageLabelMap={stageLabelMap}
+              vacancyLabelMap={vacancyLabelMap}
+              managerLabelMap={managerLabelMap}
+              reasonLabelMap={reasonLabelMap}
+              reasonStageMap={reasonStageMap}
+              preferredChannelLabelMap={preferredChannelLabelMap}
+              inPolandLabelMap={inPolandLabelMap}
+              opsModeLabelMap={opsModeLabelMap}
+              getPolandBasisLabel={getPolandBasisLabel}
+              getTrailerTypeLabel={getTrailerTypeLabel}
+              docsStatusOptions={docsStatusFilterOptions}
+              docsOrderFilterOptions={docsOrderFilterOptions}
+              locale={locale}
+              onQChange={setQ}
+              onTextFilterChange={setTextFilter}
+              onStageFilterChange={setStageFilter}
+              onVacancyFilterChange={setVacancyFilter}
+              onManagerFilterChange={setManagerFilter}
+              onStatusReasonFilterChange={setStatusReasonFilter}
+              onDocsStatusFilterChange={setDocsStatusFilter}
+              onDocsOrderedFilterChange={setDocsOrderedFilter}
+              onPreferredChannelFilterChange={setPreferredChannelFilter}
+              onInPolandFilterChange={setInPolandFilter}
+              onOpsModeFilterChange={setOpsModeFilter}
+              onPolandBasisFilterChange={setPolandBasisFilter}
+              onTrailerTypesFilterChange={setTrailerTypesFilter}
+              onCreatedRangeChange={setCreatedRange}
+              onFirstContactRangeChange={setFirstContactRange}
+              onDocsValidRangeChange={setDocsValidRange}
+              onDocsHasFilesFilterChange={setDocsHasFilesFilter}
+              onHandoffStatusFilterChange={setHandoffStatusFilter}
+              onContactAttemptsFilterChange={setContactAttemptsFilter}
+              onProcessorFilterChange={setProcessorFilter}
+            />
+          )}
+
+          {/* Bulk actions appear only when there is a selection */}
+          {canManage && Object.values(checked).some(Boolean) && (
+            <div className="card p-3 flex flex-wrap items-center gap-2 m-4">
+              <div className="text-sm">
+                {t('app.candidates.bulk.selected', { values: { count: Object.values(checked).filter(Boolean).length } })}
+              </div>
+              <button
+                className="btn-primary"
+                title={t('app.candidates.bulk.stage.title')}
+                onClick={()=>{ setBulkStage(stageOptions[0] || 'new'); setBulkReasons([]); setBulkOpen(true) }}
+              >
+                {t('app.candidates.bulk.stage.action')}
+              </button>
+              <button
+                className="btn"
+                title={t('app.candidates.bulk.manager.title')}
+                onClick={()=>{ setBulkManagerId(preferredManagerId); setBulkManagerOpen(true) }}
+              >
+                {t('app.candidates.bulk.manager.action')}
+              </button>
+              <button
+                className="btn"
+                title={t('app.candidates.bulk.vacancy.title')}
+                onClick={()=>{ setBulkVacancyId(vacancies[0]?.id || ''); setBulkVacancyOpen(true) }}
+              >
+                {t('app.candidates.bulk.vacancy.action')}
+              </button>
+              <button
+                className="btn"
+                title={t('app.candidates.bulk.handoff.title', { defaultValue: 'Przekaż wybranych do klienta' })}
+                onClick={()=> setBulkHandoffOpen(true)}
+              >
+                {t('app.candidates.bulk.handoff.action', { defaultValue: 'Przekaż do klienta (wybrani)' })}
+              </button>
+              <button
+                className="btn"
+                title={t('app.candidates.bulk.tags.title')}
+                onClick={()=>{ setBulkTagsOperation('add'); setBulkTagsList(''); setBulkTagsOpen(true) }}
+              >
+                {t('app.candidates.bulk.tags.action')}
+              </button>
+              <button
+                className="btn"
+                title={t('app.candidates.bulk.activities.title', { defaultValue: 'Create activities for selected' })}
+                onClick={() => {
+                  setBulkActivityTitle(t('app.candidates.bulk.activities.default_title', { defaultValue: 'Follow up' }))
+                  setBulkActivityDueAt(new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16))
+                  setBulkActivityOffsetMinutes(60)
+                  setBulkActivitiesOpen(true)
+                }}
+              >
+                {t('app.candidates.bulk.activities.action', { defaultValue: 'Create activity' })}
+              </button>
+              <button
+                className="btn bg-red-600 hover:bg-red-700 text-white"
+                title={t('app.candidates.bulk.delete.title')}
+                onClick={()=>{ setBulkDeleteOpen(true) }}
+              >
+                {t('app.candidates.bulk.delete.action')}
+              </button>
+              <div className="flex-1" />
+              <button
+                className="btn-secondary"
+                title={t('app.candidates.bulk.clear_title')}
+                onClick={()=> setChecked({})}
+              >
+                {t('app.candidates.bulk.clear_action')}
+              </button>
+            </div>
+          )}
+
+          {errorText && (
+            <div className="m-4">
+              <ErrorRecoveryBanner
+                info={{
+                  title: t('app.candidates.errors.title') || 'Ошибка загрузки',
+                  detail: errorText,
+                  hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                }}
+                onRetry={() => void load({ force: true })}
+                retryLabel={t('app.candidates.errors.retry') || 'Повторить попытку'}
+              />
+            </div>
+          )}
+
+          <div className="card m-0 relative flex-1 min-h-0 flex flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
+        {loading && displayedItems.length > 0 && (
+          <div className="absolute top-2 right-2 z-30 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-1.5 shadow-lg">
+            <div className="flex items-center gap-2 text-xs text-slate-600">
+              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-brand-600"></div>
+              <span className="font-medium">{t('app.candidates.table.updating') || 'Обновление...'}</span>
+            </div>
+          </div>
+        )}
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain rounded-b-xl">
+          <table className="min-w-full text-sm border-separate border-spacing-0">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-[inset_0_-1px_0_0_rgb(226_232_240)]">
+              <tr className="h-11 bg-slate-50 text-left">
+                <DraggableColumnHeader columnKey="checkbox" />
+                {orderedVisibleColumns.map((columnKey) => (
+                  <DraggableColumnHeader key={columnKey} columnKey={columnKey} />
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {displayedItems.map((item, dataIndex) => {
+                const c = item as AugmentedCandidate
+                const id = c.id
+                const index = dataIndex
+                const isFocused = focusedRowIndex === index && index >= 0
+                return (
+                  <tr
+                    key={id}
+                    ref={(node) => {
+                      if (isFocused && node) focusedRowRef.current = node
+                    }}
+                    data-candidate-id={id}
+                    data-index={index}
+                    tabIndex={-1}
+                    onMouseDown={(e) => {
+                      if (e.button !== 0) return
+                      lastRowMouseDownRef.current = { x: e.clientX, y: e.clientY, t: Date.now() }
+                    }}
+                    onClick={(e) => {
+                      if (!id) return
+                      const md = lastRowMouseDownRef.current
+                      if (md) {
+                        const dx = Math.abs(e.clientX - md.x)
+                        const dy = Math.abs(e.clientY - md.y)
+                        const dt = Date.now() - md.t
+                        if ((dx + dy) > 6 && dt < 1200) return
+                      }
+                      const target = e.target as HTMLElement | null
+                      if (target?.closest('a,button,input[type="checkbox"],select,textarea')) return
+                      if (sidebarOpenRef.current || selectedCandidateIdRef.current != null) {
+                        const nextId = id
+                        window.requestAnimationFrame(() => {
+                          setSelectedCandidateId(nextId)
+                          setSidebarOpen(true)
+                        })
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      if (id && canManage) {
+                        e.preventDefault()
+                        setContextMenu({ x: e.clientX, y: e.clientY, candidateId: id })
+                      }
+                    }}
+                    className={clsx(
+                      'border-t border-slate-200/90 transition-colors duration-150 cursor-pointer',
+                      isFocused && 'ring-2 ring-brand-500 ring-inset outline-none',
+                      !isFocused && 'hover:bg-brand-50/50',
+                      id && selectedCandidateId === id && !isFocused && 'bg-brand-50',
+                      id && recentlyOpenedId === id && !isFocused && 'bg-amber-50/60',
+                      id && (items.find((row) => row.id === id)?.is_favorite) && !isFocused && 'bg-yellow-50/40 border-l-2 border-l-yellow-400',
+                    )}
+                  >
+                    {renderCandidateRowTds(index, c)}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
         {loading && displayedItems.length === 0 && (
           <div className="px-4 py-12 text-center">
@@ -4711,7 +4514,10 @@ export default function Candidates(){
             {items.length === 0 && total > 0 ? (
               <>
                 <div className="text-sm font-medium text-slate-700 mb-1">
-                  {t('app.candidates.table.empty_partial', { count: total, defaultValue: `Список не загрузился полностью (всего: ${total}). Повторить?` })}
+                  {t('app.candidates.table.empty_partial', {
+                    values: { count: total },
+                    defaultValue: `Список не загрузился полностью (всего: ${total}). Повторить?`,
+                  })}
                 </div>
                 <button
                   type="button"
@@ -4764,9 +4570,7 @@ export default function Candidates(){
             )}
           </div>
         )}
-          </div>
-
-          <div className="text-sm text-slate-500 p-4">
+          <div className="text-sm leading-6 text-slate-600 px-4 pt-3 pb-4 border-t border-slate-200/80">
             {showsFilteredCount
               ? t('app.candidates.table.total_filtered', {
                   values: { shown: visibleCandidatesCount, total },
@@ -4774,9 +4578,124 @@ export default function Candidates(){
                 })
               : t('app.candidates.table.total', { values: { count: visibleCandidatesCount } })}
           </div>
+          </div>
         </div>
       </div>
+        <CandidatesWorkPanel open={workPanelOpen} summaryHero={summaryHero}>
+          <CandidatesSelectedPanel
+            t={t}
+            locale={locale}
+            selectedCandidate={selectedCandidate}
+            selectedCandidateId={selectedCandidateId}
+            stageSummaryLabel={
+              selectedCandidate
+                ? translateStageLabel(
+                    t,
+                    String((selectedCandidate as any).stage || ''),
+                    String((selectedCandidate as any).stage_label || ''),
+                  )
+                : null
+            }
+            previewReminders={previewReminders}
+            previewRemindersLoading={previewRemindersLoading}
+            previewRemindersError={previewRemindersError}
+            previewReminderBusy={previewReminderBusy}
+            previewReminderTitle={previewReminderTitle}
+            previewReminderDueAt={previewReminderDueAt}
+            previewReminderOffset={previewReminderOffset}
+            nextActionDetailsOpenTrigger={nextActionDetailsOpenTrigger}
+            docsBlockers={docsBlockers}
+            docsBlockersLoading={docsBlockersLoading}
+            docsOwnerContext={docsOwnerContext}
+            previewTimelineItems={previewTimelineItems}
+            previewTimelineLoading={previewTimelineLoading}
+            previewTimelineError={previewTimelineError}
+            previewTimelineExpanded={previewTimelineExpanded}
+            previewTimelineCollapsedCount={PREVIEW_TIMELINE_COLLAPSED_COUNT}
+            onClose={() => {
+              setSelectedCandidateId(null)
+              setSidebarOpen(false)
+            }}
+            onOpenCandidate={(candidateId) => navigate(`/app/candidates/${candidateId}`)}
+            onOpenDocuments={(candidateId) => navigate(`/app/candidates/${candidateId}/documents`)}
+            onOpenMessages={(candidateId) => navigate(`/app/messages?candidateId=${candidateId}`)}
+            onReminderTitleChange={setPreviewReminderTitle}
+            onReminderDueAtChange={setPreviewReminderDueAt}
+            onReminderOffsetChange={setPreviewReminderOffset}
+            onReminderCreate={() => void handleCreatePreviewReminder()}
+            onReminderComplete={(id) => void handleCompletePreviewReminder(id)}
+            onReminderSnooze={(id, minutes) => void handlePreviewReminderSnooze(id, minutes)}
+            onDocsRequestCreate={handleDocsRequestCreate}
+            onDocsLoadedBlockers={(b) =>
+              setDocsBlockers({
+                missing: b.missing,
+                problematic: b.problematic,
+                inProgress: b.inProgress ?? [],
+              })
+            }
+            onDocsLoadingChange={setDocsBlockersLoading}
+            onDocsSelectType={(candidateId, typeCode) =>
+              navigate(`/app/candidates/${candidateId}/documents?type=${encodeURIComponent(typeCode)}`)
+            }
+            onTimelineRefresh={(candidateId) => void loadPreviewTimeline(candidateId)}
+            onTimelineExpandedChange={setPreviewTimelineExpanded}
+          />
 
+          <CandidatesLeftRailPanel
+            t={t}
+            searchRef={searchRef}
+            q={q}
+            onQChange={setQ}
+            handoffStatusFilter={handoffStatusFilter}
+            onHandoffStatusFilterChange={setHandoffStatusFilter}
+            contactAttemptsFilter={contactAttemptsFilter}
+            onContactAttemptsFilterChange={setContactAttemptsFilter}
+            opsModeFilter={opsModeFilter}
+            onOpsModeFilterChange={setOpsModeFilter}
+            opsModeOptions={opsModeOptions as any}
+            opsModeLabelMap={opsModeLabelMap}
+            viewToggle={viewToggle}
+            secondaryBtn={secondaryBtn}
+            onRefresh={() => load({ force: true })}
+            loading={loading}
+            actionsMenuRef={actionsMenuRef}
+            actionsMenuOpen={actionsMenuOpen}
+            onActionsMenuOpenChange={setActionsMenuOpen}
+            displayedItems={displayedItems}
+            resolveManagerLabel={resolveManagerLabel}
+            onResetFilters={handleResetFilters}
+            hasFilterBadges={hasFilterBadges}
+            onOpenSaveView={() => {
+              setSaveViewName('')
+              setSaveViewOpen(true)
+            }}
+            columnToggleKeys={columnToggleKeys}
+            visibleCols={visibleCols}
+            onVisibleColsChange={setVisibleCols}
+            visibleColsStorageKey={visibleColsStorageKey}
+            columnLabelMap={columnLabelMap}
+            canManage={canManage}
+            quickViewParam={quickViewParam}
+            onQuickViewNavigate={(path) => {
+              void navigate(path)
+            }}
+            onApplyQuickViewFilters={(key) => {
+              void applyQuickViewFilters(key as any, { syncUrl: true })
+            }}
+            isFavoriteFilter={isFavoriteFilter}
+            onFavoriteFilterToggle={() => setIsFavoriteFilter((prev) => (prev === true ? null : true))}
+            quickDocFilters={quickDocFilters}
+            quickFiltersExpanded={quickFiltersExpanded}
+            onToggleQuickDocFilter={toggleQuickDocFilter}
+            onQuickFiltersExpandedChange={setQuickFiltersExpanded}
+            savedViews={savedViews}
+            onApplyView={applyView}
+            onDeleteView={(id) => {
+              void deleteView(id)
+            }}
+          />
+        </CandidatesWorkPanel>
+      </div>
       {/* Контекстное меню для строк */}
       {contextMenu && (
         <>
@@ -4998,538 +4917,25 @@ export default function Candidates(){
         canManage={canManage}
       />
 
-      {/* Боковое меню справа */}
-      <div
-        className="fixed inset-y-0 right-0 z-40 w-96 pointer-events-none"
-      >
-        <div
-        className={clsx(
-          "h-full w-96 bg-gradient-to-b from-slate-50 to-white border-l-2 border-slate-300 shadow-2xl transition-transform duration-300 ease-in-out overflow-y-auto pointer-events-auto",
-          sidebarOpen ? "translate-x-0" : "translate-x-full"
-        )}
-      >
-        <div className="p-4 space-y-4 pt-16">
-          {/* Summary Hero */}
-          <div className="mb-1">
-            {summaryHero}
+      {canViewActivities ? (
+        <Modal
+          open={activitiesModalOpen}
+          onClose={() => setActivitiesModalOpen(false)}
+          title={t('app.activities.title', { defaultValue: 'Activities' })}
+          size="2xl"
+          surfaceClassName="max-h-[min(92vh,900px)] flex flex-col"
+        >
+          <p className="mb-3 text-sm text-slate-600">
+            {t('app.candidates.activities_modal.subtitle', {
+              defaultValue: 'Your planned work — same list as on the Tasks page.',
+            })}
+          </p>
+          <div className="min-h-0 flex-1 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <ActivitiesPanel embedded compact showFullPageLink refreshToken={activitiesModalRefresh} />
           </div>
+        </Modal>
+      ) : null}
 
-          {selectedCandidate && (
-            <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900">
-                    {selectedCandidate.masked === true
-                      ? selectedCandidate.short_id
-                        ? t('app.candidates.table.masked_label_short_id', {
-                            defaultValue: 'Кандидат {short_id}',
-                            values: { short_id: selectedCandidate.short_id },
-                          })
-                        : t('app.candidates.table.masked_label', {
-                            defaultValue: 'Кандидат #{id}',
-                            values: { id: (selectedCandidate.id ?? '').slice(0, 8) },
-                          })
-                      : `${selectedCandidate.first_name ?? ''} ${selectedCandidate.last_name ?? ''}`.trim() || t('common.labels.not_available')}
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <StageTag code={selectedCandidate.stage} />
-                    <span className="text-[11px] text-slate-500">
-                      {(selectedCandidate as any).__extra?.companyName || (selectedCandidate as any).company_name || '—'}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="btn-secondary h-8 rounded-lg px-2 text-xs"
-                  onClick={() => {
-                    setSelectedCandidateId(null)
-                    setSidebarOpen(false)
-                  }}
-                >
-                  {t('common.actions.close', { defaultValue: 'Close' })}
-                </button>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button type="button" className="btn-primary btn-xs" onClick={() => navigate(`/app/candidates/${selectedCandidate.id}`)}>
-                  {t('common.actions.open', { defaultValue: 'Open' })}
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary btn-xs"
-                  onClick={() => navigate(`/app/candidates/${selectedCandidate.id}/documents`)}
-                >
-                  {t('app.nav.items.documents', { defaultValue: 'Documents' })}
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <CandidateNextActionPanel
-                  candidateId={String(selectedCandidate.id)}
-                  reminders={previewReminders}
-                  remindersLoading={previewRemindersLoading}
-                  remindersError={previewRemindersError}
-                  reminderBusy={previewReminderBusy}
-                  reminderTitle={previewReminderTitle}
-                  reminderDueAt={previewReminderDueAt}
-                  reminderOffset={previewReminderOffset}
-                  detailsOpenTrigger={nextActionDetailsOpenTrigger}
-                  onReminderTitleChange={setPreviewReminderTitle}
-                  onReminderDueAtChange={setPreviewReminderDueAt}
-                  onReminderOffsetChange={setPreviewReminderOffset}
-                  onReminderCreate={() => void handleCreatePreviewReminder()}
-                  onReminderComplete={(id) => void handleCompletePreviewReminder(id)}
-                  onReminderSnooze={(id, minutes) => void handlePreviewReminderSnooze(id, minutes)}
-                  docsBlockersActive={!selectedCandidate.masked && docsBlockersActive}
-                  docsRequestDueLabel={t('common.today', { defaultValue: 'Today' })}
-                  onDocsRequestCreate={handleDocsRequestCreate}
-                  hideToggle
-                />
-
-                {!selectedCandidate.masked ? (
-                  <CandidateDocsRailPanel
-                    key={`docs-rail:${selectedCandidate.id}`}
-                    candidateId={String(selectedCandidate.id)}
-                    ownerContext={docsOwnerContext}
-                    uploadBusy={false}
-                    onUpload={() => navigate(`/app/candidates/${selectedCandidate.id}/documents`)}
-                    onLoadedBlockers={(b) => setDocsBlockers({ missing: b.missing, problematic: b.problematic })}
-                    onLoadingChange={(v) => setDocsBlockersLoading(v)}
-                    refreshTrigger={0}
-                    onSelectType={(typeCode) =>
-                      navigate(`/app/candidates/${selectedCandidate.id}/documents?type=${encodeURIComponent(typeCode)}`)
-                    }
-                    pollingEnabled={false}
-                  />
-                ) : null}
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="btn-secondary btn-xs w-full"
-                    onClick={() => navigate(`/app/messages?candidateId=${selectedCandidate.id}`)}
-                  >
-                    {t('app.candidate_card.control.open_messages', { defaultValue: 'Messages' })}
-                  </button>
-                </div>
-              </div>
-              {/* Mini timeline: всегда видна в right work panel (Phase A) */}
-              <div className="space-y-2 text-xs">
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="text-xs font-semibold text-slate-700">
-                      {t('app.candidates.preview.timeline_title', { defaultValue: 'Timeline' })}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="btn-secondary h-7 rounded-lg px-2 text-[11px]"
-                        onClick={() => selectedCandidateId && void loadPreviewTimeline(selectedCandidateId)}
-                      >
-                        {t('common.actions.refresh', { defaultValue: 'Refresh' })}
-                      </button>
-                      {previewTimelineItems.length > PREVIEW_TIMELINE_COLLAPSED_COUNT ? (
-                        <button
-                          type="button"
-                          className="btn-secondary h-7 rounded-lg px-2 text-[11px]"
-                          onClick={() => setPreviewTimelineExpanded((v) => !v)}
-                        >
-                          {previewTimelineExpanded
-                            ? t('common.actions.collapse', { defaultValue: 'Hide' })
-                            : t('common.actions.expand', { defaultValue: 'Show more' })}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  {previewTimelineLoading ? (
-                    <div className="py-3 text-center text-[11px] text-slate-500">{t('common.loading')}</div>
-                  ) : previewTimelineError ? (
-                    <div className="mt-2 rounded border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700">
-                      {previewTimelineError}
-                    </div>
-                  ) : previewTimelineItems.length === 0 ? (
-                    <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-500">
-                      {t('app.candidates.preview.timeline_empty', { defaultValue: 'No events yet.' })}
-                    </div>
-                  ) : (
-                    <ul className="mt-2 space-y-1.5">
-                      {(previewTimelineExpanded ? previewTimelineItems : previewTimelineItems.slice(0, PREVIEW_TIMELINE_COLLAPSED_COUNT)).map(
-                        (ev, idx) => (
-                          <li key={`${ev.at}-${ev.kind}-${idx}`} className="flex items-start gap-2">
-                            <div className="mt-[3px] h-1.5 w-1.5 rounded-full bg-slate-400" />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="truncate text-[11px] font-medium text-slate-800">
-                                  {ev.title || ev.kind || t('app.candidates.preview.event', { defaultValue: 'Event' })}
-                                </div>
-                                <div className="shrink-0 text-[10px] text-slate-500">
-                                  {formatDateSafe(ev.at, locale) || ev.at}
-                                </div>
-                              </div>
-                              {ev.description ? (
-                                <div className="mt-0.5 text-[11px] text-slate-600 truncate">{ev.description}</div>
-                              ) : null}
-                            </div>
-                          </li>
-                        )
-                      )}
-                    </ul>
-                  )}
-                </div>
-              </div>
-
-              {!selectedCandidate.masked ? (
-                <div className="mt-3">
-                  <CandidateHandoffSection
-                    candidateId={String(selectedCandidate.id) as any}
-                    companyId={(selectedCandidate as any).company_id}
-                    embedded
-                  />
-                </div>
-              ) : null}
-            </section>
-          )}
-
-          {/* Поиск и фильтры */}
-          <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-col gap-3">
-              <div className="flex-1">
-                <label className="block text-xs font-medium text-slate-600 mb-1.5" htmlFor="cand-search">
-                  {t('app.candidates.search.label')}
-                </label>
-                <input
-                  id="cand-search"
-                  ref={searchRef}
-                  className="input w-full text-sm py-2 px-3 border border-slate-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-200"
-                  value={q}
-                  onChange={(e)=>setQ(e.target.value)}
-                  placeholder={t('app.candidates.search.placeholder')}
-                />
-                <p className="mt-1.5 text-[10px] text-slate-400 leading-relaxed">{t('app.candidates.search.hint')}</p>
-              </div>
-              <div className="space-y-2 pt-2 border-t border-slate-200">
-                <label className="block text-xs font-medium text-slate-600">
-                  {t('app.candidates.filters.handoff_status_menu', { defaultValue: 'Przekazanie' })}
-                </label>
-                <select
-                  className="input w-full text-sm py-1.5"
-                  value={handoffStatusFilter}
-                  onChange={(e) => setHandoffStatusFilter(e.target.value)}
-                >
-                  <option value="">{t('app.candidates.filters.any', { defaultValue: '— dowolne —' })}</option>
-                  <option value="none">{t('app.candidates.filters.handoff_none', { defaultValue: 'Bez przekazania' })}</option>
-                  <option value="pending">{t('app.candidates.filters.handoff_pending', { defaultValue: 'Oczekuje' })}</option>
-                  <option value="accepted">{t('app.candidates.filters.handoff_accepted', { defaultValue: 'Przekazano' })}</option>
-                  <option value="returned">{t('app.candidates.filters.handoff_returned', { defaultValue: 'Zwrócono' })}</option>
-                </select>
-                <label className="block text-xs font-medium text-slate-600">
-                  {t('app.candidates.filters.contact_attempts_menu', { defaultValue: 'Próby kontaktu' })}
-                </label>
-                <select
-                  className="input w-full text-sm py-1.5"
-                  value={contactAttemptsFilter}
-                  onChange={(e) => setContactAttemptsFilter(e.target.value)}
-                >
-                  <option value="">{t('app.candidates.filters.any', { defaultValue: '— dowolne —' })}</option>
-                  <option value="none">{t('app.candidates.filters.contact_none', { defaultValue: 'Bez prób' })}</option>
-                  <option value="some">{t('app.candidates.filters.contact_some', { defaultValue: '1–2 próby' })}</option>
-                  <option value="limit_reached">{t('app.candidates.filters.contact_limit', { defaultValue: '3+ (limit)' })}</option>
-                </select>
-                <label className="block text-xs font-medium text-slate-600">
-                  {t('app.candidates.filters.ops_mode_menu')}
-                </label>
-                <select
-                  className="input w-full text-sm py-1.5"
-                  value={opsModeFilter[0] || ''}
-                  onChange={(e) => {
-                    const value = String(e.target.value || '').trim() as CandidateOpsMode | ''
-                    if (!value) {
-                      setOpsModeFilter([])
-                      return
-                    }
-                    if (value === 'in_work' || value === 'later' || value === 'no_reply_needed' || value === 'escalated') {
-                      setOpsModeFilter([value])
-                    }
-                  }}
-                >
-                  <option value="">{t('app.candidates.filters.any')}</option>
-                  {(opsModeOptions.length > 0
-                    ? opsModeOptions
-                    : [
-                        { value: 'in_work', label: opsModeLabelMap.in_work },
-                        { value: 'later', label: opsModeLabelMap.later },
-                        { value: 'no_reply_needed', label: opsModeLabelMap.no_reply_needed },
-                        { value: 'escalated', label: opsModeLabelMap.escalated },
-                      ]
-                  ).map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200">
-                {viewToggle}
-                <button
-                  className={secondaryBtn}
-                  onClick={()=>load({ force: true })}
-                  disabled={loading}
-                  title={t('app.candidates.actions.refresh_title')}
-                >
-                  {loading ? t('app.candidates.actions.refreshing') : t('app.candidates.actions.refresh')}
-                </button>
-                <div className="relative" ref={actionsMenuRef}>
-                  <button
-                    type="button"
-                    className={secondaryBtn}
-                    title={t('app.candidates.actions.more')}
-                    onClick={() => setActionsMenuOpen((prev) => !prev)}
-                  >
-                    ⋯
-                  </button>
-                  {actionsMenuOpen && (
-                    <div className="absolute right-0 z-20 mt-2 w-64 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
-                      <div className="space-y-0.5">
-                        <button
-                          className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
-                          title={t('app.candidates.actions.export_title')}
-                          onClick={() => {
-                            const rows = displayedItems.map(item => {
-                              const c = item as AugmentedCandidate
-                              const docsMeta = c.__docsMeta
-                              return {
-                                name: `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim(),
-                                email: c.email ?? '',
-                                phone: c.phone ?? '',
-                                citizenship: (()=>{ try{ const ex = typeof (c as any).extra === 'string' ? JSON.parse((c as any).extra) : (c as any).extra || {}; return ex.citizenship || ex.passport_country || '' }catch{return ''} })(),
-                                vacancy: (c as any).vacancy?.title || (c as any).vacancy_title || '',
-                                short_id: (c as any).short_id || '',
-                                manager: resolveManagerLabel(c) || '',
-                                stage: c.stage,
-                                docs_status: t(docsMeta.readinessLabelKey),
-                                docs_ordered_at: docsMeta.orderDate ?? '',
-                                docs_valid_from: docsMeta.validFrom ?? '',
-                                docs_has_files: docsMeta.hasFiles ? t('common.words.yes') : t('common.words.no'),
-                              }
-                            })
-                            const csv = toCSV(rows, [
-                              { key:'name', title: t('app.candidates.table.columns.name') },
-                              { key:'email', title:'Email' },
-                              { key:'phone', title: t('app.candidates.table.columns.phone') },
-                              { key:'citizenship', title: t('app.candidates.table.columns.citizenship') },
-                              { key:'vacancy', title: t('app.candidates.table.columns.vacancy') },
-                              { key:'short_id', title:'Short ID' },
-                              { key:'manager', title: t('app.candidates.table.columns.manager') },
-                              { key:'stage', title: t('app.candidates.table.columns.stage') },
-                              { key:'docs_status', title: t('app.candidates.table.columns.docs_status') },
-                              { key:'docs_ordered_at', title: t('app.candidates.table.columns.docs_ordered') },
-                              { key:'docs_valid_from', title: t('app.candidates.table.columns.docs_valid') },
-                              { key:'docs_has_files', title: t('app.candidates.table.columns.docs_files') },
-                            ])
-                            const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' })
-                            const url = URL.createObjectURL(blob)
-                            const a = document.createElement('a')
-                            a.href = url
-                            a.download = 'candidates.csv'
-                            a.click()
-                            URL.revokeObjectURL(url)
-                            setActionsMenuOpen(false)
-                          }}
-                        >
-                          {t('app.candidates.actions.export')}
-                        </button>
-                        <button
-                          className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2 disabled:opacity-60"
-                          onClick={() => {
-                            handleResetFilters()
-                            setActionsMenuOpen(false)
-                          }}
-                          disabled={!hasFilterBadges}
-                        >
-                          {t('app.candidates.actions.reset_filters')}
-                        </button>
-                        <button
-                          className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2 disabled:opacity-60"
-                          onClick={() => {
-                            setActionsMenuOpen(false)
-                            setSaveViewName('')
-                            setSaveViewOpen(true)
-                          }}
-                          disabled={!hasFilterBadges}
-                        >
-                          {t('app.candidates.views.save_action')}
-                        </button>
-                      </div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mt-3 pt-2 border-t border-slate-100">
-                        {t('app.candidates.table.columns.title')}
-                      </div>
-                      <div className="mt-1.5 max-h-48 space-y-0.5 overflow-auto">
-                        {columnToggleKeys.map((key) => (
-                          <label key={key} className="flex items-center gap-1.5 text-xs py-0.5">
-                            <input
-                              type="checkbox"
-                              checked={!!visibleCols[key]}
-                              onChange={(e)=>{
-                                const next = { ...visibleCols, [key]: e.currentTarget.checked }
-                                setVisibleCols(next)
-                                try{ localStorage.setItem(visibleColsStorageKey, JSON.stringify(next)) }catch{}
-                              }}
-                            />
-                            <span>{columnLabelMap[key]}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {canManage && (
-                  <Link 
-                    className="btn-primary text-xs py-1.5 px-2.5 font-medium" 
-                    to="/app/candidates/new" 
-                    title={t('app.candidates.actions.new_candidate_title')}
-                  >
-                    {t('app.candidates.actions.new_candidate')}
-                  </Link>
-                )}
-              </div>
-            </div>
-            <div className="pt-2.5 border-t border-slate-200">
-              <h3 className="text-xs font-semibold text-slate-600 mb-2 uppercase tracking-wide">
-                {t('app.candidates.views.quick_views_title', { defaultValue: 'Quick Views' })}
-              </h3>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                {(
-                  [
-                    ['my_work_today', t('app.candidates.views.quick_my_work_today', { defaultValue: 'My work today' })],
-                    ['docs_incomplete', t('app.candidates.views.quick_docs_incomplete', { defaultValue: 'Docs incomplete' })],
-                    [
-                      'ready_for_handoff',
-                      t('app.candidates.views.quick_ready_for_handoff', { defaultValue: 'Ready for handoff' }),
-                    ],
-                    ['new_this_week', t('app.candidates.views.quick_new_this_week', { defaultValue: 'New this week' })],
-                    ['no_next_action', t('app.candidates.views.quick_no_next_action', { defaultValue: 'No next action' })],
-                    [
-                      'overdue_next_action',
-                      t('app.candidates.views.quick_overdue_next_action', { defaultValue: 'Overdue next action' }),
-                    ],
-                  ] as Array<[QuickViewKey, string]>
-                ).map(([key, label]) => {
-                  const active = quickViewParam === key
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => {
-                        if (key === 'no_next_action') {
-                          void navigate('/app/candidates/no-next-action')
-                          return
-                        }
-                        if (key === 'overdue_next_action') {
-                          void navigate('/app/reminders?tab=tasks&t_status=active&t_entity=candidate')
-                          return
-                        }
-                        void applyQuickViewFilters(key, { syncUrl: true })
-                      }}
-                      className={[
-                        'rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
-                        active
-                          ? 'bg-brand-600 text-white shadow-sm hover:bg-brand-700'
-                          : 'bg-white text-brand-700 border border-brand-200 hover:bg-brand-50 hover:border-brand-300',
-                      ].join(' ')}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsFavoriteFilter(prev => prev === true ? null : true)}
-                  className={[
-                    'rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
-                    isFavoriteFilter === true
-                      ? 'bg-brand-600 text-white shadow-sm hover:bg-brand-700'
-                      : 'bg-white text-brand-700 border border-brand-200 hover:bg-brand-50 hover:border-brand-300',
-                  ].join(' ')}
-                >
-                  {t('app.candidates.filters.only_favorites')}
-                </button>
-                {(quickFiltersExpanded ? quickDocFilters : quickDocFilters.slice(0, 3)).map((filter) => (
-                  <button
-                    key={filter.key}
-                    type="button"
-                    onClick={() => toggleQuickDocFilter(filter.statuses, filter.active)}
-                    className={[
-                      'rounded-md px-2.5 py-1.5 text-xs font-medium transition-all',
-                      filter.active 
-                        ? 'bg-brand-600 text-white shadow-sm hover:bg-brand-700' 
-                        : 'bg-white text-brand-700 border border-brand-200 hover:bg-brand-50 hover:border-brand-300',
-                    ].join(' ')}
-                  >
-                    {filter.label}
-                  </button>
-                ))}
-                {quickDocFilters.length > 3 && (
-                  <button
-                    type="button"
-                    className="rounded-md px-2.5 py-1.5 text-xs font-medium border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 transition-all"
-                    onClick={() => setQuickFiltersExpanded((prev) => !prev)}
-                  >
-                    {quickFiltersExpanded ? t('app.candidates.filters.quick_less') : t('app.candidates.filters.quick_more')}
-                  </button>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* Сохраненные виды */}
-          {savedViews.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-              <div className="relative">
-                <div
-                  className="text-xs font-semibold text-slate-600 pb-2 border-b border-slate-200 uppercase tracking-wide"
-                  title={t('app.candidates.views.manage_title')}
-                >
-                  {t('app.candidates.views.toggle', { defaultValue: 'Views' })}
-                </div>
-                <div className="mt-3 space-y-1.5 max-h-64 overflow-auto">
-                  {savedViews.map((v) => (
-                    <div
-                      key={v.id}
-                      className="flex items-center justify-between gap-1.5 p-1.5 rounded-md hover:bg-slate-50 transition-colors"
-                    >
-                      <button
-                        className="btn-secondary text-left justify-start flex-1 truncate text-xs font-medium px-1.5 py-1"
-                        title={t('app.candidates.views.apply_title', { values: { name: v.name } })}
-                        onClick={() => applyView(v)}
-                      >
-                        {v.name}
-                      </button>
-                      <button
-                        className="btn-danger btn-xs"
-                        title={t('app.candidates.views.delete_title')}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          void deleteView(v.id)
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                  {savedViews.length === 0 && (
-                    <div className="text-[10px] text-slate-400 text-center py-3">{t('app.candidates.views.empty')}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      </div>
     </div>
   )
 }

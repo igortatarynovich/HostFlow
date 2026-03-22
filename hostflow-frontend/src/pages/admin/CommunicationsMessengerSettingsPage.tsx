@@ -39,6 +39,8 @@ function errorTextFrom(err: any, fallback: string) {
 }
 
 const CHANNELS = ['telegram', 'whatsapp', 'viber', 'messenger', 'instagram'] as const
+const APP_MESSAGES_ROUTE = '/app/messages'
+const APP_EMAIL_ROUTE = '/app/email'
 
 type MessengerChannel = typeof CHANNELS[number]
 
@@ -868,15 +870,28 @@ export default function CommunicationsMessengerSettingsPage() {
       </section>
 
       <details className="alert-info p-4" open>
-        <summary className="cursor-pointer text-sm font-semibold">How templates are used</summary>
+        <summary className="cursor-pointer text-sm font-semibold">
+          {t('admin.communications_messengers.templates.how_used', { defaultValue: 'How templates are used' })}
+        </summary>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
-          <li>Message templates appear as quick buttons in composer on <code>/app/messages</code>.</li>
-          <li>Click template button, text appears in reply field, then edit and send.</li>
+          <li>
+            {t('admin.communications_messengers.templates.how_used_1', {
+              defaultValue: 'Message templates appear as quick buttons in composer on',
+            })}{' '}
+            <code>{APP_MESSAGES_ROUTE}</code>.
+          </li>
+          <li>
+            {t('admin.communications_messengers.templates.how_used_2', {
+              defaultValue: 'Click template button, text appears in reply field, then edit and send.',
+            })}
+          </li>
         </ul>
       </details>
 
       <details className="rounded-lg border border-slate-200 bg-white p-4" open>
-        <summary className="cursor-pointer text-sm font-semibold text-slate-900">Message templates</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          {t('admin.communications_messengers.templates.message_templates', { defaultValue: 'Message templates' })}
+        </summary>
         <div className="mt-3">
           <div className="mb-3 flex items-center justify-end">
             <button
@@ -885,18 +900,35 @@ export default function CommunicationsMessengerSettingsPage() {
               disabled={saveBusy}
               className="btn-secondary btn-sm disabled:opacity-60"
             >
-              Save
+              {t('common.save', { defaultValue: 'Save' })}
             </button>
           </div>
 
           <div className="mb-3 grid gap-2 md:grid-cols-[minmax(220px,1fr)_minmax(280px,2fr)_140px_auto]">
-            <input value={messageTemplateDraftLabel} onChange={(e) => setMessageTemplateDraftLabel(e.target.value)} className="input" placeholder="Template name" />
-            <input value={messageTemplateDraftBody} onChange={(e) => setMessageTemplateDraftBody(e.target.value)} className="input" placeholder="Template text" />
+            <input
+              value={messageTemplateDraftLabel}
+              onChange={(e) => setMessageTemplateDraftLabel(e.target.value)}
+              className="input"
+              placeholder={t('admin.communications_messengers.templates.fields.template_name', { defaultValue: 'Template name' })}
+            />
+            <input
+              value={messageTemplateDraftBody}
+              onChange={(e) => setMessageTemplateDraftBody(e.target.value)}
+              className="input"
+              placeholder={t('admin.communications_messengers.templates.fields.template_text', { defaultValue: 'Template text' })}
+            />
             <select value={messageTemplateDraftVisibility} onChange={(e) => setMessageTemplateDraftVisibility(e.target.value as 'private' | 'company')} className="input">
-              <option value="private">Private</option>
-              <option value="company">Company</option>
+              <option value="private">{t('admin.communications_messengers.templates.visibility.private', { defaultValue: 'Private' })}</option>
+              <option value="company">{t('admin.communications_messengers.templates.visibility.company', { defaultValue: 'Company' })}</option>
             </select>
-            <button type="button" onClick={addMessageTemplate} disabled={saveBusy || !messageTemplateDraftLabel.trim() || !messageTemplateDraftBody.trim()} className="btn-secondary btn-sm disabled:opacity-60">Add</button>
+            <button
+              type="button"
+              onClick={addMessageTemplate}
+              disabled={saveBusy || !messageTemplateDraftLabel.trim() || !messageTemplateDraftBody.trim()}
+              className="btn-secondary btn-sm disabled:opacity-60"
+            >
+              {t('common.actions.add', { defaultValue: 'Add' })}
+            </button>
           </div>
 
           <div className="space-y-2">
@@ -906,46 +938,81 @@ export default function CommunicationsMessengerSettingsPage() {
                   <input value={tpl.label} onChange={(e) => patchMessageTemplate(tpl.id, { label: e.target.value })} className="input" />
                   <input value={tpl.body} onChange={(e) => patchMessageTemplate(tpl.id, { body: e.target.value })} className="input" />
                   <select value={tpl.visibility} onChange={(e) => patchMessageTemplate(tpl.id, { visibility: e.target.value as 'private' | 'company' })} className="input">
-                    <option value="private">Private</option>
-                    <option value="company">Company</option>
+                    <option value="private">{t('admin.communications_messengers.templates.visibility.private', { defaultValue: 'Private' })}</option>
+                    <option value="company">{t('admin.communications_messengers.templates.visibility.company', { defaultValue: 'Company' })}</option>
                   </select>
                   <label className="inline-flex items-center gap-2 text-sm text-slate-700">
                     <input type="checkbox" checked={tpl.enabled} onChange={(e) => patchMessageTemplate(tpl.id, { enabled: e.target.checked })} />
-                    Enabled
+                    {t('common.enabled', { defaultValue: 'Enabled' })}
                   </label>
-                  <button type="button" onClick={() => removeMessageTemplate(tpl.id)} className="btn-danger btn-sm">Delete</button>
+                  <button type="button" onClick={() => removeMessageTemplate(tpl.id)} className="btn-danger btn-sm">
+                    {t('common.actions.delete', { defaultValue: 'Delete' })}
+                  </button>
                 </div>
               </div>
             ))}
-            {!messageTemplates.length && <div className="text-sm text-slate-500">No message templates yet.</div>}
+            {!messageTemplates.length && (
+              <div className="text-sm text-slate-500">
+                {t('admin.communications_messengers.templates.empty_messages', { defaultValue: 'No message templates yet.' })}
+              </div>
+            )}
           </div>
         </div>
       </details>
 
       <details className="rounded-lg border border-amber-200 bg-amber-50 p-4" open>
-        <summary className="cursor-pointer text-sm font-semibold text-amber-900">What are Command templates</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-amber-900">
+          {t('admin.communications_messengers.templates.what_are_command_templates', {
+            defaultValue: 'What are Command templates',
+          })}
+        </summary>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-amber-900">
-          <li>Saved batch action (example: add tag + archive + set priority).</li>
-          <li>Now applied in <code>/app/email</code> for selected threads via <strong>Run template</strong>.</li>
-          <li>For <code>/app/messages</code> they are prepared and can be wired next as one-click actions.</li>
+          <li>
+            {t('admin.communications_messengers.templates.command_desc_1', {
+              defaultValue: 'Saved batch action (example: add tag + archive + set priority).',
+            })}
+          </li>
+          <li>
+            {t('admin.communications_messengers.templates.command_desc_2_before', { defaultValue: 'Now applied in' })}{' '}
+            <code>{APP_EMAIL_ROUTE}</code>{' '}
+            {t('admin.communications_messengers.templates.command_desc_2_after', {
+              defaultValue: 'for selected threads via',
+            })}{' '}
+            <strong>{t('admin.communications_messengers.templates.run_template', { defaultValue: 'Run template' })}</strong>.
+          </li>
+          <li>
+            {t('admin.communications_messengers.templates.command_desc_3_before', { defaultValue: 'For' })}{' '}
+            <code>{APP_MESSAGES_ROUTE}</code>{' '}
+            {t('admin.communications_messengers.templates.command_desc_3_after', {
+              defaultValue: 'they are prepared and can be wired next as one-click actions.',
+            })}
+          </li>
         </ul>
       </details>
 
       <details className="rounded-lg border border-slate-200 bg-white p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-slate-900">Command templates</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          {t('admin.communications_messengers.templates.command_templates', { defaultValue: 'Command templates' })}
+        </summary>
         <div className="mt-3">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <button type="button" onClick={addMissingDefaultPresets} disabled={saveBusy} className="btn-secondary btn-sm disabled:opacity-60">Add defaults</button>
-            <button type="button" onClick={() => void saveCommands(commands)} disabled={saveBusy} className="btn-secondary btn-sm disabled:opacity-60">Save</button>
+            <button type="button" onClick={addMissingDefaultPresets} disabled={saveBusy} className="btn-secondary btn-sm disabled:opacity-60">
+              {t('admin.communications_messengers.templates.add_defaults', { defaultValue: 'Add defaults' })}
+            </button>
+            <button type="button" onClick={() => void saveCommands(commands)} disabled={saveBusy} className="btn-secondary btn-sm disabled:opacity-60">
+              {t('common.save', { defaultValue: 'Save' })}
+            </button>
           </div>
           <div className="mb-3 grid gap-2 md:grid-cols-[minmax(220px,1fr)_180px_auto]">
-            <input value={commandDraftLabel} onChange={(e) => setCommandDraftLabel(e.target.value)} className="input" placeholder="New command label" />
+            <input value={commandDraftLabel} onChange={(e) => setCommandDraftLabel(e.target.value)} className="input" placeholder={t('admin.communications_messengers.templates.fields.new_command_label', { defaultValue: 'New command label' })} />
             <select value={commandDraftTarget} onChange={(e) => setCommandDraftTarget(e.target.value as 'email' | 'messages' | 'both')} className="input">
-              <option value="both">Both</option>
-              <option value="messages">Messages</option>
-              <option value="email">Email</option>
+              <option value="both">{t('admin.communications_messengers.templates.targets.both', { defaultValue: 'Both' })}</option>
+              <option value="messages">{t('admin.communications_messengers.templates.targets.messages', { defaultValue: 'Messages' })}</option>
+              <option value="email">{t('admin.communications_messengers.templates.targets.email', { defaultValue: 'Email' })}</option>
             </select>
-            <button type="button" onClick={addCommand} disabled={saveBusy || !commandDraftLabel.trim()} className="btn-secondary btn-sm disabled:opacity-60">Add command</button>
+            <button type="button" onClick={addCommand} disabled={saveBusy || !commandDraftLabel.trim()} className="btn-secondary btn-sm disabled:opacity-60">
+              {t('admin.communications_messengers.templates.add_command', { defaultValue: 'Add command' })}
+            </button>
           </div>
 
           <div className="space-y-2">
@@ -954,15 +1021,17 @@ export default function CommunicationsMessengerSettingsPage() {
                 <div className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_160px_160px_auto]">
                   <input value={cmd.label} onChange={(e) => patchCommand(cmd.id, { label: e.target.value })} className="input" />
                   <select value={cmd.target} onChange={(e) => patchCommand(cmd.id, { target: e.target.value as 'email' | 'messages' | 'both' })} className="input">
-                    <option value="both">Both</option>
-                    <option value="messages">Messages</option>
-                    <option value="email">Email</option>
+                    <option value="both">{t('admin.communications_messengers.templates.targets.both', { defaultValue: 'Both' })}</option>
+                    <option value="messages">{t('admin.communications_messengers.templates.targets.messages', { defaultValue: 'Messages' })}</option>
+                    <option value="email">{t('admin.communications_messengers.templates.targets.email', { defaultValue: 'Email' })}</option>
                   </select>
                   <label className="inline-flex items-center gap-2 text-sm text-slate-700">
                     <input type="checkbox" checked={cmd.enabled} onChange={(e) => patchCommand(cmd.id, { enabled: e.target.checked })} />
-                    Enabled
+                    {t('common.enabled', { defaultValue: 'Enabled' })}
                   </label>
-                  <button type="button" onClick={() => removeCommand(cmd.id)} className="btn-danger btn-sm">Delete</button>
+                  <button type="button" onClick={() => removeCommand(cmd.id)} className="btn-danger btn-sm">
+                    {t('common.actions.delete', { defaultValue: 'Delete' })}
+                  </button>
                 </div>
                 <div className="mt-2 space-y-2 text-xs">
                   {(cmd.actions || []).map((action, idx) => (
@@ -972,37 +1041,70 @@ export default function CommunicationsMessengerSettingsPage() {
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
-                      <input value={String(action.value || '')} onChange={(e) => patchCommandAction(cmd.id, idx, { value: e.target.value })} disabled={!commandActionNeedsValue(action.type)} placeholder={commandActionNeedsValue(action.type) ? 'Value (tag/folder)' : 'No value required'} className="input text-xs disabled:bg-slate-100 disabled:text-slate-400" />
-                      <button type="button" onClick={() => moveCommandAction(cmd.id, idx, 'up')} disabled={idx === 0} className="btn-secondary btn-xs disabled:opacity-50">Up</button>
-                      <button type="button" onClick={() => moveCommandAction(cmd.id, idx, 'down')} disabled={idx >= (cmd.actions?.length || 0) - 1} className="btn-secondary btn-xs disabled:opacity-50">Down</button>
-                      <button type="button" onClick={() => removeCommandAction(cmd.id, idx)} className="btn-danger btn-xs">Remove</button>
+                      <input value={String(action.value || '')} onChange={(e) => patchCommandAction(cmd.id, idx, { value: e.target.value })} disabled={!commandActionNeedsValue(action.type)} placeholder={commandActionNeedsValue(action.type) ? t('admin.communications_messengers.templates.fields.value_tag_or_folder', { defaultValue: 'Value (tag/folder)' }) : t('admin.communications_messengers.templates.fields.no_value_required', { defaultValue: 'No value required' })} className="input text-xs disabled:bg-slate-100 disabled:text-slate-400" />
+                      <button type="button" onClick={() => moveCommandAction(cmd.id, idx, 'up')} disabled={idx === 0} className="btn-secondary btn-xs disabled:opacity-50">
+                        {t('admin.communications_messengers.templates.actions.up', { defaultValue: 'Up' })}
+                      </button>
+                      <button type="button" onClick={() => moveCommandAction(cmd.id, idx, 'down')} disabled={idx >= (cmd.actions?.length || 0) - 1} className="btn-secondary btn-xs disabled:opacity-50">
+                        {t('admin.communications_messengers.templates.actions.down', { defaultValue: 'Down' })}
+                      </button>
+                      <button type="button" onClick={() => removeCommandAction(cmd.id, idx)} className="btn-danger btn-xs">
+                        {t('common.actions.remove', { defaultValue: 'Remove' })}
+                      </button>
                     </div>
                   ))}
-                  <button type="button" onClick={() => addCommandAction(cmd.id)} className="btn-secondary btn-xs">Add action</button>
+                  <button type="button" onClick={() => addCommandAction(cmd.id)} className="btn-secondary btn-xs">
+                    {t('admin.communications_messengers.templates.actions.add_action', { defaultValue: 'Add action' })}
+                  </button>
                 </div>
               </div>
             ))}
-            {!commands.length && <div className="text-sm text-slate-500">No command templates yet.</div>}
+            {!commands.length && (
+              <div className="text-sm text-slate-500">
+                {t('admin.communications_messengers.templates.empty_commands', { defaultValue: 'No command templates yet.' })}
+              </div>
+            )}
           </div>
         </div>
       </details>
 
       <details className="rounded-lg border border-slate-200 bg-white p-4">
-        <summary className="cursor-pointer text-sm font-semibold text-slate-900">Command audit (recent)</summary>
+        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          {t('admin.communications_messengers.audit.title', { defaultValue: 'Command audit (recent)' })}
+        </summary>
         <div className="mt-3">
           <div className="mb-2 flex justify-end">
-            <button type="button" onClick={() => void listCommunicationCommandAudit({ limit: 30 }).then((r) => setCommandAudit(r.items || [])).catch((e) => setErrorText(errorTextFrom(e, 'Failed to reload command audit')))} className="btn-secondary btn-sm">{t('common.refresh', { defaultValue: 'Refresh' })}</button>
+            <button
+              type="button"
+              onClick={() =>
+                void listCommunicationCommandAudit({ limit: 30 })
+                  .then((r) => setCommandAudit(r.items || []))
+                  .catch((e) =>
+                    setErrorText(
+                      errorTextFrom(
+                        e,
+                        t('admin.communications_messengers.errors.audit_reload_failed', {
+                          defaultValue: 'Failed to reload command audit',
+                        }),
+                      ),
+                    ),
+                  )
+              }
+              className="btn-secondary btn-sm"
+            >
+              {t('common.refresh', { defaultValue: 'Refresh' })}
+            </button>
           </div>
           <div className="max-h-80 overflow-auto rounded border border-slate-200">
             <table className="min-w-full text-xs">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  <th className="px-2 py-1 text-left">At</th>
-                  <th className="px-2 py-1 text-left">Channel</th>
-                  <th className="px-2 py-1 text-left">Command</th>
-                  <th className="px-2 py-1 text-left">Actor</th>
-                  <th className="px-2 py-1 text-left">Thread</th>
-                  <th className="px-2 py-1 text-left">Actions</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_messengers.audit.table.at', { defaultValue: 'At' })}</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_messengers.audit.table.channel', { defaultValue: 'Channel' })}</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_messengers.audit.table.command', { defaultValue: 'Command' })}</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_messengers.audit.table.actor', { defaultValue: 'Actor' })}</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_messengers.audit.table.thread', { defaultValue: 'Thread' })}</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_messengers.audit.table.actions', { defaultValue: 'Actions' })}</th>
                 </tr>
               </thead>
               <tbody>

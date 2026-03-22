@@ -1,6 +1,6 @@
 import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import type { Icon as TablerIcon } from '@tabler/icons-react'
 import {
   IconBell,
@@ -58,12 +58,10 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   services: IconChecklist,
   invoices: IconFileText,
   'communications-setup': IconPlugConnected,
-  'messages-inbox': IconMessageCircle,
-  'email-inbox': IconMail,
+  inbox: IconInbox,
+  tasks: IconChecklist,
   calendar: IconCalendarEvent,
-  planner: IconChecklist,
   'sla-incidents': IconBell,
-  reminders: IconBell,
   'command-audit': IconShield,
   'team-availability': IconUsersGroup,
   'my-availability': IconClock,
@@ -88,7 +86,12 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
 
 export function Sidebar({ items, tenant, businessType = 'agency', open, onClose, onLogout, pendingHandoffsCount = 0 }: SidebarProps) {
   const { t } = useI18n()
-  const { isClientTenant } = usePermissions()
+  const location = useLocation()
+  const inboxNavActive =
+    location.pathname.startsWith('/app/messages') || location.pathname.startsWith('/app/email')
+  const { isClientTenant, role } = usePermissions()
+  /** Matches backend `GET /settings/team` (administrator | supervisor only). */
+  const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const [modules, setModules] = useState<TenantModuleSettings | null>(null)
   const [teamOverview, setTeamOverview] = useState<TeamOverviewResponse | null>(null)
@@ -97,7 +100,19 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
     let mounted = true
     ;(async () => {
       try {
-        const [modulesData, teamData] = await Promise.all([getTenantModules(), getTeamOverview().catch(() => null)])
+        if (!tenant?.id) {
+          if (mounted) {
+            setModules(null)
+            setTeamOverview(null)
+          }
+          return
+        }
+        const [modulesData, teamData] = await Promise.all([
+          getTenantModules({ tenantId: tenant.id }),
+          canLoadTeamOverview
+            ? getTeamOverview({ tenantId: tenant.id }).catch(() => null)
+            : Promise.resolve(null),
+        ])
         if (mounted) {
           setModules(modulesData)
           setTeamOverview(teamData)
@@ -112,7 +127,7 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
     return () => {
       mounted = false
     }
-  }, [])
+  }, [tenant?.id, canLoadTeamOverview])
 
   const isSoloWorkspace = useMemo(() => {
     const membersCount = Array.isArray(teamOverview?.members) ? teamOverview!.members.length : null
@@ -136,13 +151,11 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
       leads: 'leads',
       services: 'services',
       invoices: 'services',
-      reminders: 'candidates',
+      tasks: 'candidates',
       communications: 'candidates',
       'communications-setup': 'candidates',
-      'messages-inbox': 'candidates',
-      'email-inbox': 'candidates',
+      inbox: 'candidates',
       calendar: 'candidates',
-      planner: 'candidates',
       'team-availability': 'candidates',
       'my-availability': 'candidates',
       'time-off': 'candidates',
@@ -152,10 +165,7 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
     }
 
     const commFeatureByItemKey: Partial<Record<string, Parameters<typeof canUseCommunicationsFeature>[0]>> = {
-      'messages-inbox': 'messages',
-      'email-inbox': 'email',
       calendar: 'calendar',
-      planner: 'planner',
       'team-availability': 'teamAvailability',
       'my-availability': 'myAvailability',
       'time-off': 'timeOffRequests',
@@ -167,6 +177,9 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
       if (item.key === 'communications') return false
       if (item.key === 'team-availability' && isSoloWorkspace) return false
       if (item.key === 'communications-setup') {
+        return canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')
+      }
+      if (item.key === 'inbox') {
         return canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')
       }
       if (item.key === 'sla-incidents') {
@@ -181,25 +194,67 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
     })
 
     if (!isClientTenant) return moduleFiltered
-    const allowed = new Set(['candidates', 'do-procesowania', 'reminders', 'sla-incidents', 'messages-inbox', 'email-inbox'])
+    const allowed = new Set(['candidates', 'do-procesowania', 'tasks', 'sla-incidents', 'inbox'])
     return moduleFiltered.filter((item) => allowed.has(item.key))
   }, [canUseCommunicationsFeature, isClientTenant, isSoloWorkspace, items, modules])
 
   // Основные элементы, которые выносим наверх (business-type order: services = client-first, employer = vacancy-first, agency = candidate-first)
   const mainItems = useMemo(() => {
     const order = isClientTenant
-      ? ['candidates', 'do-procesowania', 'messages-inbox', 'email-inbox', 'sla-incidents', 'reminders']
+      ? ['candidates', 'do-procesowania', 'inbox', 'tasks', 'sla-incidents']
       : businessType === 'services'
-        ? ['overview', 'clients', 'leads', 'services', 'invoices', 'candidates', 'vacancies', 'messages-inbox', 'email-inbox']
+        ? [
+            'inbox',
+            'tasks',
+            'calendar',
+            'sla-incidents',
+            'clients',
+            'candidates',
+            'services',
+            'invoices',
+            'overview',
+            'vacancies',
+            'leads',
+          ]
         : businessType === 'employer'
-          ? ['overview', 'vacancies', 'candidates', 'clients', 'do-procesowania', 'messages-inbox', 'email-inbox']
-          : ['overview', 'candidates', 'clients', 'do-procesowania', 'vacancies', 'messages-inbox', 'email-inbox']
+          ? [
+              'inbox',
+              'tasks',
+              'calendar',
+              'sla-incidents',
+              'overview',
+              'vacancies',
+              'candidates',
+              'clients',
+              'do-procesowania',
+              'services',
+              'invoices',
+              'leads',
+            ]
+          : [
+              'inbox',
+              'tasks',
+              'calendar',
+              'sla-incidents',
+              'overview',
+              'candidates',
+              'clients',
+              'do-procesowania',
+              'vacancies',
+              'services',
+              'invoices',
+              'leads',
+            ]
     const mainKeys = new Set(order)
     const filtered = visibleItems.filter(
       (item) =>
         item.path &&
         (isClientTenant
-          ? item.key === 'candidates' || item.key === 'do-procesowania' || item.key === 'messages-inbox' || item.key === 'email-inbox' || item.key === 'sla-incidents' || item.key === 'reminders'
+          ? item.key === 'candidates' ||
+            item.key === 'do-procesowania' ||
+            item.key === 'inbox' ||
+            item.key === 'tasks' ||
+            item.key === 'sla-incidents'
           : mainKeys.has(item.key))
     )
     return filtered.sort((a, b) => {
@@ -215,19 +270,19 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
           {
             key: 'client-workflow',
             label: t('app.shell.sidebar.client_workflow', { defaultValue: 'Client Workflow' }),
-            itemKeys: ['sla-incidents', 'reminders'],
+            itemKeys: ['sla-incidents'],
           },
         ]
       : [
           {
             key: 'operations',
             label: t('app.shell.sidebar.operations', { defaultValue: 'Operations' }),
-            itemKeys: ['documents', 'services', 'invoices', 'sla-incidents', 'reminders'],
+            itemKeys: ['documents', 'services', 'invoices', 'sla-incidents'],
           },
           {
             key: 'communications',
             label: t('app.shell.sidebar.communications_workspace', { defaultValue: 'Communications Workspace' }),
-            itemKeys: ['communications-setup', 'calendar', 'planner', 'command-audit', 'team-availability', 'my-availability', 'time-off'],
+            itemKeys: ['communications-setup', 'calendar', 'command-audit', 'team-availability', 'my-availability', 'time-off'],
           },
           {
             key: 'leads',
@@ -318,6 +373,15 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
 
   const tenantLabel = tenant?.workspace_label?.trim() || tenant?.name || 'HostFlow'
   const { entityPlural: clientsNavLabel } = useBusinessTerminology()
+  const getItemLabel = (item: NavItem): string => {
+    const translated = t(item.labelKey, { defaultValue: '' }).trim()
+    if (translated && translated !== item.labelKey) return translated
+    const fallbackFromKey = item.key
+      .replace(/[-_]+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (m) => m.toUpperCase())
+    return fallbackFromKey || item.key
+  }
 
   return (
     <>
@@ -349,12 +413,12 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
                 <NavLink
                   key={item.key}
                   to={item.path!}
-                  title={t(item.labelKey)}
+                  title={getItemLabel(item)}
                   onClick={handleNavigate}
                   className={({ isActive }) =>
                     clsx(
                       'block rounded-md px-3 py-2.5 text-sm font-medium transition',
-                      isActive
+                      (item.key === 'inbox' ? inboxNavActive : isActive)
                         ? 'bg-white text-brand-900 shadow-sm'
                         : 'text-white hover:bg-white/15 hover:text-white'
                     )
@@ -366,7 +430,7 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
                   <span className="flex items-center justify-between gap-2">
                     <span className="inline-flex items-center gap-2">
                       <ItemIcon size={16} stroke={1.8} />
-                      <span>{item.key === 'clients' ? clientsNavLabel : t(item.labelKey)}</span>
+                      <span>{item.key === 'clients' ? clientsNavLabel : getItemLabel(item)}</span>
                     </span>
                     {item.key === 'do-procesowania' && pendingHandoffsCount > 0 && (
                       <span
@@ -417,7 +481,7 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
                         <NavLink
                           key={item.key}
                           to={item.path!}
-                          title={t(item.labelKey)}
+                          title={getItemLabel(item)}
                           onClick={handleNavigate}
                           className={({ isActive }) =>
                             clsx(
@@ -431,7 +495,7 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
                               const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
                               return <ItemIcon size={15} stroke={1.8} />
                             })()}
-                            <span>{item.key === 'clients' ? clientsNavLabel : t(item.labelKey)}</span>
+                            <span>{item.key === 'clients' ? clientsNavLabel : getItemLabel(item)}</span>
                           </span>
                         </NavLink>
                       ))}

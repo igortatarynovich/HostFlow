@@ -2,60 +2,61 @@ import type { ComponentType } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import type { Permission } from '../hooks/usePermissions'
 import CommunicationsFeatureGate from '../components/communications/CommunicationsFeatureGate'
-import Dashboard from '../pages/Dashboard'
-import Candidates from '../pages/Candidates'
-import CandidateCard from '../pages/CandidateCard'
-import CandidatesNoNextActionPage from '../pages/CandidatesNoNextActionPage'
-import Companies from '../pages/Companies'
-import MyCompanyPage from '../pages/MyCompanyPage'
-import Vacancies from '../pages/Vacancies'
-import VacancyDetailRoute from '../pages/VacancyDetailRoute'
-import { ServicesPage } from '../pages/ServicesPage'
-import InvoicesPage from '../pages/InvoicesPage'
-import InvoiceCreatePage from '../pages/InvoiceCreatePage'
-import InvoiceDetailPage from '../pages/InvoiceDetailPage'
-import LeadsPage from '../pages/LeadsPage'
-import ProfilePage from '../pages/ProfilePage'
-import RemindersPage from '../pages/RemindersPage'
-import ActivitiesPage from '../pages/ActivitiesPage'
-import CommunicationsThreadPage from '../pages/CommunicationsThreadPage'
-import CommunicationsMessagesPage from '../pages/CommunicationsMessagesPage'
-import CommunicationsEmailInboxPage from '../pages/CommunicationsEmailInboxPage'
-import CommunicationsCalendarPage from '../pages/CommunicationsCalendarPage'
-import CommunicationsPlannerPage from '../pages/CommunicationsPlannerPage'
-import CommunicationsSlaIncidentsPage from '../pages/CommunicationsSlaIncidentsPage'
-import CommunicationsSetupPage from '../pages/CommunicationsSetupPage'
-import CommunicationsCommandAuditPage from '../pages/CommunicationsCommandAuditPage'
-import TeamAvailabilityPage from '../pages/TeamAvailabilityPage'
-import MyAvailabilityPage from '../pages/MyAvailabilityPage'
-import TimeOffRequestsPage from '../pages/TimeOffRequestsPage'
-import UsersPage from '../pages/admin/UsersPage'
-import TenantsPage from '../pages/admin/TenantsPage'
-import RulesetVersionsPage from '../pages/admin/RulesetVersionsPage'
-import MetaLeadsAdminPage from '../pages/admin/MetaLeadsAdminPage'
-import DeletionRequestsPage from '../pages/admin/DeletionRequestsPage'
-import AuditLogPage from '../pages/admin/AuditLogPage'
-import TtvReportPage from '../pages/admin/TtvReportPage'
-import DocumentsRegistryPage from '../pages/DocumentsRegistryPage'
-import SettingsLandingPage from '../pages/admin/SettingsLandingPage'
-import DocumentTypesPage from '../pages/admin/DocumentTypesPage'
-import CompanyAccessPage from '../pages/admin/CompanyAccessPage'
-import CandidateProfilesPage from '../pages/admin/CandidateProfilesPage'
-import FunnelsPage from '../pages/admin/FunnelsPage'
-import CustomFieldsPage from '../pages/admin/CustomFieldsPage'
-import BillingWorkspacePage from '../pages/admin/BillingWorkspacePage'
-import EmailSettingsPage from '../pages/admin/EmailSettingsPage'
-import CommunicationsSettingsPage from '../pages/admin/CommunicationsSettingsPage'
-import CommunicationsMessengerSettingsPage from '../pages/admin/CommunicationsMessengerSettingsPage'
-import CommunicationsQueueSettingsPage from '../pages/admin/CommunicationsQueueSettingsPage'
-import CommunicationsSlaSettingsPage from '../pages/admin/CommunicationsSlaSettingsPage'
-import TenantLinksSettingsPage from '../pages/admin/TenantLinksSettingsPage'
-import AgencyClientsPage from '../pages/AgencyClientsPage'
-import ClientLinkDetailPage from '../pages/ClientLinkDetailPage'
-import LegalDocumentsPage from '../pages/admin/LegalDocumentsPage'
-import DoProcesowaniaPage from '../pages/DoProcesowaniaPage'
-import AutomationLogPage from '../pages/AutomationLogPage'
-import AutomationRulesPage from '../pages/AutomationRulesPage'
+import {
+  AgencyClientsPage,
+  AuditLogPage,
+  AutomationLogPage,
+  AutomationRulesPage,
+  BillingWorkspacePage,
+  CandidateCard,
+  CandidateProfilesPage,
+  Candidates,
+  CandidatesNoNextActionPage,
+  ClientLinkDetailPage,
+  CommunicationsCalendarPage,
+  CommunicationsCommandAuditPage,
+  CommunicationsEmailInboxPage,
+  CommunicationsMessengerSettingsPage,
+  CommunicationsMessagesPage,
+  CommunicationsQueueSettingsPage,
+  CommunicationsSettingsPage,
+  CommunicationsSetupPage,
+  CommunicationsSlaIncidentsPage,
+  CommunicationsSlaSettingsPage,
+  CommunicationsThreadPage,
+  Companies,
+  CompanyAccessPage,
+  CustomFieldsPage,
+  Dashboard,
+  DeletionRequestsPage,
+  DocumentTypesPage,
+  DocumentsRegistryPage,
+  DoProcesowaniaPage,
+  EmailSettingsPage,
+  FunnelsPage,
+  HiringPipelineGatesSettingsPage,
+  InvoiceCreatePage,
+  InvoiceDetailPage,
+  InvoicesPage,
+  LeadsPage,
+  LegalDocumentsPage,
+  MetaLeadsAdminPage,
+  MyAvailabilityPage,
+  MyCompanyPage,
+  ProfilePage,
+  RemindersPage,
+  RulesetVersionsPage,
+  ServicesPage,
+  SettingsLandingPage,
+  TeamAvailabilityPage,
+  TenantLinksSettingsPage,
+  TenantsPage,
+  TimeOffRequestsPage,
+  TtvReportPage,
+  UsersPage,
+  Vacancies,
+  VacancyDetailRoute,
+} from './appRoutePages'
 
 export type NavGroup = 'overview' | 'people' | 'workflows' | 'leads' | 'admin' | 'account'
 
@@ -158,16 +159,16 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'notifications.view',
   },
   {
-    key: 'messages-inbox',
-    labelKey: 'app.nav.items.messages_inbox',
+    key: 'inbox',
+    labelKey: 'app.nav.items.inbox',
     path: '/app/messages',
     group: 'workflows',
     permission: 'notifications.view',
   },
   {
-    key: 'email-inbox',
-    labelKey: 'app.nav.items.email_inbox',
-    path: '/app/email',
+    key: 'tasks',
+    labelKey: 'app.nav.items.tasks',
+    path: '/app/tasks',
     group: 'workflows',
     permission: 'notifications.view',
   },
@@ -175,13 +176,6 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'calendar',
     labelKey: 'app.nav.items.calendar',
     path: '/app/calendar',
-    group: 'workflows',
-    permission: 'notifications.view',
-  },
-  {
-    key: 'planner',
-    labelKey: 'app.nav.items.planner',
-    path: '/app/planner',
     group: 'workflows',
     permission: 'notifications.view',
   },
@@ -218,20 +212,6 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'app.nav.items.time_off',
     path: '/app/time-off',
     group: 'account',
-    permission: 'notifications.view',
-  },
-  {
-    key: 'reminders',
-    labelKey: 'app.nav.items.reminders',
-    path: '/app/reminders',
-    group: 'workflows',
-    permission: 'notifications.view',
-  },
-  {
-    key: 'activities',
-    labelKey: 'app.nav.items.activities',
-    path: '/app/activities',
-    group: 'workflows',
     permission: 'notifications.view',
   },
   {
@@ -290,6 +270,13 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/app/settings/funnels',
     group: 'admin',
     permission: 'admin.users',
+  },
+  {
+    key: 'settings-hiring-gates',
+    labelKey: 'app.nav.items.settings_hiring_gates',
+    path: '/app/settings/hiring-pipeline-gates',
+    group: 'admin',
+    permission: 'settings.view',
   },
   {
     key: 'settings-docs',
@@ -362,6 +349,9 @@ const PipelineRedirect = () => <Navigate to="candidates?view=kanban" replace />
 const NotFoundRedirect = () => <Navigate to="overview" replace />
 const LegacyDoProcesowaniaRedirect = () => <Navigate to="../procesowani" replace />
 const LegacyCommunicationsRedirect = () => <Navigate to="../settings/communications" replace />
+const LegacyRemindersRedirect = () => <Navigate to="../tasks" replace />
+const LegacyActivitiesRedirect = () => <Navigate to="../tasks" replace />
+const LegacyPlannerRedirect = () => <Navigate to="../calendar" replace />
 const LegacyCompaniesRedirect = () => <Navigate to="../clients" replace />
 const LegacyCompanyDetailRedirect = () => {
   const { id, tab } = useParams<{ id?: string; tab?: string }>()
@@ -425,7 +415,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'messages-inbox', path: 'messages', Component: withCommFeature(CommunicationsMessagesPage, 'messages'), permission: 'notifications.view' },
   { key: 'email-inbox', path: 'email', Component: withCommFeature(CommunicationsEmailInboxPage, 'email'), permission: 'notifications.view' },
   { key: 'calendar', path: 'calendar', Component: withCommFeature(CommunicationsCalendarPage, 'calendar'), permission: 'notifications.view' },
-  { key: 'planner', path: 'planner', Component: withCommFeature(CommunicationsPlannerPage, 'planner'), permission: 'notifications.view' },
+  { key: 'planner-legacy', path: 'planner', Component: LegacyPlannerRedirect, permission: 'notifications.view' },
   { key: 'sla-incidents', path: 'sla-incidents', Component: withCommAnyFeature(CommunicationsSlaIncidentsPage, ['messages', 'email']), permission: 'notifications.view' },
   { key: 'command-audit', path: 'communications/command-audit', Component: withCommFeature(CommunicationsCommandAuditPage, 'communicationsAdmin'), permission: 'notifications.view' },
   { key: 'team-availability', path: 'team-availability', Component: withCommFeature(TeamAvailabilityPage, 'teamAvailability'), permission: 'notifications.view' },
@@ -433,8 +423,9 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'time-off', path: 'time-off', Component: withCommFeature(TimeOffRequestsPage, 'timeOffRequests'), permission: 'notifications.view' },
   { key: 'communications', path: 'communications', Component: LegacyCommunicationsRedirect, permission: 'notifications.view' },
   { key: 'communications-thread', path: 'communications/threads/:threadId', Component: withCommAnyFeature(CommunicationsThreadPage, ['messages', 'email']), permission: 'notifications.view' },
-  { key: 'reminders', path: 'reminders', Component: RemindersPage, permission: 'notifications.view' },
-  { key: 'activities', path: 'activities', Component: ActivitiesPage, permission: 'notifications.view' },
+  { key: 'tasks', path: 'tasks', Component: RemindersPage, permission: 'notifications.view' },
+  { key: 'reminders-legacy', path: 'reminders', Component: LegacyRemindersRedirect, permission: 'notifications.view' },
+  { key: 'activities-legacy', path: 'activities', Component: LegacyActivitiesRedirect, permission: 'notifications.view' },
   { key: 'leads', path: 'leads', Component: LeadsPage, permission: 'leads.view' },
   { key: 'automation-log', path: 'automation-log', Component: AutomationLogPage, permission: 'notifications.view' },
   { key: 'automation-rules', path: 'automation-rules', Component: AutomationRulesPage, permission: 'notifications.view' },
@@ -446,6 +437,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'settings-docs', path: 'settings/docs', Component: DocumentTypesPage, permission: 'documents.manage' },
   { key: 'settings-legal', path: 'settings/legal', Component: LegalDocumentsPage, permission: 'admin.users' },
   { key: 'settings-funnels', path: 'settings/funnels', Component: FunnelsPage, permission: ['admin.users', 'users.manage'] },
+  {
+    key: 'settings-hiring-pipeline-gates',
+    path: 'settings/hiring-pipeline-gates',
+    Component: HiringPipelineGatesSettingsPage,
+    permission: 'settings.view',
+  },
   { key: 'settings-candidate-profiles', path: 'settings/candidate-profiles', Component: CandidateProfilesPage, permission: 'admin.users' },
   { key: 'settings-custom-fields', path: 'settings/custom-fields', Component: CustomFieldsPage, permission: 'admin.users' },
   { key: 'settings-email', path: 'settings/email', Component: EmailSettingsPage, permission: 'admin.users' },

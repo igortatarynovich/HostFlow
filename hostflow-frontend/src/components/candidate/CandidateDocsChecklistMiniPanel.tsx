@@ -51,13 +51,17 @@ export default function CandidateDocsChecklistMiniPanel({
       setSummary(s ?? null)
       setLoaded(true)
     } catch (err: any) {
-      setErrorText(err?.response?.data?.detail ?? err?.message ?? 'Request failed')
+      setErrorText(
+        err?.response?.data?.detail ??
+          err?.message ??
+          t('common.errors.request_failed', { defaultValue: 'Request failed' }),
+      )
       setSummary(null)
       setLoaded(true)
     } finally {
       setLoading(false)
     }
-  }, [candidateId, ownerContext])
+  }, [candidateId, ownerContext, t])
 
   useEffect(() => {
     if (!open) return
@@ -66,7 +70,14 @@ export default function CandidateDocsChecklistMiniPanel({
   }, [loaded, load, open])
 
   const labelForType = useCallback(
-    (code: string) => t(`admin.documents.types.${code}`, { defaultValue: code }),
+    (code: string) => {
+      const byTypeCode = t(`admin.documents.type_codes.${code}`, { defaultValue: '' }).trim()
+      if (byTypeCode) return byTypeCode
+      const byProcessType = t(`admin.documents.process_types.${code}`, { defaultValue: '' }).trim()
+      if (byProcessType) return byProcessType
+      const normalized = String(code || '').replace(/[_-]+/g, ' ').trim()
+      return normalized || code
+    },
     [t],
   )
 
@@ -194,4 +205,3 @@ export default function CandidateDocsChecklistMiniPanel({
     </section>
   )
 }
-

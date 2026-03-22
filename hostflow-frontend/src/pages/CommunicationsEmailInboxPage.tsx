@@ -5,6 +5,7 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import {
   createCommunicationCommandAuditBatch,
   getCommunicationsSettings,
+  patchCommunicationsSettings,
   runCommunicationEmailPollWorker,
   type CommunicationCommandAction,
   type CommunicationCommandTemplate,
@@ -17,6 +18,7 @@ import {
 } from '../api/communications'
 import { useI18n } from '../i18n'
 import { useCommunicationsSetupStatus } from '../hooks/useCommunicationsSetupStatus'
+import { useAuth } from '../store/useAuth'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 
 const LS_KEY = 'hf:email-workspace:v2'
@@ -104,8 +106,14 @@ function titleOf(th: CommunicationThread): string {
   return String(th.subject || '').trim() || String(th.last_message_preview || '').trim() || th.id
 }
 
+function canPatchCommunicationsSettings(role: string | undefined): boolean {
+  const r = String(role || '').trim().toLowerCase()
+  return r === 'administrator' || r === 'supervisor' || r === 'admin' || r === 'superadmin'
+}
+
 export default function CommunicationsEmailInboxPage() {
   const { t } = useI18n()
+  const { me } = useAuth()
   const commSetup = useCommunicationsSetupStatus()
 
   const saved = useMemo(() => {
@@ -159,6 +167,8 @@ export default function CommunicationsEmailInboxPage() {
   const [pollNote, setPollNote] = useState<string | null>(null)
   const [pollDetails, setPollDetails] = useState<Array<Record<string, any>>>([])
   const [lastPollAt, setLastPollAt] = useState<string | null>(savedLastPollAt)
+  const [serverIncomingEnabled, setServerIncomingEnabled] = useState<boolean | null>(null)
+  const [enablingIncoming, setEnablingIncoming] = useState(false)
   const pollInFlightRef = useRef(false)
   const mountedRef = useRef(true)
 
@@ -175,6 +185,7 @@ export default function CommunicationsEmailInboxPage() {
       setCommandTemplates(templates)
       if (templates.length && !commandId) setCommandId(templates[0].id)
       const emailCfg = (cfg as any)?.email || {}
+      setServerIncomingEnabled(typeof emailCfg.incomingEnabled === 'boolean' ? emailCfg.incomingEnabled : Boolean(emailCfg.incomingEnabled))
       setSignatureCandidates(String(emailCfg.signatureCandidates || '').trim())
       setSignatureClients(String(emailCfg.signatureClients || '').trim())
       const msgTplItems = Array.isArray((cfg as any)?.messageTemplates?.items) ? (cfg as any).messageTemplates.items : []
@@ -185,7 +196,7 @@ export default function CommunicationsEmailInboxPage() {
       setTemplates(emailTemplates)
       if (!selectedTemplateId && emailTemplates.length) setSelectedTemplateId(emailTemplates[0].id)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to load email inbox'))
+      setErrorText(errorTextFrom(err, t('app.communications.email.errors.load', { defaultValue: 'Failed to load email inbox' })))
     } finally {
       if (!silent) setLoading(false)
     }
@@ -276,6 +287,27 @@ export default function CommunicationsEmailInboxPage() {
     return [...system, ...custom]
   }, [allCustomFolders, threads])
 
+  const enableServerIncoming = async () => {
+    setEnablingIncoming(true)
+    setErrorText(null)
+    try {
+      const cfg = await getCommunicationsSettings()
+      const email = (cfg as any)?.email || {}
+      await patchCommunicationsSettings({
+        email: {
+          ...email,
+          incomingEnabled: true,
+          syncIntervalMinutes: Number(email.syncIntervalMinutes) > 0 ? email.syncIntervalMinutes : 5,
+        },
+      })
+      setServerIncomingEnabled(true)
+    } catch (err: any) {
+      setErrorText(errorTextFrom(err, t('app.communications.email.errors.enable_incoming', { defaultValue: 'Failed to enable server-side incoming sync' })))
+    } finally {
+      setEnablingIncoming(false)
+    }
+  }
+
   useEffect(() => {
     if (!filtered.length) {
       setSelectedThreadId(null)
@@ -333,7 +365,7 @@ export default function CommunicationsEmailInboxPage() {
       await Promise.all(selectedIds.map((id) => worker(id)))
       await load()
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Bulk action failed'))
+      setErrorText(errorTextFrom(err, t('app.communications.email.errors.bulk_action', { defaultValue: 'Bulk action failed' })))
     } finally {
       setBusy(false)
     }
@@ -501,7 +533,7 @@ export default function CommunicationsEmailInboxPage() {
       if (mode === 'forward') setComposeRecipient('')
       await load()
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to send message'))
+      setErrorText(errorTextFrom(err, t('app.communications.email.errors.send', { defaultValue: 'Failed to send message' })))
     } finally {
       setBusy(false)
     }
@@ -529,7 +561,7 @@ export default function CommunicationsEmailInboxPage() {
       setLastPollAt(nowIso())
       await load(Boolean(opts?.silent))
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to fetch inbound email'))
+      setErrorText(errorTextFrom(err, t('app.communications.email.errors.fetch_inbound', { defaultValue: 'Failed to fetch inbound email' })))
     } finally {
       setPollBusy(false)
       pollInFlightRef.current = false
@@ -542,10 +574,9 @@ export default function CommunicationsEmailInboxPage() {
     if (pollBusy || busy) return
     if (commSetup.loading || !commSetup.isComplete) return
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-    if (threads.length > 0) return
     if (!shouldAutoPoll(lastPollAt, 2)) return
     void fetchInboundNow({ reason: 'auto', silent: true })
-  }, [busy, commSetup.isComplete, commSetup.loading, lastPollAt, loading, pollBusy, threads.length])
+  }, [busy, commSetup.isComplete, commSetup.loading, lastPollAt, loading, pollBusy])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -566,6 +597,39 @@ export default function CommunicationsEmailInboxPage() {
   return (
     <div className="space-y-4">
       <WorkspaceTopNav active="email" />
+      {!commSetup.loading && commSetup.isComplete && serverIncomingEnabled === false && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="font-medium">
+            {t('app.communications.email.incoming_disabled_title', {
+              defaultValue: 'Server-side incoming email sync is off',
+            })}
+          </div>
+          <p className="mt-1 text-xs text-amber-950/90">
+            {t('app.communications.email.incoming_disabled_body', {
+              defaultValue:
+                'New messages are only fetched when you open this page (or run “Fetch incoming”) unless background sync is enabled. Email does not appear in Messages — only here at /app/email. IMAP default is UNSEEN: already-read mail in another client may be skipped.',
+            })}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {canPatchCommunicationsSettings(me?.role) && (
+              <button
+                type="button"
+                className="btn-primary btn-xs disabled:opacity-50"
+                disabled={enablingIncoming}
+                onClick={() => void enableServerIncoming()}
+              >
+                {enablingIncoming
+                  ? t('common.loading', { defaultValue: 'Loading…' })
+                  : t('app.communications.email.incoming_enable_cta', { defaultValue: 'Enable background sync' })}
+              </button>
+            )}
+            <Link to="/app/setup/communications" className="btn-secondary btn-xs">
+              {t('app.nav.items.communications_setup', { defaultValue: 'Comms setup' })}
+            </Link>
+          </div>
+        </div>
+      )}
+
       {!commSetup.loading && !commSetup.isComplete && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <div className="font-medium">
@@ -588,7 +652,9 @@ export default function CommunicationsEmailInboxPage() {
             {t('app.communications.ia.email_title', { defaultValue: 'Email Inbox' })}
           </h1>
           {!isMobile && (
-            <p className="text-sm text-slate-500">Inbox workspace: folders, tags, commands, archive/delete, reply/forward.</p>
+            <p className="text-sm text-slate-500">
+              {t('app.communications.email.subtitle', { defaultValue: 'Inbox workspace: folders, tags, commands, archive/delete, reply/forward.' })}
+            </p>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -597,7 +663,7 @@ export default function CommunicationsEmailInboxPage() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               className="input"
-              placeholder="Search subject, preview, tags, id..."
+              placeholder={t('app.communications.email.search.placeholder_long', { defaultValue: 'Search subject, preview, tags, id...' })}
             />
           )}
           <button type="button" onClick={() => void load()} className="btn-secondary">
@@ -624,7 +690,7 @@ export default function CommunicationsEmailInboxPage() {
                 }}
                 className="btn-secondary"
               >
-                Reset view
+                {t('app.communications.email.actions.reset_view', { defaultValue: 'Reset view' })}
               </button>
               <Link to="/app/setup/communications" className="btn-secondary">
                 {t('app.nav.items.communications_setup', { defaultValue: 'Comms setup' })}
@@ -639,7 +705,7 @@ export default function CommunicationsEmailInboxPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             className="w-full input py-2"
-            placeholder="Search subject, preview, tags..."
+            placeholder={t('app.communications.email.search.placeholder', { defaultValue: 'Search subject, preview, tags...' })}
           />
         </div>
       )}
@@ -683,13 +749,15 @@ export default function CommunicationsEmailInboxPage() {
           onClick={() => setAdvancedOpen((prev) => !prev)}
           className="btn-secondary btn-sm"
         >
-          {advancedOpen ? 'Hide filters & commands' : 'Show filters & commands'}
+          {advancedOpen
+            ? t('app.communications.email.actions.hide_filters_commands', { defaultValue: 'Hide filters & commands' })
+            : t('app.communications.email.actions.show_filters_commands', { defaultValue: 'Show filters & commands' })}
         </button>
         {advancedOpen && (
           <div className="mt-3 space-y-3">
             {isMobile && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-slate-500">Folder</span>
+                <span className="text-xs text-slate-500">{t('app.communications.email.labels.folder', { defaultValue: 'Folder' })}</span>
                 <select value={folder} onChange={(e) => setFolder(e.target.value as FolderKey)} className="input">
                   {folderItems.map((item) => (
                     <option key={item.key} value={item.key}>{item.label} ({item.count})</option>
@@ -698,19 +766,19 @@ export default function CommunicationsEmailInboxPage() {
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold uppercase text-slate-500">Commands</span>
+              <span className="text-xs font-semibold uppercase text-slate-500">{t('app.communications.email.labels.commands', { defaultValue: 'Commands' })}</span>
               <select
                 value={bulkCommand}
                 onChange={(e) => setBulkCommand(e.target.value as BulkCommand)}
                 className="input"
               >
-                <option value="mark_read">Mark read</option>
-                <option value="archive">Archive</option>
-                <option value="unarchive">Unarchive</option>
-                <option value="delete">Delete</option>
-                <option value="restore">Restore</option>
-                <option value="priority_high">Priority high</option>
-                <option value="priority_normal">Priority normal</option>
+                <option value="mark_read">{t('app.communications.email.commands.mark_read', { defaultValue: 'Mark read' })}</option>
+                <option value="archive">{t('app.communications.email.commands.archive', { defaultValue: 'Archive' })}</option>
+                <option value="unarchive">{t('app.communications.email.commands.unarchive', { defaultValue: 'Unarchive' })}</option>
+                <option value="delete">{t('app.communications.email.commands.delete', { defaultValue: 'Delete' })}</option>
+                <option value="restore">{t('app.communications.email.commands.restore', { defaultValue: 'Restore' })}</option>
+                <option value="priority_high">{t('app.communications.email.commands.priority_high', { defaultValue: 'Priority high' })}</option>
+                <option value="priority_normal">{t('app.communications.email.commands.priority_normal', { defaultValue: 'Priority normal' })}</option>
               </select>
               <button
                 type="button"
@@ -718,14 +786,14 @@ export default function CommunicationsEmailInboxPage() {
                 disabled={busy || selectedIds.length === 0}
                 className="btn-secondary btn-sm disabled:opacity-50"
               >
-                Run for selected ({selectedIds.length})
+                {t('app.communications.email.actions.run_for_selected', { defaultValue: 'Run for selected ({count})', values: { count: selectedIds.length } })}
               </button>
               <select
                 value={commandId}
                 onChange={(e) => setCommandId(e.target.value)}
                 className="input"
               >
-                <option value="">Quick command…</option>
+                <option value="">{t('app.communications.email.commands.quick', { defaultValue: 'Quick command…' })}</option>
                 {commandTemplates.map((cmd) => (
                   <option key={cmd.id} value={cmd.id}>{cmd.label}</option>
                 ))}
@@ -736,17 +804,17 @@ export default function CommunicationsEmailInboxPage() {
                 disabled={busy || !selectedIds.length || !commandId}
                 className="btn-secondary btn-sm disabled:opacity-50"
               >
-                Run template
+                {t('app.communications.email.actions.run_template', { defaultValue: 'Run template' })}
               </button>
-              <span className="ml-3 text-xs text-slate-500">Move to</span>
+              <span className="ml-3 text-xs text-slate-500">{t('app.communications.email.labels.move_to', { defaultValue: 'Move to' })}</span>
               <select
                 value={moveTarget}
                 onChange={(e) => setMoveTarget(e.target.value as FolderKey)}
                 className="input"
               >
-                <option value="inbox">Inbox</option>
-                <option value="archive">Archive</option>
-                <option value="trash">Deleted</option>
+                <option value="inbox">{t('app.communications.email.folders.inbox', { defaultValue: 'Inbox' })}</option>
+                <option value="archive">{t('app.communications.email.folders.archive', { defaultValue: 'Archive' })}</option>
+                <option value="trash">{t('app.communications.email.folders.deleted', { defaultValue: 'Deleted' })}</option>
                 {allCustomFolders.map((name) => (
                   <option key={name} value={`custom:${name}`}>{name}</option>
                 ))}
@@ -757,16 +825,16 @@ export default function CommunicationsEmailInboxPage() {
                 disabled={busy || selectedIds.length === 0}
                 className="btn-secondary btn-sm disabled:opacity-50"
               >
-                Move
+                {t('app.communications.email.actions.move', { defaultValue: 'Move' })}
               </button>
               <input
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                placeholder="tag"
+                placeholder={t('app.communications.email.labels.tag', { defaultValue: 'tag' })}
                 className="input ml-3"
               />
-              <button type="button" onClick={() => void mutateTag('add')} disabled={busy || !selectedIds.length} className="btn-secondary btn-sm disabled:opacity-50">+Tag</button>
-              <button type="button" onClick={() => void mutateTag('remove')} disabled={busy || !selectedIds.length} className="btn-secondary btn-sm disabled:opacity-50">-Tag</button>
+              <button type="button" onClick={() => void mutateTag('add')} disabled={busy || !selectedIds.length} className="btn-secondary btn-sm disabled:opacity-50">{t('app.communications.email.actions.tag_add', { defaultValue: '+Tag' })}</button>
+              <button type="button" onClick={() => void mutateTag('remove')} disabled={busy || !selectedIds.length} className="btn-secondary btn-sm disabled:opacity-50">{t('app.communications.email.actions.tag_remove', { defaultValue: '-Tag' })}</button>
             </div>
           </div>
         )}
@@ -787,7 +855,7 @@ export default function CommunicationsEmailInboxPage() {
       )}
       <div className="grid gap-4 xl:grid-cols-[230px_minmax(420px,1fr)_minmax(360px,460px)]">
         <aside className={clsx('rounded-lg border border-slate-200 bg-white p-3', isMobile && 'hidden')}>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Folders</div>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{t('app.communications.email.labels.folders', { defaultValue: 'Folders' })}</div>
           <div className="space-y-1">
             {folderItems.map((item) => (
               <button
@@ -805,31 +873,31 @@ export default function CommunicationsEmailInboxPage() {
             ))}
           </div>
           <div className="mt-3 border-t border-slate-100 pt-3">
-            <div className="mb-1 text-xs text-slate-500">New folder</div>
+            <div className="mb-1 text-xs text-slate-500">{t('app.communications.email.labels.new_folder', { defaultValue: 'New folder' })}</div>
             <div className="flex gap-2">
               <input value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} className="input" />
-              <button type="button" onClick={createFolder} className="btn-secondary btn-sm">Add</button>
+              <button type="button" onClick={createFolder} className="btn-secondary btn-sm">{t('common.actions.add', { defaultValue: 'Add' })}</button>
             </div>
           </div>
         </aside>
 
         <section className={clsx('rounded-lg border border-slate-200 bg-white', isMobile && mobilePane === 'preview' && 'hidden')}>
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-900">
-            <span>Conversations</span>
+            <span>{t('app.communications.email.labels.conversations', { defaultValue: 'Conversations' })}</span>
             <label className="flex items-center gap-2 text-xs font-normal text-slate-500">
               <input
                 type="checkbox"
                 checked={filtered.length > 0 && selectedIds.length === filtered.length}
                 onChange={(e) => setSelectedIds(e.target.checked ? filtered.map((x) => x.id) : [])}
               />
-              Select all
+              {t('app.communications.email.actions.select_all', { defaultValue: 'Select all' })}
             </label>
           </div>
           {loading && <div className="px-4 py-4 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
           {!loading && filtered.length === 0 && (
             <div className="px-4 py-6 text-sm text-slate-500">
               {threads.length > 0
-                ? 'No items match current folder/search. Reset view to show all.'
+                ? t('app.communications.email.states.no_match', { defaultValue: 'No items match current folder/search. Reset view to show all.' })
                 : t('app.communications.states.empty', { defaultValue: 'No activity yet' })}
             </div>
           )}
@@ -848,8 +916,8 @@ export default function CommunicationsEmailInboxPage() {
                       <div className="truncate text-sm font-medium text-slate-900">{titleOf(th)}</div>
                       <div className="mt-1 truncate text-xs text-slate-500">{th.last_message_preview || '—'}</div>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
-                        <span>Unread: {th.unread_count || 0}</span>
-                        <span>Status: {th.status}</span>
+                        <span>{t('app.communications.email.labels.unread_count', { defaultValue: 'Unread: {count}', values: { count: th.unread_count || 0 } })}</span>
+                        <span>{t('app.communications.email.labels.status_value', { defaultValue: 'Status: {status}', values: { status: th.status || '—' } })}</span>
                         <span>{formatDateTime(th.last_message_at || th.updated_at)}</span>
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1">
@@ -870,14 +938,16 @@ export default function CommunicationsEmailInboxPage() {
             <div className="flex items-center gap-2">
               {isMobile && (
                 <button type="button" onClick={() => setMobilePane('list')} className="btn-secondary btn-xs">
-                  Back
+                  {t('common.actions.back', { defaultValue: 'Back' })}
                 </button>
               )}
-              <span>Preview & Reply</span>
+              <span>{t('app.communications.email.preview.title', { defaultValue: 'Preview & Reply' })}</span>
             </div>
           </div>
           {!selectedThread && (
-            <div className="px-4 py-6 text-sm text-slate-500">Select a conversation to preview.</div>
+            <div className="px-4 py-6 text-sm text-slate-500">
+              {t('app.communications.email.preview.empty', { defaultValue: 'Select a conversation to preview.' })}
+            </div>
           )}
           {selectedThread && (
             <div className="max-h-[72vh] space-y-3 overflow-auto px-4 py-4">
@@ -886,16 +956,22 @@ export default function CommunicationsEmailInboxPage() {
                 <div className="mt-1 text-xs text-slate-500">{selectedThread.last_message_preview || '—'}</div>
               </div>
               <div className="grid gap-2 text-xs text-slate-600">
-                <div>Status: <strong>{selectedThread.status}</strong></div>
-                <div>Assignee: <strong>{selectedThread.assignee_id || '—'}</strong></div>
-                <div>Last activity: <strong>{formatDateTime(selectedThread.last_message_at || selectedThread.updated_at)}</strong></div>
-                <div>Created: <strong>{formatDateTime(selectedThread.created_at)}</strong></div>
+                <div>{t('app.communications.email.preview.status', { defaultValue: 'Status' })}: <strong>{selectedThread.status}</strong></div>
+                <div>{t('app.communications.email.preview.assignee', { defaultValue: 'Assignee' })}: <strong>{selectedThread.assignee_id || '—'}</strong></div>
+                <div>{t('app.communications.email.preview.last_activity', { defaultValue: 'Last activity' })}: <strong>{formatDateTime(selectedThread.last_message_at || selectedThread.updated_at)}</strong></div>
+                <div>{t('app.communications.email.preview.created', { defaultValue: 'Created' })}: <strong>{formatDateTime(selectedThread.created_at)}</strong></div>
               </div>
 
               <div className="flex flex-wrap gap-2 pt-1">
-                <button type="button" onClick={() => void patchCommunicationThread(selectedThread.id, { is_archived: true, status: 'archived' }).then(load)} className="btn-secondary btn-xs">Archive</button>
-                <button type="button" onClick={() => void patchCommunicationThread(selectedThread.id, { is_archived: true, status: 'deleted' }).then(load)} className="btn-danger btn-xs">Delete</button>
-                <button type="button" onClick={() => void markCommunicationThreadRead(selectedThread.id, { mark_thread: true }).then(load)} className="btn-secondary btn-xs">Mark read</button>
+                <button type="button" onClick={() => void patchCommunicationThread(selectedThread.id, { is_archived: true, status: 'archived' }).then(load)} className="btn-secondary btn-xs">
+                  {t('app.communications.email.commands.archive', { defaultValue: 'Archive' })}
+                </button>
+                <button type="button" onClick={() => void patchCommunicationThread(selectedThread.id, { is_archived: true, status: 'deleted' }).then(load)} className="btn-danger btn-xs">
+                  {t('app.communications.email.commands.delete', { defaultValue: 'Delete' })}
+                </button>
+                <button type="button" onClick={() => void markCommunicationThreadRead(selectedThread.id, { mark_thread: true }).then(load)} className="btn-secondary btn-xs">
+                  {t('app.communications.email.commands.mark_read', { defaultValue: 'Mark read' })}
+                </button>
                 <Link
                   to={`/app/communications/threads/${selectedThread.id}`}
                   className="btn-primary btn-xs"
@@ -905,18 +981,20 @@ export default function CommunicationsEmailInboxPage() {
               </div>
 
               <div className="border-t border-slate-100 pt-3">
-                <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Reply / Forward</div>
+                <div className="mb-2 text-xs font-semibold uppercase text-slate-500">
+                  {t('app.communications.email.preview.reply_forward', { defaultValue: 'Reply / Forward' })}
+                </div>
                 <input
                   value={composeRecipient}
                   onChange={(e) => setComposeRecipient(e.target.value)}
                   className="input mb-2"
-                  placeholder="Recipient email (optional if preconfigured)"
+                  placeholder={t('app.communications.email.preview.recipient_placeholder', { defaultValue: 'Recipient email (optional if preconfigured)' })}
                 />
                 <input
                   value={composeSubject}
                   onChange={(e) => setComposeSubject(e.target.value)}
                   className="input mb-2"
-                  placeholder="Subject"
+                  placeholder={t('app.communications.email.preview.subject_placeholder', { defaultValue: 'Subject' })}
                 />
                 {templates.length > 0 && (
                   <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -946,7 +1024,7 @@ export default function CommunicationsEmailInboxPage() {
                         })
                       }}
                     >
-                      Insert template
+                      {t('app.communications.email.preview.insert_template', { defaultValue: 'Insert template' })}
                     </button>
                   </div>
                 )}
@@ -957,7 +1035,7 @@ export default function CommunicationsEmailInboxPage() {
                       checked={applySignature}
                       onChange={(e) => setApplySignature(e.target.checked)}
                     />
-                    Add signature
+                    {t('app.communications.email.preview.add_signature', { defaultValue: 'Add signature' })}
                   </label>
                 )}
                 <textarea
@@ -973,7 +1051,7 @@ export default function CommunicationsEmailInboxPage() {
                     }
                   }}
                   className="textarea"
-                  placeholder="Write your message"
+                  placeholder={t('app.communications.email.preview.body_placeholder', { defaultValue: 'Write your message' })}
                 />
                 <div className="mt-2 flex gap-2">
                   <button
@@ -982,7 +1060,7 @@ export default function CommunicationsEmailInboxPage() {
                     onClick={() => void sendReplyOrForward('reply')}
                     className="btn-primary btn-xs disabled:opacity-50"
                   >
-                    Reply
+                    {t('app.communications.email.preview.reply', { defaultValue: 'Reply' })}
                   </button>
                   <button
                     type="button"
@@ -990,7 +1068,7 @@ export default function CommunicationsEmailInboxPage() {
                     onClick={() => void sendReplyOrForward('forward')}
                     className="btn-secondary btn-xs disabled:opacity-50"
                   >
-                    Forward
+                    {t('app.communications.email.preview.forward', { defaultValue: 'Forward' })}
                   </button>
                 </div>
               </div>

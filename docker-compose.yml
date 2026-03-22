@@ -72,12 +72,14 @@ services:
     ports: ["8010:8000"]
 
   caddy:
-    image: caddy:latest
+    build:
+      context: .
+      dockerfile: deploy/caddy.Dockerfile
     ports:
       - "80:80"
       - "443:443"
+    # Свежий Vite dist без пересборки образа: npm run build → restart caddy
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./hostflow-frontend/dist:/var/www/hostflow-frontend:ro
     depends_on:
       - backend

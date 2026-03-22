@@ -59,13 +59,20 @@ export default function CommunicationsQueueSettingsPage() {
           setAllocatorAudit(Array.isArray(audit?.items) ? audit.items : [])
         }
       } catch (err: any) {
-        if (mounted) setErrorText(errorTextFrom(err, 'Failed to load queue settings'))
+        if (mounted) {
+          setErrorText(
+            errorTextFrom(
+              err,
+              t('admin.communications_queue.errors.load_failed', { defaultValue: 'Failed to load queue settings' }),
+            ),
+          )
+        }
       } finally {
         if (mounted) setLoading(false)
       }
     })()
     return () => { mounted = false }
-  }, [])
+  }, [t])
 
   const queue = settings?.managerQueue || null
   const sla = settings?.sla || null
@@ -79,7 +86,12 @@ export default function CommunicationsQueueSettingsPage() {
       setSettings(patched)
       setSaveNotice(t('common.saved', { defaultValue: 'Saved' }))
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to save queue settings'))
+      setErrorText(
+        errorTextFrom(
+          err,
+          t('admin.communications_queue.errors.save_failed', { defaultValue: 'Failed to save queue settings' }),
+        ),
+      )
     } finally {
       setSaveBusy(false)
     }
@@ -102,11 +114,16 @@ export default function CommunicationsQueueSettingsPage() {
       const audit = await listCommunicationAllocatorAudit({ limit: 20 }).catch(() => ({ items: [] as CommunicationAllocationAudit[] }))
       setAllocatorAudit(Array.isArray(audit?.items) ? audit.items : [])
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Allocator preview failed'))
+      setErrorText(
+        errorTextFrom(
+          err,
+          t('admin.communications_queue.errors.preview_failed', { defaultValue: 'Allocator preview failed' }),
+        ),
+      )
     } finally {
       setAllocatorPreviewBusy(false)
     }
-  }, [allocatorTestAt, allocatorTestChannel])
+  }, [allocatorTestAt, allocatorTestChannel, t])
 
   const handleSchedulerAction = useCallback(async (mode: 'refresh' | 'run') => {
     setSchedulerBusy(mode)
@@ -120,22 +137,37 @@ export default function CommunicationsQueueSettingsPage() {
         setSchedulerStatus(resp)
       }
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Scheduler action failed'))
+      setErrorText(
+        errorTextFrom(
+          err,
+          t('admin.communications_queue.errors.scheduler_action_failed', { defaultValue: 'Scheduler action failed' }),
+        ),
+      )
     } finally {
       setSchedulerBusy(null)
     }
-  }, [])
+  }, [t])
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Queue settings</h1>
-          <p className="text-sm text-slate-500">Manager allocation strategy, queue flags and diagnostics.</p>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {t('admin.communications_queue.title', { defaultValue: 'Queue settings' })}
+          </h1>
+          <p className="text-sm text-slate-500">
+            {t('admin.communications_queue.subtitle', {
+              defaultValue: 'Manager allocation strategy, queue flags and diagnostics.',
+            })}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/app/settings/communications" className="btn-secondary">All communication settings</Link>
-          <Link to="/app/messages" className="btn-secondary">Open messages</Link>
+          <Link to="/app/settings/communications" className="btn-secondary">
+            {t('admin.communications_queue.actions.all_settings', { defaultValue: 'All communication settings' })}
+          </Link>
+          <Link to="/app/messages" className="btn-secondary">
+            {t('admin.communications_queue.actions.open_messages', { defaultValue: 'Open messages' })}
+          </Link>
         </div>
       </div>
 
@@ -156,7 +188,9 @@ export default function CommunicationsQueueSettingsPage() {
       {saveNotice && <div className="alert-success">{saveNotice}</div>}
 
       <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">Queue & allocation</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          {t('admin.communications_queue.sections.queue_allocation', { defaultValue: 'Queue & allocation' })}
+        </h2>
         {queue ? (
           <div className="space-y-3 text-sm">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -168,10 +202,10 @@ export default function CommunicationsQueueSettingsPage() {
                   disabled={saveBusy}
                   className="input"
                 >
-                  <option value="manual">manual</option>
-                  <option value="round_robin">round_robin</option>
-                  <option value="weighted_round_robin">weighted_round_robin</option>
-                  <option value="least_busy">least_busy</option>
+                  <option value="manual">{t('admin.communications_queue.strategy_options.manual', { defaultValue: 'manual' })}</option>
+                  <option value="round_robin">{t('admin.communications_queue.strategy_options.round_robin', { defaultValue: 'round_robin' })}</option>
+                  <option value="weighted_round_robin">{t('admin.communications_queue.strategy_options.weighted_round_robin', { defaultValue: 'weighted_round_robin' })}</option>
+                  <option value="least_busy">{t('admin.communications_queue.strategy_options.least_busy', { defaultValue: 'least_busy' })}</option>
                 </select>
               </label>
               <label className="space-y-1">
@@ -207,21 +241,32 @@ export default function CommunicationsQueueSettingsPage() {
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-900">SLA escalation policy</h2>
+        <h2 className="mb-3 text-sm font-semibold text-slate-900">
+          {t('admin.communications_queue.sections.sla_policy', { defaultValue: 'SLA escalation policy' })}
+        </h2>
         {sla ? (
           <div className="space-y-3 text-sm">
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="rounded border border-slate-200 px-3 py-2 text-slate-700">
-                Enabled: <span className="font-medium">{sla.enabled ? 'yes' : 'no'}</span>
+                {t('common.enabled', { defaultValue: 'Enabled' })}: <span className="font-medium">
+                  {sla.enabled ? t('common.words.yes', { defaultValue: 'yes' }) : t('common.words.no', { defaultValue: 'no' })}
+                </span>
               </div>
               <div className="rounded border border-slate-200 px-3 py-2 text-slate-700">
-                Recipient mode: <span className="font-medium">{String(sla.recipientMode || 'assignee_or_owner')}</span>
+                {t('admin.communications_queue.labels.recipient_mode', { defaultValue: 'Recipient mode' })}:{' '}
+                <span className="font-medium">{String(sla.recipientMode || 'assignee_or_owner')}</span>
               </div>
               <div className="rounded border border-slate-200 px-3 py-2 text-slate-700">
-                In-app notifications: <span className="font-medium">{sla.createNotifications ? 'on' : 'off'}</span>
+                {t('admin.communications_queue.labels.in_app_notifications', { defaultValue: 'In-app notifications' })}:{' '}
+                <span className="font-medium">
+                  {sla.createNotifications ? t('admin.communications_queue.states.on', { defaultValue: 'on' }) : t('admin.communications_queue.states.off', { defaultValue: 'off' })}
+                </span>
               </div>
               <div className="rounded border border-slate-200 px-3 py-2 text-slate-700">
-                Reminder tasks: <span className="font-medium">{sla.createReminders ? 'on' : 'off'}</span>
+                {t('admin.communications_queue.labels.reminder_tasks', { defaultValue: 'Reminder tasks' })}:{' '}
+                <span className="font-medium">
+                  {sla.createReminders ? t('admin.communications_queue.states.on', { defaultValue: 'on' }) : t('admin.communications_queue.states.off', { defaultValue: 'off' })}
+                </span>
               </div>
             </div>
             <div>
@@ -237,14 +282,18 @@ export default function CommunicationsQueueSettingsPage() {
 
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-slate-900">Queue preview (dry-run)</h2>
+          <h2 className="text-sm font-semibold text-slate-900">
+            {t('admin.communications_queue.sections.preview', { defaultValue: 'Queue preview (dry-run)' })}
+          </h2>
           <button
             type="button"
             onClick={() => void runAllocatorPreview()}
             disabled={allocatorPreviewBusy}
             className="btn-secondary btn-sm disabled:opacity-60"
           >
-            {allocatorPreviewBusy ? t('common.loading', { defaultValue: 'Loading...' }) : 'Run preview'}
+            {allocatorPreviewBusy
+              ? t('common.loading', { defaultValue: 'Loading...' })
+              : t('admin.communications_queue.actions.run_preview', { defaultValue: 'Run preview' })}
           </button>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -252,7 +301,9 @@ export default function CommunicationsQueueSettingsPage() {
             <span className="text-xs font-medium text-slate-600">{t('app.communications.labels.channel', { defaultValue: 'Channel' })}</span>
             <select value={allocatorTestChannel} onChange={(e) => setAllocatorTestChannel(e.target.value)} className="input">
               {['email', 'telegram', 'whatsapp', 'viber', 'messenger', 'instagram', 'sms'].map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>
+                  {t(`admin.communications_queue.channels.${c}` as any, { defaultValue: c })}
+                </option>
               ))}
             </select>
           </label>
@@ -269,7 +320,10 @@ export default function CommunicationsQueueSettingsPage() {
         {allocatorPreview && (
           <div className="mt-3 space-y-2 text-sm">
             <div className="rounded border border-slate-200 px-3 py-2">
-              {t('app.communications.queue.preview_result', { defaultValue: 'Result' })}: {allocatorPreview.assigned ? 'assigned' : 'not assigned'}
+              {t('app.communications.queue.preview_result', { defaultValue: 'Result' })}:{' '}
+              {allocatorPreview.assigned
+                ? t('admin.communications_queue.states.assigned', { defaultValue: 'assigned' })
+                : t('admin.communications_queue.states.not_assigned', { defaultValue: 'not assigned' })}
               {' · '}
               {t('app.communications.queue.strategy', { defaultValue: 'Strategy' })}: {allocatorPreview.strategy || '—'}
               {' · '}
@@ -284,7 +338,9 @@ export default function CommunicationsQueueSettingsPage() {
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-900">Scheduler status</h2>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {t('admin.communications_queue.sections.scheduler_status', { defaultValue: 'Scheduler status' })}
+            </h2>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -307,10 +363,14 @@ export default function CommunicationsQueueSettingsPage() {
           {schedulerStatus ? (
             <div className="space-y-2 text-sm">
               <div className="rounded border border-slate-200 px-3 py-2">
-                enabled={String(Boolean(schedulerStatus.enabled))} · active={String(Boolean(schedulerStatus.active))} · tick={schedulerStatus.tick_seconds}s
+                {t('admin.communications_queue.labels.enabled', { defaultValue: 'enabled' })}={String(Boolean(schedulerStatus.enabled))}
+                {' · '}
+                {t('admin.communications_queue.labels.active', { defaultValue: 'active' })}={String(Boolean(schedulerStatus.active))}
+                {' · '}
+                {t('admin.communications_queue.labels.tick_seconds', { defaultValue: 'tick' })}={schedulerStatus.tick_seconds}s
               </div>
               <div className="rounded border border-slate-200 px-3 py-2 text-xs text-slate-600">
-                lastTick: {schedulerStatus.last_tick_started_at || '—'} → {schedulerStatus.last_tick_finished_at || '—'} · {schedulerStatus.last_tick_duration_ms ?? '—'}ms
+                {t('admin.communications_queue.labels.last_tick', { defaultValue: 'lastTick' })}: {schedulerStatus.last_tick_started_at || '—'} → {schedulerStatus.last_tick_finished_at || '—'} · {schedulerStatus.last_tick_duration_ms ?? '—'}ms
               </div>
             </div>
           ) : (
@@ -320,10 +380,25 @@ export default function CommunicationsQueueSettingsPage() {
 
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-slate-900">Allocator audit (recent)</h2>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {t('admin.communications_queue.sections.allocator_audit', { defaultValue: 'Allocator audit (recent)' })}
+            </h2>
             <button
               type="button"
-              onClick={() => void listCommunicationAllocatorAudit({ limit: 20 }).then((r) => setAllocatorAudit(r.items || [])).catch((e) => setErrorText(errorTextFrom(e, 'Failed to reload allocator audit')))}
+              onClick={() =>
+                void listCommunicationAllocatorAudit({ limit: 20 })
+                  .then((r) => setAllocatorAudit(r.items || []))
+                  .catch((e) =>
+                    setErrorText(
+                      errorTextFrom(
+                        e,
+                        t('admin.communications_queue.errors.audit_reload_failed', {
+                          defaultValue: 'Failed to reload allocator audit',
+                        }),
+                      ),
+                    ),
+                  )
+              }
               className="btn-secondary btn-sm"
             >
               {t('common.refresh', { defaultValue: 'Refresh' })}
@@ -333,11 +408,11 @@ export default function CommunicationsQueueSettingsPage() {
             <table className="min-w-full text-xs">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
-                  <th className="px-2 py-1 text-left">At</th>
-                  <th className="px-2 py-1 text-left">Mode</th>
-                  <th className="px-2 py-1 text-left">Channel</th>
-                  <th className="px-2 py-1 text-left">Assigned</th>
-                  <th className="px-2 py-1 text-left">Assignee</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_queue.table.at', { defaultValue: 'At' })}</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_queue.table.mode', { defaultValue: 'Mode' })}</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_queue.table.channel', { defaultValue: 'Channel' })}</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_queue.table.assigned', { defaultValue: 'Assigned' })}</th>
+                  <th className="px-2 py-1 text-left">{t('admin.communications_queue.table.assignee', { defaultValue: 'Assignee' })}</th>
                 </tr>
               </thead>
               <tbody>

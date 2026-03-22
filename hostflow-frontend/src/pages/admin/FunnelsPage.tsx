@@ -45,6 +45,7 @@ function SortableStageRow({
   onDelete: () => void
   disabled?: boolean
 }) {
+  const { t } = useI18n()
   const {
     attributes,
     listeners,
@@ -89,7 +90,9 @@ function SortableStageRow({
         <span
           className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${stage.is_terminal ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}
         >
-          {stage.is_terminal ? 'Terminal' : 'In progress'}
+          {stage.is_terminal
+            ? t('admin.funnels.status_terminal', { defaultValue: 'Terminal' })
+            : t('admin.funnels.status_in_progress', { defaultValue: 'In progress' })}
         </span>
       </td>
       <td className="py-2 text-right">
@@ -99,7 +102,7 @@ function SortableStageRow({
           disabled={disabled}
           className="text-brand-600 hover:text-brand-700 text-sm mr-2"
         >
-          Edit
+          {t('common.actions.edit', { defaultValue: 'Edit' })}
         </button>
         <button
           type="button"
@@ -107,7 +110,7 @@ function SortableStageRow({
           disabled={disabled}
           className="text-rose-600 hover:text-rose-700 text-sm"
         >
-          Delete
+          {t('common.actions.delete', { defaultValue: 'Delete' })}
         </button>
       </td>
     </tr>
@@ -179,7 +182,7 @@ function StageCreateEditModal({
               }
             }}
             className="input w-full"
-            placeholder="e.g. Initial interview"
+            placeholder={t('admin.funnels.placeholders.stage_label', { defaultValue: 'e.g. Initial interview' })}
             disabled={disabled}
           />
         </div>
@@ -194,7 +197,7 @@ function StageCreateEditModal({
               setCode(e.target.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'))
             }
             className="input w-full font-mono text-sm"
-            placeholder="initial_interview"
+            placeholder={t('admin.funnels.placeholders.stage_code', { defaultValue: 'initial_interview' })}
             disabled={disabled || !!stage}
           />
           {stage && (
@@ -333,7 +336,7 @@ function FunnelCreateModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="input w-full"
-            placeholder="e.g. Driver Recruitment"
+            placeholder={t('admin.funnels.placeholders.funnel_name', { defaultValue: 'e.g. Driver Recruitment' })}
             disabled={disabled}
           />
         </div>
@@ -450,13 +453,13 @@ export default function FunnelsPage() {
           'response' in err &&
           typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
             ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : 'Unknown error'
+            : t('admin.funnels.errors.unknown', { defaultValue: 'Unknown error' })
         alert(msg)
       } finally {
         setSaving(false)
       }
     },
-    [loadFunnels]
+    [loadFunnels, t]
   )
 
   const handleCreateStage = useCallback(
@@ -475,13 +478,13 @@ export default function FunnelsPage() {
           'response' in err &&
           typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
             ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : 'Unknown error'
+            : t('admin.funnels.errors.unknown', { defaultValue: 'Unknown error' })
         alert(msg)
       } finally {
         setSaving(false)
       }
     },
-    [selectedFunnel, refreshSelectedFunnel]
+    [selectedFunnel, refreshSelectedFunnel, t]
   )
 
   const handleUpdateStage = useCallback(
@@ -500,13 +503,13 @@ export default function FunnelsPage() {
           'response' in err &&
           typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
             ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : 'Unknown error'
+            : t('admin.funnels.errors.unknown', { defaultValue: 'Unknown error' })
         alert(msg)
       } finally {
         setSaving(false)
       }
     },
-    [editingStage, selectedFunnel, refreshSelectedFunnel]
+    [editingStage, selectedFunnel, refreshSelectedFunnel, t]
   )
 
   const handleDeleteStage = useCallback(
@@ -532,7 +535,7 @@ export default function FunnelsPage() {
           'response' in err &&
           typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
             ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : 'Unknown error'
+            : t('admin.funnels.errors.unknown', { defaultValue: 'Unknown error' })
         alert(msg)
       }
     },
@@ -697,12 +700,12 @@ export default function FunnelsPage() {
               <thead>
                 <tr className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                   <th className="py-2 px-2 w-8" />
-                  <th className="py-2 px-2">Code</th>
-                  <th className="py-2 px-2">Label</th>
-                  <th className="py-2 px-2">System</th>
-                  <th className="py-2 px-2">Order</th>
-                  <th className="py-2 px-2">Status</th>
-                  <th className="py-2 px-2 text-right">Actions</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.code', { defaultValue: 'Code' })}</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.label', { defaultValue: 'Label' })}</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.system', { defaultValue: 'System' })}</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.order', { defaultValue: 'Order' })}</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.status', { defaultValue: 'Status' })}</th>
+                  <th className="py-2 px-2 text-right">{t('admin.funnels.columns.actions', { defaultValue: 'Actions' })}</th>
                 </tr>
               </thead>
               <tbody>

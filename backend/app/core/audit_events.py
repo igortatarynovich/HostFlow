@@ -30,3 +30,8 @@ class AuditEventType(str, Enum):
     rejected_no_contact = "rejected_no_contact"
     # Processor
     processor_changed = "processor_changed"
+    # Pipeline document overrides (stage / handoff gates)
+    pipeline_override_requested = "pipeline_override_requested"
+    pipeline_override_approved = "pipeline_override_approved"
+    pipeline_override_rejected = "pipeline_override_rejected"
+    pipeline_override_revoked = "pipeline_override_revoked"

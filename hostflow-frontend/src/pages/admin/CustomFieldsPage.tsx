@@ -509,7 +509,7 @@ function DefinitionForm({
           value={key}
           onChange={setKey}
           disabled={!!definition}
-          placeholder="custom_field_key"
+          placeholder={t('admin.custom_fields.form.key_placeholder', { defaultValue: 'custom_field_key' })}
         />
         <TextField
           label="Название"
@@ -534,7 +534,7 @@ function DefinitionForm({
             label="Варианты выбора"
             value={options}
             onChange={setOptions}
-            placeholder="Введите вариант и нажмите Enter"
+            placeholder={t('admin.custom_fields.form.option_placeholder', { defaultValue: 'Введите вариант и нажмите Enter' })}
           />
         )}
         <CheckboxField

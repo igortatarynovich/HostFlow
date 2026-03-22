@@ -18,6 +18,7 @@ export type ContactPolicyOut = {
   post_action: string
   stage_code: string | null
   rodo_sent?: boolean
+  tracking_disabled_reason?: string | null
 }
 
 export type ContactAttemptCreate = {

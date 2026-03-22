@@ -71,26 +71,36 @@ function CandidateCommunicationSection({
       <div className="space-y-4">
         <div className="alert-info p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="text-sm font-semibold text-slate-900">Messages linked to candidate</div>
+            <div className="text-sm font-semibold text-slate-900">
+              {t('app.candidate_card.communication.linked_messages', { defaultValue: 'Messages linked to candidate' })}
+            </div>
             {newestThread ? (
               <Link
                 to={`/app/messages?threadId=${newestThread.id}&candidateId=${candidateId}`}
                 className="btn-secondary btn-sm"
               >
-                Open latest dialog
+                {t('app.candidate_card.communication.open_latest_dialog', { defaultValue: 'Open latest dialog' })}
               </Link>
             ) : (
               <Link
                 to={`/app/messages?candidateId=${candidateId}`}
                 className="btn-secondary btn-sm"
               >
-                Open messages inbox
+                {t('app.candidate_card.communication.open_inbox', { defaultValue: 'Open messages inbox' })}
               </Link>
             )}
           </div>
-          {loadingThreads && <div className="text-xs text-slate-500">Loading dialogs...</div>}
+          {loadingThreads && (
+            <div className="text-xs text-slate-500">
+              {t('app.candidate_card.communication.loading_dialogs', { defaultValue: 'Loading dialogs...' })}
+            </div>
+          )}
           {!loadingThreads && threads.length === 0 && (
-            <div className="text-xs text-slate-500">No linked dialogs yet. Open Messages and link this candidate in dialog header.</div>
+            <div className="text-xs text-slate-500">
+              {t('app.candidate_card.communication.empty_dialogs', {
+                defaultValue: 'No linked dialogs yet. Open Messages and link this candidate in dialog header.',
+              })}
+            </div>
           )}
           {!loadingThreads && threads.length > 0 && (
             <div className="space-y-2">
