@@ -83,8 +83,8 @@ export default function CandidatesNoNextActionPage() {
   )
 
   return (
-    <div className="space-y-3">
-      <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
+      <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">
@@ -116,7 +116,7 @@ export default function CandidatesNoNextActionPage() {
         </div>
       </header>
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white shadow-none">
         {error ? <div className="border-b border-slate-200 p-3 text-sm text-red-600">{error}</div> : null}
         <div className="overflow-x-auto">
           <table className="table min-w-full text-sm">

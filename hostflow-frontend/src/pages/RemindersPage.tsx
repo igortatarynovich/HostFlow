@@ -25,6 +25,7 @@ import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
 const DATE_LOCALES = { en: enUS, ru: ruLocale, pl: plLocale }
 const DEFAULT_REMIND_OFFSET = 15
@@ -36,6 +37,7 @@ type TaskStatusFilter = 'active' | 'all' | 'done'
 type NotificationsScopeFilter = 'all' | 'direct'
 type NotificationsReadFilter = 'unread' | 'all'
 type AssigneeScopeFilter = 'mine' | 'team'
+type TaskListMode = 'by_due' | 'sla_queue'
 
 type TaskFiltersState = {
   search: string
@@ -55,6 +57,7 @@ type PersistedInboxState = {
   taskFilters: TaskFiltersState
   eventsFilters: EventsFiltersState
   assigneeScope?: AssigneeScopeFilter
+  taskListMode?: TaskListMode
 }
 
 type TaskRow = ReminderRecord & {
@@ -143,7 +146,7 @@ function reminderEntityHref(item: ReminderRecord): string | null {
     case 'company':
       return `/app/companies/${entityId}`
     case 'communication_thread':
-      return `/app/messages?threadId=${encodeURIComponent(entityId)}`
+      return buildInboxThreadPath(entityId)
     default:
       return null
   }
@@ -164,7 +167,7 @@ function notificationEntityHref(item: NotificationItem): string | null {
     case 'company':
       return `/app/companies/${entityId}`
     case 'communication_thread':
-      return `/app/messages?threadId=${encodeURIComponent(entityId)}`
+      return buildInboxThreadPath(entityId)
     default:
       return null
   }
@@ -184,6 +187,156 @@ function addDays(date: Date, days: number): Date {
   const d = new Date(date)
   d.setDate(d.getDate() + days)
   return d
+}
+
+/** Lower = more urgent for open tasks (UOS: SLA drives queue pressure). */
+function slaTierRank(status?: string | null): number {
+  const s = String(status || '').trim().toLowerCase()
+  if (s === 'overdue') return 0
+  if (s === 'at_risk') return 1
+  if (s === 'on_track') return 2
+  if (s === 'resolved') return 3
+  return 4
+}
+
+function compareOpenTasksBySlaThenDue(a: TaskRow, b: TaskRow): number {
+  const tra = slaTierRank(a.sla_status)
+  const trb = slaTierRank(b.sla_status)
+  if (tra !== trb) return tra - trb
+  const slaA = a.slaTs > 0 ? a.slaTs : Number.MAX_SAFE_INTEGER
+  const slaB = b.slaTs > 0 ? b.slaTs : Number.MAX_SAFE_INTEGER
+  if (slaA !== slaB) return slaA - slaB
+  const dueA = a.dueTs || a.remindTs || 0
+  const dueB = b.dueTs || b.remindTs || 0
+  if (dueA !== dueB) return dueA - dueB
+  return (a.title || '').localeCompare(b.title || '')
+}
+
+function compareDoneTasksByUpdated(a: TaskRow, b: TaskRow): number {
+  const ua = a.updated_at ? Date.parse(a.updated_at) : 0
+  const ub = b.updated_at ? Date.parse(b.updated_at) : 0
+  if (ua !== ub) return ub - ua
+  return (a.title || '').localeCompare(b.title || '')
+}
+
+type ReminderTaskRowProps = {
+  item: TaskRow
+  t: (key: string, options?: Record<string, unknown>) => string
+  reminderStatusLabel: (status?: string | null) => string
+  formatTs: (date: Date | null) => string
+  formatRelative: (date: Date | null) => string
+  taskBusyId: string | null
+  editBusy: boolean
+  highlighted?: boolean
+  onEdit: (item: TaskRow) => void
+  onSnooze: (id: string, minutes: number) => void
+  onComplete: (id: string) => void
+}
+
+function ReminderTaskRow({
+  item,
+  t,
+  reminderStatusLabel,
+  formatTs,
+  formatRelative,
+  taskBusyId,
+  editBusy,
+  highlighted,
+  onEdit,
+  onSnooze,
+  onComplete,
+}: ReminderTaskRowProps) {
+  const href = reminderEntityHref(item)
+  const busy = taskBusyId === item.id
+  const statusPill = TASK_STATUS_COLORS[item.status] || 'bg-slate-100 text-slate-700'
+  const priorityPill = PRIORITY_COLORS[item.priority || 'normal'] || PRIORITY_COLORS.normal
+  const slaSt = String(item.sla_status || '').toLowerCase()
+  const slaPill =
+    slaSt === 'overdue'
+      ? 'bg-rose-100 text-rose-800'
+      : slaSt === 'at_risk'
+        ? 'bg-amber-100 text-amber-900'
+        : slaSt === 'on_track'
+          ? 'bg-emerald-50 text-emerald-800'
+          : slaSt === 'resolved'
+            ? 'bg-slate-100 text-slate-600'
+            : ''
+  return (
+    <div
+      id={`task-row-${item.id}`}
+      className={clsx(
+        'rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-shadow',
+        highlighted && 'ring-2 ring-brand-500 ring-offset-2',
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={clsx('rounded-md px-2.5 py-1 text-[11px] font-semibold', statusPill)}>
+              {reminderStatusLabel(item.status)}
+            </span>
+            <span className={clsx('rounded-md px-2 py-0.5 text-[11px] font-medium', priorityPill)}>
+              {t(`app.reminders.priority.${item.priority || 'normal'}`, { defaultValue: item.priority || 'normal' })}
+            </span>
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">{item.entity_type}</span>
+            {item.sla_due_at && item.sla_status && slaPill && (
+              <span className={clsx('rounded-md px-2 py-0.5 text-[11px] font-semibold', slaPill)} title={formatTs(item.slaDate)}>
+                {t(`app.reminders.sla.status.${slaSt}`, { defaultValue: item.sla_status })} · {formatTs(item.slaDate)}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="truncate text-sm font-semibold text-slate-900">
+              {item.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Untitled' })}
+            </h4>
+            {href && (
+              <Link to={href} className="text-xs font-medium text-brand-700 hover:underline">
+                {t('app.reminders.actions.open_entity', { defaultValue: 'Open' })}
+              </Link>
+            )}
+          </div>
+          {item.description && <p className="text-xs text-slate-600 whitespace-pre-wrap">{item.description}</p>}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+            <span>
+              {t('app.candidate_card.reminders.due', { defaultValue: 'Due' })}: {formatTs(item.dueDate)}
+            </span>
+            <span>
+              {t('app.candidate_card.reminders.remind', { defaultValue: 'Remind' })}: {formatTs(item.remindDate)}
+            </span>
+            <span>
+              {t('app.reminders.relative', { defaultValue: 'Relative' })}: {formatRelative(item.remindDate || item.dueDate)}
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn-secondary btn-xs" onClick={() => onEdit(item)} disabled={busy || editBusy}>
+            {t('common.actions.edit', { defaultValue: 'Edit' })}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary btn-xs"
+            onClick={() => onSnooze(item.id, 15)}
+            disabled={busy || isClosedReminderStatus(item.status)}
+          >
+            +15m
+          </button>
+          <button
+            type="button"
+            className="btn-secondary btn-xs"
+            onClick={() => onSnooze(item.id, 60)}
+            disabled={busy || isClosedReminderStatus(item.status)}
+          >
+            +1h
+          </button>
+          {!isClosedReminderStatus(item.status) && (
+            <button type="button" className="btn-primary btn-xs" onClick={() => onComplete(item.id)} disabled={busy}>
+              {busy ? t('common.loading') : t('app.candidate_card.reminders.complete', { defaultValue: 'Complete' })}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function bucketReminderByDue(item: TaskRow): 'overdue' | 'today' | 'tomorrow' | 'week' | 'later' | 'done' | 'unscheduled' {
@@ -224,6 +377,8 @@ export default function RemindersPage() {
   const { t, locale } = useI18n()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+  const focusTaskIdFromUrl = (searchParams.get('t_id') || '').trim() || null
+  const [highlightTaskId, setHighlightTaskId] = useState<string | null>(null)
   const { me } = useAuth()
   const canUseTeamAssigneeScope = useMemo(() => {
     const r = String(me?.role || '').trim().toLowerCase()
@@ -238,6 +393,8 @@ export default function RemindersPage() {
   const [taskFilters, setTaskFilters] = useState<TaskFiltersState>(DEFAULT_TASK_FILTERS)
   const [eventsFilters, setEventsFilters] = useState<EventsFiltersState>(DEFAULT_EVENTS_FILTERS)
   const [assigneeScope, setAssigneeScope] = useState<AssigneeScopeFilter>('mine')
+  /** New profiles default to SLA-first flat queue; legacy `hf:inbox:reminders:v2` without `taskListMode` stays by-due. */
+  const [taskListMode, setTaskListMode] = useState<TaskListMode>('sla_queue')
 
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
   const [remindersState, setRemindersState] = useState<LoadState>('idle')
@@ -278,6 +435,8 @@ export default function RemindersPage() {
     value === 'unread' || value === 'all' ? value : null
   const parseAssigneeScope = (value: string | null): AssigneeScopeFilter | null =>
     value === 'mine' || value === 'team' ? value : null
+  const parseTaskListMode = (value: string | null): TaskListMode | null =>
+    value === 'sla_queue' || value === 'by_due' ? value : null
 
   useEffect(() => {
     try {
@@ -291,6 +450,11 @@ export default function RemindersPage() {
       if (parsed?.taskFilters) setTaskFilters({ ...DEFAULT_TASK_FILTERS, ...parsed.taskFilters })
       if (parsed?.eventsFilters) setEventsFilters({ ...DEFAULT_EVENTS_FILTERS, ...parsed.eventsFilters })
       if (parsed?.assigneeScope === 'mine' || parsed?.assigneeScope === 'team') setAssigneeScope(parsed.assigneeScope)
+      if (parsed?.taskListMode === 'sla_queue' || parsed?.taskListMode === 'by_due') {
+        setTaskListMode(parsed.taskListMode)
+      } else if (raw) {
+        setTaskListMode('by_due')
+      }
     } catch {
       // ignore malformed storage
     }
@@ -305,6 +469,7 @@ export default function RemindersPage() {
       const eRead = parseNotifRead(searchParams.get('e_read'))
       const eQ = searchParams.get('e_q')
       const tAssignee = parseAssigneeScope(searchParams.get('t_assignee'))
+      const tLayout = parseTaskListMode(searchParams.get('t_layout'))
 
       if (urlTab) setActiveTab(urlTab)
       if (tStatus || tQ != null || tEntity != null || tPriority != null) {
@@ -325,6 +490,7 @@ export default function RemindersPage() {
         }))
       }
       if (tAssignee) setAssigneeScope(tAssignee)
+      if (tLayout) setTaskListMode(tLayout)
     } catch {
       // ignore malformed URL state
     } finally {
@@ -340,12 +506,13 @@ export default function RemindersPage() {
         taskFilters,
         eventsFilters,
         assigneeScope,
+        taskListMode,
       }
       localStorage.setItem(storageKey, JSON.stringify(payload))
     } catch {
       // ignore storage errors
     }
-  }, [activeTab, assigneeScope, taskFilters, eventsFilters, hydrated, storageKey])
+  }, [activeTab, assigneeScope, taskFilters, eventsFilters, hydrated, storageKey, taskListMode])
 
   useEffect(() => {
     if (!hydrated) return
@@ -363,6 +530,8 @@ export default function RemindersPage() {
     else next.delete('t_priority')
     if (assigneeScope !== 'mine') next.set('t_assignee', assigneeScope)
     else next.delete('t_assignee')
+    if (taskListMode !== 'by_due') next.set('t_layout', taskListMode)
+    else next.delete('t_layout')
 
     if (eventsFilters.scope !== DEFAULT_EVENTS_FILTERS.scope) next.set('e_scope', eventsFilters.scope)
     else next.delete('e_scope')
@@ -374,7 +543,99 @@ export default function RemindersPage() {
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true })
     }
-  }, [activeTab, assigneeScope, eventsFilters, hydrated, searchParams, setSearchParams, taskFilters])
+  }, [activeTab, assigneeScope, eventsFilters, hydrated, searchParams, setSearchParams, taskFilters, taskListMode])
+
+  const reminderRows = useMemo<TaskRow[]>(() => {
+    return reminders.map((item) => {
+      const dueDate = parseDate(item.due_at)
+      const remindDate = parseDate(item.snoozed_until || item.remind_at)
+      const slaDate = parseDate(item.sla_due_at)
+      return {
+        ...item,
+        dueDate,
+        remindDate,
+        dueTs: dueDate?.getTime() || 0,
+        remindTs: remindDate?.getTime() || 0,
+        slaDate,
+        slaTs: slaDate?.getTime() || 0,
+      }
+    })
+  }, [reminders])
+
+  const filteredReminderRows = useMemo(() => {
+    const q = normalizeText(taskFilters.search)
+    return reminderRows.filter((item) => {
+      if (focusTaskIdFromUrl && String(item.id) === focusTaskIdFromUrl) return true
+      if (taskFilters.entityType && item.entity_type !== taskFilters.entityType) return false
+      if (taskFilters.priority && (item.priority || '') !== taskFilters.priority) return false
+      if (!q) return true
+      const hay = [
+        item.title,
+        item.description,
+        item.entity_type,
+        item.entity_id,
+        JSON.stringify(item.payload || {}),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+      return hay.includes(q)
+    })
+  }, [focusTaskIdFromUrl, reminderRows, taskFilters.entityType, taskFilters.priority, taskFilters.search])
+
+  useEffect(() => {
+    if (!focusTaskIdFromUrl) return
+    if (activeTab !== 'tasks') {
+      setActiveTab('tasks')
+      return
+    }
+    if (remindersState !== 'idle') return
+    const target = reminderRows.find((r) => String(r.id) === focusTaskIdFromUrl)
+    if (target && isClosedReminderStatus(target.status) && taskFilters.status === 'active') {
+      setTaskFilters((p) => ({ ...p, status: 'all' }))
+      return
+    }
+    let cancelled = false
+    const raf = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (cancelled) return
+        const el = document.getElementById(`task-row-${focusTaskIdFromUrl}`)
+        const stripFocusParam = () => {
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev)
+            if (!next.has('t_id')) return prev
+            next.delete('t_id')
+            return next
+          }, { replace: true })
+        }
+        if (!el) {
+          stripFocusParam()
+          return
+        }
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        setHighlightTaskId(focusTaskIdFromUrl)
+        stripFocusParam()
+      })
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+    }
+  }, [
+    activeTab,
+    focusTaskIdFromUrl,
+    reminderRows,
+    remindersState,
+    filteredReminderRows.length,
+    setSearchParams,
+    taskFilters.status,
+  ])
+
+  useEffect(() => {
+    if (!highlightTaskId) return
+    const timer = window.setTimeout(() => setHighlightTaskId(null), 3500)
+    return () => clearTimeout(timer)
+  }, [highlightTaskId])
 
   useEffect(() => {
     if (!canUseTeamAssigneeScope && assigneeScope === 'team') setAssigneeScope('mine')
@@ -385,11 +646,13 @@ export default function RemindersPage() {
     setRemindersError(null)
     try {
       const statusList =
-        taskFilters.status === 'active'
-          ? ['pending', 'new', 'overdue', 'sent']
-          : taskFilters.status === 'done'
-            ? ['done', 'cancelled']
-            : undefined
+        focusTaskIdFromUrl
+          ? undefined
+          : taskFilters.status === 'active'
+            ? ['pending', 'new', 'overdue', 'sent']
+            : taskFilters.status === 'done'
+              ? ['done', 'cancelled']
+              : undefined
       const scope = canUseTeamAssigneeScope ? assigneeScope : 'mine'
       const data = (await listReminders({ status: statusList, assigneeScope: scope })) as ReminderListResponse
       setReminders(Array.isArray(data?.items) ? data.items : [])
@@ -398,7 +661,7 @@ export default function RemindersPage() {
       setRemindersState('error')
       setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.load', { defaultValue: 'Failed to load reminders' })))
     }
-  }, [assigneeScope, canUseTeamAssigneeScope, t, taskFilters.status])
+  }, [assigneeScope, canUseTeamAssigneeScope, focusTaskIdFromUrl, t, taskFilters.status])
 
   const loadNotificationsFeed = useCallback(async () => {
     setNotificationsState('loading')
@@ -470,53 +733,6 @@ export default function RemindersPage() {
     [t]
   )
 
-  const reminderRows = useMemo<TaskRow[]>(() => {
-    return reminders.map((item) => {
-      const dueDate = parseDate(item.due_at)
-      const remindDate = parseDate(item.snoozed_until || item.remind_at)
-      const slaDate = parseDate(item.sla_due_at)
-      return {
-        ...item,
-        dueDate,
-        remindDate,
-        dueTs: dueDate?.getTime() || 0,
-        remindTs: remindDate?.getTime() || 0,
-        slaDate,
-        slaTs: slaDate?.getTime() || 0,
-      }
-    })
-  }, [reminders])
-
-  const filteredReminderRows = useMemo(() => {
-    const q = normalizeText(taskFilters.search)
-    return reminderRows
-      .filter((item) => {
-        if (taskFilters.entityType && item.entity_type !== taskFilters.entityType) return false
-        if (taskFilters.priority && (item.priority || '') !== taskFilters.priority) return false
-        if (!q) return true
-        const hay = [
-          item.title,
-          item.description,
-          item.entity_type,
-          item.entity_id,
-          JSON.stringify(item.payload || {}),
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-        return hay.includes(q)
-      })
-      .sort((a, b) => {
-        const aDone = isClosedReminderStatus(a.status)
-        const bDone = isClosedReminderStatus(b.status)
-        if (aDone !== bDone) return aDone ? 1 : -1
-        const left = aDone ? (b.updated_at ? Date.parse(b.updated_at) : 0) : a.dueTs || a.remindTs || 0
-        const right = bDone ? (a.updated_at ? Date.parse(a.updated_at) : 0) : b.dueTs || b.remindTs || 0
-        if (left !== right) return left - right
-        return (a.title || '').localeCompare(b.title || '')
-      })
-  }, [reminderRows, taskFilters.entityType, taskFilters.priority, taskFilters.search])
-
   const reminderGroups = useMemo(() => {
     const buckets: Record<string, TaskRow[]> = {
       overdue: [],
@@ -530,8 +746,22 @@ export default function RemindersPage() {
     filteredReminderRows.forEach((item) => {
       buckets[bucketReminderByDue(item)].push(item)
     })
+    const openKeys = ['overdue', 'today', 'tomorrow', 'week', 'later', 'unscheduled'] as const
+    for (const k of openKeys) {
+      buckets[k].sort(compareOpenTasksBySlaThenDue)
+    }
+    buckets.done.sort(compareDoneTasksByUpdated)
     return buckets
   }, [filteredReminderRows])
+
+  const slaFlatLists = useMemo(() => {
+    if (taskListMode !== 'sla_queue') return null
+    const open = filteredReminderRows.filter((item) => !isClosedReminderStatus(item.status))
+    const done = filteredReminderRows.filter((item) => isClosedReminderStatus(item.status))
+    open.sort(compareOpenTasksBySlaThenDue)
+    done.sort(compareDoneTasksByUpdated)
+    return { open, done }
+  }, [filteredReminderRows, taskListMode])
 
   const visibleNotifications = useMemo(() => {
     const q = normalizeText(eventsFilters.search)
@@ -713,9 +943,9 @@ export default function RemindersPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       <WorkspaceTopNav active="tasks" />
-      <header className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+      <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -887,6 +1117,7 @@ export default function RemindersPage() {
                 onClick={() => {
                   setTaskFilters(DEFAULT_TASK_FILTERS)
                   setAssigneeScope('mine')
+                  setTaskListMode('by_due')
                 }}
               >
                 {t('common.actions.reset', { defaultValue: 'Reset' })}
@@ -945,6 +1176,27 @@ export default function RemindersPage() {
                 </>
               )}
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="hf-task-list-mode" className="text-xs font-medium text-slate-600">
+                {t('app.reminders.layout.label', { defaultValue: 'View' })}
+              </label>
+              <select
+                id="hf-task-list-mode"
+                className="input max-w-xs py-1.5 text-sm"
+                value={taskListMode}
+                onChange={(e) => setTaskListMode(e.target.value as TaskListMode)}
+              >
+                <option value="by_due">{t('app.reminders.layout.by_due', { defaultValue: 'Group by due date' })}</option>
+                <option value="sla_queue">{t('app.reminders.layout.sla_queue', { defaultValue: 'SLA priority queue (flat)' })}</option>
+              </select>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              {taskListMode === 'sla_queue'
+                ? t('app.reminders.sla_flat_hint', {
+                    defaultValue: 'Single list sorted by SLA pressure across all due dates; completed tasks stay in their own section when you show All or Done.',
+                  })
+                : t('app.reminders.sla_sort_hint')}
+            </p>
 
             {remindersState === 'loading' && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
             {remindersState === 'error' && remindersError && (
@@ -980,95 +1232,97 @@ export default function RemindersPage() {
 
             {filteredReminderRows.length > 0 && (
               <div className="space-y-5">
-                {taskGroupLabels.map(({ key, label }) => {
-                  const groupItems = reminderGroups[key] || []
-                  if (!groupItems.length) return null
-                  return (
-                    <section key={key} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
-                        <span className="text-xs text-slate-500">{groupItems.length}</span>
-                      </div>
-                      <div className="space-y-2">
-                        {groupItems.map((item) => {
-                          const href = reminderEntityHref(item)
-                          const busy = taskBusyId === item.id
-                          const statusPill = TASK_STATUS_COLORS[item.status] || 'bg-slate-100 text-slate-700'
-                          const priorityPill = PRIORITY_COLORS[item.priority || 'normal'] || PRIORITY_COLORS.normal
-                          const slaSt = String(item.sla_status || '').toLowerCase()
-                          const slaPill =
-                            slaSt === 'overdue'
-                              ? 'bg-rose-100 text-rose-800'
-                              : slaSt === 'at_risk'
-                                ? 'bg-amber-100 text-amber-900'
-                                : slaSt === 'on_track'
-                                  ? 'bg-emerald-50 text-emerald-800'
-                                  : slaSt === 'resolved'
-                                    ? 'bg-slate-100 text-slate-600'
-                                    : ''
-                          return (
-                            <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                              <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div className="min-w-0 flex-1 space-y-1">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className={clsx('rounded-md px-2.5 py-1 text-[11px] font-semibold', statusPill)}>
-                                      {reminderStatusLabel(item.status)}
-                                    </span>
-                                    <span className={clsx('rounded-md px-2 py-0.5 text-[11px] font-medium', priorityPill)}>
-                                      {t(`app.reminders.priority.${item.priority || 'normal'}`, { defaultValue: item.priority || 'normal' })}
-                                    </span>
-                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
-                                      {item.entity_type}
-                                    </span>
-                                    {item.sla_due_at && item.sla_status && slaPill && (
-                                      <span
-                                        className={clsx('rounded-md px-2 py-0.5 text-[11px] font-semibold', slaPill)}
-                                        title={formatTs(item.slaDate)}
-                                      >
-                                        {t(`app.reminders.sla.status.${slaSt}`, { defaultValue: item.sla_status })}{' '}
-                                        · {formatTs(item.slaDate)}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <h4 className="truncate text-sm font-semibold text-slate-900">{item.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Untitled' })}</h4>
-                                    {href && (
-                                      <Link to={href} className="text-xs font-medium text-brand-700 hover:underline">
-                                        {t('app.reminders.actions.open_entity', { defaultValue: 'Open' })}
-                                      </Link>
-                                    )}
-                                  </div>
-                                  {item.description && <p className="text-xs text-slate-600 whitespace-pre-wrap">{item.description}</p>}
-                                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                                    <span>{t('app.candidate_card.reminders.due', { defaultValue: 'Due' })}: {formatTs(item.dueDate)}</span>
-                                    <span>{t('app.candidate_card.reminders.remind', { defaultValue: 'Remind' })}: {formatTs(item.remindDate)}</span>
-                                    <span>{t('app.reminders.relative', { defaultValue: 'Relative' })}: {formatRelative(item.remindDate || item.dueDate)}</span>
-                                  </div>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <button type="button" className="btn-secondary btn-xs" onClick={() => openEdit(item)} disabled={busy || editBusy}>
-                                    {t('common.actions.edit', { defaultValue: 'Edit' })}
-                                  </button>
-                                  <button type="button" className="btn-secondary btn-xs" onClick={() => handleSnooze(item.id, 15)} disabled={busy || isClosedReminderStatus(item.status)}>
-                                    +15m
-                                  </button>
-                                  <button type="button" className="btn-secondary btn-xs" onClick={() => handleSnooze(item.id, 60)} disabled={busy || isClosedReminderStatus(item.status)}>
-                                    +1h
-                                  </button>
-                                  {!isClosedReminderStatus(item.status) && (
-                                    <button type="button" className="btn-primary btn-xs" onClick={() => handleComplete(item.id)} disabled={busy}>
-                                      {busy ? t('common.loading') : t('app.candidate_card.reminders.complete', { defaultValue: 'Complete' })}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </section>
-                  )
-                })}
+                {taskListMode === 'sla_queue' && slaFlatLists ? (
+                  <>
+                    {taskFilters.status !== 'done' && slaFlatLists.open.length > 0 && (
+                      <section className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            {t('app.reminders.group.sla_queue', { defaultValue: 'Open tasks (SLA order)' })}
+                          </h3>
+                          <span className="text-xs text-slate-500">{slaFlatLists.open.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {slaFlatLists.open.map((item) => (
+                            <ReminderTaskRow
+                              key={item.id}
+                              item={item}
+                              t={t}
+                              reminderStatusLabel={reminderStatusLabel}
+                              formatTs={formatTs}
+                              formatRelative={formatRelative}
+                              taskBusyId={taskBusyId}
+                              editBusy={editBusy}
+                              highlighted={highlightTaskId === String(item.id)}
+                              onEdit={openEdit}
+                              onSnooze={handleSnooze}
+                              onComplete={handleComplete}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                    {taskFilters.status !== 'active' && slaFlatLists.done.length > 0 && (
+                      <section className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-slate-900">
+                            {t('app.reminders.group.done', { defaultValue: 'Completed / cancelled' })}
+                          </h3>
+                          <span className="text-xs text-slate-500">{slaFlatLists.done.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {slaFlatLists.done.map((item) => (
+                            <ReminderTaskRow
+                              key={item.id}
+                              item={item}
+                              t={t}
+                              reminderStatusLabel={reminderStatusLabel}
+                              formatTs={formatTs}
+                              formatRelative={formatRelative}
+                              taskBusyId={taskBusyId}
+                              editBusy={editBusy}
+                              highlighted={highlightTaskId === String(item.id)}
+                              onEdit={openEdit}
+                              onSnooze={handleSnooze}
+                              onComplete={handleComplete}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                  </>
+                ) : (
+                  taskGroupLabels.map(({ key, label }) => {
+                    const groupItems = reminderGroups[key] || []
+                    if (!groupItems.length) return null
+                    return (
+                      <section key={key} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-slate-900">{label}</h3>
+                          <span className="text-xs text-slate-500">{groupItems.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {groupItems.map((item) => (
+                            <ReminderTaskRow
+                              key={item.id}
+                              item={item}
+                              t={t}
+                              reminderStatusLabel={reminderStatusLabel}
+                              formatTs={formatTs}
+                              formatRelative={formatRelative}
+                              taskBusyId={taskBusyId}
+                              editBusy={editBusy}
+                              highlighted={highlightTaskId === String(item.id)}
+                              onEdit={openEdit}
+                              onSnooze={handleSnooze}
+                              onComplete={handleComplete}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    )
+                  })
+                )}
               </div>
             )}
           </section>

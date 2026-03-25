@@ -1,21 +1,11 @@
 // src/pages/CandidateCard.tsx
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import type { RefObject } from 'react'
 import type { InputHTMLAttributes } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import clsx from 'clsx'
-import type { Icon as TablerIcon } from '@tabler/icons-react'
-import {
-  IconBuilding,
-  IconBriefcase2,
-  IconClipboardList,
-  IconIdBadge2,
-  IconNotebook,
-  IconUser,
-  IconUserCircle,
-  IconUsersGroup,
-} from '@tabler/icons-react'
+import { IconBuilding } from '@tabler/icons-react'
+import { recordPerfMeasurement } from '../api/analytics'
 import { api, completeActivity, completeReminder, createActivity, createReminder, listReminders, snoozeActivity, snoozeReminder } from '../api/client'
 import { listCandidateEmployments, createCandidateEmployment, updateCandidateEmployment, deleteCandidateEmployment } from '../api/candidateEmployments'
 import type {
@@ -52,12 +42,17 @@ import {
 } from '../api/candidate_profiles'
 
 const DEFAULT_PROFILE_CODE = 'driver_ce_default'
+
+type CandidateEditPhase = 'idle' | 'picking_reason' | 'editing'
 import { getFunnel } from '../api/funnels'
 import { validateRequiredFields } from '../utils/profileUtils'
+import { buildInboxHubPath } from '../utils/inboxDeepLinks'
 import { usePermissions } from '../hooks/usePermissions'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
+import { servicesWorkspacePath } from '../modules/services/utils'
 import { useI18n } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
+import { isPipelineCompletedCanonicalStage } from '../utils/candidatePipelineCompleted'
 import { canonicalStageKey, translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
 import {
   contactAttemptPipelineBlocksForward,
@@ -72,7 +67,6 @@ import { useHiringPipelineGates } from '../contexts/HiringPipelineGatesContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { useToast } from '../components/Toast'
-import { Modal } from '../components/Modal'
 import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import CandidateHeader from '../components/candidate/CandidateHeader'
 import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
@@ -91,6 +85,8 @@ import { Input, SearchableSelect } from '../components/candidate/shared/FormComp
 import CandidateNextActionPanel from '../components/candidate/CandidateNextActionPanel'
 import CandidateNotesRailSection from '../components/candidate/CandidateNotesRailSection'
 import CandidateDocsRailPanel from '../components/candidate/CandidateDocsRailPanel'
+import RailPrimaryStepFrame from '../components/candidate/RailPrimaryStepFrame'
+import { railHasUrgentReminder, resolveRailPrimaryFocus } from '../utils/railPrimaryFocus'
 import { createHandoff, getAvailableClients, getHandoffStatus, type AvailableClientOut, type HandoffStatusResponse } from '../api/handoffs'
 import { deriveDocsMeta } from '../modules/candidates/utils'
 import {
@@ -750,8 +746,15 @@ export default function CandidateCard(){
   const [deleteRequestLoading, setDeleteRequestLoading] = useState(false)
   const [deleteRequestMessage, setDeleteRequestMessage] = useState<string | null>(null)
   const [deleteRequestError, setDeleteRequestError] = useState<string | null>(null)
-  const [candidateOverrideMode, setCandidateOverrideMode] = useState(false)
+  const [candidateEditPhase, setCandidateEditPhase] = useState<CandidateEditPhase>('idle')
   const [candidateOverrideReason, setCandidateOverrideReason] = useState('')
+  const [activityModalOpen, setActivityModalOpen] = useState(false)
+
+  useEffect(() => {
+    setCandidateEditPhase('idle')
+    setCandidateOverrideReason('')
+    setActivityModalOpen(false)
+  }, [id])
 
   // каталоги
   const [countries, setCountries] = useState<Option[]>([])
@@ -771,6 +774,10 @@ export default function CandidateCard(){
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const modelRef = useRef<Candidate | null>(null)
   const routeIdRef = useRef<string | null>(null)
+  const candidateEditPhaseRef = useRef<CandidateEditPhase>('idle')
+  const candidateOverrideReasonRef = useRef('')
+  candidateEditPhaseRef.current = candidateEditPhase
+  candidateOverrideReasonRef.current = candidateOverrideReason
   modelRef.current = model
   if (id !== routeIdRef.current) {
     routeIdRef.current = id ?? null
@@ -812,7 +819,6 @@ export default function CandidateCard(){
   const [handoffClients, setHandoffClients] = useState<AvailableClientOut[]>([])
   const [handoffLoading, setHandoffLoading] = useState(false)
   const [handoffModalOpen, setHandoffModalOpen] = useState(false)
-  const [activityModalOpen, setActivityModalOpen] = useState(false)
   const [handoffSubmitting, setHandoffSubmitting] = useState(false)
   const [handoffClientLinkId, setHandoffClientLinkId] = useState('')
   const docsNeedsVerification = docsBlockers.inProgress.length > 0
@@ -1026,10 +1032,6 @@ export default function CandidateCard(){
       /* ignore */
     }
   }, [headerExpanded])
-  useEffect(() => {
-    setCandidateOverrideMode(false)
-    setCandidateOverrideReason('')
-  }, [id, isNew])
   const basicRef = useRef<HTMLDivElement | null>(null)
   const personalRef = useRef<HTMLDivElement | null>(null)
   const statusRef = useRef<HTMLDivElement | null>(null)
@@ -1301,9 +1303,13 @@ export default function CandidateCard(){
 
   // загрузка кандидата / инициализация нового
   useEffect(() => {
-    (async () => {
+    let cancelled = false
+    const t0 = typeof performance !== 'undefined' ? performance.now() : 0
+
+    void (async () => {
       setLoading(true)
-      try{
+      let outcome: 'ok' | 'not_found' | 'error' = 'ok'
+      try {
         if (isNew) {
           const defaultStage = meta?.order?.[0] || meta?.codes?.[0] || 'new'
           setModel(createEmptyCandidate(defaultStage))
@@ -1314,6 +1320,7 @@ export default function CandidateCard(){
           }
           try {
             const { data } = await api.get(`/candidates/${id}`)
+            if (cancelled) return
             const normalized = normalizeCandidate(data, model)
             setModel(normalized)
             setCachedCandidate(id, normalized)
@@ -1325,17 +1332,36 @@ export default function CandidateCard(){
               setCandidateProfile(null)
             }
           } catch (err: any) {
+            if (cancelled) return
             if (err?.response?.status === 404) {
+              outcome = 'not_found'
               nav('/app/candidates')
               return
             }
+            outcome = 'error'
             throw err
           }
         }
+      } catch {
+        if (!cancelled) outcome = 'error'
       } finally {
+        if (cancelled) return
         setLoading(false)
+        if (typeof performance !== 'undefined') {
+          const elapsed = Math.max(0, performance.now() - t0)
+          void recordPerfMeasurement({
+            metricKey: 'candidate.card.open',
+            durationMs: Math.round(elapsed),
+            route: typeof window !== 'undefined' ? window.location.pathname : '/app/candidates',
+            meta: { candidateId: String(id), isNew, outcome },
+          })
+        }
       }
     })()
+
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew, loadProfileFromVacancy, nav])
 
@@ -1561,36 +1587,73 @@ export default function CandidateCard(){
     }
   }
 
+  const computeAutosaveFingerprint = (m: Candidate | null, phase: CandidateEditPhase, reason: string) => {
+    if (!m) return ''
+    const { payload } = buildCandidatePayload(m, meta?.reason_choices ?? {})
+    const stripped = stripCandidateOverrideFields(payload)
+    const ov = getCandidateOverrideFields(payload)
+    if (phase === 'editing' && ov.length > 0 && reason.trim()) {
+      return JSON.stringify({ payload, override_reason: reason.trim() })
+    }
+    return JSON.stringify(stripped)
+  }
+
   const AUTO_SAVE_DELAY_MS = 1500
 
   useEffect(() => {
     if (isNew || !model?.id || model.id !== id) return
-    const { payload } = buildCandidatePayload(model, meta?.reason_choices ?? {})
-    const pAutoInit = stripCandidateOverrideFields(payload)
-    const serialized = JSON.stringify(pAutoInit)
+    const fingerprint = computeAutosaveFingerprint(model, candidateEditPhase, candidateOverrideReason)
     if (lastSavedPayloadRef.current === null) {
-      lastSavedPayloadRef.current = serialized
+      lastSavedPayloadRef.current = fingerprint
       return
     }
-    if (lastSavedPayloadRef.current === serialized) return
+    if (lastSavedPayloadRef.current === fingerprint) return
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
     autoSaveTimerRef.current = setTimeout(async () => {
       autoSaveTimerRef.current = null
       const m = modelRef.current
       if (!m?.id) return
+      const phase = candidateEditPhaseRef.current
+      const reason = candidateOverrideReasonRef.current
       const { payload: p } = buildCandidatePayload(m, meta?.reason_choices ?? {})
+      const overrideKeys = getCandidateOverrideFields(p)
+      const currentStage = String(p.stage || m.stage || '').trim()
+      const reasonOptions = (meta?.reason_choices?.[currentStage] ?? [])
+      const reasonCodes = Array.isArray(p.status_reason) ? p.status_reason : []
+      if (reasonOptions.length > 0 && reasonCodes.length === 0) {
+        return
+      }
+
+      if (phase === 'editing' && overrideKeys.length > 0) {
+        const trimmed = reason.trim()
+        if (!trimmed) return
+        const nextFp = computeAutosaveFingerprint(m, phase, trimmed)
+        if (lastSavedPayloadRef.current === nextFp) return
+        try {
+          await api.patch(`/candidates/${m.id}`, { ...p, override_reason: trimmed })
+          lastSavedPayloadRef.current = nextFp
+          setRodoSentTrigger((x) => x + 1)
+          setSavedOk(true)
+          setTimeout(() => setSavedOk(false), 1500)
+          try {
+            window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: m.id } }))
+            localStorage.setItem('hf:candidate-updated', JSON.stringify({ candidateId: m.id, timestamp: Date.now() }))
+          } catch {
+            /* ignore */
+          }
+        } catch (err: any) {
+          const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+          notify({ title: errorMessage, variant: 'error' })
+        }
+        return
+      }
+
       const pAuto = stripCandidateOverrideFields(p)
       if (Object.keys(pAuto).length === 0) {
         return
       }
       const serializedAuto = JSON.stringify(pAuto)
       if (lastSavedPayloadRef.current === serializedAuto) {
-        return
-      }
-      const currentStage = String(p.stage || m.stage || '').trim()
-      const reasonOptions = (meta?.reason_choices?.[currentStage] ?? [])
-      const reasonCodes = Array.isArray(p.status_reason) ? p.status_reason : []
-      if (reasonOptions.length > 0 && reasonCodes.length === 0) {
         return
       }
       try {
@@ -1616,7 +1679,16 @@ export default function CandidateCard(){
         autoSaveTimerRef.current = null
       }
     }
-  }, [model, isNew, id, meta?.reason_choices, notify, unknownErrorLabel])
+  }, [
+    model,
+    isNew,
+    id,
+    meta?.reason_choices,
+    notify,
+    unknownErrorLabel,
+    candidateEditPhase,
+    candidateOverrideReason,
+  ])
 
   const fetchCandidate = useCallback(async (candidateId: string, prev?: Candidate | null) => {
     const { data } = await api.get(`/candidates/${candidateId}`)
@@ -1696,16 +1768,25 @@ export default function CandidateCard(){
   const onStageChangePersist = useCallback(
     async (stage: string, statusReason: string[]) => {
       if (isNew || !model?.id) return
+      const revertStageOptimistic = async () => {
+        try {
+          const refreshed = await fetchCandidate(String(model.id), model)
+          setModel(refreshed)
+        } catch {
+          /* ignore */
+        }
+      }
       const persistStage = async () => {
         await api.patch(`/candidates/${model.id}`, { stage, status_reason: statusReason })
         setRodoSentTrigger((x) => x + 1)
         const m = modelRef.current
         if (m) {
-          const { payload } = buildCandidatePayload(
-            { ...m, stage, status_reason: statusReason },
-            meta?.reason_choices ?? {}
+          const merged = { ...m, stage, status_reason: statusReason } as Candidate
+          lastSavedPayloadRef.current = computeAutosaveFingerprint(
+            merged,
+            candidateEditPhaseRef.current,
+            candidateOverrideReasonRef.current,
           )
-          lastSavedPayloadRef.current = JSON.stringify(payload)
         }
         try {
           window.dispatchEvent(new CustomEvent('candidate-updated', { detail: { candidateId: model.id } }))
@@ -1716,8 +1797,8 @@ export default function CandidateCard(){
       }
       try {
         await persistStage()
-        } catch (err: any) {
-          if (isRodoStageBlockedError(err)) {
+      } catch (err: any) {
+        if (isRodoStageBlockedError(err)) {
           const shouldSendRodo = window.confirm(
             t('app.candidate_card.messages.rodo_stage_blocked_confirm', {
               defaultValue: 'RODO is required before contact stage. Send RODO now and retry stage change?',
@@ -1742,8 +1823,7 @@ export default function CandidateCard(){
                 }),
               })
               notify({ title: retryMessage, variant: 'error' })
-              const refreshed = await fetchCandidate(String(model.id), model)
-              setModel(refreshed)
+              await revertStageOptimistic()
               return
             }
           }
@@ -1753,13 +1833,87 @@ export default function CandidateCard(){
             }),
             variant: 'error',
           })
+          await revertStageOptimistic()
           return
+        }
+        if (Number(err?.response?.status || 0) === 409) {
+          const d = err?.response?.data?.detail
+          if (d && typeof d === 'object') {
+            const code = String((d as any).code || '')
+            if (code === 'stage_blocked_by_risk_gate') {
+              notify({
+                title: t('app.candidate_card.stage_blocked_by_risk_gate.title', { defaultValue: 'Stage blocked by risk' }),
+                description:
+                  typeof (d as any).message === 'string' && (d as any).message
+                    ? String((d as any).message)
+                    : t('app.candidate_card.stage_blocked_by_risk_gate.description', {
+                        defaultValue:
+                          'Create an active next action (reminder) or lower risk before moving forward. Tenant setting: risk_model_v1.stage_gate.',
+                      }),
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+            if (code === 'stage_blocked_by_documents') {
+              const missing = Array.isArray((d as any).missing_types) ? (d as any).missing_types : []
+              const problematic = Array.isArray((d as any).problematic_types) ? (d as any).problematic_types : []
+              const inProgress = Array.isArray((d as any).in_progress_types) ? (d as any).in_progress_types : []
+              const firstHit = [missing[0], problematic[0], inProgress[0]].find(Boolean)
+              const docHint = firstHit
+                ? String(firstHit)
+                : typeof (d as any).message === 'string'
+                  ? String((d as any).message)
+                  : ''
+              notify({
+                title: t('app.candidate_card.stage_blocked_by_docs.title', { defaultValue: 'Stage is blocked by documents' }),
+                description: docHint || t('app.candidate_card.stage_blocked_by_docs.description_generic', { defaultValue: 'Request missing documents or complete review first.' }),
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+            if (code === 'stage_blocked_by_vacancy') {
+              notify({
+                title: t('app.candidate_card.stage_blocked_by_vacancy.title', {
+                  defaultValue: 'Assign a vacancy first',
+                }),
+                description:
+                  typeof (d as any).message === 'string' && (d as any).message
+                    ? String((d as any).message)
+                    : t('app.candidate_card.stage_blocked_by_vacancy.description', {
+                        defaultValue:
+                          'Link this candidate to a vacancy (or client vacancy) before moving to the next stage.',
+                      }),
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+            if (code === 'stage_blocked_by_contact_attempt') {
+              notify({
+                title: t('app.candidate_card.stage_blocked_by_contact_attempt.title', {
+                  defaultValue: 'Log a contact attempt first',
+                }),
+                description:
+                  typeof (d as any).message === 'string' && (d as any).message
+                    ? String((d as any).message)
+                    : t('app.candidate_card.stage_blocked_by_contact_attempt.description', {
+                        defaultValue:
+                          'Your client policy requires at least one registered contact attempt before leaving New.',
+                      }),
+                variant: 'error',
+              })
+              await revertStageOptimistic()
+              return
+            }
+          }
         }
         const handoffDocs = parseHandoffDocsIncomplete(err)
         if (handoffDocs) {
           const missingLabels = handoffDocs.missingTypes.length > 0
             ? handoffDocs.missingTypes
-                .map((code) => t(`admin.documents.types.${code}`, { defaultValue: code }))
+                .map((docCode) => t(`admin.documents.types.${docCode}`, { defaultValue: docCode }))
                 .join(', ')
             : ''
           notify({
@@ -1769,42 +1923,16 @@ export default function CandidateCard(){
             description: missingLabels || undefined,
             variant: 'error',
           })
+          await revertStageOptimistic()
           return
         }
         const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
         notify({ title: errorMessage, variant: 'error' })
-        const refreshed = await fetchCandidate(String(model.id), model)
-        setModel(refreshed)
+        await revertStageOptimistic()
       }
     },
-    [isNew, model?.id, fetchCandidate, notify, unknownErrorLabel, meta?.reason_choices, isRodoStageBlockedError, parseHandoffDocsIncomplete, t]
+    [isNew, model?.id, model, fetchCandidate, notify, unknownErrorLabel, meta?.reason_choices, isRodoStageBlockedError, parseHandoffDocsIncomplete, t]
   )
-
-  const handleScrollTo = useCallback((ref: RefObject<HTMLDivElement>) => {
-    return () => {
-      ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }, [])
-
-  const isMaskedForNav = model?.masked === true
-  const sectionNavItems = useMemo(() => {
-    // Проверяем, есть ли кастомные поля в профиле
-    const hasCustomFields = candidateProfile?.config?.field_configs?.some(
-      (fc: any) => fc.field_key?.startsWith('custom_') && fc.visible !== false
-    )
-    const hiddenWhenMasked = new Set(['basic', 'notes', 'personal', 'employer'])
-
-    const items: Array<{ key: string; label: string; icon: TablerIcon; ref: RefObject<HTMLDivElement> }> = [
-      { key: 'basic', label: t('app.candidate_card.nav.basic'), icon: IconUserCircle, ref: basicRef },
-      ...(!isNew ? [{ key: 'notes', label: t('app.candidate_card.nav.notes'), icon: IconNotebook, ref: notesRef }] : []),
-      { key: 'personal', label: t('app.candidate_card.nav.personal'), icon: IconUser, ref: personalRef },
-      { key: 'status', label: t('app.candidate_card.nav.status'), icon: IconIdBadge2, ref: statusRef },
-      { key: 'experience', label: t('app.candidate_card.nav.experience'), icon: IconBriefcase2, ref: experienceRef },
-      ...(hasCustomFields ? [{ key: 'custom_fields', label: t('app.candidate_card.nav.custom_fields'), icon: IconClipboardList, ref: customFieldsRef }] : []),
-      { key: 'employer', label: t('app.candidate_card.nav.employer'), icon: IconUsersGroup, ref: employerRef },
-    ]
-    return isMaskedForNav ? items.filter((x) => !hiddenWhenMasked.has(x.key)) : items
-  }, [isNew, candidateProfile, t, isMaskedForNav])
 
   const isMetaLead = useMemo(() => {
     const source = (model?.origin && (model.origin as any)?.source) || model?.source || ''
@@ -1944,12 +2072,30 @@ export default function CandidateCard(){
       if (isNew) {
         const { data } = await api.post('/candidates', createPayload)
         const createdId = data?.id
+        const notifyPartialAfterCreate = (err: unknown) => {
+          notify({
+            title: t('app.candidate_card.messages.partial_save_after_create', {
+              defaultValue:
+                'Кандидат создан; часть данных не сохранена. Откройте карточку и сохраните снова.',
+            }),
+            description: formatErrorForDisplay(err, { fallback: unknownErrorLabel }),
+            variant: 'warning',
+          })
+        }
         if (createdId && Object.keys(patchAfterCreate).length > 0) {
-          await api.patch(`/candidates/${createdId}`, patchAfterCreate)
+          try {
+            await api.patch(`/candidates/${createdId}`, patchAfterCreate)
+          } catch (patchErr: unknown) {
+            notifyPartialAfterCreate(patchErr)
+          }
         }
         setRodoSentTrigger((x) => x + 1)
         if (createdId) {
-          await syncEmploymentRows(String(createdId))
+          try {
+            await syncEmploymentRows(String(createdId))
+          } catch (empErr: unknown) {
+            notifyPartialAfterCreate(empErr)
+          }
         }
         const targetId = createdId || model.id
         const refreshed = targetId ? await fetchCandidate(String(targetId), model) : normalizeCandidate({
@@ -1983,7 +2129,7 @@ export default function CandidateCard(){
         }
         const overrideFields = getCandidateOverrideFields(payload)
         const overrideReason = candidateOverrideReason.trim()
-        if (overrideFields.length > 0 && !candidateOverrideMode) {
+        if (overrideFields.length > 0 && candidateEditPhase !== 'editing') {
           const fieldLabels = overrideFields.map((f) => getOverrideFieldLabel(f)).filter(Boolean)
           notify({
             title: t('app.candidate_card.messages.override_mode_required'),
@@ -2046,9 +2192,11 @@ export default function CandidateCard(){
         setRodoSentTrigger((x) => x + 1)
         const refreshed = await fetchCandidate(String(data?.id ?? model.id), model)
         setModel(refreshed)
-        setCandidateOverrideMode(false)
-        setCandidateOverrideReason('')
-        lastSavedPayloadRef.current = JSON.stringify(buildCandidatePayload(refreshed, meta?.reason_choices ?? {}).payload)
+        lastSavedPayloadRef.current = computeAutosaveFingerprint(
+          refreshed,
+          candidateEditPhaseRef.current,
+          candidateOverrideReasonRef.current,
+        )
         setSavedOk(true); setTimeout(()=>setSavedOk(false), 2000)
         notify({ title: t('app.candidate_card.messages.saved'), variant: 'success' })
         // Уведомляем страницу списка кандидатов об обновлении
@@ -2083,7 +2231,7 @@ export default function CandidateCard(){
     } finally {
       setSaving(false)
     }
-  }, [model, isNew, nav, fetchCandidate, syncEmploymentRows, t, unknownErrorLabel, notify, candidateProfile, extra, candidateOverrideMode, candidateOverrideReason, getOverrideFieldLabel, parseHandoffDocsIncomplete])
+  }, [model, isNew, nav, fetchCandidate, syncEmploymentRows, t, unknownErrorLabel, notify, candidateProfile, extra, candidateEditPhase, candidateOverrideReason, getOverrideFieldLabel, parseHandoffDocsIncomplete])
 
   const downloadBundle = useCallback(async () => {
     if (!model?.id) return
@@ -2362,13 +2510,14 @@ export default function CandidateCard(){
       })
       const items = Array.isArray(res?.items) ? res.items : []
       setReminders(items.slice(0, 5))
+      void loadTimelineReminders(String(model.id))
       notify({ title: t('app.reminders.messages.created'), variant: 'success' })
     } catch (err) {
       const errorMessage = formatErrorForDisplay(err, { fallback: t('app.reminders.errors.create') })
       setRemindersError(errorMessage)
       notify({ title: errorMessage, variant: 'error' })
     }
-  }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, t, notify])
+  }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, t, notify, loadTimelineReminders])
 
   const handleDocsNextActionCreate = useCallback(() => {
     // Distinguish action by blocker type:
@@ -2434,11 +2583,12 @@ export default function CandidateCard(){
         })
         const items = Array.isArray(res?.items) ? res.items : []
         setReminders(items.slice(0, 5))
+        void loadTimelineReminders(String(model.id))
       } catch {
         // Best-effort automation; user-facing docs flow should not break.
       }
     })()
-  }, [docsBlockers.inProgress, docsBlockersLoading, model?.id, reminders, t])
+  }, [docsBlockers.inProgress, docsBlockersLoading, model?.id, reminders, t, loadTimelineReminders])
 
   const overrideReasonOptions = useMemo(
     () => [
@@ -2459,16 +2609,25 @@ export default function CandidateCard(){
   }, [])
 
   const toggleCandidateEditMode = useCallback(() => {
-    setCandidateOverrideMode((v) => {
-      const next = !v
-      if (!next) {
-        setCandidateOverrideReason('')
-      } else {
-        window.setTimeout(() => scrollToCandidateData(), 40)
+    setCandidateEditPhase((phase) => {
+      if (phase === 'editing' || phase === 'picking_reason') {
+        return 'idle'
       }
-      return next
+      window.setTimeout(() => scrollToCandidateData(), 40)
+      return 'picking_reason'
     })
   }, [scrollToCandidateData])
+
+  const confirmOverrideReasonStartEdit = useCallback(() => {
+    if (!candidateOverrideReason.trim()) {
+      notify({
+        title: t('app.candidate_card.messages.override_reason_missing'),
+        variant: 'error',
+      })
+      return
+    }
+    setCandidateEditPhase('editing')
+  }, [candidateOverrideReason, notify, t])
 
   const handleFavoriteToggle = useCallback(async () => {
     if (!model?.id) return
@@ -2573,6 +2732,7 @@ export default function CandidateCard(){
       })
       const items = Array.isArray(res?.items) ? res.items : []
       setReminders(items.slice(0, 5))
+      if (model?.id) void loadTimelineReminders(String(model.id))
       notify({ title: t('app.reminders.messages.completed'), variant: 'success' })
     } catch (err) {
       const errorMessage = formatErrorForDisplay(err, { fallback: t('app.reminders.errors.complete') })
@@ -2581,7 +2741,7 @@ export default function CandidateCard(){
     } finally {
       setReminderBusy((prev) => (prev === id ? null : prev))
     }
-  }, [model?.id, t, notify])
+  }, [model?.id, t, notify, loadTimelineReminders])
 
   const handleReminderSnooze = useCallback(async (id: string, minutes: number) => {
     try {
@@ -2594,6 +2754,7 @@ export default function CandidateCard(){
       })
       const items = Array.isArray(res?.items) ? res.items : []
       setReminders(items.slice(0, 5))
+      if (model?.id) void loadTimelineReminders(String(model.id))
       notify({ title: t('app.reminders.messages.snoozed'), variant: 'success' })
     } catch (err) {
       const errorMessage = formatErrorForDisplay(err, { fallback: t('app.reminders.errors.snooze') })
@@ -2602,7 +2763,7 @@ export default function CandidateCard(){
     } finally {
       setReminderBusy((prev) => (prev === id ? null : prev))
     }
-  }, [model?.id, t, notify])
+  }, [model?.id, t, notify, loadTimelineReminders])
 
   const handleDelete = useCallback(async () => {
     if (!model?.id) return
@@ -2717,7 +2878,7 @@ export default function CandidateCard(){
     [model?.id, notify, t, bumpPipelineAndDocsRefresh],
   )
 
-  const candidateDataReadOnly = !isNew && !candidateOverrideMode
+  const candidateDataReadOnly = !isNew && candidateEditPhase !== 'editing'
   const handoffLocked = Boolean(handoffStatus?.pending || handoffStatus?.accepted || handoffLoading)
   const handoffRequestedAt = handoffStatus?.accepted?.requested_at || handoffStatus?.pending?.requested_at || null
   const handoffButtonLabel = handoffRequestedAt
@@ -2738,14 +2899,10 @@ export default function CandidateCard(){
   }, [loadStageHistoryQuiet, model?.id, model?.stage])
 
   useEffect(() => {
-    setActivityModalOpen(false)
-  }, [model?.id])
-
-  useEffect(() => {
-    if (!activityModalOpen || !model?.id) return
+    if (isNew || !model?.id) return
     void loadTimelineReminders(String(model.id))
     void loadStageHistoryForTimeline(String(model.id))
-  }, [activityModalOpen, model?.id, loadTimelineReminders, loadStageHistoryForTimeline])
+  }, [isNew, model?.id, model?.stage, loadTimelineReminders, loadStageHistoryForTimeline])
 
   const openDocsDrawer = useCallback((typeCode?: string) => {
     setDocsDrawerType(typeCode)
@@ -2865,10 +3022,12 @@ export default function CandidateCard(){
   }, [profileFunnelStages, stageLabelIntl, stageOptions, model?.stage, (model as any)?.intake_status, (model as any)?.intake_submitted_at, t, isClientJourneyView])
 
   /** Align doc policy with journey display (e.g. no_answer maps to contacted for gating). */
-  const effectiveStageForDocPolicy = useMemo(
-    () => String(stageJourneyDisplayStage || model?.stage || '').trim() || null,
-    [stageJourneyDisplayStage, model?.stage],
-  )
+  const effectiveStageForDocPolicy = useMemo(() => {
+    const stored =
+      canonicalStageKey(model?.stage ?? null, null) || String(model?.stage || '').trim().toLowerCase() || null
+    if (stored && isPipelineCompletedCanonicalStage(stored)) return stored
+    return String(stageJourneyDisplayStage || model?.stage || '').trim() || null
+  }, [stageJourneyDisplayStage, model?.stage])
 
   const pipelineRelaxedTypes = useMemo(
     () => pipelineRelaxedTypesFromOverrides(pipelineOverrides),
@@ -2916,6 +3075,56 @@ export default function CandidateCard(){
   )
 
   /**
+   * While contact policy is on and the stored stage is still in the contact-attempt gate (e.g. `new`),
+   * show attempts (+ RODO) at the top of the rail — same scope as the pipeline gate, not after docs/notes.
+   * After leaving those stages (contacted, declined, etc.), the block is omitted.
+   */
+  const showContactAttemptsPriorityRail = useMemo(() => {
+    if (!model?.id || isMasked || isNew) return false
+    if (model.contact_policy_enabled !== true) return false
+    const raw = String(model?.stage ?? '').trim()
+    if (!raw) return false
+    const code = canonicalStageKey(raw, null) || raw.toLowerCase()
+    return hiringGatesRuntime.contactAttemptGateStages.has(code)
+  }, [
+    model?.id,
+    model?.stage,
+    model?.contact_policy_enabled,
+    isMasked,
+    isNew,
+    hiringGatesRuntime,
+  ])
+
+  /** One highlighted block in the work rail — overdue reminder first, then same order as forward stage gates. */
+  const railPrimaryFocus = useMemo(() => {
+    if (!model?.id || isNew) return null
+    const now = Date.now()
+    if (isMasked) {
+      if (railHasUrgentReminder(reminders, now)) return 'next_action'
+      if (vacancyPipelineBlockingValue) return 'vacancy'
+      return null
+    }
+    return resolveRailPrimaryFocus({
+      hasUrgentReminder: railHasUrgentReminder(reminders, now),
+      docsHardBlocking: docsPipelineBlockingValue,
+      docsSoftOnly: Boolean(docsPipelineSoftWarnValue && !docsPipelineBlockingValue),
+      contactAttemptBlocking: contactAttemptPipelineBlockingValue,
+      contactPriorityRailVisible: showContactAttemptsPriorityRail && !isMasked,
+      vacancyBlocking: vacancyPipelineBlockingValue,
+    })
+  }, [
+    model?.id,
+    isNew,
+    isMasked,
+    reminders,
+    docsPipelineBlockingValue,
+    docsPipelineSoftWarnValue,
+    contactAttemptPipelineBlockingValue,
+    showContactAttemptsPriorityRail,
+    vacancyPipelineBlockingValue,
+  ])
+
+  /**
    * Waiver rail only when documents can block the pipeline or there is override state to show.
    * At early stages (e.g. New) recruiters do not need an empty waiver panel.
    */
@@ -2952,8 +3161,11 @@ export default function CandidateCard(){
     ],
   )
 
-  /** Canonical stage for operational hints (next action) — same normalization as doc policy. */
+  /** Canonical stage for operational hints (next action) — prefer stored stage when pipeline is finished. */
   const canonicalStageForOps = useMemo(() => {
+    const stored =
+      canonicalStageKey(model?.stage ?? null, null) || String(model?.stage || '').trim().toLowerCase() || ''
+    if (stored && isPipelineCompletedCanonicalStage(stored)) return stored
     const raw = String(stageJourneyDisplayStage || model?.stage || '').trim()
     if (!raw) return null
     return canonicalStageKey(raw, null) || raw.toLowerCase()
@@ -3057,6 +3269,7 @@ export default function CandidateCard(){
   }, [
     model?.stage,
     model?.status_reason,
+    model?.id,
     onStageChangePersist,
     docsPipelineBlockingValue,
     vacancyPipelineBlockingValue,
@@ -3071,12 +3284,99 @@ export default function CandidateCard(){
     t,
   ])
 
+  /** Same forward-move gates as the journey panel, applied to the stage dropdown in basic info. */
+  const persistStageWithClientGates = useCallback(
+    async (nextStage: string, statusReason: string[]) => {
+      if (!model?.id) return
+      const revertBasicStageUi = async () => {
+        try {
+          const refreshed = await fetchCandidate(String(model.id), model)
+          setModel(refreshed)
+        } catch {
+          /* ignore */
+        }
+      }
+      if (Array.isArray(stageJourneyStages) && stageJourneyStages.length > 0) {
+        const steps = [...(stageJourneyStages || []), ...(stageOutcomeStages || [])]
+        const curCode = model?.stage
+        const curIdx = steps.findIndex((s) => s.code === curCode)
+        const nextIdx = steps.findIndex((s) => s.code === nextStage)
+        const isForward = curIdx >= 0 && nextIdx > curIdx
+        if (isForward) {
+          if (docsPipelineBlockingValue) {
+            const firstMissing =
+              effectiveDocsBlockersForPipeline.missing[0] ||
+              effectiveDocsBlockersForPipeline.problematic[0] ||
+              effectiveDocsBlockersForPipeline.inProgress[0]
+            notify({
+              title: t('app.candidate_card.stage_blocked_by_docs.title', { defaultValue: 'Stage is blocked by documents' }),
+              description: firstMissing
+                ? t('app.candidate_card.stage_blocked_by_docs.description', {
+                    defaultValue: `Missing or invalid document: ${firstMissing}`,
+                  })
+                : t('app.candidate_card.stage_blocked_by_docs.description_generic', { defaultValue: 'Request missing documents first.' }),
+              variant: 'info',
+            })
+            await revertBasicStageUi()
+            return
+          }
+          if (contactAttemptPipelineBlockingValue) {
+            notify({
+              title: t('app.candidate_card.stage_blocked_by_contact_attempt.title', {
+                defaultValue: 'Log a contact attempt first',
+              }),
+              description: t('app.candidate_card.stage_blocked_by_contact_attempt.description', {
+                defaultValue:
+                  'Your client policy requires at least one registered contact attempt before leaving New.',
+              }),
+              variant: 'info',
+            })
+            await revertBasicStageUi()
+            return
+          }
+          if (vacancyPipelineBlockingValue) {
+            notify({
+              title: t('app.candidate_card.stage_blocked_by_vacancy.title', {
+                defaultValue: 'Assign a vacancy first',
+              }),
+              description: t('app.candidate_card.stage_blocked_by_vacancy.description', {
+                defaultValue:
+                  'Link this candidate to a vacancy (or client vacancy) before moving to the next stage.',
+              }),
+              variant: 'info',
+            })
+            await revertBasicStageUi()
+            return
+          }
+        }
+      }
+      await onStageChangePersist(nextStage, statusReason)
+    },
+    [
+      model?.id,
+      model?.stage,
+      model,
+      stageJourneyStages,
+      stageOutcomeStages,
+      docsPipelineBlockingValue,
+      contactAttemptPipelineBlockingValue,
+      vacancyPipelineBlockingValue,
+      effectiveDocsBlockersForPipeline.missing,
+      effectiveDocsBlockersForPipeline.problematic,
+      effectiveDocsBlockersForPipeline.inProgress,
+      onStageChangePersist,
+      fetchCandidate,
+      notify,
+      t,
+    ],
+  )
+
   if (loading || !model) {
     return <div className="h-full w-full text-slate-500">{t('common.loading')}</div>
   }
 
   return (
-    <div className="h-full min-h-0 w-full flex flex-col gap-4">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-0">
       <CandidateHeader
         candidate={model}
         isNew={isNew}
@@ -3094,7 +3394,7 @@ export default function CandidateCard(){
         onSave={save}
         onDelete={handleDelete}
         onEditToggle={toggleCandidateEditMode}
-        editMode={candidateOverrideMode}
+        editMode={candidateEditPhase !== 'idle'}
         onOpenHandoff={() => setHandoffModalOpen(true)}
         handoffDisabled={handoffLocked}
         handoffLabel={handoffButtonLabel}
@@ -3163,7 +3463,7 @@ export default function CandidateCard(){
                       candidateProfile={candidateProfile}
                       stageLabelIntl={stageLabelIntl}
                       candidateDataReadOnly={candidateDataReadOnly}
-                      onStageChangePersist={onStageChangePersist}
+                      onStageChangePersist={persistStageWithClientGates}
                       embedded
                     />
                   )}
@@ -3308,12 +3608,32 @@ export default function CandidateCard(){
 
             </div>
 
-          {/* Work panel (sticky): Next action -> Documents -> Quick actions -> Client transfer */}
+          {/* Work panel (sticky): contact+RODO (gate stages) → next action → docs → notes → inbox → services → RODO if not above */}
           {!isNew && model?.id ? (
             <div
               className="flex w-full min-w-0 flex-col gap-4 overflow-hidden lg:sticky lg:top-4 lg:max-h-[calc(100vh-3.5rem)] lg:overflow-y-auto"
               data-candidate-control-rail
             >
+              {showContactAttemptsPriorityRail && !isMasked ? (
+                <RailPrimaryStepFrame active={railPrimaryFocus === 'contact_stack'}>
+                  <div className="space-y-3">
+                    <CandidateContactAttemptsSection
+                      candidateId={String(model.id) as any}
+                      refreshTrigger={rodoSentTrigger}
+                      openRegisterSignal={contactAttemptOpenSignal}
+                      onAttemptCreated={
+                        model?.id ? () => void fetchCandidate(String(model.id), model) : undefined
+                      }
+                    />
+                    <CandidateRodoSection
+                      candidateId={String(model.id) as any}
+                      onSent={() => setRodoSentTrigger((x) => x + 1)}
+                      refreshTrigger={rodoSentTrigger}
+                    />
+                  </div>
+                </RailPrimaryStepFrame>
+              ) : null}
+
               <CandidateNextActionPanel
                 candidateId={String(model.id)}
                 reminders={reminders}
@@ -3343,6 +3663,10 @@ export default function CandidateCard(){
                 nextPipelineStageCode={nextPipelineStageCodeForOps}
                 vacancyPipelineBlocking={vacancyPipelineBlockingValue}
                 contactAttemptPipelineBlocking={contactAttemptPipelineBlockingValue}
+                primaryStepHighlight={
+                  railPrimaryFocus === 'next_action' || railPrimaryFocus === 'vacancy'
+                }
+                documentsChecklistSibling={!isMasked}
               />
 
               {!isMasked ? (
@@ -3370,6 +3694,7 @@ export default function CandidateCard(){
                   onCreatePipelineOverride={handleCreatePipelineOverride}
                   onApprovePipelineOverride={handleApprovePipelineOverride}
                   onRejectPipelineOverride={handleRejectPipelineOverride}
+                  primaryStepHighlight={railPrimaryFocus === 'docs'}
                 />
               ) : null}
 
@@ -3388,35 +3713,35 @@ export default function CandidateCard(){
               <div className="rounded-2xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-xs font-semibold text-slate-800">
-                    {t('app.candidate_card.control.messages_title', { defaultValue: 'Messages' })}
+                    {t('app.candidate_card.control.inbox_title', { defaultValue: 'Inbox' })}
                   </div>
                 </div>
                 <div className="mt-3">
                   <Link
-                    to={`/app/messages?candidateId=${model.id}`}
+                    to={buildInboxHubPath({ candidateId: String(model.id) })}
                     className="btn-secondary btn-sm w-full text-center"
                   >
-                    {t('app.candidate_card.control.open_messages', { defaultValue: 'Open messages' })}
+                    {t('app.candidate_card.control.open_unified_inbox', { defaultValue: 'Open inbox' })}
                   </Link>
                 </div>
               </div>
 
-              {/* RODO + attempts/contact: compliance + actions to allow stage changes */}
-              <div className="space-y-3">
-                <CandidateRodoSection
-                  candidateId={String(model.id) as any}
-                  onSent={() => setRodoSentTrigger((x) => x + 1)}
-                  refreshTrigger={rodoSentTrigger}
+              {can('services.view') && !isMasked ? (
+                <CandidateServicesSection
+                  candidateId={String(model.id)}
+                  canManage={can('services.orders.manage')}
                 />
-                <CandidateContactAttemptsSection
-                  candidateId={String(model.id) as any}
-                  refreshTrigger={rodoSentTrigger}
-                  openRegisterSignal={contactAttemptOpenSignal}
-                  onAttemptCreated={
-                    model?.id ? () => void fetchCandidate(String(model.id), model) : undefined
-                  }
-                />
-              </div>
+              ) : null}
+
+              {!(showContactAttemptsPriorityRail && !isMasked) ? (
+                <div className="space-y-3">
+                  <CandidateRodoSection
+                    candidateId={String(model.id) as any}
+                    onSent={() => setRodoSentTrigger((x) => x + 1)}
+                    refreshTrigger={rodoSentTrigger}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
           </div>
@@ -3485,51 +3810,74 @@ export default function CandidateCard(){
         </div>
       ) : null}
 
-      {!isNew && model?.id ? (
-        <Modal
-          open={activityModalOpen}
-          onClose={() => setActivityModalOpen(false)}
-          size="xl"
+      {!isNew && model?.id && activityModalOpen ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setActivityModalOpen(false)}
+          role="presentation"
         >
-          <CandidateTimelinePanel
-            locale={locale}
-            stageHistory={stageHistory}
-            notes={notes}
-            reminders={timelineReminders}
-            loading={timelineStageHistoryLoading || timelineRemindersLoading}
-            errorText={timelineError}
-            resolveStageLabel={stageLabelIntl}
-            includeStageChanges
-            hideToggle
-            hideFilters={false}
-            variant="full"
-          />
-        </Modal>
+          <div
+            className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="candidate-activity-modal-title"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
+              <div id="candidate-activity-modal-title" className="text-sm font-semibold text-slate-900">
+                {t('app.candidate_card.activity_feed.title', { defaultValue: 'Activity' })}
+              </div>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => setActivityModalOpen(false)}>
+                {t('common.actions.close', { defaultValue: 'Close' })}
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-3">
+              <CandidateTimelinePanel
+                locale={locale}
+                stageHistory={stageHistory}
+                notes={notes}
+                reminders={timelineReminders}
+                loading={timelineStageHistoryLoading || timelineRemindersLoading}
+                errorText={timelineError}
+                resolveStageLabel={stageLabelIntl}
+                includeStageChanges
+                variant="info"
+                collapsedCount={15}
+                hideToggle
+                expanded
+                itemsMaxHeightClass="max-h-[min(70vh,28rem)]"
+                stageHistoryShortcut={Boolean(model?.id)}
+              />
+            </div>
+          </div>
+        </div>
       ) : null}
 
-      {/* Manager override: portal → body so fixed/z-index work (layout transforms break in-page fixed). */}
+      {/* Manager override: reason once, then close — editing continues with autosave (portal → body). */}
       {typeof document !== 'undefined' &&
       !isNew &&
       model?.id &&
-      candidateOverrideMode &&
+      candidateEditPhase === 'picking_reason' &&
       !isMasked
         ? createPortal(
             <>
-              <div className="pointer-events-none fixed inset-0 z-[10000] bg-slate-900/30" aria-hidden />
+              <button
+                type="button"
+                className="fixed inset-0 z-[10000] cursor-default bg-slate-900/40"
+                aria-label={t('common.actions.close', { defaultValue: 'Close' })}
+                onClick={() => setCandidateEditPhase('idle')}
+              />
               <div
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="candidate-override-save-title"
-                className="pointer-events-auto fixed left-1/2 top-1/2 z-[10001] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-amber-300 bg-white p-4 shadow-2xl ring-2 ring-amber-100"
+                className="fixed left-1/2 top-1/2 z-[10001] w-[calc(100%-1.5rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-amber-300 bg-white p-4 shadow-2xl ring-2 ring-amber-100"
               >
                 <div id="candidate-override-save-title" className="text-sm font-semibold text-amber-950">
-                  {t('app.candidate_card.override_modal.title', { defaultValue: 'Confirm manager edit' })}
+                  {t('app.candidate_card.override_modal.title')}
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                  {t('app.candidate_card.override_modal.hint', {
-                    defaultValue:
-                      'Protected fields are unlocked. Pick a reason, then save. You can still edit the form behind this dialog (clicks pass through the dimmed area).',
-                  })}
+                  {t('app.candidate_card.override_modal.hint')}
                 </p>
                 <label className="mt-3 block text-xs font-medium text-slate-700" htmlFor="candidate-override-reason">
                   {t('app.candidate_card.override_reason_label', { defaultValue: 'Reason for override' })}
@@ -3551,16 +3899,12 @@ export default function CandidateCard(){
                   <button
                     type="button"
                     className="btn-secondary btn-sm"
-                    disabled={saving}
-                    onClick={() => {
-                      setCandidateOverrideMode(false)
-                      setCandidateOverrideReason('')
-                    }}
+                    onClick={() => setCandidateEditPhase('idle')}
                   >
-                    {t('app.candidate_card.override_modal.cancel_edit', { defaultValue: 'Cancel editing' })}
+                    {t('app.candidate_card.override_modal.cancel_edit')}
                   </button>
-                  <button type="button" className="btn-primary btn-sm" disabled={saving} onClick={() => void save()}>
-                    {saving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.actions.save', { defaultValue: 'Save' })}
+                  <button type="button" className="btn-primary btn-sm" onClick={() => confirmOverrideReasonStartEdit()}>
+                    {t('app.candidate_card.override_modal.continue_edit')}
                   </button>
                 </div>
               </div>
@@ -3679,15 +4023,15 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
   const formatItemStatus = (status: string) => itemStatusLabels[status] || status
 
   return (
-    <div className="md:col-span-2 app-surface p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="font-semibold">{t('app.candidate_card.services.title')}</div>
-        <div className="flex items-center gap-2">
+    <div className="min-w-0 space-y-2 rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs font-semibold text-slate-800">{t('app.candidate_card.services.title')}</div>
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           <button type="button" className="btn-secondary btn-sm" onClick={reload} disabled={loading}>
             {loading ? t('app.candidate_card.actions.refreshing') : t('app.candidate_card.actions.refresh')}
           </button>
           {canManage && (
-            <Link to="/app/services" className="btn-secondary btn-sm">
+            <Link to={servicesWorkspacePath('orders', { candidateId })} className="btn-secondary btn-sm">
               {t('app.candidate_card.services.open_module')}
             </Link>
           )}
@@ -3699,7 +4043,7 @@ function CandidateServicesSection({ candidateId, canManage }: { candidateId: str
       ) : orders.length === 0 ? (
         <div className="text-sm text-slate-500">{t('app.candidate_card.services.empty')}</div>
       ) : (
-        <div className="overflow-auto rounded-2xl border border-brand-50 bg-white/95 shadow-card">
+        <div className="max-h-56 overflow-auto rounded-xl border border-slate-200/90 bg-slate-50/40">
           <table className="min-w-full divide-y divide-brand-100/70 text-sm">
             <thead className="bg-brand-50/60">
               <tr>

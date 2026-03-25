@@ -6,6 +6,7 @@ import type { ReminderListResponse, ReminderRecord } from '../../api/types'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { buildInboxThreadPath } from '../../utils/inboxDeepLinks'
 
 type LoadState = 'idle' | 'loading' | 'error'
 type StatusFilter = 'active' | 'all' | 'done'
@@ -28,7 +29,7 @@ function reminderEntityHref(item: ReminderRecord): string | null {
     case 'company':
       return `/app/clients/${entityId}`
     case 'communication_thread':
-      return `/app/messages?threadId=${encodeURIComponent(entityId)}`
+      return buildInboxThreadPath(entityId)
     default:
       return null
   }

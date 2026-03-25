@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import clsx from 'clsx'
 import type { ReminderRecord } from '../../api/types'
 import type { CandidateNote, StageHistoryEntry } from '../../modules/candidate-card/types'
@@ -19,12 +19,17 @@ type Props = {
   onOpenStageHistory?: () => void
   onToggleRemindersPanel?: () => void
   defaultOpen?: boolean
+  /** When set together with `onExpandedChange`, expanded/collapsed state is controlled by the parent. */
+  expanded?: boolean
+  onExpandedChange?: (next: boolean) => void
   hideToggle?: boolean
   hideFilters?: boolean
   includeStageChanges?: boolean
   collapsedCount?: number
   variant?: 'info' | 'full'
   itemsMaxHeightClass?: string
+  /** Карточка кандидата: кнопка «только смены стадий» в шапке Activity (без отдельной модалки). */
+  stageHistoryShortcut?: boolean
 }
 
 type TimelineItem =
@@ -44,15 +49,27 @@ export default function CandidateTimelinePanel({
   onOpenStageHistory,
   onToggleRemindersPanel,
   defaultOpen = false,
+  expanded: expandedProp,
+  onExpandedChange,
   hideToggle = false,
   hideFilters = false,
   includeStageChanges = true,
   collapsedCount = 3,
   variant = 'info',
   itemsMaxHeightClass,
+  stageHistoryShortcut = false,
 }: Props) {
   const { t } = useI18n()
-  const [open, setOpen] = useState(defaultOpen || hideToggle)
+  const controlled = expandedProp !== undefined
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen || hideToggle)
+  const open = controlled ? Boolean(expandedProp) : uncontrolledOpen
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (!controlled) setUncontrolledOpen(next)
+      onExpandedChange?.(next)
+    },
+    [controlled, onExpandedChange],
+  )
   const [filter, setFilter] = useState<TimelineFilter>({
     stage: true,
     notes: true,
@@ -122,17 +139,29 @@ export default function CandidateTimelinePanel({
   }, [filter.notes, filter.reminders, filter.stage, includeStageChanges, locale, notes, reminders, resolveStageLabel, stageHistory, t])
 
   const collapsedItems = useMemo(() => {
-    const n = Math.max(0, Math.min(10, Number(collapsedCount) || 0))
+    const n = Math.max(0, Math.min(50, Number(collapsedCount) || 0))
     return n > 0 ? items.slice(0, n) : []
   }, [collapsedCount, items])
   return (
     <section className={clsx('rounded-2xl border border-slate-200 bg-white p-3', variant === 'info' && 'flex flex-col')}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <div className="text-xs font-semibold text-slate-700">
               {t('app.candidate_card.activity_feed.title', { defaultValue: 'Activity' })}
             </div>
+            {stageHistoryShortcut && includeStageChanges ? (
+              <button
+                type="button"
+                className="text-[11px] font-medium text-brand-700 hover:text-brand-800 hover:underline"
+                onClick={() => {
+                  setFilter({ stage: true, notes: false, reminders: false })
+                  setOpen(true)
+                }}
+              >
+                {t('app.candidate_card.timeline.stage_changes_only', { defaultValue: 'Stage changes only' })}
+              </button>
+            ) : null}
             {!hideToggle ? (
               <button
                 type="button"

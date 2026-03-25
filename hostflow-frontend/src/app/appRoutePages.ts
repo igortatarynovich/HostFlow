@@ -32,6 +32,7 @@ export const AgencyClientsPage = lazy(() => loadCrmCore().then((m) => ({ default
 export const ClientLinkDetailPage = lazy(() => loadCrmCore().then((m) => ({ default: m.ClientLinkDetailPage })))
 export const DoProcesowaniaPage = lazy(() => loadCrmCore().then((m) => ({ default: m.DoProcesowaniaPage })))
 export const DocumentsRegistryPage = lazy(() => loadCrmMore().then((m) => ({ default: m.DocumentsRegistryPage })))
+export const AutomationsHubPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationsHubPage })))
 export const AutomationLogPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationLogPage })))
 export const AutomationRulesPage = lazy(() => loadCrmMore().then((m) => ({ default: m.AutomationRulesPage })))
 
@@ -44,6 +45,12 @@ export const CommunicationsThreadPage = lazy(() =>
 )
 export const CommunicationsMessagesPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsMessagesPage })),
+)
+export const CommunicationsInboxHubPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.CommunicationsInboxHubPage })),
+)
+export const CommunicationsInboxCenterPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.CommunicationsInboxCenterPage })),
 )
 export const CommunicationsEmailInboxPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsEmailInboxPage })),
@@ -93,6 +100,9 @@ export const CandidateProfilesPage = lazy(() => loadAdmin().then((m) => ({ defau
 export const FunnelsPage = lazy(() => loadAdmin().then((m) => ({ default: m.FunnelsPage })))
 export const HiringPipelineGatesSettingsPage = lazy(() =>
   loadAdmin().then((m) => ({ default: m.HiringPipelineGatesSettingsPage })),
+)
+export const RiskIntelSettingsPage = lazy(() =>
+  loadAdmin().then((m) => ({ default: m.RiskIntelSettingsPage })),
 )
 export const CustomFieldsPage = lazy(() => loadAdmin().then((m) => ({ default: m.CustomFieldsPage })))
 export const BillingWorkspacePage = lazy(() => loadAdmin().then((m) => ({ default: m.BillingWorkspacePage })))

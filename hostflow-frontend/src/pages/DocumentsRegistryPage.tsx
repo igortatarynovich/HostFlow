@@ -181,8 +181,8 @@ export default function DocumentsRegistryPage() {
   const currentDocs = filteredDocs.slice(pageStart, pageStart + PAGE_SIZE)
 
   return (
-    <div className="space-y-4">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
+      <section className="relative overflow-hidden rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-none">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <p className="text-2xl font-semibold">{t('admin.documents.registry.title')}</p>
@@ -203,7 +203,7 @@ export default function DocumentsRegistryPage() {
         </div>
       </section>
 
-      <section className="app-surface space-y-4 p-6">
+      <section className="app-surface space-y-0 gap-0 border-x-0 border-t-0 p-3">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-1 flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">

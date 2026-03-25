@@ -7,19 +7,7 @@ hostflow.cc, www.hostflow.cc {
         Content-Security-Policy "child-src 'self' blob:; frame-src 'self' blob:"
     }
 
-    # Scanner service
-    @scanner path /scan/*
-    handle @scanner {
-        reverse_proxy scanner-api:8000
-    }
-
-    # Scanner uploads
-    @scan_uploads path /api/uploads/scanner/*
-    handle @scan_uploads {
-        reverse_proxy scanner-api:8000
-    }
-
-    # Backend API
+    # Backend API (includes /api/uploads/* if still routed by FastAPI)
     @api path /api/*
     handle @api {
         reverse_proxy backend:8000

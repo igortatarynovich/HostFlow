@@ -469,6 +469,68 @@ async def test_email_poll_worker_gmail_oauth_ingests_and_updates_cursor(
 
 
 @pytest.mark.anyio
+async def test_outbound_thread_message_allowed_without_mandatory_link(
+    client: AsyncClient,
+    manager_headers: dict[str, str],
+) -> None:
+    await _update_comm_settings(
+        client,
+        manager_headers,
+        lambda s: s["entitlements"]["modules"]["email"].update({"enabled": True}),
+    )
+    account = await _create_email_account(client, manager_headers, label="Unlinked outbound ok", provider="gmail")
+    account_id = str(account["id"])
+
+    created_thread = await client.post(
+        "/api/v1/communications/threads",
+        headers=manager_headers,
+        json={
+            "channel": "email",
+            "subject": "Unlinked outbound",
+            "channel_account_id": account_id,
+            "participants_json": {"recipients": ["receiver@example.test"]},
+        },
+    )
+    assert created_thread.status_code == 201, created_thread.text
+    thread_id = str(created_thread.json().get("id") or "")
+
+    first = await client.post(
+        f"/api/v1/communications/threads/{thread_id}/messages",
+        headers=manager_headers,
+        json={
+            "direction": "outbound",
+            "message_type": "text",
+            "recipient_address": "receiver@example.test",
+            "subject": "Hi",
+            "body_text": "Body",
+            "delivery_status": "queued",
+        },
+    )
+    assert first.status_code == 201, first.text
+
+    patch = await client.patch(
+        f"/api/v1/communications/threads/{thread_id}",
+        headers=manager_headers,
+        json={"thread_meta": {"uos": {"linked_service_order_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"}}},
+    )
+    assert patch.status_code == 200, patch.text
+
+    second = await client.post(
+        f"/api/v1/communications/threads/{thread_id}/messages",
+        headers=manager_headers,
+        json={
+            "direction": "outbound",
+            "message_type": "text",
+            "recipient_address": "receiver@example.test",
+            "subject": "Hi 2",
+            "body_text": "Body 2",
+            "delivery_status": "queued",
+        },
+    )
+    assert second.status_code == 201, second.text
+
+
+@pytest.mark.anyio
 async def test_email_dispatch_worker_gmail_oauth_uses_provider_send_adapter(
     client: AsyncClient,
     manager_headers: dict[str, str],
@@ -496,6 +558,7 @@ async def test_email_dispatch_worker_gmail_oauth_uses_provider_send_adapter(
     )
     assert patch.status_code == 200, patch.text
 
+    _link_stub = "11111111-1111-1111-1111-111111111111"
     created_thread = await client.post(
         "/api/v1/communications/threads",
         headers=manager_headers,
@@ -503,6 +566,7 @@ async def test_email_dispatch_worker_gmail_oauth_uses_provider_send_adapter(
             "channel": "email",
             "subject": "Dispatch test",
             "channel_account_id": account_id,
+            "linked_company_id": _link_stub,
             "participants_json": {"recipients": ["receiver@example.test"]},
         },
     )
@@ -576,6 +640,7 @@ async def test_email_dispatch_worker_schedules_retry_on_oauth_send_failure(
     )
     assert patch.status_code == 200, patch.text
 
+    _link_stub = "11111111-1111-1111-1111-111111111111"
     created_thread = await client.post(
         "/api/v1/communications/threads",
         headers=manager_headers,
@@ -583,6 +648,7 @@ async def test_email_dispatch_worker_schedules_retry_on_oauth_send_failure(
             "channel": "email",
             "subject": "Retry dispatch test",
             "channel_account_id": account_id,
+            "linked_company_id": _link_stub,
             "participants_json": {"recipients": ["receiver@example.test"]},
         },
     )
@@ -655,6 +721,7 @@ async def test_email_dispatch_worker_marks_failed_after_retry_exhaustion(
     )
     assert patch.status_code == 200, patch.text
 
+    _link_stub = "11111111-1111-1111-1111-111111111111"
     created_thread = await client.post(
         "/api/v1/communications/threads",
         headers=manager_headers,
@@ -662,6 +729,7 @@ async def test_email_dispatch_worker_marks_failed_after_retry_exhaustion(
             "channel": "email",
             "subject": "Retry exhaustion dispatch test",
             "channel_account_id": account_id,
+            "linked_company_id": _link_stub,
             "participants_json": {"recipients": ["receiver@example.test"]},
         },
     )

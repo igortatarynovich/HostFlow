@@ -16,9 +16,11 @@ emsdk/
 opencv/
 opencv_contrib/
 .venv/
+.venv-ci/
 node_modules/
 docs/manual-checklist/_artifacts/
 backend/uploads/
+backend/app/uploads/
 ad_id
 form_id
 leadgen_id
@@ -27,3 +29,10 @@ opt.code-workspace
 # Local backups and generated reports (do not commit)
 backups/
 hostflow-frontend/i18n-hardcode-report.json
+
+# Local SQLite databases (dev/runtime; keep fixtures like backend/app/db/sqlite.db tracked if needed)
+/app.db
+/backend/app.db
+/dev.db
+/backend/dev.db
+/backend/dev.test.db

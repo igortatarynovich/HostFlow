@@ -100,13 +100,12 @@ Backend:
   - notify candidate about remaining items.
 
 Frontend:
-- Reuse existing public scanner flow with Telegram WebApp entry context.
+- Ссылка на загрузку документов: публичная анкета `/public/apply/{token}?mode=documents` (legacy PublicScanPage / wasm-камера сняты; см. **`docs/SSOT.md`**).
 
 Files likely touched:
 - `backend/app/api/v1/communications.py`
 - `backend/app/api/public/intake.py`
-- `hostflow-frontend/src/pages/public/PublicScanPage.tsx`
-- `hostflow-frontend/src/modules/public-intake/scan/*`
+- `hostflow-frontend/src/pages/public/PublicIntakeNew.tsx` (и связанные хуки загрузки)
 
 DoD:
 - Candidate can upload required docs from Telegram flow.

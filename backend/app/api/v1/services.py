@@ -129,6 +129,7 @@ async def list_service_orders(
     vacancy_id: Optional[UUID] = Query(None),
     company_id: Optional[UUID] = Query(None),
     status: Optional[List[str]] = Query(None, description="Filter by status values"),
+    q: Optional[str] = Query(None, description="Search order id or notes (substring)"),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     db, tenant_id = db_tenant
@@ -138,7 +139,10 @@ async def list_service_orders(
         vacancy_id=str(vacancy_id) if vacancy_id else None,
         company_id=str(company_id) if company_id else None,
         status=status,
+        q=q,
     )
+    if q and str(q).strip():
+        rows = rows[:80]
     return [ServiceOrderOut.model_validate(row, from_attributes=True) for row in rows]
 
 

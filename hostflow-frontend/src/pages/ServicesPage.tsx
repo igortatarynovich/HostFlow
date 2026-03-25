@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { formatDistanceToNow } from 'date-fns'
+import { enUS as enUSFns, pl as plFns, ru as ruFns } from 'date-fns/locale'
 
 import {
   addServiceSchedule,
@@ -9,6 +11,7 @@ import {
   deliverServiceItem,
   updateAdditionalService,
   updateServiceOrder,
+  type ServiceOrderQuery,
 } from '../api/additionalServices'
 import type {
   AdditionalService,
@@ -26,13 +29,25 @@ import { useAdditionalServiceCatalog, useServiceOrder, useServiceOrderSummary, u
 import { usePermissions } from '../hooks/usePermissions'
 import { searchCandidates } from '../api/candidates'
 import { api, listCompanies } from '../api/client'
-import { listVacancies } from '../api/vacancies'
+import { getVacancy, listVacancies } from '../api/vacancies'
 import { getAnalyticsProfileSummary, getServicesAnalyticsOverview, type ServicesAnalyticsOverview } from '../api/analytics'
 import { createInvoiceFromServiceOrder, createPayment, listInvoices, listInvoicesByServiceOrders, sendInvoice } from '../api/client'
 import { useI18n } from '../i18n'
-import { ORDER_STATUSES, SCHEDULE_STATUSES, ITEM_STATUSES, DOCUMENT_STATUSES } from '../modules/services/constants'
+import {
+  ORDER_STATUSES,
+  SCHEDULE_STATUSES,
+  ITEM_STATUSES,
+  DOCUMENT_STATUSES,
+  SERVICES_BILLING_URL_FILTER_SET,
+} from '../modules/services/constants'
 import type { NewServiceFormState, NewOrderFormState } from '../modules/services/types'
-import { formatAmount } from '../modules/services/utils'
+import {
+  formatAmount,
+  invoiceDaysPastDue,
+  invoiceOutstandingAmount,
+  resolveServiceOrderNextAction,
+  type ServiceOrderNextAction,
+} from '../modules/services/utils'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 
@@ -65,6 +80,41 @@ const initialOrderState: NewOrderFormState = {
   currency: 'PLN',
 }
 
+function formatServiceOrderNextAction(
+  action: ServiceOrderNextAction,
+  t: (key: string, options?: { defaultValue?: string; values?: Record<string, string | number> }) => string,
+): string {
+  const base = 'app.services.orders.next_action'
+  switch (action.key) {
+    case 'cancelled':
+      return t(`${base}.cancelled`, { defaultValue: 'Order cancelled' })
+    case 'draft':
+      return t(`${base}.draft`, { defaultValue: 'Confirm order to start fulfillment' })
+    case 'on_hold':
+      return t(`${base}.on_hold`, { defaultValue: 'On hold — review before continuing' })
+    case 'invoice_needed':
+      return t(`${base}.invoice_needed`, { defaultValue: 'Create invoice from completed order' })
+    case 'collect_payment':
+      return t(`${base}.collect_payment`, { defaultValue: 'Collect payment (outstanding balance)' })
+    case 'closed':
+      return t(`${base}.closed`, { defaultValue: 'Billing closed for this order' })
+    case 'schedule_slots':
+      return t(`${base}.schedule_slots`, { defaultValue: 'Schedule slots for services that require it' })
+    case 'deliver_lines':
+      return t(`${base}.deliver_lines`, {
+        defaultValue: 'Complete delivery for {{count}} line(s)',
+        values: { count: action.count },
+      })
+    case 'mark_completed':
+      return t(`${base}.mark_completed`, { defaultValue: 'Mark order completed when work is done' })
+    case 'review':
+    default:
+      return t(`${base}.review`, { defaultValue: 'Review order status' })
+  }
+}
+
+type ServicesTabKey = 'overview' | 'analytics' | 'orders' | 'catalog' | 'billing'
+
 type ServicesOrdersDrilldown =
   | null
   | { kind: 'order'; orderId: string }
@@ -79,8 +129,20 @@ export function ServicesPage() {
   const { openEntityLabel, businessType, isServicesTenant, isEmployerTenant } = useBusinessTerminology()
   const navigate = useNavigate()
   const location = useLocation()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const companyIdFromUrl = useMemo(() => String(searchParams.get('company_id') || '').trim(), [searchParams])
+  const rawCandidateIdFromUrl = useMemo(
+    () => (companyIdFromUrl ? '' : String(searchParams.get('candidate_id') || '').trim()),
+    [searchParams, companyIdFromUrl],
+  )
+  const rawVacancyIdFromUrl = useMemo(
+    () => String(searchParams.get('vacancy_id') || '').trim(),
+    [searchParams],
+  )
+  const candidateIdFromUrlForQuery = rawCandidateIdFromUrl
+  const vacancyIdFromUrlForQuery = rawCandidateIdFromUrl ? '' : rawVacancyIdFromUrl
+  const appliedCandidateIdFromUrlRef = useRef<string | null>(null)
+  const appliedVacancyIdFromUrlRef = useRef<string | null>(null)
   const companyScopeFromUrlRef = useRef(false)
   const [urlCompanyScopeName, setUrlCompanyScopeName] = useState<string | null>(null)
   const { can } = usePermissions()
@@ -161,15 +223,125 @@ export function ServicesPage() {
     [companyIdFromUrl, location.pathname, navigate, searchParams],
   )
 
+  const navigateToServicesOrder = useCallback(
+    (orderId: string) => {
+      const qs = new URLSearchParams()
+      qs.set('order_id', orderId)
+      if (companyIdFromUrl) qs.set('company_id', companyIdFromUrl)
+      const q = qs.toString()
+      navigate(q ? `/app/orders?${q}` : '/app/orders')
+    },
+    [companyIdFromUrl, navigate],
+  )
+
+  const navigateToServicesOrdersTab = useCallback(() => {
+    const qs = new URLSearchParams()
+    if (companyIdFromUrl) qs.set('company_id', companyIdFromUrl)
+    const q = qs.toString()
+    navigate(q ? `/app/orders?${q}` : '/app/orders')
+  }, [companyIdFromUrl, navigate])
+
   const catalogHook = useAdditionalServiceCatalog(includeInactive)
 
-  const orderQuery = useMemo(() => {
-    if (statusFilter === 'all') return {}
-    return { status: statusFilter as ServiceOrderStatus }
-  }, [statusFilter])
+  const orderQuery = useMemo((): ServiceOrderQuery => {
+    const q: ServiceOrderQuery = {}
+    if (statusFilter !== 'all') q.status = statusFilter as ServiceOrderStatus
+    if (companyIdFromUrl) q.companyId = companyIdFromUrl
+    if (candidateIdFromUrlForQuery) q.candidateId = candidateIdFromUrlForQuery
+    if (vacancyIdFromUrlForQuery) q.vacancyId = vacancyIdFromUrlForQuery
+    return q
+  }, [statusFilter, companyIdFromUrl, candidateIdFromUrlForQuery, vacancyIdFromUrlForQuery])
 
   const ordersHook = useServiceOrders(orderQuery)
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
+
+  const setTabAndUrl = useCallback(
+    (key: ServicesTabKey) => {
+      setTab(key)
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.set('tab', key)
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const setSelectedOrderIdAndUrl = useCallback(
+    (id: string | null) => {
+      setSelectedOrderId(id)
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (id) next.set('order_id', id)
+          else next.delete('order_id')
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const setStatusFilterAndUrl = useCallback(
+    (value: string) => {
+      setStatusFilter(value)
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (!value || value === 'all') next.delete('status')
+          else if (ORDER_STATUSES.includes(value as ServiceOrderStatus)) next.set('status', value)
+          else next.delete('status')
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const setCandidateIdInUrl = useCallback(
+    (id: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          const t = id.trim()
+          if (t) {
+            next.set('candidate_id', t)
+            next.delete('vacancy_id')
+          } else {
+            next.delete('candidate_id')
+          }
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  const setVacancyIdInUrl = useCallback(
+    (id: string) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          const t = id.trim()
+          if (t) {
+            next.set('vacancy_id', t)
+            next.delete('candidate_id')
+          } else {
+            next.delete('vacancy_id')
+          }
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
 
   useEffect(() => {
     const tabParam = searchParams.get('tab')
@@ -186,7 +358,27 @@ export function ServicesPage() {
     if (orderId) {
       setSelectedOrderId(orderId)
     }
-  }, [searchParams])
+    const statusParam = String(searchParams.get('status') || '').trim()
+    if (statusParam && ORDER_STATUSES.includes(statusParam as ServiceOrderStatus)) {
+      setStatusFilter(statusParam)
+    }
+    const candParam = companyIdFromUrl ? '' : String(searchParams.get('candidate_id') || '').trim()
+    const vacParam = String(searchParams.get('vacancy_id') || '').trim()
+    if (!candParam) {
+      appliedCandidateIdFromUrlRef.current = null
+    } else if (appliedCandidateIdFromUrlRef.current !== candParam) {
+      appliedCandidateIdFromUrlRef.current = candParam
+      setOrderForm((prev) => ({ ...prev, candidateId: candParam, vacancyId: '', companyId: '' }))
+    }
+    if (candParam) {
+      appliedVacancyIdFromUrlRef.current = null
+    } else if (!vacParam) {
+      appliedVacancyIdFromUrlRef.current = null
+    } else if (appliedVacancyIdFromUrlRef.current !== vacParam) {
+      appliedVacancyIdFromUrlRef.current = vacParam
+      setOrderForm((prev) => ({ ...prev, vacancyId: vacParam, candidateId: '', companyId: '' }))
+    }
+  }, [searchParams, companyIdFromUrl])
 
   const orderDetailHook = useServiceOrder(selectedOrderId)
   const orderSummaryHook = useServiceOrderSummary(selectedOrderId)
@@ -214,6 +406,30 @@ export function ServicesPage() {
   const [billingStatusFilter, setBillingStatusFilter] = useState<string>('all')
   const [billingInvoices, setBillingInvoices] = useState<any[]>([])
   const [billingRowAction, setBillingRowAction] = useState<string | null>(null)
+
+  const setBillingStatusFilterAndUrl = useCallback(
+    (value: string) => {
+      setBillingStatusFilter(value)
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (!value || value === 'all') next.delete('billing_filter')
+          else if (SERVICES_BILLING_URL_FILTER_SET.has(value)) next.set('billing_filter', value)
+          else next.delete('billing_filter')
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setSearchParams],
+  )
+
+  useEffect(() => {
+    const billingFilterParam = String(searchParams.get('billing_filter') || '').trim()
+    if (billingFilterParam && SERVICES_BILLING_URL_FILTER_SET.has(billingFilterParam)) {
+      setBillingStatusFilter(billingFilterParam)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     let active = true
@@ -255,7 +471,7 @@ export function ServicesPage() {
       ? ordersHook.orders.filter((o) => o.company_id === companyIdFromUrl)
       : ordersHook.orders
     if (pool.length === 0) {
-      if (companyIdFromUrl) setSelectedOrderId(null)
+      if (companyIdFromUrl) setSelectedOrderIdAndUrl(null)
       return
     }
     const orderIdParam = searchParams.get('order_id')
@@ -264,9 +480,9 @@ export function ServicesPage() {
       return
     }
     if (!selectedOrderId || !pool.some((o) => o.id === selectedOrderId)) {
-      setSelectedOrderId(pool[0].id)
+      setSelectedOrderIdAndUrl(pool[0].id)
     }
-  }, [ordersHook.orders, selectedOrderId, companyIdFromUrl, searchParams])
+  }, [ordersHook.orders, selectedOrderId, companyIdFromUrl, searchParams, setSelectedOrderIdAndUrl])
 
   useEffect(() => {
     let active = true
@@ -552,7 +768,7 @@ export function ServicesPage() {
           className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
             tab === key ? 'bg-slate-900 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'
           }`}
-          onClick={() => setTab(key)}
+          onClick={() => setTabAndUrl(key)}
         >
           {t(`app.services.tabs.${key}`, { defaultValue: key })}
         </button>
@@ -561,7 +777,7 @@ export function ServicesPage() {
   )
 
   const heroSection = (
-    <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+    <section className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white p-3 shadow-none">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
@@ -579,7 +795,7 @@ export function ServicesPage() {
             type="button"
             className="rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
             onClick={() => {
-              setTab('orders')
+              setTabAndUrl('orders')
               const el = document.getElementById('services-new-order')
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }}
@@ -590,7 +806,7 @@ export function ServicesPage() {
             type="button"
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             onClick={() => {
-              setTab('catalog')
+              setTabAndUrl('catalog')
               const el = document.getElementById('services-new-service')
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
             }}
@@ -602,7 +818,7 @@ export function ServicesPage() {
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
             onClick={async () => {
               if (!selectedOrderId) {
-                setTab('orders')
+                setTabAndUrl('orders')
                 setOrdersMessage(t('app.services.billing.create_invoice.select_order', { defaultValue: 'Select an order first to create invoice.' }))
                 return
               }
@@ -611,7 +827,7 @@ export function ServicesPage() {
                 navigate(`/app/invoices/${invoice.id}`)
               } catch (e: any) {
                 setBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
-                setTab('billing')
+                setTabAndUrl('billing')
               }
             }}
           >
@@ -624,8 +840,8 @@ export function ServicesPage() {
           type="button"
           className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
           onClick={() => {
-            setTab('orders')
-            setStatusFilter('all')
+            setTabAndUrl('orders')
+            setStatusFilterAndUrl('all')
             setOrdersDrilldown(null)
           }}
         >
@@ -636,8 +852,8 @@ export function ServicesPage() {
           type="button"
           className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
           onClick={() => {
-            setTab('billing')
-            setBillingStatusFilter('unpaid')
+            setTabAndUrl('billing')
+            setBillingStatusFilterAndUrl('unpaid')
           }}
         >
           <div className="text-[11px] font-medium text-slate-600">{t('app.services.overview.kpi.outstanding', { defaultValue: 'Outstanding' })}</div>
@@ -649,8 +865,8 @@ export function ServicesPage() {
           type="button"
           className="rounded-xl border border-red-200 bg-red-50/40 p-2.5 text-left hover:bg-red-50"
           onClick={() => {
-            setTab('billing')
-            setBillingStatusFilter('overdue')
+            setTabAndUrl('billing')
+            setBillingStatusFilterAndUrl('overdue')
           }}
         >
           <div className="text-[11px] font-medium text-red-700">{t('app.services.overview.kpi.overdue', { defaultValue: 'Overdue' })}</div>
@@ -661,7 +877,7 @@ export function ServicesPage() {
         <button
           type="button"
           className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
-          onClick={() => setTab('analytics')}
+          onClick={() => setTabAndUrl('analytics')}
         >
           <div className="text-[11px] font-medium text-slate-600">{t('app.services.overview.kpi.invoiced', { defaultValue: 'Invoiced' })}</div>
           <div className="mt-0.5 text-lg font-semibold text-slate-900">
@@ -671,7 +887,7 @@ export function ServicesPage() {
         <button
           type="button"
           className="rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-left hover:bg-slate-100"
-          onClick={() => setTab('analytics')}
+          onClick={() => setTabAndUrl('analytics')}
         >
           <div className="text-[11px] font-medium text-slate-600">{t('app.services.overview.kpi.paid', { defaultValue: 'Paid' })}</div>
           <div className="mt-0.5 text-lg font-semibold text-slate-900">
@@ -683,11 +899,11 @@ export function ServicesPage() {
   )
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       {heroSection}
 
       {tab === 'overview' && (
-        <div className="space-y-4">
+        <div className="space-y-0 gap-0">
           <div className="card p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -705,8 +921,8 @@ export function ServicesPage() {
                   type="button"
                   className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                   onClick={() => {
-                    setTab('orders')
-                    setStatusFilter('all')
+                    setTabAndUrl('orders')
+                    setStatusFilterAndUrl('all')
                     setOrdersDrilldown(null)
                   }}
                 >
@@ -716,8 +932,8 @@ export function ServicesPage() {
                   type="button"
                   className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
                   onClick={() => {
-                    setTab('billing')
-                    setBillingStatusFilter('unpaid')
+                    setTabAndUrl('billing')
+                    setBillingStatusFilterAndUrl('unpaid')
                   }}
                 >
                   {t('app.services.overview.actions.open_unpaid', { defaultValue: 'Unpaid invoices' })}
@@ -732,6 +948,97 @@ export function ServicesPage() {
             </div>
           </div>
 
+          <div className="card p-4">
+            <div className="text-sm font-semibold text-slate-900">
+              {t('app.services.overview.flow.title', { defaultValue: 'Revenue path' })}
+            </div>
+            <div className="mt-0.5 text-xs text-slate-500">
+              {t('app.services.overview.flow.subtitle', {
+                defaultValue: 'Sell → fulfill → invoice → collect — each step jumps to the right tab and filter.',
+              })}
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {(
+                [
+                  {
+                    key: 'sell',
+                    step: '1',
+                    title: t('app.services.overview.flow.sell.title', { defaultValue: 'Sell' }),
+                    desc: t('app.services.overview.flow.sell.desc', {
+                      defaultValue: 'Attach catalog lines to a client, candidate, or vacancy.',
+                    }),
+                    cta: t('app.services.overview.flow.sell.cta', { defaultValue: 'New order' }),
+                    onClick: () => {
+                      setTabAndUrl('orders')
+                      setStatusFilterAndUrl('all')
+                      setOrdersDrilldown(null)
+                      requestAnimationFrame(() => {
+                        document.getElementById('services-new-order')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      })
+                    },
+                  },
+                  {
+                    key: 'fulfill',
+                    step: '2',
+                    title: t('app.services.overview.flow.fulfill.title', { defaultValue: 'Fulfill' }),
+                    desc: t('app.services.overview.flow.fulfill.desc', {
+                      defaultValue: 'Schedules, documents, mark delivered — then invoice.',
+                    }),
+                    cta: t('app.services.overview.flow.fulfill.cta', { defaultValue: 'Orders to fulfill' }),
+                    onClick: () => {
+                      setTabAndUrl('orders')
+                      setStatusFilterAndUrl('confirmed')
+                      setOrdersDrilldown({ kind: 'status', status: 'confirmed' })
+                    },
+                  },
+                  {
+                    key: 'invoice',
+                    step: '3',
+                    title: t('app.services.overview.flow.invoice.title', { defaultValue: 'Invoice' }),
+                    desc: t('app.services.overview.flow.invoice.desc', {
+                      defaultValue: 'Create from order, send, track status in Billing.',
+                    }),
+                    cta: t('app.services.overview.flow.invoice.cta', { defaultValue: 'Open billing' }),
+                    onClick: () => {
+                      setTabAndUrl('billing')
+                      setBillingStatusFilterAndUrl('all')
+                    },
+                  },
+                  {
+                    key: 'collect',
+                    step: '4',
+                    title: t('app.services.overview.flow.collect.title', { defaultValue: 'Collect' }),
+                    desc: t('app.services.overview.flow.collect.desc', {
+                      defaultValue: 'Unpaid and overdue — mark paid from order detail or invoice.',
+                    }),
+                    cta: t('app.services.overview.flow.collect.cta', { defaultValue: 'Unpaid invoices' }),
+                    onClick: () => {
+                      setTabAndUrl('billing')
+                      setBillingStatusFilterAndUrl('unpaid')
+                    },
+                  },
+                ] as const
+              ).map((col) => (
+                <div
+                  key={col.key}
+                  className="flex flex-col rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-left"
+                >
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    {col.step} · {col.title}
+                  </div>
+                  <p className="mt-1 flex-1 text-xs leading-snug text-slate-600">{col.desc}</p>
+                  <button
+                    type="button"
+                    className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-50"
+                    onClick={col.onClick}
+                  >
+                    {col.cta}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="card p-4 lg:col-span-2">
               <div className="text-sm font-semibold text-slate-900">
@@ -742,8 +1049,8 @@ export function ServicesPage() {
                   type="button"
                   className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50"
                   onClick={() => {
-                    setTab('orders')
-                    setStatusFilter('confirmed')
+                    setTabAndUrl('orders')
+                    setStatusFilterAndUrl('confirmed')
                     setOrdersDrilldown({ kind: 'status', status: 'confirmed' })
                   }}
                 >
@@ -756,8 +1063,8 @@ export function ServicesPage() {
                   type="button"
                   className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50"
                   onClick={() => {
-                    setTab('orders')
-                    setStatusFilter('completed')
+                    setTabAndUrl('orders')
+                    setStatusFilterAndUrl('completed')
                     setOrdersDrilldown({ kind: 'status', status: 'completed' })
                   }}
                 >
@@ -779,8 +1086,8 @@ export function ServicesPage() {
                     type="button"
                     className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-left text-red-800 hover:bg-red-50/80"
                     onClick={() => {
-                      setTab('billing')
-                      setBillingStatusFilter('overdue')
+                      setTabAndUrl('billing')
+                      setBillingStatusFilterAndUrl('overdue')
                     }}
                   >
                     {t('app.services.overview.alerts.overdue', { defaultValue: 'Overdue invoices require attention.' })}
@@ -790,7 +1097,7 @@ export function ServicesPage() {
                   <button
                     type="button"
                     className="w-full rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left text-amber-800 hover:bg-amber-50/80"
-                    onClick={() => setTab('analytics')}
+                    onClick={() => setTabAndUrl('analytics')}
                   >
                     {t('app.services.overview.alerts.cost_coverage', {
                       defaultValue: 'Low cost coverage ({{coverage}}%). Confirm item costs for reliable margin.',
@@ -803,8 +1110,8 @@ export function ServicesPage() {
                     type="button"
                     className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-700 hover:bg-slate-100"
                     onClick={() => {
-                      setTab('orders')
-                      setStatusFilter('confirmed')
+                      setTabAndUrl('orders')
+                      setStatusFilterAndUrl('confirmed')
                       setOrdersDrilldown({ kind: 'status', status: 'confirmed' })
                     }}
                   >
@@ -818,7 +1125,7 @@ export function ServicesPage() {
                   <button
                     type="button"
                     className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-slate-700 hover:bg-slate-100"
-                    onClick={() => setTab('orders')}
+                    onClick={() => setTabAndUrl('orders')}
                   >
                     {t('app.services.overview.alerts.docs_missing', {
                       defaultValue: 'Orders with missing required docs: {{count}}',
@@ -852,17 +1159,18 @@ export function ServicesPage() {
           onSubmit={handleCreateService}
           onToggleActive={handleToggleServiceActive}
           message={catalogMessage}
+          onGoToOrders={() => setTabAndUrl('orders')}
         />
       )}
       {tab === 'orders' && (
         <OrdersTab
           statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
+          onStatusFilterChange={setStatusFilterAndUrl}
           orders={ordersHook.orders}
           loading={ordersHook.loading}
           message={ordersMessage}
           selectedOrderId={selectedOrderId}
-          onSelectOrder={setSelectedOrderId}
+          onSelectOrder={setSelectedOrderIdAndUrl}
           order={orderDetailHook.order}
           summary={orderSummaryHook.summary}
           canManage={can('services.orders.manage')}
@@ -884,6 +1192,8 @@ export function ServicesPage() {
           urlCompanyScopeId={companyIdFromUrl || null}
           urlCompanyScopeName={urlCompanyScopeName}
           onClearUrlCompanyScope={companyIdFromUrl ? clearUrlCompanyScope : undefined}
+          onCandidateIdUrlSync={companyIdFromUrl ? undefined : setCandidateIdInUrl}
+          onVacancyIdUrlSync={companyIdFromUrl ? undefined : setVacancyIdInUrl}
         />
       )}
       {tab === 'analytics' && (
@@ -907,19 +1217,23 @@ export function ServicesPage() {
             if (!params.status) search.set('unpaid', '1')
             navigate(`/app/invoices${search.toString() ? `?${search.toString()}` : ''}`)
           }}
+          onOpenServicesBilling={(filter) => {
+            setTabAndUrl('billing')
+            setBillingStatusFilterAndUrl(filter)
+          }}
           onDrilldown={(next) => {
             setOrdersDrilldown(next)
             if (next.kind === 'status') {
-              setStatusFilter(next.status)
+              setStatusFilterAndUrl(next.status)
             } else {
-              setStatusFilter('all')
+              setStatusFilterAndUrl('all')
             }
             if (next.kind === 'order') {
-              setSelectedOrderId(next.orderId)
+              setSelectedOrderIdAndUrl(next.orderId)
             } else {
-              setSelectedOrderId(null)
+              setSelectedOrderIdAndUrl(null)
             }
-            setTab('orders')
+            setTabAndUrl('orders')
           }}
           formatStatus={(status) => t(`app.services.status.order.${status}`)}
         />
@@ -947,7 +1261,7 @@ export function ServicesPage() {
                       ? 'border-red-200 bg-red-50 text-red-700'
                       : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
                   }`}
-                  onClick={() => setBillingStatusFilter('overdue')}
+                  onClick={() => setBillingStatusFilterAndUrl('overdue')}
                 >
                   {t('app.services.billing.filters.overdue', { defaultValue: 'Overdue' })}
                 </button>
@@ -958,14 +1272,14 @@ export function ServicesPage() {
                       ? 'border-amber-200 bg-amber-50 text-amber-800'
                       : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
                   }`}
-                  onClick={() => setBillingStatusFilter('unpaid')}
+                  onClick={() => setBillingStatusFilterAndUrl('unpaid')}
                 >
                   {t('app.services.billing.filters.unpaid', { defaultValue: 'Unpaid' })}
                 </button>
                 <select
                   className="input w-auto py-2 text-sm"
                   value={billingStatusFilter}
-                  onChange={(e) => setBillingStatusFilter(e.target.value)}
+                  onChange={(e) => setBillingStatusFilterAndUrl(e.target.value)}
                 >
                   {['all', 'unpaid', 'draft', 'issued', 'sent', 'paid', 'overdue', 'cancelled'].map((s) => (
                     <option key={s} value={s}>
@@ -1010,13 +1324,35 @@ export function ServicesPage() {
             ) : billingError ? (
               <div className="text-sm text-red-600">{String(billingError)}</div>
             ) : billingInvoices.length === 0 ? (
-              <div className="text-sm text-slate-500">{t('app.services.billing.empty', { defaultValue: 'No invoices yet.' })}</div>
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-center">
+                <div className="text-sm font-semibold text-slate-900">
+                  {t('app.services.billing.empty_state.title', { defaultValue: 'No invoices in this view' })}
+                </div>
+                <p className="mx-auto mt-1 max-w-md text-xs text-slate-600">
+                  {t('app.services.billing.empty_state.desc', {
+                    defaultValue: 'Create an invoice from a service order, or open the full invoices list.',
+                  })}
+                </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <button type="button" className="btn-primary btn-sm" onClick={navigateToServicesOrdersTab}>
+                    {t('app.services.billing.empty_state.cta_orders', { defaultValue: 'Go to orders' })}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    onClick={() => navigate(`/app/invoices${selectedOrderId ? `?service_order_id=${selectedOrderId}` : ''}`)}
+                  >
+                    {t('app.services.billing.empty_state.cta_invoices', { defaultValue: 'Open invoices' })}
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="overflow-auto">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-xs text-slate-500">
                     <tr>
                       <th className="py-2 pr-3">{t('app.invoices.fields.number', { defaultValue: 'Number' })}</th>
+                      <th className="py-2 pr-3">{t('app.services.billing.table.service_order', { defaultValue: 'Service order' })}</th>
                       <th className="py-2 pr-3">{t('app.invoices.fields.status', { defaultValue: 'Status' })}</th>
                       <th className="py-2 pr-3">{t('app.invoices.fields.total', { defaultValue: 'Total' })}</th>
                       <th className="py-2 pr-3">{t('app.invoices.fields.paid', { defaultValue: 'Paid' })}</th>
@@ -1033,6 +1369,7 @@ export function ServicesPage() {
                         const outstanding = Math.max(0, total - paid)
                         const isOverdue = String(inv.status || '').toLowerCase() === 'overdue'
                         const isPaid = String(inv.status || '').toLowerCase() === 'paid' || outstanding <= 0
+                        const soId = String(inv.service_order_id || '').trim()
                         return (
                       <tr
                         key={inv.id}
@@ -1045,6 +1382,19 @@ export function ServicesPage() {
                           <button type="button" className="hover:underline" onClick={() => navigate(`/app/invoices/${inv.id}`)}>
                             {inv.invoice_number}
                           </button>
+                        </td>
+                        <td className="py-2 pr-3 text-slate-700">
+                          {soId ? (
+                            <button
+                              type="button"
+                              className="font-mono text-xs font-semibold text-brand-700 hover:underline"
+                              onClick={() => navigateToServicesOrder(soId)}
+                            >
+                              {soId.slice(0, 8)}…
+                            </button>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
                         </td>
                         <td className="py-2 pr-3 text-slate-700">{inv.status}</td>
                         <td className="py-2 pr-3 text-slate-700">{formatAmount(total)}</td>
@@ -1162,6 +1512,7 @@ type CatalogTabProps = {
   onSubmit: (ev: FormEvent) => void
   onToggleActive: (service: AdditionalService) => void
   message: string | null
+  onGoToOrders?: () => void
 }
 
 function CatalogTab({
@@ -1175,6 +1526,7 @@ function CatalogTab({
   onSubmit,
   onToggleActive,
   message,
+  onGoToOrders,
 }: CatalogTabProps) {
   const { t } = useI18n()
   return (
@@ -1336,8 +1688,15 @@ function CatalogTab({
               </tr>
             ) : services.length === 0 ? (
               <tr>
-                <td colSpan={canManage ? 10 : 9} className="px-4 py-4 text-center text-slate-500">
-                  {t('app.services.catalog.table.empty')}
+                <td colSpan={canManage ? 10 : 9} className="px-4 py-6 text-center text-slate-500">
+                  <div className="flex flex-col items-center gap-3">
+                    <span>{t('app.services.catalog.table.empty')}</span>
+                    {onGoToOrders ? (
+                      <button type="button" className="btn-secondary btn-sm" onClick={onGoToOrders}>
+                        {t('app.services.catalog.table.empty_cta_orders', { defaultValue: 'Go to orders' })}
+                      </button>
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -1415,6 +1774,8 @@ type OrdersTabProps = {
   urlCompanyScopeId?: string | null
   urlCompanyScopeName?: string | null
   onClearUrlCompanyScope?: () => void
+  onCandidateIdUrlSync?: (id: string) => void
+  onVacancyIdUrlSync?: (id: string) => void
 }
 
 type OrderOwnerChoice = 'candidate' | 'vacancy' | 'company'
@@ -1454,6 +1815,8 @@ function OrdersTab({
   urlCompanyScopeId,
   urlCompanyScopeName,
   onClearUrlCompanyScope,
+  onCandidateIdUrlSync,
+  onVacancyIdUrlSync,
 }: OrdersTabProps) {
   const { t } = useI18n()
   const navigate = useNavigate()
@@ -1483,6 +1846,8 @@ function OrdersTab({
   const [companyResults, setCompanyResults] = useState<Company[]>([])
   const [companyLoading, setCompanyLoading] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const candidateHydrateAttemptRef = useRef<string | null>(null)
+  const vacancyHydrateAttemptRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!urlCompanyScopeId) return
@@ -1528,6 +1893,83 @@ function OrdersTab({
     const hasSelectedOwner = Boolean(orderForm.candidateId || orderForm.vacancyId || orderForm.companyId)
     if (!hasSelectedOwner) setOwnerChoice(ownerDefault)
   }, [ownerDefault, orderForm.candidateId, orderForm.companyId, orderForm.vacancyId])
+
+  useEffect(() => {
+    if (urlCompanyScopeId) return
+    const cid = orderForm.candidateId.trim()
+    const hasVac = Boolean(orderForm.vacancyId.trim())
+    const hasCo = Boolean(orderForm.companyId.trim())
+    if (cid && !hasVac && !hasCo) {
+      setOwnerChoice('candidate')
+    }
+  }, [orderForm.candidateId, orderForm.vacancyId, orderForm.companyId, urlCompanyScopeId])
+
+  useEffect(() => {
+    if (urlCompanyScopeId) return
+    const vid = orderForm.vacancyId.trim()
+    const hasCand = Boolean(orderForm.candidateId.trim())
+    const hasCo = Boolean(orderForm.companyId.trim())
+    if (vid && !hasCand && !hasCo) {
+      setOwnerChoice('vacancy')
+    }
+  }, [orderForm.candidateId, orderForm.vacancyId, orderForm.companyId, urlCompanyScopeId])
+
+  useEffect(() => {
+    if (urlCompanyScopeId) return
+    const id = orderForm.candidateId.trim()
+    if (!id) {
+      candidateHydrateAttemptRef.current = null
+      return
+    }
+    if (selectedCandidate?.id === id) {
+      candidateHydrateAttemptRef.current = id
+      return
+    }
+    if (candidateHydrateAttemptRef.current === id) return
+
+    candidateHydrateAttemptRef.current = id
+    let cancelled = false
+    api
+      .get<Candidate>(`/candidates/${id}`)
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        if (data.id === id) setSelectedCandidate(data)
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedCandidate(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [orderForm.candidateId, selectedCandidate?.id, urlCompanyScopeId])
+
+  useEffect(() => {
+    if (urlCompanyScopeId) return
+    const id = orderForm.vacancyId.trim()
+    if (!id) {
+      vacancyHydrateAttemptRef.current = null
+      return
+    }
+    if (selectedVacancy?.id === id) {
+      vacancyHydrateAttemptRef.current = id
+      return
+    }
+    if (vacancyHydrateAttemptRef.current === id) return
+
+    vacancyHydrateAttemptRef.current = id
+    let cancelled = false
+    getVacancy(id)
+      .then((data) => {
+        if (cancelled || !data) return
+        if (data.id === id) setSelectedVacancy(data as Vacancy)
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedVacancy(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [orderForm.vacancyId, selectedVacancy?.id, urlCompanyScopeId])
 
   useEffect(() => {
     try {
@@ -1606,11 +2048,13 @@ function OrdersTab({
       companyId: choice === 'company' ? orderForm.companyId : '',
     })
     if (choice !== 'candidate') {
+      onCandidateIdUrlSync?.('')
       setSelectedCandidate(null)
       setCandidateQuery('')
       setCandidateResults([])
     }
     if (choice !== 'vacancy') {
+      onVacancyIdUrlSync?.('')
       setSelectedVacancy(null)
       setVacancyQuery('')
       setVacancyResults([])
@@ -1632,6 +2076,8 @@ function OrdersTab({
       vacancyId: '',
       companyId: '',
     })
+    onCandidateIdUrlSync?.(candidate.id)
+    onVacancyIdUrlSync?.('')
     setOwnerChoice('candidate')
     setSelectedVacancy(null)
     setSelectedCompany(null)
@@ -1642,6 +2088,7 @@ function OrdersTab({
     setCandidateQuery('')
     setCandidateResults([])
     onOrderFormChange({ ...orderForm, candidateId: '' })
+    onCandidateIdUrlSync?.('')
   }
 
   const showCandidateResults = ownerChoice === 'candidate' && candidateQuery.trim().length >= 2
@@ -1693,6 +2140,8 @@ function OrdersTab({
       candidateId: '',
       companyId: '',
     })
+    onCandidateIdUrlSync?.('')
+    onVacancyIdUrlSync?.(vacancy.id)
     setOwnerChoice('vacancy')
     setSelectedCandidate(null)
     setSelectedCompany(null)
@@ -1703,6 +2152,7 @@ function OrdersTab({
     setVacancyQuery('')
     setVacancyResults([])
     onOrderFormChange({ ...orderForm, vacancyId: '' })
+    onVacancyIdUrlSync?.('')
   }
 
   const showVacancyResults = ownerChoice === 'vacancy' && vacancyQuery.trim().length >= 2
@@ -1754,6 +2204,8 @@ function OrdersTab({
       candidateId: '',
       vacancyId: '',
     })
+    onCandidateIdUrlSync?.('')
+    onVacancyIdUrlSync?.('')
     setOwnerChoice('company')
     setSelectedCandidate(null)
     setSelectedVacancy(null)
@@ -2440,7 +2892,7 @@ function OrdersTab({
                   })}
                   primaryAction={{
                     label: openEntityLabel,
-                    to: '/app/clients',
+                    to: '/app/clients/directory',
                   }}
                   secondaryAction={{
                     label: t('app.services.orders.list.empty_cta_leads', { defaultValue: 'Open leads' }),
@@ -2473,9 +2925,18 @@ function OrdersTab({
                           : 'border-slate-100 bg-white hover:bg-brand-50/40',
                       ].join(' ')}
                     >
-                      <div className="flex items-baseline justify-between">
+                      <div className="flex items-baseline justify-between gap-2">
                        <span className="text-sm font-medium text-brand-700">{ord.id.slice(0, 8)}…</span>
-                        <span className="flex items-center gap-2">
+                        <span className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+                          {hasInv && inv?.invoice_id ? (
+                            <Link
+                              to={`/app/invoices/${inv.invoice_id}`}
+                              className="shrink-0 text-[10px] font-semibold text-brand-700 underline-offset-2 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {t('app.services.orders.list.open_invoice', { defaultValue: 'Open invoice' })}
+                            </Link>
+                          ) : null}
                           {badge && (
                             <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-700">
                               {badge}
@@ -2499,6 +2960,10 @@ function OrdersTab({
                         {t('app.services.orders.list.meta', {
                           values: { count: ord.items.length, amount: formatAmount(ord.total_amount) },
                         })}
+                      </div>
+                      <div className="mt-2 border-t border-slate-100 pt-2 text-left text-xs font-medium text-brand-800">
+                        <span className="text-slate-500">{t('app.services.orders.list.next_step', { defaultValue: 'Next:' })}</span>{' '}
+                        {formatServiceOrderNextAction(resolveServiceOrderNextAction(ord, inv), t)}
                       </div>
                    </button>
                       )
@@ -2545,6 +3010,7 @@ type ServicesAnalyticsTabProps = {
   onAnalyticsSliceByChange: (value: 'client' | 'item' | 'status' | 'manager') => void
   onOpenClient: (companyId?: string | null) => void
   onOpenInvoices: (params: { companyId?: string | null; serviceOrderId?: string | null; status?: string | null }) => void
+  onOpenServicesBilling: (filter: 'unpaid' | 'overdue' | 'all') => void
   onDrilldown: (value:
     | { kind: 'order'; orderId: string }
     | { kind: 'client'; ownerKind: string; ownerId?: string | null }
@@ -2569,6 +3035,7 @@ function ServicesAnalyticsTab({
   onAnalyticsSliceByChange,
   onOpenClient,
   onOpenInvoices,
+  onOpenServicesBilling,
   onDrilldown,
   formatStatus,
 }: ServicesAnalyticsTabProps) {
@@ -2701,7 +3168,7 @@ function ServicesAnalyticsTab({
         <button
           type="button"
           className="card p-4 text-left transition hover:bg-slate-50"
-          onClick={() => onOpenInvoices({ serviceOrderId: null, companyId: null, status: 'overdue' })}
+          onClick={() => onOpenServicesBilling('overdue')}
         >
           <div className="text-sm font-semibold">{t('app.services.analytics.billing.overdue', { defaultValue: 'Overdue invoices' })}</div>
           <div className="mt-2 text-3xl font-semibold">{overdueCount}</div>
@@ -2726,7 +3193,7 @@ function ServicesAnalyticsTab({
         <button
           type="button"
           className="card p-4 text-left transition hover:bg-slate-50"
-          onClick={() => onOpenInvoices({ serviceOrderId: null, companyId: null, status: null })}
+          onClick={() => onOpenServicesBilling('unpaid')}
         >
           <div className="text-sm font-semibold">{t('app.services.analytics.billing.outstanding', { defaultValue: 'Outstanding' })}</div>
           <div className="mt-2 text-3xl font-semibold">{formatAmount(outstanding)}</div>
@@ -3017,8 +3484,13 @@ function OrderDetail({
   onScheduleSubmit,
   onDeliverItem,
 }: OrderDetailProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const navigate = useNavigate()
+  const dateFnsLocale = useMemo(() => {
+    if (locale === 'pl') return plFns
+    if (locale === 'ru') return ruFns
+    return enUSFns
+  }, [locale])
   const [creatingInvoice, setCreatingInvoice] = useState(false)
   const [invoiceError, setInvoiceError] = useState<string | null>(null)
   const [invoiceActionLoading, setInvoiceActionLoading] = useState<string | null>(null)
@@ -3052,6 +3524,24 @@ function OrderDetail({
     })
     return map
   }, [t])
+  const invoiceOutstanding = invoiceSummary?.invoice_id
+    ? invoiceOutstandingAmount(invoiceSummary.total_amount, invoiceSummary.paid_amount)
+    : 0
+  const invoiceOverdueDays =
+    invoiceSummary?.invoice_id && invoiceSummary?.due_date
+      ? invoiceDaysPastDue(
+          invoiceSummary.due_date,
+          invoiceOutstandingAmount(invoiceSummary.total_amount, invoiceSummary.paid_amount),
+        )
+      : null
+  const missingDocCount = useMemo(() => {
+    const md = summary?.missing_documents ?? {}
+    let n = 0
+    for (const v of Object.values(md)) {
+      if (Array.isArray(v) && v.length > 0) n += v.length
+    }
+    return n
+  }, [summary])
 
   return (
     <div className="space-y-4">
@@ -3102,6 +3592,43 @@ function OrderDetail({
       </div>
       {invoiceError && <div className="text-sm text-red-600">{invoiceError}</div>}
 
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2.5 text-xs text-slate-700">
+        <span className="max-w-full rounded-full border border-brand-200 bg-white px-2.5 py-1 font-semibold text-brand-900">
+          {t('app.services.orders.ops.next_label', { defaultValue: 'Next step' })}:{' '}
+          {formatServiceOrderNextAction(resolveServiceOrderNextAction(order, invoiceSummary), t)}
+        </span>
+        {summary && summary.blocking_items.length > 0 ? (
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-medium text-amber-900">
+            {t('app.services.orders.ops.blocking', {
+              defaultValue: 'Blocking: {{count}}',
+              values: { count: summary.blocking_items.length },
+            })}
+          </span>
+        ) : null}
+        {missingDocCount > 0 ? (
+          <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 font-medium text-rose-900">
+            {t('app.services.orders.ops.missing_docs', {
+              defaultValue: 'Missing docs: {{count}}',
+              values: { count: missingDocCount },
+            })}
+          </span>
+        ) : null}
+        {invoiceOverdueDays != null ? (
+          <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 font-medium text-red-900">
+            {t('app.services.orders.ops.invoice_overdue', {
+              defaultValue: '{{days}}d past due',
+              values: { days: invoiceOverdueDays },
+            })}
+          </span>
+        ) : null}
+        <span className="ml-auto text-slate-500">
+          {t('app.services.orders.ops.updated', { defaultValue: 'Updated' })}{' '}
+          {order.updated_at
+            ? formatDistanceToNow(new Date(order.updated_at), { addSuffix: true, locale: dateFnsLocale })
+            : '—'}
+        </span>
+      </div>
+
       <div className="rounded-lg border border-slate-200 bg-white p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -3130,6 +3657,14 @@ function OrderDetail({
                 })}
               </div>
             )}
+            {invoiceSummary?.invoice_id && invoiceOutstanding > 0 ? (
+              <div className="mt-1 text-xs font-semibold text-amber-800">
+                {t('app.services.orders.detail.invoice.outstanding_line', {
+                  defaultValue: 'Outstanding {{amount}}',
+                  values: { amount: formatAmount(invoiceOutstanding) },
+                })}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">

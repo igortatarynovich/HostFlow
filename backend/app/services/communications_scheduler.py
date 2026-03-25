@@ -5,11 +5,12 @@ import logging
 import os
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from typing import Any, Dict
+from typing import Any, Dict, List
 from uuid import UUID
 
 import sqlalchemy as sa
 from datetime import timedelta
+from sqlalchemy.exc import OperationalError
 
 from backend.app.db.session import async_session_maker
 from backend.app.models.tenant import Tenant
@@ -1357,7 +1358,53 @@ async def _run_scheduler_tick(state: Dict[str, Any]) -> None:
                 tenant_runtime["last_invoices_sla_error"] = str(exc)
                 logger.warning("[communications-scheduler] invoices SLA failed tenant=%s (%s)", tenant_id, exc)
 
+    tick_summary.setdefault("risk_intel_runs", 0)
+    tick_summary.setdefault("risk_intel_errors", 0)
+    await _run_risk_intel_hourly_pass(state, tenants, now, tick_summary)
+
     _RUNTIME_STATUS["last_tick_summary"] = tick_summary
+
+
+async def _run_risk_intel_hourly_pass(
+    state: Dict[str, Any],
+    tenants: List[Any],
+    now: datetime,
+    tick_summary: Dict[str, Any],
+) -> None:
+    """Phase B: persist hourly risk aggregate + shadow rows (all active tenants, throttled)."""
+    if not _env_bool("RISK_INTEL_HOURLY_ENABLED", True):
+        return
+    interval = _env_int("RISK_INTEL_HOURLY_SECONDS", 3600)
+    last = state.setdefault("risk_intel_hourly_last", {})
+    try:
+        from backend.app.services.risk_intel_v1 import run_risk_intel_hourly_job
+    except Exception as exc:
+        logger.warning("[communications-scheduler] risk_intel import failed: %s", exc)
+        return
+
+    for tenant in tenants:
+        tid = str(getattr(tenant, "id", "") or "")
+        if not tid:
+            continue
+        prev = last.get(tid)
+        if prev is not None and (now - prev).total_seconds() < interval:
+            continue
+        try:
+            async with async_session_maker() as db:
+                await run_risk_intel_hourly_job(db, tenant, now)
+                await db.commit()
+            last[tid] = now
+            tick_summary["risk_intel_runs"] = int(tick_summary.get("risk_intel_runs") or 0) + 1
+        except OperationalError as exc:
+            tick_summary["risk_intel_errors"] = int(tick_summary.get("risk_intel_errors") or 0) + 1
+            logger.warning(
+                "[communications-scheduler] risk_intel hourly skipped tenant=%s (schema/db: %s)",
+                tid,
+                exc,
+            )
+        except Exception as exc:
+            tick_summary["risk_intel_errors"] = int(tick_summary.get("risk_intel_errors") or 0) + 1
+            logger.warning("[communications-scheduler] risk_intel hourly failed tenant=%s (%s)", tid, exc)
 
 
 async def communications_scheduler_loop(stop_event: asyncio.Event) -> None:

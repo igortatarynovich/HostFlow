@@ -20,6 +20,12 @@ class VacancyIn(BaseModel):
     required_documents_template_id: Optional[UUID] = None
     employment_type: EmploymentType = Field(default=EmploymentType.full_time)
     extra: Dict[str, Any] = Field(default_factory=dict)
+    headcount_target: Optional[int] = Field(
+        default=None,
+        ge=0,
+        le=9999,
+        description="Planned positions to fill; omit or 0 for none",
+    )
 
 class VacancyOut(BaseModel):
     id: str
@@ -47,6 +53,8 @@ class VacancyOut(BaseModel):
     manager_short: Optional[str] = None
     manager_name: Optional[str] = None
     candidate_count: int = 0
+    last_candidate_activity_at: Optional[datetime] = None
+    headcount_target: Optional[int] = None
 
 class VacancyPatch(BaseModel):
     title: Optional[str] = None
@@ -73,4 +81,10 @@ class VacancyPatch(BaseModel):
     candidate_profile_id: Optional[UUID] = None
     required_documents_template_id: Optional[UUID] = None
     extra: Optional[Dict[str, Any]] = None
+    headcount_target: Optional[int] = Field(
+        default=None,
+        ge=0,
+        le=9999,
+        description="Set planned headcount; send 0 or null with field present to clear",
+    )
     model_config = ConfigDict(validate_by_name=True)

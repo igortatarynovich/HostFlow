@@ -86,6 +86,8 @@ export interface ServiceOrderQuery {
   vacancyId?: string
   companyId?: string
   status?: ServiceOrderStatus | ServiceOrderStatus[]
+  /** Substring match on order id or notes (backend caps result count when set). */
+  q?: string
 }
 
 export async function listServiceOrders(params: ServiceOrderQuery = {}) {
@@ -94,6 +96,7 @@ export async function listServiceOrders(params: ServiceOrderQuery = {}) {
   if (params.vacancyId) query.vacancy_id = params.vacancyId
   if (params.companyId) query.company_id = params.companyId
   if (params.status) query.status = params.status
+  if (params.q) query.q = params.q
 
   const { data } = await api.get<AdditionalServiceOrder[]>('/service-orders', {
     params: Object.keys(query).length ? query : undefined,

@@ -78,15 +78,15 @@ def _candidate_status_url(candidate: Candidate) -> str | None:
     return f"{base_url.rstrip('/')}/public/status/{token}"
 
 
-def _candidate_scan_url(candidate: Candidate, *, doc_type: str | None = None) -> str | None:
+def _candidate_intake_documents_url(candidate: Candidate, *, doc_type: str | None = None) -> str | None:
     token = str(getattr(candidate, "intake_token", None) or "").strip()
     if not token:
         return None
     base_url = str(settings.frontend_url or "https://hostflow.cc").strip() or "https://hostflow.cc"
-    query: Dict[str, str] = {"token": token}
+    query: Dict[str, str] = {"mode": "documents"}
     if doc_type:
         query["doc"] = str(doc_type).strip()
-    return f"{base_url.rstrip('/')}/public/scan?{urlencode(query)}"
+    return f"{base_url.rstrip('/')}/public/apply/{token}?{urlencode(query)}"
 
 
 def _candidate_tg_chat_id(candidate: Candidate) -> str | None:
@@ -443,12 +443,12 @@ async def send_candidate_documents_progress_telegram(
                 lines.append("Осталось загрузить:")
                 lines.extend(_format_bullets(missing))
         next_doc = str(snapshot.get("next_doc_type") or "").strip() or None
-        scan_url = _candidate_scan_url(candidate, doc_type=next_doc)
-        if scan_url:
+        docs_url = _candidate_intake_documents_url(candidate, doc_type=next_doc)
+        if docs_url:
             if next_doc:
-                lines.append(f"Сканер для следующего документа: {scan_url}")
+                lines.append(f"Загрузка следующего документа на сайте: {docs_url}")
             else:
-                lines.append(f"Сканер документов: {scan_url}")
+                lines.append(f"Загрузка документов на сайте: {docs_url}")
         status_url = _candidate_status_url(candidate)
         if status_url:
             lines.append(f"Статус: {status_url}")
@@ -496,9 +496,9 @@ async def send_candidate_documents_deadline_nudge_telegram(
         ]
         lines.extend(_format_bullets(missing))
         lines.append(f"Быстрый шаг: /scan {next_doc}")
-        scan_url = _candidate_scan_url(candidate, doc_type=next_doc)
-        if scan_url:
-            lines.append(f"Сканер: {scan_url}")
+        docs_url = _candidate_intake_documents_url(candidate, doc_type=next_doc)
+        if docs_url:
+            lines.append(f"Загрузка на сайте: {docs_url}")
         status_url = _candidate_status_url(candidate)
         if status_url:
             lines.append(f"Статус: {status_url}")

@@ -2,6 +2,9 @@
  * Constants for candidates module
  */
 
+/** Правый work-panel: ширина колонки грида и `max-width` aside (должны совпадать). */
+export const CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX = 440
+
 export const DOC_READINESS_META: Record<string, { labelKey: string; className: string }> = {
   pending: { labelKey: 'app.candidates.docs.readiness.pending', className: 'bg-gray-100 text-gray-600' },
   requested: { labelKey: 'app.candidates.docs.readiness.requested', className: 'bg-blue-50 text-blue-700' },
@@ -32,6 +35,12 @@ export const QUICK_DOC_STATUS_SETS: Record<string, string[]> = {
   attention: ['problem', 'awaiting_review', 'in_progress'],
   pending: ['pending', 'requested', 'ordered'],
 };
+
+/** Навигационные quick views (не фильтры списка): единый источник для хука и drill-down ссылок. */
+export const CANDIDATES_QUICK_VIEW_NAV_PATHS = {
+  no_next_action: '/app/candidates/no-next-action',
+  overdue_next_action: '/app/tasks?tab=tasks&t_status=active&t_entity=candidate',
+} as const
 
 export const FILTER_STORAGE_KEY = 'cand.filters';
 export const VISIBLE_COLS_STORAGE_KEY = 'cand.visibleCols';
@@ -84,14 +93,16 @@ export const DEFAULT_VISIBLE_COLS: Record<string, boolean> = {
   short: false,
   manager: true,
   stage: true,
-  risk: true,
+  /** Phase C: optional column — enable via column picker (Overview / digests still surface risk). */
+  risk: false,
   created: false,
   firstContact: false,
   preferredChannel: false,
   inPoland: false,
   polandBasis: false,
   trailerTypes: false,
-  reasons: false,
+  /** Статусы/причины — быстрый сигнал «что не так». */
+  reasons: true,
   is_favorite: false,
   docsStatus: true,
   docsOrdered: false,
@@ -101,13 +112,14 @@ export const DEFAULT_VISIBLE_COLS: Record<string, boolean> = {
 
 // Порядок колонок по умолчанию (только видимые)
 export const DEFAULT_COLUMN_ORDER: string[] = [
-  // Operational compact schema: what users scan first on the list.
+  // Operational compact schema: scan stage → docs → role fit → assignee; risk is opt-in.
   'name',
   'stage',
-  'risk',
   'docsStatus',
+  'reasons',
   'vacancy',
   'manager',
+  'risk',
   // Optional operational doc signals (kept for power users).
   'docsOrdered',
   'docsValid',

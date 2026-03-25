@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { listServiceOrders } from '../../api/additionalServices'
 import type { AdditionalServiceOrder } from '../../api/types'
 import { useI18n } from '../../i18n'
-import { formatAmount } from '../../modules/services/utils'
+import { formatAmount, servicesWorkspacePath } from '../../modules/services/utils'
 
 export function CompanyServiceOrdersPanel({ companyId }: { companyId: string }) {
   const { t } = useI18n()
@@ -49,11 +49,7 @@ export function CompanyServiceOrdersPanel({ companyId }: { companyId: string }) 
           <p className="text-xs text-slate-500">{t('app.companies.detail.workspace.orders.service_subtitle')}</p>
         </div>
         <Link
-          to={
-            companyId
-              ? `/app/services?tab=orders&company_id=${encodeURIComponent(companyId)}`
-              : '/app/services?tab=orders'
-          }
+          to={servicesWorkspacePath('orders', { companyId })}
           className="btn-secondary btn-sm shrink-0 text-center text-sm"
         >
           {t('app.companies.detail.workspace.orders.open_services')}
@@ -103,7 +99,7 @@ export function CompanyServiceOrdersPanel({ companyId }: { companyId: string }) 
                   <td className="border-r border-slate-200 px-3 py-2 tabular-nums">{ord.items?.length ?? 0}</td>
                   <td className="px-3 py-2">
                     <Link
-                      to={`/app/services?tab=orders&company_id=${encodeURIComponent(companyId)}&order_id=${encodeURIComponent(ord.id)}`}
+                      to={servicesWorkspacePath('orders', { companyId, orderId: ord.id })}
                       className="text-sm font-medium text-brand-600 hover:underline"
                     >
                       {t('app.companies.detail.workspace.orders.open')}

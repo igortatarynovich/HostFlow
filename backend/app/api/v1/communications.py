@@ -7,11 +7,12 @@ import re
 import json
 from urllib.parse import urlencode
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +32,8 @@ from backend.app.models.communication import (
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
 from backend.app.models.vacancy import Vacancy
-from backend.app.models.tenant import Tenant
+from backend.app.models.reminder import Reminder, ReminderStatus
+from backend.app.models.tenant import Tenant, user_memberships
 from backend.app.models.user import User
 from backend.app.constants.stages import LABELS as CANDIDATE_STAGE_LABELS
 from backend.app.services.communications_allocator import allocate_thread, preview_allocation
@@ -54,6 +56,7 @@ from backend.app.services.communications_meta import (
 from backend.app.services.communications_telegram import (
     TelegramBotConfig,
     normalize_telegram_update,
+    send_telegram_document,
     send_telegram_text,
     telegram_delete_webhook,
     telegram_get_me,
@@ -75,6 +78,7 @@ from backend.app.services.communications_viber import (
 from backend.app.services.tenant_email import send_email_for_tenant
 from backend.app.core.settings import settings
 from backend.app.modules.documents.crud import ensure_ruleset_seed
+from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
 from backend.app.modules.documents.owner_summary import compute_owner_summary
 from backend.app.services.document_ruleset import load_default_ruleset
 from backend.app.services.ruleset_versioning import normalize_ruleset_payload
@@ -197,6 +201,18 @@ def _coerce_datetime(value: Any) -> datetime | None:
     return None
 
 
+def _clamp_db_str(value: Any, max_len: int) -> str | None:
+    """VARCHAR-safe slice for IMAP/OAuth poll payloads (long RFC822 From/To, Message-IDs)."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    if len(s) <= max_len:
+        return s
+    return s[:max_len]
+
+
 def _deep_merge_dict(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
     out = _as_dict(base)
     for key, value in _as_dict(patch).items():
@@ -255,6 +271,175 @@ def _tenant_comm_allowed_roles(tenant: Tenant | None) -> set[str]:
             if normalized:
                 out.add(normalized)
     return out
+
+
+def _canonical_membership_role_for_escalation(role_key: str) -> str:
+    k = str(role_key or "").strip().lower()
+    if not k:
+        return ""
+    aliases = {
+        "admin": "administrator",
+        "owner": "administrator",
+        "manager": "supervisor",
+        "hr": "recruiter",
+        "client": "client_manager",
+        "processor": "client_processor",
+    }
+    return aliases.get(k, k)
+
+
+async def _resolve_manual_escalation_recipient_user_ids(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    target: dict[str, Any],
+) -> list[str]:
+    """Resolve inbox manual-escalation recipients for Tasks + bell notifications."""
+    user_target = str(target.get("user_id") or "").strip()
+    if user_target:
+        return [user_target]
+    queue_target = str(target.get("queue") or "").strip()
+    role_target = str(target.get("role") or "").strip()
+    roles_to_query: list[str] = []
+    if queue_target:
+        roles_to_query = ["supervisor", "administrator"]
+    elif role_target:
+        canon = _canonical_membership_role_for_escalation(role_target)
+        if canon:
+            roles_to_query = [canon]
+    if not roles_to_query:
+        return []
+    stmt = (
+        sa.select(User.id)
+        .distinct()
+        .join(user_memberships, user_memberships.c.user_id == User.id)
+        .where(
+            user_memberships.c.tenant_id == tenant_id,
+            user_memberships.c.role.in_(roles_to_query),
+            User.is_active.is_(True),
+            User.deleted_at.is_(None),
+        )
+        .limit(25)
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    return [str(r) for r in rows if r]
+
+
+async def _emit_manual_thread_escalation_bridge(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    thread: CommunicationThread,
+    escalation: dict[str, Any],
+    actor_user_id: Optional[str],
+) -> None:
+    """Cross-domain bridge: Inbox ops escalation → Activity (reminder) + in-app notification + audit."""
+    from backend.app.services.reminder_tasks import create_reminder
+    from backend.app.services.user_notifications import create_notification
+
+    esc_at = str(escalation.get("escalated_at") or "").strip()
+    reason = str(escalation.get("reason") or "").strip()
+    target = _as_dict(escalation.get("target"))
+    actor = str(actor_user_id or "").strip() or "system"
+
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor if actor != "system" else None,
+        action="communications.thread.ops_escalated",
+        target_type="communication_thread",
+        target_id=str(thread.id),
+        payload={
+            "thread_id": str(thread.id),
+            "channel": thread.channel,
+            "reason": reason[:2000],
+            "target": target,
+            "escalated_at": esc_at,
+        },
+    )
+
+    recipient_ids = await _resolve_manual_escalation_recipient_user_ids(db, tenant_id=tenant_id, target=target)
+    if not recipient_ids:
+        return
+
+    ch = str(thread.channel or "message").strip() or "message"
+    subj = str(thread.subject or "").strip()
+    preview = (thread.last_message_preview or subj or str(thread.id))[:400]
+    title = f"Escalated {ch.upper()} thread"
+    if subj:
+        title = f"{title}: {subj[:80]}"
+
+    due = _now_utc() + timedelta(hours=4)
+    active_statuses = (
+        ReminderStatus.new,
+        ReminderStatus.pending,
+        ReminderStatus.sent,
+        ReminderStatus.overdue,
+    )
+
+    for uid in recipient_ids:
+        dedupe_key = f"ops_escalation:{tenant_id}:{thread.id}:{esc_at}:{uid}"
+        await create_notification(
+            db,
+            tenant_id=tenant_id,
+            user_id=uid,
+            event_type="communications_thread_escalated",
+            entity_type="communication_thread",
+            entity_id=str(thread.id),
+            payload={
+                "type": "communications_thread_escalated",
+                "thread_id": str(thread.id),
+                "channel": thread.channel,
+                "reason": reason[:500],
+                "escalation_target": target,
+                "title": title,
+                "description": preview,
+                "severity": "high",
+                "requires_action": True,
+                "source": "communications.ops_escalation",
+                "dedupe_key": dedupe_key,
+            },
+            dedupe_window_minutes=1440,
+        )
+        exists_stmt = (
+            sa.select(Reminder.id)
+            .where(
+                Reminder.tenant_id == tenant_id,
+                Reminder.entity_type == "communication_thread",
+                Reminder.entity_id == str(thread.id),
+                Reminder.assignee_id == uid,
+                Reminder.type == "communications_thread_escalated",
+                Reminder.status.in_(list(active_statuses)),
+            )
+            .limit(1)
+        )
+        row = (await db.execute(exists_stmt)).first()
+        if row:
+            continue
+        await create_reminder(
+            db,
+            tenant_id=tenant_id,
+            actor_id=actor,
+            payload={
+                "title": title,
+                "description": f"{reason[:500]}\n\n{preview}".strip(),
+                "type": "communications_thread_escalated",
+                "entity_type": "communication_thread",
+                "entity_id": str(thread.id),
+                "due_at": due,
+                "assignee_id": uid,
+                "priority": "high",
+                "channel": "internal",
+                "source": "communications.ops_escalation",
+                "message": reason[:500],
+                "payload": {
+                    "thread_id": str(thread.id),
+                    "channel": thread.channel,
+                    "escalation_target": target,
+                    "reason": reason[:2000],
+                },
+            },
+        )
 
 
 def _channel_response_sla_minutes(tenant: Tenant | None, channel: str) -> int | None:
@@ -426,6 +611,8 @@ class CommunicationThreadPatch(BaseModel):
     subject: str | None = Field(default=None, max_length=512)
     status: str | None = Field(default=None, max_length=32)
     assignee_id: str | None = Field(default=None, max_length=36)
+    linked_company_id: str | None = Field(default=None, max_length=36)
+    linked_candidate_id: str | None = Field(default=None, max_length=36)
     queue_assigned_by: str | None = Field(default=None, max_length=32)
     priority: str | None = Field(default=None, max_length=16)
     is_archived: bool | None = None
@@ -433,6 +620,17 @@ class CommunicationThreadPatch(BaseModel):
     participants_json: Dict[str, Any] | None = None
     tags_json: List[Any] | None = None
     thread_meta: Dict[str, Any] | None = None
+
+
+MAX_COMM_MESSAGE_ATTACHMENT_BYTES = 25 * 1024 * 1024
+
+
+class CommunicationMessageAttachmentUploadOut(BaseModel):
+    kind: str = "local_file"
+    filename: str
+    mime: str | None = None
+    size: int
+    storage_path: str
 
 
 class CommunicationMessageCreate(BaseModel):
@@ -581,6 +779,8 @@ class CommunicationChannelAccountCreate(BaseModel):
     inbox_address: str | None = Field(default=None, max_length=255)
     is_active: bool = True
     settings_json: Dict[str, Any] = Field(default_factory=dict)
+    # Top-level secret avoids some clients/proxies mishandling nested oauth.client_secret JSON.
+    oauth_client_secret: str | None = Field(default=None, max_length=2048)
 
 
 class CommunicationChannelAccountPatch(BaseModel):
@@ -589,6 +789,7 @@ class CommunicationChannelAccountPatch(BaseModel):
     inbox_address: str | None = Field(default=None, max_length=255)
     is_active: bool | None = None
     settings_json: Dict[str, Any] | None = None
+    oauth_client_secret: str | None = Field(default=None, max_length=2048)
 
 
 class EmailIngestRequest(BaseModel):
@@ -707,6 +908,7 @@ class CommunicationAccountActionResponse(BaseModel):
 
 class CommunicationAccountOAuthStartRequest(BaseModel):
     redirect_uri: str | None = Field(default=None, max_length=2048)
+    client_id: str | None = Field(default=None, max_length=512)
     scopes: List[str] = Field(default_factory=list)
     force_consent: bool = False
 
@@ -724,6 +926,7 @@ class CommunicationAccountOAuthCompleteRequest(BaseModel):
     state: str = Field(..., min_length=8, max_length=256)
     code: str | None = Field(default=None, max_length=4096)
     redirect_uri: str | None = Field(default=None, max_length=2048)
+    client_id: str | None = Field(default=None, max_length=512)
     access_token: str | None = Field(default=None, max_length=8192)
     refresh_token: str | None = Field(default=None, max_length=8192)
     token_type: str | None = Field(default="Bearer", max_length=64)
@@ -1390,6 +1593,13 @@ async def _ingest_email_outbound_from_mailbox(
     sent_at: datetime | None,
     tenant: Tenant,
 ) -> Tuple[bool, bool]:
+    provider_thread_ref = _clamp_db_str(provider_thread_ref, 255)
+    external_message_ref = _clamp_db_str(external_message_ref, 255)
+    subject = _clamp_db_str(subject, 512)
+    from_address = _clamp_db_str(from_address, 255)
+    to_address = _clamp_db_str(to_address, 255)
+    to_name = _clamp_db_str(to_name, 255)
+
     if external_message_ref:
         existing_msg_stmt = sa.select(CommunicationMessage).where(
             CommunicationMessage.tenant_id == tenant_id,
@@ -1693,6 +1903,72 @@ def _oauth_expires_soon(oauth_json: Dict[str, Any], *, skew_seconds: int = 120) 
         return False
 
 
+async def _refresh_oauth_tokens_in_settings_json(settings_json: Dict[str, Any], *, provider: str) -> str:
+    """
+    Exchange refresh_token for a new access_token; mutates settings_json['oauth'] (encrypted/plain fields).
+    Used when expires_at still looks valid but Google/Graph returns 401, or before normal expiry refresh.
+    """
+    oauth_json = _as_dict(settings_json.get("oauth"))
+    refresh_token = _oauth_refresh_token(oauth_json)
+    client_id = str(oauth_json.get("client_id") or "").strip()
+    client_secret = _oauth_client_secret(oauth_json)
+    if not refresh_token:
+        raise RuntimeError("OAuth refresh token is not configured")
+    if not client_id:
+        raise RuntimeError("OAuth client_id is required")
+    token_payload = await refresh_oauth_access_token(
+        provider=provider,
+        refresh_token=refresh_token,
+        client_id=client_id,
+        client_secret=client_secret,
+        scope=str(oauth_json.get("scope") or "").strip() or None,
+    )
+    oauth_next = {
+        **oauth_json,
+        "access_token": token_payload.access_token,
+        "expires_at": (_now_utc() + timedelta(seconds=int(token_payload.expires_in or 3600))).isoformat(),
+        "token_type": token_payload.token_type or str(oauth_json.get("token_type") or "Bearer"),
+        "scope": token_payload.scope or str(oauth_json.get("scope") or ""),
+        "oauth_status": "connected",
+        "last_error": None,
+        "last_refreshed_at": _now_utc().isoformat(),
+        "provider_payload": {
+            **_as_dict(oauth_json.get("provider_payload")),
+            **_as_dict(token_payload.provider_payload),
+        },
+    }
+    if token_payload.refresh_token:
+        oauth_next["refresh_token"] = token_payload.refresh_token
+    if token_payload.id_token:
+        oauth_next["id_token"] = token_payload.id_token
+    settings_json["oauth"] = _normalize_account_settings_for_store({"oauth": oauth_next}).get("oauth", oauth_next)
+    out = _oauth_access_token(_as_dict(settings_json.get("oauth")))
+    if not out:
+        raise RuntimeError("OAuth access token is missing after refresh")
+    return out
+
+
+async def _ensure_oauth_access_for_mailbox(settings_json: Dict[str, Any], *, provider: str) -> str:
+    """
+    Return a usable access_token for Gmail/Graph polling or send.
+    Proactively refreshes only when a refresh_token is stored — avoids RuntimeError when Google
+    omitted refresh_token on a prior OAuth complete (short-lived access only).
+    """
+    oauth_json = _as_dict(settings_json.get("oauth"))
+    access_token = _oauth_access_token(oauth_json)
+    refresh_ok = bool(_oauth_refresh_token(oauth_json))
+    if not access_token:
+        if not refresh_ok:
+            raise RuntimeError(
+                "OAuth access token is missing and no refresh token is configured — run mailbox OAuth again. "
+                "In Google: https://myaccount.google.com/permissions → remove HostFlow → then OAuth start in HostFlow."
+            )
+        return await _refresh_oauth_tokens_in_settings_json(settings_json, provider=provider)
+    if _oauth_expires_soon(oauth_json) and refresh_ok:
+        return await _refresh_oauth_tokens_in_settings_json(settings_json, provider=provider)
+    return access_token
+
+
 def _imap_config_from_account_settings(account: CommunicationChannelAccount) -> ImapClientConfig | None:
     settings = _as_dict(account.settings_json)
     imap_json = _as_dict(settings.get("imap"))
@@ -1871,17 +2147,23 @@ def _build_oauth_auth_url(
     safe_client_id = client_id or "missing_client_id"
     safe_redirect_uri = redirect_uri or "https://hostflow.cc/app/email"
     scope_joined = " ".join([s for s in scopes if isinstance(s, str) and s.strip()]) or "openid email"
-    prompt = "consent" if force_consent else "select_account"
-    query = urlencode(
-        {
-            "client_id": safe_client_id,
-            "redirect_uri": safe_redirect_uri,
-            "response_type": "code",
-            "scope": scope_joined,
-            "state": state,
-            "prompt": prompt,
-        }
-    )
+    # Google: access_type=offline is required for refresh_token; prompt is space-delimited per Google docs.
+    # include_granted_scopes helps incremental authorization for Gmail API scopes.
+    params: Dict[str, str] = {
+        "client_id": safe_client_id,
+        "redirect_uri": safe_redirect_uri,
+        "response_type": "code",
+        "scope": scope_joined,
+        "state": state,
+    }
+    if provider == "gmail":
+        params["access_type"] = "offline"
+        params["include_granted_scopes"] = "true"
+        # Always request consent so Google returns a refresh_token (it often omits it on re-auth otherwise).
+        params["prompt"] = "consent select_account"
+    else:
+        params["prompt"] = "consent" if force_consent else "select_account"
+    query = urlencode(params)
     return f"{base}?{query}"
 
 
@@ -2483,7 +2765,7 @@ def _telegram_help_text() -> str:
         "/intake skip - пропустить текущий шаг (только если шаг опциональный)\n"
         "/intake unskip [step|number] - вернуть пропущенный опциональный шаг в анкету\n"
         "/docs - сводка по документам\n"
-        "/scan [doc_type] - открыть сканер документов\n"
+        "/scan [doc_type] - ссылка на загрузку документов на сайте\n"
         "/subscribe - подписаться на уведомления в Telegram\n"
         "/unsubscribe - отключить уведомления в Telegram\n"
         "/lang <ru|en|pl|uk> - язык уведомлений\n"
@@ -2696,7 +2978,7 @@ def _tg_intake_progress_text(candidate: Candidate) -> str:
     total = len(_TG_INTAKE_STEP_ORDER)
     done = max(0, total - len(missing))
     if not missing:
-        return "Анкета заполнена: 7/7. Следующий шаг: /docs и /scan."
+        return "Анкета заполнена: 7/7. Следующий шаг: /docs и загрузка документов на сайте (/scan)."
     current = str(runtime.get("current_step") or "").strip()
     if current not in missing:
         current = missing[0]
@@ -2837,7 +3119,7 @@ async def _tg_skip_intake_step(
         await db.commit()
         return (
             f"Шаг «{_tg_step_label(current)}» пропущен.\n"
-            "Анкета заполнена. Следующий шаг: /docs и /scan."
+            "Анкета заполнена. Следующий шаг: /docs и загрузка документов на сайте (/scan)."
         )
 
     next_step = remaining[0]
@@ -3225,11 +3507,11 @@ async def _tg_intake_completion_docs_text(
                 lines.append("Обязательный чеклист пока не настроен. Можете открыть /docs.")
 
         next_doc = missing[0] if missing else (in_progress[0] if in_progress else (problematic[0] if problematic else None))
-        scan_url = _candidate_scan_url(candidate, doc_type=next_doc)
+        docs_url = _candidate_intake_documents_url(candidate, doc_type=next_doc)
         if next_doc:
             lines.append(f"Следующий шаг: /scan {next_doc}")
-        if scan_url:
-            lines.append(f"Ссылка на сканер: {scan_url}")
+        if docs_url:
+            lines.append(f"Ссылка на загрузку документов: {docs_url}")
         lines.append("Полный список документов: /docs")
     except Exception:
         logger.exception(
@@ -3258,16 +3540,17 @@ def _ensure_candidate_intake_token(candidate: Candidate) -> bool:
     return True
 
 
-def _candidate_scan_url(candidate: Candidate, doc_type: str | None = None) -> str | None:
+def _candidate_intake_documents_url(candidate: Candidate, doc_type: str | None = None) -> str | None:
+    """Public intake apply flow with documents step (replaces legacy /public/scan)."""
     token = str(getattr(candidate, "intake_token", None) or "").strip()
     if not token:
         return None
     base_url = str(settings.frontend_url or "https://hostflow.cc").strip() or "https://hostflow.cc"
-    params: Dict[str, str] = {"token": token}
+    params: Dict[str, str] = {"mode": "documents"}
     doc_norm = str(doc_type or "").strip()
     if doc_norm:
         params["doc"] = doc_norm
-    return f"{base_url.rstrip('/')}/public/scan?{urlencode(params)}"
+    return f"{base_url.rstrip('/')}/public/apply/{token}?{urlencode(params)}"
 
 
 async def _telegram_required_docs_snapshot(
@@ -3351,20 +3634,20 @@ async def _telegram_scan_command_text(
     elif requested:
         preferred_doc = requested
 
-    scan_url = _candidate_scan_url(candidate, preferred_doc)
+    docs_url = _candidate_intake_documents_url(candidate, preferred_doc)
     apply_url = _candidate_apply_url(candidate)
-    if not scan_url:
+    if not docs_url:
         if apply_url:
-            return f"Сканер недоступен без intake token. Откройте анкету: {apply_url}"
-        return "Сканер пока недоступен. Обратитесь к менеджеру."
+            return f"Загрузка документов недоступна без intake token. Откройте анкету: {apply_url}"
+        return "Ссылка на загрузку документов пока недоступна. Обратитесь к менеджеру."
 
     lines: list[str] = []
     if preferred_doc:
         label = str(get_document_display_name(preferred_doc) or preferred_doc)
-        lines.append(f"Сканер для документа «{label}»:")
+        lines.append(f"Загрузка документа «{label}» на сайте:")
     else:
-        lines.append("Откройте сканер документов:")
-    lines.append(scan_url)
+        lines.append("Откройте загрузку документов на сайте:")
+    lines.append(docs_url)
     if missing:
         lines.append("")
         lines.append("Осталось загрузить обязательно:")
@@ -3900,57 +4183,33 @@ async def _dispatch_email_message_via_tenant_smtp(
             account_settings = _as_dict(account.settings_json)
             provider = str(account_settings.get("provider") or "").strip().lower()
             if provider in {"gmail", "microsoft_graph"}:
-                oauth_json = _as_dict(account_settings.get("oauth"))
-                access_token = _oauth_access_token(oauth_json)
-                if not access_token or _oauth_expires_soon(oauth_json):
-                    refresh_token = _oauth_refresh_token(oauth_json)
-                    client_id = str(oauth_json.get("client_id") or "").strip()
-                    client_secret = _oauth_client_secret(oauth_json)
-                    if not refresh_token:
-                        msg.delivery_status = "failed"
-                        msg.error_message = "OAuth refresh token is not configured"
-                        return "oauth_refresh_token_missing"
-                    if not client_id:
-                        msg.delivery_status = "failed"
-                        msg.error_message = "OAuth client_id is not configured"
-                        return "oauth_client_id_missing"
-                    try:
-                        token_payload = await refresh_oauth_access_token(
-                            provider=provider,
-                            refresh_token=refresh_token,
-                            client_id=client_id,
-                            client_secret=client_secret,
-                            scope=str(oauth_json.get("scope") or "").strip() or None,
-                        )
-                    except OAuthProviderError as exc:
-                        msg.delivery_status = "failed"
-                        msg.error_message = str(exc)
-                        return "oauth_refresh_failed"
-                    oauth_next = {
-                        **oauth_json,
-                        "access_token": token_payload.access_token,
-                        "expires_at": (_now_utc() + timedelta(seconds=int(token_payload.expires_in or 3600))).isoformat(),
-                        "token_type": token_payload.token_type or str(oauth_json.get("token_type") or "Bearer"),
-                        "scope": token_payload.scope or str(oauth_json.get("scope") or ""),
-                        "oauth_status": "connected",
-                        "last_error": None,
-                        "last_refreshed_at": _now_utc().isoformat(),
-                        "provider_payload": {
-                            **_as_dict(oauth_json.get("provider_payload")),
-                            **_as_dict(token_payload.provider_payload),
-                        },
-                    }
-                    if token_payload.refresh_token:
-                        oauth_next["refresh_token"] = token_payload.refresh_token
-                    if token_payload.id_token:
-                        oauth_next["id_token"] = token_payload.id_token
-                    account_settings["oauth"] = _normalize_account_settings_for_store({"oauth": oauth_next}).get("oauth", oauth_next)
+                try:
+                    access_token = await _ensure_oauth_access_for_mailbox(account_settings, provider=provider)
                     account.settings_json = account_settings
-                    access_token = token_payload.access_token
+                except OAuthProviderError as exc:
+                    msg.delivery_status = "failed"
+                    msg.error_message = str(exc)
+                    return "oauth_refresh_failed"
+                except RuntimeError as exc:
+                    msg.delivery_status = "failed"
+                    msg.error_message = str(exc)
+                    return "oauth_refresh_token_missing"
                 if not access_token:
                     msg.delivery_status = "failed"
                     msg.error_message = "OAuth access token is not configured"
                     return "oauth_access_token_missing"
+
+                def _oauth_send_failed_payload() -> Dict[str, Any]:
+                    return {
+                        **_as_dict(msg.payload),
+                        "dispatch": {
+                            "status": "failed",
+                            "attempted_at": _now_utc().isoformat(),
+                            "actor_user_id": actor_id,
+                            "adapter": f"{provider}_oauth",
+                        },
+                    }
+
                 try:
                     provider_resp = await send_oauth_email_message(
                         provider=provider,
@@ -3962,18 +4221,47 @@ async def _dispatch_email_message_via_tenant_smtp(
                         from_address=(account.inbox_address or None),
                         reply_to=(account.inbox_address or None),
                     )
+                except OAuthMailboxSendError as send_exc:
+                    if getattr(send_exc, "status_code", None) != 401:
+                        msg.delivery_status = "failed"
+                        msg.error_message = str(send_exc)
+                        msg.payload = _oauth_send_failed_payload()
+                        return "oauth_send_failed"
+                    try:
+                        if _oauth_refresh_token(_as_dict(account_settings.get("oauth"))):
+                            access_token = await _refresh_oauth_tokens_in_settings_json(
+                                account_settings, provider=provider
+                            )
+                            account.settings_json = account_settings
+                        else:
+                            raise RuntimeError(
+                                "OAuth access was rejected (401) and no refresh token is stored — reconnect mailbox OAuth in HostFlow."
+                            )
+                    except Exception as refresh_exc:
+                        msg.delivery_status = "failed"
+                        msg.error_message = str(refresh_exc)
+                        msg.payload = _oauth_send_failed_payload()
+                        return "oauth_send_failed"
+                    try:
+                        provider_resp = await send_oauth_email_message(
+                            provider=provider,
+                            access_token=access_token,
+                            to=to_addr,
+                            subject=subject,
+                            body_text=body,
+                            body_html=msg.body_html,
+                            from_address=(account.inbox_address or None),
+                            reply_to=(account.inbox_address or None),
+                        )
+                    except Exception as retry_exc:
+                        msg.delivery_status = "failed"
+                        msg.error_message = str(retry_exc)
+                        msg.payload = _oauth_send_failed_payload()
+                        return "oauth_send_failed"
                 except Exception as exc:
                     msg.delivery_status = "failed"
                     msg.error_message = str(exc)
-                    msg.payload = {
-                        **_as_dict(msg.payload),
-                        "dispatch": {
-                            "status": "failed",
-                            "attempted_at": _now_utc().isoformat(),
-                            "actor_user_id": actor_id,
-                            "adapter": f"{provider}_oauth",
-                        },
-                    }
+                    msg.payload = _oauth_send_failed_payload()
                     return "oauth_send_failed"
                 now = _now_utc()
                 msg.delivery_status = "sent"
@@ -4031,6 +4319,27 @@ async def _dispatch_email_message_via_tenant_smtp(
     return None
 
 
+def _resolve_comm_local_attachment_path(*, tenant_id: str, storage_path: str) -> Path | None:
+    raw = str(storage_path or "").strip().replace("\\", "/")
+    if not raw:
+        return None
+    parts = raw.split("/")
+    if ".." in parts:
+        return None
+    prefix = f"{tenant_id}/communications/"
+    if not raw.startswith(prefix):
+        return None
+    root = get_uploads_root().resolve()
+    try:
+        full = (root / raw).resolve()
+        full.relative_to(root)
+    except ValueError:
+        return None
+    if not full.is_file():
+        return None
+    return full
+
+
 async def _dispatch_telegram_message_via_bot_api(
     db: AsyncSession,
     *,
@@ -4063,7 +4372,24 @@ async def _dispatch_telegram_message_via_bot_api(
         return "missing_chat_id"
 
     text = (msg.body_text or "").strip()
-    if not text:
+    doc_paths: list[tuple[Path, str, str | None]] = []
+    for item in _as_list(msg.attachments_json):
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("kind") or "").strip().lower() != "local_file":
+            continue
+        sp = str(item.get("storage_path") or "").strip()
+        fn = str(item.get("filename") or Path(sp).name or "attachment")
+        mime = item.get("mime")
+        mime_s = str(mime).strip() if mime else None
+        resolved = _resolve_comm_local_attachment_path(tenant_id=tenant_id, storage_path=sp)
+        if resolved is None:
+            msg.delivery_status = "failed"
+            msg.error_message = f"Invalid or missing attachment: {fn}"
+            return "attachment_not_found"
+        doc_paths.append((resolved, fn, mime_s))
+
+    if not text and not doc_paths:
         msg.delivery_status = "failed"
         msg.error_message = "Empty Telegram message body"
         return "empty_body"
@@ -4076,8 +4402,30 @@ async def _dispatch_telegram_message_via_bot_api(
     except Exception:
         reply_to_id = None
 
+    now = _now_utc()
+    last_provider_resp: Dict[str, Any] = {}
+    last_telegram_message_id: Any = None
     try:
-        provider_resp = await send_telegram_text(cfg, chat_id=chat_id, text=text, reply_to_message_id=reply_to_id)
+        if doc_paths:
+            for idx, (abs_path, filename, mime_s) in enumerate(doc_paths):
+                caption = text if idx == 0 else None
+                reply_for = reply_to_id if idx == 0 else None
+                provider_resp = await send_telegram_document(
+                    cfg,
+                    chat_id=chat_id,
+                    file_path=str(abs_path),
+                    filename=filename,
+                    mime_type=mime_s,
+                    caption=caption,
+                    reply_to_message_id=reply_for,
+                )
+                last_provider_resp = provider_resp
+                result = _as_dict(provider_resp.get("result"))
+                last_telegram_message_id = result.get("message_id")
+        else:
+            last_provider_resp = await send_telegram_text(cfg, chat_id=chat_id, text=text, reply_to_message_id=reply_to_id)
+            result = _as_dict(last_provider_resp.get("result"))
+            last_telegram_message_id = result.get("message_id")
     except Exception as exc:
         logger.exception("communications telegram dispatch failed tenant=%s thread=%s msg=%s", tenant_id, thread.id, msg.id)
         msg.delivery_status = "failed"
@@ -4093,14 +4441,11 @@ async def _dispatch_telegram_message_via_bot_api(
         }
         return "send_failed"
 
-    now = _now_utc()
-    result = _as_dict(provider_resp.get("result"))
-    telegram_message_id = result.get("message_id")
     msg.delivery_status = "sent"
     msg.sent_at = msg.sent_at or now
     msg.error_message = None
-    if not msg.external_message_ref and telegram_message_id is not None:
-        msg.external_message_ref = f"telegram_out:{thread.channel_thread_ref or chat_id}:{telegram_message_id}"
+    if not msg.external_message_ref and last_telegram_message_id is not None:
+        msg.external_message_ref = f"telegram_out:{thread.channel_thread_ref or chat_id}:{last_telegram_message_id}"
     msg.payload = {
         **_as_dict(msg.payload),
         "dispatch": {
@@ -4109,9 +4454,10 @@ async def _dispatch_telegram_message_via_bot_api(
             "actor_user_id": actor_id,
             "adapter": "telegram_bot_api",
             "chat_id": chat_id,
-            "provider_result": provider_resp,
+            "provider_result": last_provider_resp,
+            "attachment_count": len(doc_paths),
         },
-        "telegram_message_id": telegram_message_id,
+        "telegram_message_id": last_telegram_message_id,
     }
     return None
 
@@ -4690,7 +5036,8 @@ async def patch_thread(
     for key, value in patch.items():
         setattr(thread, key, value)
     if meta_patch is not None:
-        merged_meta = _deep_merge_dict(_as_dict(thread.thread_meta), _as_dict(meta_patch))
+        meta_before_merge = _as_dict(thread.thread_meta)
+        merged_meta = _deep_merge_dict(meta_before_merge, _as_dict(meta_patch))
         merged_sla_policy = _as_dict(merged_meta.get("sla_policy"))
         merged_ops = _as_dict(merged_meta.get("ops"))
         now = _now_utc()
@@ -4748,12 +5095,30 @@ async def patch_thread(
         ops_mode = str(merged_ops.get("mode") or "").strip().lower()
         if ops_mode == "escalated":
             escalation = _as_dict(merged_ops.get("escalation"))
-            reason = str(escalation.get("reason") or "").strip()
+            prev_esc = _as_dict(_as_dict(meta_before_merge.get("ops")).get("escalation"))
+            prev_target = _as_dict(prev_esc.get("target"))
             target = _as_dict(escalation.get("target"))
+            reason = str(escalation.get("reason") or "").strip()
             has_target = any(
                 str(target.get(k) or "").strip()
                 for k in ("queue", "role", "user_id")
             )
+            prev_reason = str(prev_esc.get("reason") or "").strip()
+            has_prev_target = any(
+                str(prev_target.get(k) or "").strip()
+                for k in ("queue", "role", "user_id")
+            )
+            # Link-only or partial thread_meta patches must not drop escalation payload (client may omit nested ops).
+            if (not reason and prev_reason) or (not has_target and has_prev_target):
+                escalation = {**prev_esc, **escalation}
+                escalation["target"] = {**prev_target, **_as_dict(escalation.get("target"))}
+                merged_ops["escalation"] = escalation
+                reason = str(escalation.get("reason") or "").strip()
+                target = _as_dict(escalation.get("target"))
+                has_target = any(
+                    str(target.get(k) or "").strip()
+                    for k in ("queue", "role", "user_id")
+                )
             if not reason:
                 raise HTTPException(
                     status_code=422,
@@ -4841,6 +5206,16 @@ async def patch_thread(
             escalation["target"] = target
             escalation["escalated_at"] = str(escalation.get("escalated_at") or now.isoformat())
             merged_ops["escalation"] = escalation
+            prev_ops_before = _as_dict(meta_before_merge.get("ops"))
+            prev_mode_before = str(prev_ops_before.get("mode") or "").strip().lower()
+            if prev_mode_before != "escalated":
+                await _emit_manual_thread_escalation_bridge(
+                    db,
+                    tenant_id=tenant_id,
+                    thread=thread,
+                    escalation=dict(escalation),
+                    actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+                )
             if str(thread.priority or "").strip().lower() != "high":
                 thread.priority = "high"
 
@@ -4969,6 +5344,76 @@ async def create_thread_message(
     await db.commit()
     await db.refresh(msg)
     return _message_out(msg)
+
+
+@router.post(
+    "/threads/{thread_id}/message-attachments/upload",
+    response_model=CommunicationMessageAttachmentUploadOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_thread_message_attachment(
+    thread_id: str,
+    file: UploadFile = File(...),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> CommunicationMessageAttachmentUploadOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    tenant = await _get_tenant_or_404(db, tenant_id)
+    thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
+
+    raw_name = file.filename or "attachment"
+    safe = sanitize_filename(raw_name)
+    uid = uuid4().hex
+    rel_dir_p = Path(tenant_id) / "communications" / thread_id
+    stored_name = f"{uid}_{safe}"
+    root = get_uploads_root().resolve()
+    target_dir = (root / rel_dir_p).resolve()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        target_dir.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid upload path")
+
+    dest = (target_dir / stored_name).resolve()
+    try:
+        dest.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid upload path")
+
+    total = 0
+    try:
+        with dest.open("wb") as out:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_COMM_MESSAGE_ATTACHMENT_BYTES:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail={
+                            "code": "attachment_too_large",
+                            "max_bytes": MAX_COMM_MESSAGE_ATTACHMENT_BYTES,
+                        },
+                    )
+                out.write(chunk)
+    except HTTPException:
+        dest.unlink(missing_ok=True)
+        raise
+    except Exception as exc:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail=f"Failed to store file: {exc}") from exc
+
+    rel_path = dest.relative_to(root).as_posix()
+    mime = file.content_type
+    return CommunicationMessageAttachmentUploadOut(
+        filename=raw_name,
+        mime=mime,
+        size=total,
+        storage_path=rel_path,
+    )
 
 
 @router.post("/messages/{message_id}/dispatch", response_model=CommunicationDispatchResponse)
@@ -5129,12 +5574,12 @@ async def dispatch_queued_messages(
         next_retry_at = _dispatch_next_retry_at(msg)
         if next_retry_at is not None and next_retry_at > now_ref:
             continue
-        attempted_count += 1
-        attempt_before = _dispatch_attempt_count(msg)
         thread = thread_cache.get(str(msg.thread_id))
         if thread is None:
             thread = await _get_thread_or_404(db, tenant_id, str(msg.thread_id))
             thread_cache[str(thread.id)] = thread
+        attempted_count += 1
+        attempt_before = _dispatch_attempt_count(msg)
         if thread.channel == "email" and not body.simulate_failure:
             reason = await _dispatch_email_message_via_tenant_smtp(
                 db,
@@ -5341,6 +5786,7 @@ async def run_email_poll_worker(
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     await _require_comm_feature(db, tenant_id=tenant_id, current_user=current_user, feature="email")
+    tenant = await _get_tenant_or_404(db, tenant_id)
     stmt = sa.select(CommunicationChannelAccount).where(
         CommunicationChannelAccount.tenant_id == tenant_id,
         CommunicationChannelAccount.channel == "email",
@@ -5358,6 +5804,9 @@ async def run_email_poll_worker(
     skipped_messages = 0
 
     for account in accounts:
+        # After commit/rollback on a prior account, all rows in this session may be expired;
+        # lazy-load of JSON columns triggers sync IO → MissingGreenlet in async SQLAlchemy.
+        await db.refresh(account)
         settings_json = _as_dict(account.settings_json)
         provider = str(settings_json.get("provider") or "manual").strip().lower()
         mock_queue = settings_json.get("mock_inbox")
@@ -5406,6 +5855,10 @@ async def run_email_poll_worker(
             except Exception as exc:
                 unsupported_accounts += 0
                 skipped_messages += 1
+                try:
+                    await db.refresh(account)
+                except Exception:
+                    pass
                 settings_json = _as_dict(account.settings_json)
                 sync = _as_dict(settings_json.get("sync"))
                 sync.update(
@@ -5432,43 +5885,7 @@ async def run_email_poll_worker(
                 continue
         elif provider in {"gmail", "microsoft_graph"}:
             try:
-                oauth_json = _as_dict(settings_json.get("oauth"))
-                access_token = _oauth_access_token(oauth_json)
-                if not access_token or _oauth_expires_soon(oauth_json):
-                    refresh_token = _oauth_refresh_token(oauth_json)
-                    client_id = str(oauth_json.get("client_id") or "").strip()
-                    client_secret = _oauth_client_secret(oauth_json)
-                    if not refresh_token:
-                        raise RuntimeError("OAuth refresh token is not configured")
-                    if not client_id:
-                        raise RuntimeError("OAuth client_id is required")
-                    token_payload = await refresh_oauth_access_token(
-                        provider=provider,
-                        refresh_token=refresh_token,
-                        client_id=client_id,
-                        client_secret=client_secret,
-                        scope=str(oauth_json.get("scope") or "").strip() or None,
-                    )
-                    oauth_next = {
-                        **oauth_json,
-                        "access_token": token_payload.access_token,
-                        "expires_at": (_now_utc() + timedelta(seconds=int(token_payload.expires_in or 3600))).isoformat(),
-                        "token_type": token_payload.token_type or str(oauth_json.get("token_type") or "Bearer"),
-                        "scope": token_payload.scope or str(oauth_json.get("scope") or ""),
-                        "oauth_status": "connected",
-                        "last_error": None,
-                        "last_refreshed_at": _now_utc().isoformat(),
-                        "provider_payload": {
-                            **_as_dict(oauth_json.get("provider_payload")),
-                            **_as_dict(token_payload.provider_payload),
-                        },
-                    }
-                    if token_payload.refresh_token:
-                        oauth_next["refresh_token"] = token_payload.refresh_token
-                    if token_payload.id_token:
-                        oauth_next["id_token"] = token_payload.id_token
-                    settings_json["oauth"] = _normalize_account_settings_for_store({"oauth": oauth_next}).get("oauth", oauth_next)
-                    access_token = token_payload.access_token
+                access_token = await _ensure_oauth_access_for_mailbox(settings_json, provider=provider)
 
                 if not access_token:
                     raise RuntimeError("OAuth access token is missing")
@@ -5479,13 +5896,30 @@ async def run_email_poll_worker(
                     cursor_key = f"{folder}_cursor"
                     cursor_row = _as_dict(cursor_map.get(cursor_key))
                     cursor = str(cursor_row.get("value") or "").strip() or None
-                    oauth_poll_result = await poll_oauth_mailbox_messages(
-                        provider=provider,
-                        access_token=access_token,
-                        limit=body.limit_per_account,
-                        cursor=cursor,
-                        folder=folder,
-                    )
+                    unauthorized_retried = False
+                    while True:
+                        try:
+                            oauth_poll_result = await poll_oauth_mailbox_messages(
+                                provider=provider,
+                                access_token=access_token,
+                                limit=body.limit_per_account,
+                                cursor=cursor,
+                                folder=folder,
+                            )
+                            break
+                        except OAuthMailboxPollError as poll_exc:
+                            if getattr(poll_exc, "status_code", None) == 401 and not unauthorized_retried:
+                                unauthorized_retried = True
+                                if _oauth_refresh_token(_as_dict(settings_json.get("oauth"))):
+                                    access_token = await _refresh_oauth_tokens_in_settings_json(
+                                        settings_json, provider=provider
+                                    )
+                                    continue
+                                raise OAuthMailboxPollError(
+                                    "OAuth token expired (401) and no refresh token is stored — remove HostFlow in Google permissions and run OAuth setup again.",
+                                    status_code=401,
+                                ) from poll_exc
+                            raise
                     oauth_folder_results[folder] = {
                         "returned": oauth_poll_result.returned,
                         "next_cursor": oauth_poll_result.next_cursor,
@@ -5521,6 +5955,10 @@ async def run_email_poll_worker(
                     await db.rollback()
                 except Exception:
                     pass
+                try:
+                    await db.refresh(account)
+                except Exception:
+                    pass
                 settings_json = _as_dict(account.settings_json)
                 oauth_json = _as_dict(settings_json.get("oauth"))
                 oauth_json["last_error"] = str(exc)
@@ -5551,11 +5989,16 @@ async def run_email_poll_worker(
         else:
             fetched_items = queue_list
 
+        await db.refresh(account)
+        account_id_str = str(account.id)
+        account_inbox_snap = account.inbox_address
+        account_label_snap = str(account.account_label or "")
+
         if not fetched_items:
             results.append(
                 {
-                    "account_id": str(account.id),
-                    "account_label": account.account_label,
+                    "account_id": account_id_str,
+                    "account_label": account_label_snap,
                     "provider": provider,
                     "status": "empty",
                     "processed": 0,
@@ -5568,20 +6011,22 @@ async def run_email_poll_worker(
         source_items = fetched_items[: body.limit_per_account]
         for raw in source_items:
             consumed += 1
+            await db.refresh(account)
             try:
                 mailbox_source = str(raw.get("_mailbox_source") or "inbox").strip().lower()
                 if mailbox_source == "sent":
                     created_thread, duplicate = await _ingest_email_outbound_from_mailbox(
                         db,
                         tenant_id=tenant_id,
-                        channel_account_id=str(account.id),
+                        channel_account_id=account_id_str,
                         provider=provider,
-                        provider_thread_ref=str(raw.get("provider_thread_ref") or "") or None,
-                        external_message_ref=str(raw.get("external_message_ref") or "") or None,
-                        subject=str(raw.get("subject") or "") or None,
-                        from_address=str(raw.get("from_address") or "") or account.inbox_address or None,
-                        to_address=str(raw.get("to_address") or "") or None,
-                        to_name=str(raw.get("to_name") or "") or None,
+                        provider_thread_ref=_clamp_db_str(raw.get("provider_thread_ref"), 255),
+                        external_message_ref=_clamp_db_str(raw.get("external_message_ref"), 255),
+                        subject=_clamp_db_str(raw.get("subject"), 512),
+                        from_address=_clamp_db_str(raw.get("from_address"), 255)
+                        or _clamp_db_str(account_inbox_snap, 255),
+                        to_address=_clamp_db_str(raw.get("to_address"), 255),
+                        to_name=_clamp_db_str(raw.get("to_name"), 255),
                         text=(raw.get("text") if isinstance(raw.get("text"), str) else None),
                         html=(raw.get("html") if isinstance(raw.get("html"), str) else None),
                         headers=_as_dict(raw.get("headers")),
@@ -5595,28 +6040,41 @@ async def run_email_poll_worker(
                         created_threads += 1
                     if duplicate:
                         skipped_messages += 1
+                    # ingest_email() commits internally; outbound-from-sent path only flush()s.
+                    await db.commit()
                 else:
+                    cc_list = (
+                        [_clamp_db_str(x, 255) for x in raw.get("cc", []) if x is not None]
+                        if isinstance(raw.get("cc"), list)
+                        else []
+                    )
+                    bcc_list = (
+                        [_clamp_db_str(x, 255) for x in raw.get("bcc", []) if x is not None]
+                        if isinstance(raw.get("bcc"), list)
+                        else []
+                    )
+                    to_ingest = _clamp_db_str(raw.get("to_address"), 255) or _clamp_db_str(account_inbox_snap, 255)
                     payload = EmailIngestRequest(
-                        channel_account_id=str(account.id),
-                        provider=provider,
-                        provider_thread_ref=str(raw.get("provider_thread_ref") or "") or None,
-                        external_message_ref=str(raw.get("external_message_ref") or "") or None,
-                        subject=str(raw.get("subject") or "") or None,
-                        from_address=str(raw.get("from_address") or "") or None,
-                        from_name=str(raw.get("from_name") or "") or None,
-                        to_address=str(raw.get("to_address") or account.inbox_address or "") or None,
-                        to_name=str(raw.get("to_name") or "") or None,
-                        cc=[str(x) for x in raw.get("cc", []) if x is not None] if isinstance(raw.get("cc"), list) else [],
-                        bcc=[str(x) for x in raw.get("bcc", []) if x is not None] if isinstance(raw.get("bcc"), list) else [],
+                        channel_account_id=account_id_str,
+                        provider=_clamp_db_str(provider, 64) or provider,
+                        provider_thread_ref=_clamp_db_str(raw.get("provider_thread_ref"), 255),
+                        external_message_ref=_clamp_db_str(raw.get("external_message_ref"), 255),
+                        subject=_clamp_db_str(raw.get("subject"), 512),
+                        from_address=_clamp_db_str(raw.get("from_address"), 255),
+                        from_name=_clamp_db_str(raw.get("from_name"), 255),
+                        to_address=to_ingest,
+                        to_name=_clamp_db_str(raw.get("to_name"), 255),
+                        cc=[x for x in cc_list if x],
+                        bcc=[x for x in bcc_list if x],
                         text=(raw.get("text") if isinstance(raw.get("text"), str) else None),
                         html=(raw.get("html") if isinstance(raw.get("html"), str) else None),
                         headers=_as_dict(raw.get("headers")),
                         payload=_as_dict(raw.get("payload")),
-                        entity_type=str(raw.get("entity_type") or "") or None,
-                        entity_id=str(raw.get("entity_id") or "") or None,
-                        linked_candidate_id=str(raw.get("linked_candidate_id") or "") or None,
-                        linked_company_id=str(raw.get("linked_company_id") or "") or None,
-                        assignee_id=str(raw.get("assignee_id") or "") or None,
+                        entity_type=_clamp_db_str(raw.get("entity_type"), 64),
+                        entity_id=_clamp_db_str(raw.get("entity_id"), 120),
+                        linked_candidate_id=_clamp_db_str(raw.get("linked_candidate_id"), 36),
+                        linked_company_id=_clamp_db_str(raw.get("linked_company_id"), 36),
+                        assignee_id=_clamp_db_str(raw.get("assignee_id"), 36),
                         auto_assign=bool(raw.get("auto_assign", True)),
                     )
                     resp = await ingest_email(payload, db_tenant=(db, tenant_uuid), current_user=current_user)
@@ -5628,11 +6086,15 @@ async def run_email_poll_worker(
                         skipped_messages += 1
             except Exception as exc:
                 skipped_messages += 1
-                logger.exception("communications email poll ingest failed account=%s", account.id)
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+                logger.exception("communications email poll ingest failed account=%s", account_id_str)
                 results.append(
                     {
-                        "account_id": str(account.id),
-                        "account_label": account.account_label,
+                        "account_id": account_id_str,
+                        "account_label": account_label_snap,
                         "provider": provider,
                         "status": "error",
                         "error": str(exc),
@@ -5643,6 +6105,8 @@ async def run_email_poll_worker(
         # Remove consumed messages from mock queue regardless of duplicates; they were processed.
         remaining = queue_list[consumed:] if provider in {"manual", "manual-test", "imap_mock"} else []
         if provider in {"manual", "manual-test", "imap_mock"}:
+          await db.refresh(account)
+          settings_json = _as_dict(account.settings_json)
           settings_json["mock_inbox"] = remaining
           sync = _as_dict(settings_json.get("sync"))
           sync.update(
@@ -5661,8 +6125,8 @@ async def run_email_poll_worker(
 
         results.append(
             {
-                "account_id": str(account.id),
-                "account_label": account.account_label,
+                "account_id": account_id_str,
+                "account_label": account_label_snap,
                 "provider": provider,
                 "status": "ok",
                 "processed": processed,
@@ -7113,7 +7577,13 @@ async def create_channel_account(
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     await _require_comm_feature(db, tenant_id=tenant_id, current_user=current_user, feature=_feature_for_channel(body.channel))
-    normalized_settings = _normalize_account_settings_for_store(body.settings_json)
+    settings_in = _as_dict(body.settings_json)
+    oauth_secret_plain = str(body.oauth_client_secret or "").strip()
+    if oauth_secret_plain:
+        oauth_blk = _as_dict(settings_in.get("oauth"))
+        oauth_blk["client_secret"] = oauth_secret_plain
+        settings_in["oauth"] = oauth_blk
+    normalized_settings = _normalize_account_settings_for_store(settings_in)
     if str(body.channel).lower() == "telegram":
         settings = _as_dict(normalized_settings)
         tg = _as_dict(settings.get("telegram"))
@@ -7187,6 +7657,7 @@ async def patch_channel_account(
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(account.channel))  # type: ignore[arg-type]
 
     patch = body.model_dump(exclude_unset=True)
+    oauth_plain_secret = str(patch.pop("oauth_client_secret", None) or "").strip()
     if "account_label" in patch and patch["account_label"] is not None:
         account.account_label = str(patch["account_label"]).strip()
     if "external_account_ref" in patch:
@@ -7195,13 +7666,47 @@ async def patch_channel_account(
         account.inbox_address = patch["inbox_address"]
     if "is_active" in patch and patch["is_active"] is not None:
         account.is_active = bool(patch["is_active"])
-    if "settings_json" in patch and patch["settings_json"] is not None:
-        merged = _deep_merge_dict(_as_dict(account.settings_json), _as_dict(patch["settings_json"]))
+    settings_changed = "settings_json" in patch and patch["settings_json"] is not None
+    if settings_changed or oauth_plain_secret:
+        merged = _deep_merge_dict(
+            _as_dict(account.settings_json),
+            _as_dict(patch["settings_json"]) if settings_changed else {},
+        )
+        if oauth_plain_secret:
+            mo = _as_dict(merged.get("oauth"))
+            mo["client_secret"] = oauth_plain_secret
+            merged["oauth"] = mo
         account.settings_json = _normalize_account_settings_for_store(merged)
 
     await db.commit()
     await db.refresh(account)
     return _account_out(account)
+
+
+@router.delete("/accounts/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_channel_account(
+    account_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+) -> None:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    account = await db.get(CommunicationChannelAccount, account_id)
+    if account is None or str(account.tenant_id) != tenant_id:
+        raise HTTPException(status_code=404, detail="Channel account not found")
+    tenant = await _get_tenant_or_404(db, tenant_id)
+    assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(account.channel))  # type: ignore[arg-type]
+
+    await db.execute(
+        sa.update(CommunicationThread)
+        .where(
+            CommunicationThread.tenant_id == tenant_id,
+            CommunicationThread.channel_account_id == account_id,
+        )
+        .values(channel_account_id=None)
+    )
+    await db.delete(account)
+    await db.commit()
 
 
 @router.post("/accounts/{account_id}/test-connection", response_model=CommunicationAccountActionResponse)
@@ -7712,8 +8217,10 @@ async def start_channel_account_oauth(
     oauth_json = _as_dict(settings.get("oauth"))
     state = generate_secret(40)
     scopes = [s for s in (body.scopes or []) if isinstance(s, str) and s.strip()] or _oauth_default_scopes(provider)
-    redirect_uri = (body.redirect_uri or str(oauth_json.get("redirect_uri") or "").strip() or None)
-    client_id = str(oauth_json.get("client_id") or "").strip() or None
+    redirect_from_body = str(body.redirect_uri or "").strip() or None
+    client_from_body = str(body.client_id or "").strip() or None
+    redirect_uri = redirect_from_body or str(oauth_json.get("redirect_uri") or "").strip() or None
+    client_id = client_from_body or str(oauth_json.get("client_id") or "").strip() or None
     if not client_id:
         raise HTTPException(status_code=422, detail="OAuth client_id is not configured")
     if not redirect_uri:
@@ -7730,6 +8237,8 @@ async def start_channel_account_oauth(
             "last_error": None,
         }
     )
+    if client_from_body:
+        oauth_json["client_id"] = client_from_body
     settings["oauth"] = oauth_json
     account.settings_json = settings
     await db.commit()
@@ -7771,6 +8280,7 @@ async def complete_channel_account_oauth(
     provider = _oauth_provider_for_account(account)
     settings = _as_dict(account.settings_json)
     oauth_json = _as_dict(settings.get("oauth"))
+    oauth_refresh_existed_before = bool(_oauth_refresh_token(oauth_json))
     expected_state = str(oauth_json.get("state") or "").strip()
     if expected_state and body.state != expected_state:
         raise HTTPException(status_code=409, detail="OAuth state mismatch")
@@ -7779,6 +8289,7 @@ async def complete_channel_account_oauth(
     access_token = body.access_token
     refresh_token = body.refresh_token
     id_token = body.id_token
+    exchanged_via_code = False
 
     if body.simulate_exchange and not access_token:
         # Foundation mode: allow callback completion without external token exchange.
@@ -7789,16 +8300,27 @@ async def complete_channel_account_oauth(
         refresh_token = refresh_token or f"sim_{provider}_refresh_{generate_secret(24)}"
         id_token = id_token or f"sim_{provider}_id_{generate_secret(24)}"
     elif not access_token:
+        exchanged_via_code = True
         code = str(body.code or "").strip()
         if not code:
             raise HTTPException(status_code=422, detail="OAuth code is required")
         redirect_uri = str(body.redirect_uri or oauth_json.get("redirect_uri") or "").strip()
-        client_id = str(oauth_json.get("client_id") or "").strip()
+        client_id = str(body.client_id or oauth_json.get("client_id") or "").strip()
         client_secret = _oauth_client_secret(oauth_json)
         if not redirect_uri:
             raise HTTPException(status_code=422, detail="OAuth redirect_uri is required")
         if not client_id:
             raise HTTPException(status_code=422, detail="OAuth client_id is required")
+        if provider == "gmail" and not (client_secret or "").strip():
+            if str(oauth_json.get("client_secret_encrypted") or "").strip():
+                raise HTTPException(
+                    status_code=422,
+                    detail="OAuth client_secret is stored but cannot be decrypted (META_CREDENTIALS_KEY / JWT secret likely changed since it was saved). Re-save the Google client secret on this mailbox, then OAuth start → OAuth complete with a fresh code.",
+                )
+            raise HTTPException(
+                status_code=422,
+                detail="OAuth client_secret is missing for this mailbox — enter the Google client secret, click Save mailbox, then OAuth start → OAuth complete with a fresh code.",
+            )
         try:
             token_payload = await exchange_oauth_code_for_tokens(
                 provider=provider,
@@ -7824,6 +8346,22 @@ async def complete_channel_account_oauth(
 
     if not str(access_token or "").strip():
         raise HTTPException(status_code=422, detail="OAuth access token is required")
+
+    if (
+        exchanged_via_code
+        and not body.simulate_exchange
+        and provider in ("gmail", "microsoft_graph")
+        and not str(refresh_token or "").strip()
+        and not oauth_refresh_existed_before
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Provider did not return a refresh token; HostFlow needs it for background email sync. "
+                "In Google open https://myaccount.google.com/permissions , remove access for this OAuth client, "
+                "then in HostFlow: Save mailbox → OAuth start (use the in-app button, not an old bookmark) → sign in and accept all scopes."
+            ),
+        )
 
     oauth_mut = {
         **oauth_json,

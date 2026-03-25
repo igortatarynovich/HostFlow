@@ -198,7 +198,7 @@ export default function MyAvailabilityPage() {
 
   return (
     <div className="space-y-4">
-      <WorkspaceTopNav active="my_availability" />
+      <WorkspaceTopNav active="calendar" />
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.my_availability_title', { defaultValue: 'My Availability' })}</h1>
         <p className="text-sm text-slate-500">

@@ -1,5 +1,7 @@
 export { default as CommunicationsThreadPage } from '../../pages/CommunicationsThreadPage'
 export { default as CommunicationsMessagesPage } from '../../pages/CommunicationsMessagesPage'
+export { default as CommunicationsInboxHubPage } from '../../pages/CommunicationsInboxHubPage'
+export { default as CommunicationsInboxCenterPage } from '../../pages/CommunicationsInboxCenterPage'
 export { default as CommunicationsEmailInboxPage } from '../../pages/CommunicationsEmailInboxPage'
 export { default as CommunicationsCalendarPage } from '../../pages/CommunicationsCalendarPage'
 export { default as CommunicationsPlannerPage } from '../../pages/CommunicationsPlannerPage'

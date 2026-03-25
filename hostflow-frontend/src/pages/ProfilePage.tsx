@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent, DragEvent, FormEvent } from 'react'
 import {
@@ -9,8 +10,10 @@ import {
   uploadUserAvatar,
 } from '../api/users'
 import { listCompanies } from '../api/client'
+import { getTeamOverview } from '../api/tenants'
 import type {
   Company,
+  TeamOverviewResponse,
   UserNotificationPreference,
   UserPreferences,
   UserSavedViews,
@@ -18,6 +21,13 @@ import type {
 } from '../api/types'
 import { useAuth } from '../store/useAuth'
 import { useI18n, type LocaleCode } from '../i18n'
+import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
+import { usePermissions } from '../hooks/usePermissions'
+import {
+  readStoredDefaultAppHome,
+  writeStoredDefaultAppHome,
+  type StoredDefaultAppHome,
+} from '../utils/defaultAppHome'
 
 const LOCALE_OPTIONS = ['ru-RU', 'pl-PL', 'en-US']
 const TIMEZONE_OPTIONS = ['Europe/Warsaw', 'Europe/Moscow', 'UTC']
@@ -68,8 +78,14 @@ export default function ProfilePage() {
     updateSecurity,
   } = useAuth()
   const { t, setLocale } = useI18n()
+  const { can, role } = usePermissions()
+  const { canUseCommunicationsFeature } = useCommunicationsAccess()
+  const canOpenTasksHome = can('notifications.view')
+  const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
 
   const [companies, setCompanies] = useState<Company[]>([])
+  const [teamOverview, setTeamOverview] = useState<TeamOverviewResponse | null>(null)
+  const [defaultAppHome, setDefaultAppHome] = useState<StoredDefaultAppHome>(() => readStoredDefaultAppHome())
 
   const [profileForm, setProfileForm] = useState({
     first_name: me?.first_name ?? '',
@@ -186,6 +202,13 @@ export default function ProfilePage() {
   )
 
   useEffect(() => {
+    if (defaultAppHome === 'tasks' && !canOpenTasksHome) {
+      writeStoredDefaultAppHome('overview')
+      setDefaultAppHome('overview')
+    }
+  }, [canOpenTasksHome, defaultAppHome])
+
+  useEffect(() => {
     setProfileForm({
       first_name: me?.first_name ?? '',
       last_name: me?.last_name ?? '',
@@ -222,6 +245,25 @@ export default function ProfilePage() {
       })
       .catch((err) => console.warn('[ProfilePage] listCompanies failed', err))
   }, [])
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (!me?.tenant_id || !canLoadTeamOverview) {
+        if (mounted) setTeamOverview(null)
+        return
+      }
+      try {
+        const data = await getTeamOverview({ tenantId: me.tenant_id })
+        if (mounted) setTeamOverview(data)
+      } catch {
+        if (mounted) setTeamOverview(null)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [me?.tenant_id, canLoadTeamOverview])
 
   const loadSessions = useCallback(async () => {
     setSessionsLoading(true)
@@ -520,10 +562,30 @@ export default function ProfilePage() {
 
   const supervisorName = security?.supervisor?.name || security?.supervisor?.email || '—'
 
+  const isSoloWorkspace = useMemo(() => {
+    const membersCount = Array.isArray(teamOverview?.members) ? teamOverview.members.length : null
+    if (typeof membersCount === 'number') return membersCount <= 1
+    const usage = teamOverview?.usage
+    if (!usage) return false
+    const total =
+      Number(usage.recruiter_count || 0) +
+      Number(usage.supervisor_count || 0) +
+      Number(usage.client_manager_count || 0) +
+      Number(usage.viewer_count || 0)
+    return total <= 1
+  }, [teamOverview])
+
+  const showSchedulingSection =
+    canOpenTasksHome &&
+    (canUseCommunicationsFeature('calendar') ||
+      canUseCommunicationsFeature('myAvailability') ||
+      canUseCommunicationsFeature('teamAvailability') ||
+      canUseCommunicationsFeature('timeOffRequests'))
+
   const savedViewsByModule = useMemo(() => (module: SavedViewsModule) => savedViews[module], [savedViews])
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-6">
+    <div className="flex min-h-0 w-full max-w-none flex-1 flex-col gap-0 p-0">
       <header>
         <h1 className="text-3xl font-semibold text-slate-900">{t('app.profile.title')}</h1>
         <p className="mt-1 text-sm text-slate-500">{t('app.profile.subtitle')}</p>
@@ -597,6 +659,50 @@ export default function ProfilePage() {
         <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-slate-900">{t('app.profile.sections.preferences.title')}</h2>
           <p className="mb-4 mt-1 text-sm text-slate-500">{t('app.profile.sections.preferences.description')}</p>
+
+          <div className="mb-6 rounded-lg border border-slate-100 bg-slate-50/90 p-4">
+            <p className="text-sm font-semibold text-slate-800">{t('app.profile.preferences.default_home.label')}</p>
+            <p className="mt-1 text-xs text-slate-500">{t('app.profile.preferences.default_home.hint')}</p>
+            <div className="mt-3 flex flex-col gap-2 text-sm text-slate-800">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="hf-default-app-home"
+                  className="text-brand-600"
+                  checked={defaultAppHome === 'overview'}
+                  onChange={() => {
+                    writeStoredDefaultAppHome('overview')
+                    setDefaultAppHome('overview')
+                  }}
+                />
+                <span>{t('app.profile.preferences.default_home.overview')}</span>
+              </label>
+              <label
+                className={['flex items-center gap-2', canOpenTasksHome ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'].join(
+                  ' ',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="hf-default-app-home"
+                  className="text-brand-600"
+                  disabled={!canOpenTasksHome}
+                  checked={defaultAppHome === 'tasks'}
+                  onChange={() => {
+                    if (!canOpenTasksHome) return
+                    writeStoredDefaultAppHome('tasks')
+                    setDefaultAppHome('tasks')
+                  }}
+                />
+                <span>{t('app.profile.preferences.default_home.tasks')}</span>
+              </label>
+              {!canOpenTasksHome && (
+                <p className="text-xs text-slate-500">
+                  {t('app.profile.preferences.default_home.tasks_locked_hint')}
+                </p>
+              )}
+            </div>
+          </div>
 
           <form className="space-y-4" onSubmit={handlePreferencesSubmit}>
             <div className="grid gap-4 md:grid-cols-2">
@@ -693,6 +799,35 @@ export default function ProfilePage() {
             </div>
           </form>
         </section>
+
+        {showSchedulingSection && (
+          <section className="md:col-span-2 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-semibold text-slate-900">{t('app.profile.scheduling.title')}</h2>
+            <p className="mb-4 mt-1 text-sm text-slate-500">{t('app.profile.scheduling.description')}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+              {canUseCommunicationsFeature('calendar') && (
+                <Link className="font-medium text-brand-700 hover:underline" to="/app/calendar">
+                  {t('app.profile.scheduling.calendar_link')}
+                </Link>
+              )}
+              {canUseCommunicationsFeature('myAvailability') && (
+                <Link className="font-medium text-brand-700 hover:underline" to="/app/my-availability">
+                  {t('app.communications.calendar.scheduling.my_availability', { defaultValue: 'My availability' })}
+                </Link>
+              )}
+              {canUseCommunicationsFeature('teamAvailability') && !isSoloWorkspace && (
+                <Link className="font-medium text-brand-700 hover:underline" to="/app/team-availability">
+                  {t('app.communications.calendar.scheduling.team_availability', { defaultValue: 'Team availability' })}
+                </Link>
+              )}
+              {canUseCommunicationsFeature('timeOffRequests') && (
+                <Link className="font-medium text-brand-700 hover:underline" to="/app/time-off">
+                  {t('app.communications.calendar.scheduling.time_off', { defaultValue: 'Time off' })}
+                </Link>
+              )}
+            </div>
+          </section>
+        )}
 
         <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-slate-900">{t('app.profile.sections.notifications.title')}</h2>

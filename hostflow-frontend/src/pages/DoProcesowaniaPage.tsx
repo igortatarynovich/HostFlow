@@ -777,7 +777,7 @@ export default function DoProcesowaniaPage() {
   )
 
   return (
-    <div className="w-full max-w-none p-4" style={{ width: '100%', maxWidth: 'none' }}>
+    <div className="w-full max-w-none p-0" style={{ width: '100%', maxWidth: 'none' }}>
       <h1 className="text-2xl font-semibold text-slate-900">{t('app.handoff.do_procesowania')}</h1>
       <p className="mt-1 text-sm text-slate-500">{t('app.handoff.do_procesowania_subtitle')}</p>
 

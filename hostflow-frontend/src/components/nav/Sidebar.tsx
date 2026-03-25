@@ -4,11 +4,13 @@ import { NavLink, useLocation } from 'react-router-dom'
 import type { Icon as TablerIcon } from '@tabler/icons-react'
 import {
   IconBell,
+  IconBolt,
   IconBuilding,
   IconCalendarEvent,
   IconCalendarOff,
   IconChevronDown,
   IconChecklist,
+  IconClipboardList,
   IconClock,
   IconCreditCard,
   IconDashboard,
@@ -55,6 +57,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   'do-procesowania': IconFilter,
   vacancies: IconLayoutKanban,
   documents: IconFileText,
+  'service-orders': IconClipboardList,
   services: IconChecklist,
   invoices: IconFileText,
   'communications-setup': IconPlugConnected,
@@ -63,6 +66,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   calendar: IconCalendarEvent,
   'sla-incidents': IconBell,
   'command-audit': IconShield,
+  automations: IconBolt,
   'team-availability': IconUsersGroup,
   'my-availability': IconClock,
   'time-off': IconCalendarOff,
@@ -84,11 +88,36 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   profile: IconUser,
 }
 
-export function Sidebar({ items, tenant, businessType = 'agency', open, onClose, onLogout, pendingHandoffsCount = 0 }: SidebarProps) {
+export function Sidebar({
+  items,
+  tenant,
+  businessType: _businessType = 'agency',
+  open,
+  onClose,
+  onLogout,
+  pendingHandoffsCount = 0,
+}: SidebarProps) {
   const { t } = useI18n()
   const location = useLocation()
   const inboxNavActive =
-    location.pathname.startsWith('/app/messages') || location.pathname.startsWith('/app/email')
+    location.pathname.startsWith('/app/inbox') ||
+    location.pathname.startsWith('/app/messages') ||
+    location.pathname.startsWith('/app/email') ||
+    location.pathname.startsWith('/app/communications/threads')
+  const clientsNavActive = location.pathname.startsWith('/app/clients')
+  const automationsNavActive = location.pathname.startsWith('/app/automation')
+  const servicesWorkspacePath = location.pathname === '/app/services'
+  const ordersStandalonePath = location.pathname === '/app/orders'
+  const servicesTabParam = useMemo(() => {
+    const sp = new URLSearchParams(location.search)
+    return (sp.get('tab') || 'overview').trim().toLowerCase()
+  }, [location.search])
+  const inboxChannelParam = useMemo(() => {
+    const sp = new URLSearchParams(location.search)
+    return (sp.get('channel') || '').trim().toLowerCase()
+  }, [location.search])
+  const ordersNavActive = ordersStandalonePath || (servicesWorkspacePath && servicesTabParam === 'orders')
+  const servicesModuleNavActive = servicesWorkspacePath && servicesTabParam !== 'orders'
   const { isClientTenant, role } = usePermissions()
   /** Matches backend `GET /settings/team` (administrator | supervisor only). */
   const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
@@ -149,6 +178,7 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
       vacancies: 'vacancies',
       documents: 'documents',
       leads: 'leads',
+      'service-orders': 'services',
       services: 'services',
       invoices: 'services',
       tasks: 'candidates',
@@ -198,96 +228,68 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
     return moduleFiltered.filter((item) => allowed.has(item.key))
   }, [canUseCommunicationsFeature, isClientTenant, isSoloWorkspace, items, modules])
 
-  // Основные элементы, которые выносим наверх (business-type order: services = client-first, employer = vacancy-first, agency = candidate-first)
-  const mainItems = useMemo(() => {
-    const order = isClientTenant
-      ? ['candidates', 'do-procesowania', 'inbox', 'tasks', 'sla-incidents']
-      : businessType === 'services'
-        ? [
-            'inbox',
-            'tasks',
-            'calendar',
-            'sla-incidents',
-            'clients',
-            'candidates',
-            'services',
-            'invoices',
-            'overview',
-            'vacancies',
-            'leads',
-          ]
-        : businessType === 'employer'
-          ? [
-              'inbox',
-              'tasks',
-              'calendar',
-              'sla-incidents',
-              'overview',
-              'vacancies',
-              'candidates',
-              'clients',
-              'do-procesowania',
-              'services',
-              'invoices',
-              'leads',
-            ]
-          : [
-              'inbox',
-              'tasks',
-              'calendar',
-              'sla-incidents',
-              'overview',
-              'candidates',
-              'clients',
-              'do-procesowania',
-              'vacancies',
-              'services',
-              'invoices',
-              'leads',
-            ]
-    const mainKeys = new Set(order)
-    const filtered = visibleItems.filter(
-      (item) =>
-        item.path &&
-        (isClientTenant
-          ? item.key === 'candidates' ||
-            item.key === 'do-procesowania' ||
-            item.key === 'inbox' ||
-            item.key === 'tasks' ||
-            item.key === 'sla-incidents'
-          : mainKeys.has(item.key))
-    )
-    return filtered.sort((a, b) => {
-      const indexA = order.indexOf(a.key)
-      const indexB = order.indexOf(b.key)
-      return indexA - indexB
-    })
-  }, [isClientTenant, businessType, visibleItems])
+  /** SSOT § Target sidebar — Business row: Candidates → Clients → do-procesowania → Vacancies → Orders → Services → Invoices → Documents → Leads (single order for all business types). */
+  const { coreNavItems, businessNavItems, systemNavItems, primaryNavItems, sidebarBucketed } = useMemo(() => {
+    const coreOrder = ['overview', 'inbox', 'tasks', 'calendar', 'sla-incidents']
+    const businessOrderSsot = [
+      'candidates',
+      'clients',
+      'do-procesowania',
+      'vacancies',
+      'service-orders',
+      'services',
+      'invoices',
+      'documents',
+      'leads',
+    ]
+    const systemOrder = ['automations']
+
+    const pickOrdered = (order: string[]) => {
+      const idx = new Map(order.map((k, i) => [k, i]))
+      return visibleItems
+        .filter((item) => item.path && idx.has(item.key))
+        .sort((a, b) => (idx.get(a.key) ?? 0) - (idx.get(b.key) ?? 0))
+    }
+
+    if (isClientTenant) {
+      const order = ['inbox', 'tasks', 'candidates', 'do-procesowania', 'sla-incidents']
+      const flat = pickOrdered(order)
+      return {
+        coreNavItems: flat,
+        businessNavItems: [] as NavItem[],
+        systemNavItems: [] as NavItem[],
+        primaryNavItems: flat,
+        sidebarBucketed: false,
+      }
+    }
+
+    const coreNavItems = pickOrdered(coreOrder)
+    const businessNavItems = pickOrdered(businessOrderSsot)
+    const systemNavItems = pickOrdered(systemOrder)
+    const primaryNavItems = [...coreNavItems, ...businessNavItems, ...systemNavItems]
+    return {
+      coreNavItems,
+      businessNavItems,
+      systemNavItems,
+      primaryNavItems,
+      sidebarBucketed: true,
+    }
+  }, [isClientTenant, visibleItems])
 
   const sections = useMemo(() => {
-    const sectionDefs = isClientTenant
-      ? [
-          {
-            key: 'client-workflow',
-            label: t('app.shell.sidebar.client_workflow', { defaultValue: 'Client Workflow' }),
-            itemKeys: ['sla-incidents'],
-          },
-        ]
+    const sectionDefs: {
+      key: string
+      label: string
+      itemKeys: string[]
+      collapsible?: boolean
+    }[] = isClientTenant
+      ? []
       : [
           {
-            key: 'operations',
-            label: t('app.shell.sidebar.operations', { defaultValue: 'Operations' }),
-            itemKeys: ['documents', 'services', 'invoices', 'sla-incidents'],
-          },
-          {
-            key: 'communications',
-            label: t('app.shell.sidebar.communications_workspace', { defaultValue: 'Communications Workspace' }),
-            itemKeys: ['communications-setup', 'calendar', 'command-audit', 'team-availability', 'my-availability', 'time-off'],
-          },
-          {
-            key: 'leads',
-            label: t('app.nav.groups.leads'),
-            itemKeys: ['leads'],
+            key: 'account',
+            label: t('app.shell.sidebar.account', { defaultValue: 'Account' }),
+            itemKeys: ['profile'],
+            collapsible: false,
           },
           {
             key: 'settings',
@@ -301,6 +303,8 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
               'settings-docs',
               'settings-billing',
               'settings-communications',
+              'communications-setup',
+              'command-audit',
               'settings-email',
               'settings-integrations',
               'settings-tenant-links',
@@ -312,14 +316,19 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
         ]
 
     const byKey = new Map(visibleItems.filter((item) => Boolean(item.path)).map((item) => [item.key, item]))
-    const usedKeys = new Set(mainItems.map((item) => item.key))
+    const usedKeys = new Set(primaryNavItems.map((item) => item.key))
     const mapped = sectionDefs
       .map((section) => {
         const sectionItems = section.itemKeys
           .map((itemKey) => byKey.get(itemKey))
           .filter((item): item is NavItem => Boolean(item))
         sectionItems.forEach((item) => usedKeys.add(item.key))
-        return { key: section.key, label: section.label, items: sectionItems }
+        return {
+          key: section.key,
+          label: section.label,
+          items: sectionItems,
+          collapsible: section.collapsible !== false,
+        }
       })
       .filter((section) => section.items.length > 0)
 
@@ -332,7 +341,7 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
       })
     }
     return mapped
-  }, [isClientTenant, mainItems, t, visibleItems])
+  }, [isClientTenant, primaryNavItems, t, visibleItems])
 
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
     if (typeof window === 'undefined') {
@@ -383,6 +392,124 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
     return fallbackFromKey || item.key
   }
 
+  const renderPrimaryNavItem = (item: NavItem) => {
+    if (item.key === 'inbox') {
+      const ItemIcon = ITEM_ICONS.inbox || DEFAULT_ICON
+      const showMessagesChild = canUseCommunicationsFeature('messages')
+      const showEmailChild = canUseCommunicationsFeature('email')
+      return (
+        <div key={item.key} className="space-y-1">
+          <NavLink
+            to={item.path!}
+            title={getItemLabel(item)}
+            onClick={handleNavigate}
+            className={() =>
+              clsx(
+                'block rounded-md px-3 py-2.5 text-sm font-medium transition',
+                inboxNavActive
+                  ? 'bg-white text-brand-900 shadow-sm'
+                  : 'text-white hover:bg-white/15 hover:text-white',
+              )
+            }
+          >
+            <span className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-2">
+                <ItemIcon size={16} stroke={1.8} />
+                <span>{getItemLabel(item)}</span>
+              </span>
+            </span>
+          </NavLink>
+          {(showMessagesChild || showEmailChild) && (
+            <div className="ml-7 flex flex-wrap gap-1 pt-0.5">
+              {showMessagesChild && (
+                <NavLink
+                  to="/app/inbox?channel=messages"
+                  title={t('app.nav.items.messages_inbox', { defaultValue: 'Messages' })}
+                  onClick={handleNavigate}
+                  className={() =>
+                    clsx(
+                      'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
+                      location.pathname.startsWith('/app/messages') ||
+                        (location.pathname.startsWith('/app/inbox') && inboxChannelParam === 'messages')
+                        ? 'bg-white/20 text-white'
+                        : 'text-white/80 hover:bg-white/10 hover:text-white',
+                    )
+                  }
+                >
+                  <IconMessageCircle size={13} stroke={1.8} />
+                  {t('app.nav.items.messages_inbox', { defaultValue: 'Messages' })}
+                </NavLink>
+              )}
+              {showEmailChild && (
+                <NavLink
+                  to="/app/inbox?channel=email"
+                  title={t('app.nav.items.email_inbox', { defaultValue: 'Email' })}
+                  onClick={handleNavigate}
+                  className={() =>
+                    clsx(
+                      'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
+                      location.pathname.startsWith('/app/email') ||
+                        (location.pathname.startsWith('/app/inbox') && inboxChannelParam === 'email')
+                        ? 'bg-white/20 text-white'
+                        : 'text-white/80 hover:bg-white/10 hover:text-white',
+                    )
+                  }
+                >
+                  <IconMail size={13} stroke={1.8} />
+                  {t('app.nav.items.email_inbox', { defaultValue: 'Email' })}
+                </NavLink>
+              )}
+            </div>
+          )}
+        </div>
+      )
+    }
+    return (
+      <NavLink
+        key={item.key}
+        to={item.path!}
+        title={getItemLabel(item)}
+        onClick={handleNavigate}
+        className={({ isActive }) =>
+          clsx(
+            'block rounded-md px-3 py-2.5 text-sm font-medium transition',
+            (item.key === 'clients'
+              ? clientsNavActive
+              : item.key === 'automations'
+                ? automationsNavActive
+                : item.key === 'service-orders'
+                  ? ordersNavActive
+                  : item.key === 'services'
+                    ? servicesModuleNavActive
+                    : isActive)
+              ? 'bg-white text-brand-900 shadow-sm'
+              : 'text-white hover:bg-white/15 hover:text-white',
+          )
+        }
+      >
+        {(() => {
+          const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
+          return (
+            <span className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-2">
+                <ItemIcon size={16} stroke={1.8} />
+                <span>{item.key === 'clients' ? clientsNavLabel : getItemLabel(item)}</span>
+              </span>
+              {item.key === 'do-procesowania' && pendingHandoffsCount > 0 && (
+                <span
+                  className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-semibold text-white"
+                  aria-label={t('app.handoff.badge_new', { count: pendingHandoffsCount })}
+                >
+                  {pendingHandoffsCount}
+                </span>
+              )}
+            </span>
+          )
+        })()}
+      </NavLink>
+    )
+  }
+
   return (
     <>
       <div
@@ -407,9 +534,44 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
           </div>
 
           <nav className="flex-1 overflow-y-auto px-3 pb-6">
-            {/* Основные элементы - всегда видны, выделены */}
-            <div className="mb-4 space-y-1">
-              {mainItems.map((item) => (
+            {sidebarBucketed ? (
+              <>
+                {coreNavItems.length > 0 && (
+                  <div className="mb-3">
+                    <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                      {t('app.shell.sidebar.core_workspace')}
+                    </div>
+                    <div className="space-y-1">{coreNavItems.map(renderPrimaryNavItem)}</div>
+                  </div>
+                )}
+                {businessNavItems.length > 0 && (
+                  <div className="mb-3">
+                    <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                      {t('app.shell.sidebar.business')}
+                    </div>
+                    <div className="space-y-1">{businessNavItems.map(renderPrimaryNavItem)}</div>
+                  </div>
+                )}
+                {systemNavItems.length > 0 && (
+                  <div className="mb-4">
+                    <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                      {t('app.shell.sidebar.system')}
+                    </div>
+                    <div className="space-y-1">{systemNavItems.map(renderPrimaryNavItem)}</div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="mb-4 space-y-1">{coreNavItems.map(renderPrimaryNavItem)}</div>
+            )}
+
+            {sections.length > 0 && primaryNavItems.length > 0 && (
+              <div className="mx-4 my-4 border-t border-white/15" />
+            )}
+
+            {sections.map((section, index) => {
+              const expanded = expandedGroups[section.key] ?? true
+              const linkRow = (item: NavItem) => (
                 <NavLink
                   key={item.key}
                   to={item.path!}
@@ -417,89 +579,65 @@ export function Sidebar({ items, tenant, businessType = 'agency', open, onClose,
                   onClick={handleNavigate}
                   className={({ isActive }) =>
                     clsx(
-                      'block rounded-md px-3 py-2.5 text-sm font-medium transition',
-                      (item.key === 'inbox' ? inboxNavActive : isActive)
-                        ? 'bg-white text-brand-900 shadow-sm'
-                        : 'text-white hover:bg-white/15 hover:text-white'
+                      'block rounded-md px-3 py-2 text-sm transition',
+                      (item.key === 'clients'
+                        ? clientsNavActive
+                        : item.key === 'automations'
+                          ? automationsNavActive
+                          : item.key === 'service-orders'
+                            ? ordersNavActive
+                            : item.key === 'services'
+                              ? servicesModuleNavActive
+                              : isActive)
+                        ? 'bg-white text-brand-900'
+                        : 'text-white/90 hover:bg-white/10',
                     )
                   }
                 >
-                  {(() => {
-                    const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
-                    return (
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-2">
-                      <ItemIcon size={16} stroke={1.8} />
-                      <span>{item.key === 'clients' ? clientsNavLabel : getItemLabel(item)}</span>
-                    </span>
-                    {item.key === 'do-procesowania' && pendingHandoffsCount > 0 && (
-                      <span
-                        className="inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-semibold text-white"
-                        aria-label={t('app.handoff.badge_new', { count: pendingHandoffsCount })}
-                      >
-                        {pendingHandoffsCount}
-                      </span>
-                    )}
+                  <span className="inline-flex items-center gap-2">
+                    {(() => {
+                      const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
+                      return <ItemIcon size={15} stroke={1.8} />
+                    })()}
+                    <span>{item.key === 'clients' ? clientsNavLabel : getItemLabel(item)}</span>
                   </span>
-                    )
-                  })()}
                 </NavLink>
-              ))}
-            </div>
+              )
 
-            {/* Разделитель перед остальными секциями */}
-            {sections.length > 0 && mainItems.length > 0 && (
-              <div className="mx-4 my-4 border-t border-white/15" />
-            )}
-
-            {/* Остальные секции - раздвижные */}
-            {sections.map((section, index) => {
-              const expanded = expandedGroups[section.key] ?? true
               return (
                 <div key={section.key} className="space-y-2">
                   <div>
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white/60 hover:bg-white/5"
-                      onClick={() =>
-                        setExpandedGroups((prev) => ({ ...prev, [section.key]: !expanded }))
-                      }
-                    >
-                      <span>{section.label}</span>
-                      <span
-                        className={clsx(
-                          'inline-flex transition-transform',
-                          expanded ? 'rotate-0' : '-rotate-90'
-                        )}
-                      >
-                        <IconChevronDown size={16} stroke={2} />
-                      </span>
-                    </button>
-
-                    <div className={clsx('mt-2 space-y-1', !expanded && 'hidden')}>
-                      {section.items.map((item) => (
-                        <NavLink
-                          key={item.key}
-                          to={item.path!}
-                          title={getItemLabel(item)}
-                          onClick={handleNavigate}
-                          className={({ isActive }) =>
-                            clsx(
-                              'block rounded-md px-3 py-2 text-sm transition',
-                              isActive ? 'bg-white text-brand-900' : 'text-white/90 hover:bg-white/10'
-                            )
+                    {section.collapsible ? (
+                      <>
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-widest text-white/60 hover:bg-white/5"
+                          onClick={() =>
+                            setExpandedGroups((prev) => ({ ...prev, [section.key]: !expanded }))
                           }
                         >
-                          <span className="inline-flex items-center gap-2">
-                            {(() => {
-                              const ItemIcon = ITEM_ICONS[item.key] || DEFAULT_ICON
-                              return <ItemIcon size={15} stroke={1.8} />
-                            })()}
-                            <span>{item.key === 'clients' ? clientsNavLabel : getItemLabel(item)}</span>
+                          <span>{section.label}</span>
+                          <span
+                            className={clsx(
+                              'inline-flex transition-transform',
+                              expanded ? 'rotate-0' : '-rotate-90'
+                            )}
+                          >
+                            <IconChevronDown size={16} stroke={2} />
                           </span>
-                        </NavLink>
-                      ))}
-                    </div>
+                        </button>
+                        <div className={clsx('mt-2 space-y-1', !expanded && 'hidden')}>
+                          {section.items.map(linkRow)}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                          {section.label}
+                        </div>
+                        <div className="space-y-1">{section.items.map(linkRow)}</div>
+                      </>
+                    )}
                   </div>
                   {index < sections.length - 1 && (
                     <div className="mx-4 my-3 border-t border-white/15" />

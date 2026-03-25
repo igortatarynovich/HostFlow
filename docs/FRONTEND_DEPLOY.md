@@ -47,11 +47,15 @@ rg "workPanelOpen|data-hf-ui|candidates-flex-rail-v4" dist/assets/index-*.js
 
 В `Caddyfile` для **`/assets/*`** включён долгий кеш, для остального SPA — **`Cache-Control: no-cache, no-store, must-revalidate`**.
 
+Если фронт отдаёт **nginx** (например `deploy/nginx/hostflow.conf`), нужно то же правило: отдельный **`location /assets/`** с **`immutable`**, а для **`location /`** (SPA fallback на **`index.html`**) — **`no-cache, no-store, must-revalidate`**. Без этого браузер или CDN может отдавать старый **`index.html`** → в консоли **`Failed to fetch dynamically import module`** и **404** на **`routeBundle*.js`**.
+
 После смены `Caddyfile`: `docker compose up -d caddy` (или полный restart стека).
 
 ### Ошибка в консоли: `Failed to fetch dynamically imported module` + 404 на `routeBundle*.js`
 
 Это почти всегда **рассинхрон после деплоя**: в памяти вкладки остался старый entry (`index-….js`), он тянет **старый** хэш чанка (`routeBundleInvoices-….js`), а на диске после `npm run build` уже **другие** имена файлов — чанк 404, ленивый импорт падает.
+
+**Клиентское смягчение (в репо):** `src/utils/staleChunkReload.ts` + вызов из **`main.tsx`** — при такой ошибке выполняется **одна** перезагрузка страницы (не чаще чем раз в **10 с** по `sessionStorage`), чтобы подтянуть свежий **`index.html`**. Это не заменяет правильные **Cache-Control** для HTML: если CDN всё ещё отдаёт старый shell, после одной лишней попытки пользователю нужен **жёсткий сброс кеша** или правило **Bypass** для HTML.
 
 Что сделать:
 

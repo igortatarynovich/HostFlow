@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import clsx from 'clsx'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { TenantRecord, WhoAmI } from '../api/types'
 import { getCurrentTenant } from '../api/tenants'
@@ -17,6 +18,8 @@ import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
 import { useLicenseStatus } from '../hooks/useLicenseStatus'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
 import { ACTIVATION_PATHS, getActivationSetupTarget } from './activationRoutes'
+import { usePermissions } from '../hooks/usePermissions'
+import { maybeMigrateDefaultAppHomeToTasks } from '../utils/defaultAppHome'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -25,15 +28,16 @@ type AppShellProps = {
 }
 
 export function AppShell({ me, navItems, onLogout }: AppShellProps) {
+  const { can } = usePermissions()
   useRobotsMeta({ index: false, follow: false })
   const location = useLocation()
   const navigate = useNavigate()
   const path = location.pathname
   const isOnboardingPage = location.pathname.startsWith('/app/onboarding/')
   const isSettingsArea = location.pathname.startsWith('/app/settings')
-  /** Вся зона кандидатов (список, карточка и вложенные): compact topbar + единый плотный режим workspace. */
-  const isCandidatesArea = path === '/app/candidates' || path.startsWith('/app/candidates/')
-  /** Список кандидатов (таблица): убираем scroll у main — иначе два скролла (main + TableVirtuoso) ломают hit-testing/клики. */
+  /** Весь CRM workspace: без внешних отступов у main, компактный topbar (как список кандидатов). Onboarding оставляем с полями. */
+  const isCrmWorkspace = path.startsWith('/app') && !isOnboardingPage
+  /** Список кандидатов (таблица): убираем scroll у main — иначе два скролла (main + таблица) ломают hit-testing/клики. */
   const isCandidatesTablePage = path === '/app/candidates'
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
@@ -70,6 +74,11 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
       setTenantId(id)
     }
   }, [me?.tenant_id])
+
+  useEffect(() => {
+    if (!me) return
+    maybeMigrateDefaultAppHomeToTasks(can('notifications.view'))
+  }, [me, can])
 
   useEffect(() => {
     let cancelled = false
@@ -186,7 +195,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
               tenant={tenant}
               onLogout={onLogout}
               onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-              compact={isCandidatesArea}
+              compact={isCrmWorkspace}
             />
 
             <main
@@ -198,14 +207,22 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
             >
               <div
                 className={
-                  isCandidatesTablePage
-                    ? 'flex min-h-0 w-full flex-1 flex-col overflow-hidden px-0 py-0'
+                  isCrmWorkspace
+                    ? clsx(
+                        'flex min-h-0 w-full flex-1 flex-col px-0 py-0',
+                        isCandidatesTablePage && 'overflow-hidden',
+                      )
                     : 'w-full px-6 py-6 lg:px-10'
                 }
               >
                 {isSettingsArea && <SettingsChrome pathname={location.pathname} compactMode={guidedTrialWorkspace} />}
                 <div
-                  className={`app-ui min-h-0 ${isSettingsArea ? 'settings-surface' : ''} ${isCandidatesTablePage ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : ''}`.trim()}
+                  className={clsx(
+                    'app-ui min-h-0',
+                    isSettingsArea && 'settings-surface',
+                    isCrmWorkspace && 'crm-workspace-fill',
+                    isCandidatesTablePage && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+                  )}
                 >
                   <Outlet />
                 </div>

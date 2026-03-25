@@ -39,6 +39,12 @@ export type AnalyticsProfileSummary = {
 export type OpsCounters = {
   no_next_action_candidates: number
   overdue_reminders: number
+  /** Open vacancies (status open, not archived); ACL-aligned with list. */
+  open_vacancies?: number
+  /** Candidates linked to those vacancies (same scope). */
+  open_vacancies_candidates?: number
+  /** Service orders excluding completed/cancelled (tenant-wide). */
+  open_service_orders?: number
   leads_no_next_action?: number
   leads_overdue?: number
   leads_with_next_action?: number
@@ -78,6 +84,90 @@ export type StageMetricsResponse = {
   stage_time: StageTimeItem[]
   transitions: StageTransitionItem[]
   readiness: Record<string, number>
+}
+
+export type RiskIntelligenceStageAgg = {
+  count: number
+  avg_risk_score: number
+  high_plus_count: number
+}
+
+export type RiskIntelligenceResponse = {
+  generated_at: string
+  risk_version: string
+  candidates_evaluated: number
+  high_risk_volume: number
+  avg_risk_score: number
+  band_distribution: Record<string, number>
+  risk_distribution_by_stage: Record<string, RiskIntelligenceStageAgg>
+  first_response_hours_histogram: Record<string, number>
+  effective_weights: Record<string, number>
+}
+
+export type RiskIntelTrendPoint = {
+  bucket_start: string | null
+  avg_risk_score: number
+  high_risk_volume: number
+  candidates_evaluated: number
+  band_low: number
+  band_medium: number
+  band_high: number
+  band_critical: number
+}
+
+export type RiskIntelTrendsResponse = {
+  generated_at: string
+  days: number
+  points: RiskIntelTrendPoint[]
+}
+
+export type RiskIntelValidationResponse = {
+  generated_at: string
+  cohort_window: { from: string; to: string }
+  lag_days_after_cohort: number
+  samples: number
+  forward_stage_progression_count: number
+  forward_stage_progression_rate: number | null
+  interpretation?: string | null
+  note?: string | null
+}
+
+export type RiskIntelShadowSnapshotItem = {
+  entity_id: string
+  score: number
+  band: string
+  stage_at_score?: string | null
+  drivers: string[]
+  scored_at?: string | null
+  short_id?: string | null
+  display_name?: string | null
+  /** Candidate owner when known — used for digest handoff (reminder assignee / claim). */
+  recruiter_id?: string | null
+}
+
+export type RiskIntelShadowSnapshotResponse = {
+  bucket_start: string | null
+  scored_at: string | null
+  risk_version: string
+  min_band: string
+  total_matching: number
+  items: RiskIntelShadowSnapshotItem[]
+  note?: string | null
+}
+
+export type RiskIntelDigestQueueItem = {
+  bucket_start: string
+  total_matching: number
+  scored_at?: string | null
+  unread: boolean
+}
+
+export type RiskIntelDigestQueueResponse = {
+  generated_at: string
+  min_band: string
+  last_ack_bucket_start?: string | null
+  unread_count: number
+  buckets: RiskIntelDigestQueueItem[]
 }
 
 export type ServicesAnalyticsOverview = {
@@ -266,6 +356,76 @@ export async function getGoals(): Promise<GoalsResponse> {
 
 export async function getStageMetrics(params?: { from?: string; to?: string; limit_transitions?: number }): Promise<StageMetricsResponse> {
   const { data } = await api.get<StageMetricsResponse>('/analytics/stage-metrics', { params })
+  return data
+}
+
+export async function getRiskIntelligence(params?: { limit?: number }): Promise<RiskIntelligenceResponse> {
+  const { data } = await api.get<RiskIntelligenceResponse>('/analytics/risk-intelligence', {
+    params: params?.limit != null ? { limit: params.limit } : undefined,
+  })
+  return data
+}
+
+export async function getRiskIntelligenceTrends(params?: { days?: number }): Promise<RiskIntelTrendsResponse> {
+  const q: Record<string, string> = {}
+  if (params?.days != null) q.days = String(params.days)
+  const { data } = await api.get<RiskIntelTrendsResponse>('/analytics/risk-intelligence/trends', {
+    params: Object.keys(q).length ? q : undefined,
+  })
+  return data
+}
+
+export async function getRiskIntelligenceValidation(params?: {
+  cohort_days?: number
+  lag_days?: number
+}): Promise<RiskIntelValidationResponse> {
+  const q: Record<string, string> = {}
+  if (params?.cohort_days != null) q.cohort_days = String(params.cohort_days)
+  if (params?.lag_days != null) q.lag_days = String(params.lag_days)
+  const { data } = await api.get<RiskIntelValidationResponse>('/analytics/risk-intelligence/validation', {
+    params: Object.keys(q).length ? q : undefined,
+  })
+  return data
+}
+
+export async function getRiskIntelligenceShadowSnapshot(params?: {
+  limit?: number
+  min_band?: string
+  bucket_start?: string | null
+}): Promise<RiskIntelShadowSnapshotResponse> {
+  const q: Record<string, string> = {}
+  if (params?.limit != null) q.limit = String(params.limit)
+  if (params?.min_band != null) q.min_band = String(params.min_band)
+  if (params?.bucket_start != null && String(params.bucket_start).trim() !== '') {
+    q.bucket_start = String(params.bucket_start).trim()
+  }
+  const { data } = await api.get<RiskIntelShadowSnapshotResponse>('/analytics/risk-intelligence/shadow-snapshot', {
+    params: Object.keys(q).length ? q : undefined,
+  })
+  return data
+}
+
+export async function getRiskIntelligenceManagerDigestQueue(params?: {
+  min_band?: string
+  limit_buckets?: number
+}): Promise<RiskIntelDigestQueueResponse> {
+  const q: Record<string, string> = {}
+  if (params?.min_band != null) q.min_band = String(params.min_band)
+  if (params?.limit_buckets != null) q.limit_buckets = String(params.limit_buckets)
+  const { data } = await api.get<RiskIntelDigestQueueResponse>('/analytics/risk-intelligence/manager-digest-queue', {
+    params: Object.keys(q).length ? q : undefined,
+  })
+  return data
+}
+
+export async function ackRiskIntelligenceManagerDigest(body: { bucket_start: string }): Promise<{
+  ok: boolean
+  bucket_start?: string
+}> {
+  const { data } = await api.post<{ ok: boolean; bucket_start?: string }>(
+    '/analytics/risk-intelligence/manager-digest-queue/ack',
+    body,
+  )
   return data
 }
 

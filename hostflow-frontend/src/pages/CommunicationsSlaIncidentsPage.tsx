@@ -15,6 +15,7 @@ import {
   type CommunicationIncidentGroup,
   type CommunicationOpsMode,
 } from '../utils/communicationsOpsMode'
+import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
 const DATE_LOCALES = { en: enUS, ru: ruLocale, pl: plLocale }
 type OpsMode = CommunicationOpsMode
@@ -198,10 +199,10 @@ export default function CommunicationsSlaIncidentsPage() {
   const openThread = (item: NotificationItem) => {
     const threadId = notificationThreadId(item)
     if (threadId) {
-      navigate(`/app/messages?threadId=${threadId}`)
+      navigate(buildInboxThreadPath(threadId))
       return
     }
-    navigate('/app/messages')
+    navigate('/app/inbox')
   }
 
   const markOneRead = async (item: NotificationItem) => {

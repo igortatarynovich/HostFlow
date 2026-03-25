@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from io import BytesIO
 from typing import Dict
 from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
-from PIL import Image, ImageDraw
 from sqlalchemy import select, update
 
 from backend.app.db.session import async_session_maker
@@ -42,17 +40,6 @@ async def _list_consents(candidate_id: str) -> list[CandidateConsent]:
         stmt = select(CandidateConsent).where(CandidateConsent.candidate_id == candidate_id)
         result = await session.execute(stmt)
         return list(result.scalars().all())
-
-
-def _mock_photo_bytes(width: int = 1800, height: int = 1200) -> bytes:
-    image = Image.new("RGB", (width, height), color=(35, 50, 80))
-    draw = ImageDraw.Draw(image)
-    draw.rectangle((220, 180, width - 220, height - 180), fill=(240, 240, 240))
-    draw.rectangle((260, 220, width - 260, 260), fill=(180, 180, 180))
-    draw.text((280, 320), "HostFlow Scanner", fill=(0, 0, 0))
-    buffer = BytesIO()
-    image.save(buffer, format="JPEG", quality=90)
-    return buffer.getvalue()
 
 
 @pytest.mark.asyncio
@@ -259,48 +246,6 @@ async def test_public_intake_reuses_existing_candidate(client: AsyncClient, tena
 
 
 @pytest.mark.asyncio
-async def test_public_scanner_flow(client: AsyncClient, tenant_id: str) -> None:
-    create_resp = await client.post(
-        "/api/v1/public/intake",
-        headers=_headers(tenant_id),
-        json={"contacts": {"phone_country_code": "+48", "phone": "555009900"}},
-    )
-    assert create_resp.status_code == 200, create_resp.text
-    token = create_resp.json()["token"]
-
-    session_resp = await client.post(
-        "/api/v1/public/scan-sessions",
-        headers=_headers(tenant_id),
-        json={"token": token, "document_type": "id_card"},
-    )
-    assert session_resp.status_code == 200, session_resp.text
-    session_id = session_resp.json()["id"]
-
-    photo_bytes = _mock_photo_bytes()
-    files = {"file": ("front.jpg", photo_bytes, "image/jpeg")}
-    data = {"page_code": "front", "rotation": "0"}
-    upload_resp = await client.post(
-        f"/api/v1/public/scan-sessions/{session_id}/pages",
-        headers=_headers(tenant_id),
-        data=data,
-        files=files,
-    )
-    assert upload_resp.status_code == 200, upload_resp.text
-    upload_state = upload_resp.json()
-    assert upload_state["status"] == "in_progress"
-    assert any(page["page_code"] == "front" for page in upload_state["pages"])
-
-    process_resp = await client.post(
-        f"/api/v1/public/scan-sessions/{session_id}/process",
-        headers=_headers(tenant_id),
-    )
-    assert process_resp.status_code == 200, process_resp.text
-    processed = process_resp.json()
-    assert processed["status"] == "done"
-    assert processed["pages"][0]["status"] in {"ok", "needs_review", "rejected"}
-
-
-@pytest.mark.asyncio
 async def test_public_intake_matches_phone_digits_without_country_code(client: AsyncClient, tenant_id: str) -> None:
     candidate_id = str(uuid4())
     async with async_session_maker() as session:
@@ -332,7 +277,7 @@ async def test_public_intake_matches_phone_digits_without_country_code(client: A
     assert candidate.intake_token == payload["token"]
 
     presign_resp = await client.post(
-        f"/api/v1/public/apply/{token}/documents/presign",
+        f"/api/v1/public/apply/{payload['token']}/documents/presign",
         headers=_headers(tenant_id),
         json={"doc_type": "visa", "filename": "visa.pdf"},
     )
@@ -402,8 +347,23 @@ async def test_public_magic_link_flow(client: AsyncClient, tenant_id: str) -> No
     assert payload["token"]
     assert payload["apply_url"].endswith(payload["token"])
 
+    apply_token = payload["token"]
+    presign_resp = await client.post(
+        f"/api/v1/public/apply/{apply_token}/documents/presign",
+        headers=_headers(tenant_id),
+        json={"doc_type": "visa", "filename": "visa.pdf"},
+    )
+    assert presign_resp.status_code == 200, presign_resp.text
+    presign = presign_resp.json()
+    put_magic = await client.put(
+        presign["url"],
+        headers=_headers(tenant_id),
+        content=b"PDF binary data",
+    )
+    assert put_magic.status_code == 204, put_magic.text
+
     complete_resp = await client.post(
-        f"/api/v1/public/apply/{token}/documents/upload",
+        f"/api/v1/public/apply/{apply_token}/documents/upload",
         headers=_headers(tenant_id),
         data={"doc_type": "visa", "storage_key": presign["key"]},
     )

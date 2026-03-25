@@ -5,9 +5,13 @@ Toggle per tenant via Tenant.settings["uos_auto_activities_v1"]:
 
   {
     "candidate_created_call": true,
+    "candidate_stage_follow_up": true,
     "service_order_confirm": true,
     "invoice_follow_payment": true,
-    "inbound_message_reply": true
+    "inbound_message_reply": true,
+    "client_company_intro": true,
+    "client_stage_follow_up": true,
+    "vacancy_recruiting_follow_up": true
   }
 
 Omitted keys default to True. Set a key to false to disable that automation.
@@ -21,6 +25,7 @@ from typing import Any, Mapping, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.tenant import Tenant
 from backend.app.services.reminder_tasks import create_reminder, refresh_open_typed_reminder_due
@@ -50,6 +55,52 @@ async def _tenant_settings(db: AsyncSession, tenant_id: str) -> dict[str, Any]:
     row = await db.execute(select(Tenant.settings).where(Tenant.id == tenant_id))
     s = row.scalar_one_or_none()
     return _as_dict(s)
+
+
+def _company_is_client_party(company: Any) -> bool:
+    extra = getattr(company, "extra", None)
+    extra = extra if isinstance(extra, dict) else {}
+    return str(extra.get("company_role") or "").strip() == "client"
+
+
+def vacancy_is_recruiting(v: Any) -> bool:
+    """True when the vacancy is an active recruiting container (open, not archived/closed)."""
+    if bool(getattr(v, "is_archived", False)):
+        return False
+    st = str(getattr(v, "status", "") or "").strip().lower()
+    if st in ("closed", "archived", "cancelled", "filled", "draft", "on_hold"):
+        return False
+    if st == "open":
+        return True
+    return bool(getattr(v, "is_active", True))
+
+
+async def _tenant_funnel_stage_code_is_terminal(db: AsyncSession, tenant_id: str, code: str) -> bool:
+    """True if any tenant funnel marks the code terminal, or a small heuristic when no row exists."""
+    c = str(code or "").strip()
+    if not c:
+        return True
+    stmt = (
+        select(FunnelStage.id)
+        .join(Funnel, Funnel.id == FunnelStage.funnel_id)
+        .where(
+            Funnel.tenant_id == tenant_id,
+            FunnelStage.code == c,
+            FunnelStage.is_terminal.is_(True),
+        )
+        .limit(1)
+    )
+    row = await db.execute(stmt)
+    if row.scalar_one_or_none() is not None:
+        return True
+    lowered = c.lower()
+    if lowered in {"rejected", "declined", "employed", "lost", "won", "archived", "closed"}:
+        return True
+    return False
+
+
+async def _client_stage_code_is_terminal(db: AsyncSession, tenant_id: str, code: str) -> bool:
+    return await _tenant_funnel_stage_code_is_terminal(db, tenant_id, code)
 
 
 def _thread_skips_auto_reply(thread: Any) -> bool:
@@ -281,5 +332,239 @@ async def ensure_inbound_thread_reply_task(
                 "thread_id": tid,
                 "thread_channel": ch,
             },
+        },
+    )
+
+
+async def ensure_client_company_intro_task(
+    db: AsyncSession,
+    tenant_id: str,
+    actor_id: str,
+    company: Any,
+) -> None:
+    """First-touch task for **client** companies (party role client); deduped per company."""
+    if not _company_is_client_party(company):
+        return
+    if not _uos_auto_flag(await _tenant_settings(db, tenant_id), "client_company_intro", True):
+        return
+    cid = str(getattr(company, "id", "") or "").strip()
+    if not cid:
+        return
+    if await _has_active_typed_reminder(
+        db, tenant_id=tenant_id, entity_type="company", entity_id=cid, rtype="uos_client_intro"
+    ):
+        return
+    assignee = str(
+        getattr(company, "owner_user_id", None)
+        or getattr(company, "manager_user_id", None)
+        or actor_id
+        or ""
+    ).strip() or actor_id
+    due = datetime.now(timezone.utc) + timedelta(hours=48)
+    await create_reminder(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        payload={
+            "title": "Qualify client relationship",
+            "type": "uos_client_intro",
+            "entity_type": "company",
+            "entity_id": cid,
+            "due_at": due,
+            "assignee_id": assignee,
+            "source": "uos_auto",
+            "priority": "normal",
+            "channel": "internal",
+            "payload": {"uos_trigger": "company.client.created", "company_id": cid},
+        },
+    )
+
+
+async def ensure_client_stage_follow_up_task(
+    db: AsyncSession,
+    tenant_id: str,
+    actor_id: str,
+    company: Any,
+    old_stage: Optional[str],
+    new_stage: Optional[str],
+) -> None:
+    """On client pipeline stage change: one open follow-up task per company (refresh due/title when re-advancing)."""
+    if not _company_is_client_party(company):
+        return
+    if not _uos_auto_flag(await _tenant_settings(db, tenant_id), "client_stage_follow_up", True):
+        return
+    cid = str(getattr(company, "id", "") or "").strip()
+    if not cid:
+        return
+    new_s = str(new_stage or "").strip() or None
+    old_s = str(old_stage or "").strip() or None
+    if not new_s or new_s == old_s:
+        return
+    if await _client_stage_code_is_terminal(db, tenant_id, new_s):
+        return
+    assignee = str(
+        getattr(company, "owner_user_id", None)
+        or getattr(company, "manager_user_id", None)
+        or actor_id
+        or ""
+    ).strip() or actor_id
+    due = datetime.now(timezone.utc) + timedelta(hours=72)
+    title = f"Client pipeline: {new_s}"
+    pmerge = {
+        "uos_trigger": "company.client_stage.changed",
+        "company_id": cid,
+        "client_stage": new_s,
+        "previous_client_stage": old_s,
+    }
+    refreshed = await refresh_open_typed_reminder_due(
+        db,
+        tenant_id=tenant_id,
+        entity_type="company",
+        entity_id=cid,
+        reminder_type="uos_client_stage_follow_up",
+        new_due_at=due,
+        new_title=title,
+        payload_merge=pmerge,
+    )
+    if refreshed:
+        return
+    await create_reminder(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        payload={
+            "title": title,
+            "type": "uos_client_stage_follow_up",
+            "entity_type": "company",
+            "entity_id": cid,
+            "due_at": due,
+            "assignee_id": assignee,
+            "source": "uos_auto",
+            "priority": "normal",
+            "channel": "internal",
+            "payload": pmerge,
+        },
+    )
+
+
+async def ensure_candidate_stage_follow_up_task(
+    db: AsyncSession,
+    tenant_id: str,
+    actor_id: str,
+    candidate: Any,
+    old_stage: Optional[str],
+    new_stage: Optional[str],
+) -> None:
+    """On hiring pipeline stage change: one open follow-up task per candidate (refresh due/title when re-advancing)."""
+    if not _uos_auto_flag(await _tenant_settings(db, tenant_id), "candidate_stage_follow_up", True):
+        return
+    cid = str(getattr(candidate, "id", "") or "").strip()
+    if not cid:
+        return
+    new_s = str(new_stage or "").strip() or None
+    old_s = str(old_stage or "").strip() or None
+    if not new_s or new_s == old_s:
+        return
+    if await _tenant_funnel_stage_code_is_terminal(db, tenant_id, new_s):
+        return
+    assignee = str(
+        getattr(candidate, "recruiter_id", None)
+        or getattr(candidate, "manager", None)
+        or actor_id
+        or ""
+    ).strip() or actor_id
+    due = datetime.now(timezone.utc) + timedelta(hours=72)
+    title = f"Candidate pipeline: {new_s}"
+    pmerge = {
+        "uos_trigger": "candidate.stage.changed",
+        "candidate_id": cid,
+        "stage": new_s,
+        "previous_stage": old_s,
+    }
+    refreshed = await refresh_open_typed_reminder_due(
+        db,
+        tenant_id=tenant_id,
+        entity_type="candidate",
+        entity_id=cid,
+        reminder_type="uos_candidate_stage_follow_up",
+        new_due_at=due,
+        new_title=title,
+        payload_merge=pmerge,
+    )
+    if refreshed:
+        return
+    await create_reminder(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        payload={
+            "title": title,
+            "type": "uos_candidate_stage_follow_up",
+            "entity_type": "candidate",
+            "entity_id": cid,
+            "due_at": due,
+            "assignee_id": assignee,
+            "source": "uos_auto",
+            "priority": "normal",
+            "channel": "internal",
+            "payload": pmerge,
+        },
+    )
+
+
+async def ensure_vacancy_recruiting_follow_up_task(
+    db: AsyncSession,
+    tenant_id: str,
+    actor_id: str,
+    vacancy: Any,
+    *,
+    was_recruiting_before: bool,
+) -> None:
+    """When a vacancy **enters** recruiting (new open vacancy or reopen): one follow-up task; refresh if reopen reuses open row."""
+    if not _uos_auto_flag(await _tenant_settings(db, tenant_id), "vacancy_recruiting_follow_up", True):
+        return
+    vid = str(getattr(vacancy, "id", "") or "").strip()
+    if not vid:
+        return
+    if not vacancy_is_recruiting(vacancy):
+        return
+    if was_recruiting_before:
+        return
+    act = str(actor_id or "").strip() or "uos-auto"
+    assignee = str(getattr(vacancy, "manager", None) or "").strip() or act
+    due = datetime.now(timezone.utc) + timedelta(hours=72)
+    title_part = str(getattr(vacancy, "title", "") or "").strip() or vid
+    title = f"Vacancy pipeline: {title_part[:80]}"
+    pmerge = {
+        "uos_trigger": "vacancy.recruiting.entered",
+        "vacancy_id": vid,
+    }
+    refreshed = await refresh_open_typed_reminder_due(
+        db,
+        tenant_id=tenant_id,
+        entity_type="vacancy",
+        entity_id=vid,
+        reminder_type="uos_vacancy_recruiting_follow_up",
+        new_due_at=due,
+        new_title=title,
+        payload_merge=pmerge,
+    )
+    if refreshed:
+        return
+    await create_reminder(
+        db,
+        tenant_id=tenant_id,
+        actor_id=act,
+        payload={
+            "title": title,
+            "type": "uos_vacancy_recruiting_follow_up",
+            "entity_type": "vacancy",
+            "entity_id": vid,
+            "due_at": due,
+            "assignee_id": assignee,
+            "source": "uos_auto",
+            "priority": "normal",
+            "channel": "internal",
+            "payload": pmerge,
         },
     )

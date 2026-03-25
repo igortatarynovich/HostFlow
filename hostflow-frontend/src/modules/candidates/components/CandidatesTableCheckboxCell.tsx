@@ -4,6 +4,8 @@ import type { AugmentedCandidate } from '../types'
 type CandidatesTableCheckboxCellProps = {
   c: AugmentedCandidate
   isFocused: boolean
+  /** Row is the target of the open work panel (keyboard focus may differ). */
+  isWorkPanelRow?: boolean
   checked: Record<string, boolean>
   canManage: boolean
   toggle: (id: string) => void
@@ -13,6 +15,7 @@ type CandidatesTableCheckboxCellProps = {
 export function CandidatesTableCheckboxCell({
   c,
   isFocused,
+  isWorkPanelRow = false,
   checked,
   canManage,
   toggle,
@@ -37,7 +40,7 @@ export function CandidatesTableCheckboxCell({
     <td
       className={clsx(
         'px-4 py-2.5 border-r border-slate-200 align-middle',
-        isFocused ? 'bg-brand-100' : 'bg-white',
+        isFocused ? 'bg-brand-100' : isWorkPanelRow ? 'bg-brand-50/90' : 'bg-white',
       )}
       data-candidate-id={c.id}
       style={{ width: '56px', minWidth: '56px', maxWidth: '56px' }}

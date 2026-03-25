@@ -16,6 +16,7 @@ import {
   type WorkingHoursSchedule,
 } from '../api/communications'
 import { useI18n } from '../i18n'
+import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 
 type CalendarSourceFilter = 'all' | 'timeoff' | 'reminders' | 'planner'
 type TimeOffStatusFilter = 'approved' | 'pending' | 'all'
@@ -25,6 +26,25 @@ type BatchSelectStatusFilter = '' | 'planned' | 'in_progress' | 'done' | 'cancel
 type WeekSlotMinutes = 15 | 30 | 60
 
 const CALENDAR_BATCH_STORAGE_KEY = 'hf:calendar:batch:v1'
+const CALENDAR_UI_STORAGE_KEY = 'hf:calendar:ui:v1'
+
+function readInitialCalendarUi(): { source: CalendarSourceFilter; view: ViewMode } {
+  if (typeof window === 'undefined') return { source: 'reminders', view: 'month' }
+  try {
+    const raw = window.localStorage.getItem(CALENDAR_UI_STORAGE_KEY)
+    if (!raw) return { source: 'reminders', view: 'month' }
+    const p = JSON.parse(raw) as { sourceFilter?: string; viewMode?: string }
+    const source: CalendarSourceFilter =
+      p.sourceFilter === 'all' || p.sourceFilter === 'timeoff' || p.sourceFilter === 'reminders' || p.sourceFilter === 'planner'
+        ? p.sourceFilter
+        : 'reminders'
+    const view: ViewMode =
+      p.viewMode === 'month' || p.viewMode === 'week' || p.viewMode === 'day' ? p.viewMode : 'month'
+    return { source, view }
+  } catch {
+    return { source: 'reminders', view: 'month' }
+  }
+}
 
 type UnifiedCalendarEvent = {
   id: string
@@ -218,6 +238,7 @@ function plannerKindTone(kind?: string | null): string {
 
 export default function CommunicationsCalendarPage() {
   const { t } = useI18n()
+  const { canUseCommunicationsFeature } = useCommunicationsAccess()
 
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -235,11 +256,11 @@ export default function CommunicationsCalendarPage() {
   const [selectedDay, setSelectedDay] = useState<string>(() => dateIso(new Date()))
   const [weekCursor, setWeekCursor] = useState<Date>(() => startOfWeek(new Date()))
   const [statusFilter, setStatusFilter] = useState<TimeOffStatusFilter>('approved')
-  const [sourceFilter, setSourceFilter] = useState<CalendarSourceFilter>('all')
+  const [sourceFilter, setSourceFilter] = useState<CalendarSourceFilter>(() => readInitialCalendarUi().source)
   const [assigneeFilter, setAssigneeFilter] = useState('')
   const [activityTypeFilter, setActivityTypeFilter] = useState('')
   const [plannerKindFilter, setPlannerKindFilter] = useState('')
-  const [viewMode, setViewMode] = useState<ViewMode>('month')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => readInitialCalendarUi().view)
   const [dragPlannerEvent, setDragPlannerEvent] = useState<UnifiedCalendarEvent | null>(null)
   const [resizePlannerEvent, setResizePlannerEvent] = useState<UnifiedCalendarEvent | null>(null)
   const [activePlannerMenuId, setActivePlannerMenuId] = useState<string | null>(null)
@@ -349,6 +370,17 @@ export default function CommunicationsCalendarPage() {
     const timer = window.setInterval(() => setNowTs(Date.now()), 60_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        CALENDAR_UI_STORAGE_KEY,
+        JSON.stringify({ sourceFilter, viewMode }),
+      )
+    } catch {
+      // ignore
+    }
+  }, [sourceFilter, viewMode])
 
   const monthMeta = useMemo(() => {
     const start = startOfMonth(monthCursor)
@@ -1264,8 +1296,31 @@ export default function CommunicationsCalendarPage() {
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.calendar_title', { defaultValue: 'Calendar' })}</h1>
         <p className="text-sm text-slate-500">
-          {t('app.communications.ia.calendar_subtitle', { defaultValue: 'Daily planning workspace: meetings, tasks, activities, time-off and team load. Inbound email/messages are not shown here.' })}
+          {t('app.communications.ia.calendar_subtitle', {
+            defaultValue:
+              'Time view of tasks and activities (same data as Tasks). Optional layers: planner blocks and team time-off. For triage and SLA queue, use Tasks — not a second worklist here.',
+          })}
         </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+          <Link to="/app/tasks" className="font-medium text-brand-700 hover:underline">
+            {t('app.communications.calendar.tasks_queue_link', { defaultValue: 'Open full task queue' })}
+          </Link>
+          {canUseCommunicationsFeature('myAvailability') && (
+            <Link to="/app/my-availability" className="text-slate-600 hover:text-brand-700 hover:underline">
+              {t('app.communications.calendar.scheduling.my_availability', { defaultValue: 'My availability' })}
+            </Link>
+          )}
+          {canUseCommunicationsFeature('teamAvailability') && (
+            <Link to="/app/team-availability" className="text-slate-600 hover:text-brand-700 hover:underline">
+              {t('app.communications.calendar.scheduling.team_availability', { defaultValue: 'Team availability' })}
+            </Link>
+          )}
+          {canUseCommunicationsFeature('timeOffRequests') && (
+            <Link to="/app/time-off" className="text-slate-600 hover:text-brand-700 hover:underline">
+              {t('app.communications.calendar.scheduling.time_off', { defaultValue: 'Time off' })}
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
@@ -1305,7 +1360,9 @@ export default function CommunicationsCalendarPage() {
           <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value as CalendarSourceFilter)} className="input">
             <option value="all">{t('app.communications.calendar.filters.sources.all', { defaultValue: 'All sources' })}</option>
             <option value="timeoff">{t('app.communications.calendar.filters.sources.timeoff', { defaultValue: 'Time-off' })}</option>
-            <option value="reminders">{t('app.communications.calendar.filters.sources.activities', { defaultValue: 'Activities' })}</option>
+            <option value="reminders">
+              {t('app.communications.calendar.filters.sources.activities', { defaultValue: 'Tasks & deadlines' })}
+            </option>
             <option value="planner">{t('app.communications.calendar.filters.sources.planner', { defaultValue: 'Planner' })}</option>
           </select>
 

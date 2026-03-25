@@ -201,6 +201,11 @@ CommunicationThread = communication_module.CommunicationThread  # type: ignore[a
 CommunicationMessage = communication_module.CommunicationMessage  # type: ignore[attr-defined]
 CommunicationChannelAccount = communication_module.CommunicationChannelAccount  # type: ignore[attr-defined]
 
+# Risk intelligence (hourly aggregates + shadow cohort rows)
+_risk_intel_mod = _load_model_module("risk_intel")
+RiskIntelTenantHourly = _risk_intel_mod.RiskIntelTenantHourly  # type: ignore[attr-defined]
+RiskIntelEntityShadow = _risk_intel_mod.RiskIntelEntityShadow  # type: ignore[attr-defined]
+
 # Password reset tokens (self-service)
 PasswordResetToken = _load_model_module("password_reset_token").PasswordResetToken  # type: ignore[attr-defined]
 
@@ -290,5 +295,7 @@ __all__ = [
     "CommunicationThread",
     "CommunicationMessage",
     "CommunicationChannelAccount",
+    "RiskIntelTenantHourly",
+    "RiskIntelEntityShadow",
     "Country",
 ]

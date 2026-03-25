@@ -41,6 +41,7 @@ import type {
   ContactInfo,
 } from '../modules/companies/types'
 import { ORDER_TYPE_OPTIONS } from '../modules/companies/types'
+import { servicesWorkspacePath } from '../modules/services/utils'
 import {
   asRecord,
   asArray,
@@ -54,6 +55,7 @@ import {
   combinePhone,
 } from '../modules/companies/utils'
 import { ClientInvoicesBlock } from '../components/companies/ClientInvoicesBlock'
+import { CompanyReceivablesOverview } from '../components/companies/CompanyReceivablesOverview'
 import { CompanyServiceOrdersPanel } from '../components/companies/CompanyServiceOrdersPanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { listVacancies } from '../api/vacancies'
@@ -165,7 +167,7 @@ export default function Companies(){
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const isOperatingProfileRoute = location.pathname.startsWith('/app/my-company')
-  const listBasePath = isOperatingProfileRoute ? '/app/my-company' : '/app/clients'
+  const listBasePath = isOperatingProfileRoute ? '/app/my-company' : '/app/clients/directory'
   const sectionFocus = String(searchParams.get('section') || '').trim().toLowerCase()
   const showExtendedSections = String(searchParams.get('extended') || '').trim() === '1'
   const toggleExtendedSections = useCallback(() => {
@@ -1524,7 +1526,9 @@ export default function Companies(){
   async function loadList(){
     setLoading(true)
     try{
-      const { data } = await api.get('/companies/', { params: { include_service_metrics: true } })
+      const { data } = await api.get('/companies/', {
+        params: { include_service_metrics: true, include_recruitment_metrics: true },
+      })
       const arr = Array.isArray(data) ? data : (data?.items || [])
       setItems(arr)
     } finally { setLoading(false) }
@@ -1537,7 +1541,9 @@ export default function Companies(){
     setReadinessError(null)
     setCompanyVacanciesFromApi([])
     try{
-      const { data } = await api.get(`/companies/${companyId}`)
+      const { data } = await api.get(`/companies/${companyId}`, {
+        params: { include_service_metrics: true, include_recruitment_metrics: true },
+      })
       const role = getCompanyRoleFromAny(asRecord(data))
       if (isOperatingProfileRoute && role !== 'operating') {
         navigate(`/app/clients/${companyId}`, { replace: true })
@@ -1716,8 +1722,8 @@ export default function Companies(){
 
     if (!detailForm) {
       return (
-        <div className="h-full w-full flex flex-col space-y-4">
-          <div className="text-xs text-slate-500 mb-1">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
+          <div className="mb-0 text-xs text-slate-500">
             <Link className="hover:underline" to={listBasePath}>{t('app.companies.actions.back_to_list')}</Link>
           </div>
           <div className="card p-4 text-sm text-slate-500">{t('common.loading')}</div>
@@ -1791,6 +1797,51 @@ export default function Companies(){
             label: t('app.companies.detail.kpis.invoice_email', { defaultValue: 'Invoice email' }),
             value: detailForm.billing.invoice_email ? t('common.words.yes') : t('common.words.no'),
             hint: t('app.companies.detail.kpis.invoice_email_hint', { defaultValue: 'Recipient address used for invoice delivery' }),
+          },
+          {
+            key: 'recruitment_vacancies',
+            label: t('app.companies.detail.kpis.recruitment_vacancies', { defaultValue: 'Active vacancies' }),
+            value:
+              currentAny?.recruitment_vacancies_active != null
+                ? String(currentAny.recruitment_vacancies_active)
+                : '—',
+            hint: t('app.companies.detail.kpis.recruitment_vacancies_hint', {
+              defaultValue: 'Open roles tied to this client (employer / both)',
+            }),
+          },
+          {
+            key: 'recruitment_candidates',
+            label: t('app.companies.detail.kpis.recruitment_candidates', { defaultValue: 'Candidates in funnel' }),
+            value:
+              currentAny?.recruitment_candidates_total != null
+                ? String(currentAny.recruitment_candidates_total)
+                : '—',
+            hint: t('app.companies.detail.kpis.recruitment_candidates_hint', {
+              defaultValue: 'Candidates on this client’s vacancies (same scope as Candidates list)',
+            }),
+          },
+          {
+            key: 'service_orders_live',
+            label: t('app.companies.detail.kpis.service_orders_live', { defaultValue: 'Service orders (active)' }),
+            value:
+              currentAny?.service_active_orders != null ? String(currentAny.service_active_orders) : '—',
+            hint: t('app.companies.detail.kpis.service_orders_live_hint', {
+              defaultValue: 'Non-completed service orders for this party',
+            }),
+          },
+          {
+            key: 'service_revenue',
+            label: t('app.companies.detail.kpis.service_revenue', { defaultValue: 'Completed revenue' }),
+            value:
+              currentAny?.service_revenue_completed != null
+                ? Number(currentAny.service_revenue_completed).toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })
+                : '—',
+            hint: t('app.companies.detail.kpis.service_revenue_hint', {
+              defaultValue: 'Sum of completed service order totals',
+            }),
           },
         ]
 
@@ -1965,6 +2016,16 @@ export default function Companies(){
                 </div>
               ),
             },
+            {
+              key: 'receivables',
+              title: t('app.companies.detail.overview.receivables.title'),
+              content:
+                currentAny?.id && String(currentAny.id) !== 'new' ? (
+                  <CompanyReceivablesOverview companyId={String(currentAny.id)} />
+                ) : (
+                  <p className="text-sm text-slate-500">{t('app.companies.detail.overview.receivables.empty')}</p>
+                ),
+            },
           ]),
       ...(hasTransportOrders
         ? [
@@ -1987,7 +2048,7 @@ export default function Companies(){
     ]
 
     return (
-      <div className="h-full w-full flex flex-col space-y-4 pb-12">
+      <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0 pb-0">
         <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
@@ -2001,6 +2062,16 @@ export default function Companies(){
                 <div className="text-sm text-white/80">{detailForm.base.legal_name}</div>
               )}
               {locationLine && <div className="text-sm text-white/70">{locationLine}</div>}
+              {!isOperatingCompany && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="rounded-full border border-white/35 bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/95">
+                    {formatPartyBusinessRoleCell(t, detailForm.base.party_business_roles)}
+                  </span>
+                  <span className="rounded-full border border-white/35 bg-white/10 px-2.5 py-0.5 text-xs font-medium text-white/95">
+                    {formatClientStageCell(t, detailForm.base.client_stage)}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex flex-col gap-2 text-sm text-white/80">
               <div className="flex flex-wrap gap-2">
@@ -2048,7 +2119,9 @@ export default function Companies(){
               {saveError && <div className="max-w-md text-rose-50">{saveError}</div>}
             </div>
           </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div
+            className={`mt-6 grid gap-3 sm:grid-cols-2 ${isOperatingCompany ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
+          >
             {companyKpis.map((card) => (
               <div key={card.key} className="rounded-2xl border border-white/30 bg-white/10 p-4">
                 <div className="text-sm text-white/80">{card.label}</div>
@@ -2360,7 +2433,7 @@ export default function Companies(){
                     </Link>
                     <Link
                       className="btn-secondary btn-sm"
-                      to={`/app/services?tab=orders&company_id=${encodeURIComponent(String(currentAny?.id ?? ''))}`}
+                      to={servicesWorkspacePath('orders', { companyId: String(currentAny?.id ?? '') })}
                     >
                       {t('app.companies.detail.workspace.activity.link_services')}
                     </Link>
@@ -3499,6 +3572,7 @@ export default function Companies(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     id,
+    current,
     detailForm,
     isDirty,
     saving,
@@ -3607,7 +3681,7 @@ export default function Companies(){
   ]
 
   const companyHero = (
-    <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
+    <section className="rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-none">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
           <p className="text-2xl font-semibold">{t('app.companies.list.title')}</p>
@@ -3636,10 +3710,10 @@ export default function Companies(){
 
   // ----- list view (без :id)
   const listView = (
-    <div className="h-full w-full flex flex-col space-y-4">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       {companyHero}
 
-      <section className="app-surface space-y-4 p-6">
+      <section className="app-surface space-y-0 gap-0 border-x-0 border-t-0 p-3">
         <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_minmax(180px,200px)_minmax(170px,200px)_auto]">
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -3782,6 +3856,12 @@ export default function Companies(){
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
                 {t('app.companies.list.table.headers.revenue', { defaultValue: 'Revenue (completed)' })}
               </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.recruitment_vacancies', { defaultValue: 'Active vacancies' })}
+              </th>
+              <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">
+                {t('app.companies.list.table.headers.recruitment_candidates', { defaultValue: 'Candidates' })}
+              </th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.country')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.city')}</th>
               <th className="border-b border-r border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600">{t('app.companies.list.table.headers.archived')}</th>
@@ -3791,7 +3871,7 @@ export default function Companies(){
           <tbody>
             {loading && (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={12}>
+                <td className="px-4 py-6 text-center text-slate-500" colSpan={14}>
                   {t('app.companies.list.table.loading')}
                 </td>
               </tr>
@@ -3833,6 +3913,23 @@ export default function Companies(){
                         })
                       : '—'}
                   </td>
+                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
+                    <Link
+                      className="font-medium text-brand-700 hover:underline"
+                      to={`/app/vacancies?company=${(it as any).id}`}
+                    >
+                      {(it as any).recruitment_vacancies_active != null
+                        ? Number((it as any).recruitment_vacancies_active)
+                        : '—'}
+                    </Link>
+                  </td>
+                  <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
+                    <Link className="font-medium text-brand-700 hover:underline" to="/app/candidates">
+                      {(it as any).recruitment_candidates_total != null
+                        ? Number((it as any).recruitment_candidates_total)
+                        : '—'}
+                    </Link>
+                  </td>
                   <td className="border-r border-slate-200 px-4 py-3">{(it as any).country_code || (it as any).country || '—'}</td>
                   <td className="border-r border-slate-200 px-4 py-3">{(it as any).city || '—'}</td>
                   <td className="border-r border-slate-200 px-4 py-3">
@@ -3855,7 +3952,7 @@ export default function Companies(){
               ))}
             {!loading && filteredItems.length === 0 && (
               <tr>
-                <td className="px-4 py-8 text-center text-slate-500" colSpan={12}>
+                <td className="px-4 py-8 text-center text-slate-500" colSpan={14}>
                   {t('app.companies.list.table.empty')}
                 </td>
               </tr>

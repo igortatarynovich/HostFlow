@@ -33,6 +33,7 @@ import type {
   TenantVacancyOption,
   HiringPipelineGatesPublic,
   HiringPipelineGatesPatch,
+  RiskModelV1SettingsOut,
 } from './types'
 
 export type PlatformTenantFilters = {
@@ -251,6 +252,23 @@ export async function patchHiringPipelineGates(
 ) {
   const client = resolveTenantClient(opts?.tenantId)
   return patchHiringPipelineGatesWithFallback(client, payload)
+}
+
+const RISK_MODEL_V1_PATH = '/settings/team/risk-model-v1'
+
+export async function getRiskModelV1Settings(opts?: { tenantId?: string }) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.get<RiskModelV1SettingsOut>(RISK_MODEL_V1_PATH)
+  return data
+}
+
+export async function patchRiskModelV1Settings(
+  payload: Record<string, unknown>,
+  opts?: { tenantId?: string },
+) {
+  const client = resolveTenantClient(opts?.tenantId)
+  const { data } = await client.patch<RiskModelV1SettingsOut>(RISK_MODEL_V1_PATH, payload)
+  return data
 }
 
 export type VacancyRequirementsPreset = {

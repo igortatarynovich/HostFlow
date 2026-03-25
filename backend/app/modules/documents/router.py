@@ -1370,19 +1370,14 @@ async def api_check_document(
     return await _document_to_out(session, doc, last_check=check)
 
 
-@router.get(
-    "/candidate/{candidate_id}/documents/summary",
-)
-async def api_candidate_documents_summary(
+async def fetch_candidate_documents_summary_response(
+    session: AsyncSession,
+    tenant_id: str,
     candidate_id: UUID,
-    owner_context: Optional[str] = Query(
-        None,
-        description="Optional JSON string with candidate/vacancy context",
-    ),
-    db_dep=Depends(get_db_with_tenant),
+    owner_context: Optional[str] = None,
 ) -> Dict[str, Any]:
-    session, tenant_id = db_dep
-    cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    """Same payload as GET /candidate/{id}/documents/summary (work-panel bundle, tests, etc.)."""
+    cand_ctx = await _load_candidate_context(session, tenant_id, candidate_id)
     ctx = _owner_context_or_400(
         owner_context,
         candidate_id,
@@ -1462,7 +1457,7 @@ async def api_candidate_documents_summary(
             cand_ctx.owner_tenant_id, candidate_id, checklist, serialized_docs
         )
     ]
-    response: Dict[str, Any] = {
+    return {
         "candidate_id": str(candidate_id),
         "summary": summary,
         "documents": serialized_docs + synthetic_docs,
@@ -1480,7 +1475,23 @@ async def api_candidate_documents_summary(
         ),
         "checklist": checklist,
     }
-    return response
+
+
+@router.get(
+    "/candidate/{candidate_id}/documents/summary",
+)
+async def api_candidate_documents_summary(
+    candidate_id: UUID,
+    owner_context: Optional[str] = Query(
+        None,
+        description="Optional JSON string with candidate/vacancy context",
+    ),
+    db_dep=Depends(get_db_with_tenant),
+) -> Dict[str, Any]:
+    session, tenant_id = db_dep
+    return await fetch_candidate_documents_summary_response(
+        session, str(tenant_id), candidate_id, owner_context
+    )
 
 
 @router.get("/candidate/{candidate_id}/checklist")

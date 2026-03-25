@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from fastapi import HTTPException, status
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, or_, select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.reminder import Reminder, ReminderStatus
@@ -208,6 +208,8 @@ async def list_reminders(
     status_in: Optional[Sequence[str]] = None,
     type_in: Optional[Sequence[str]] = None,
     due_range: Optional[Tuple[datetime, datetime]] = None,
+    q: Optional[str] = None,
+    limit: Optional[int] = None,
 ) -> List[Reminder]:
     stmt = select(Reminder).where(Reminder.tenant_id == tenant_id)
     if assignee_id:
@@ -228,7 +230,20 @@ async def list_reminders(
             stmt = stmt.where(Reminder.due_at >= start)
         if end:
             stmt = stmt.where(Reminder.due_at <= end)
-    rows = await db.execute(stmt.order_by(Reminder.due_at.asc()))
+    q_norm = (q or "").strip()
+    if q_norm:
+        like = f"%{q_norm}%"
+        stmt = stmt.where(
+            or_(
+                func.coalesce(Reminder.title, "").ilike(like),
+                func.coalesce(Reminder.description, "").ilike(like),
+                func.coalesce(Reminder.message, "").ilike(like),
+            )
+        )
+    stmt = stmt.order_by(Reminder.due_at.asc())
+    if limit is not None and limit > 0:
+        stmt = stmt.limit(limit)
+    rows = await db.execute(stmt)
     return list(rows.scalars().all())
 
 
@@ -253,8 +268,10 @@ async def refresh_open_typed_reminder_due(
     entity_id: str,
     reminder_type: str,
     new_due_at: datetime,
+    new_title: Optional[str] = None,
+    payload_merge: Optional[Dict[str, Any]] = None,
 ) -> bool:
-    """Automation-only: move due_at forward for one open reminder (no user ACL). Used for UOS inbound follow-ups."""
+    """Automation-only: move due_at forward for one open reminder (no user ACL). Used for UOS inbound / client pipeline."""
     active = (
         ReminderStatus.pending,
         ReminderStatus.new,
@@ -279,6 +296,12 @@ async def refresh_open_typed_reminder_due(
     nd = new_due_at if new_due_at.tzinfo else new_due_at.replace(tzinfo=timezone.utc)
     r.due_at = nd
     r.remind_at = _normalize_remind_at(r.due_at, None, DEFAULT_REMIND_OFFSET_MINUTES)
+    if new_title is not None:
+        r.title = new_title
+    if payload_merge:
+        base = dict(r.payload) if isinstance(r.payload, dict) else {}
+        base.update(payload_merge)
+        r.payload = base
     if r.status == ReminderStatus.overdue:
         r.status = ReminderStatus.pending
     await db.flush()

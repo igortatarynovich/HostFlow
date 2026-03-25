@@ -47,7 +47,7 @@ interface CandidateHeaderProps {
   /** Document pipeline waivers: show visible badges in header (plan: “override must be noticeable”). */
   pipelineWaiverPendingCount?: number
   pipelineWaiverApprovedCount?: number
-  /** Opens candidate activity feed (timeline) in a modal — hero CTA. */
+  /** Opens candidate activity (timeline) in a modal. */
   onOpenActivity?: () => void
 }
 

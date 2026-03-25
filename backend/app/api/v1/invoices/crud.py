@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Any, List, Optional
 from uuid import uuid4
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.company import Company
@@ -514,6 +514,7 @@ async def list_invoices(
     service_order_id: Optional[str] = None,
     status: Optional[str] = None,
     unpaid: Optional[bool] = None,
+    q: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
 ) -> List[Invoice]:
@@ -523,7 +524,21 @@ async def list_invoices(
     stmt = select(Invoice).where(Invoice.tenant_id == tenant_id_str)
     if own_company_id:
         stmt = stmt.where(Invoice.own_company_id == str(own_company_id))
-    
+
+    q_norm = (q or "").strip()
+    if q_norm:
+        like = f"%{q_norm}%"
+        company_ids_for_name = select(Company.id).where(
+            Company.tenant_id == tenant_id_str,
+            Company.name.ilike(like),
+        )
+        stmt = stmt.where(
+            or_(
+                Invoice.invoice_number.ilike(like),
+                Invoice.company_id.in_(company_ids_for_name),
+            )
+        )
+
     if company_id:
         stmt = stmt.where(Invoice.company_id == company_id)
     if candidate_id:

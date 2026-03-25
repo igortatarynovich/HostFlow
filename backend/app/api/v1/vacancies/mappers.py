@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from typing import Any, Dict, Optional
 from backend.app.models import Vacancy
 from backend.app.models.vacancy import EmploymentType
@@ -19,7 +20,8 @@ def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
                    manager_name: Optional[str] = None,
                    candidate_profile_id: Optional[str] = None,
                    candidate_profile_name: Optional[str] = None,
-                   candidate_count: Optional[int] = None) -> VacancyOut:
+                   candidate_count: Optional[int] = None,
+                   last_candidate_activity_at: Optional[datetime] = None) -> VacancyOut:
     employment_raw = getattr(v, "employment_type", None)
     if isinstance(employment_raw, EmploymentType):
         employment_value = employment_raw.value
@@ -57,4 +59,6 @@ def vacancy_to_out(v: Vacancy, *, company_name: Optional[str] = None,
         manager_short=manager_short,
         manager_name=manager_name,
         candidate_count=candidate_count or 0,
+        last_candidate_activity_at=last_candidate_activity_at,
+        headcount_target=getattr(v, "headcount_target", None),
     )

@@ -818,4 +818,14 @@ Recruitment pipeline automation
 
 ---------------------------------------------------------------------
 
+25. HOSTFLOW IMPLEMENTATION NOTES (SSOT)
+
+Product principles in §2–§4 above target **active** pipeline work (“what’s next”, document gates, reminders).
+
+For candidates in **pipeline-completed** canonical stages — **`employed`**, **`probation_ok`**, **`rejected`**, **`declined`** (see **`docs/SSOT.md`** change log **`2026-03-27`** / **`2026-03-28`**) — the product treats the case as **closed operationally**: document checklist does not block the stage rail, **risk_model_v1** scores are zeroed for those rows (list/detail/work-panel may skip heavy DB scoring when the row’s stored stage is terminal — **`2026-03-28c`–`d`**), **next-action** / journey hints do not push “move forward”, and ops aggregates (goals, no-next-action lists, hourly risk baselines) exclude them unless explicitly filtered.
+
+**Details and file pointers** live in **SSOT**; **`docs/pipedesign.md`** remains marketing/IA structure only.
+
+---------------------------------------------------------------------
+
 END OF DOCUMENT

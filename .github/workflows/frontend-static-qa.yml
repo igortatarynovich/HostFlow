@@ -25,5 +25,7 @@ jobs:
           cache-dependency-path: hostflow-frontend/package-lock.json
       - name: Install deps
         run: npm ci
+      - name: Unit tests
+        run: npm run test
       - name: Static QA gate
         run: npm run qa:static

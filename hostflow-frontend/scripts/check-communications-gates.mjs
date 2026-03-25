@@ -8,6 +8,8 @@ const sf = ts.createSourceFile(routesFile, source, ts.ScriptTarget.Latest, true,
 
 const EXPECTED_COMM_GATES = {
   'communications-setup': { type: 'any', features: ['messages', 'email'] },
+  'communications-inbox-hub': { type: 'any', features: ['messages', 'email'] },
+  'communications-inbox-center': { type: 'any', features: ['messages', 'email'] },
   'messages-inbox': { type: 'feature', features: ['messages'] },
   'email-inbox': { type: 'feature', features: ['email'] },
   calendar: { type: 'feature', features: ['calendar'] },

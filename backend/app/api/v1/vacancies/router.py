@@ -77,6 +77,10 @@ async def list_vacancies(
     offset: int = Query(0, ge=0),
     order_by: Optional[str] = Query("created_at"),
     desc: Optional[str] = Query("1", description="Accepts 1/0 or true/false for sort direction"),
+    include_archived: Optional[str] = Query(
+        None,
+        description="When true, include archived vacancies (e.g. with status filters cleared).",
+    ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
@@ -91,6 +95,7 @@ async def list_vacancies(
     svc = _svc(db_tenant, own_company_id=own_company_id)
     db, tenant_id = db_tenant
     acl = await resolve_restricted_acl(db, str(tenant_id), current_user)
+    inc_arch = _as_bool(include_archived) if include_archived is not None else False
     return await svc.list(
         company_id=str(company_id) if company_id else None,
         status=status,
@@ -101,6 +106,7 @@ async def list_vacancies(
         order_by=order_by,
         descending=_as_bool(desc),
         acl=acl,
+        include_archived=inc_arch,
     )
 
 @router.get("/{vacancy_id}", response_model=VacancyOut)
@@ -127,10 +133,16 @@ async def create_vacancy(
     payload: VacancyIn,
     db_tenant=Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
+    current_user: UserCtx = Depends(get_current_user),
 ):
     svc = _svc(db_tenant, own_company_id=own_company_id)
     _db, tenant_id = db_tenant
-    return await svc.create(str(tenant_id), payload, own_company_id=own_company_id)
+    return await svc.create(
+        str(tenant_id),
+        payload,
+        own_company_id=own_company_id,
+        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+    )
 
 @router.post(
     "/{vacancy_id}/candidates",
@@ -345,10 +357,15 @@ async def update_vacancy(
     payload: VacancyPatch,
     db_tenant=Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
+    current_user: UserCtx = Depends(get_current_user),
 ):
     svc = _svc(db_tenant, own_company_id=own_company_id)
     try:
-        return await svc.patch(str(vacancy_id), payload)
+        return await svc.patch(
+            str(vacancy_id),
+            payload,
+            actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+        )
     except LookupError:
         raise HTTPException(status_code=404, detail="Vacancy not found")
     except ValueError as e:

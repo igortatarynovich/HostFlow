@@ -1137,10 +1137,10 @@ export default function Pipeline(){
   )
 
   return (
-    <div className="relative flex flex-col -mx-6 -my-6" style={{ height: 'calc(100vh - 4rem)', minHeight: 0 }}>
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col">
       {/* Основной контент - Kanban */}
       <div className={clsx("flex-1 transition-all duration-300 min-h-0 flex flex-col overflow-hidden", sidebarOpen ? "mr-0 sm:mr-96" : "mr-0")}>
-        <div ref={tableContainerRef} className="flex-1 min-h-0 overflow-hidden flex flex-col p-6">
+        <div ref={tableContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
       {error && (
         <ErrorRecoveryBanner
           info={{

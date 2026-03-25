@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { QUICK_DOC_STATUS_SETS } from '../constants'
+import type { NavigateFunction } from 'react-router-dom'
+import { CANDIDATES_QUICK_VIEW_NAV_PATHS, QUICK_DOC_STATUS_SETS } from '../constants'
 import type { DateRangeFilter } from '../types'
 
 type QuickViewKey =
@@ -19,6 +20,7 @@ type QuickDocFilter = {
 
 type UseCandidatesQuickViewsArgs = {
   t: (key: string, options?: any) => string
+  navigate: NavigateFunction
   searchParams: URLSearchParams
   setSearchParams: (next: URLSearchParams, opts?: { replace?: boolean }) => void
   filtersHydrated: boolean
@@ -33,6 +35,7 @@ type UseCandidatesQuickViewsArgs = {
 
 export function useCandidatesQuickViews({
   t,
+  navigate,
   searchParams,
   setSearchParams,
   filtersHydrated,
@@ -95,9 +98,10 @@ export function useCandidatesQuickViews({
     (key: QuickViewKey, opts?: { syncUrl?: boolean }) => {
       const syncUrl = opts?.syncUrl ?? false
 
-      const next = new URLSearchParams(searchParams)
-      if (syncUrl) next.set('qv', key)
-      if (syncUrl) setSearchParams(next, { replace: true })
+      if (key === 'no_next_action' || key === 'overdue_next_action') {
+        navigate(CANDIDATES_QUICK_VIEW_NAV_PATHS[key], { replace: true })
+        return
+      }
 
       const setTodayRange = (start: Date, end: Date) => {
         setCreatedRange({
@@ -140,11 +144,23 @@ export function useCandidatesQuickViews({
         default:
           break
       }
+
+      // After reset (which clears `qv` in URL), persist active preset for shareable deep links.
+      if (syncUrl) {
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev)
+            next.set('qv', key)
+            return next
+          },
+          { replace: true },
+        )
+      }
     },
     [
       handleResetFilters,
+      navigate,
       preferredManagerId,
-      searchParams,
       setCreatedRange,
       setDocsStatusFilter,
       setHandoffStatusFilter,
@@ -158,10 +174,14 @@ export function useCandidatesQuickViews({
     if (!quickViewParam) return
 
     const key = quickViewParam as QuickViewKey
+    if (key === 'no_next_action' || key === 'overdue_next_action') {
+      navigate(CANDIDATES_QUICK_VIEW_NAV_PATHS[key], { replace: true })
+      return
+    }
     if (['my_work_today', 'docs_incomplete', 'ready_for_handoff', 'new_this_week'].includes(key)) {
       applyQuickViewFilters(key, { syncUrl: false })
     }
-  }, [applyQuickViewFilters, filtersHydrated, quickViewParam])
+  }, [applyQuickViewFilters, filtersHydrated, navigate, quickViewParam])
 
   return {
     quickViewParam,

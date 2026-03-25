@@ -1,9 +1,15 @@
-import { defineConfig } from 'vitest/config';
+import { mergeConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
+import viteConfig from './vite.config'
 
-export default defineConfig({
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/setupTests.ts'],
-  },
-});
+// Inherit `resolve.alias` (e.g. `@utils`) from Vite — required for suites that pull app modules.
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./src/setupTests.ts'],
+    },
+  }),
+)

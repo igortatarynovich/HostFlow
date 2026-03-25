@@ -11,7 +11,7 @@ try:
 except ImportError:  # pragma: no cover - SQLAlchemy < 1.4
     from sqlalchemy.sql import Select  # type: ignore
 
-from sqlalchemy import and_, case, func, select, update
+from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -277,6 +277,7 @@ class AdditionalServicesService:
         vacancy_id: Optional[str] = None,
         company_id: Optional[str] = None,
         status: Optional[Sequence[str]] = None,
+        q: Optional[str] = None,
     ) -> List[ServiceOrder]:
         stmt = (
             select(ServiceOrder)
@@ -299,6 +300,15 @@ class AdditionalServicesService:
             stmt = stmt.where(ServiceOrder.company_id == company_id)
         if status:
             stmt = stmt.where(ServiceOrder.status.in_(status))
+        q_norm = (q or "").strip()
+        if q_norm:
+            like = f"%{q_norm}%"
+            stmt = stmt.where(
+                or_(
+                    ServiceOrder.id.ilike(like),
+                    ServiceOrder.notes.ilike(like),
+                )
+            )
 
         res = await self.db.execute(stmt)
         return list(res.scalars().all())

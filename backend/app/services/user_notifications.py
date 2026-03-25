@@ -38,7 +38,13 @@ def _infer_severity(event_type: str) -> str:
 
 def _infer_requires_action(event_type: str) -> bool:
     et = str(event_type or "").strip().lower()
-    return et in {"communications_sla_overdue", "reminder_due", "reminder_overdue", "handoff_requested"}
+    return et in {
+        "communications_sla_overdue",
+        "communications_thread_escalated",
+        "reminder_due",
+        "reminder_overdue",
+        "handoff_requested",
+    }
 
 
 def _normalize_payload(

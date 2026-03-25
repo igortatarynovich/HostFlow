@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import type { Icon as TablerIcon } from '@tabler/icons-react'
 import {
+  IconAlertTriangle,
   IconBell,
   IconBrandTelegram,
   IconChecklist,
@@ -57,6 +58,7 @@ const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
   documents: IconFileText,
   funnels: IconFilter,
   'settings-hiring-gates': IconChecklist,
+  risk_intel: IconAlertTriangle,
   candidate_profiles: IconUsersGroup,
   custom_fields: IconSettings,
   company_access: IconShield,
@@ -247,12 +249,19 @@ export default function SettingsLandingPage() {
       },
       {
         key: 'settings-hiring-gates',
-        label: t('admin.settings.cards.hiring_gates.label', { defaultValue: 'Hiring pipeline gates' }),
-        description: t('admin.settings.cards.hiring_gates.description', {
-          defaultValue: 'Document, vacancy and contact-attempt rules by stage (tenant matrix).',
-        }),
+        label: t('admin.settings.cards.hiring_gates.label'),
+        description: t('admin.settings.cards.hiring_gates.description'),
         target: '/app/settings/hiring-pipeline-gates',
         roles: ['administrator', 'supervisor', 'recruiter', 'viewer'],
+        section: 'crm_setup',
+        requiresModules: ['candidates'],
+      },
+      {
+        key: 'risk_intel',
+        label: t('admin.settings.cards.risk_intel.label'),
+        description: t('admin.settings.cards.risk_intel.description'),
+        target: '/app/settings/risk-intel',
+        roles: ['administrator', 'supervisor', 'client_manager'],
         section: 'crm_setup',
         requiresModules: ['candidates'],
       },

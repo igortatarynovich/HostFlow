@@ -8,7 +8,11 @@ import httpx
 
 
 class OAuthMailboxPollError(RuntimeError):
-    pass
+    """Raised when listing mailbox over OAuth API fails (optionally with HTTP status for retry logic)."""
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 @dataclass
@@ -82,7 +86,10 @@ async def _poll_gmail(
     async with httpx.AsyncClient(timeout=25.0) as client:
         listing = await client.get("https://gmail.googleapis.com/gmail/v1/users/me/messages", headers=headers, params=params)
         if listing.status_code >= 400:
-            raise OAuthMailboxPollError(f"Gmail list failed: {listing.status_code} {listing.text}")
+            raise OAuthMailboxPollError(
+                f"Gmail list failed: {listing.status_code} {listing.text}",
+                status_code=listing.status_code,
+            )
         listing_json = listing.json() if listing.headers.get("content-type", "").startswith("application/json") else {}
         rows = listing_json.get("messages") if isinstance(listing_json, dict) else []
         if not isinstance(rows, list):
@@ -98,6 +105,11 @@ async def _poll_gmail(
                 params={"format": "full"},
             )
             if details.status_code >= 400:
+                if details.status_code == 401:
+                    raise OAuthMailboxPollError(
+                        f"Gmail message fetch failed: {details.status_code} {details.text}",
+                        status_code=401,
+                    )
                 continue
             data = details.json() if details.headers.get("content-type", "").startswith("application/json") else {}
             payload = data.get("payload") if isinstance(data, dict) and isinstance(data.get("payload"), dict) else {}
@@ -180,7 +192,10 @@ async def _poll_microsoft_graph(
     async with httpx.AsyncClient(timeout=25.0) as client:
         listing = await client.get(url, headers=headers, params=None if cursor else params)
         if listing.status_code >= 400:
-            raise OAuthMailboxPollError(f"Graph list failed: {listing.status_code} {listing.text}")
+            raise OAuthMailboxPollError(
+                f"Graph list failed: {listing.status_code} {listing.text}",
+                status_code=listing.status_code,
+            )
         listing_json = listing.json() if listing.headers.get("content-type", "").startswith("application/json") else {}
         rows = listing_json.get("value") if isinstance(listing_json, dict) else []
         if not isinstance(rows, list):

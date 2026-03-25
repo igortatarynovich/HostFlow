@@ -791,6 +791,7 @@ export async function listCommunicationThreads(opts?: {
   entityId?: string
   includeArchived?: boolean
   q?: string
+  signal?: AbortSignal
 }): Promise<CommunicationThreadListResponse> {
   const params: Record<string, any> = {}
   if (opts?.limit != null) params.limit = opts.limit
@@ -802,7 +803,7 @@ export async function listCommunicationThreads(opts?: {
   if (opts?.entityId) params.entity_id = opts.entityId
   if (opts?.includeArchived) params.include_archived = true
   if (opts?.q) params.q = opts.q
-  const { data } = await api.get('/communications/threads', { params })
+  const { data } = await api.get('/communications/threads', { params, signal: opts?.signal })
   return data as CommunicationThreadListResponse
 }
 
@@ -843,6 +844,24 @@ export async function createCommunicationMessage(
 ): Promise<CommunicationMessage> {
   const { data } = await api.post(`/communications/threads/${threadId}/messages`, payload)
   return data as CommunicationMessage
+}
+
+export type CommunicationMessageAttachmentUpload = {
+  kind: string
+  filename: string
+  mime?: string | null
+  size: number
+  storage_path: string
+}
+
+export async function uploadCommunicationThreadMessageAttachment(
+  threadId: string,
+  file: File
+): Promise<CommunicationMessageAttachmentUpload> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const { data } = await api.post(`/communications/threads/${threadId}/message-attachments/upload`, fd)
+  return data as CommunicationMessageAttachmentUpload
 }
 
 export async function markCommunicationThreadRead(
@@ -893,10 +912,15 @@ export async function patchCommunicationAccount(
     inbox_address: string | null
     is_active: boolean
     settings_json: Record<string, any>
+    oauth_client_secret: string
   }>
 ): Promise<CommunicationChannelAccount> {
   const { data } = await api.patch(`/communications/accounts/${accountId}`, payload)
   return data as CommunicationChannelAccount
+}
+
+export async function deleteCommunicationAccount(accountId: string): Promise<void> {
+  await api.delete(`/communications/accounts/${accountId}`)
 }
 
 export async function testCommunicationAccountConnection(accountId: string): Promise<{
@@ -971,6 +995,7 @@ export async function startCommunicationAccountOAuth(
   accountId: string,
   payload?: {
     redirect_uri?: string
+    client_id?: string
     scopes?: string[]
     force_consent?: boolean
   }
@@ -985,6 +1010,7 @@ export async function completeCommunicationAccountOAuth(
     state: string
     code?: string
     redirect_uri?: string
+    client_id?: string
     access_token?: string
     refresh_token?: string
     token_type?: string

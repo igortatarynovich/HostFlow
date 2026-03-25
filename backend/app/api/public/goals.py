@@ -6,13 +6,14 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import Candidate, Reminder, Tenant
 from backend.app.models.reminder import ReminderStatus
+from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
 
 
 router = APIRouter(tags=["public-goals"])
@@ -56,12 +57,28 @@ def _ensure_share_token(settings: dict[str, Any]) -> tuple[dict[str, Any], str, 
 async def _compute_metrics(db: AsyncSession, tenant_id: str, assignee_id: Optional[str] = None) -> dict[str, Any]:
     active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
     assignee = (assignee_id or "").strip() or None
+    active_stage = or_(
+        Candidate.stage.is_(None),
+        Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
+    )
 
     total_candidates = (
         await db.execute(
             select(func.count())
             .select_from(Candidate)
             .where(Candidate.deleted_at.is_(None), Candidate.tenant_id == tenant_id)
+        )
+    ).scalar_one() or 0
+
+    active_pipeline_candidates = (
+        await db.execute(
+            select(func.count())
+            .select_from(Candidate)
+            .where(
+                Candidate.deleted_at.is_(None),
+                Candidate.tenant_id == tenant_id,
+                active_stage,
+            )
         )
     ).scalar_one() or 0
 
@@ -83,6 +100,7 @@ async def _compute_metrics(db: AsyncSession, tenant_id: str, assignee_id: Option
             .where(
                 Candidate.deleted_at.is_(None),
                 Candidate.tenant_id == tenant_id,
+                active_stage,
                 ~reminder_exists,
             )
         )
@@ -101,11 +119,15 @@ async def _compute_metrics(db: AsyncSession, tenant_id: str, assignee_id: Option
     ).scalar_one() or 0
 
     coverage = 0.0
-    if int(total_candidates) > 0:
-        coverage = max(0.0, min(100.0, (1.0 - (float(no_next_action) / float(total_candidates))) * 100.0))
+    if int(active_pipeline_candidates) > 0:
+        coverage = max(
+            0.0,
+            min(100.0, (1.0 - (float(no_next_action) / float(active_pipeline_candidates))) * 100.0),
+        )
 
     return {
         "total_candidates": int(total_candidates),
+        "active_pipeline_candidates": int(active_pipeline_candidates),
         "no_next_action_candidates": int(no_next_action),
         "next_action_coverage_percent": round(coverage, 2),
         "overdue_reminders": int(overdue),

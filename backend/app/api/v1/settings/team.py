@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Annotated, Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +12,8 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.api.v1.platform import schemas as platform_schemas
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.models.tenant import TenantType
+from backend.app.models.user import Role as UserRole
 from backend.app.schemas.user import UserOut
 from backend.app.services import users as users_service
 from backend.app.services import tenant_branding
@@ -84,6 +86,11 @@ class VacancyRequirementsPresetOut(BaseModel):
 
 class VacancyRequirementsPresetListOut(BaseModel):
     items: list[VacancyRequirementsPresetOut]
+
+
+class RiskModelV1SettingsOut(BaseModel):
+    effective: Dict[str, Any]
+    overrides: Dict[str, Any]
 
 
 @router.get(
@@ -341,9 +348,16 @@ async def get_effective_module_permissions(
     tenant = await tenant_service.get_tenant(db, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
+    # Match frontend usePermissions: on client (company) workspaces, JWT role "recruiter"
+    # is treated as client-side hiring staff; permissions use client_processor matrix there.
+    # Using recruiter cells here made documents.manage false when only client_processor had
+    # documents editable in the role matrix.
+    role_for_matrix = str(ctx.role or "").strip().lower()
+    if getattr(tenant, "type", None) == TenantType.company and role_for_matrix == UserRole.recruiter.value:
+        role_for_matrix = UserRole.client_processor.value
     modules = tenant_service.get_effective_role_module_permissions(
         tenant,
-        role=ctx.role,
+        role=role_for_matrix,
         user_id=ctx.sub,
     )
     return EffectiveRoleModules(role=ctx.role, modules=modules)
@@ -448,3 +462,53 @@ async def patch_hiring_pipeline_gates(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ) -> HiringPipelineGatesPublicOut:
     return await patch_hiring_pipeline_gates_core(payload, ctx, db_tenant)
+
+
+@router.get(
+    "/risk-model-v1",
+    response_model=RiskModelV1SettingsOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor, Role.client_manager))],
+)
+async def get_risk_model_v1_settings(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> RiskModelV1SettingsOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    view = await tenant_service.get_risk_model_v1_settings_view(db, tenant)
+    return RiskModelV1SettingsOut(**view)
+
+
+@router.patch(
+    "/risk-model-v1",
+    response_model=RiskModelV1SettingsOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def patch_risk_model_v1_settings(
+    payload: Annotated[Dict[str, Any], Body()],
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> RiskModelV1SettingsOut:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    tenant = await tenant_service.get_tenant(db, tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Body must be a JSON object",
+        )
+    try:
+        view = await tenant_service.patch_risk_model_v1_settings(db, tenant, payload)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return RiskModelV1SettingsOut(**view)

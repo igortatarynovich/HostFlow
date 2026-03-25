@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { createAutomationRule, deleteAutomationRule, listAutomationRules, patchAutomationRule, type AutomationRule } from '../api/automationRules'
 import { useI18n } from '../i18n'
 
 const TRIGGERS = [
   { value: 'candidate.created', label: 'candidate.created' },
   { value: 'candidate.stage_changed', label: 'candidate.stage_changed' },
+  {
+    value: 'candidate.risk_band',
+    label: 'candidate.risk_band (hourly risk job)',
+  },
   { value: 'document.expiring', label: 'document.expiring' },
   { value: 'lead.processed', label: 'lead.processed' },
 ] as const
@@ -19,6 +24,7 @@ export default function AutomationRulesPage() {
   const [newTitle, setNewTitle] = useState('Follow up')
   const [newDueMin, setNewDueMin] = useState(60)
   const [newStageTo, setNewStageTo] = useState('')
+  const [newRiskBand, setNewRiskBand] = useState<'high' | 'critical'>('high')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -46,11 +52,18 @@ export default function AutomationRulesPage() {
       if (newTrigger === 'candidate.stage_changed' && newStageTo.trim()) {
         conditions['stage_to'] = newStageTo.trim()
       }
+      if (newTrigger === 'candidate.risk_band') {
+        conditions['risk_band'] = newRiskBand
+      }
+      const dueMin =
+        newTrigger === 'candidate.risk_band'
+          ? Math.max(120, Number(newDueMin) || 0)
+          : Math.max(0, Number(newDueMin) || 0)
       const actions = {
         create_reminder: {
           title: newTitle.trim() || 'Follow up',
           entity_type: newTrigger.startsWith('lead.') ? 'lead' : newTrigger.startsWith('candidate.') ? 'candidate' : 'custom',
-          due_in_minutes: Math.max(0, Number(newDueMin) || 0),
+          due_in_minutes: dueMin,
         },
       }
       await createAutomationRule({
@@ -65,25 +78,34 @@ export default function AutomationRulesPage() {
     } finally {
       setLoading(false)
     }
-  }, [load, newDueMin, newStageTo, newTitle, newTrigger])
+  }, [load, newDueMin, newRiskBand, newStageTo, newTitle, newTrigger])
 
   const sorted = useMemo(() => [...items].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))), [items])
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">
+        <Link to="/app/automations" className="text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline">
+          {t('app.automations.hub.back', { defaultValue: '← Automations' })}
+        </Link>
+        <h1 className="mt-2 text-xl font-semibold text-slate-900">
           {t('app.automation_rules.title', { defaultValue: 'Automation rules (minimal builder)' })}
         </h1>
         <p className="text-xs text-slate-500">
           {t('app.automation_rules.subtitle', { defaultValue: 'Define simple triggers → create reminder actions.' })}
+        </p>
+        <p className="mt-2 text-xs text-amber-800/90">
+          {t('app.automation_rules.risk_band_hint', {
+            defaultValue:
+              'candidate.risk_band runs only when Tenant.settings.risk_model_v1.automations.enabled is true and the hourly risk job is on. Enable dedupe via automations.dedupe_hours (default 24).',
+          })}
         </p>
       </header>
 
       <section className="card p-4 space-y-3">
         <div className="text-sm font-semibold">{t('app.automation_rules.create', { defaultValue: 'Create rule' })}</div>
         {error ? <div className="text-sm text-red-600">{String(error)}</div> : null}
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
           <label className="text-sm">
             <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.trigger', { defaultValue: 'Trigger' })}</div>
             <select className="input w-full" value={newTrigger} onChange={(e) => setNewTrigger(e.target.value as any)}>
@@ -107,7 +129,22 @@ export default function AutomationRulesPage() {
               value={newStageTo}
               onChange={(e) => setNewStageTo(e.target.value)}
               placeholder={t('app.automation_rules.fields.stage_to_placeholder', { defaultValue: 'contacted' })}
+              disabled={newTrigger !== 'candidate.stage_changed'}
             />
+          </label>
+          <label className="text-sm">
+            <div className="mb-1 text-xs text-slate-600">
+              {t('app.automation_rules.fields.risk_band', { defaultValue: 'Risk band (risk trigger)' })}
+            </div>
+            <select
+              className="input w-full"
+              value={newRiskBand}
+              onChange={(e) => setNewRiskBand(e.target.value as 'high' | 'critical')}
+              disabled={newTrigger !== 'candidate.risk_band'}
+            >
+              <option value="high">high</option>
+              <option value="critical">critical</option>
+            </select>
           </label>
         </div>
         <div className="flex gap-2">

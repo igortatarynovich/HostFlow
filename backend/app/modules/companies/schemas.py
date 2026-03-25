@@ -112,6 +112,9 @@ class CompanyOut(CompanyBase):
     # Populated when list endpoint is called with include_service_metrics=true
     service_active_orders: Optional[int] = None
     service_revenue_completed: Optional[float] = None
+    # Populated when list/get is called with include_recruitment_metrics=true
+    recruitment_vacancies_active: Optional[int] = None
+    recruitment_candidates_total: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

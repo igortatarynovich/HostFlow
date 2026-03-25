@@ -17,8 +17,8 @@
 - **PostgreSQL 16** с включённым RLS. Каждая таблица содержит `tenant_id`, контекст выставляется middleware `SET LOCAL app.tenant_id`.
 - **FastAPI + SQLAlchemy 2.x + Alembic.** Миграции лежат в `backend/alembic/versions`, формат `YYYYMMDDHHMM_<slug>.py`.
 - **Документы**: модели `document_types`, `documents`, `document_attachments`, `document_checks`, `scan_sessions`, `scan_pages`. См. `docs/spec-documents.md`.
-- **Публичные API**: `/api/v1/public/apply/{token}` (анкета и документы), `/api/v1/public/scan-sessions` (камерные сессии), `/api/v1/public/status/{token}` (шаринг для клиента).
-- **Обработка изображений**: сервис `scanner.py` использует Python+OpenCV внутри backend-контейнера (opencv-python-headless). Браузерный wasm-сканер исключён; камера → upload → серверная обработка.
+- **Публичные API**: `/api/v1/public/apply/{token}` (анкета и документы), `/api/v1/public/status/{token}` (шаринг для клиента). Публичные **`/public/scan`** и **`/api/v1/public/scan-sessions`** сняты с продуктового контура (см. **`docs/SSOT.md`**); захват документов — через загрузку файлов в анкете; отдельный LLM/vision-пайплайн — позже.
+- **Обработка изображений (legacy)**: пакет `backend/app/scanner` (OpenCV) остаётся в репозитории для возможного переиспользования; HTTP-маршруты сканера не монтируются. Таблицы `scan_sessions` / `scan_pages` могут сохраняться в БД до отдельной миграции очистки.
 
 ### Frontend
 - **React + Vite + TypeScript + Tailwind**. Структура feature-based (см. `src/pages`, `src/modules`).
@@ -67,7 +67,7 @@ RLS и middleware блокируют любые запросы вне текущ
 | Модуль | Основная таблица / модель | Ключевые API | UI / панели | Примечания |
 |--------|---------------------------|--------------|-------------|------------|
 | Candidates | `candidates`, `candidate_status_history` | `/api/v1/candidates*` | CandidatesTable, CandidateCard | Статусы, причины отказа, ACL по компаниям |
-| Documents | `documents`, `document_types`, `scan_sessions` | `/api/v1/documents*`, `/api/v1/scanner*`, `/api/v1/public/scan-sessions*` | DocumentsTab, checklist на портале | Ruleset per tenant, напоминания, timeline |
+| Documents | `documents`, `document_types`, `scan_sessions` (legacy) | `/api/v1/documents*` | DocumentsTab, checklist на портале | Ruleset per tenant, напоминания, timeline; публичный камерный поток снят |
 | Vacancies | `vacancies` | `/api/v1/vacancies*` | VacanciesList, VacancyDetail | Привязка к компаниям, экспорт |
 | Companies | `companies`, `company_access` | `/api/v1/companies*` | Companies page, Client portal | ACL выдаётся администраторами/супервизорами |
 | Leads | `leads`, `lead_sources`, `lead_imports` | `/api/v1/leads*`, webhooks | Leads board, Supervisor dashboard | Webhook создаёт кандидата или лидер |
@@ -111,9 +111,8 @@ RLS и middleware блокируют любые запросы вне текущ
 - Сервер генерирует чек-лист, портал показывает те же коды, используя локализацию.
 
 ### Захват
-- Мастер загрузки документов в портале: радио “Есть документ?” → загрузить файл → серверная обработка → статус.
-- Если документ требует фотозахвата, рекрутер создаёт `scan_session`. Пользователь открывает `/public/scan-sessions/{id}`: камера, подсказки, сервер режет контур OpenCV и сохраняет `scan_pages`.
-- Фронтенд больше не использует `opencv.js`/wasm — CSP упрощён, нет COOP/COEP.
+- Мастер загрузки документов в портале: радио “Есть документ?” → загрузить файл → статус. Команда Telegram **`/scan`** выдаёт ссылку на **`/public/apply/{token}?mode=documents`** (не отдельную страницу камеры).
+- Ранее планировались `scan_session` + публичная камера; продуктовый UI и API сессий отключены до нового решения (например LLM-based capture). См. **`docs/SSOT.md`**.
 
 ---
 

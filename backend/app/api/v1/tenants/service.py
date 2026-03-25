@@ -5,7 +5,7 @@ import secrets
 import string
 from copy import deepcopy
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -423,6 +423,41 @@ async def update_tenant(
     await db.commit()
     await db.refresh(tenant)
     return tenant
+
+
+def _deep_merge_settings_fragment(base: dict, patch: dict) -> dict:
+    out = dict(base)
+    for k, v in patch.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge_settings_fragment(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+async def get_risk_model_v1_settings_view(db: AsyncSession, tenant: Tenant) -> dict[str, Any]:
+    from backend.app.services.risk_intel_v1 import resolve_risk_config
+
+    settings_obj = tenant.settings if isinstance(tenant.settings, dict) else {}
+    effective = resolve_risk_config(settings_obj)
+    raw = settings_obj.get("risk_model_v1")
+    overrides = dict(raw) if isinstance(raw, dict) else {}
+    return {"effective": effective, "overrides": overrides}
+
+
+async def patch_risk_model_v1_settings(db: AsyncSession, tenant: Tenant, fragment: dict) -> dict[str, Any]:
+    from backend.app.services.risk_intel_v1 import resolve_risk_config
+
+    if not isinstance(fragment, dict):
+        raise ValueError("Body must be a JSON object")
+    settings_obj = dict(tenant.settings or {}) if isinstance(tenant.settings, dict) else {}
+    current = settings_obj.get("risk_model_v1")
+    current = dict(current) if isinstance(current, dict) else {}
+    merged = _deep_merge_settings_fragment(current, fragment)
+    settings_obj["risk_model_v1"] = merged
+    await update_tenant(db, tenant, {"settings": settings_obj})
+    effective = resolve_risk_config(settings_obj)
+    return {"effective": effective, "overrides": merged}
 
 
 async def rotate_api_key(

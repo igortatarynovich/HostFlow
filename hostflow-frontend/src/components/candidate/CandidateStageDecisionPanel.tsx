@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import clsx from 'clsx'
 import CandidateStageJourneyPanel from './CandidateStageJourneyPanel'
 import { useI18n } from '../../i18n'
+import { isPipelineCompletedCanonicalStage } from '../../utils/candidatePipelineCompleted'
+import { canonicalStageKey } from '../../utils/stageLabels'
 import { operationalHintForStageResolved } from '../../utils/stageOperationalHints'
 
 type Stage = { code: string; label: string }
@@ -65,8 +67,15 @@ export default function CandidateStageDecisionPanel({
 }: Props) {
   const { t } = useI18n()
 
+  const pipelineCompleted = useMemo(() => {
+    const c =
+      canonicalStageKey(currentStageCode, null) || String(currentStageCode || '').trim().toLowerCase() || ''
+    return isPipelineCompletedCanonicalStage(c)
+  }, [currentStageCode])
+
   const pipelineForwardBlocked =
-    docsPipelineBlocking || vacancyPipelineBlocking || contactAttemptPipelineBlocking
+    !pipelineCompleted &&
+    (docsPipelineBlocking || vacancyPipelineBlocking || contactAttemptPipelineBlocking)
 
   const docsSoftAdvisory = Boolean(docsPipelineSoftWarn && !docsPipelineBlocking)
 
@@ -121,6 +130,7 @@ export default function CandidateStageDecisionPanel({
   }
 
   const earlyOperationalHint = useMemo(() => {
+    if (pipelineCompleted) return null
     if (docsPipelineBlocking || contactAttemptPipelineBlocking) return null
     return operationalHintForStageResolved(currentCode, nextStageCode, {
       // Inside this branch contact gate is already satisfied for UI purposes.
@@ -133,10 +143,12 @@ export default function CandidateStageDecisionPanel({
     contactAttemptPipelineBlocking,
     vacancyPipelineBlocking,
     nextStageCode,
+    pipelineCompleted,
   ])
 
   /** Plan: New → contact; Contact established → assign vacancy; docs not part of early gates. */
   const earlyStageNextStepLabel = useMemo(() => {
+    if (pipelineCompleted) return null
     if (docsPipelineBlocking || docsSoftAdvisory || contactAttemptPipelineBlocking) return null
     const hint = earlyOperationalHint
     switch (hint?.kind) {
@@ -169,7 +181,7 @@ export default function CandidateStageDecisionPanel({
           defaultValue: 'Next step: → Contact candidate',
         })
     }
-  }, [earlyOperationalHint, docsPipelineBlocking, docsSoftAdvisory, contactAttemptPipelineBlocking, t])
+  }, [earlyOperationalHint, docsPipelineBlocking, docsSoftAdvisory, contactAttemptPipelineBlocking, pipelineCompleted, t])
 
   const contactNextStepOpensAttemptsModal =
     Boolean(onOpenContactAttempts) &&
@@ -184,7 +196,8 @@ export default function CandidateStageDecisionPanel({
   })
 
   const hasAnyPipelineBarrier =
-    docsPipelineBlocking || docsSoftAdvisory || vacancyPipelineBlocking || contactAttemptPipelineBlocking
+    !pipelineCompleted &&
+    (docsPipelineBlocking || docsSoftAdvisory || vacancyPipelineBlocking || contactAttemptPipelineBlocking)
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-3">

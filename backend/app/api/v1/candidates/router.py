@@ -5,7 +5,7 @@ from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status, Body
 from fastapi import Query
-from sqlalchemy import select, func, update, text
+from sqlalchemy import select, func, update, text, or_
 from sqlalchemy import exists
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -103,13 +103,16 @@ from backend.app.core.audit_events import AuditEntityType
 from backend.app.modules.documents import crud as documents_crud
 from backend.app.services import candidate_notifications
 from backend.app.services.audit import log_audit_event
-from backend.app.services.risk_scoring import compute_candidate_risk_scores
+from backend.app.services.risk_scoring import CandidateRisk, compute_candidate_risk_scores
 from backend.app.api.v1.candidates.schemas import (
     CandidateTimelineResponse,
-    CandidateTimelineEventOut,
     CandidateChangeLogItemOut,
     CandidateChangeLogResponse,
+    CandidateWorkPanelResponse,
 )
+from backend.app.services.candidate_timeline import fetch_candidate_timeline_events
+from backend.app.services.candidate_work_panel import load_candidate_work_panel
+from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES, is_pipeline_completed_stage
 
 
 
@@ -583,6 +586,14 @@ async def list_candidates(
         default=None,
         description="Filter by processor (accepted handoff assigned_to_user_id).",
     ),
+    shadow_bucket_start: str | None = Query(
+        default=None,
+        description="Restrict to candidates in risk_intel_entity_shadow for this hourly bucket (ISO-8601, UTC).",
+    ),
+    shadow_bucket_min_band: str | None = Query(
+        default=None,
+        description="Band floor with shadow_bucket_start (default high): low|medium|high|critical.",
+    ),
     q: str | None = Query(default=None, description="Поиск по имени/фамилии/email/телефону"),
     created_from: date | None = None,
     created_to: date | None = None,
@@ -783,6 +794,14 @@ async def list_candidates(
     if processor_id:
         filters["processor_id"] = str(processor_id)
 
+    if shadow_bucket_start and str(shadow_bucket_start).strip():
+        from backend.app.services.risk_intel_v1 import parse_shadow_bucket_iso
+
+        buck = parse_shadow_bucket_iso(str(shadow_bucket_start).strip())
+        if buck is not None:
+            mb = str(shadow_bucket_min_band or "high").strip().lower()
+            filters["risk_intel_shadow"] = {"bucket_start": buck, "min_band": mb}
+
     if q:
         q = q.strip()
         if q:
@@ -971,12 +990,24 @@ async def list_candidates(
                 candidate_by_id[cid] = c
         try:
             now = datetime.now(timezone.utc)
-            risk_map = await compute_candidate_risk_scores(
-                db,
-                tenant_id=scope_tenant,
-                candidates_by_id=candidate_by_id,
-                now=now,
-            )
+            if candidate_by_id and all(is_pipeline_completed_stage(getattr(c, "stage", None)) for c in candidate_by_id.values()):
+                risk_map = {
+                    cid: CandidateRisk(
+                        risk_score=0,
+                        risk_band="low",
+                        risk_updated_at=now,
+                        risk_drivers=[],
+                        risk_version="risk_model_v1",
+                    )
+                    for cid in candidate_by_id
+                }
+            else:
+                risk_map = await compute_candidate_risk_scores(
+                    db,
+                    tenant_id=scope_tenant,
+                    candidates_by_id=candidate_by_id,
+                    now=now,
+                )
         except Exception:
             logging.getLogger(__name__).exception("Failed to compute candidate risk scores")
             risk_map = {}
@@ -1324,6 +1355,13 @@ async def list_candidates_no_next_action(
         clean = [str(s).strip() for s in stages if str(s).strip()]
         if clean:
             where.append(Candidate.stage.in_(clean))
+    else:
+        where.append(
+            or_(
+                Candidate.stage.is_(None),
+                Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
+            )
+        )
     if manager_id:
         where.append(Candidate.manager == str(manager_id))
 
@@ -1718,7 +1756,74 @@ async def get_candidate(
         out["contact_policy_enabled"] = False
         out["contact_attempt_count"] = 0
 
+    try:
+        now_r = datetime.now(timezone.utc)
+        if is_pipeline_completed_stage(getattr(cand_row, "stage", None)):
+            r = {
+                "risk_score": 0,
+                "risk_band": "low",
+                "risk_drivers": [],
+                "risk_updated_at": now_r,
+                "risk_version": "risk_model_v1",
+            }
+        else:
+            from backend.app.services.risk_intel_v1 import compute_candidate_risk_map_for_ids
+
+            rmap = await compute_candidate_risk_map_for_ids(db, tenant_id_str, [str(candidate_id)], now=now_r)
+            r = rmap.get(str(candidate_id))
+        if r:
+            out["risk_score"] = r["risk_score"]
+            out["risk_band"] = r["risk_band"]
+            out["risk_drivers"] = r["risk_drivers"]
+            ru = r.get("risk_updated_at")
+            out["risk_updated_at"] = ru.isoformat() if ru and hasattr(ru, "isoformat") else None
+            out["risk_version"] = r.get("risk_version")
+    except Exception:
+        logging.getLogger(__name__).exception("risk enrich failed for candidate %s", candidate_id)
+
     return out
+
+
+@router.get(
+    "/{candidate_id}/work-panel",
+    response_model=CandidateWorkPanelResponse,
+    dependencies=[Depends(require_roles(*CANDIDATE_VIEW_ROLES))],
+    summary="Work panel bundle (ops profile + reminders + timeline + comms links)",
+)
+async def get_candidate_work_panel(
+    candidate_id: UUID,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    timeline_limit: int = Query(80, ge=20, le=200),
+    assignee_scope: str = Query("mine", pattern="^(mine|team)$"),
+) -> CandidateWorkPanelResponse:
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    if current_user.role in ACL_RESTRICTED_ROLES:
+        await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
+
+    client_tenant = await is_client_tenant_for_list(db, tenant_id_str)
+    row = await cand_repo.get_candidate_with_labels(
+        db,
+        tenant_id=tenant_id_str,
+        candidate_id=str(candidate_id),
+        visibility=visibility,
+        is_client_tenant=client_tenant,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    cand_row = row[0]
+    return await load_candidate_work_panel(
+        db,
+        tenant_id_str,
+        str(candidate_id),
+        current_user,
+        cand_row,
+        timeline_limit=timeline_limit,
+        assignee_scope=assignee_scope,
+    )
 
 
 @router.get(
@@ -1751,96 +1856,7 @@ async def get_candidate_timeline(
     if row is None:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    # Activity log events for this candidate.
-    log_rows = (
-        await db.execute(
-            select(ActivityLog.action, ActivityLog.created_at, ActivityLog.payload)
-            .where(
-                ActivityLog.tenant_id == tenant_id_str,
-                ActivityLog.target_type == "candidate",
-                ActivityLog.target_id == str(candidate_id),
-            )
-            .order_by(ActivityLog.created_at.desc())
-            .limit(limit)
-        )
-    ).all()
-
-    # Reminder events for this candidate.
-    rem_rows = (
-        await db.execute(
-            select(
-                Reminder.id,
-                Reminder.type,
-                Reminder.status,
-                Reminder.title,
-                Reminder.description,
-                Reminder.created_at,
-                Reminder.due_at,
-                Reminder.completed_at,
-            )
-            .where(
-                Reminder.tenant_id == tenant_id_str,
-                Reminder.entity_type == "candidate",
-                Reminder.entity_id == str(candidate_id),
-            )
-            .order_by(Reminder.created_at.desc())
-            .limit(limit)
-        )
-    ).all()
-
-    events: list[CandidateTimelineEventOut] = []
-
-    for action, created_at, payload in log_rows:
-        kind = "activity"
-        title = str(action or "").strip() or "event"
-        descr = None
-        # Best-effort stage change detection.
-        if str(action or "") in {"candidate.stage_changed", "candidate_stage_changed"}:
-            kind = "stage_changed"
-        events.append(
-            CandidateTimelineEventOut(
-                at=created_at,
-                kind=kind,
-                source="activity_log",
-                title=title,
-                description=descr,
-                payload=payload if isinstance(payload, dict) else {},
-            )
-        )
-
-    for rem_id, r_type, status, title, description, created_at, due_at, completed_at in rem_rows:
-        base_payload: Dict[str, Any] = {
-            "reminder_id": rem_id,
-            "type": r_type,
-            "status": status,
-            "due_at": due_at.isoformat() if isinstance(due_at, datetime) else None,
-            "completed_at": completed_at.isoformat() if isinstance(completed_at, datetime) else None,
-        }
-        events.append(
-            CandidateTimelineEventOut(
-                at=created_at,
-                kind="reminder_created",
-                source="reminder",
-                title=title or "Reminder created",
-                description=description,
-                payload=base_payload,
-            )
-        )
-        if completed_at:
-            events.append(
-                CandidateTimelineEventOut(
-                    at=completed_at,
-                    kind="reminder_completed",
-                    source="reminder",
-                    title=title or "Reminder completed",
-                    description=description,
-                    payload=base_payload,
-                )
-            )
-
-    events.sort(key=lambda e: e.at, reverse=True)
-    if len(events) > limit:
-        events = events[:limit]
+    events = await fetch_candidate_timeline_events(db, tenant_id_str, str(candidate_id), limit)
     return CandidateTimelineResponse(items=events)
 
 

@@ -1,8 +1,15 @@
 // src/pages/Dashboard.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import api, { getOnboardingStatus, type OnboardingStatus, withTenant } from '../api/client'
+import { BarChart, Bar, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import api, {
+  createBulkReminders,
+  createReminder,
+  getOnboardingStatus,
+  listInvoices,
+  type OnboardingStatus,
+  withTenant,
+} from '../api/client'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
@@ -17,13 +24,26 @@ import {
   getOpsCounters,
   getGoals,
   getStageMetrics,
+  ackRiskIntelligenceManagerDigest,
+  getRiskIntelligence,
+  getRiskIntelligenceManagerDigestQueue,
+  getRiskIntelligenceShadowSnapshot,
+  getRiskIntelligenceTrends,
+  getRiskIntelligenceValidation,
   getPerfBaseline,
   getPerfBudgets,
+  recordPerfMeasurement,
   recordTrialRetentionEvent,
   type OpsCounters,
   type GoalsResponse,
   type PerfBudgetsResponse,
   type PerfBaselineResponse,
+  type RiskIntelDigestQueueResponse,
+  type RiskIntelShadowSnapshotItem,
+  type RiskIntelShadowSnapshotResponse,
+  type RiskIntelTrendsResponse,
+  type RiskIntelValidationResponse,
+  type RiskIntelligenceResponse,
   type StageMetricsResponse,
   type TrialRetentionReport,
 } from '../api/analytics'
@@ -31,6 +51,9 @@ import { listTenantManagers } from '../api/users'
 import { getBillingSubscription } from '../api/billing'
 import { listCandidateStages } from '../api/candidate_stages'
 import { usePermissions } from '../hooks/usePermissions'
+import { listVacancies } from '../api/vacancies'
+import { invoiceDaysPastDue, invoiceOutstandingAmount } from '../modules/services/utils'
+import type { Invoice } from '../api/types'
 import { DAY_MS, QUICK_RANGE_OPTIONS, DIMENSION_OPTIONS, DEFAULT_STAGE_CODES } from '../modules/dashboard/constants'
 import type {
   ListResp,
@@ -50,7 +73,9 @@ import { DEFAULT_VISIBLE_WIDGETS, DEFAULT_VISIBLE_FILTERS, type DashboardFilterI
 import { formatDateInput, calcRange, calcPrevPeriod, formatDelta, normalizeKey, normalizeTotal } from '../modules/dashboard/utils'
 import { getRegionDisplayName } from '../utils/catalogLocale'
 import { toCSV } from '../modules/candidates/candidateUtils'
+import { CANDIDATES_QUICK_VIEW_NAV_PATHS } from '../modules/candidates/constants'
 import { ACTIVATION_PATHS, getRetentionNextPath, getRetentionStepKey } from '../app/activationRoutes'
+import { servicesOrdersTabPath } from '../modules/services/utils'
 
 // StageLabelConfig, normalizeKey are now imported from modules/dashboard
 
@@ -320,15 +345,46 @@ const STAGE_STACK_COLORS: Record<StageOutcome, string> = {
 
 type TrialRetentionDay = 1 | 2 | 3 | 7
 
+type DigestBulkResultReport = {
+  kind: 'remind' | 'claim'
+  ok: number
+  fail: number
+  errors: string[]
+}
+
+type InvoiceWithPaid = Invoice & { paid_amount?: number | null }
+
+function formatDigestBulkError(reason: unknown): string {
+  const r = reason as { response?: { data?: { detail?: unknown } }; message?: string }
+  const d = r?.response?.data
+  const detail = d?.detail
+  if (typeof detail === 'string') return detail.slice(0, 220)
+  if (Array.isArray(detail)) {
+    const msg = detail
+      .map((x: { msg?: string; message?: string }) => x?.msg || x?.message || String(x))
+      .join('; ')
+    return msg.slice(0, 220)
+  }
+  return String(r?.message || reason || 'Error').slice(0, 220)
+}
+
 // normalizeTotal is now imported from modules/dashboard/utils
 
 export default function Dashboard() {
   const { t, locale } = useI18n()
   const { me } = useAuth()
+  const { can, role, isClientTenant } = usePermissions()
+  const canServicesOpsWidgets = useMemo(() => can('services.view'), [can])
+  const canVacanciesOpenWidget = useMemo(() => can('vacancies.view'), [can])
   const tenant = useTenantInfo()
   const currentTenantId = useCurrentTenantId()
   const tenantId = (currentTenantId ?? (me as { tenant_id?: string })?.tenant_id) ?? 'default'
   const scopeTid = currentTenantId ?? (me as { tenant_id?: string })?.tenant_id
+  const canViewRiskOpsUi = useMemo(() => {
+    const r = String((me as { role?: string })?.role ?? '').toLowerCase()
+    return r === 'superadmin' || r === 'administrator' || r === 'supervisor'
+  }, [(me as { role?: string })?.role])
+  const myUserId = useMemo(() => String((me as { sub?: string })?.sub || '').trim(), [(me as { sub?: string })?.sub])
   const initialRange = calcRange('90d')
   const [dateFrom, setDateFrom] = useState<string>(initialRange.from)
   const [dateTo, setDateTo] = useState<string>(initialRange.to)
@@ -340,29 +396,123 @@ export default function Dashboard() {
 
   const [opsCounters, setOpsCounters] = useState<OpsCounters | null>(null)
   const [opsCountersLoading, setOpsCountersLoading] = useState(false)
+  const [invoiceMoneyLoading, setInvoiceMoneyLoading] = useState(false)
+  const [invoiceMoney, setInvoiceMoney] = useState<{
+    totalOutstanding: number
+    overdueUnpaidCount: number
+    maxDaysPastDue: number | null
+    currency: string
+  } | null>(null)
+  const [vacanciesOpenLoading, setVacanciesOpenLoading] = useState(false)
+  const [vacanciesOpenSummary, setVacanciesOpenSummary] = useState<{
+    openCount: number
+    candidatesInOpen: number
+    capped: boolean
+  } | null>(null)
   const [goals, setGoals] = useState<GoalsResponse | null>(null)
   const [goalsLoading, setGoalsLoading] = useState(false)
   const [stageMetrics, setStageMetrics] = useState<StageMetricsResponse | null>(null)
   const [stageMetricsLoading, setStageMetricsLoading] = useState(false)
+  const [riskIntel, setRiskIntel] = useState<RiskIntelligenceResponse | null>(null)
+  const [riskTrends, setRiskTrends] = useState<RiskIntelTrendsResponse | null>(null)
+  const [riskValidation, setRiskValidation] = useState<RiskIntelValidationResponse | null>(null)
+  const [riskShadowSnapshot, setRiskShadowSnapshot] = useState<RiskIntelShadowSnapshotResponse | null>(null)
+  const [riskDigestQueue, setRiskDigestQueue] = useState<RiskIntelDigestQueueResponse | null>(null)
+  const [riskDigestMinBand, setRiskDigestMinBand] = useState<'low' | 'medium' | 'high' | 'critical'>('high')
+  const [riskDigestQueueReadFilter, setRiskDigestQueueReadFilter] = useState<'all' | 'unread' | 'read'>('all')
+  const [riskShadowBucketStart, setRiskShadowBucketStart] = useState<string | null>(null)
+  const [riskIntelLoading, setRiskIntelLoading] = useState(false)
+  const [riskIntelShadowLoading, setRiskIntelShadowLoading] = useState(false)
+  const [digestAckLoading, setDigestAckLoading] = useState(false)
+  const [digestHandoffBusyId, setDigestHandoffBusyId] = useState<string | null>(null)
+  /** Per candidate row: optional reminder assignee (user id). Empty = owner if set, else current user. */
+  const [digestReminderAssigneePick, setDigestReminderAssigneePick] = useState<Record<string, string>>({})
+  const [digestBulkSelected, setDigestBulkSelected] = useState<Set<string>>(() => new Set())
+  const [digestBulkReminderAssignee, setDigestBulkReminderAssignee] = useState('')
+  const [digestBulkBusy, setDigestBulkBusy] = useState(false)
+  const [digestBulkResultReport, setDigestBulkResultReport] = useState<DigestBulkResultReport | null>(null)
+  const digestBulkHeadRef = useRef<HTMLInputElement>(null)
   const [perfBaseline, setPerfBaseline] = useState<PerfBaselineResponse | null>(null)
   const [perfBaselineLoading, setPerfBaselineLoading] = useState(false)
   const [perfBudgets, setPerfBudgets] = useState<PerfBudgetsResponse | null>(null)
 
   const loadOpsCounters = useCallback(async () => {
     setOpsCountersLoading(true)
+    if (canVacanciesOpenWidget) setVacanciesOpenLoading(true)
     try {
       const data = await getOpsCounters()
       setOpsCounters(data)
+      if (canVacanciesOpenWidget) {
+        if (typeof data.open_vacancies === 'number') {
+          setVacanciesOpenSummary({
+            openCount: data.open_vacancies,
+            candidatesInOpen: typeof data.open_vacancies_candidates === 'number' ? data.open_vacancies_candidates : 0,
+            capped: false,
+          })
+        } else {
+          try {
+            const rows = await listVacancies({ status: 'open', limit: 200 })
+            const list = Array.isArray(rows) ? rows : []
+            const capped = list.length >= 200
+            let candidatesInOpen = 0
+            for (const v of list) {
+              candidatesInOpen += Number(v.candidate_count || 0)
+            }
+            setVacanciesOpenSummary({ openCount: list.length, candidatesInOpen, capped })
+          } catch {
+            setVacanciesOpenSummary(null)
+          }
+        }
+      }
     } catch {
       setOpsCounters(null)
+      if (canVacanciesOpenWidget) setVacanciesOpenSummary(null)
     } finally {
       setOpsCountersLoading(false)
+      if (canVacanciesOpenWidget) setVacanciesOpenLoading(false)
     }
-  }, [])
+  }, [canVacanciesOpenWidget])
 
   useEffect(() => {
     void loadOpsCounters()
   }, [loadOpsCounters])
+
+  const loadInvoiceMoneyWidget = useCallback(async () => {
+    if (!canServicesOpsWidgets) return
+    setInvoiceMoneyLoading(true)
+    try {
+      const data = await listInvoices({ limit: 200 })
+      const rows = Array.isArray(data) ? (data as InvoiceWithPaid[]) : []
+      let totalOutstanding = 0
+      let overdueUnpaidCount = 0
+      let maxDaysPastDue: number | null = null
+      let currency = 'PLN'
+      for (const inv of rows) {
+        const st = String(inv.status || '').toLowerCase()
+        if (st === 'cancelled' || st === 'paid') continue
+        const out = invoiceOutstandingAmount(inv.total_amount, inv.paid_amount)
+        if (out <= 0) continue
+        currency = inv.currency || currency
+        totalOutstanding += out
+        const days = invoiceDaysPastDue(inv.due_date, out)
+        if (days != null) {
+          maxDaysPastDue = maxDaysPastDue == null ? days : Math.max(maxDaysPastDue, days)
+        }
+        if (inv.status === 'overdue' && Number(inv.total_amount || 0) > Number(inv.paid_amount || 0)) {
+          overdueUnpaidCount += 1
+        }
+      }
+      setInvoiceMoney({ totalOutstanding, overdueUnpaidCount, maxDaysPastDue, currency })
+    } catch {
+      setInvoiceMoney(null)
+    } finally {
+      setInvoiceMoneyLoading(false)
+    }
+  }, [canServicesOpsWidgets])
+
+  useEffect(() => {
+    void loadInvoiceMoneyWidget()
+  }, [loadInvoiceMoneyWidget])
 
   const loadGoals = useCallback(async () => {
     setGoalsLoading(true)
@@ -396,6 +546,417 @@ export default function Dashboard() {
     void loadStageMetrics()
   }, [loadStageMetrics])
 
+  const loadRiskOpsCore = useCallback(async () => {
+    if (!canViewRiskOpsUi) {
+      setRiskIntel(null)
+      setRiskTrends(null)
+      setRiskValidation(null)
+      setRiskDigestQueue(null)
+      setRiskShadowSnapshot(null)
+      setRiskShadowBucketStart(null)
+      return
+    }
+    const perfT0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    setRiskIntelLoading(true)
+    let settledMeta: {
+      baseline: string
+      trends: string
+      validation: string
+      digest_queue: string
+    } | null = null
+    try {
+      const [br, trr, vr, dq] = await Promise.allSettled([
+        getRiskIntelligence({ limit: 5000 }),
+        getRiskIntelligenceTrends({ days: 30 }),
+        getRiskIntelligenceValidation({ cohort_days: 14, lag_days: 7 }),
+        getRiskIntelligenceManagerDigestQueue({ min_band: riskDigestMinBand, limit_buckets: 21 }),
+      ])
+      settledMeta = {
+        baseline: br.status,
+        trends: trr.status,
+        validation: vr.status,
+        digest_queue: dq.status,
+      }
+      setRiskIntel(br.status === 'fulfilled' ? br.value : null)
+      setRiskTrends(trr.status === 'fulfilled' ? trr.value : null)
+      setRiskValidation(vr.status === 'fulfilled' ? vr.value : null)
+      setRiskDigestQueue(dq.status === 'fulfilled' ? dq.value : null)
+    } finally {
+      setRiskIntelLoading(false)
+      if (settledMeta) {
+        const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - perfT0
+        void recordPerfMeasurement({
+          metricKey: 'dashboard.risk_intel.core.load',
+          durationMs,
+          route: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : undefined,
+          meta: {
+            min_band: riskDigestMinBand,
+            ...settledMeta,
+          },
+        }).catch(() => {})
+      }
+    }
+  }, [canViewRiskOpsUi, riskDigestMinBand])
+
+  const loadRiskShadow = useCallback(async () => {
+    if (!canViewRiskOpsUi) {
+      setRiskShadowSnapshot(null)
+      return
+    }
+    const perfT0 = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    setRiskIntelShadowLoading(true)
+    let ok = false
+    try {
+      const snap = await getRiskIntelligenceShadowSnapshot({
+        limit: 50,
+        min_band: riskDigestMinBand,
+        bucket_start: riskShadowBucketStart ?? undefined,
+      })
+      setRiskShadowSnapshot(snap)
+      ok = true
+    } catch {
+      setRiskShadowSnapshot(null)
+    } finally {
+      const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - perfT0
+      void recordPerfMeasurement({
+        metricKey: 'dashboard.risk_intel.shadow_snapshot.load',
+        durationMs,
+        route: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : undefined,
+        meta: {
+          ok,
+          min_band: riskDigestMinBand,
+          bucket_pinned: Boolean(riskShadowBucketStart),
+        },
+      }).catch(() => {})
+      setRiskIntelShadowLoading(false)
+    }
+  }, [canViewRiskOpsUi, riskShadowBucketStart, riskDigestMinBand])
+
+  useEffect(() => {
+    setRiskShadowBucketStart(null)
+    setRiskDigestQueueReadFilter('all')
+  }, [riskDigestMinBand])
+
+  const filteredDigestBuckets = useMemo(() => {
+    const all = riskDigestQueue?.buckets ?? []
+    if (riskDigestQueueReadFilter === 'unread') return all.filter((b) => b.unread)
+    if (riskDigestQueueReadFilter === 'read') return all.filter((b) => !b.unread)
+    return all
+  }, [riskDigestQueue, riskDigestQueueReadFilter])
+
+  useEffect(() => {
+    if (!riskDigestQueue || riskShadowBucketStart === null) return
+    const visible = filteredDigestBuckets.some((b) => b.bucket_start === riskShadowBucketStart)
+    if (!visible) setRiskShadowBucketStart(null)
+  }, [filteredDigestBuckets, riskDigestQueue, riskShadowBucketStart])
+
+  const latestDigestBucketStart = riskDigestQueue?.buckets[0]?.bucket_start ?? null
+
+  useEffect(() => {
+    void loadRiskOpsCore()
+  }, [loadRiskOpsCore])
+
+  useEffect(() => {
+    void loadRiskShadow()
+  }, [loadRiskShadow])
+
+  const onManagerDigestAck = useCallback(async () => {
+    const bs = riskShadowSnapshot?.bucket_start
+    if (!bs || digestAckLoading) return
+    setDigestAckLoading(true)
+    try {
+      await ackRiskIntelligenceManagerDigest({ bucket_start: bs })
+      await loadRiskOpsCore()
+    } catch (e) {
+      console.error('manager digest ack failed', e)
+    } finally {
+      setDigestAckLoading(false)
+    }
+  }, [riskShadowSnapshot?.bucket_start, digestAckLoading, loadRiskOpsCore])
+
+  const onManagerDigestAckLatest = useCallback(async () => {
+    const latest = riskDigestQueue?.buckets[0]?.bucket_start
+    if (!latest || digestAckLoading) return
+    setDigestAckLoading(true)
+    try {
+      await ackRiskIntelligenceManagerDigest({ bucket_start: latest })
+      await loadRiskOpsCore()
+    } catch (e) {
+      console.error('manager digest ack latest failed', e)
+    } finally {
+      setDigestAckLoading(false)
+    }
+  }, [riskDigestQueue?.buckets?.[0]?.bucket_start, digestAckLoading, loadRiskOpsCore])
+
+  const refreshRiskOpsIntel = useCallback(() => {
+    void Promise.all([loadRiskOpsCore(), loadRiskShadow()])
+  }, [loadRiskOpsCore, loadRiskShadow])
+
+  const onShadowDigestReminder = useCallback(
+    async (row: RiskIntelShadowSnapshotItem, assigneeChoice?: string | null) => {
+      if (!myUserId || digestHandoffBusyId) return
+      const label =
+        row.display_name?.trim() ||
+        (row.short_id ? `#${row.short_id}` : row.entity_id.slice(0, 8))
+      setDigestHandoffBusyId(row.entity_id)
+      try {
+        const due = new Date(Date.now() + 24 * 60 * 60 * 1000)
+        const explicit = assigneeChoice?.trim()
+        const recruiter = row.recruiter_id?.trim()
+        const assignee_id = explicit || recruiter || undefined
+        await createReminder({
+          title: t('app.dashboard.risk_intel.shadow_handoff_reminder_title', {
+            defaultValue: 'Risk digest: follow up — {name}',
+            values: { name: label },
+          }),
+          description:
+            row.drivers?.length ?
+              row.drivers.slice(0, 5).join('; ')
+            : t('app.dashboard.risk_intel.shadow_handoff_reminder_fallback', {
+                defaultValue: 'Created from shadow risk digest.',
+              }),
+          type: 'custom',
+          entity_type: 'candidate',
+          entity_id: row.entity_id,
+          due_at: due.toISOString(),
+          source: 'risk_intel.shadow_digest',
+          ...(assignee_id ? { assignee_id } : {}),
+          payload: {
+            risk_intel_digest: {
+              band: row.band,
+              score: row.score,
+              bucket_start: riskShadowSnapshot?.bucket_start ?? null,
+              assignee_choice: explicit || null,
+            },
+          },
+        })
+        setDigestReminderAssigneePick((p) => {
+          const next = { ...p }
+          delete next[row.entity_id]
+          return next
+        })
+      } catch (e) {
+        console.error('shadow digest reminder failed', e)
+      } finally {
+        setDigestHandoffBusyId(null)
+      }
+    },
+    [myUserId, digestHandoffBusyId, t, riskShadowSnapshot?.bucket_start],
+  )
+
+  const onShadowDigestClaim = useCallback(
+    async (row: RiskIntelShadowSnapshotItem) => {
+      if (!myUserId || digestHandoffBusyId) return
+      setDigestHandoffBusyId(row.entity_id)
+      try {
+        await api.patch(`/candidates/${row.entity_id}`, { recruiter_id: myUserId })
+        await loadRiskShadow()
+      } catch (e) {
+        console.error('shadow digest claim failed', e)
+      } finally {
+        setDigestHandoffBusyId(null)
+      }
+    },
+    [myUserId, digestHandoffBusyId, loadRiskShadow],
+  )
+
+  const digestBulkRowIds = useMemo(
+    () => (riskShadowSnapshot?.items ?? []).map((r) => r.entity_id),
+    [riskShadowSnapshot?.items],
+  )
+
+  useEffect(() => {
+    setDigestBulkSelected(new Set())
+    setDigestBulkResultReport(null)
+  }, [riskShadowSnapshot?.bucket_start])
+
+  useEffect(() => {
+    const el = digestBulkHeadRef.current
+    if (!el) return
+    const n = digestBulkRowIds.length
+    const c = digestBulkSelected.size
+    el.indeterminate = n > 0 && c > 0 && c < n
+  }, [digestBulkRowIds.length, digestBulkSelected.size])
+
+  const toggleDigestBulkRow = useCallback((id: string) => {
+    setDigestBulkSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleDigestBulkAll = useCallback(() => {
+    setDigestBulkSelected((prev) => {
+      if (digestBulkRowIds.length === 0) return new Set()
+      const allOn = digestBulkRowIds.every((id) => prev.has(id))
+      if (allOn) return new Set()
+      return new Set(digestBulkRowIds)
+    })
+  }, [digestBulkRowIds])
+
+  const onShadowDigestBulkRemind = useCallback(async () => {
+    if (!myUserId || digestBulkBusy || !riskShadowSnapshot) return
+    const ids = Array.from(digestBulkSelected)
+    if (ids.length === 0) return
+    const rowById = new Map(riskShadowSnapshot.items.map((r) => [r.entity_id, r]))
+    setDigestBulkBusy(true)
+    setDigestBulkResultReport(null)
+    try {
+      const due = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      const bulkPick = digestBulkReminderAssignee.trim()
+      const sharedPayload = {
+        risk_intel_digest: {
+          bulk: true,
+          bucket_start: riskShadowSnapshot.bucket_start ?? null,
+          min_band: riskShadowSnapshot.min_band,
+          assignee_choice: bulkPick || null,
+        },
+      }
+      if (bulkPick) {
+        const data = await createBulkReminders({
+          title: t('app.dashboard.risk_intel.shadow_bulk_reminder_title', {
+            defaultValue: 'Risk digest: follow up ({n})',
+            values: { n: ids.length },
+          }),
+          description: t('app.dashboard.risk_intel.shadow_bulk_reminder_desc', {
+            defaultValue: 'Bulk reminder from shadow risk digest.',
+          }),
+          type: 'custom',
+          entity_type: 'candidate',
+          entity_ids: ids,
+          due_at: due.toISOString(),
+          source: 'risk_intel.shadow_digest',
+          assignee_id: bulkPick,
+          payload: sharedPayload,
+        })
+        const results = data?.results ?? []
+        const ok = results.filter((r) => r.ok).length
+        const fail =
+          results.length > 0 ? results.length - ok : ids.length > 0 ? ids.length : 0
+        const errors =
+          results.length === 0 && ids.length > 0 ?
+            [t('app.dashboard.risk_intel.shadow_bulk_empty_response', { defaultValue: 'No per-row results from server.' })]
+          : results
+              .filter((r) => !r.ok)
+              .map((r) => String(r.error || r.entity_id || 'Unknown').slice(0, 220))
+              .slice(0, 5)
+        setDigestBulkResultReport({ kind: 'remind', ok, fail, errors })
+        if (fail === 0) {
+          setDigestBulkSelected(new Set())
+          setDigestBulkReminderAssignee('')
+        }
+      } else {
+        const settled = await Promise.allSettled(
+          ids.map((id) => {
+            const row = rowById.get(id)
+            if (!row) return Promise.reject(new Error(`Missing row ${id}`))
+            const label =
+              row.display_name?.trim() ||
+              (row.short_id ? `#${row.short_id}` : row.entity_id.slice(0, 8))
+            const recruiter = row.recruiter_id?.trim()
+            return createReminder({
+              title: t('app.dashboard.risk_intel.shadow_handoff_reminder_title', {
+                defaultValue: 'Risk digest: follow up — {name}',
+                values: { name: label },
+              }),
+              description:
+                row.drivers?.length ?
+                  row.drivers.slice(0, 5).join('; ')
+                : t('app.dashboard.risk_intel.shadow_handoff_reminder_fallback', {
+                    defaultValue: 'Created from shadow risk digest.',
+                  }),
+              type: 'custom',
+              entity_type: 'candidate',
+              entity_id: id,
+              due_at: due.toISOString(),
+              source: 'risk_intel.shadow_digest',
+              ...(recruiter ? { assignee_id: recruiter } : {}),
+              payload: {
+                risk_intel_digest: {
+                  band: row.band,
+                  score: row.score,
+                  bucket_start: riskShadowSnapshot.bucket_start ?? null,
+                  bulk: true,
+                },
+              },
+            })
+          }),
+        )
+        let ok = 0
+        let fail = 0
+        const errors: string[] = []
+        for (const s of settled) {
+          if (s.status === 'fulfilled') {
+            ok += 1
+          } else {
+            fail += 1
+            if (errors.length < 5) errors.push(formatDigestBulkError(s.reason))
+          }
+        }
+        setDigestBulkResultReport({ kind: 'remind', ok, fail, errors })
+        if (fail === 0) {
+          setDigestBulkSelected(new Set())
+          setDigestBulkReminderAssignee('')
+        }
+      }
+    } catch (e) {
+      console.error('shadow digest bulk remind failed', e)
+      setDigestBulkResultReport({
+        kind: 'remind',
+        ok: 0,
+        fail: ids.length,
+        errors: [formatDigestBulkError(e)],
+      })
+    } finally {
+      setDigestBulkBusy(false)
+    }
+  }, [
+    myUserId,
+    digestBulkBusy,
+    digestBulkSelected,
+    digestBulkReminderAssignee,
+    t,
+    riskShadowSnapshot,
+  ])
+
+  const onShadowDigestBulkClaim = useCallback(async () => {
+    if (!myUserId || digestBulkBusy) return
+    const ids = Array.from(digestBulkSelected)
+    if (ids.length === 0) return
+    setDigestBulkBusy(true)
+    setDigestBulkResultReport(null)
+    try {
+      const settled = await Promise.allSettled(
+        ids.map((id) => api.patch(`/candidates/${id}`, { recruiter_id: myUserId })),
+      )
+      let ok = 0
+      let fail = 0
+      const errors: string[] = []
+      for (const s of settled) {
+        if (s.status === 'fulfilled') ok += 1
+        else {
+          fail += 1
+          if (errors.length < 5) errors.push(formatDigestBulkError(s.reason))
+        }
+      }
+      setDigestBulkResultReport({ kind: 'claim', ok, fail, errors })
+      if (ok > 0) await loadRiskShadow()
+      if (fail === 0) setDigestBulkSelected(new Set())
+    } catch (e) {
+      console.error('shadow digest bulk claim failed', e)
+      setDigestBulkResultReport({
+        kind: 'claim',
+        ok: 0,
+        fail: ids.length,
+        errors: [formatDigestBulkError(e)],
+      })
+    } finally {
+      setDigestBulkBusy(false)
+    }
+  }, [myUserId, digestBulkBusy, digestBulkSelected, loadRiskShadow])
+
   const loadPerfBaseline = useCallback(async () => {
     setPerfBaselineLoading(true)
     try {
@@ -426,7 +987,6 @@ export default function Dashboard() {
   const [globalCounts, setGlobalCounts] = useState({ candidates: 0, companies: 0, vacancies: 0 })
   const [periodTotal, setPeriodTotal] = useState(0)
   const [slices, setSlices] = useState<CandidateSlicesResponse | null>(null)
-  const { role, isClientTenant } = usePermissions()
   const isClientRole = isClientTenant && role !== 'administrator'
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
   const canManageBilling = role === 'administrator' || role === 'supervisor'
@@ -1513,13 +2073,13 @@ export default function Dashboard() {
   const businessCardHref = useCallback((key: string): string => {
     switch (key) {
       case 'service_orders_in_progress':
-        return '/app/services?status=in_progress'
+        return servicesOrdersTabPath({ status: 'in_progress' })
       case 'service_orders_delivered':
-        return '/app/services?status=delivered'
+        return servicesOrdersTabPath({ status: 'completed' })
       case 'clients_total':
       case 'counterparties_total':
       case 'companies_total':
-        return '/app/clients'
+        return '/app/clients/directory'
       case 'vacancies_active':
         return '/app/vacancies'
       case 'candidates_total':
@@ -1767,7 +2327,7 @@ export default function Dashboard() {
 
   return (
     <section className="h-full min-h-0 w-full flex flex-col">
-      <div className="flex-1 min-h-0 overflow-auto px-6 py-4 space-y-4">
+      <div className="min-h-0 flex-1 space-y-0 gap-0 overflow-auto px-0 py-0">
         {tenantId && retentionStatus?.onboarding_required === true && <OnboardingWizard tenantId={tenantId} />}
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1779,23 +2339,144 @@ export default function Dashboard() {
                 {t('app.dashboard.ops.subtitle', { defaultValue: 'Fast drill-down views for daily work.' })}
               </div>
             </div>
-            <button type="button" className="btn-secondary btn-sm" onClick={() => void loadOpsCounters()} disabled={opsCountersLoading}>
-              {opsCountersLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => {
+                void loadOpsCounters()
+                void loadInvoiceMoneyWidget()
+              }}
+              disabled={opsCountersLoading || invoiceMoneyLoading || vacanciesOpenLoading}
+            >
+              {opsCountersLoading || invoiceMoneyLoading || vacanciesOpenLoading
+                ? t('common.loading', { defaultValue: 'Loading…' })
+                : t('common.actions.refresh', { defaultValue: 'Refresh' })}
             </button>
           </div>
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Link to="/app/candidates/no-next-action" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+            <Link
+              to={CANDIDATES_QUICK_VIEW_NAV_PATHS.no_next_action}
+              title={drilldownTitle}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100"
+            >
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.no_next_action', { defaultValue: 'No next action' })}</div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.no_next_action_candidates ?? '—'}</div>
               <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
+
+            {canVacanciesOpenWidget ? (
+              <Link
+                to="/app/vacancies?status=open"
+                title={drilldownTitle}
+                className="rounded-xl border border-slate-200 bg-brand-50/50 p-3 hover:bg-brand-50/80"
+              >
+                <div className="text-xs text-slate-500">
+                  {t('app.dashboard.ops.open_vacancies', { defaultValue: 'Open vacancies' })}
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-brand-950">
+                  {vacanciesOpenLoading
+                    ? '…'
+                    : vacanciesOpenSummary
+                      ? vacanciesOpenSummary.capped
+                        ? `${vacanciesOpenSummary.openCount}+`
+                        : vacanciesOpenSummary.openCount
+                      : '—'}
+                </div>
+                {vacanciesOpenSummary && !vacanciesOpenLoading ? (
+                  <div className="mt-1 text-xs text-slate-600">
+                    {t('app.dashboard.ops.open_vacancies_pipeline', {
+                      defaultValue: '{count} candidates on these vacancies',
+                      values: { count: vacanciesOpenSummary.candidatesInOpen },
+                    })}
+                  </div>
+                ) : null}
+                {vacanciesOpenSummary?.capped ? (
+                  <div className="mt-0.5 text-[11px] text-slate-500">
+                    {t('app.dashboard.ops.open_vacancies_capped', {
+                      defaultValue: 'Count from first 200 open rows — open list for full totals.',
+                    })}
+                  </div>
+                ) : null}
+                <div className="mt-1 text-xs text-slate-600">
+                  {t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span>
+                </div>
+              </Link>
+            ) : null}
 
             <Link to="/app/tasks" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50">
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.overdue_reminders', { defaultValue: 'Overdue reminders' })}</div>
               <div className="mt-1 text-2xl font-semibold text-rose-700">{opsCounters?.overdue_reminders ?? '—'}</div>
               <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
             </Link>
+
+            {canServicesOpsWidgets ? (
+              <Link
+                to="/app/orders"
+                title={drilldownTitle}
+                className="rounded-xl border border-slate-200 bg-sky-50/60 p-3 hover:bg-sky-50"
+              >
+                <div className="text-xs text-slate-500">
+                  {t('app.dashboard.ops.open_service_orders', { defaultValue: 'Open service orders' })}
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-slate-900">
+                  {opsCountersLoading ? '…' : opsCounters?.open_service_orders ?? '—'}
+                </div>
+                <div className="mt-1 text-xs text-slate-600">
+                  {t('app.dashboard.ops.open_service_orders_hint', {
+                    defaultValue: 'Excludes completed and cancelled',
+                  })}
+                </div>
+                <div className="mt-1 text-xs text-slate-600">
+                  {t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span>
+                </div>
+              </Link>
+            ) : null}
+
+            {canServicesOpsWidgets ? (
+              <Link
+                to={
+                  invoiceMoney && invoiceMoney.overdueUnpaidCount > 0
+                    ? '/app/invoices?queue=overdue_unpaid'
+                    : '/app/invoices'
+                }
+                title={drilldownTitle}
+                className={`rounded-xl border border-slate-200 p-3 hover:bg-slate-100 ${
+                  invoiceMoney && invoiceMoney.overdueUnpaidCount > 0 ? 'bg-amber-50/70' : 'bg-slate-50'
+                }`}
+              >
+                <div className="text-xs text-slate-500">
+                  {t('app.dashboard.ops.invoice_outstanding', { defaultValue: 'Open invoice balance' })}
+                </div>
+                <div className="mt-1 text-2xl font-semibold text-slate-900">
+                  {invoiceMoneyLoading
+                    ? '…'
+                    : invoiceMoney
+                      ? (() => {
+                          try {
+                            return new Intl.NumberFormat(locale, {
+                              style: 'currency',
+                              currency: invoiceMoney.currency,
+                            }).format(invoiceMoney.totalOutstanding)
+                          } catch {
+                            return String(invoiceMoney.totalOutstanding)
+                          }
+                        })()
+                      : '—'}
+                </div>
+                {invoiceMoney && invoiceMoney.overdueUnpaidCount > 0 ? (
+                  <div className="mt-1 text-xs font-medium text-rose-700">
+                    {t('app.dashboard.ops.invoice_overdue_unpaid', {
+                      defaultValue: '{count} overdue (unpaid)',
+                      values: { count: invoiceMoney.overdueUnpaidCount },
+                    })}
+                  </div>
+                ) : null}
+                <div className="mt-1 text-xs text-slate-600">
+                  {t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span>
+                </div>
+              </Link>
+            ) : null}
 
             <Link to="/app/leads?status=needs_routing" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50">
               <div className="text-xs text-slate-500">{t('app.dashboard.ops.leads_needs_routing', { defaultValue: 'Leads need routing' })}</div>
@@ -1910,6 +2591,627 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {canViewRiskOpsUi ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-900">
+                {t('app.dashboard.risk_intel.title', { defaultValue: 'Risk intelligence (v1 baseline)' })}
+              </div>
+              <div className="mt-0.5 text-xs text-slate-500">
+                {t('app.dashboard.risk_intel.subtitle', {
+                  defaultValue:
+                    'Ops leads only. Live aggregate + hourly shadow snapshots (scheduler). Phase B — trends & validation; no user alerts.',
+                })}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => refreshRiskOpsIntel()}
+              disabled={riskIntelLoading || riskIntelShadowLoading}
+            >
+              {riskIntelLoading || riskIntelShadowLoading
+                ? t('common.loading', { defaultValue: 'Loading…' })
+                : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            </button>
+          </div>
+
+          {!riskIntel ? (
+            <div className="mt-3 text-sm text-slate-500">
+              {t('app.dashboard.risk_intel.empty', { defaultValue: 'No data yet.' })}
+            </div>
+          ) : (
+            <div className="mt-3 grid gap-3 lg:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs font-semibold text-slate-700">
+                  {t('app.dashboard.risk_intel.summary', { defaultValue: 'Summary' })}
+                </div>
+                <div className="mt-2 space-y-1 text-sm text-slate-700">
+                  <div className="flex justify-between gap-2">
+                    <span>{t('app.dashboard.risk_intel.evaluated', { defaultValue: 'Candidates scored' })}</span>
+                    <span className="font-semibold">{riskIntel.candidates_evaluated}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span>{t('app.dashboard.risk_intel.avg_score', { defaultValue: 'Avg risk score' })}</span>
+                    <span className="font-semibold">{riskIntel.avg_risk_score}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span>{t('app.dashboard.risk_intel.high_plus', { defaultValue: 'High + critical' })}</span>
+                    <span className="font-semibold text-amber-800">{riskIntel.high_risk_volume}</span>
+                  </div>
+                  <div className="pt-1 text-xs text-slate-500">
+                    {riskIntel.risk_version} ·{' '}
+                    {riskIntel.generated_at ? new Date(riskIntel.generated_at).toLocaleString() : '—'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs font-semibold text-slate-700">
+                  {t('app.dashboard.risk_intel.bands', { defaultValue: 'Risk bands' })}
+                </div>
+                <div className="mt-2 space-y-1 text-sm">
+                  {(['low', 'medium', 'high', 'critical'] as const).map((b) => (
+                    <div key={b} className="flex justify-between gap-2">
+                      <span className="capitalize text-slate-600">{b}</span>
+                      <span className="font-semibold text-slate-900">{riskIntel.band_distribution?.[b] ?? 0}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="text-xs font-semibold text-slate-700">
+                  {t('app.dashboard.risk_intel.first_response', { defaultValue: 'First touch from create' })}
+                </div>
+                <div className="mt-2 space-y-1 text-sm">
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-600">0–24h</span>
+                    <span className="font-semibold text-slate-900">{riskIntel.first_response_hours_histogram?.['0_24h'] ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-600">24–48h</span>
+                    <span className="font-semibold text-slate-900">{riskIntel.first_response_hours_histogram?.['24_48h'] ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-600">48–72h</span>
+                    <span className="font-semibold text-slate-900">{riskIntel.first_response_hours_histogram?.['48_72h'] ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-600">72h+</span>
+                    <span className="font-semibold text-slate-900">{riskIntel.first_response_hours_histogram?.['72h_plus'] ?? 0}</span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-slate-600">{t('app.dashboard.risk_intel.no_touch', { defaultValue: 'No touch yet' })}</span>
+                    <span className="font-semibold text-slate-900">{riskIntel.first_response_hours_histogram?.['no_touch'] ?? 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 lg:col-span-3">
+                <div className="text-xs font-semibold text-slate-700">
+                  {t('app.dashboard.risk_intel.by_stage', { defaultValue: 'By stage (avg score · high+)' })}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {Object.entries(riskIntel.risk_distribution_by_stage || {})
+                    .slice(0, 12)
+                    .map(([code, row]) => (
+                      <div
+                        key={code}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-700"
+                        title={translateStageLabel(code, code) || code}
+                      >
+                        <span className="font-medium">{translateStageLabel(code, code) || code}</span>
+                        <span className="ml-1 text-slate-500">
+                          {row.avg_risk_score?.toFixed?.(1) ?? row.avg_risk_score} · {row.high_plus_count ?? 0}+
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!riskIntelLoading && riskTrends && riskTrends.points && riskTrends.points.length > 0 ? (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs font-semibold text-slate-700">
+                {t('app.dashboard.risk_intel.trend_title', { defaultValue: 'Hourly trend (persisted snapshots)' })}
+              </div>
+              <div className="mt-2 h-52 w-full min-w-0 shrink-0">
+                <ResponsiveContainer width="100%" height={208} minHeight={160} minWidth={0}>
+                  <LineChart
+                    data={riskTrends.points.map((p) => ({
+                      label: p.bucket_start
+                        ? new Date(p.bucket_start).toLocaleString(locale, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                          })
+                        : '',
+                      avg: p.avg_risk_score,
+                      high: p.high_risk_volume,
+                    }))}
+                    margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
+                    <YAxis yAxisId="l" tick={{ fontSize: 10 }} domain={[0, 100]} width={32} />
+                    <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10 }} width={36} />
+                    <Tooltip />
+                    <Line
+                      yAxisId="l"
+                      type="monotone"
+                      dataKey="avg"
+                      stroke="#2E6F74"
+                      strokeWidth={2}
+                      dot={false}
+                      name={t('app.dashboard.risk_intel.avg_score', { defaultValue: 'Avg risk score' })}
+                    />
+                    <Line
+                      yAxisId="r"
+                      type="monotone"
+                      dataKey="high"
+                      stroke="#c2410c"
+                      strokeWidth={2}
+                      dot={false}
+                      name={t('app.dashboard.risk_intel.high_plus', { defaultValue: 'High + critical' })}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          ) : !riskIntelLoading && riskTrends ? (
+            <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-xs text-slate-500">
+              {t('app.dashboard.risk_intel.trend_empty', {
+                defaultValue: 'No hourly snapshots yet — ensure DB migration is applied and the communications scheduler is running.',
+              })}
+            </div>
+          ) : null}
+
+          {!riskIntelLoading && riskDigestQueue ? (
+            <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                  <div className="text-xs font-semibold text-slate-800">
+                    {t('app.dashboard.risk_intel.digest_queue_title', {
+                      defaultValue: 'Manager digest queue',
+                    })}
+                  </div>
+                  <label className="flex items-center gap-1 text-[11px] text-slate-700">
+                    <span className="shrink-0 capitalize">{t('app.dashboard.risk_intel.digest_queue_min_band', { defaultValue: 'Band' })}</span>
+                    <select
+                      className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] capitalize"
+                      value={riskDigestMinBand}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === 'low' || v === 'medium' || v === 'high' || v === 'critical') {
+                          setRiskDigestMinBand(v)
+                        }
+                      }}
+                    >
+                      {(['low', 'medium', 'high', 'critical'] as const).map((b) => (
+                        <option key={b} value={b}>
+                          {b}+
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-1 text-[11px] text-slate-700">
+                    <span className="shrink-0">{t('app.dashboard.risk_intel.digest_queue_filter', { defaultValue: 'Show' })}</span>
+                    <select
+                      className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px]"
+                      value={riskDigestQueueReadFilter}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (v === 'all' || v === 'unread' || v === 'read') setRiskDigestQueueReadFilter(v)
+                      }}
+                    >
+                      <option value="all">{t('app.dashboard.risk_intel.digest_queue_filter_all', { defaultValue: 'All buckets' })}</option>
+                      <option value="unread">{t('app.dashboard.risk_intel.digest_queue_filter_unread', { defaultValue: 'Unread only' })}</option>
+                      <option value="read">{t('app.dashboard.risk_intel.digest_queue_filter_read', { defaultValue: 'Reviewed only' })}</option>
+                    </select>
+                  </label>
+                  {riskDigestQueue.unread_count > 0 ? (
+                    <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-800">
+                      {t('app.dashboard.risk_intel.digest_queue_unread', {
+                        defaultValue: '{n} new',
+                        values: { n: riskDigestQueue.unread_count },
+                      })}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={!riskDigestQueue.buckets[0]?.bucket_start || digestAckLoading}
+                    onClick={() => void onManagerDigestAckLatest()}
+                  >
+                    {digestAckLoading
+                      ? t('common.loading', { defaultValue: 'Loading…' })
+                      : t('app.dashboard.risk_intel.digest_queue_ack_latest', { defaultValue: 'Mark through latest' })}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm"
+                    disabled={!riskShadowSnapshot?.bucket_start || digestAckLoading}
+                    onClick={() => void onManagerDigestAck()}
+                  >
+                    {digestAckLoading
+                      ? t('common.loading', { defaultValue: 'Loading…' })
+                      : t('app.dashboard.risk_intel.digest_queue_ack', { defaultValue: 'Mark reviewed' })}
+                  </button>
+                </div>
+              </div>
+              <div className="mt-2 text-[11px] text-slate-600">
+                {t('app.dashboard.risk_intel.digest_queue_hint', {
+                  defaultValue:
+                    'Pick an hourly bucket to inspect the cohort. “Mark through latest” acks the newest bucket; “Mark reviewed” acks the cohort you are viewing.',
+                })}
+              </div>
+              {riskDigestQueue.buckets.length === 0 ? (
+                <div className="mt-2 text-xs text-slate-500">
+                  {t('app.dashboard.risk_intel.digest_queue_empty', {
+                    defaultValue: 'No digest history for this band threshold yet.',
+                  })}
+                </div>
+              ) : filteredDigestBuckets.length === 0 ? (
+                <div className="mt-2 text-xs text-slate-500">
+                  {t('app.dashboard.risk_intel.digest_queue_filter_empty', {
+                    defaultValue: 'No buckets match this filter.',
+                  })}
+                </div>
+              ) : (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {filteredDigestBuckets.map((b) => {
+                    const isLatestRow = Boolean(latestDigestBucketStart && b.bucket_start === latestDigestBucketStart)
+                    const selected =
+                      riskShadowBucketStart === null ? isLatestRow : riskShadowBucketStart === b.bucket_start
+                    const shortWhen = new Date(b.bucket_start).toLocaleString(locale, {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                    const label = isLatestRow
+                      ? `${t('app.dashboard.risk_intel.digest_queue_latest', { defaultValue: 'Latest' })} · ${shortWhen}`
+                      : shortWhen
+                    return (
+                      <button
+                        key={b.bucket_start}
+                        type="button"
+                        onClick={() => setRiskShadowBucketStart(isLatestRow ? null : b.bucket_start)}
+                        className={`rounded-lg border px-2 py-1 text-left text-[11px] transition-colors ${
+                          selected
+                            ? 'border-indigo-400 bg-white font-semibold text-indigo-900 shadow-sm'
+                            : 'border-slate-200 bg-white/80 text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        <span>{label}</span>
+                        <span className="ml-1 text-slate-500">
+                          ({b.total_matching}){b.unread ? ' · ●' : ''}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {riskShadowSnapshot || riskIntelShadowLoading ? (
+            <div
+              className={`mt-4 rounded-xl border border-slate-200 bg-white p-3 transition-opacity ${riskIntelShadowLoading ? 'opacity-60' : ''}`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="text-xs font-semibold text-slate-700">
+                  {t('app.dashboard.risk_intel.shadow_snapshot_title', {
+                    defaultValue: 'Latest hourly at-risk (shadow cohort)',
+                  })}
+                </div>
+                {riskShadowSnapshot?.bucket_start && riskShadowSnapshot.total_matching > 0 ? (
+                  <Link
+                    to={`/app/candidates?shadow_bucket=${encodeURIComponent(riskShadowSnapshot.bucket_start)}&shadow_min_band=${encodeURIComponent(
+                      ['low', 'medium', 'high', 'critical'].includes(String(riskShadowSnapshot.min_band || ''))
+                        ? String(riskShadowSnapshot.min_band)
+                        : 'high',
+                    )}`}
+                    className="shrink-0 text-[11px] font-medium text-brand-700 hover:underline"
+                  >
+                    {t('app.dashboard.risk_intel.open_cohort_in_list', { defaultValue: 'Open cohort in list' })}
+                  </Link>
+                ) : null}
+              </div>
+              {!riskShadowSnapshot ? (
+                <div className="mt-2 text-sm text-slate-500">
+                  {t('common.loading', { defaultValue: 'Loading…' })}
+                </div>
+              ) : (
+                <>
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    {riskShadowSnapshot.bucket_start
+                      ? t('app.dashboard.risk_intel.shadow_snapshot_bucket', {
+                          defaultValue: 'Bucket UTC: {bucket} · rows ≥ {min_band}: {total} (showing top {shown})',
+                          values: {
+                            bucket: new Date(riskShadowSnapshot.bucket_start).toLocaleString(locale),
+                            min_band: riskShadowSnapshot.min_band,
+                            total: riskShadowSnapshot.total_matching,
+                            shown: riskShadowSnapshot.items.length,
+                          },
+                        })
+                      : t('app.dashboard.risk_intel.shadow_snapshot_empty_hint', {
+                          defaultValue: 'No shadow rows yet.',
+                        })}
+                    {riskShadowSnapshot.note ? ` ${riskShadowSnapshot.note}` : ''}
+                  </div>
+                  {riskShadowSnapshot.items.length > 0 ? (
+                    <>
+                      <div className="mt-1 text-[10px] text-slate-500">
+                        {t('app.dashboard.risk_intel.shadow_handoff_hint', {
+                          defaultValue:
+                            'Handoff: Remind creates a task due in 24h. Use the dropdown to assign to a teammate; leave on auto for candidate owner (or you if unowned). Assign to me sets you as recruiter. Select rows for bulk Remind / Assign to me.',
+                        })}
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/90 px-2 py-1.5 text-[11px] text-slate-700">
+                        <span className="font-medium text-slate-600">
+                          {t('app.dashboard.risk_intel.shadow_bulk_selected', {
+                            defaultValue: 'Selected: {n}',
+                            values: { n: digestBulkSelected.size },
+                          })}
+                        </span>
+                        <label className="flex items-center gap-1">
+                          <span className="shrink-0 text-slate-500">
+                            {t('app.dashboard.risk_intel.shadow_bulk_assignee', { defaultValue: 'Bulk remind' })}
+                          </span>
+                          <select
+                            className="max-w-[10rem] truncate rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px]"
+                            disabled={digestBulkBusy || digestHandoffBusyId !== null}
+                            value={digestBulkReminderAssignee}
+                            onChange={(e) => setDigestBulkReminderAssignee(e.target.value.trim())}
+                          >
+                            <option value="">
+                              {t('app.dashboard.risk_intel.shadow_handoff_assignee_auto', {
+                                defaultValue: 'Remind → auto',
+                              })}
+                            </option>
+                            {managerOptions.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium hover:bg-slate-50 disabled:opacity-50"
+                          disabled={digestBulkSelected.size === 0 || digestBulkBusy || digestHandoffBusyId !== null}
+                          onClick={() => void onShadowDigestBulkRemind()}
+                        >
+                          {digestBulkBusy
+                            ? t('common.loading', { defaultValue: 'Loading…' })
+                            : t('app.dashboard.risk_intel.shadow_bulk_remind', { defaultValue: 'Remind selected' })}
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-900 hover:bg-indigo-100 disabled:opacity-50"
+                          disabled={digestBulkSelected.size === 0 || digestBulkBusy || digestHandoffBusyId !== null}
+                          onClick={() => void onShadowDigestBulkClaim()}
+                        >
+                          {digestBulkBusy
+                            ? t('common.loading', { defaultValue: 'Loading…' })
+                            : t('app.dashboard.risk_intel.shadow_bulk_claim', { defaultValue: 'Assign selected to me' })}
+                        </button>
+                      </div>
+                      {digestBulkResultReport ? (
+                        <div
+                          className={`mt-2 rounded-lg border px-2 py-1.5 text-[11px] ${
+                            digestBulkResultReport.fail === 0 ?
+                              'border-emerald-200 bg-emerald-50/90 text-emerald-950'
+                            : 'border-amber-200 bg-amber-50/90 text-amber-950'
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-semibold">
+                                {digestBulkResultReport.kind === 'remind' ?
+                                  t('app.dashboard.risk_intel.shadow_bulk_result_remind', {
+                                    defaultValue: 'Reminders: {ok} created, {fail} failed.',
+                                    values: {
+                                      ok: digestBulkResultReport.ok,
+                                      fail: digestBulkResultReport.fail,
+                                    },
+                                  })
+                                : t('app.dashboard.risk_intel.shadow_bulk_result_claim', {
+                                    defaultValue: 'Assign to me: {ok} updated, {fail} failed.',
+                                    values: {
+                                      ok: digestBulkResultReport.ok,
+                                      fail: digestBulkResultReport.fail,
+                                    },
+                                  })}
+                              </div>
+                              {digestBulkResultReport.errors.length > 0 ? (
+                                <ul className="mt-1 list-inside list-disc break-words text-[10px] text-slate-800">
+                                  {digestBulkResultReport.errors.map((err, i) => (
+                                    <li key={i}>{err}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                              {digestBulkResultReport.fail > 0 ? (
+                                <div className="mt-1 text-[10px] text-slate-700">
+                                  {t('app.dashboard.risk_intel.shadow_bulk_result_keep_selection', {
+                                    defaultValue: 'Selection kept so you can retry failures.',
+                                  })}
+                                </div>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              className="shrink-0 rounded border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-700 hover:bg-slate-50"
+                              onClick={() => setDigestBulkResultReport(null)}
+                            >
+                              {t('app.dashboard.risk_intel.shadow_bulk_dismiss', { defaultValue: 'Dismiss' })}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="mt-2 max-h-56 overflow-auto rounded-lg border border-slate-100">
+                        <table className="w-full text-left text-[11px]">
+                          <thead className="sticky top-0 bg-slate-50 text-slate-600">
+                            <tr>
+                              <th className="w-8 px-1 py-1.5">
+                                <input
+                                  ref={digestBulkHeadRef}
+                                  type="checkbox"
+                                  className="h-3.5 w-3.5 rounded border-slate-300"
+                                  checked={
+                                    digestBulkRowIds.length > 0 &&
+                                    digestBulkRowIds.every((id) => digestBulkSelected.has(id))
+                                  }
+                                  disabled={
+                                    digestBulkRowIds.length === 0 ||
+                                    digestBulkBusy ||
+                                    digestHandoffBusyId !== null
+                                  }
+                                  onChange={() => toggleDigestBulkAll()}
+                                  title={t('app.dashboard.risk_intel.shadow_bulk_select_all', {
+                                    defaultValue: 'Select all in table',
+                                  })}
+                                />
+                              </th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_candidate', { defaultValue: 'Candidate' })}</th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_band', { defaultValue: 'Band' })}</th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_score', { defaultValue: 'Score' })}</th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_stage', { defaultValue: 'Stage @ score' })}</th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_handoff', { defaultValue: 'Handoff' })}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {riskShadowSnapshot.items.map((row) => {
+                              const label =
+                                row.display_name?.trim() ||
+                                (row.short_id ? `#${row.short_id}` : row.entity_id.slice(0, 8))
+                              const ownerId = row.recruiter_id?.trim() || ''
+                              const showClaim = !ownerId || ownerId !== myUserId
+                              const rowBusy = digestHandoffBusyId === row.entity_id
+                              const rowDisabled = digestBulkBusy || digestHandoffBusyId !== null
+                              return (
+                                <tr key={row.entity_id} className="border-t border-slate-100">
+                                  <td className="px-1 py-1 align-top">
+                                    <input
+                                      type="checkbox"
+                                      className="mt-0.5 h-3.5 w-3.5 rounded border-slate-300"
+                                      checked={digestBulkSelected.has(row.entity_id)}
+                                      disabled={rowDisabled}
+                                      onChange={() => toggleDigestBulkRow(row.entity_id)}
+                                    />
+                                  </td>
+                                  <td className="px-2 py-1">
+                                    <Link className="font-medium text-brand-700 hover:underline" to={`/app/candidates/${row.entity_id}`}>
+                                      {label}
+                                    </Link>
+                                  </td>
+                                  <td className="px-2 py-1 capitalize">{row.band}</td>
+                                  <td className="px-2 py-1 font-mono">{Math.round(row.score)}</td>
+                                  <td className="px-2 py-1 text-slate-600">{row.stage_at_score || '—'}</td>
+                                  <td className="px-2 py-1">
+                                    <div className="flex min-w-[9.5rem] flex-col gap-1">
+                                      <select
+                                        className="max-w-[12rem] truncate rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-slate-800 disabled:opacity-50"
+                                        disabled={rowDisabled}
+                                        title={t('app.dashboard.risk_intel.shadow_handoff_assignee_title', {
+                                          defaultValue: 'Who should get the reminder',
+                                        })}
+                                        value={digestReminderAssigneePick[row.entity_id] ?? ''}
+                                        onChange={(e) => {
+                                          const v = e.target.value.trim()
+                                          setDigestReminderAssigneePick((p) => {
+                                            const next = { ...p }
+                                            if (!v) delete next[row.entity_id]
+                                            else next[row.entity_id] = v
+                                            return next
+                                          })
+                                        }}
+                                      >
+                                        <option value="">
+                                          {t('app.dashboard.risk_intel.shadow_handoff_assignee_auto', {
+                                            defaultValue: 'Remind → auto',
+                                          })}
+                                        </option>
+                                        {managerOptions.map((opt) => (
+                                          <option key={opt.id} value={opt.id}>
+                                            {opt.label}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <div className="flex flex-wrap gap-1">
+                                      <button
+                                        type="button"
+                                        className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                        disabled={rowDisabled}
+                                        onClick={() =>
+                                          void onShadowDigestReminder(row, digestReminderAssigneePick[row.entity_id])
+                                        }
+                                      >
+                                        {rowBusy
+                                          ? t('common.loading', { defaultValue: 'Loading…' })
+                                          : t('app.dashboard.risk_intel.shadow_handoff_remind', { defaultValue: 'Remind' })}
+                                      </button>
+                                      {showClaim ? (
+                                        <button
+                                          type="button"
+                                          className="rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-900 hover:bg-indigo-100 disabled:opacity-50"
+                                          disabled={rowDisabled}
+                                          onClick={() => void onShadowDigestClaim(row)}
+                                        >
+                                          {rowBusy
+                                            ? t('common.loading', { defaultValue: 'Loading…' })
+                                            : t('app.dashboard.risk_intel.shadow_handoff_claim', { defaultValue: 'Assign to me' })}
+                                        </button>
+                                      ) : null}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ) : null}
+
+          {riskValidation ? (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs font-semibold text-slate-700">
+                {t('app.dashboard.risk_intel.validation_title', { defaultValue: 'Shadow cohort validation' })}
+              </div>
+              <div className="mt-2 space-y-1 text-sm text-slate-700">
+                <div>
+                  {t('app.dashboard.risk_intel.validation_samples', { defaultValue: 'Cohort samples' })}:{' '}
+                  <span className="font-semibold">{riskValidation.samples}</span>
+                  {riskValidation.forward_stage_progression_rate != null ? (
+                    <>
+                      {' '}
+                      · {t('app.dashboard.risk_intel.validation_rate', { defaultValue: 'Stage forward rate' })}:{' '}
+                      <span className="font-semibold">{riskValidation.forward_stage_progression_rate}%</span>
+                    </>
+                  ) : null}
+                </div>
+                {riskValidation.note ? <div className="text-xs text-slate-500">{riskValidation.note}</div> : null}
+                {riskValidation.interpretation ? (
+                  <div className="text-xs text-slate-500">{riskValidation.interpretation}</div>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+        ) : null}
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2559,7 +3861,7 @@ export default function Dashboard() {
               {pivotSecondary !== 'none' && ` × ${secondaryLabel}`}
             </div>
           </div>
-          <div ref={pivotChartContainerRef} className="w-full min-w-0 overflow-hidden" style={{ minHeight: 200 }}>
+          <div ref={pivotChartContainerRef} className="h-64 w-full min-w-0 shrink-0 overflow-hidden">
             {isPivotChartContainerReady ? (
               <ResponsiveContainer width="100%" height={256} minHeight={200} minWidth={0}>
                 <BarChart
@@ -2785,7 +4087,7 @@ export default function Dashboard() {
             <div className="text-slate-500 text-sm mb-1">{t('app.dashboard.stats.candidates_total')}</div>
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.candidates)}</div>
           </Link>
-          <Link to="/app/clients" className="card block p-4 hover:border-brand-200">
+          <Link to="/app/clients/directory" className="card block p-4 hover:border-brand-200">
             <div className="text-slate-500 text-sm mb-1">{dashboardCompanyLabels.plural}</div>
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.companies)}</div>
           </Link>

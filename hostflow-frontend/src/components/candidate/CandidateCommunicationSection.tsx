@@ -3,6 +3,7 @@ import { IconMessageCircle } from '@tabler/icons-react'
 import { Link } from 'react-router-dom'
 import { listCommunicationThreads, type CommunicationThread } from '../../api/communications'
 import { useI18n } from '../../i18n'
+import { buildInboxHubPath, buildInboxThreadPath } from '../../utils/inboxDeepLinks'
 import type { UUID } from '../../api/types'
 import CandidateRodoSection from './CandidateRodoSection'
 import CandidateContactAttemptsSection from './CandidateContactAttemptsSection'
@@ -35,7 +36,6 @@ function CandidateCommunicationSection({
         if (!mounted) return
         const items = Array.isArray(res.items) ? res.items : []
         const matched = items
-          .filter((th) => String(th.channel || '').toLowerCase() !== 'email')
           .filter((th) => String(th.linked_candidate_id || '') === String(candidateId))
           .sort((a, b) => Date.parse(String(b.updated_at || b.last_message_at || 0)) - Date.parse(String(a.updated_at || a.last_message_at || 0)))
         setThreads(matched)
@@ -72,21 +72,18 @@ function CandidateCommunicationSection({
         <div className="alert-info p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="text-sm font-semibold text-slate-900">
-              {t('app.candidate_card.communication.linked_messages', { defaultValue: 'Messages linked to candidate' })}
+              {t('app.candidate_card.communication.linked_messages', { defaultValue: 'Conversations linked to candidate' })}
             </div>
             {newestThread ? (
               <Link
-                to={`/app/messages?threadId=${newestThread.id}&candidateId=${candidateId}`}
+                to={buildInboxThreadPath(newestThread.id, { candidateId: String(candidateId) })}
                 className="btn-secondary btn-sm"
               >
-                {t('app.candidate_card.communication.open_latest_dialog', { defaultValue: 'Open latest dialog' })}
+                {t('app.candidate_card.communication.open_latest_dialog', { defaultValue: 'Open latest thread' })}
               </Link>
             ) : (
-              <Link
-                to={`/app/messages?candidateId=${candidateId}`}
-                className="btn-secondary btn-sm"
-              >
-                {t('app.candidate_card.communication.open_inbox', { defaultValue: 'Open messages inbox' })}
+              <Link to={buildInboxHubPath({ candidateId: String(candidateId) })} className="btn-secondary btn-sm">
+                {t('app.candidate_card.communication.open_inbox', { defaultValue: 'Open inbox' })}
               </Link>
             )}
           </div>
@@ -98,7 +95,7 @@ function CandidateCommunicationSection({
           {!loadingThreads && threads.length === 0 && (
             <div className="text-xs text-slate-500">
               {t('app.candidate_card.communication.empty_dialogs', {
-                defaultValue: 'No linked dialogs yet. Open Messages and link this candidate in dialog header.',
+                defaultValue: 'No linked threads yet. Open Inbox and link this candidate in the control panel.',
               })}
             </div>
           )}
@@ -107,7 +104,7 @@ function CandidateCommunicationSection({
               {threads.slice(0, 4).map((th) => (
                 <Link
                   key={th.id}
-                  to={`/app/messages?threadId=${th.id}&candidateId=${candidateId}`}
+                  to={buildInboxThreadPath(th.id, { candidateId: String(candidateId) })}
                   className="block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm hover:border-brand-300 hover:bg-brand-50/40"
                 >
                   <div className="font-medium text-slate-900">{th.subject || th.last_message_preview || `${String(th.channel || '').toUpperCase()} dialog`}</div>

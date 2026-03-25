@@ -5,9 +5,12 @@ import App from './App'
 import { AuthProvider } from './store/auth'
 import { I18nProvider } from './i18n'
 import { ToastProvider } from './components/Toast'
+import { installStaleChunkReloadRecovery } from './utils/staleChunkReload'
 
 import './styles/components.css'
 import './index.css'
+
+installStaleChunkReloadRecovery()
 
 const hash = window.location.hash || ''
 if (hash.startsWith('#/')) {

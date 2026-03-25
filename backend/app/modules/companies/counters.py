@@ -89,3 +89,92 @@ async def get_company_counters(db: AsyncSession, company_id: UUID) -> dict:
         "vacancies_active": int(vacancies_active or 0),
         "candidates_total": int(candidates_total or 0),
     }
+
+
+async def company_recruitment_metrics_for_list(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_ids: list[str],
+) -> dict[str, dict[str, int]]:
+    """
+    Per-company recruitment signals for the clients list (parity with get_company_counters scope).
+    Keys: recruitment_vacancies_active, recruitment_candidates_total.
+    """
+    ids = [str(x) for x in company_ids if x]
+    if not ids:
+        return {}
+
+    is_client = await is_client_tenant_for_list(db, tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id)
+    scope = repo_scope_clause(tenant_id, visibility, is_client_tenant=is_client)
+
+    base: dict[str, dict[str, int]] = {
+        cid: {"recruitment_vacancies_active": 0, "recruitment_candidates_total": 0} for cid in ids
+    }
+
+    # Candidates in funnel (per employer company via vacancy)
+    cand_stmt = (
+        select(Vacancy.company_id, func.count(Candidate.id))
+        .select_from(Candidate)
+        .join(Vacancy, Vacancy.id == Candidate.vacancy_id)
+        .where(
+            Vacancy.company_id.in_(ids),
+            Candidate.deleted_at.is_(None),
+            scope,
+        )
+        .group_by(Vacancy.company_id)
+    )
+    cand_rows = (await db.execute(cand_stmt)).all()
+    for cid, cnt in cand_rows:
+        if not cid:
+            continue
+        sid = str(cid)
+        if sid in base:
+            base[sid]["recruitment_candidates_total"] = int(cnt or 0)
+
+    if is_client:
+        vac_stmt = (
+            select(Vacancy.company_id, func.count(func.distinct(Vacancy.id)))
+            .select_from(Candidate)
+            .join(Vacancy, Vacancy.id == Candidate.vacancy_id)
+            .where(
+                Vacancy.company_id.in_(ids),
+                Candidate.deleted_at.is_(None),
+                scope,
+            )
+            .group_by(Vacancy.company_id)
+        )
+        vac_rows = (await db.execute(vac_stmt)).all()
+        for cid, cnt in vac_rows:
+            if not cid:
+                continue
+            sid = str(cid)
+            if sid in base:
+                n = int(cnt or 0)
+                base[sid]["recruitment_vacancies_active"] = n
+    else:
+        col_is_active = getattr(Vacancy, "is_active", None)
+        col_is_archived = getattr(Vacancy, "is_archived", None)
+        vac_stmt = (
+            select(Vacancy.company_id, func.count())
+            .select_from(Vacancy)
+            .where(
+                Vacancy.tenant_id == tenant_id,
+                Vacancy.company_id.in_(ids),
+            )
+        )
+        if col_is_active is not None:
+            vac_stmt = vac_stmt.where(col_is_active.is_(True))
+        if col_is_archived is not None:
+            vac_stmt = vac_stmt.where(col_is_archived.is_(False))
+        vac_stmt = vac_stmt.group_by(Vacancy.company_id)
+        vac_rows = (await db.execute(vac_stmt)).all()
+        for cid, cnt in vac_rows:
+            if not cid:
+                continue
+            sid = str(cid)
+            if sid in base:
+                base[sid]["recruitment_vacancies_active"] = int(cnt or 0)
+
+    return base

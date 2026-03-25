@@ -65,6 +65,7 @@ from backend.app.services.candidate_doc_pipeline_guard import (
     enforce_pipeline_doc_forward_block,
     enforce_pipeline_vacancy_forward_block,
 )
+from backend.app.services.candidate_risk_stage_gate import enforce_critical_risk_forward_stage_gate
 from backend.app.services.hiring_pipeline_gates import resolve_hiring_pipeline_gates
 
 _UNSET = object()
@@ -80,6 +81,12 @@ _RODO_CONTACT_START_STAGES = {"contacted", "no_answer"}
 _READY_FOR_HANDOFF_STAGE = "ready_for_handoff"
 
 
+async def _candidate_row_exists(db: AsyncSession, candidate_id: str) -> bool:
+    """True if a candidate row is already persisted (not the pre-insert create path)."""
+    row = await db.execute(select(Candidate.id).where(Candidate.id == candidate_id).limit(1))
+    return row.scalar_one_or_none() is not None
+
+
 async def _enforce_rodo_before_contact_stage(
     db: AsyncSession,
     *,
@@ -88,6 +95,9 @@ async def _enforce_rodo_before_contact_stage(
 ) -> None:
     stage_code = str(target_stage_code or "").strip().lower()
     if stage_code not in _RODO_CONTACT_START_STAGES:
+        return
+    # Create path runs this before INSERT: there is no row and no RODO yet; auto-send runs after commit.
+    if not await _candidate_row_exists(db, candidate_id):
         return
     first_rodo = await _get_first_rodo_sent(db, candidate_id)
     if first_rodo is not None:
@@ -144,6 +154,9 @@ async def _enforce_docs_ready_for_handoff_stage(
 ) -> None:
     stage_code = str(target_stage_code or "").strip().lower()
     if stage_code != _READY_FOR_HANDOFF_STAGE:
+        return
+    # Same as RODO: on create we run before INSERT — checklist/docs are empty by definition.
+    if not await _candidate_row_exists(db, candidate_id):
         return
 
     owner_context = _candidate_owner_context_for_docs(
@@ -937,6 +950,13 @@ async def update_candidate_full(
                 new_stage=new_stage_code,
                 gates=hiring_gates,
             )
+            await enforce_critical_risk_forward_stage_gate(
+                db,
+                tenant_id=tenant_id,
+                candidate_id=candidate_id,
+                old_stage=getattr(c, "stage", None),
+                new_stage=new_stage_code,
+            )
             await _enforce_docs_ready_for_handoff_stage(
                 db,
                 tenant_id=tenant_id,
@@ -1211,6 +1231,29 @@ async def update_candidate_full(
                     tenant_id,
                     candidate_id,
                 )
+
+            try:
+                from backend.app.services import uos_auto_activities
+
+                await uos_auto_activities.ensure_candidate_stage_follow_up_task(
+                    db,
+                    tenant_id,
+                    str(actor_id or "").strip() or "uos-auto",
+                    c,
+                    old_stage_code,
+                    stage_after,
+                )
+                await db.commit()
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "uos candidate stage follow-up failed tenant=%s candidate=%s",
+                    tenant_id,
+                    candidate_id,
+                )
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
     elif stage_changed and new_stage_code:
         try:
             history_entry = _make_stage_history(
@@ -1272,6 +1315,29 @@ async def update_candidate_full(
                 tenant_id,
                 candidate_id,
             )
+
+        try:
+            from backend.app.services import uos_auto_activities
+
+            await uos_auto_activities.ensure_candidate_stage_follow_up_task(
+                db,
+                tenant_id,
+                str(actor_id or "").strip() or "uos-auto",
+                c,
+                old_stage_code,
+                stage_after,
+            )
+            await db.commit()
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "uos candidate stage follow-up failed tenant=%s candidate=%s",
+                tenant_id,
+                candidate_id,
+            )
+            try:
+                await db.rollback()
+            except Exception:
+                pass
 
     # Auto-send RODO when candidate has email (art.14 GDPR); send_rodo_email no-ops if already sent
     email_after = locals().get("email_after", "") or ""
@@ -1400,6 +1466,13 @@ async def bulk_update_stage(
                     new_stage=normalized,
                     gates=hiring_gates,
                 )
+                await enforce_critical_risk_forward_stage_gate(
+                    db,
+                    tenant_id=tenant_id,
+                    candidate_id=cid,
+                    old_stage=getattr(c, "stage", None),
+                    new_stage=normalized,
+                )
             except HTTPException as exc:
                 out.append(
                     {
@@ -1472,6 +1545,29 @@ async def bulk_update_stage(
                 old_stage=getattr(c, "stage", None),
                 new_stage=normalized,
             )
+
+            try:
+                from backend.app.services import uos_auto_activities
+
+                await uos_auto_activities.ensure_candidate_stage_follow_up_task(
+                    db,
+                    tenant_id,
+                    str(actor_id or "").strip() or "uos-auto",
+                    c,
+                    getattr(c, "stage", None),
+                    normalized,
+                )
+                await db.commit()
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "uos candidate stage follow-up failed tenant=%s candidate=%s",
+                    tenant_id,
+                    cid,
+                )
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
 
             out.append({"candidate_id": cid, "stage": normalized, "ok": True})
         except HTTPException as exc:

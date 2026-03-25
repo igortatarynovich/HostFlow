@@ -56,21 +56,6 @@ services:
       retries: 10
       start_period: 20s
 
-  scanner-api:
-    build:
-      context: ./scanner-backend
-      dockerfile: Dockerfile
-    container_name: hostflow-scanner-api
-    environment:
-      - SCAN_STORAGE_ROOT=/data/uploads/scanner
-      - SCAN_MAX_CONTENT_SIZE=52428800
-    volumes:
-      - ./storage/scanner:/data/uploads/scanner
-    depends_on:
-      - db
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    ports: ["8010:8000"]
-
   caddy:
     build:
       context: .

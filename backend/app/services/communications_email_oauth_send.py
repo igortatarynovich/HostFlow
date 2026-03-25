@@ -8,7 +8,9 @@ import httpx
 
 
 class OAuthMailboxSendError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 def _build_raw_rfc822_message(
@@ -59,7 +61,7 @@ async def _send_gmail_message(
             json={"raw": raw},
         )
     if resp.status_code >= 400:
-        raise OAuthMailboxSendError(f"Gmail send failed: {resp.status_code} {resp.text}")
+        raise OAuthMailboxSendError(f"Gmail send failed: {resp.status_code} {resp.text}", status_code=resp.status_code)
     payload = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
     return {
         "provider": "gmail",
@@ -97,7 +99,7 @@ async def _send_graph_message(
             json={"message": message, "saveToSentItems": True},
         )
     if resp.status_code >= 400:
-        raise OAuthMailboxSendError(f"Graph send failed: {resp.status_code} {resp.text}")
+        raise OAuthMailboxSendError(f"Graph send failed: {resp.status_code} {resp.text}", status_code=resp.status_code)
     return {
         "provider": "microsoft_graph",
         "message_ref": None,

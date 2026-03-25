@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.models.audit import ActivityLog
 from backend.app.models.automation_rule import AutomationRule
 from backend.app.services.audit import log_activity
 from backend.app.services import reminder_tasks
@@ -15,9 +16,18 @@ from backend.app.services import reminder_tasks
 TRIGGERS = {
     "candidate.created",
     "candidate.stage_changed",
+    "candidate.risk_band",
     "document.expiring",
     "lead.processed",
 }
+
+RISK_BAND_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+
+
+def risk_band_at_least(band: str, min_band: str) -> bool:
+    br = RISK_BAND_ORDER.get(str(band).strip().lower(), -1)
+    mr = RISK_BAND_ORDER.get(str(min_band).strip().lower(), 2)
+    return br >= mr
 
 
 def _now() -> datetime:
@@ -66,6 +76,180 @@ async def list_rules(db: AsyncSession, *, tenant_id: str, trigger: Optional[str]
     return list(rows.scalars().all())
 
 
+async def was_rule_fired_for_candidate_since(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    rule_id: str,
+    candidate_id: str,
+    trigger: str,
+    since: datetime,
+) -> bool:
+    """Dedupe hourly risk (and similar) automations: same rule + candidate + trigger within window."""
+    rows = (
+        await db.execute(
+            select(ActivityLog.payload)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.action == "automation.rule_fired",
+                ActivityLog.target_type == "candidate",
+                ActivityLog.target_id == candidate_id,
+                ActivityLog.created_at >= since,
+            )
+            .order_by(ActivityLog.created_at.desc())
+            .limit(48)
+        )
+    ).all()
+    for (payload,) in rows:
+        p = payload if isinstance(payload, dict) else {}
+        if str(p.get("trigger") or "") != trigger:
+            continue
+        if str(p.get("rule_id") or "") == str(rule_id):
+            return True
+    return False
+
+
+async def execute_automation_rule(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    rule: AutomationRule,
+    trigger: str,
+    actor_id: Optional[str],
+    context: Dict[str, Any],
+) -> None:
+    """Run one matched rule (log + optional create_reminder)."""
+    conditions = _loads_or_empty(rule.conditions_json)
+    actions = _loads_or_empty(rule.actions_json)
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action="automation.rule_fired",
+        target_type=str(context.get("entity_type") or ""),
+        target_id=str(context.get("entity_id") or ""),
+        payload={"rule_id": rule.id, "trigger": trigger, "title": rule.title, "conditions": conditions},
+    )
+    reminder_action = actions.get("create_reminder") if isinstance(actions, dict) else None
+    if isinstance(reminder_action, dict):
+        entity_type = str(reminder_action.get("entity_type") or context.get("entity_type") or "custom")
+        entity_id = str(reminder_action.get("entity_id") or context.get("entity_id") or "")
+        title = str(reminder_action.get("title") or rule.title or "Follow up").strip()
+        assignee_id = str(reminder_action.get("assignee_id") or context.get("assignee_id") or actor_id or "").strip()
+        if not assignee_id:
+            assignee_id = str(actor_id or "")
+        due_in_minutes = int(reminder_action.get("due_in_minutes") or 60)
+        due_at = _now() + timedelta(minutes=max(0, due_in_minutes))
+        await reminder_tasks.create_reminder(
+            db,
+            tenant_id=tenant_id,
+            actor_id=assignee_id or (actor_id or assignee_id),
+            payload={
+                "title": title,
+                "type": "custom",
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "assignee_id": assignee_id or None,
+                "priority": reminder_action.get("priority") or "normal",
+                "channel": "internal",
+                "due_at": due_at,
+                "payload": {"source": "automation_rules", "rule_id": rule.id, "trigger": trigger, **(context or {})},
+            },
+        )
+        await log_activity(
+            db,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            action="automation.action.create_reminder",
+            target_type=entity_type,
+            target_id=entity_id,
+            payload={"rule_id": rule.id, "title": title, "due_at": due_at.isoformat()},
+        )
+
+
+async def run_candidate_risk_band_rules(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    shadow_rows: Sequence[dict[str, Any]],
+    assignee_by_candidate_id: Dict[str, Optional[str]],
+    dedupe_hours: int = 24,
+    min_band: str = "high",
+) -> dict[str, int]:
+    """
+    Phase D: fire `candidate.risk_band` automation rules for hourly high/critical shadow rows.
+    Requires assignee (manager/recruiter) on the candidate; skips rows without owner.
+    """
+    trigger = "candidate.risk_band"
+    rows = await db.execute(
+        select(AutomationRule).where(
+            AutomationRule.tenant_id == tenant_id,
+            AutomationRule.enabled.is_(True),
+            AutomationRule.trigger == trigger,
+        )
+    )
+    rules = list(rows.scalars().all())
+    if not rules:
+        return {"candidates_seen": 0, "rules_fired": 0, "rows_skipped_no_assignee": 0}
+
+    dedupe_h = max(1, min(int(dedupe_hours), 168))
+    since = _now() - timedelta(hours=dedupe_h)
+    fired = 0
+    skipped = 0
+    seen = 0
+
+    for raw in shadow_rows:
+        cid = str(raw.get("candidate_id") or "").strip()
+        if not cid:
+            continue
+        band = str(raw.get("band") or "").strip().lower()
+        if not risk_band_at_least(band, min_band):
+            continue
+        seen += 1
+        assignee = assignee_by_candidate_id.get(cid)
+        if not assignee or not str(assignee).strip():
+            skipped += 1
+            continue
+        assignee_s = str(assignee).strip()
+        score = raw.get("score")
+        ctx: Dict[str, Any] = {
+            "entity_type": "candidate",
+            "entity_id": cid,
+            "risk_band": band,
+            "risk_score": "" if score is None else str(score),
+            "stage": str(raw.get("stage_at_score") or ""),
+            "assignee_id": assignee_s,
+        }
+        for rule in rules:
+            conditions = _loads_or_empty(rule.conditions_json)
+            if not _matches_conditions(conditions, ctx):
+                continue
+            if await was_rule_fired_for_candidate_since(
+                db,
+                tenant_id=tenant_id,
+                rule_id=str(rule.id),
+                candidate_id=cid,
+                trigger=trigger,
+                since=since,
+            ):
+                continue
+            await execute_automation_rule(
+                db,
+                tenant_id=tenant_id,
+                rule=rule,
+                trigger=trigger,
+                actor_id=assignee_s,
+                context=ctx,
+            )
+            fired += 1
+
+    return {
+        "candidates_seen": seen,
+        "rules_fired": fired,
+        "rows_skipped_no_assignee": skipped,
+    }
+
+
 async def run_rules(
     db: AsyncSession,
     *,
@@ -88,53 +272,16 @@ async def run_rules(
     fired = 0
     for rule in rules:
         conditions = _loads_or_empty(rule.conditions_json)
-        actions = _loads_or_empty(rule.actions_json)
         if not _matches_conditions(conditions, context):
             continue
         fired += 1
-        await log_activity(
+        await execute_automation_rule(
             db,
             tenant_id=tenant_id,
+            rule=rule,
+            trigger=trigger,
             actor_id=actor_id,
-            action="automation.rule_fired",
-            target_type=str(context.get("entity_type") or ""),
-            target_id=str(context.get("entity_id") or ""),
-            payload={"rule_id": rule.id, "trigger": trigger, "title": rule.title, "conditions": conditions},
+            context=context,
         )
-        reminder_action = actions.get("create_reminder") if isinstance(actions, dict) else None
-        if isinstance(reminder_action, dict):
-            entity_type = str(reminder_action.get("entity_type") or context.get("entity_type") or "custom")
-            entity_id = str(reminder_action.get("entity_id") or context.get("entity_id") or "")
-            title = str(reminder_action.get("title") or rule.title or "Follow up").strip()
-            assignee_id = str(reminder_action.get("assignee_id") or context.get("assignee_id") or actor_id or "").strip()
-            if not assignee_id:
-                assignee_id = str(actor_id or "")
-            due_in_minutes = int(reminder_action.get("due_in_minutes") or 60)
-            due_at = _now() + timedelta(minutes=max(0, due_in_minutes))
-            await reminder_tasks.create_reminder(
-                db,
-                tenant_id=tenant_id,
-                actor_id=assignee_id or (actor_id or assignee_id),
-                payload={
-                    "title": title,
-                    "type": "custom",
-                    "entity_type": entity_type,
-                    "entity_id": entity_id,
-                    "assignee_id": assignee_id or None,
-                    "priority": reminder_action.get("priority") or "normal",
-                    "channel": "internal",
-                    "due_at": due_at,
-                    "payload": {"source": "automation_rules", "rule_id": rule.id, "trigger": trigger, **(context or {})},
-                },
-            )
-            await log_activity(
-                db,
-                tenant_id=tenant_id,
-                actor_id=actor_id,
-                action="automation.action.create_reminder",
-                target_type=entity_type,
-                target_id=entity_id,
-                payload={"rule_id": rule.id, "title": title, "due_at": due_at.isoformat()},
-            )
     return fired
 

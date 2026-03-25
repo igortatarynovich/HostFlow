@@ -313,6 +313,7 @@
         "do_procesowania": "Procesowani",
         "vacancies": "Oferty pracy",
         "documents": "Dokumenty",
+        "orders": "Zamówienia",
         "services": "Usługi i zamówienia",
         "invoices": "Faktury",
         "communications": "Komunikacja",
@@ -351,8 +352,11 @@
         "messages": "Wiadomości",
         "setup": "Konfiguracja",
         "no_next_action": "Bez następnej akcji",
+        "automations": "Automatyzacje",
         "automation_log": "Dziennik automatyzacji",
-        "automation_rules": "Reguły automatyzacji"
+        "automation_rules": "Reguły automatyzacji",
+        "settings_hiring_gates": "Bramki lejka rekrutacji",
+        "settings_risk_intel": "Ryzyko operacyjne"
       }
     },
     "clients": {
@@ -382,6 +386,7 @@
       "linked_to": "Powiąż z",
       "settings": "Ustawienia dostępu",
       "back_to_list": "← Do listy klientów",
+      "crm_directory_link": "Otwórz katalog CRM klientów",
       "not_found": "Nie znaleziono klienta",
       "errors": {
         "name_or_link": "Wpisz nazwę lub powiąż z firmą."
@@ -399,7 +404,7 @@
     },
     "vacancies": {
       "list": {
-        "subtitle": "Lista i zarządzanie wakatami",
+        "subtitle": "Lista operacyjna: liczba kandydatów, ostatnia aktywność i mix statusów — spójnie z kartą wakatu.",
         "new_vacancy": "Nowy wakat",
         "search_placeholder": "Szukaj… (⌘K)",
         "company_placeholder": "Firma…",
@@ -413,6 +418,11 @@
         "col_status": "Status",
         "col_updated": "Zaktualizowano",
         "col_created": "Utworzono",
+        "col_candidates": "Kandydaci",
+        "col_headcount": "Headcount",
+        "headcount_title": "Kandydaci / planowane etaty",
+        "col_profile": "Profil",
+        "col_last_activity": "Ostatnia aktywność kandydata",
         "save_view": "Zapisz jako widok",
         "view_name_prompt": "Nazwa widoku:",
         "loading": "Ładowanie listy wakatów…",
@@ -436,9 +446,12 @@
         },
         "insights": {
           "total": "Razem",
-          "open": "Otwarte",
-          "closed": "Zamknięte",
-          "archived": "W archiwum"
+          "matching_total": "Pasuje do filtrów",
+          "open": "Otwarte (ta strona)",
+          "on_hold": "Wstrzymane (ta strona)",
+          "closed": "Zamknięte (ta strona)",
+          "archived": "W archiwum (ta strona)",
+          "page_mix_caption": "Poniższy mix statusów dotyczy tylko wierszy na tej stronie; pierwszy kafelek to pełna liczba dla bieżących filtrów."
         },
         "errors": {
           "unauthorized": "Brak autoryzacji: zaloguj się i spróbuj ponownie.",
@@ -471,8 +484,17 @@
         "placeholders": {
           "currency_codes": "PLN / EUR / USD"
         },
+        "ops": {
+          "candidates_linked": "{count} kandydatów przy tym wakacie",
+          "headcount_target": "Lejek vs cel: {current} / {target}",
+          "last_candidate_activity": "Ostatnia aktywność kandydata: {when}",
+          "bottleneck": "Największy etap lejka: {stage} ({count})",
+          "open_candidate_queue": "Kolejka kandydatów"
+        },
         "fields": {
-          "id": "ID"
+          "id": "ID",
+          "headcount_target": "Docelowy headcount (etaty)",
+          "headcount_hint": "Planowane zatrudnienia na tę rolę. Zostaw puste, jeśli nieużywane."
         },
         "criteria": {
           "title": "Kryteria leadów (auto-kwalifikacja)",
@@ -581,6 +603,7 @@
       "handoff_requested_title": "Nowy kandydat do przetworzenia",
       "handoff_accepted_title": "Kandydat przekazany",
       "communications_sla_overdue_title": "SLA przekroczone: wymagana odpowiedź w dialogu",
+      "communications_thread_escalated_title": "Wątek eskalowany — wymagane działanie",
       "view_handoffs": "Przejdź do Procesowani",
       "open_sla_incidents": "Otwórz incydenty SLA"
     },
@@ -619,6 +642,91 @@
         "summary": "Wskaźnik zamknięcia: {rate}% · Łącznie: {total} · Grupy duplikatów: {groups}. Metryki są heurystyczne i oparte na sygnałach payload."
       }
     },
+    "communications_inbox_center": {
+      "back_all_threads": "← Wszystkie wątki",
+      "hub_link": "← Strona skrzynki",
+      "control_title": "Sterowanie wątkiem",
+      "control_subtitle": "Powiązane rekordy, SLA i szybkie linki.",
+      "unlinked_hint": "Wątek nie jest powiązany z kandydatem, klientem ani zamówieniem usługi. Powiąż poniżej lub w Wiadomościach / E-mailu.",
+      "link_panel_hint": "Wyszukaj i powiąż kandydata, klienta lub zamówienie usługi bez opuszczania skrzynki.",
+      "link_search_candidate_failed": "Wyszukiwanie kandydatów nie powiodło się.",
+      "link_search_company_failed": "Wyszukiwanie klienta nie powiodło się.",
+      "link_error_candidate": "Nie udało się zaktualizować powiązania z kandydatem.",
+      "link_error_company": "Nie udało się zaktualizować powiązania z klientem.",
+      "link_error_order": "Nie udało się zaktualizować powiązania z zamówieniem.",
+      "link_order_not_found": "Nie znaleziono zamówienia lub brak dostępu.",
+      "workflow_hint": "Tryb operacyjny, odpowiedź i SLA — te same zasady co w Wiadomościach.",
+      "workflow_current_mode": "Tryb",
+      "workflow_sla_snoozed": "SLA wyciszone do",
+      "workflow_error_generic": "Aktualizacja nie powiodła się.",
+      "folder_section": "Archiwum i kosz",
+      "folder_error": "Nie udało się zmienić folderu wątku.",
+      "folder_exit_hint": "Archiwizacja lub usunięcie czyści wybór i odświeża listę.",
+      "channel_rail_empty": "Wybierz wątek, aby powiązać rekordy, utworzyć zadanie follow-up, workflow i archiwum.",
+      "linked_entities": "Powiązane encje",
+      "open_candidate": "Otwórz kandydata",
+      "no_candidate": "Brak kandydata",
+      "open_client": "Otwórz klienta",
+      "no_client": "Brak klienta",
+      "ops_state": "Operacje",
+      "sla_due": "SLA do",
+      "quick_links": "Szybkie linki",
+      "classic_view": "Klasyczna strona wątku",
+      "priority_label": "Priorytet",
+      "task_section_title": "Zadanie follow-up",
+      "task_section_hint": "Tworzy przypomnienie w Zadaniach. Kandydat lub klient jest ustawiany, gdy są dostępni.",
+      "task_title_label": "Tytuł",
+      "task_due_label": "Termin",
+      "task_notes_label": "Notatki (opcjonalnie)",
+      "task_default_title": "Kontynuacja rozmowy",
+      "task_submit": "Utwórz zadanie",
+      "task_created": "Zadanie utworzone.",
+      "task_open_tasks": "Otwórz Zadania",
+      "task_error_due": "Wybierz prawidłowy termin.",
+      "task_error_create": "Nie udało się utworzyć zadania."
+    },
+    "communications_inbox_hub": {
+      "title": "Skrzynka",
+      "subtitle": "Wszystkie kanały na jednej liście: zakres (Wszystkie / Wiadomości / E-mail), wyszukiwanie i Centrum komunikacji. W zakresie e-mail — foldery i synchronizacja; stare /app/messages i /app/email przekierowują tutaj.",
+      "messages_title": "Wiadomości",
+      "messages_body": "WhatsApp, Telegram i inne dialogi poza e-mailem.",
+      "email_title": "E-mail",
+      "email_body": "Wątki z poczty IMAP w workspace.",
+      "unread_badge": "{count} nieprzeczytanych",
+      "unlinked_badge": "{count} niepowiązanych",
+      "empty_counts": "Brak nieprzeczytanych w załadowanej liście.",
+      "cta_messages": "Otwórz Wiadomości",
+      "cta_email": "Otwórz e-mail",
+      "cta_sla": "Incydenty SLA",
+      "loading": "Ładowanie liczników…",
+      "error": "Nie udało się wczytać wątków.",
+      "retry": "Spróbuj ponownie",
+      "unified_section_title": "Ostatnie we wszystkich kanałach",
+      "unified_section_subtitle": "Sortowanie wg ostatniej aktywności (przypięte na górze). Wiersz otwiera Centrum komunikacji.",
+      "unified_filter_all": "Wszystkie",
+      "unified_filter_unread": "Nieprzeczytane",
+      "unified_filter_unlinked": "Bez powiązań",
+      "unified_filter_sla": "SLA",
+      "unified_filter_in_work": "W toku",
+      "unified_filter_later": "Później",
+      "pinned_badge": "Przypięte",
+      "channel_all": "Wszystkie kanały",
+      "channel_messages": "Wiadomości",
+      "channel_email": "E-mail",
+      "search_placeholder": "Szukaj w wątkach…",
+      "sort_label": "Sortowanie",
+      "sort_last_activity": "Ostatnia aktywność",
+      "sort_sla_due": "Termin SLA",
+      "unified_empty": "Brak wątków dla tego filtra.",
+      "unified_none_enabled": "Włącz Wiadomości lub E-mail w konfiguracji komunikacji, aby zobaczyć wątki.",
+      "scoped_candidate_hint": "Widoczne tylko wątki powiązane z tym kandydatem.",
+      "scoped_candidate_clear": "Pokaż wszystkie wątki",
+      "channel_badge_email": "E-mail",
+      "channel_badge_messages": "Wiadomości"
+    },
+    "communications_api": {
+      "thread_unlinked_outbound_blocked": "Powiąż wątek z kandydatem, firmą klienta lub zamówieniem UOS przed wysłaniem (polityka operacji)."
+    },
     "communications_messages": {
       "reply_required": "Wymagana odpowiedź",
       "actions": {
@@ -639,7 +747,14 @@
         "title": "Dialogi",
         "reorder_hint": "Przeciągnij i upuść, aby zmienić priorytet.",
         "select_prompt": "Wybierz dialog, aby rozpocząć rozmowę.",
-        "filters_label": "Etykieta filtrów"
+        "filters_label": "Etykieta filtrów",
+        "link_filter_all": "Wszystkie dialogi",
+        "link_filter_unlinked": "Bez powiązań",
+        "link_filter_hint": "Bez powiązań: brak kandydata, firmy klienta i zamówienia usług — powiąż w panelu kontekstu."
+      },
+      "mandatory_link": {
+        "block_send": "Powiąż wątek z kandydatem, firmą klienta lub zamówieniem UOS przed wysłaniem (polityka operacji).",
+        "composer_banner": "Wychodzące wiadomości są zablokowane do czasu powiązania. Użyj powiązania kandydata / kontekstu (desktop: prawy panel)."
       },
       "manager": {
         "label": "Menedżer",
@@ -758,9 +873,13 @@
         "workspace": "Obszar roboczy",
         "close_menu": "Zamknij menu",
         "client_workflow": "Przepływ pracy klienta",
+        "account": "Konto",
+        "core_workspace": "Rdzeń",
+        "business": "Biznes",
         "communications_workspace": "Obszar roboczy komunikacji",
         "more": "Więcej",
-        "operations": "Operacje"
+        "operations": "Operacje",
+        "system": "System"
       },
       "actions": {
         "logout": "Wyloguj",
@@ -774,6 +893,7 @@
       "actions": {
         "open_menu": "Otwórz menu",
         "notifications": "Powiadomienia",
+        "notifications_with_urgent": "Powiadomienia — {count} pilnych (SLA, przeterminowane zadania, handoff)",
         "reminders": "Przypomnienia",
         "return_to_platform": "Wróć do panelu platformy",
         "language": "Język"
@@ -782,17 +902,23 @@
         "title": "Powiadomienia",
         "subtitle": "{unread} nieprzeczytanych · {total} w liście",
         "open_thread": "Otwórz wątek",
+        "open_in_inbox": "Otwórz w skrzynce",
         "groups": {
           "all": "Wszystkie",
           "sla": "Pilne (SLA)",
           "tasks": "Zadania",
           "messages": "Wiadomości",
           "system": "System"
+        },
+        "tier": {
+          "critical": "Krytyczne",
+          "high": "Wysokie",
+          "normal": "Zwykłe"
         }
       },
       "search": {
         "open": "Szukaj",
-        "placeholder": "Szukaj kandydatów, firm, dokumentów…",
+        "placeholder": "Szukaj kandydatów, klientów, rekrutacji, dokumentów, rozmów, zadań, faktur, zleceń…",
         "hint": "Wpisz co najmniej 2 znaki, aby wyszukać.",
         "loading": "Szukamy…",
         "empty": "Nic nie znaleziono.",
@@ -801,12 +927,28 @@
         "results": {
           "candidate": "Kandydat",
           "company": "Firma",
-          "document": "Dokument"
+          "document": "Dokument",
+          "vacancy": "Rekrutacja",
+          "invoice": "Faktura",
+          "service_order": "Zlecenie",
+          "conversation": "Rozmowa",
+          "task": "Zadanie"
         }
       },
       "own_company": "Własna firma",
       "trial_badge": "Odznaka próbna",
-      "trial_badge_hint": "Wskazówka dotycząca odznaki próbnej"
+      "trial_badge_hint": "Wskazówka dotycząca odznaki próbnej",
+      "quick_create": {
+        "button": "Utwórz",
+        "menu_label": "Szybkie tworzenie",
+        "candidate": "Nowy kandydat",
+        "client": "Nowy klient",
+        "vacancy": "Nowa rekrutacja",
+        "order": "Nowe zlecenie serwisowe",
+        "task": "Nowe zadanie",
+        "meeting": "Nowe spotkanie (kalendarz)",
+        "invoice": "Nowa faktura"
+      }
     },
     "trial_banner": {
       "badge": "Status trial",
@@ -850,6 +992,11 @@
     "profile": {
       "title": "Mój profil",
       "subtitle": "Zarządzaj swoimi danymi, preferencjami UI i bezpieczeństwem.",
+      "scheduling": {
+        "title": "Harmonogram i dostępność",
+        "description": "Ustaw godziny i urlopy tutaj — codzienna praca zostaje na Przeglądzie, Skrzynce, Zadaniach i Kalendarzu. Te same skróty są w Kalendarzu, gdy plan to umożliwia.",
+        "calendar_link": "Kalendarz"
+      },
       "sections": {
         "profile": {
           "title": "Profil",
@@ -897,7 +1044,14 @@
           "theme": "Motyw",
           "default_company": "Domyślna firma"
         },
-        "company_placeholder": "— Brak wyboru —"
+        "company_placeholder": "— Brak wyboru —",
+        "default_home": {
+          "label": "Po zalogowaniu otwieraj",
+          "hint": "Dotyczy wejścia na /app lub główny adres aplikacji w tej przeglądarce. Zakładki do konkretnych stron pozostają bez zmian.",
+          "overview": "Przegląd",
+          "tasks": "Zadania",
+          "tasks_locked_hint": "Twoja rola nie obejmuje Zadań; dostępny jest tylko Przegląd."
+        }
       },
       "theme": {
         "system": "Systemowy",
@@ -1080,19 +1234,19 @@
         "password_reset_success": "Pomyślne zresetowanie hasła"
       },
       "signup_first": {
-        "badge": "Odznaka",
+        "badge": "Nowy w HostFlow CRM?",
         "bullets": {
-          "0": "0",
-          "1": "1",
-          "2": "2"
+          "0": "Wybierz plan i utwórz przestrzeń roboczą",
+          "1": "Dodaj pierwszego klienta i lead",
+          "2": "Od razu prowadź codzienną pracę"
         },
-        "card_caption": "Podpis karty",
-        "card_title": "Tytuł karty",
-        "image_alt": "Obraz alternatywny",
-        "primary_cta": "Podstawowe wezwanie do działania",
-        "secondary_cta": "Dodatkowe wezwanie do działania",
-        "subtitle": "Podtytuł",
-        "title": "Tytuł"
+        "card_caption": "Strona → Rejestracja → Firma → Pierwsza wartość",
+        "card_title": "Ścieżka: najpierw rejestracja",
+        "image_alt": "Podgląd onboardingu CRM",
+        "primary_cta": "Utwórz konto",
+        "secondary_cta": "Zobacz plany",
+        "subtitle": "Załóż konto i firmę — pierwszą wartość zobaczysz w kilka minut.",
+        "title": "Zacznij od rejestracji, nie od ustawień"
       }
     },
     "platform": {
@@ -2536,6 +2690,7 @@
           "status": "Status",
           "loading": "Ładujemy katalog…",
           "empty": "Brak usług w katalogu.",
+          "empty_cta_orders": "Przejdź do zamówień",
           "badges": {
             "active": "Aktywna",
             "archived": "Archiwum"
@@ -2630,7 +2785,28 @@
           "meta": "{count} pozycji · {amount}",
           "empty_cta_leads": "Puste leady CTA",
           "empty_desc": "Pusty opis",
-          "empty_title": "Pusty tytuł"
+          "empty_title": "Pusty tytuł",
+          "open_invoice": "Otwórz fakturę",
+          "next_step": "Następny krok:"
+        },
+        "next_action": {
+          "cancelled": "Zamówienie anulowane",
+          "draft": "Potwierdź zamówienie, aby rozpocząć realizację",
+          "on_hold": "Wstrzymane — sprawdź, zanim pójdziesz dalej",
+          "invoice_needed": "Wystaw fakturę po zakończeniu zamówienia",
+          "collect_payment": "Pobierz płatność (saldo do zapłaty)",
+          "closed": "Rozliczenie zamknięte dla tego zamówienia",
+          "schedule_slots": "Umów terminy dla usług wymagających harmonogramu",
+          "deliver_lines": "Dokończ realizację {count} pozycji",
+          "mark_completed": "Oznacz zamówienie jako zakończone po wykonaniu pracy",
+          "review": "Sprawdź status zamówienia"
+        },
+        "ops": {
+          "next_label": "Następny krok",
+          "blocking": "Blokady: {count}",
+          "missing_docs": "Brak dokumentów: {count}",
+          "invoice_overdue": "{days} dni po terminie",
+          "updated": "Aktualizacja"
         },
         "messages": {
           "owner_required": "Wskaż dokładnie jednego właściciela zamówienia (kandydat, oferta lub firma).",
@@ -2690,7 +2866,8 @@
             "none": "Żadne",
             "open": "Otwórz",
             "send": "Wyślij",
-            "title": "Tytuł"
+            "title": "Tytuł",
+            "outstanding_line": "Do zapłaty {{amount}}"
           }
         },
         "actions": {
@@ -2755,6 +2932,15 @@
           "select_order": "Wybierz zamówienie"
         },
         "empty": "Pusty",
+        "empty_state": {
+          "title": "Brak faktur w tym widoku",
+          "desc": "Utwórz fakturę z zamówienia usługowego lub przejdź do pełnej listy faktur.",
+          "cta_orders": "Przejdź do zamówień",
+          "cta_invoices": "Otwórz faktury"
+        },
+        "table": {
+          "service_order": "Zamówienie"
+        },
         "filters": {
           "overdue": "Zaległe",
           "unpaid": "Niezapłacone"
@@ -2787,6 +2973,30 @@
           "paid": "Płatny"
         },
         "kpi_strip_hint": "Wskazówka dotycząca paska KPI",
+        "flow": {
+          "title": "Ścieżka przychodu",
+          "subtitle": "Sprzedaż → realizacja → faktura → rozliczenie — każdy krok otwiera właściwą zakładkę i filtr.",
+          "sell": {
+            "title": "Sprzedaż",
+            "desc": "Pozycje z katalogu przypisane do klienta, kandydata lub oferty.",
+            "cta": "Nowe zamówienie"
+          },
+          "fulfill": {
+            "title": "Realizacja",
+            "desc": "Terminy, dokumenty, oznaczenie jako zrealizowane — potem faktura.",
+            "cta": "Zlecenia do realizacji"
+          },
+          "invoice": {
+            "title": "Faktura",
+            "desc": "Utwórz z zamówienia, wyślij, status w Rozliczeniach.",
+            "cta": "Otwórz rozliczenia"
+          },
+          "collect": {
+            "title": "Rozliczenie",
+            "desc": "Niezapłacone i przeterminowane — płatność z detalu zamówienia lub faktury.",
+            "cta": "Niezapłacone faktury"
+          }
+        },
         "ops": {
           "approved": "Zatwierdzone",
           "delivered": "Dostarczono",
@@ -3187,6 +3397,13 @@
         "no_next_action": "Żadnej następnej akcji",
         "note": "Uwaga",
         "overdue_reminders": "Zaległe przypomnienia",
+        "invoice_outstanding": "Saldo otwartych faktur",
+        "invoice_overdue_unpaid": "{count} przeterminowanych (nieopłaconych)",
+        "open_vacancies": "Otwarte rekrutacje",
+        "open_vacancies_pipeline": "{count} kandydatów na tych rekrutacjach",
+        "open_vacancies_capped": "Liczba z pierwszych 200 otwartych — pełna lista na ekranie rekrutacji.",
+        "open_service_orders": "Otwarte zlecenia",
+        "open_service_orders_hint": "Bez zakończonych i anulowanych",
         "subtitle": "Pokrycie kolejnymi działaniami i kontrola zaległości",
         "title": "Higiena operacyjna"
       },
@@ -3571,8 +3788,10 @@
       },
       "control": {
         "title": "Kontrola",
+        "inbox_title": "Skrzynka",
         "messages_title": "Wiadomości",
-        "open_messages": "Wiadomości"
+        "open_messages": "Wiadomości",
+        "open_unified_inbox": "Otwórz skrzynkę"
       },
       "override_reason_label": "Powód override",
       "override_reason_placeholder": "Dlaczego edytujesz pola z ograniczeniami?",
@@ -3584,7 +3803,19 @@
         "legal_compliance": "Wymóg prawny/compliance",
         "other": "Inne"
       },
+      "override_modal": {
+        "title": "Potwierdź edycję przez menedżera",
+        "hint": "Wybierz powód odblokowania chronionych pól. Po kontynuacji to okno się zamknie, formularz pozostanie edytowalny; zmiany zapisują się automatycznie do momentu opuszczenia karty lub anulowania edycji.",
+        "cancel_edit": "Anuluj edycję",
+        "continue_edit": "Kontynuuj edycję"
+      },
+      "rail": {
+        "primary_step_badge": "Następny krok"
+      },
       "next_action": {
+        "docs_in_panel_below": "Czego brakuje i gdzie wgrać pliki — w sekcji Dokumenty poniżej.",
+        "suggested_focus": "Sugerowany fokus: {label}",
+        "reminder_optional_nudge": "Dodaj przypomnienie, jeśli chcesz śledzić termin.",
         "docs_verify_title": "Zweryfikuj wgrane dokumenty",
         "docs_verify_description": "Kandydat wgrał dokumenty. Zweryfikuj i zatwierdź/odrzuć przed zmianą etapu.",
         "complete": "Kompletny",
@@ -3598,6 +3829,8 @@
         "empty": "Pusty",
         "overdue": "Zaległy",
         "snooze": "Drzemka",
+        "pipeline_completed_title": "Proces zakończony",
+        "pipeline_completed_body": "Kandydat na etapie końcowym (zatrudniony, odrzucony, rezygnacja lub zakończony okres próbny) — dalsze kroki w procesie nie dotyczą.",
         "title": "Następne działanie"
       },
       "override": {
@@ -3834,6 +4067,7 @@
         "title": "Przebieg etapów"
       },
       "timeline": {
+        "stage_changes_only": "Tylko zmiany etapu",
         "collapsed_hint": "Zwinięta wskazówka",
         "empty": "Pusty",
         "filters": {
@@ -3927,7 +4161,15 @@
           "invoice_email": "E-mail z fakturą",
           "invoice_email_hint": "Wskazówka dotycząca e-maila z fakturą",
           "orders_total": "Zamówienia ogółem",
-          "orders_total_hint": "Zamówienia całkowita podpowiedź"
+          "orders_total_hint": "Zamówienia całkowita podpowiedź",
+          "recruitment_vacancies": "Aktywne wakaty",
+          "recruitment_vacancies_hint": "Otwarte role dla tego klienta (pracodawca / obie role)",
+          "recruitment_candidates": "Kandydaci w lejku",
+          "recruitment_candidates_hint": "Na wakaty tego klienta (ten sam zakres co lista Kandydaci)",
+          "service_orders_live": "Zlecenia usług (aktywne)",
+          "service_orders_live_hint": "Zlecenia niezakończone i nieanulowane",
+          "service_revenue": "Przychód (zakończone)",
+          "service_revenue_hint": "Suma kwot zakończonych zleceń usług"
         },
         "widgets": {
           "vacancies": {
@@ -3986,6 +4228,14 @@
             "link": "Link",
             "subtitle": "Podtytuł",
             "title": "Tytuł"
+          },
+          "receivables": {
+            "title": "Należności",
+            "outstanding_label": "Saldo z otwartych faktur",
+            "overdue_line": "{count} faktur po terminie (najdłużej: {days} dni)",
+            "open_invoices": "Zobacz faktury",
+            "unavailable": "Nie udało się wczytać podsumowania faktur.",
+            "empty": "Zapisz firmę, aby zobaczyć należności."
           }
         },
         "sections": {
@@ -4254,7 +4504,7 @@
         "show_archived": "Pokaż zarchiwizowane",
         "reset": "Wyczyść filtry",
         "insights": {
-          "subtitle": "Przefiltruj listę i zobacz podsumowanie wg krajów i archiwum.",
+          "subtitle": "Role Party, etap lejka klienta, rekrutacja i przychody z usług — w jednej liście.",
           "visible": "Widoczne firmy",
           "visible_hint": "{count} pasuje do filtrów",
           "active": "Aktywne profile",
@@ -4277,7 +4527,9 @@
             "stage": "Etap",
             "owner": "Opiekun",
             "active_orders": "Aktywne zlecenia",
-            "revenue": "Przychód (zakończone)"
+            "revenue": "Przychód (zakończone)",
+            "recruitment_vacancies": "Aktywne wakaty",
+            "recruitment_candidates": "Kandydaci"
           },
           "loading": "Ładowanie…",
           "empty": "Brak firm spełniających kryteria.",
@@ -4355,6 +4607,7 @@
         "table": "Tabela",
         "kanban": "Pipeline",
         "save_action": "Zapisz jako widok",
+        "save_needs_filters_hint": "Ustaw co najmniej jeden filtr, aby zapisać widok.",
         "manage_title": "Zastosuj lub zarządzaj zapisanymi widokami",
         "toggle": "Widoki",
         "apply_title": "Zastosuj: {name}",
@@ -4372,7 +4625,10 @@
         "quick_no_next_action": "Szybko, bez następnej akcji",
         "quick_overdue_next_action": "Szybko spóźniona następna akcja",
         "quick_ready_for_handoff": "Szybka gotowość do przekazania",
-        "quick_views_title": "Tytuł szybkiego wyświetlenia"
+        "quick_views_title": "Szybkie widoki",
+        "quick_views_placeholder": "Szybki widok…",
+        "saved_inline_title": "Moje zapisane widoki",
+        "shortcut_filters_title": "Skróty"
       },
       "insights": {
         "title": "Podgląd",
@@ -4402,7 +4658,12 @@
         "more": "Dodatkowe akcje",
         "new_candidate_title": "Utwórz nowego kandydata",
         "new_candidate": "Nowy kandydat",
-        "preview": "Podgląd"
+        "preview": "Podgląd",
+        "preview_panel_hint": "Otwórz podgląd z boku (panel pracy)",
+        "preview_close": "Zamknij panel boczny",
+        "preview_close_hint": "Zamknij prawy panel pracy",
+        "remind": "Przypomnienie",
+        "remind_title": "Otwórz podgląd i fokus na następną akcję (przypomnienie)"
       },
       "docs": {
         "readiness": {
@@ -4559,6 +4820,10 @@
         "open_card_masked": "Otwarta karta zamaskowana",
         "reorder_column": "Zmień kolejność kolumny",
         "resize_column": "Zmień rozmiar kolumny",
+        "customize_layout": "Dostosuj tabelę",
+        "customize_layout_done": "Zakończ dostosowanie",
+        "customize_layout_title": "Zmiana kolejności (⋮⋮) i szerokości kolumn. Widoczność kolumn — w menu ⋯.",
+        "customize_banner": "Tryb układu: przeciągnij ⋮⋮ w nagłówkach, by zmienić kolejność; krawędź nagłówka — szerokość.",
         "select": "Wybierać",
         "select_all": "Zaznacz wszystko",
         "select_candidate": "Wybierz kandydata",
@@ -4610,6 +4875,8 @@
       },
       "context": {
         "open_card": "Otwórz kartę",
+        "preview_next_action": "Podgląd z boku — następna akcja",
+        "preview_next_action_hint": "Otwiera prawy panel i rozwija blok następnej akcji.",
         "select": "Zaznacz",
         "deselect": "Odznacz",
         "change_stage": "Zmień etap",
@@ -4672,6 +4939,8 @@
       "messages": {
         "load_failed": "Nie udało się wczytać kandydatów.",
         "reason_required": "Wybierz co najmniej jeden powód.",
+        "row_stage_reason_required": "Ten etap wymaga powodu statusu. Otwórz kartę kandydata lub użyj zbiorczej zmiany etapu.",
+        "row_stage_select_hint": "Zmień etap z listy (część etapów wymaga powodu na karcie)",
         "bulk_stage_failed": "Nie udało się zmienić etapu.",
         "bulk_stage_partial": "Nie udało się zaktualizować {failed} z {total} kandydatów.",
         "bulk_stage_rodo_blocked": "Dla {rodo} kandydatów z {total} nie wysłano RODO. Otwórz karty kandydatów, wyślij RODO i ponów zmianę etapu.",
@@ -4806,7 +5075,10 @@
         "event": "Wydarzenie",
         "timeline_empty": "Oś czasu pusta",
         "timeline_title": "Tytuł osi czasu",
-        "stage_scope_hint": "Zmiana etapu, journey i bramki zgodności — w pełnej karcie."
+        "stage_scope_hint": "Zmiana etapu, journey i bramki zgodności — w pełnej karcie.",
+        "reminders_assignee_scope": "Zakres przypomnień dla tego kandydata",
+        "comms_title": "Komunikacja",
+        "open_unified_inbox": "Skrzynka (wszystkie kanały)"
       }
     },
     "tasks": {
@@ -4830,7 +5102,8 @@
         "week": "W tym tygodniu",
         "later": "Później",
         "unscheduled": "Bez terminu",
-        "done": "Zakończone / anulowane"
+        "done": "Zakończone / anulowane",
+        "sla_queue": "Otwarte zadania (kolejność SLA)"
       },
       "filter": {
         "active": "Aktywne",
@@ -4840,6 +5113,13 @@
       "assignee": {
         "mine": "Moje zadania",
         "team": "Zespół"
+      },
+      "sla_sort_hint": "W każdej sekcji wg terminu kolejność to: naruszenie SLA → zbliża się termin → w terminie, potem najwcześniejszy SLA, potem termin zadania.",
+      "sla_flat_hint": "Jedna lista posortowana wg presji SLA niezależnie od daty terminu; zakończone zadania są niżej przy widoku Wszystkie lub Zrobione.",
+      "layout": {
+        "label": "Widok",
+        "by_due": "Grupuj wg terminu",
+        "sla_queue": "Kolejka wg SLA (płaska)"
       },
       "sla": {
         "status": {
@@ -5118,6 +5398,37 @@
       "subtitle": "Podtytuł",
       "title": "Tytuł"
     },
+    "automations": {
+      "hub": {
+        "kicker": "Moduł systemowy",
+        "title": "Automatyzacje",
+        "subtitle": "Reguły opisują politykę operacyjną; dziennik pokazuje, co się wykonało. Skróty poniżej otwierają te same ekrany Ustawień — jeden hub dla operacji zanim powstanie jeden scalony UI.",
+        "card_rules_title": "Reguły automatyzacji",
+        "card_rules_desc": "Wyzwalacze → akcje (np. przypomnienia przy zmianie etapu, wygasające dokumenty, pasmo ryzyka). Prosty kreator; zaawansowana polityka także w ustawieniach.",
+        "card_log_title": "Dziennik automatyzacji",
+        "card_log_desc": "Ślad działań wywołanych przez automatyzację. Filtruj po obiekcie, zakresie dat i prefiksie akcji.",
+        "open": "Otwórz",
+        "back": "← Automatyzacje",
+        "policy_section": "Polityka i egzekwowanie (ustawienia)",
+        "policy_risk_title": "Inteligencja ryzyka",
+        "policy_risk_desc": "Model ryzyka co godzinę, kohorty shadow, bramka etapu, e-mail digest — polityka zespołu w Ustawieniach.",
+        "policy_gates_title": "Bramki lejka rekrutacji",
+        "policy_gates_desc": "Wymagania etapów, dokumenty i blokady przed przejściem kandydata dalej.",
+        "policy_ruleset_title": "Wersje rulesetu",
+        "policy_ruleset_desc": "Rulesety zgodności / dokumentów i opublikowane wersje w całym tenancie.",
+        "policy_docs_title": "Typy dokumentów",
+        "policy_docs_desc": "Szablony i konfiguracja dokumentów (wejścia automatyzacji gotowości).",
+        "policy_comms_sla_title": "SLA komunikacji",
+        "policy_comms_sla_desc": "Eskalacja i polityka przeterminowanych wątków (automatyzacja operacji).",
+        "policy_settings_title": "Wszystkie ustawienia",
+        "policy_settings_desc": "Pełny indeks ustawień — integracje, e-mail, użytkownicy, rozliczenia i więcej.",
+        "ops_section": "Realizacja i rozliczenia (wykonanie)",
+        "ops_orders_title": "Zlecenia serwisowe",
+        "ops_orders_desc": "Zakładka Zlecenia — kolejne kroki, blokady i powiązania z fakturami.",
+        "ops_invoices_title": "Faktury",
+        "ops_invoices_desc": "Saldo, kolejki przeterminowań i ścieżki korekt."
+      }
+    },
     "automation_log": {
       "empty": "Pusty",
       "errors": {
@@ -5177,6 +5488,7 @@
         "back_to_calendar": "Powrót do kalendarza",
         "back_to_hub": "Powrót do centrum",
         "mark_thread_read": "Oznacz wątek jako przeczytany",
+        "open_inbox_center": "Centrum skrzynki",
         "open_thread": "Otwórz wątek",
         "refresh": "Odśwież"
       },
@@ -5295,11 +5607,17 @@
           "week_short": "Week",
           "month_short": "Month"
         },
+        "tasks_queue_link": "Pełna kolejka zadań",
+        "scheduling": {
+          "my_availability": "Moja dostępność",
+          "team_availability": "Dostępność zespołu",
+          "time_off": "Urlopy"
+        },
         "filters": {
           "sources": {
             "all": "All sources",
             "timeoff": "Time-off",
-            "activities": "Activities",
+            "activities": "Zadania i terminy",
             "planner": "Planner"
           },
           "timeoff": {
@@ -5466,6 +5784,10 @@
           "load": "Nie udało się załadować skrzynki e-mail",
           "send": "Nie udało się wysłać wiadomości"
         },
+        "mandatory_link": {
+          "block_send": "Powiąż wątek z kandydatem, firmą klienta lub zamówieniem UOS przed odpowiedzią lub przekazaniem.",
+          "composer_banner": "Wątek nie jest powiązany z kandydatem, klientem ani zamówieniem — powiąż w Centrum skrzynki, gdy to możliwe (polityka operacji może nadal zablokować wysyłkę)."
+        },
         "poll": {
           "cta": "wezwanie do działania",
           "diagnostics": "Diagnostyka",
@@ -5473,9 +5795,14 @@
           "loading": "Ładowanie",
           "more_accounts": "Więcej kont",
           "new_threads": "Nowe wątki",
+          "reconnect_oauth_hint": "Uwierzytelnianie skrzynki nie powiodło się (np. 401). Połącz konto ponownie w ustawieniach komunikacji lub uruchom diagnostykę.",
+          "reconnect_email_setup": "Połącz e-mail ponownie (setup)",
           "skipped": "Pominięte",
           "summary": "Podsumowanie"
         },
+        "oauth_redirect_body": "Otwórz konfigurację komunikacji, krok «Połącz e-mail», i kliknij «OAuth complete», aby wymienić kod na tokeny. Kod uzupełni się automatycznie po wejściu w setup.",
+        "oauth_redirect_open_setup": "Otwórz setup poczty",
+        "oauth_redirect_title": "Otrzymano kod autoryzacji Gmail",
         "signature": {
           "apply": "Zastosuj"
         },
@@ -5504,7 +5831,28 @@
         "folders": {
           "archive": "Archiwum",
           "deleted": "Usunięto",
-          "inbox": "Skrzynka odbiorcza"
+          "inbox": "Skrzynka odbiorcza",
+          "unread": "Nieprzeczytane",
+          "sent": "Wysłane",
+          "all": "Wszystkie",
+          "unlinked": "Bez powiązań",
+          "expand": "Pokaż foldery",
+          "collapse": "Zwiń foldery",
+          "more_show": "Więcej folderów",
+          "more_hide": "Ukryj dodatkowe foldery"
+        },
+        "filters": {
+          "without_candidate": "Bez kandydata",
+          "assigned_to_me": "Przypisane do mnie",
+          "has_assignee": "Ma osobę przypisaną"
+        },
+        "sync": {
+          "title": "Synchronizuj pocztę przychodzącą"
+        },
+        "row": {
+          "sla_overdue": "SLA po terminie",
+          "needs_reply": "Wymaga odpowiedzi",
+          "waiting_reply_hours": "{hours} h bez odpowiedzi"
         },
         "labels": {
           "commands": "Polecenia",
@@ -5520,6 +5868,9 @@
         "preview": {
           "add_signature": "Dodaj podpis",
           "assignee": "Przypisany",
+          "assignee_short": "przypisany {id}",
+          "bind": "Powiąż",
+          "assign": "Przypisz",
           "body_placeholder": "Napisz wiadomość",
           "created": "Utworzono",
           "empty": "Wybierz rozmowę do podglądu.",
@@ -5546,8 +5897,8 @@
         "load": "Załaduj"
       },
       "ia": {
-        "calendar_subtitle": "Podtytuł kalendarza",
-        "calendar_title": "Tytuł kalendarza",
+        "calendar_subtitle": "Widok czasowy zadań i aktywności (te same dane co Zadania). Opcjonalnie planer i urlopy. Kolejkę wykonania prowadź w Zadaniach.",
+        "calendar_title": "Kalendarz",
         "email_title": "Tytuł e-maila",
         "my_availability_subtitle": "Podtytuł „Moja dostępność”.",
         "my_availability_title": "Tytuł mojej dostępności",
@@ -5593,6 +5944,18 @@
           "enable_baseline": "Włącz linię bazową",
           "open_settings": "Otwórz ustawienia"
         },
+        "notices": {
+          "oauth_code_prefilled": "Wczytano kod autoryzacji — kliknij «OAuth complete», aby wymienić go na tokeny."
+        },
+        "oauth_error_url_note": "Adres strony błędu Google czasem pokazuje zastępczy client_id — to nie dowód, co wysłano. Porównaj redirect_uri poniżej z Authorized redirect URIs w Google Cloud (musi być identyczny).",
+        "oauth_google_js_origin_hint": "Wymagane: Authorized JavaScript origins nie może być puste. Dodaj «https://hostflow.cc» (ten sam schemat i host co aplikacja, bez ścieżki). Redirect URI musi dokładnie zgadzać się z «https://hostflow.cc/app/email» w HostFlow i w Google Cloud. Puste JS origins często daje 400 invalid_request.",
+        "oauth_verify_request": "Sprawdź parametry, które serwer wysyła do Google",
+        "oauth_google_testing_hint": "Jeśli ekran zgody jest w trybie «Testing», dodaj to konto Google do listy Test users w Google Cloud Console — w przeciwnym razie Google odmówi dostępu.",
+        "oauth_token_required_intro": "Google akceptuje tylko żądania z ważnym tokenem dostępu OAuth. Token otrzymujesz po zalogowaniu do Google i wymianie jednorazowego kodu autoryzacji.",
+        "oauth_token_required_step_complete": "Albo wklej wartość „code” z paska adresu przeglądarki do pola poniżej, potem «OAuth complete».",
+        "oauth_token_required_step_consent": "Kliknij «OAuth start», potem «Open consent URL» i zaloguj się kontem Google tej skrzynki.",
+        "oauth_token_required_step_redirect": "Po przekierowaniu z Google (zwykle na /app/email) kod zapisuje się automatycznie — wróć tutaj i kliknij «OAuth complete».",
+        "oauth_token_required_title": "Sam Client ID i Secret nie wystarczą do Gmaila",
         "banner_incomplete": "Baner niekompletny",
         "incomplete": "Niekompletny",
         "next_step": "Następny krok",
@@ -5781,6 +6144,7 @@
         "service_order": "Zamówienie serwisowe",
         "status": "Stan"
       },
+      "col_days_overdue": "Dni po terminie",
       "due_date": "Termin",
       "edit": "Edytuj",
       "edit_only_draft": "Edytuj tylko wersję roboczą",
@@ -5789,7 +6153,7 @@
       "fields": {
         "due": "Termin",
         "number": "Numer",
-        "outstanding": "Znakomity",
+        "outstanding": "Do zapłaty",
         "paid": "Płatny",
         "status": "Stan",
         "total": "Razem"
@@ -7385,93 +7749,96 @@
     "crm_landing": {
       "audience": {
         "items": {
-          "0": "0",
-          "1": "1",
-          "2": "2",
-          "3": "3"
+          "0": "Agencje rekrutacyjne z rozproszonymi zespołami",
+          "1": "Pracodawcy z dużą liczbą kandydatów",
+          "2": "Zespoły operacyjne: onboarding i dokumenty",
+          "3": "Menedżerowie potrzebujący przejrzystego pipeline i odpowiedzialności"
         },
-        "title": "Tytuł"
+        "title": "Dla kogo jest ten CRM"
       },
       "compare": {
         "analytics": "Analityka",
-        "communications": "Komunikacja",
+        "communications": "Przestrzeń komunikacji",
         "feature": "Funkcja",
-        "roles": "Role",
-        "title": "Tytuł",
+        "roles": "Role i uprawnienia",
+        "title": "Porównanie planów",
         "users": "Użytkownicy"
       },
       "faq": {
-        "a1": "A1",
-        "a2": "A2",
-        "a3": "A3",
-        "q1": "Pytanie 1",
-        "q2": "Pytanie 2",
-        "q3": "Pytanie 3",
-        "title": "Tytuł"
+        "a1": "Tak. Rdzeń to konto → firma → pierwszy klient/lead/akcja. Zaawansowane ustawienia można dodać później.",
+        "a2": "Tak. Zacznij sam, potem zaproś zespół z ustawień Zespołu.",
+        "a3": "Plany zmienisz w rozliczeniach. Dane przestrzeni roboczej pozostają.",
+        "q1": "Czy możemy zacząć bez pełnej konfiguracji?",
+        "q2": "Czy zespół dołączymy później?",
+        "q3": "Co jeśli wybierzemy zły plan?",
+        "title": "FAQ"
       },
       "final_cta": {
-        "button": "Przycisk",
-        "subtitle": "Podtytuł",
-        "title": "Tytuł"
+        "button": "Rozpocznij bezpłatny okres próbny",
+        "subtitle": "Utwórz przestrzeń teraz — pierwszą wartość zobaczysz w kilka minut.",
+        "title": "Gotowy, by uruchomić proces w CRM?"
       },
       "guides": {
         "title": "Poznaj przewodniki produktu",
         "subtitle": "Zacznij od strony najbliższej Twojemu aktualnemu wyzwaniu i przejdź do kolejnego powiązanego przewodnika."
       },
       "hero": {
-        "badge": "Odznaka",
-        "primary_cta": "Podstawowe wezwanie do działania",
-        "secondary_cta": "Dodatkowe wezwanie do działania",
-        "subtitle": "Podtytuł",
-        "title": "Tytuł",
+        "badge": "CRM dla operacji rekrutacyjnych",
+        "primary_cta": "Rozpocznij bezpłatny okres próbny",
+        "secondary_cta": "Zaloguj się",
+        "subtitle": "Leady, kandydaci, obciążenie zespołu i komunikacja w jednym miejscu — szybki start.",
+        "title": "Uruchom proces zatrudnienia w kilka minut",
         "value_list": {
-          "0": "0",
-          "1": "1",
-          "2": "2"
+          "0": "Utwórz przestrzeń i firmę",
+          "1": "Dodaj pierwszego leada lub klienta",
+          "2": "Przypisz status, notatkę i następne zadanie"
         },
-        "value_title": "Tytuł wartości"
+        "value_title": "Co zyskasz w pierwszych 5 minutach"
       },
       "objections": {
-        "0": "0",
-        "1": "1",
-        "2": "2",
-        "title": "Tytuł"
+        "0": "Za dużo ustawień zanim zacznie się praca.",
+        "1": "Trudny onboarding członków zespołu.",
+        "2": "Niejasna ścieżka od leada do następnej akcji.",
+        "title": "Typowe blokady, które usuwamy"
       },
       "pricing": {
-        "badge": "Odznaka",
-        "note": "Uwaga",
+        "badge": "Cennik",
+        "note": "Bramka płatności zostanie podłączona przy finalnym wdrożeniu.",
         "pro": {
-          "best_for": "Najlepsze dla",
+          "name": "Pro",
+          "best_for": "Dla rozbudowanych operacji i zaawansowanych procesów",
           "features": {
-            "0": "0",
-            "1": "1",
-            "2": "2"
+            "0": "Zaawansowana analityka i raporty",
+            "1": "Priorytetowe wsparcie",
+            "2": "Szersze integracje"
           },
-          "price": "Cena",
-          "seats": "Siedzenia"
+          "price": "199 USD/mies.",
+          "seats": "Rozszerzone limity"
         },
-        "select_cta": "Wybierz wezwanie do działania",
+        "select_cta": "Wybierz plan",
         "starter": {
-          "best_for": "Najlepsze dla",
+          "name": "Starter",
+          "best_for": "Dla solo i startu z CRM",
           "features": {
-            "0": "0",
-            "1": "1",
-            "2": "2"
+            "0": "Kandydaci i klienci",
+            "1": "Śledzenie źródeł leadów",
+            "2": "Podstawowy panel"
           },
-          "price": "Cena",
-          "seats": "Siedzenia"
+          "price": "39 USD/mies.",
+          "seats": "1 użytkownik"
         },
         "team": {
-          "best_for": "Najlepsze dla",
+          "name": "Team",
+          "best_for": "Dla małych zespołów ze wspólnym pipeline",
           "features": {
-            "0": "0",
-            "1": "1",
-            "2": "2"
+            "0": "Role i uprawnienia",
+            "1": "Wspólna przestrzeń i przydziały",
+            "2": "Przestrzeń komunikacji"
           },
-          "price": "Cena",
-          "seats": "Siedzenia"
+          "price": "99 USD/mies.",
+          "seats": "Do 5 użytkowników"
         },
-        "title": "Tytuł"
+        "title": "Wybierz plan dopasowany do zespołu"
       }
     },
     "documents_upload": {
@@ -7571,6 +7938,36 @@
         "passport": "Paszport",
         "license": "Prawo jazdy",
         "insurance": "Ubezpieczenie"
+      }
+    },
+    "risk_intel": {
+      "settings": {
+        "load_error": "Nie udało się wczytać ustawień ryzyka operacyjnego",
+        "saved": "Zapisano ustawienia ryzyka operacyjnego",
+        "save_error": "Zapis nie powiódł się",
+        "kicker": "Konfiguracja CRM",
+        "title": "Ryzyko operacyjne (v1)",
+        "blurb": "Nadpisania tenanta dla risk_model_v1: job godzinny, bramka etapu, digest e-mail i automatyzacje wg pasma. Wartości efektywne łączą się z domyślnymi produktu.",
+        "back": "← Ustawienia",
+        "overrides_title": "Zapisane nadpisania tenanta (tylko odczyt)",
+        "overrides_hint": "Surowy fragment JSON pod settings.risk_model_v1 po zapisie.",
+        "hourly_job": "Włączony godzinny job ryzyka",
+        "hourly_job_hint": "Wyłączenie powoduje pomijanie zaplanowanego jobu persystencji dla tej przestrzeni.",
+        "stage_gate": "Bramka etapu",
+        "stage_gate_enabled": "Wymuszaj bramkę przy przejściu do przodu",
+        "min_band": "Minimalne pasmo",
+        "block_without_next_action": "Blokuj przejście bez następnej akcji (gdy bramka działa)",
+        "digest": "E-mail digest cienia",
+        "digest_enabled": "Wysyłaj digest, gdy kryteria są spełnione",
+        "max_rows": "Maks. wierszy",
+        "skip_if_empty": "Pomiń wysyłkę, gdy digest jest pusty",
+        "digest_to": "Adresy e-mail (rozdzielone przecinkami)",
+        "digest_roles": "Skrzynki ról (rozdzielone przecinkami)",
+        "automations": "Automatyzacje wg pasma ryzyka",
+        "automations_hint": "Uruchamiane po godzinowym scoringu, gdy są wiersze cienia; korzystają z reguł automatyzacji dla pasm ryzyka kandydatów.",
+        "auto_enabled": "Włącz automatyzacje",
+        "dedupe_hours": "Okno deduplikacji (godziny)",
+        "read_only": "Tylko administratorzy przestrzeni mogą edytować te ustawienia."
       }
     },
     "documents": {
@@ -8372,6 +8769,14 @@
         "funnels": {
           "label": "Lejki i etapy",
           "description": "Zarządzaj etapami wоронки kandydatów i leadów."
+        },
+        "hiring_gates": {
+          "label": "Bramki lejka rekrutacji",
+          "description": "Reguły dokumentów, wakansji i prób kontaktu wg etapu (macierz tenanta)."
+        },
+        "risk_intel": {
+          "label": "Ryzyko operacyjne (v1)",
+          "description": "Job godzinny, bramka etapu, digest e-mail i automatyzacje wg pasma ryzyka."
         },
         "documents": {
           "label": "Typy dokumentów",

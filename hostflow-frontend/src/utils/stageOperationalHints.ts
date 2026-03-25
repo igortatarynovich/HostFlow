@@ -3,6 +3,7 @@
  * Used when there is no active reminder — complements document-based next action.
  * Canonical keys align with `canonicalStageKey` / `candidateStageDocPolicy`.
  */
+import { isPipelineCompletedCanonicalStage } from './candidatePipelineCompleted'
 import { canonicalStageKey } from './stageLabels'
 
 export type StageOperationalHintKind =
@@ -25,6 +26,8 @@ export function operationalHintForStage(stageCode: string | null | undefined): S
   if (!raw) return null
   const c = canonicalStageKey(raw, null) || raw.toLowerCase()
 
+  if (isPipelineCompletedCanonicalStage(c)) return null
+
   if (c === 'new' || c === 'no_answer') return { kind: 'call_candidate' }
   if (c === 'contacted' || c === 'questionnaire_submitted') return { kind: 'assign_vacancy' }
   if (c === 'docs_wait') return { kind: 'request_documents' }
@@ -40,8 +43,6 @@ export function operationalHintForStage(stageCode: string | null | undefined): S
     'trip_plan',
     'at_client',
     'on_trip',
-    'employed',
-    'probation_ok',
     'processing_by_client',
     'docs_submitted_permit',
     'handoff_returned',

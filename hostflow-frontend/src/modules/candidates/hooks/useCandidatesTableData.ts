@@ -71,6 +71,10 @@ type UseCandidatesTableDataArgs = {
   handoffStatusFilter: string | null
   contactAttemptsFilter: string | null
   processorFilter: string | null
+  /** Hourly risk shadow bucket ISO (GET /candidates shadow_bucket_start) */
+  shadowBucketFilter: string | null
+  /** Band floor with shadow cohort (low|medium|high|critical); used only when shadowBucketFilter is set */
+  shadowBucketMinBand: string | null
   createdRange: DateRangeFilter
   isFavoriteFilter: boolean | null
 
@@ -104,6 +108,8 @@ export function useCandidatesTableData({
   handoffStatusFilter,
   contactAttemptsFilter,
   processorFilter,
+  shadowBucketFilter,
+  shadowBucketMinBand,
   createdRange,
   isFavoriteFilter,
 
@@ -232,6 +238,15 @@ export function useCandidatesTableData({
             contact_attempts: contactAttemptsFilter || undefined,
             processor_id: processorFilter || undefined,
           }
+          if (shadowBucketFilter && String(shadowBucketFilter).trim()) {
+            params.shadow_bucket_start = String(shadowBucketFilter).trim()
+            const mb = String(shadowBucketMinBand || 'high').trim().toLowerCase()
+            if (['low', 'medium', 'high', 'critical'].includes(mb)) {
+              params.shadow_bucket_min_band = mb
+            } else {
+              params.shadow_bucket_min_band = 'high'
+            }
+          }
           if (createdRange.from) params.created_from = createdRange.from
           if (createdRange.to) params.created_to = createdRange.to
           if (isFavoriteFilter != null) params.is_favorite = isFavoriteFilter
@@ -358,12 +373,20 @@ export function useCandidatesTableData({
         }
       } finally {
         const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - perfT0
+        const shadowCohort = Boolean(shadowBucketFilter && String(shadowBucketFilter).trim())
         if (willRefetch) {
           void recordPerfMeasurement({
             metricKey: 'candidates.list.load',
             durationMs,
             route: typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : undefined,
-            meta: { ok: perfOk, limit, cache: !willRefetch ? 'fresh' : 'refetch' },
+            meta: {
+              ok: perfOk,
+              limit,
+              cache: !willRefetch ? 'fresh' : 'refetch',
+              include_risk: true,
+              shadow_cohort: shadowCohort,
+              shadow_min_band: shadowCohort ? String(shadowBucketMinBand || 'high').toLowerCase() : undefined,
+            },
           }).catch(() => {})
         }
 
@@ -389,6 +412,8 @@ export function useCandidatesTableData({
       handoffStatusFilter,
       contactAttemptsFilter,
       processorFilter,
+      shadowBucketFilter,
+      shadowBucketMinBand,
       createdRange,
       isFavoriteFilter,
       currentTenantId,

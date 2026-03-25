@@ -4,6 +4,7 @@ import { cancelInvoice, createPayment, createReminder, getInvoicePdf, listInvoic
 import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { invoiceDaysPastDue, invoiceOutstandingAmount, serviceOrderWorkspacePath } from '../modules/services/utils'
 
 const STATUS_OPTIONS: InvoiceStatus[] = ['draft', 'issued', 'sent', 'paid', 'overdue', 'cancelled']
 
@@ -95,6 +96,7 @@ export default function InvoicesPage() {
   const companyIdFilter = searchParams.get('company_id') || ''
   const serviceOrderIdFilter = searchParams.get('service_order_id') || ''
   const urlStatusFilter = (searchParams.get('status') || '') as InvoiceStatus | ''
+  const urlQueueFilter = searchParams.get('queue') || ''
   const activeFilterChips = useMemo(
     () =>
       [
@@ -191,6 +193,19 @@ export default function InvoicesPage() {
       setStatusFilter(urlStatusFilter)
     }
   }, [urlStatusFilter, statusFilter])
+
+  useEffect(() => {
+    const allowed: Array<typeof queueFilter> = [
+      'all',
+      'delivery_failed',
+      'missing_recipient',
+      'overdue_unpaid',
+      'needs_correction',
+    ]
+    if (urlQueueFilter && allowed.includes(urlQueueFilter as typeof queueFilter)) {
+      setQueueFilter(urlQueueFilter as typeof queueFilter)
+    }
+  }, [urlQueueFilter])
 
   useEffect(() => {
     let cancelled = false
@@ -393,7 +408,7 @@ export default function InvoicesPage() {
   }
 
   return (
-    <div className="h-full w-full flex flex-col space-y-4 p-6">
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0 p-0">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-slate-900">{t('app.invoices.title', { defaultValue: 'Invoices' })}</h1>
         <button
@@ -404,7 +419,7 @@ export default function InvoicesPage() {
         </button>
       </div>
 
-      <div className="app-surface space-y-4 p-6">
+      <div className="app-surface space-y-0 gap-0 border-x-0 border-t-0 p-3">
         <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-6">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -625,7 +640,13 @@ export default function InvoicesPage() {
                     {t('app.invoices.due_date', { defaultValue: 'Due Date' })}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t('app.invoices.col_days_overdue', { defaultValue: 'Days overdue' })}
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {t('app.invoices.total', { defaultValue: 'Total' })}
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {t('app.invoices.fields.outstanding', { defaultValue: 'Outstanding' })}
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {t('app.invoices.context', { defaultValue: 'Context' })}
@@ -645,7 +666,10 @@ export default function InvoicesPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibleInvoices.map((invoice) => (
+                {visibleInvoices.map((invoice) => {
+                  const outstanding = invoiceOutstandingAmount(invoice.total_amount, invoice.paid_amount)
+                  const daysOverdue = invoiceDaysPastDue(invoice.due_date, outstanding)
+                  return (
                   <tr key={invoice.id} className="border-b border-slate-100 hover:bg-slate-50">
                     <td className="py-3 px-4">
                       <input type="checkbox" checked={selectedIds.includes(invoice.id)} onChange={() => toggleOne(invoice.id)} />
@@ -674,8 +698,22 @@ export default function InvoicesPage() {
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-700">{formatDate(invoice.issue_date)}</td>
                     <td className="py-3 px-4 text-sm text-slate-700">{formatDate(invoice.due_date)}</td>
+                    <td className="py-3 px-4 text-sm text-slate-700">
+                      {daysOverdue != null ? (
+                        <span className="font-semibold text-red-700">{daysOverdue}</span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-sm font-semibold text-slate-900">
                       {formatAmount(invoice.total_amount)}
+                    </td>
+                    <td className="py-3 px-4 text-sm font-semibold text-slate-900">
+                      {outstanding > 0 ? (
+                        <span className="text-amber-800">{formatAmount(outstanding)}</span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-sm text-slate-700">
                       <div className="flex flex-wrap gap-2">
@@ -685,7 +723,10 @@ export default function InvoicesPage() {
                           </Link>
                         )}
                         {invoice.service_order_id && (
-                          <Link to={`/app/services?order=${invoice.service_order_id}`} className="text-brand-700 hover:underline">
+                          <Link
+                            to={serviceOrderWorkspacePath(String(invoice.service_order_id), invoice.company_id)}
+                            className="text-brand-700 hover:underline"
+                          >
                             {t('app.invoices.open_service_order', { defaultValue: 'Open service order' })}
                           </Link>
                         )}
@@ -833,7 +874,8 @@ export default function InvoicesPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

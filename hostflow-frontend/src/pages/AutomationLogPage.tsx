@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { listAutomationLog, type AutomationLogEntry } from '../api/automationLog'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
@@ -56,11 +57,14 @@ export default function AutomationLogPage() {
   const shownTo = useMemo(() => Math.min(offset + limit, total), [limit, offset, total])
 
   return (
-    <div className="space-y-4">
-      <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
+      <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">
+            <Link to="/app/automations" className="text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline">
+              {t('app.automations.hub.back', { defaultValue: '← Automations' })}
+            </Link>
+            <h1 className="mt-1 text-xl font-semibold text-slate-900">
               {t('app.automation_log.title', { defaultValue: 'Automation log' })}
             </h1>
             <p className="text-xs text-slate-500">
@@ -75,7 +79,7 @@ export default function AutomationLogPage() {
         </div>
       </header>
 
-      <div className="card p-4 space-y-4">
+      <div className="card space-y-0 gap-0 rounded-none border-x-0 border-t-0 p-3">
         <div className="flex flex-wrap gap-3">
           <label className="flex flex-col text-sm gap-1">
             {t('app.automation_log.filters.target_type', { defaultValue: 'Target type' })}

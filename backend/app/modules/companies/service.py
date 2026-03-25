@@ -87,22 +87,54 @@ async def create_company_service(
     actor_user_id: str | None = None,
 ) -> Company:
     try:
-        return await crud.create_company(db, data, actor_user_id=actor_user_id)
+        company = await crud.create_company(db, data, actor_user_id=actor_user_id)
     except ValueError as exc:
         raise _map_value_error(exc) from exc
+    try:
+        from backend.app.services import uos_auto_activities
+
+        aid = str(actor_user_id or "uos-auto")
+        await uos_auto_activities.ensure_client_company_intro_task(db, str(company.tenant_id), aid, company)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+    await db.refresh(company)
+    return company
 
 
 async def update_company_service(
     db: AsyncSession,
     company_id: UUID,
     data: schemas.CompanyUpdate,
+    *,
+    actor_user_id: str | None = None,
 ) -> Company:
+    payload_keys = data.model_dump(exclude_unset=True)
+    client_stage_in_payload = "client_stage" in payload_keys
+    existing = await crud.get_company(db, company_id) if client_stage_in_payload and actor_user_id else None
+    old_client_stage = existing.client_stage if existing else None
     try:
         company = await crud.update_company(db, company_id, data)
     except ValueError as exc:
         raise _map_value_error(exc) from exc
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
+    if client_stage_in_payload and actor_user_id:
+        try:
+            from backend.app.services import uos_auto_activities
+
+            await uos_auto_activities.ensure_client_stage_follow_up_task(
+                db,
+                str(company.tenant_id),
+                str(actor_user_id),
+                company,
+                old_client_stage,
+                company.client_stage,
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+        await db.refresh(company)
     return company
 
 

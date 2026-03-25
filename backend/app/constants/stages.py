@@ -258,6 +258,10 @@ STAGES_ORDER: List[str] = ORDER.copy()
 # Финальные статусы: прошёл ПП или завершил работу (уволен/ушёл сам).
 TERMINAL_STATUSES = {"probation_ok", "rejected", "declined"}
 
+# Путь завершён (успех или отказ): нет операционных next-action / risk v1 и агрегатов активного пайплайна.
+# Включает TERMINAL_STATUSES + «трудоустроен» (успешный финал воронки).
+PIPELINE_COMPLETED_STAGE_CODES: frozenset[str] = frozenset(TERMINAL_STATUSES) | frozenset({"employed"})
+
 # По умолчанию
 DEFAULT_STAGE_CODE: str = "new"
 
@@ -283,6 +287,12 @@ def pipeline_for_stage_code(stage_code: str) -> str:
     return KANBAN_COLUMN_OF.get(stage_code, "new")
 
 
+def is_pipeline_completed_stage(value: Optional[str]) -> bool:
+    """True when `value` is a canonical pipeline-completed stage code (case-insensitive)."""
+    s = (value or "").strip().lower()
+    return bool(s) and s in PIPELINE_COMPLETED_STAGE_CODES
+
+
 __all__ = [
     "DEFAULT_STAGE_CODE",
     "STAGES_BY_GROUP",
@@ -292,9 +302,11 @@ __all__ = [
     "KANBAN_COLUMN_OF",
     "ORDER",
     "PIPELINE_SEQUENCE",
+    "PIPELINE_COMPLETED_STAGE_CODES",
     "TERMINAL_STATUSES",
     "STAGES",
     "STAGES_ORDER",
+    "is_pipeline_completed_stage",
     "is_stage_code",
     "code_for_label",
     "pipeline_for_stage_code",

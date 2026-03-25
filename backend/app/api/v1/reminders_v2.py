@@ -21,6 +21,11 @@ _SLA_REMINDER_TYPES = frozenset(
         "uos_invoice_follow_payment",
         "uos_candidate_call",
         "uos_inbound_reply",
+        "uos_client_intro",
+        "uos_client_stage_follow_up",
+        "uos_candidate_stage_follow_up",
+        "communications_thread_escalated",
+        "uos_vacancy_recruiting_follow_up",
     }
 )
 
@@ -249,6 +254,8 @@ async def list_reminders(
     entity_id: Optional[str] = Query(default=None),
     due_from: Optional[datetime] = Query(default=None),
     due_to: Optional[datetime] = Query(default=None),
+    q: Optional[str] = Query(default=None, description="Search title, description, or message (substring)"),
+    limit: Optional[int] = Query(default=None, ge=1, le=200),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ) -> ReminderListResponse:
@@ -265,6 +272,10 @@ async def list_reminders(
         viewer_id=str(current_user.sub),
         viewer_role=str(current_user.role),
     )
+    q_norm = (q or "").strip()
+    eff_limit = limit
+    if q_norm and eff_limit is None:
+        eff_limit = 80
     reminders = await reminder_tasks.list_reminders(
         db,
         tenant_id=str(tenant_id),
@@ -273,6 +284,8 @@ async def list_reminders(
         status_in=status_filter or None,
         type_in=type_filter or None,
         due_range=due_range,
+        q=q_norm or None,
+        limit=eff_limit,
     )
     return ReminderListResponse(items=[ReminderOut.from_model(r) for r in reminders])
 

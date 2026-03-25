@@ -12,6 +12,7 @@ from typing import Any, Dict, FrozenSet, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
 from backend.app.services.document_catalog import normalize_doc_type
 from backend.app.services.pipeline_override_policy import NON_OVERRIDABLE_DOC_TYPES
 
@@ -170,6 +171,9 @@ def docs_pipeline_blocks_forward_resolved(
     """
     code = (canonical_stage or "").strip().lower()
     if not code:
+        return False, False
+
+    if code in PIPELINE_COMPLETED_STAGE_CODES:
         return False, False
 
     would_hard = False

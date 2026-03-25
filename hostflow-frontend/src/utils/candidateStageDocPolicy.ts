@@ -9,6 +9,7 @@
  */
 
 import type { HiringPipelineGatesPublic } from '../api/types'
+import { isPipelineCompletedCanonicalStage } from './candidatePipelineCompleted'
 import { canonicalStageKey } from './stageLabels'
 
 export type DocBlockersPayload = {
@@ -148,7 +149,10 @@ export function docsPipelineBlocksForwardResolved(
   const raw = String(stageCode || '').trim()
   if (!raw) return { hard: false, softWarnOnly: false }
   const code = canonicalStageKey(raw, null) || raw.toLowerCase()
-  if (!code || g.stagesWithoutDocPipelineBlock.has(code)) {
+  if (!code || isPipelineCompletedCanonicalStage(code)) {
+    return { hard: false, softWarnOnly: false }
+  }
+  if (g.stagesWithoutDocPipelineBlock.has(code)) {
     return { hard: false, softWarnOnly: false }
   }
   let wouldHard = false

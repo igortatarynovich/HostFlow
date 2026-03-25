@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { formatDistanceToNow } from 'date-fns'
+import { enUS, pl as plFns, ru as ruFns } from 'date-fns/locale'
 import { useAuth } from '../../store/useAuth'
 import { useI18n } from '../../i18n'
+import type { LocaleCode } from '../../i18n'
 import { patchUserMe } from '../../api/users'
 import type { UserSavedView } from '../../api/types'
 import { resolveApiBase, settings as clientSettings, DEFAULT_TENANT } from '../../api/client'
@@ -104,9 +107,19 @@ type Vacancy = {
   status?: string
   company_id?: string
   company_name?: string
+  candidate_count?: number
+  headcount_target?: number | null
+  candidate_profile_name?: string | null
+  last_candidate_activity_at?: string | null
   created_at?: string
   updated_at?: string
   is_archived?: boolean
+}
+
+const DATE_FNS_LOCALES: Record<LocaleCode, typeof enUS> = {
+  en: enUS,
+  pl: plFns,
+  ru: ruFns,
 }
 
 type ListResponse = {
@@ -174,7 +187,8 @@ export default function VacancyList() {
   const [search, setSearch] = useSearchParams()
   const navigate = useNavigate()
   const { preferences, updatePreferences } = useAuth()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const dateFnsLocale = DATE_FNS_LOCALES[locale] ?? enUS
 
   const [data, setData] = useState<ListResponse>({ items: [], total: 0, limit: 20, offset: 0 })
   const [loading, setLoading] = useState(false)
@@ -227,8 +241,24 @@ export default function VacancyList() {
 
   // columns visibility
   const [actionsMenuOpen, setActionsMenuOpen] = useState(false)
-  const [visibleCols, setVisibleCols] = useState<{title:boolean; company:boolean; status:boolean; updated:boolean}>({
-    title: true, company: true, status: true, updated: true,
+  const [visibleCols, setVisibleCols] = useState<{
+    title: boolean
+    company: boolean
+    status: boolean
+    updated: boolean
+    candidates: boolean
+    headcount: boolean
+    profile: boolean
+    lastActivity: boolean
+  }>({
+    title: true,
+    company: true,
+    status: true,
+    updated: true,
+    candidates: true,
+    headcount: true,
+    profile: false,
+    lastActivity: true,
   })
 
   const allSelected = useMemo(()=> selected.length > 0 && selected.length === (data.items?.length || 0), [selected, data.items])
@@ -312,13 +342,20 @@ export default function VacancyList() {
       if (key === 'company_name') return (v.company_name || '').toLowerCase()
       if (key === 'status') return (v.is_archived ? 'archived' : (v.status || ''))
       if (key === 'updated_at' || key === 'created_at') return v[key as 'updated_at' | 'created_at'] || ''
+      if (key === 'candidate_count') return Number(v.candidate_count ?? 0)
+      if (key === 'headcount_target') return Number(v.headcount_target ?? 0)
+      if (key === 'last_candidate_activity_at') return v.last_candidate_activity_at || ''
+      if (key === 'candidate_profile_name') return (v.candidate_profile_name || '').toLowerCase()
       return (v as any)[key] ?? ''
     }
     arr.sort((a,b) => {
       const av = get(a, sort)
       const bv = get(b, sort)
       if (av === bv) return 0
-      return (av > bv ? 1 : -1) * (dir === 'asc' ? 1 : -1)
+      if (typeof av === 'number' && typeof bv === 'number') {
+        return av === bv ? 0 : (av > bv ? 1 : -1) * (dir === 'asc' ? 1 : -1)
+      }
+      return (String(av) > String(bv) ? 1 : -1) * (dir === 'asc' ? 1 : -1)
     })
     return arr
   }, [data.items, sort, dir])
@@ -350,7 +387,13 @@ export default function VacancyList() {
       next.set('dir', currentDir === 'asc' ? 'desc' : 'asc')
     } else {
       next.set('sort', field)
-      next.set('dir', field === 'created_at' || field === 'updated_at' ? 'desc' : 'asc')
+      const descDefault =
+        field === 'created_at' ||
+        field === 'updated_at' ||
+        field === 'last_candidate_activity_at' ||
+        field === 'candidate_count' ||
+        field === 'headcount_target'
+      next.set('dir', descDefault ? 'desc' : 'asc')
     }
     setSearch(next, { replace: true })
   }
@@ -371,6 +414,10 @@ export default function VacancyList() {
       { key: 'title', label: t('app.vacancies.list.col_title') },
       { key: 'company_name', label: t('app.vacancies.list.col_company') },
       { key: 'status', label: t('app.vacancies.list.col_status') },
+      { key: 'candidate_count', label: t('app.vacancies.list.col_candidates') },
+      { key: 'headcount_target', label: t('app.vacancies.list.col_headcount') },
+      { key: 'candidate_profile_name', label: t('app.vacancies.list.col_profile') },
+      { key: 'last_candidate_activity_at', label: t('app.vacancies.list.col_last_activity') },
       { key: 'updated_at', label: t('app.vacancies.list.col_updated') },
       { key: 'created_at', label: t('app.vacancies.list.col_created') },
     ]
@@ -378,6 +425,13 @@ export default function VacancyList() {
       title: v.title || t('app.vacancies.list.untitled'),
       company_name: v.company_name || '',
       status: statusLabel(v.status, v.is_archived),
+      candidate_count: String(v.candidate_count ?? 0),
+      headcount_target:
+        v.headcount_target != null && v.headcount_target > 0 ? String(v.headcount_target) : '',
+      candidate_profile_name: v.candidate_profile_name || '',
+      last_candidate_activity_at: v.last_candidate_activity_at
+        ? new Date(v.last_candidate_activity_at).toLocaleString()
+        : '',
       updated_at: v.updated_at ? new Date(v.updated_at).toLocaleString() : '',
       created_at: v.created_at ? new Date(v.created_at).toLocaleString() : '',
     }))
@@ -412,7 +466,7 @@ export default function VacancyList() {
     refresh()
   }
 
-  const toggleCol = (k: keyof typeof visibleCols) => setVisibleCols(s => ({ ...s, [k]: !s[k] }))
+  const toggleCol = (k: keyof typeof visibleCols) => setVisibleCols((s) => ({ ...s, [k]: !s[k] }))
 
   const syncVacancyViews = useCallback(async (next: UserSavedView[]) => {
     try {
@@ -481,16 +535,37 @@ export default function VacancyList() {
   }
 
   const resetDisabled = !q && !company && !status
-  const visibleColumnCount = (visibleCols.title ? 1 : 0) + (visibleCols.company ? 1 : 0) + (visibleCols.status ? 1 : 0) + (visibleCols.updated ? 1 : 0)
+  const visibleColumnCount =
+    (visibleCols.title ? 1 : 0) +
+    (visibleCols.company ? 1 : 0) +
+    (visibleCols.status ? 1 : 0) +
+    (visibleCols.updated ? 1 : 0) +
+    (visibleCols.candidates ? 1 : 0) +
+    (visibleCols.headcount ? 1 : 0) +
+    (visibleCols.profile ? 1 : 0) +
+    (visibleCols.lastActivity ? 1 : 0)
   const tableColSpan = visibleColumnCount + 2
 
-  const vacancyInsights = useMemo(() => {
-    const arr = data.items || []
+  const pageStatusMix = useMemo(() => {
+    const arr = items
     const open = arr.filter((v) => !v.is_archived && (v.status || '').toLowerCase() === 'open').length
+    const on_hold = arr.filter((v) => !v.is_archived && (v.status || '').toLowerCase() === 'on_hold').length
     const closed = arr.filter((v) => !v.is_archived && (v.status || '').toLowerCase() === 'closed').length
     const archived = arr.filter((v) => v.is_archived).length
-    return { total: data.total, open, closed, archived }
-  }, [data.items, data.total])
+    return { open, on_hold, closed, archived }
+  }, [items])
+
+  const formatLastCandidateActivity = useCallback(
+    (iso: string | null | undefined) => {
+      if (!iso) return '—'
+      try {
+        return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: dateFnsLocale })
+      } catch {
+        return '—'
+      }
+    },
+    [dateFnsLocale]
+  )
 
   const vacancyHero = (
     <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
@@ -505,22 +580,27 @@ export default function VacancyList() {
           </button>
         </div>
       </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <p className="mt-4 text-xs text-white/70">{t('app.vacancies.list.insights.page_mix_caption')}</p>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
-          <div className="text-sm text-white/80">{t('app.vacancies.list.insights.total')}</div>
-          <div className="text-3xl font-semibold">{vacancyInsights.total}</div>
+          <div className="text-sm text-white/80">{t('app.vacancies.list.insights.matching_total')}</div>
+          <div className="text-3xl font-semibold">{data.total}</div>
         </div>
         <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
           <div className="text-sm text-white/80">{t('app.vacancies.list.insights.open')}</div>
-          <div className="text-3xl font-semibold">{vacancyInsights.open}</div>
+          <div className="text-3xl font-semibold">{pageStatusMix.open}</div>
+        </div>
+        <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
+          <div className="text-sm text-white/80">{t('app.vacancies.list.insights.on_hold')}</div>
+          <div className="text-3xl font-semibold">{pageStatusMix.on_hold}</div>
         </div>
         <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
           <div className="text-sm text-white/80">{t('app.vacancies.list.insights.closed')}</div>
-          <div className="text-3xl font-semibold">{vacancyInsights.closed}</div>
+          <div className="text-3xl font-semibold">{pageStatusMix.closed}</div>
         </div>
         <div className="rounded-2xl border border-white/30 bg-white/10 p-4">
           <div className="text-sm text-white/80">{t('app.vacancies.list.insights.archived')}</div>
-          <div className="text-3xl font-semibold">{vacancyInsights.archived}</div>
+          <div className="text-3xl font-semibold">{pageStatusMix.archived}</div>
         </div>
       </div>
     </section>
@@ -604,6 +684,10 @@ export default function VacancyList() {
                     <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.company} onChange={()=>toggleCol('company')} /> {t('app.vacancies.list.col_company')}</label>
                     <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.status} onChange={()=>toggleCol('status')} /> {t('app.vacancies.list.col_status')}</label>
                     <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.updated} onChange={()=>toggleCol('updated')} /> {t('app.vacancies.list.col_updated')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.candidates} onChange={()=>toggleCol('candidates')} /> {t('app.vacancies.list.col_candidates')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.headcount} onChange={()=>toggleCol('headcount')} /> {t('app.vacancies.list.col_headcount')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.profile} onChange={()=>toggleCol('profile')} /> {t('app.vacancies.list.col_profile')}</label>
+                    <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={visibleCols.lastActivity} onChange={()=>toggleCol('lastActivity')} /> {t('app.vacancies.list.col_last_activity')}</label>
                   </div>
                   <button type="button" className="btn-primary mt-3 w-full" onClick={() => { setActionsMenuOpen(false); saveView() }}>{t('app.vacancies.list.save_view')}</button>
                 </div>
@@ -647,7 +731,7 @@ export default function VacancyList() {
               title: error,
               hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
             }}
-            onRetry={() => void load()}
+            onRetry={() => refresh()}
             retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
             compact
           />
@@ -672,6 +756,22 @@ export default function VacancyList() {
                 )}
                 {visibleCols.status && (
                   <th className="border-b border-r border-slate-200"><SortHeader field="status" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_status')}</SortHeader></th>
+                )}
+                {visibleCols.candidates && (
+                  <th className="border-b border-r border-slate-200"><SortHeader field="candidate_count" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_candidates')}</SortHeader></th>
+                )}
+                {visibleCols.headcount && (
+                  <th className="border-b border-r border-slate-200">
+                    <SortHeader field="headcount_target" sort={sort} dir={dir} onSort={setSort}>
+                      {t('app.vacancies.list.col_headcount')}
+                    </SortHeader>
+                  </th>
+                )}
+                {visibleCols.profile && (
+                  <th className="border-b border-r border-slate-200"><SortHeader field="candidate_profile_name" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_profile')}</SortHeader></th>
+                )}
+                {visibleCols.lastActivity && (
+                  <th className="border-b border-r border-slate-200"><SortHeader field="last_candidate_activity_at" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_last_activity')}</SortHeader></th>
                 )}
                 {visibleCols.updated && (
                   <th className="border-b border-r border-slate-200"><SortHeader field="updated_at" sort={sort} dir={dir} onSort={setSort}>{t('app.vacancies.list.col_updated')}</SortHeader></th>
@@ -702,6 +802,30 @@ export default function VacancyList() {
                   )}
                   {visibleCols.status && (
                     <td className="border-r border-slate-200 px-4 py-3"><StatusBadge value={v.status || ''} archived={v.is_archived} label={statusLabel(v.status, v.is_archived)} /></td>
+                  )}
+                  {visibleCols.candidates && (
+                    <td className="border-r border-slate-200 px-4 py-3 tabular-nums">
+                      <Link className="font-medium text-brand-700 hover:underline" to={`/app/vacancies/${v.id}/candidates`}>
+                        {v.candidate_count ?? 0}
+                      </Link>
+                    </td>
+                  )}
+                  {visibleCols.headcount && (
+                    <td className="border-r border-slate-200 px-4 py-3 tabular-nums text-slate-700">
+                      {v.headcount_target != null && v.headcount_target > 0 ? (
+                        <span title={t('app.vacancies.list.headcount_title', { defaultValue: 'Candidates / target headcount' })}>
+                          {v.candidate_count ?? 0}/{v.headcount_target}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                  )}
+                  {visibleCols.profile && (
+                    <td className="border-r border-slate-200 px-4 py-3 text-slate-600">{v.candidate_profile_name || '—'}</td>
+                  )}
+                  {visibleCols.lastActivity && (
+                    <td className="border-r border-slate-200 px-4 py-3 text-slate-600">{formatLastCandidateActivity(v.last_candidate_activity_at)}</td>
                   )}
                   {visibleCols.updated && (
                     <td className="border-r border-slate-200 px-4 py-3">{v.updated_at ? new Date(v.updated_at).toLocaleDateString() : (v.created_at ? new Date(v.created_at).toLocaleDateString() : '—')}</td>

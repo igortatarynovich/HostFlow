@@ -222,6 +222,7 @@ async def list_invoices(
     service_order_id: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     unpaid: Optional[bool] = Query(None, description="If true, return only invoices with paid_amount < total_amount"),
+    q: Optional[str] = Query(None, description="Search invoice number or linked company name (substring)"),
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ) -> List[InvoiceOut]:
@@ -237,6 +238,7 @@ async def list_invoices(
         service_order_id=service_order_id,
         status=status,
         unpaid=unpaid,
+        q=q,
         limit=limit,
         offset=offset,
     )

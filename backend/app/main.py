@@ -60,11 +60,8 @@ try:
     from backend.app.api.v1 import automation_log as automation_log_router
     from backend.app.api.v1 import automation_rules as automation_rules_router
     from backend.app.api.v1 import services as additional_services_router
-    try:
-        from backend.app.api.v1 import scanner as scanner_router
-    except ImportError as _e:
-        logger.warning("[startup] scanner module disabled (opencv/cv2 unavailable): %s", _e)
-        scanner_router = None  # type: ignore[assignment]
+    # Legacy OpenCV document scanner product path removed (see docs/SSOT.md); keep package for future LLM pipeline.
+    scanner_router = None  # type: ignore[assignment]
     from backend.app.auth.router import router as auth_router
     from backend.app.auth.whoami import router as whoami_router
     from backend.app.auth.ensure_multitenancy import ensure_auth_multitenancy
@@ -83,11 +80,7 @@ try:
     from backend.app.api.v1.own_companies import legacy_router as own_companies_legacy_router
     from backend.app.api.v1.own_companies import router as own_companies_router
     from backend.app.api.public import intake as public_intake_router
-    try:
-        from backend.app.api.public import scanner as public_scanner_router
-    except ImportError as _e:
-        logger.warning("[startup] public scanner module disabled (opencv/cv2 unavailable): %s", _e)
-        public_scanner_router = None  # type: ignore[assignment]
+    public_scanner_router = None  # type: ignore[assignment]
     from backend.app.api.public import notifications as public_notifications_router
     from backend.app.api.public import client_portal as public_client_portal_router
     from backend.app.api.public import goals as public_goals_router
@@ -154,11 +147,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import reminders_v2 as reminders_v2_router  # type: ignore[no-redef]
     from .api.v1 import activities_v1 as activities_v1_router  # type: ignore[no-redef]
     from .api.v1 import services as additional_services_router  # type: ignore[no-redef]
-    try:
-        from .api.v1 import scanner as scanner_router  # type: ignore[no-redef]
-    except ImportError as _e:
-        logger.warning("[startup] scanner module disabled (opencv/cv2 unavailable): %s", _e)
-        scanner_router = None  # type: ignore[assignment]
+    scanner_router = None  # type: ignore[assignment]
     from .auth.router import router as auth_router  # type: ignore[no-redef]
     from .auth.whoami import router as whoami_router  # type: ignore[no-redef]
     from .auth.ensure_multitenancy import ensure_auth_multitenancy  # type: ignore[no-redef]
@@ -174,11 +163,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .services.ensure_funnels_schema import ensure_funnels_schema  # type: ignore[no-redef]
     from .api.v1.vacancies.router import router as vacancies_router  # type: ignore[no-redef]
     from .api.public import intake as public_intake_router  # type: ignore[no-redef]
-    try:
-        from .api.public import scanner as public_scanner_router  # type: ignore[no-redef]
-    except ImportError as _e:
-        logger.warning("[startup] public scanner module disabled (opencv/cv2 unavailable): %s", _e)
-        public_scanner_router = None  # type: ignore[assignment]
+    public_scanner_router = None  # type: ignore[assignment]
     from .api.public import notifications as public_notifications_router  # type: ignore[no-redef]
     from .api.public import client_portal as public_client_portal_router  # type: ignore[no-redef]
     from .api.public import goals as public_goals_router  # type: ignore[no-redef]
@@ -677,11 +662,6 @@ async def healthz() -> dict[str, str]:
 # --- include routers ---
 
 # Public routes (register FIRST to avoid conflicts with other routes)
-# Public scanner routes - NO /api/v1 prefix, they use /public/scan-sessions directly
-if public_scanner_router is not None:
-    app.include_router(public_scanner_router.meta_router)
-    app.include_router(public_scanner_router.router)
-
 # Auth
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(whoami_router, prefix="/api/v1/auth", tags=["auth"])  # /whoami

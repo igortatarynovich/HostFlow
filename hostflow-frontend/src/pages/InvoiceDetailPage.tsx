@@ -16,6 +16,7 @@ import type { Invoice, InvoiceActivity, InvoiceStatus, ReminderRecord } from '..
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { Modal } from '../components/Modal'
+import { serviceOrderWorkspacePath } from '../modules/services/utils'
 
 const currencyFormatter = new Intl.NumberFormat('pl-PL', {
   style: 'currency',
@@ -752,7 +753,10 @@ export default function InvoiceDetailPage() {
                 </Link>
               )}
               {invoice.service_order_id && (
-                <Link to={`/app/services?order=${invoice.service_order_id}`} className="text-sm text-brand-700 hover:underline">
+                <Link
+                  to={serviceOrderWorkspacePath(String(invoice.service_order_id), invoice.company_id)}
+                  className="text-sm text-brand-700 hover:underline"
+                >
                   {t('app.invoices.open_service_order', { defaultValue: 'Open service order' })}
                 </Link>
               )}

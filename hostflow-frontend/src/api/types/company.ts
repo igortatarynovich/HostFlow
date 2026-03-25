@@ -20,6 +20,9 @@ export interface Company {
   /** Filled when GET /companies/?include_service_metrics=true */
   service_active_orders?: number | null;
   service_revenue_completed?: number | null;
+  /** Filled when GET /companies/?include_recruitment_metrics=true */
+  recruitment_vacancies_active?: number | null;
+  recruitment_candidates_total?: number | null;
   legal_name?: string | null;
   reg_no?: string | null;
   tax_id?: string | null;

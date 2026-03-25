@@ -6,10 +6,10 @@ export default function ActivitiesPage() {
   const { t } = useI18n()
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       <WorkspaceTopNav active="tasks" />
 
-      <header className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+      <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">

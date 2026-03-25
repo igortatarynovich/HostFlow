@@ -1,0 +1,261 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import clsx from 'clsx'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { IconRefresh } from '@tabler/icons-react'
+import type { CommunicationThread } from '../api/communications'
+import { useCommunicationsThread } from '../hooks/useCommunicationsThread'
+import { useI18n } from '../i18n'
+import { useAuth } from '../store/useAuth'
+import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
+import { useEmailInboundSync } from '../hooks/useEmailInboundSync'
+import InboxUnifiedThreadList, { type InboxHubFilter } from '../components/communications/InboxUnifiedThreadList'
+import InboxEmailFolderRail from '../components/communications/InboxEmailFolderRail'
+import CommunicationsThreadWorkArea from '../components/communications/CommunicationsThreadWorkArea'
+import CommunicationsInboxControlPanel from '../components/communications/CommunicationsInboxControlPanel'
+import CommunicationsInboxWorkspaceGrid from '../components/communications/CommunicationsInboxWorkspaceGrid'
+import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { emailThreadInFolder, type EmailFolderKey } from '../utils/emailInboxFolders'
+import { fetchInboxThreadPool } from '../utils/inboxThreadLoad'
+import {
+  inboxContextQueryString,
+  inboxContextSearchParams,
+  readInboxListQuery,
+  type InboxChannelScope,
+  type InboxListQuery,
+} from '../utils/inboxUrlQuery'
+
+function isActiveThread(th: CommunicationThread): boolean {
+  return !th.is_archived && String(th.status || '').toLowerCase() !== 'deleted'
+}
+
+export default function CommunicationsInboxCenterPage() {
+  const { t } = useI18n()
+  const { me } = useAuth()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const listQuery = useMemo(() => readInboxListQuery(searchParams), [searchParams])
+  const { threadId = '' } = useParams()
+  const { canUseCommunicationsFeature, loading: accessLoading } = useCommunicationsAccess()
+  const hasMessages = canUseCommunicationsFeature('messages')
+  const hasEmail = canUseCommunicationsFeature('email')
+
+  const effectiveChannel: InboxChannelScope = useMemo(() => {
+    if (listQuery.channel === 'email' && !hasEmail && hasMessages) return 'messages'
+    if (listQuery.channel === 'messages' && !hasMessages && hasEmail) return 'email'
+    return listQuery.channel
+  }, [hasEmail, hasMessages, listQuery.channel])
+
+  const listQueryForLinks: InboxListQuery = useMemo(
+    () => ({
+      ...listQuery,
+      channel: effectiveChannel,
+    }),
+    [effectiveChannel, listQuery],
+  )
+
+  const backToHubPath = useMemo(() => `/app/inbox${inboxContextQueryString(listQueryForLinks)}`, [listQueryForLinks])
+
+  const [threads, setThreads] = useState<CommunicationThread[]>([])
+  const [listLoading, setListLoading] = useState(true)
+  const [listError, setListError] = useState<string | null>(null)
+  const [hubFilter, setHubFilter] = useState<InboxHubFilter>('all')
+
+  const loadList = useCallback(async () => {
+    setListLoading(true)
+    setListError(null)
+    try {
+      const items = await fetchInboxThreadPool({
+        effectiveChannel,
+        hasEmail,
+        hasMessages,
+        q: listQuery.q,
+      })
+      setThreads(items)
+    } catch {
+      setThreads([])
+      setListError(t('app.communications_inbox_hub.error'))
+    } finally {
+      setListLoading(false)
+    }
+  }, [effectiveChannel, hasEmail, hasMessages, listQuery.q, t])
+
+  useEffect(() => {
+    void loadList()
+  }, [loadList])
+
+  const emailFolderFiltered = useMemo(() => {
+    if (effectiveChannel !== 'email' || !hasEmail) return threads
+    return threads.filter((th) => emailThreadInFolder(th, listQuery.folder))
+  }, [effectiveChannel, hasEmail, listQuery.folder, threads])
+
+  const assigneeFiltered = useMemo(() => {
+    const meId = String(me?.id || '').trim()
+    let rows = emailFolderFiltered
+    if (effectiveChannel === 'email' && listQuery.assignedToMe && meId) {
+      rows = rows.filter((th) => String(th.assignee_id || '').trim() === meId)
+    }
+    if (effectiveChannel === 'email' && listQuery.hasAssignee) {
+      rows = rows.filter((th) => Boolean(String(th.assignee_id || '').trim()))
+    }
+    return rows
+  }, [effectiveChannel, emailFolderFiltered, listQuery.assignedToMe, listQuery.hasAssignee, me?.id])
+
+  const listForUi = useMemo(() => {
+    if (effectiveChannel === 'email' && hasEmail) return assigneeFiltered
+    return assigneeFiltered.filter(isActiveThread)
+  }, [assigneeFiltered, effectiveChannel, hasEmail])
+
+  const { pollBusy, fetchInboundNow } = useEmailInboundSync({
+    enabled: effectiveChannel === 'email' && hasEmail && !accessLoading,
+    listLoading,
+    busy: false,
+    onAfterPoll: loadList,
+  })
+
+  const writeInboxQuery = useCallback(
+    (next: InboxListQuery) => {
+      setSearchParams(inboxContextSearchParams(next), { replace: true })
+    },
+    [setSearchParams],
+  )
+
+  const onEmailFolderChange = (folder: EmailFolderKey) => {
+    writeInboxQuery({ ...listQuery, channel: 'email', folder })
+  }
+
+  const model = useCommunicationsThread(threadId, { backListPathOverride: backToHubPath })
+  const { thread, loading: threadLoading, load, errorText } = model
+
+  const showListLoading = accessLoading || listLoading
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-slate-50 crm-page-inset">
+      <Link
+        to={backToHubPath}
+        className="border-b border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-700 hover:bg-slate-50 xl:hidden"
+      >
+        {t('app.communications_inbox_center.back_all_threads', { defaultValue: '← All threads' })}
+      </Link>
+      <CommunicationsInboxWorkspaceGrid variant="inbox_center" className="min-h-0 flex-1">
+        <aside
+          className={clsx(
+            'hidden min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200 bg-white xl:flex',
+          )}
+        >
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+            {effectiveChannel === 'email' && hasEmail && (
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => void fetchInboundNow()}
+                  disabled={pollBusy}
+                  className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  title={t('app.communications.email.sync.title', { defaultValue: 'Sync incoming mail' })}
+                  aria-label={t('app.communications.email.sync.title', { defaultValue: 'Sync incoming mail' })}
+                >
+                  <IconRefresh size={18} stroke={1.75} className={pollBusy ? 'animate-spin' : ''} />
+                </button>
+              </div>
+            )}
+            {effectiveChannel === 'email' && hasEmail && (
+              <InboxEmailFolderRail threads={threads} activeFolder={listQuery.folder} onFolderChange={onEmailFolderChange} />
+            )}
+            {showListLoading && <p className="text-sm text-slate-500">{t('app.communications_inbox_hub.loading')}</p>}
+            {!showListLoading && listError && (
+              <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-sm text-rose-800">
+                <p>{listError}</p>
+                <button type="button" className="btn-secondary btn-sm mt-2" onClick={() => void loadList()}>
+                  {t('app.communications_inbox_hub.retry')}
+                </button>
+              </div>
+            )}
+            {!showListLoading && !listError && (hasMessages || hasEmail) && (
+              <>
+                {listQuery.candidateId ? (
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2 text-xs text-sky-950">
+                    <span>{t('app.communications_inbox_hub.scoped_candidate_hint')}</span>
+                    <button
+                      type="button"
+                      className="font-medium text-brand-700 hover:underline"
+                      onClick={() => {
+                        const tid = String(threadId || '').trim()
+                        const qs = inboxContextQueryString({ ...listQueryForLinks, candidateId: '' })
+                        navigate(tid ? `/app/inbox/threads/${encodeURIComponent(tid)}${qs}` : `/app/inbox${qs}`, {
+                          replace: true,
+                        })
+                      }}
+                    >
+                      {t('app.communications_inbox_hub.scoped_candidate_clear')}
+                    </button>
+                  </div>
+                ) : null}
+                <InboxUnifiedThreadList
+                  threads={listForUi}
+                  hubFilter={hubFilter}
+                  onHubFilterChange={setHubFilter}
+                  hasMessages={effectiveChannel === 'email' ? false : hasMessages}
+                  hasEmail={effectiveChannel === 'messages' ? false : hasEmail}
+                  threadLinkPrefix="/app/inbox/threads"
+                  linkedCandidateId={listQuery.candidateId || undefined}
+                  selectedThreadId={threadId}
+                  hideSectionHeading
+                  listQuery={listQueryForLinks}
+                />
+              </>
+            )}
+          </div>
+        </aside>
+
+        <main className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50">
+          {threadLoading && (
+            <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</p>
+          )}
+          {!threadLoading && !thread && (
+            <div className="space-y-3">
+              <ErrorRecoveryBanner
+                info={{
+                  title: errorText || t('app.communications.states.empty', { defaultValue: 'No activity yet' }),
+                  hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+                }}
+                onRetry={() => void load()}
+                retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                secondaryTo={backToHubPath}
+                secondaryLabel={t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' })}
+                compact
+              />
+            </div>
+          )}
+          {!threadLoading && thread && (
+            <div className="card flex min-h-0 flex-1 flex-col p-4">
+              <CommunicationsThreadWorkArea thread={thread} model={model} layout="inboxCenter" />
+            </div>
+          )}
+        </main>
+
+        <aside
+          className={clsx(
+            'hidden min-h-0 min-w-0 flex-col overflow-y-auto rounded-lg border border-slate-200 bg-white xl:flex',
+          )}
+        >
+          {thread ? (
+            <CommunicationsInboxControlPanel
+              thread={thread}
+              model={model}
+              compact
+              onAfterArchiveOrDelete={() => {
+                void loadList()
+                navigate(backToHubPath)
+              }}
+            />
+          ) : (
+            <div className="p-4 text-sm text-slate-500">
+              {t('app.communications_inbox_center.channel_rail_empty', {
+                defaultValue: 'Select a thread for links, follow-up task, workflow, and archive.',
+              })}
+            </div>
+          )}
+        </aside>
+      </CommunicationsInboxWorkspaceGrid>
+    </div>
+  )
+}

@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { formatDistanceToNow } from 'date-fns'
+import { enUS, pl as plFns, ru as ruFns } from 'date-fns/locale'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -8,10 +10,13 @@ import { api } from '../../api/client'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { SectionCard } from '../ui/SectionCard'
 import { useI18n } from '../../i18n'
+import type { LocaleCode } from '../../i18n'
 import { EMPLOYMENT_TYPES, createVacancy, getVacancy, updateVacancy } from '../../api/vacancies'
 import type { EmploymentType } from '../../api/vacancies'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
+import { usePermissions } from '../../hooks/usePermissions'
+import { servicesWorkspacePath } from '../../modules/services/utils'
 
 const primaryBtn = 'btn-primary'
 const secondaryBtn = "inline-flex items-center gap-2 px-3 py-2 rounded-md border border-slate-300 text-slate-800 bg-white hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer";
@@ -39,6 +44,7 @@ const vacancyFormSchema = z.object({
     .optional()
     .transform((v) => (v === '' || v == null ? undefined : v)),
   criteria_requires_documents: z.string().optional().or(z.literal('')),
+  headcount_target: z.string().optional().or(z.literal('')),
 })
 
 type VacancyFormValues = z.infer<typeof vacancyFormSchema>
@@ -77,7 +83,7 @@ function ensurePersistedFields(normalized: any, source: any) {
     'salary_from', 'salary_to', 'currency',
     'is_open', 'is_active', 'is_archived',
     'employment_type', 'location', 'company_id',
-    'created_at', 'updated_at', 'tenant_id', 'company_name'
+    'created_at', 'updated_at', 'tenant_id', 'company_name', 'headcount_target', 'candidate_count'
   ] as const
 
   const ensured: any = { ...normalized }
@@ -130,10 +136,20 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     candidate_profile_id: source?.candidate_profile_id ?? '',
     criteria_min_experience_eu_years: crit?.min_experience_eu_years ?? '',
     criteria_requires_documents: Array.isArray(crit?.requires_documents) ? crit.requires_documents.join(', ') : '',
+    headcount_target:
+      source?.headcount_target != null && Number(source.headcount_target) > 0
+        ? String(source.headcount_target)
+        : '',
   }
 }
 
 type TabKey = 'info' | 'candidates' | 'notes'
+
+const DATE_FNS_LOCALES: Record<LocaleCode, typeof enUS> = {
+  en: enUS,
+  pl: plFns,
+  ru: ruFns,
+}
 
 function StatPill({ stageCode, value }:{ stageCode: string; value: React.ReactNode }){
   return (
@@ -174,10 +190,12 @@ function MiniTable({
 }
 
 export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemove }: Props) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
+  const dateFnsLocale = DATE_FNS_LOCALES[locale] ?? enUS
+  const { can } = usePermissions()
   const leadFieldExperience = 'experience_eu_years'
   const leadFieldDocuments = 'documents[]'
-  const { id: routeId } = useParams<{ id: string }>()
+  const { id: routeId, tab: tabFromRoute } = useParams<{ id: string; tab?: string }>()
   const [searchParams] = useSearchParams()
   const companyFromUrl = searchParams.get('company') || ''
 
@@ -197,6 +215,12 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
   const [model, setModel] = useState<any | null>(item ? toModel(item) : null)
   const [tab, setTab] = useState<TabKey>('info')
+
+  useEffect(() => {
+    if (tabFromRoute === 'candidates' || tabFromRoute === 'notes' || tabFromRoute === 'info') {
+      setTab(tabFromRoute)
+    }
+  }, [tabFromRoute])
   const [candLoading, setCandLoading] = useState(false)
   const [candItems, setCandItems] = useState<any[]>([])
   const [saving, setSaving] = useState(false)
@@ -306,6 +330,22 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
     }
     loadPipe()
   }, [model?.id])
+
+  const pipelineBottleneck = useMemo(() => {
+    const entries = Object.entries(pipeCounts).filter(([, n]) => Number(n) > 0)
+    if (!entries.length) return null
+    return entries.reduce((a, b) => (Number(b[1]) > Number(a[1]) ? b : a))
+  }, [pipeCounts])
+
+  const lastCandidateActivityLabel = useMemo(() => {
+    const raw = model?.last_candidate_activity_at
+    if (!raw) return null
+    try {
+      return formatDistanceToNow(new Date(raw), { addSuffix: true, locale: dateFnsLocale })
+    } catch {
+      return null
+    }
+  }, [model?.last_candidate_activity_at, dateFnsLocale])
 
   const loadCandidateProfiles = useCallback(async () => {
     try {
@@ -562,6 +602,17 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             >
               {t('app.candidates.pipeline.title', { defaultValue: 'Пайплайн' })}
             </Link>
+            {can('services.view') && model?.id ? (
+              <Link
+                className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
+                to={servicesWorkspacePath('orders', {
+                  vacancyId: String(model.id),
+                  ...(model.company_id ? { companyId: String(model.company_id) } : {}),
+                })}
+              >
+                {t('app.nav.items.services')}
+              </Link>
+            ) : null}
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
@@ -580,6 +631,52 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
           </div>
         </div>
         {pipeLoading && <div className="mt-2 text-xs text-white/70">{t('common.loading')}</div>}
+        {model?.id && routeId !== 'new' ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-white/25 bg-black/10 px-4 py-3 text-sm text-white/95">
+            <span className="font-medium">
+              {t('app.vacancies.detail.ops.candidates_linked', {
+                values: { count: model.candidate_count ?? 0 },
+                defaultValue: '{count} candidates on this vacancy',
+              })}
+            </span>
+            {model.headcount_target != null && model.headcount_target > 0 ? (
+              <span className="text-white/90">
+                {t('app.vacancies.detail.ops.headcount_target', {
+                  values: {
+                    current: model.candidate_count ?? 0,
+                    target: model.headcount_target,
+                  },
+                  defaultValue: 'Headcount: {current} / {target} candidates',
+                })}
+              </span>
+            ) : null}
+            {lastCandidateActivityLabel ? (
+              <span className="text-white/80">
+                {t('app.vacancies.detail.ops.last_candidate_activity', {
+                  values: { when: lastCandidateActivityLabel },
+                  defaultValue: 'Last candidate activity {when}',
+                })}
+              </span>
+            ) : null}
+            {pipelineBottleneck ? (
+              <span className="text-white/85">
+                {t('app.vacancies.detail.ops.bottleneck', {
+                  values: { stage: pipelineBottleneck[0], count: pipelineBottleneck[1] },
+                  defaultValue: 'Largest pipeline stage: {stage} ({count})',
+                })}
+              </span>
+            ) : null}
+            <div className="ml-auto flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-white/30 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25"
+                onClick={() => setTab('candidates')}
+              >
+                {t('app.vacancies.detail.ops.open_candidate_queue', { defaultValue: 'Candidate queue' })}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <div className="flex items-center gap-2 border-b border-slate-200">
@@ -679,6 +776,26 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <label className="block">
               <div className="label">Локация</div>
               <input className="input" {...register('location')} />
+            </label>
+
+            <label className="block">
+              <div className="label">
+                {t('app.vacancies.detail.fields.headcount_target', { defaultValue: 'Target headcount (positions)' })}
+              </div>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={9999}
+                className="input"
+                {...register('headcount_target')}
+                placeholder="—"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                {t('app.vacancies.detail.fields.headcount_hint', {
+                  defaultValue: 'Planned hires for this role. Leave empty if not used.',
+                })}
+              </p>
             </label>
 
             <div className="md:col-span-2 flex items-center gap-6">

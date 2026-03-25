@@ -69,7 +69,14 @@ const FALLBACK_LABELS: Record<string, string> = {
   closed: 'Closed',
 }
 
-export default function StageTag({ code }: { code?: string | null }) {
+export default function StageTag({
+  code,
+  size = 'md',
+}: {
+  code?: string | null
+  /** `sm` — компактный бейдж рядом с select в таблице кандидатов */
+  size?: 'sm' | 'md'
+}) {
   const { t } = useI18n()
   const raw = code || 'new'
   const canonical = canonicalStageKey(raw, raw)
@@ -80,7 +87,14 @@ export default function StageTag({ code }: { code?: string | null }) {
     String(raw) ||
     '—'
   return (
-    <span className={clsx('badge inline-flex items-center px-2 py-0.5 text-xs font-medium', COLORS[c] || 'bg-slate-200 text-slate-800')}>
+    <span
+      className={clsx(
+        'badge inline-flex max-w-full items-center truncate font-medium',
+        size === 'sm' ? 'px-1.5 py-0 text-[10px]' : 'px-2 py-0.5 text-xs',
+        COLORS[c] || 'bg-slate-200 text-slate-800',
+      )}
+      title={label}
+    >
       {label}
     </span>
   )

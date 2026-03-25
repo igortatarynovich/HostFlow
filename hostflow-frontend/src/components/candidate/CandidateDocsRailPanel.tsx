@@ -23,6 +23,15 @@ type SummaryResponse = {
   expiring_soon?: Array<{ type: string; expires_at: string }>
 }
 
+/** Serializable checklist snapshot (matches work-panel `documents_summary` + getSummary shape). */
+export type CandidateDocsRailSummarySnapshot = SummaryResponse
+
+/** When set, rail can skip duplicate `getSummary` while the parent work-panel bundle is loading or seeded. */
+export type CandidateDocsRailEmbeddedDocumentsSummary = {
+  ready: boolean
+  summary: CandidateDocsRailSummarySnapshot | null
+}
+
 type Props = {
   candidateId: string
   ownerContext?: Record<string, any> | null
@@ -59,6 +68,13 @@ type Props = {
   showPipelineWaiverSection?: boolean
   /** Card is read-only: explain why “Request waiver” form is hidden. */
   pipelineWaiverReadOnlyCard?: boolean
+  /** Single priority step in the work rail (document gate). */
+  primaryStepHighlight?: boolean
+  /**
+   * List work-panel: hydrate from `GET .../work-panel` `documents_summary` and avoid a redundant
+   * `getSummary` when `ready` + non-null `summary`. Omit on candidate card (always fetch).
+   */
+  embeddedDocumentsSummary?: CandidateDocsRailEmbeddedDocumentsSummary
 }
 
 type RowStatus = 'missing' | 'expiring' | 'valid' | 'in_progress'
@@ -86,6 +102,8 @@ export default function CandidateDocsRailPanel({
   onRejectPipelineOverride,
   showPipelineWaiverSection: showPipelineWaiverSectionProp,
   pipelineWaiverReadOnlyCard = false,
+  embeddedDocumentsSummary,
+  primaryStepHighlight = false,
 }: Props) {
   const { t, locale } = useI18n()
   const { gates } = useHiringPipelineGates()
@@ -118,8 +136,28 @@ export default function CandidateDocsRailPanel({
   }, [candidateId, ownerContext, t])
 
   useEffect(() => {
+    if (embeddedDocumentsSummary !== undefined) return
     void load()
-  }, [load, refreshTrigger])
+  }, [embeddedDocumentsSummary, load, refreshTrigger])
+
+  useEffect(() => {
+    if (embeddedDocumentsSummary === undefined) return
+    if (refreshTrigger > 0) {
+      void load()
+      return
+    }
+    if (!embeddedDocumentsSummary.ready) {
+      setLoading(true)
+      return
+    }
+    if (embeddedDocumentsSummary.summary) {
+      setSummary(embeddedDocumentsSummary.summary)
+      setErrorText(null)
+      setLoading(false)
+      return
+    }
+    void load()
+  }, [embeddedDocumentsSummary, load, refreshTrigger])
 
   useEffect(() => {
     onLoadingChange?.(loading)
@@ -321,11 +359,28 @@ export default function CandidateDocsRailPanel({
     [locale],
   )
 
+  const primary = Boolean(primaryStepHighlight)
+
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-3">
+    <section
+      className={clsx(
+        'rounded-2xl border border-slate-200 bg-white p-3 transition-shadow duration-200',
+        primary && 'ring-2 ring-amber-400/95 ring-offset-2 ring-offset-white shadow-sm shadow-amber-500/10',
+      )}
+      data-rail-primary-step={primary ? 'true' : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs font-semibold text-slate-800">{t('app.candidate_card.documents.title', { defaultValue: 'Documents' })}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs font-semibold text-slate-800">
+              {t('app.candidate_card.documents.title', { defaultValue: 'Documents' })}
+            </div>
+            {primary ? (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
+                {t('app.candidate_card.rail.primary_step_badge', { defaultValue: 'Next step' })}
+              </span>
+            ) : null}
+          </div>
 
           <div className="mt-1 text-[11px] text-slate-600">
             {hideEarlyStageDocDetails

@@ -826,30 +826,6 @@ export default function PublicApplyPage() {
     return !required
   }, [])
 
-  const handleOpenScanner = useCallback(
-    async (docCode: string) => {
-      if (!token) return
-      try {
-        const { createPublicScanSession } = await import('../../api/scanner')
-        // Don't pass preset_code - let backend determine it from document_type
-        const session = await createPublicScanSession({
-          token,
-          document_type: docCode,
-        })
-        // Open scanner in new window/tab
-        const scanUrl = `/public/scan?token=${token}&doc=${docCode}&session=${session.id}&return_to=${encodeURIComponent(window.location.href)}`
-        window.open(scanUrl, '_blank', 'noopener,noreferrer')
-      } catch (err: any) {
-        notify({
-          title: t('public.intake.notifications.scanner_failed', { defaultValue: 'Failed to open scanner' }),
-          description: err?.response?.data?.detail || err?.message,
-          variant: 'error',
-        })
-      }
-    },
-    [token, notify, t]
-  )
-
   const renderUploadField = useCallback(
     (code: string, currentFile: File | null) => {
       const inputId = `doc-upload-${code}`
@@ -894,7 +870,7 @@ export default function PublicApplyPage() {
         </div>
       )
     },
-    [docUploading, docUploadErrors, handleDocumentFileChange, t, uploadDocumentForType, handleOpenScanner]
+    [docUploading, docUploadErrors, handleDocumentFileChange, t, uploadDocumentForType]
   )
 
   const handleRotateShareLink = useCallback(async () => {

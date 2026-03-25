@@ -5,7 +5,7 @@ from typing import Optional, TYPE_CHECKING, List
 from uuid import uuid4
 from enum import Enum
 
-from sqlalchemy import Boolean, ForeignKey, String, Text, text
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.db.base import Base
@@ -67,6 +67,9 @@ class Vacancy(Base, TimestampMixin):
     salary_to: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     currency: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     status: Mapped[str] = mapped_column(String, nullable=False, default="open")
+
+    # Planned number of positions to fill (recruitment container target); optional.
+    headcount_target: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # free-form JSON stored as string for now
     extra: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

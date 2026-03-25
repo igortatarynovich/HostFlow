@@ -5,7 +5,10 @@ import json
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Dict, Optional
+
+import httpx
 
 
 @dataclass
@@ -184,6 +187,45 @@ async def send_telegram_text(
         reply_to_message_id=reply_to_message_id,
         reply_markup=reply_markup,
     )
+
+
+async def send_telegram_document(
+    cfg: TelegramBotConfig,
+    *,
+    chat_id: str,
+    file_path: str,
+    filename: str,
+    mime_type: str | None = None,
+    caption: str | None = None,
+    reply_to_message_id: int | None = None,
+) -> Dict[str, Any]:
+    """POST sendDocument (multipart) for a local file path."""
+
+    def _read_bytes() -> bytes:
+        return Path(file_path).read_bytes()
+
+    file_bytes = await asyncio.to_thread(_read_bytes)
+    url = _api_url(cfg.bot_token, "sendDocument")
+    data: Dict[str, str] = {"chat_id": str(chat_id)}
+    if caption is not None and str(caption).strip():
+        data["caption"] = str(caption)[:1024]
+    if reply_to_message_id is not None:
+        data["reply_to_message_id"] = str(int(reply_to_message_id))
+    mime = (mime_type or "application/octet-stream").strip() or "application/octet-stream"
+    safe_name = filename or "attachment"
+    files = {"document": (safe_name, file_bytes, mime)}
+    timeout = httpx.Timeout(cfg.timeout_seconds)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.post(url, data=data, files=files)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Telegram HTTP {resp.status_code}: {resp.text[:800]}")
+    try:
+        parsed: Dict[str, Any] = resp.json()
+    except Exception as exc:
+        raise RuntimeError(f"Telegram response parse failed: {exc}") from exc
+    if not isinstance(parsed, dict) or not parsed.get("ok"):
+        raise RuntimeError(f"Telegram API error: {parsed}")
+    return parsed
 
 
 def normalize_telegram_update(update: Dict[str, Any]) -> Dict[str, Any] | None:

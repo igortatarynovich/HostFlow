@@ -7,6 +7,7 @@ import {
   operationalHintForStageResolved,
   type StageOperationalHintKind,
 } from '../../utils/stageOperationalHints'
+import { isPipelineCompletedCanonicalStage } from '../../utils/candidatePipelineCompleted'
 
 function parseTs(value?: string | null): number {
   if (!value) return 0
@@ -68,10 +69,19 @@ export default function CandidateNextActionPanel(props: {
   nextPipelineStageCode?: string | null
   vacancyPipelineBlocking?: boolean
   contactAttemptPipelineBlocking?: boolean
+  /** Emphasize this panel as the single “do this next” rail step (reminder due, vacancy gate, etc.). */
+  primaryStepHighlight?: boolean
+  /**
+   * Documents rail/panel is shown alongside: do not duplicate checklist copy, badges, or “create doc task” here;
+   * keep missing types + upload only in that panel.
+   */
+  documentsChecklistSibling?: boolean
 }) {
   const { t, locale } = useI18n()
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [nowTs, setNowTs] = useState<number>(0)
+
+  const pipelineCompleted = isPipelineCompletedCanonicalStage(props.canonicalStageCode ?? undefined)
 
   const issuesPresent = props.docsIssuesPresent ?? props.docsBlockersActive ?? false
   const pipelineBlocking = props.docsPipelineBlocking ?? props.docsBlockersActive ?? false
@@ -169,12 +179,45 @@ export default function CandidateNextActionPanel(props: {
     })
   }, [stageHint, stageHintTitle, t])
 
+  const deferDocsDuplicate = Boolean(props.documentsChecklistSibling) && issuesPresent && !next
+
+  const primary = Boolean(props.primaryStepHighlight)
+
+  if (pipelineCompleted) {
+    return (
+      <section className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+        <div className="text-xs font-semibold text-slate-600">
+          {t('app.candidate_card.next_action.pipeline_completed_title', { defaultValue: 'Process completed' })}
+        </div>
+        <p className="mt-1 text-sm text-slate-600">
+          {t('app.candidate_card.next_action.pipeline_completed_body', {
+            defaultValue:
+              'This candidate is in a final stage (hired, rejected, declined, or probation completed) — no further pipeline steps apply.',
+          })}
+        </p>
+      </section>
+    )
+  }
+
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-3">
+    <section
+      className={clsx(
+        'rounded-2xl border border-slate-200 bg-white p-3 transition-shadow duration-200',
+        primary && 'ring-2 ring-amber-400/95 ring-offset-2 ring-offset-white shadow-sm shadow-amber-500/10',
+      )}
+      data-rail-primary-step={primary ? 'true' : undefined}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs font-semibold text-slate-800">
-            {t('app.candidate_card.next_action.title', { defaultValue: 'Next action' })}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs font-semibold text-slate-800">
+              {t('app.candidate_card.next_action.title', { defaultValue: 'Next action' })}
+            </div>
+            {primary ? (
+              <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-950">
+                {t('app.candidate_card.rail.primary_step_badge', { defaultValue: 'Next step' })}
+              </span>
+            ) : null}
           </div>
           {props.remindersError ? (
             <div className="mt-1 text-xs text-rose-600">{props.remindersError}</div>
@@ -193,6 +236,30 @@ export default function CandidateNextActionPanel(props: {
                   </span>
                 ) : null}
               </div>
+            </>
+          ) : deferDocsDuplicate ? (
+            <>
+              <div className="mt-1 text-sm text-slate-700">
+                {t('app.candidate_card.next_action.docs_in_panel_below', {
+                  defaultValue: 'What’s missing and where to upload are in the Documents section below.',
+                })}
+              </div>
+              {stageHint &&
+              stageHint.kind !== 'request_documents' &&
+              stageHint.kind !== 'verify_documents' ? (
+                <div className="mt-2 text-xs text-slate-600">
+                  {t('app.candidate_card.next_action.suggested_focus', {
+                    defaultValue: 'Suggested focus: {label}',
+                    values: { label: stageHintTitle(stageHint.kind) },
+                  })}
+                </div>
+              ) : (
+                <div className="mt-2 text-xs text-slate-500">
+                  {t('app.candidate_card.next_action.reminder_optional_nudge', {
+                    defaultValue: 'Add a reminder if you want a tracked due date.',
+                  })}
+                </div>
+              )}
             </>
           ) : issuesPresent ? (
             <>
@@ -270,6 +337,10 @@ export default function CandidateNextActionPanel(props: {
                 {t('app.candidate_card.next_action.snooze', { defaultValue: 'Snooze 1h' })}
               </button>
             </>
+          ) : deferDocsDuplicate ? (
+            <button type="button" className="btn-secondary btn-sm" onClick={() => setDetailsOpen(true)}>
+              {t('app.candidate_card.next_action.create', { defaultValue: 'Create' })}
+            </button>
           ) : issuesPresent ? (
             <button
               type="button"

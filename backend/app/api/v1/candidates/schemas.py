@@ -18,6 +18,8 @@ except ImportError:  # pragma: no cover - Pydantic < 2 compatibility
         return _wrapper
 from datetime import date, datetime
 
+from backend.app.api.v1.reminders_v2 import ReminderOut
+
 class CandidateCreate(BaseModel):
     first_name: str
     last_name: str
@@ -367,3 +369,42 @@ class CandidateChangeLogItemOut(BaseModel):
 
 class CandidateChangeLogResponse(BaseModel):
     items: List[CandidateChangeLogItemOut] = Field(default_factory=list)
+
+
+# --- Work panel aggregate (R1.5 Phase D) ------------------------------------
+
+
+class CandidateWorkPanelProfileOut(BaseModel):
+    contact_policy_enabled: bool = False
+    contact_attempt_count: int = 0
+    risk_score: Optional[float] = None
+    risk_band: Optional[str] = None
+    risk_drivers: List[str] = Field(default_factory=list)
+    risk_updated_at: Optional[str] = None
+    risk_version: Optional[str] = None
+
+
+class CandidateWorkPanelCommsOut(BaseModel):
+    messages_relative_url: str
+    email_relative_url: str
+    documents_relative_url: str
+
+
+class CandidateWorkPanelDocumentsSummaryOut(BaseModel):
+    """Subset of documents owner summary for list work-panel (blockers + readiness)."""
+
+    percent_ready: int = 0
+    status: Optional[str] = None
+    missing: List[str] = Field(default_factory=list)
+    problematic: List[str] = Field(default_factory=list)
+    ready_types: List[str] = Field(default_factory=list)
+    in_progress_types: List[str] = Field(default_factory=list)
+    expiring_soon: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+class CandidateWorkPanelResponse(BaseModel):
+    profile: CandidateWorkPanelProfileOut
+    reminders: List[ReminderOut]
+    timeline: CandidateTimelineResponse
+    comms: CandidateWorkPanelCommsOut
+    documents_summary: Optional[CandidateWorkPanelDocumentsSummaryOut] = None

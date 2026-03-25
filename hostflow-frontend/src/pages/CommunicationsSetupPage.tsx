@@ -1,14 +1,16 @@
 import clsx from 'clsx'
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import {
   createCommunicationAccount,
   completeCommunicationAccountOAuth,
+  deleteCommunicationAccount,
   getCommunicationSchedulerStatus,
   getCommunicationsSettings,
   listCommunicationAccounts,
   listCommunicationThreads,
+  patchCommunicationAccount,
   patchCommunicationsSettings,
   runCommunicationEmailPollWorker,
   simulateTelegramWebhook,
@@ -19,6 +21,29 @@ import {
   type CommunicationThread,
 } from '../api/communications'
 import { useI18n } from '../i18n'
+import { clearPendingGmailOAuthCode, peekPendingGmailOAuthCode } from '../utils/oauthRedirectBridge'
+
+type EmailFormState = {
+  accountLabel: string
+  provider: string
+  inboxAddress: string
+  clientId: string
+  clientSecret: string
+  redirectUri: string
+}
+
+function buildDefaultEmailForm(): EmailFormState {
+  const origin =
+    typeof window !== 'undefined' && window.location?.origin ? String(window.location.origin).replace(/\/$/, '') : ''
+  return {
+    accountLabel: '',
+    provider: 'gmail',
+    inboxAddress: '',
+    clientId: '',
+    clientSecret: '',
+    redirectUri: origin ? `${origin}/app/email` : 'https://hostflow.cc/app/email',
+  }
+}
 
 type SetupState = {
   channelsEnabled: boolean
@@ -28,12 +53,33 @@ type SetupState = {
   messengerInboundSeen: boolean
 }
 
+function parseOAuthAuthUrlForDebug(authUrl: string): { client_id: string | null; redirect_uri: string | null } {
+  try {
+    const u = new URL(authUrl)
+    return {
+      client_id: u.searchParams.get('client_id'),
+      redirect_uri: u.searchParams.get('redirect_uri'),
+    }
+  } catch {
+    return { client_id: null, redirect_uri: null }
+  }
+}
+
 function errorTextFrom(err: any, fallback: string): string {
-  const detail = err?.response?.data?.detail
+  const status = err?.response?.status as number | undefined
+  const data = err?.response?.data
+  const detail = data?.detail
   if (typeof detail === 'string' && detail.trim()) return detail
   if (Array.isArray(detail)) {
-    const msg = detail.map((x) => (typeof x?.msg === 'string' ? x.msg : null)).filter(Boolean).join('; ')
-    if (msg) return msg
+    const lines = detail
+      .map((x: any) => {
+        const m = typeof x?.msg === 'string' ? x.msg : typeof x?.message === 'string' ? x.message : ''
+        if (!m) return null
+        const loc = Array.isArray(x?.loc) ? x.loc.filter((p: unknown) => p !== 'body').join('.') : ''
+        return loc ? `${loc}: ${m}` : m
+      })
+      .filter(Boolean)
+    if (lines.length) return lines.join('; ')
   }
   if (detail && typeof detail === 'object') {
     if (typeof detail.msg === 'string' && detail.msg.trim()) return detail.msg
@@ -43,6 +89,7 @@ function errorTextFrom(err: any, fallback: string): string {
       // ignore
     }
   }
+  if (typeof data?.message === 'string' && data.message.trim()) return data.message
   if (typeof err?.message === 'string' && err.message.trim()) return err.message
   return fallback
 }
@@ -90,6 +137,8 @@ function SetupStepCard(props: {
 
 export default function CommunicationsSetupPage() {
   const { t } = useI18n()
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [errorText, setErrorText] = useState<string | null>(null)
   const [opsNotice, setOpsNotice] = useState<string | null>(null)
@@ -102,14 +151,10 @@ export default function CommunicationsSetupPage() {
   const [oauthStartByAccountId, setOauthStartByAccountId] = useState<Record<string, { state: string; authUrl: string } | undefined>>({})
   const [oauthCodeByAccountId, setOauthCodeByAccountId] = useState<Record<string, string | undefined>>({})
 
-  const [emailForm, setEmailForm] = useState({
-    accountLabel: '',
-    provider: 'gmail',
-    inboxAddress: '',
-    clientId: '',
-    clientSecret: '',
-    redirectUri: 'https://hostflow.cc/app/email',
-  })
+  const [selectedEmailAccountId, setSelectedEmailAccountId] = useState<string | null>(null)
+  const emailInitialSelectRef = useRef(false)
+
+  const [emailForm, setEmailForm] = useState<EmailFormState>(() => buildDefaultEmailForm())
   const [telegramForm, setTelegramForm] = useState({
     accountLabel: '',
     botToken: '',
@@ -160,7 +205,38 @@ export default function CommunicationsSetupPage() {
     }
   }, [reloadAll, t])
 
-  const emailAccounts = useMemo(() => accounts.filter((x) => String(x.channel || '').toLowerCase() === 'email' && Boolean(x.is_active)), [accounts])
+  useEffect(() => {
+    if (loading) return
+    const raw = location.hash.replace(/^#/, '').trim()
+    if (!raw) return
+    const stepId =
+      raw === 'email' || raw === 'email-oauth' || raw === 'step-email'
+        ? 'step-2'
+        : raw.startsWith('step-')
+          ? raw
+          : null
+    if (!stepId) return
+    const node = document.getElementById(stepId)
+    if (!node) return
+    const timer = window.setTimeout(() => {
+      node.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+    return () => window.clearTimeout(timer)
+  }, [loading, location.hash])
+
+  const emailAccountsAll = useMemo(() => {
+    return accounts
+      .filter((x) => String(x.channel || '').toLowerCase() === 'email')
+      .slice()
+      .sort((a, b) => String(a.account_label || '').localeCompare(String(b.account_label || ''), undefined, { sensitivity: 'base' }))
+  }, [accounts])
+
+  const emailAccounts = useMemo(() => emailAccountsAll.filter((x) => Boolean(x.is_active)), [emailAccountsAll])
+
+  const selectedEmailAccount = useMemo(
+    () => (selectedEmailAccountId ? emailAccountsAll.find((a) => a.id === selectedEmailAccountId) ?? null : null),
+    [emailAccountsAll, selectedEmailAccountId],
+  )
   const messengerAccounts = useMemo(() => accounts.filter((x) => String(x.channel || '').toLowerCase() !== 'email' && Boolean(x.is_active)), [accounts])
   const telegramAccounts = useMemo(() => accounts.filter((x) => String(x.channel || '').toLowerCase() === 'telegram' && Boolean(x.is_active)), [accounts])
   const oauthEmailAccounts = useMemo(
@@ -171,6 +247,87 @@ export default function CommunicationsSetupPage() {
       }),
     [emailAccounts],
   )
+
+  const primaryOAuthEmailAccount = useMemo(() => {
+    if (selectedEmailAccountId) {
+      const sel = emailAccountsAll.find((a) => a.id === selectedEmailAccountId)
+      if (sel) {
+        const p = String(sel.settings_json?.provider || '').toLowerCase()
+        if (p === 'gmail' || p === 'microsoft_graph') return sel
+      }
+    }
+    return oauthEmailAccounts[0]
+  }, [emailAccountsAll, oauthEmailAccounts, selectedEmailAccountId])
+
+  useEffect(() => {
+    if (loading || emailInitialSelectRef.current) return
+    if (emailAccountsAll.length === 0) return
+    emailInitialSelectRef.current = true
+    const oauthFirst = emailAccountsAll.find((a) => {
+      const p = String(a.settings_json?.provider || '').toLowerCase()
+      return p === 'gmail' || p === 'microsoft_graph'
+    })
+    setSelectedEmailAccountId(oauthFirst?.id ?? emailAccountsAll[0]!.id)
+  }, [loading, emailAccountsAll])
+
+  useEffect(() => {
+    if (loading) return
+    if (selectedEmailAccountId === null) {
+      setEmailForm(buildDefaultEmailForm())
+      return
+    }
+    const acc = emailAccountsAll.find((a) => a.id === selectedEmailAccountId)
+    if (!acc) {
+      setSelectedEmailAccountId(null)
+      return
+    }
+    const oauth = (acc.settings_json as { oauth?: Record<string, unknown> } | undefined)?.oauth ?? {}
+    const provider = String((acc.settings_json as { provider?: string } | undefined)?.provider || 'gmail').toLowerCase()
+    setEmailForm({
+      accountLabel: acc.account_label || '',
+      inboxAddress: acc.inbox_address || '',
+      provider: provider === 'microsoft_graph' ? 'microsoft_graph' : 'gmail',
+      clientId: String(oauth.client_id || ''),
+      clientSecret: '',
+      redirectUri: String(oauth.redirect_uri || '').trim() || buildDefaultEmailForm().redirectUri,
+    })
+  }, [loading, selectedEmailAccountId, emailAccountsAll])
+
+  const oauthAccountMissingToken = useMemo(
+    () => oauthEmailAccounts.some((acc) => !acc.settings_json?.oauth?.has_access_token),
+    [oauthEmailAccounts],
+  )
+
+  /** Prefill authorization code from `/app/email?code=...` redirect or sessionStorage. */
+  useEffect(() => {
+    if (loading) return
+    const first = primaryOAuthEmailAccount
+    if (!first?.id) return
+    const fromUrl = searchParams.get('code')?.trim() || ''
+    const pending = peekPendingGmailOAuthCode() || ''
+    const code = fromUrl || pending
+    if (!code) return
+    let applied = false
+    setOauthCodeByAccountId((prev) => {
+      if (prev[first.id] === code) return prev
+      applied = true
+      return { ...prev, [first.id]: code }
+    })
+    if (fromUrl) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('code')
+      next.delete('state')
+      next.delete('scope')
+      setSearchParams(next, { replace: true })
+    }
+    if (applied) {
+      setOpsNotice(
+        t('app.communications.setup.notices.oauth_code_prefilled', {
+          defaultValue: 'Authorization code loaded — click «OAuth complete» to exchange it for tokens.',
+        }),
+      )
+    }
+  }, [loading, primaryOAuthEmailAccount, searchParams, setSearchParams, t])
 
   const state = useMemo<SetupState>(() => {
     const enabledChannels = Array.isArray(settings?.channels?.channels)
@@ -347,10 +504,17 @@ export default function CommunicationsSetupPage() {
     setErrorText(null)
     try {
       const result = await action()
+      if (key === 'oauth-complete') {
+        clearPendingGmailOAuthCode()
+      }
       await reloadAll()
       setOpsNotice(typeof okText === 'function' ? okText(result) : okText)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('common.errors.operation_failed', { defaultValue: 'Operation failed' })))
+      const msg = errorTextFrom(err, t('common.errors.operation_failed', { defaultValue: 'Operation failed' }))
+      setErrorText(msg)
+      requestAnimationFrame(() => {
+        document.getElementById('communications-setup-error')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
     } finally {
       setBusyKey(null)
     }
@@ -386,22 +550,43 @@ export default function CommunicationsSetupPage() {
     })
   }, [settings])
 
-  const connectEmailAccount = useCallback(async () => {
+  const saveEmailAccount = useCallback(async () => {
+    const label =
+      emailForm.accountLabel.trim() ||
+      t('app.communications.setup.defaults.main_mailbox', { defaultValue: 'Main mailbox' })
     const provider = String(emailForm.provider || 'gmail').toLowerCase()
-    await createCommunicationAccount({
+    const cid = emailForm.clientId.trim()
+    const ruri = emailForm.redirectUri.trim()
+    const cs = emailForm.clientSecret.trim()
+    const oauth: Record<string, string> = { provider }
+    if (cid) oauth.client_id = cid
+    if (ruri) oauth.redirect_uri = ruri
+    // Persist secret via top-level oauth_client_secret (server merges into oauth); avoids nested JSON loss.
+
+    if (selectedEmailAccountId) {
+      await patchCommunicationAccount(selectedEmailAccountId, {
+        account_label: label,
+        inbox_address: emailForm.inboxAddress.trim() || null,
+        settings_json: {
+          provider,
+          oauth,
+        },
+        ...(cs ? { oauth_client_secret: cs } : {}),
+      })
+      return
+    }
+
+    const created = await createCommunicationAccount({
       channel: 'email',
-      account_label: emailForm.accountLabel.trim() || t('app.communications.setup.defaults.main_mailbox', { defaultValue: 'Main mailbox' }),
+      account_label: label,
       inbox_address: emailForm.inboxAddress.trim() || undefined,
       settings_json: {
         provider,
-        oauth: {
-          provider,
-          client_id: emailForm.clientId.trim() || undefined,
-          client_secret: emailForm.clientSecret.trim() || undefined,
-          redirect_uri: emailForm.redirectUri.trim() || undefined,
-        },
+        oauth,
       },
+      ...(cs ? { oauth_client_secret: cs } : {}),
     })
+    setSelectedEmailAccountId(created.id)
     const latest = await getCommunicationsSettings()
     await patchCommunicationsSettings({
       email: {
@@ -410,7 +595,25 @@ export default function CommunicationsSetupPage() {
         syncIntervalMinutes: latest.email?.syncIntervalMinutes ?? 5,
       },
     })
-  }, [emailForm, t])
+  }, [emailForm, selectedEmailAccountId, t])
+
+  const disableSelectedEmailAccount = useCallback(async () => {
+    if (!selectedEmailAccountId) return
+    await patchCommunicationAccount(selectedEmailAccountId, { is_active: false })
+    setSelectedEmailAccountId(null)
+  }, [selectedEmailAccountId])
+
+  const enableSelectedEmailAccount = useCallback(async () => {
+    if (!selectedEmailAccountId) return
+    await patchCommunicationAccount(selectedEmailAccountId, { is_active: true })
+  }, [selectedEmailAccountId])
+
+  const deleteSelectedEmailAccount = useCallback(async () => {
+    if (!selectedEmailAccountId) return
+    await deleteCommunicationAccount(selectedEmailAccountId)
+    setSelectedEmailAccountId(null)
+    emailInitialSelectRef.current = false
+  }, [selectedEmailAccountId])
 
   const connectTelegramAccount = useCallback(async () => {
     await createCommunicationAccount({
@@ -457,9 +660,9 @@ export default function CommunicationsSetupPage() {
   }, [telegramAccounts, telegramInboundTest.chatId, telegramInboundTest.text])
 
   const testFirstEmailConnection = useCallback(async () => {
-    const first = emailAccounts[0]
-    if (!first) throw new Error(t('app.communications.setup.errors.no_active_email', { defaultValue: 'No active email account' }))
-    const res = await testCommunicationAccountConnection(first.id)
+    const id = selectedEmailAccountId || emailAccounts[0]?.id
+    if (!id) throw new Error(t('app.communications.setup.errors.no_active_email', { defaultValue: 'No active email account' }))
+    const res = await testCommunicationAccountConnection(id)
     if (!res.ok) {
       throw new Error(
         res.detail ||
@@ -469,7 +672,7 @@ export default function CommunicationsSetupPage() {
       )
     }
     return res
-  }, [emailAccounts])
+  }, [emailAccounts, selectedEmailAccountId, t])
 
   const testFirstTelegramConnection = useCallback(async () => {
     const first = telegramAccounts[0]
@@ -487,30 +690,54 @@ export default function CommunicationsSetupPage() {
   }, [telegramAccounts])
 
   const startOAuthForFirstEmailAccount = useCallback(async () => {
-    const first = oauthEmailAccounts[0]
-    if (!first) throw new Error(t('app.communications.setup.errors.no_oauth_email', { defaultValue: 'No OAuth email account available' }))
-    const res = await startCommunicationAccountOAuth(first.id, { force_consent: true })
-    setOauthStartByAccountId((p) => ({ ...p, [first.id]: { state: res.state, authUrl: res.auth_url } }))
-  }, [oauthEmailAccounts])
+    const target = primaryOAuthEmailAccount
+    if (!target) throw new Error(t('app.communications.setup.errors.no_oauth_email', { defaultValue: 'No OAuth email account available' }))
+    if (!target.is_active) {
+      throw new Error(
+        t('app.communications.setup.errors.oauth_mailbox_inactive', {
+          defaultValue: 'Turn this mailbox on before starting OAuth.',
+        }),
+      )
+    }
+    const redirect_uri = emailForm.redirectUri.trim() || undefined
+    const client_id = emailForm.clientId.trim() || undefined
+    const res = await startCommunicationAccountOAuth(target.id, {
+      force_consent: true,
+      ...(redirect_uri ? { redirect_uri } : {}),
+      ...(client_id ? { client_id } : {}),
+    })
+    setOauthStartByAccountId((p) => ({ ...p, [target.id]: { state: res.state, authUrl: res.auth_url } }))
+  }, [emailForm.clientId, emailForm.redirectUri, primaryOAuthEmailAccount, t])
 
   const completeOAuthForFirstEmailAccount = useCallback(async () => {
-    const first = oauthEmailAccounts[0]
-    if (!first) throw new Error(t('app.communications.setup.errors.no_oauth_email', { defaultValue: 'No OAuth email account available' }))
-    const state = String(oauthStartByAccountId[first.id]?.state || first.settings_json?.oauth?.state || '').trim()
+    const target = primaryOAuthEmailAccount
+    if (!target) throw new Error(t('app.communications.setup.errors.no_oauth_email', { defaultValue: 'No OAuth email account available' }))
+    if (!target.is_active) {
+      throw new Error(
+        t('app.communications.setup.errors.oauth_mailbox_inactive', {
+          defaultValue: 'Turn this mailbox on before completing OAuth.',
+        }),
+      )
+    }
+    const state = String(oauthStartByAccountId[target.id]?.state || target.settings_json?.oauth?.state || '').trim()
     if (!state) throw new Error(t('app.communications.setup.errors.oauth_start_first', { defaultValue: 'Run OAuth start first' }))
-    const code = String(oauthCodeByAccountId[first.id] || '').trim()
+    const code = String(oauthCodeByAccountId[target.id] || '').trim()
     if (!code) {
       throw new Error(
         t('app.communications.setup.errors.oauth_code_required', { defaultValue: 'Paste authorization code first' }),
       )
     }
-    await completeCommunicationAccountOAuth(first.id, {
+    const redirect_uri = emailForm.redirectUri.trim() || undefined
+    const client_id = emailForm.clientId.trim() || undefined
+    await completeCommunicationAccountOAuth(target.id, {
       state,
       code,
       simulate_exchange: false,
+      ...(redirect_uri ? { redirect_uri } : {}),
+      ...(client_id ? { client_id } : {}),
     })
-    setOauthCodeByAccountId((p) => ({ ...p, [first.id]: '' }))
-  }, [oauthEmailAccounts, oauthCodeByAccountId, oauthStartByAccountId])
+    setOauthCodeByAccountId((p) => ({ ...p, [target.id]: '' }))
+  }, [emailForm.clientId, emailForm.redirectUri, oauthCodeByAccountId, oauthStartByAccountId, primaryOAuthEmailAccount, t])
 
   const goToNextStep = useCallback(() => {
     if (!nextStepKey) return
@@ -574,17 +801,19 @@ export default function CommunicationsSetupPage() {
       )}
 
       {errorText && (
-        <ErrorRecoveryBanner
-          info={{
-            title: errorText,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
-          onRetry={() => void reloadAll()}
-          retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo="/app/settings/communications"
-          secondaryLabel={t('app.communications.setup.actions.open_settings', { defaultValue: 'Open settings' })}
-          compact
-        />
+        <div id="communications-setup-error">
+          <ErrorRecoveryBanner
+            info={{
+              title: errorText,
+              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+            }}
+            onRetry={() => void reloadAll()}
+            retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            secondaryTo="/app/settings/communications"
+            secondaryLabel={t('app.communications.setup.actions.open_settings', { defaultValue: 'Open settings' })}
+            compact
+          />
+        </div>
       )}
       {opsNotice && <div className="alert-success">{opsNotice}</div>}
 
@@ -641,6 +870,58 @@ export default function CommunicationsSetupPage() {
           title={t('app.communications.setup.steps.email_connect', { defaultValue: 'Connect email mailbox (OAuth)' })}
           hint={t('app.communications.setup.steps.email_connect_hint', { defaultValue: 'Create mailbox account and complete OAuth token exchange.' })}
         >
+          {emailAccountsAll.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-end gap-2">
+              <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs font-medium text-slate-600">
+                {t('app.communications.setup.fields.mailbox_select', { defaultValue: 'Mailbox' })}
+                <select
+                  className="input text-sm"
+                  value={selectedEmailAccountId ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setSelectedEmailAccountId(v === '' ? null : v)
+                  }}
+                >
+                  <option value="">{t('app.communications.setup.mailbox_new', { defaultValue: '+ New mailbox' })}</option>
+                  {emailAccountsAll.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {(a.account_label || a.inbox_address || a.id).trim()}
+                      {!a.is_active ? ` (${t('app.communications.setup.mailbox_inactive', { defaultValue: 'off' })})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => setSelectedEmailAccountId(null)}
+                className="btn-secondary btn-sm"
+                disabled={busyKey !== null}
+              >
+                {t('app.communications.setup.actions.mailbox_new', { defaultValue: 'New mailbox' })}
+              </button>
+            </div>
+          )}
+          {selectedEmailAccount && !selectedEmailAccount.is_active && (
+            <div className="mb-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              {t('app.communications.setup.mailbox_disabled_hint', {
+                defaultValue: 'This mailbox is turned off. Enable it to use email sync and OAuth, or edit and save settings.',
+              })}
+              <button
+                type="button"
+                className="btn-secondary btn-xs ml-2"
+                disabled={busyKey !== null}
+                onClick={() =>
+                  void runAction(
+                    'email-enable',
+                    enableSelectedEmailAccount,
+                    t('app.communications.setup.notices.mailbox_enabled', { defaultValue: 'Mailbox enabled' }),
+                  )
+                }
+              >
+                {t('app.communications.setup.actions.mailbox_enable', { defaultValue: 'Enable mailbox' })}
+              </button>
+            </div>
+          )}
           <div className="mt-3 grid gap-2 md:grid-cols-2">
             <input value={emailForm.accountLabel} onChange={(e) => setEmailForm((p) => ({ ...p, accountLabel: e.target.value }))} className="input" placeholder={t('app.communications.setup.fields.account_label', { defaultValue: 'Account label' })} />
             <input value={emailForm.inboxAddress} onChange={(e) => setEmailForm((p) => ({ ...p, inboxAddress: e.target.value }))} className="input" placeholder={t('app.communications.setup.fields.mailbox_address', { defaultValue: 'Mailbox address' })} />
@@ -649,8 +930,17 @@ export default function CommunicationsSetupPage() {
               <option value="microsoft_graph">{t('app.communications.setup.providers.microsoft', { defaultValue: 'Microsoft OAuth' })}</option>
             </select>
             <input value={emailForm.clientId} onChange={(e) => setEmailForm((p) => ({ ...p, clientId: e.target.value }))} className="input" placeholder={t('app.communications.setup.fields.oauth_client_id', { defaultValue: 'OAuth client_id' })} />
-            <input type="password" value={emailForm.clientSecret} onChange={(e) => setEmailForm((p) => ({ ...p, clientSecret: e.target.value }))} className="input" placeholder={t('app.communications.setup.fields.oauth_client_secret', { defaultValue: 'OAuth client_secret' })} />
-            <input value={emailForm.redirectUri} onChange={(e) => setEmailForm((p) => ({ ...p, redirectUri: e.target.value }))} className="input" placeholder={t('app.communications.setup.fields.redirect_uri', { defaultValue: 'Redirect URI' })} />
+            <div className="md:col-span-2">
+              <input type="password" value={emailForm.clientSecret} onChange={(e) => setEmailForm((p) => ({ ...p, clientSecret: e.target.value }))} className="input w-full" placeholder={t('app.communications.setup.fields.oauth_client_secret', { defaultValue: 'OAuth client_secret' })} />
+              {Boolean(selectedEmailAccount?.settings_json?.oauth?.has_client_secret) && (
+                <p className="mt-1 text-[11px] text-slate-500">
+                  {t('app.communications.setup.oauth_secret_unchanged_hint', {
+                    defaultValue: 'A secret is already stored. Leave this field empty to keep it; enter a new value only if you want to replace it.',
+                  })}
+                </p>
+              )}
+            </div>
+            <input value={emailForm.redirectUri} onChange={(e) => setEmailForm((p) => ({ ...p, redirectUri: e.target.value }))} className="input md:col-span-2" placeholder={t('app.communications.setup.fields.redirect_uri', { defaultValue: 'Redirect URI' })} />
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -658,15 +948,60 @@ export default function CommunicationsSetupPage() {
               onClick={() =>
                 void runAction(
                   'email-connect',
-                  connectEmailAccount,
-                  t('app.communications.setup.notices.email_account_created', { defaultValue: 'Email account created' }),
+                  saveEmailAccount,
+                  selectedEmailAccountId
+                    ? t('app.communications.setup.notices.email_account_saved', { defaultValue: 'Mailbox settings saved' })
+                    : t('app.communications.setup.notices.email_account_created', { defaultValue: 'Email account created' }),
                 )
               }
               disabled={busyKey !== null || !emailForm.accountLabel.trim()}
               className="btn-primary btn-sm disabled:opacity-60"
             >
-              {busyKey === 'email-connect' ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.setup.actions.connect_email', { defaultValue: 'Create email account' })}
+              {busyKey === 'email-connect'
+                ? t('common.loading', { defaultValue: 'Loading...' })
+                : selectedEmailAccountId
+                  ? t('app.communications.setup.actions.save_email_account', { defaultValue: 'Save mailbox' })
+                  : t('app.communications.setup.actions.connect_email', { defaultValue: 'Create email account' })}
             </button>
+            {selectedEmailAccountId && selectedEmailAccount?.is_active ? (
+              <button
+                type="button"
+                onClick={() =>
+                  void runAction(
+                    'email-disable',
+                    disableSelectedEmailAccount,
+                    t('app.communications.setup.notices.mailbox_disabled', { defaultValue: 'Mailbox turned off' }),
+                  )
+                }
+                disabled={busyKey !== null}
+                className="btn-secondary btn-sm disabled:opacity-60"
+              >
+                {t('app.communications.setup.actions.mailbox_disable', { defaultValue: 'Turn off mailbox' })}
+              </button>
+            ) : null}
+            {selectedEmailAccountId ? (
+              <button
+                type="button"
+                disabled={busyKey !== null}
+                className="btn-secondary btn-sm text-red-700 hover:bg-red-50 disabled:opacity-60"
+                onClick={() => {
+                  const ok = window.confirm(
+                    t('app.communications.setup.confirm_delete_mailbox', {
+                      defaultValue:
+                        'Delete this mailbox from HostFlow? Existing email threads remain, but will no longer be tied to this mailbox.',
+                    }),
+                  )
+                  if (!ok) return
+                  void runAction(
+                    'email-delete',
+                    deleteSelectedEmailAccount,
+                    t('app.communications.setup.notices.mailbox_deleted', { defaultValue: 'Mailbox deleted' }),
+                  )
+                }}
+              >
+                {t('app.communications.setup.actions.mailbox_delete', { defaultValue: 'Delete mailbox' })}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() =>
@@ -682,7 +1017,7 @@ export default function CommunicationsSetupPage() {
                       })
                 })
               }
-              disabled={busyKey !== null || emailAccounts.length === 0}
+              disabled={busyKey !== null || (!selectedEmailAccountId && emailAccounts.length === 0)}
               className="btn-secondary btn-sm disabled:opacity-60"
             >
               {busyKey === 'email-test' ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.email.test_connection', { defaultValue: 'Test connection' })}
@@ -691,11 +1026,70 @@ export default function CommunicationsSetupPage() {
               {t('app.nav.items.email_inbox', { defaultValue: 'Email inbox' })}
             </Link>
           </div>
-          {oauthEmailAccounts.length > 0 && (
+          {oauthEmailAccounts.length > 0 && oauthAccountMissingToken && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              <p className="font-semibold text-amber-950">
+                {t('app.communications.setup.oauth_token_required_title', {
+                  defaultValue: 'Client ID and Secret are not enough for Gmail',
+                })}
+              </p>
+              <p className="mt-1 text-amber-900/95">
+                {t('app.communications.setup.oauth_token_required_intro', {
+                  defaultValue:
+                    'Google only accepts requests that include a valid OAuth access token. You get that token after you sign in with Google and exchange the one-time authorization code.',
+                })}
+              </p>
+              <ol className="mt-2 list-decimal space-y-1 pl-4 text-amber-900/95">
+                <li>
+                  {t('app.communications.setup.oauth_token_required_step_consent', {
+                    defaultValue: 'Click «OAuth start», then «Open consent URL», and sign in with the Google account for this mailbox.',
+                  })}
+                </li>
+                <li>
+                  {t('app.communications.setup.oauth_token_required_step_redirect', {
+                    defaultValue:
+                      'After Google redirects you back (usually to /app/email), the code is saved automatically — return here and click «OAuth complete».',
+                  })}
+                </li>
+                <li>
+                  {t('app.communications.setup.oauth_token_required_step_complete', {
+                    defaultValue: 'Or paste the `code` from the browser address bar into the field below, then «OAuth complete».',
+                  })}
+                </li>
+              </ol>
+              <details className="mt-2 rounded border border-amber-200/80 bg-amber-50/80 px-2 py-1.5 text-amber-950">
+                <summary className="cursor-pointer text-xs font-medium text-amber-950">
+                  {t('app.communications.setup.oauth_troubleshoot_google_console', {
+                    defaultValue: 'If Google shows an error (400, Testing mode, redirect)',
+                  })}
+                </summary>
+                <p className="mt-2 text-amber-900/95">
+                  {t('app.communications.setup.oauth_google_testing_hint', {
+                    defaultValue:
+                      'If the consent screen is in «Testing», add this Google user under Test users in Google Cloud Console — otherwise Google will refuse access.',
+                  })}
+                </p>
+                <p className="mt-2 text-amber-900/95">
+                  {t('app.communications.setup.oauth_google_js_origin_hint', {
+                    defaultValue:
+                      'If Google shows «400 / invalid_request»: in Google Cloud → Credentials → your Web client → Authorized JavaScript origins must match your app host (e.g. https://hostflow.cc). Redirect URI must match exactly what you saved on this mailbox (e.g. https://hostflow.cc/app/email).',
+                  })}
+                </p>
+              </details>
+            </div>
+          )}
+          {primaryOAuthEmailAccount && !primaryOAuthEmailAccount.settings_json?.oauth?.has_access_token && (
             <div className="mt-3 rounded border border-slate-200 bg-slate-50 p-3">
-              <div className="text-xs font-semibold text-slate-700">
-                {t('app.communications.setup.oauth_quick_connect', { defaultValue: 'OAuth quick connect' })}
+              <div className="text-xs font-semibold text-slate-800">
+                {t('app.communications.setup.oauth_connect_mailbox', { defaultValue: 'Sign in with Google' })}
               </div>
+              {!primaryOAuthEmailAccount.is_active ? (
+                <p className="mt-2 text-xs text-slate-600">
+                  {t('app.communications.setup.oauth_requires_active_mailbox', {
+                    defaultValue: 'Turn the mailbox on above to run OAuth for this account.',
+                  })}
+                </p>
+              ) : null}
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -706,16 +1100,16 @@ export default function CommunicationsSetupPage() {
                       t('app.communications.setup.notices.oauth_url_generated', { defaultValue: 'OAuth consent URL generated' }),
                     )
                   }
-                  disabled={busyKey !== null}
+                  disabled={busyKey !== null || !primaryOAuthEmailAccount.is_active}
                   className="btn-secondary btn-xs disabled:opacity-60"
                 >
                   {busyKey === 'oauth-start'
                     ? t('common.loading', { defaultValue: 'Loading...' })
                     : t('app.communications.setup.actions.oauth_start', { defaultValue: 'OAuth start' })}
                 </button>
-                {oauthStartByAccountId[oauthEmailAccounts[0].id]?.authUrl && (
+                {oauthStartByAccountId[primaryOAuthEmailAccount.id]?.authUrl && (
                   <a
-                    href={oauthStartByAccountId[oauthEmailAccounts[0].id]?.authUrl}
+                    href={oauthStartByAccountId[primaryOAuthEmailAccount.id]?.authUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="btn-secondary btn-xs"
@@ -726,8 +1120,10 @@ export default function CommunicationsSetupPage() {
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <input
-                  value={oauthCodeByAccountId[oauthEmailAccounts[0].id] || ''}
-                  onChange={(e) => setOauthCodeByAccountId((p) => ({ ...p, [oauthEmailAccounts[0].id]: e.target.value }))}
+                  value={oauthCodeByAccountId[primaryOAuthEmailAccount.id] || ''}
+                  onChange={(e) =>
+                    setOauthCodeByAccountId((p) => ({ ...p, [primaryOAuthEmailAccount.id]: e.target.value }))
+                  }
                   className="input w-full max-w-md text-xs"
                   placeholder={t('app.communications.setup.fields.paste_oauth_code', { defaultValue: 'Paste OAuth authorization code' })}
                 />
@@ -740,7 +1136,7 @@ export default function CommunicationsSetupPage() {
                       t('app.communications.setup.notices.oauth_completed', { defaultValue: 'OAuth completed' }),
                     )
                   }
-                  disabled={busyKey !== null}
+                  disabled={busyKey !== null || !primaryOAuthEmailAccount.is_active}
                   className="btn-secondary btn-xs disabled:opacity-60"
                 >
                   {busyKey === 'oauth-complete'
@@ -748,7 +1144,62 @@ export default function CommunicationsSetupPage() {
                     : t('app.communications.setup.actions.oauth_complete', { defaultValue: 'OAuth complete' })}
                 </button>
               </div>
+              <details className="mt-3 rounded border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-600">
+                <summary className="cursor-pointer font-medium text-slate-700">
+                  {t('app.communications.setup.oauth_diagnostics_summary', {
+                    defaultValue: 'Diagnostics (redirect / client_id mismatch)',
+                  })}
+                </summary>
+                <div className="mt-2 space-y-2">
+                  {oauthStartByAccountId[primaryOAuthEmailAccount.id]?.authUrl ? (
+                    <>
+                      <p className="font-medium text-slate-700">
+                        {t('app.communications.setup.oauth_verify_request', {
+                          defaultValue: 'Parameters sent to Google with the last OAuth start',
+                        })}
+                      </p>
+                      {(() => {
+                        const raw = oauthStartByAccountId[primaryOAuthEmailAccount.id]!.authUrl
+                        const q = parseOAuthAuthUrlForDebug(raw)
+                        return (
+                          <>
+                            <dl className="space-y-1 break-all font-mono text-[11px] text-slate-800">
+                              <div>
+                                <dt className="text-slate-500">client_id</dt>
+                                <dd>{q.client_id || '—'}</dd>
+                              </div>
+                              <div>
+                                <dt className="text-slate-500">redirect_uri</dt>
+                                <dd>{q.redirect_uri || '—'}</dd>
+                              </div>
+                            </dl>
+                            <p className="text-[11px] text-slate-600">
+                              {t('app.communications.setup.oauth_error_url_note', {
+                                defaultValue:
+                                  'Compare redirect_uri with Authorized redirect URIs in Google Cloud (exact match). Google’s error page may show a redacted client_id.',
+                              })}
+                            </p>
+                          </>
+                        )
+                      })()}
+                    </>
+                  ) : (
+                    <p className="text-slate-600">
+                      {t('app.communications.setup.oauth_diagnostics_run_start_first', {
+                        defaultValue: 'Click OAuth start above; request details will appear here.',
+                      })}
+                    </p>
+                  )}
+                </div>
+              </details>
             </div>
+          )}
+          {primaryOAuthEmailAccount && primaryOAuthEmailAccount.settings_json?.oauth?.has_access_token && (
+            <p className="mt-2 text-xs text-emerald-800">
+              {t('app.communications.setup.oauth_mailbox_connected', {
+                defaultValue: 'This mailbox is connected via Google — no further OAuth steps needed here.',
+              })}
+            </p>
           )}
         </SetupStepCard>
 

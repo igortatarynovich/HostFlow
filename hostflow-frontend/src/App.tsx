@@ -28,12 +28,12 @@ import {
   readSignupSuccessContextFromSessionStorage,
   signupContextToSearchParams,
 } from './constants/signupContext'
+import { resolveDefaultAppHomeHref, resolveDefaultAppHomeSegment } from './utils/defaultAppHome'
 
 const PublicApplyPage = lazy(() => import('./pages/public/PublicApplyPage'))
 const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
 const PublicStatusPage = lazy(() => import('./pages/public/PublicStatusPage'))
 const PublicDocumentsUploadPage = lazy(() => import('./pages/public/PublicDocumentsUploadPage'))
-const PublicScanPage = lazy(() => import('./pages/public/PublicScanPage'))
 const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage'))
 
 function LazyRoute({ children, loadingLabel }: { children: JSX.Element; loadingLabel: string }) {
@@ -47,6 +47,16 @@ function SignupRedirectForAuthed() {
     return <Navigate to={`/app/onboarding/company?${params.toString()}`} replace />
   }
   return <Navigate to="/app/overview" replace />
+}
+
+function AuthedDefaultAppNavigate() {
+  const { can } = usePermissions()
+  return <Navigate to={resolveDefaultAppHomeHref(can('notifications.view'))} replace />
+}
+
+function AppShellIndexNavigate() {
+  const { can } = usePermissions()
+  return <Navigate to={resolveDefaultAppHomeSegment(can('notifications.view'))} replace />
 }
 
 export default function App(){
@@ -76,8 +86,8 @@ export default function App(){
       <Route path="/public/apply/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicIntakeNew /></LazyRoute>} />
       <Route path="/public/documents/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicDocumentsUploadPage /></LazyRoute>} />
       <Route path="/public/apply-old/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicApplyPage /></LazyRoute>} />
-      <Route path="/public/scan" element={<LazyRoute loadingLabel={t('common.loading')}><PublicScanPage /></LazyRoute>} />
-      <Route path="/public/scan-sessions" element={<Navigate to="/public/scan" replace />} />
+      <Route path="/public/scan" element={<Navigate to="/public/intake" replace />} />
+      <Route path="/public/scan-sessions" element={<Navigate to="/public/intake" replace />} />
       <Route path="/public/status/:token" element={<LazyRoute loadingLabel={t('common.loading')}><PublicStatusPage /></LazyRoute>} />
       <Route path="/client-portal" element={<LazyRoute loadingLabel={t('common.loading')}><ClientPortalPage /></LazyRoute>} />
 
@@ -103,10 +113,10 @@ export default function App(){
 
       {me && (
         <>
-          <Route path="/login" element={<Navigate to="/app/overview" replace />} />
+          <Route path="/login" element={<AuthedDefaultAppNavigate />} />
           <Route path="/signup" element={<SignupRedirectForAuthed />} />
           <Route path="/app" element={<AppShell me={me} navItems={navItems} onLogout={logout} />}>
-            <Route index element={<Navigate to="overview" replace />} />
+            <Route index element={<AppShellIndexNavigate />} />
             <Route path="onboarding/company" element={<OnboardingCompanyPage />} />
             <Route path="onboarding/getting-started" element={<OnboardingGettingStartedPage />} />
             {APP_ROUTES.map(({ key, path, Component, permission }) => (
@@ -123,8 +133,8 @@ export default function App(){
               />
             ))}
           </Route>
-          <Route path="/" element={<Navigate to="/app/overview" replace />} />
-          <Route path="*" element={<Navigate to="/app/overview" replace />} />
+          <Route path="/" element={<AuthedDefaultAppNavigate />} />
+          <Route path="*" element={<AuthedDefaultAppNavigate />} />
         </>
       )}
     </Routes>

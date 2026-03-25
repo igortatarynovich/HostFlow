@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from backend.app.models.candidate import Candidate
+from backend.app.models.risk_intel import RiskIntelEntityShadow
 from backend.app.models.candidate_stage_history import CandidateStageHistory
 from backend.app.models.candidate_handoff import CandidateHandoff
 from backend.app.models.contact_attempt import ContactAttempt
@@ -661,6 +662,22 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
     own_company_id = str(filters.get("own_company_id") or "").strip()
     if own_company_id:
         conds.append(Candidate.own_company_id == own_company_id)
+
+    ris = filters.get("risk_intel_shadow")
+    if isinstance(ris, dict):
+        bts = ris.get("bucket_start")
+        if bts is not None:
+            from backend.app.services.risk_intel_v1 import _shadow_bands_at_least
+
+            min_b = str(ris.get("min_band") or "high").strip().lower()
+            bands = _shadow_bands_at_least(min_b) or ["high", "critical"]
+            shadow_sq = select(RiskIntelEntityShadow.entity_id).where(
+                RiskIntelEntityShadow.tenant_id == tenant_id,
+                RiskIntelEntityShadow.entity_type == "candidate",
+                RiskIntelEntityShadow.bucket_start == bts,
+                RiskIntelEntityShadow.band.in_(bands),
+            )
+            conds.append(Candidate.id.in_(shadow_sq))
 
     return conds
 

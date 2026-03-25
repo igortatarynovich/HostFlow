@@ -59,6 +59,8 @@ interface FilterBadgesProps {
   onHandoffStatusFilterChange?: (value: string) => void
   onContactAttemptsFilterChange?: (value: string) => void
   onProcessorFilterChange?: (value: string) => void
+  /** When true: compact row inside filter toolbar card (no sticky, less padding). */
+  embedded?: boolean
 }
 
 export function FilterBadges({
@@ -115,12 +117,20 @@ export function FilterBadges({
   onHandoffStatusFilterChange,
   onContactAttemptsFilterChange,
   onProcessorFilterChange,
+  embedded = false,
 }: FilterBadgesProps) {
   const { t } = useI18n()
   const removeGlyph = '\u00D7'
 
   return (
-    <div className="flex flex-wrap items-center gap-2 p-4 sticky top-0 bg-white z-10 border-b">
+    <div
+      className={clsx(
+        'flex flex-wrap items-center bg-white',
+        embedded
+          ? 'gap-1 border-t border-slate-100 px-2 py-1 sm:px-2.5 sm:py-1.5'
+          : 'sticky top-0 z-10 gap-2 border-b p-4',
+      )}
+    >
       {q && (
         <span className="badge">
           {t('app.candidates.filters.search', { values: { value: q } })}

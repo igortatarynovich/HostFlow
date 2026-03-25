@@ -142,6 +142,32 @@
   .app-ui {
     @apply text-sm leading-5 text-slate-800;
   }
+
+  /** Заполняет колонку под main при `px-0 py-0` в AppShell (CRM full-bleed). */
+  .crm-workspace-fill {
+    @apply flex min-h-0 flex-1 flex-col gap-0;
+  }
+
+  /**
+   * Единые отступы контента от краёв области main (AppShell для /app даёт padding 0).
+   * Шкала: 16px → 20px (sm) → 24px (lg). Подключайте вместе с `.crm-page-stack` для gap между блоками.
+   */
+  .crm-page-inset {
+    @apply px-4 pb-4 pt-4 sm:px-5 sm:pb-5 sm:pt-5 lg:px-6 lg:pb-6 lg:pt-6;
+  }
+
+  /** Вертикальный ритм между крупными блоками страницы (баннеры, сетка, шапка). */
+  .crm-page-stack {
+    @apply flex min-h-0 w-full flex-1 flex-col gap-4;
+  }
+
+  /**
+   * Квадратные углы в CRM: любые `rounded-*` из Tailwind гасим, кроме явных кругов (`rounded-full` в class).
+   * Порталы (модалки вне `.app-ui`) не затрагиваются. Для исключения: класс с `rounded-full` или вынести узел за пределы app-ui.
+   */
+  .app-ui *:not([class*='rounded-full']) {
+    border-radius: 0 !important;
+  }
   .app-ui :where(h1) {
     @apply text-2xl font-semibold tracking-tight text-slate-900;
   }
@@ -171,7 +197,7 @@
     border-bottom: 1px solid rgb(241 245 249);
   }
   .app-ui :where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
-    @apply rounded-lg border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100;
+    @apply rounded-none border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100;
   }
   .app-ui :where(.rounded.border.border-red-200, .rounded.border.border-rose-200) {
     background-color: rgb(255 241 242);
@@ -184,13 +210,13 @@
 
   /* ===== Unified settings surface ===== */
   .settings-surface {
-    @apply space-y-4;
+    @apply space-y-0 gap-0;
   }
   .settings-surface > div {
-    @apply space-y-4;
+    @apply space-y-0 gap-0;
   }
   .settings-surface .card {
-    @apply rounded-xl border-slate-200 shadow-sm;
+    @apply rounded-none border-slate-200 shadow-sm;
   }
   .settings-surface :where(section.rounded-lg.border, section.rounded-xl.border, div.rounded-lg.border, div.rounded-xl.border) {
     @apply border-slate-200 shadow-sm;
@@ -208,7 +234,7 @@
     @apply text-sm text-slate-700;
   }
   .settings-surface :where(input:not([type='checkbox']):not([type='radio']), select, textarea) {
-    @apply rounded-lg border-slate-300 bg-white text-slate-900 focus:border-brand-400 focus:ring-2 focus:ring-brand-100;
+    @apply rounded-none border-slate-300 bg-white text-slate-900 focus:border-brand-400 focus:ring-2 focus:ring-brand-100;
   }
   .settings-surface :where(button.rounded, button.rounded-md, button.rounded-lg) {
     @apply border-slate-300;

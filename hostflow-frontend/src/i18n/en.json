@@ -313,6 +313,7 @@
         "do_procesowania": "Processed",
         "vacancies": "Vacancies",
         "documents": "Documents",
+        "orders": "Orders",
         "services": "Services & orders",
         "invoices": "Invoices",
         "communications": "Communications",
@@ -351,8 +352,11 @@
         "messages": "Messages",
         "setup": "Setup",
         "no_next_action": "No next action",
+        "automations": "Automations",
         "automation_log": "Automation log",
-        "automation_rules": "Automation rules"
+        "automation_rules": "Automation rules",
+        "settings_hiring_gates": "Hiring pipeline gates",
+        "settings_risk_intel": "Risk intelligence"
       }
     },
     "clients": {
@@ -382,6 +386,7 @@
       "linked_to": "Link to",
       "settings": "Access settings",
       "back_to_list": "← Back to clients",
+      "crm_directory_link": "Open client CRM directory",
       "not_found": "Client not found",
       "errors": {
         "name_or_link": "Enter a name or link to a company."
@@ -399,7 +404,7 @@
     },
     "vacancies": {
       "list": {
-        "subtitle": "List and manage vacancies",
+        "subtitle": "Operational list: candidate counts, last activity, and status mix — same data as the vacancy card.",
         "new_vacancy": "New vacancy",
         "search_placeholder": "Search… (⌘K)",
         "company_placeholder": "Company…",
@@ -413,6 +418,11 @@
         "col_status": "Status",
         "col_updated": "Updated",
         "col_created": "Created",
+        "col_candidates": "Candidates",
+        "col_headcount": "Headcount",
+        "headcount_title": "Candidates / target positions",
+        "col_profile": "Profile",
+        "col_last_activity": "Last candidate activity",
         "save_view": "Save as view",
         "view_name_prompt": "View name:",
         "loading": "Loading vacancies…",
@@ -436,9 +446,12 @@
         },
         "insights": {
           "total": "Total",
-          "open": "Open",
-          "closed": "Closed",
-          "archived": "Archived"
+          "matching_total": "Matching filters",
+          "open": "Open (this page)",
+          "on_hold": "On hold (this page)",
+          "closed": "Closed (this page)",
+          "archived": "Archived (this page)",
+          "page_mix_caption": "Status mix below counts only rows on this page; the first tile is the full total for your current filters."
         },
         "errors": {
           "unauthorized": "Unauthorized: sign in and try again.",
@@ -468,11 +481,20 @@
           "email": "Email",
           "stage": "Stage"
         },
+        "ops": {
+          "candidates_linked": "{count} candidates on this vacancy",
+          "headcount_target": "Pipeline vs target: {current} / {target}",
+          "last_candidate_activity": "Last candidate activity: {when}",
+          "bottleneck": "Largest pipeline stage: {stage} ({count})",
+          "open_candidate_queue": "Open candidate queue"
+        },
         "placeholders": {
           "currency_codes": "PLN / EUR / USD"
         },
         "fields": {
-          "id": "ID"
+          "id": "ID",
+          "headcount_target": "Target headcount (positions)",
+          "headcount_hint": "Planned hires for this role. Leave empty if not used."
         },
         "criteria": {
           "title": "Lead criteria (auto-qualification)",
@@ -581,6 +603,7 @@
       "handoff_requested_title": "New candidate to process",
       "handoff_accepted_title": "Candidate handed off",
       "communications_sla_overdue_title": "SLA overdue: reply required in dialog",
+      "communications_thread_escalated_title": "Thread escalated — action needed",
       "view_handoffs": "Go to Processed",
       "open_sla_incidents": "Open SLA incidents"
     },
@@ -619,6 +642,91 @@
         "summary": "Closure rate: {rate}% · Total: {total} · Duplicate groups: {groups}. Metrics are heuristic and based on payload signals."
       }
     },
+    "communications_inbox_center": {
+      "back_all_threads": "← All threads",
+      "hub_link": "← Inbox home",
+      "control_title": "Thread control",
+      "control_subtitle": "Linked records, SLA, and quick navigation.",
+      "unlinked_hint": "This thread is not linked to a candidate, client, or service order. Link below or in Messages / Email to enable outbound.",
+      "link_panel_hint": "Search and link candidate, client, or service order without leaving Inbox.",
+      "link_search_candidate_failed": "Candidate search failed.",
+      "link_search_company_failed": "Client search failed.",
+      "link_error_candidate": "Could not update candidate link.",
+      "link_error_company": "Could not update client link.",
+      "link_error_order": "Could not update service order link.",
+      "link_order_not_found": "Order not found or access denied.",
+      "workflow_hint": "Operational mode, reply requirement, and SLA — same rules as Messages.",
+      "workflow_current_mode": "Mode",
+      "workflow_sla_snoozed": "SLA snoozed until",
+      "workflow_error_generic": "Update failed.",
+      "folder_section": "Archive & trash",
+      "folder_error": "Could not update thread folder.",
+      "folder_exit_hint": "Archive or delete clears your selection and refreshes the list.",
+      "channel_rail_empty": "Select a thread for links, follow-up task, workflow, and archive.",
+      "linked_entities": "Linked entities",
+      "open_candidate": "Open candidate",
+      "no_candidate": "No candidate linked",
+      "open_client": "Open client",
+      "no_client": "No client linked",
+      "ops_state": "Operations",
+      "sla_due": "SLA due",
+      "quick_links": "Quick links",
+      "classic_view": "Classic thread page",
+      "priority_label": "Priority",
+      "task_section_title": "Follow-up task",
+      "task_section_hint": "Creates a reminder on Tasks. Linked candidate or client is set when available.",
+      "task_title_label": "Title",
+      "task_due_label": "Due",
+      "task_notes_label": "Notes (optional)",
+      "task_default_title": "Follow up on conversation",
+      "task_submit": "Create task",
+      "task_created": "Task created.",
+      "task_open_tasks": "Open Tasks",
+      "task_error_due": "Choose a valid due date.",
+      "task_error_create": "Could not create task."
+    },
+    "communications_inbox_hub": {
+      "title": "Inbox",
+      "subtitle": "All channels in one list: pick scope (All / Messages / Email), search, and open a row for the Communication Center. Email scope includes folders and sync; legacy /app/messages and /app/email redirect here.",
+      "messages_title": "Messages",
+      "messages_body": "WhatsApp, Telegram, and other non-email dialogs.",
+      "email_title": "Email",
+      "email_body": "IMAP workspace threads.",
+      "unread_badge": "{count} unread",
+      "unlinked_badge": "{count} unlinked",
+      "empty_counts": "No unread threads in the loaded list.",
+      "cta_messages": "Open Messages",
+      "cta_email": "Open Email",
+      "cta_sla": "SLA incidents",
+      "loading": "Loading thread counts…",
+      "error": "Could not load threads.",
+      "retry": "Retry",
+      "unified_section_title": "Recent across channels",
+      "unified_section_subtitle": "Sorted by latest activity (pinned dialogs first). Open a row for the Communication Center.",
+      "unified_filter_all": "All",
+      "unified_filter_unread": "Unread",
+      "unified_filter_unlinked": "Unlinked",
+      "unified_filter_sla": "SLA",
+      "unified_filter_in_work": "In work",
+      "unified_filter_later": "Later",
+      "pinned_badge": "Pinned",
+      "channel_all": "All channels",
+      "channel_messages": "Messages",
+      "channel_email": "Email",
+      "search_placeholder": "Search threads…",
+      "sort_label": "Sort",
+      "sort_last_activity": "Last activity",
+      "sort_sla_due": "SLA due",
+      "unified_empty": "No threads match this filter.",
+      "unified_none_enabled": "Enable Messages or Email in communications setup to see threads here.",
+      "scoped_candidate_hint": "Showing only threads linked to this candidate.",
+      "scoped_candidate_clear": "Show all threads",
+      "channel_badge_email": "Email",
+      "channel_badge_messages": "Messages"
+    },
+    "communications_api": {
+      "thread_unlinked_outbound_blocked": "Link this thread to a candidate, client company, or UOS service order before sending (operations policy)."
+    },
     "communications_messages": {
       "reply_required": "Reply required",
       "actions": {
@@ -639,7 +747,14 @@
         "title": "Dialogs",
         "reorder_hint": "Drag and drop to reorder priority.",
         "select_prompt": "Select a dialog to start messaging.",
-        "filters_label": "Filters label"
+        "filters_label": "Filters label",
+        "link_filter_all": "All dialogs",
+        "link_filter_unlinked": "Unlinked",
+        "link_filter_hint": "Unlinked: no candidate, client company, or service order on the thread — link from the context panel."
+      },
+      "mandatory_link": {
+        "block_send": "Link this thread to a candidate, client company, or UOS service order before sending (operations policy).",
+        "composer_banner": "Outbound messages are disabled until the thread is linked. Use Candidate / Context linking (desktop: right panel) to attach candidate, client, or order."
       },
       "manager": {
         "label": "Manager",
@@ -758,9 +873,13 @@
         "workspace": "Workspace",
         "close_menu": "Close menu",
         "client_workflow": "Client workflow",
+        "account": "Account",
+        "core_workspace": "Core workspace",
+        "business": "Business",
         "communications_workspace": "Communications workspace",
         "more": "More",
-        "operations": "Operations"
+        "operations": "Operations",
+        "system": "System"
       },
       "actions": {
         "logout": "Sign out",
@@ -774,6 +893,7 @@
       "actions": {
         "open_menu": "Open menu",
         "notifications": "Notifications",
+        "notifications_with_urgent": "Notifications — {count} urgent (SLA, overdue tasks, handoffs)",
         "reminders": "Reminders",
         "return_to_platform": "Return to platform admin",
         "language": "Language"
@@ -782,17 +902,23 @@
         "title": "Notifications",
         "subtitle": "{unread} unread · {total} loaded",
         "open_thread": "Open thread",
+        "open_in_inbox": "Open in Inbox",
         "groups": {
           "all": "All",
           "sla": "Urgent (SLA)",
           "tasks": "Tasks",
           "messages": "Messages",
           "system": "System"
+        },
+        "tier": {
+          "critical": "Critical",
+          "high": "High",
+          "normal": "Normal"
         }
       },
       "search": {
         "open": "Search",
-        "placeholder": "Search candidates, companies, documents…",
+        "placeholder": "Search candidates, clients, vacancies, documents, conversations, tasks, invoices, orders…",
         "hint": "Enter at least 2 characters to search.",
         "loading": "Searching…",
         "empty": "No results found.",
@@ -801,12 +927,28 @@
         "results": {
           "candidate": "Candidate",
           "company": "Company",
-          "document": "Document"
+          "document": "Document",
+          "vacancy": "Vacancy",
+          "invoice": "Invoice",
+          "service_order": "Service order",
+          "conversation": "Conversation",
+          "task": "Task"
         }
       },
       "own_company": "Own company",
       "trial_badge": "Trial badge",
-      "trial_badge_hint": "Trial badge hint"
+      "trial_badge_hint": "Trial badge hint",
+      "quick_create": {
+        "button": "Create",
+        "menu_label": "Quick create",
+        "candidate": "New candidate",
+        "client": "New client",
+        "vacancy": "New vacancy",
+        "order": "New service order",
+        "task": "New task",
+        "meeting": "New meeting (calendar)",
+        "invoice": "New invoice"
+      }
     },
     "trial_banner": {
       "badge": "Trial status",
@@ -850,6 +992,11 @@
     "profile": {
       "title": "My profile",
       "subtitle": "Manage your personal data, UI preferences, and security.",
+      "scheduling": {
+        "title": "Scheduling & availability",
+        "description": "Set your hours and time off here — day-to-day work stays on Overview, Inbox, Tasks, and Calendar. The same shortcuts appear on Calendar when your plan allows.",
+        "calendar_link": "Calendar"
+      },
       "sections": {
         "profile": {
           "title": "Profile",
@@ -897,7 +1044,14 @@
           "theme": "Theme",
           "default_company": "Default company"
         },
-        "company_placeholder": "— Not selected —"
+        "company_placeholder": "— Not selected —",
+        "default_home": {
+          "label": "After sign-in, open",
+          "hint": "Used when you open /app or the app root on this browser. Bookmarks to specific pages are unchanged.",
+          "overview": "Overview",
+          "tasks": "Tasks",
+          "tasks_locked_hint": "Your role does not include Tasks; only Overview is available."
+        }
       },
       "theme": {
         "system": "Follow system",
@@ -1080,19 +1234,19 @@
         "password_reset_success": "Password reset success"
       },
       "signup_first": {
-        "badge": "Badge",
+        "badge": "New to HostFlow CRM?",
         "bullets": {
-          "0": "0",
-          "1": "1",
-          "2": "2"
+          "0": "Choose plan and create workspace",
+          "1": "Add first client and lead",
+          "2": "Run daily operations immediately"
         },
-        "card_caption": "Card caption",
-        "card_title": "Card title",
-        "image_alt": "Image alt",
-        "primary_cta": "Primary CTA",
-        "secondary_cta": "Secondary CTA",
-        "subtitle": "Subtitle",
-        "title": "Title"
+        "card_caption": "Landing -> Signup -> Company -> First Value",
+        "card_title": "Signup-first journey",
+        "image_alt": "CRM onboarding workflow preview",
+        "primary_cta": "Create account",
+        "secondary_cta": "View plans",
+        "subtitle": "Create account, create company, and reach first value in minutes.",
+        "title": "Start with signup, not settings"
       }
     },
     "platform": {
@@ -2433,7 +2587,7 @@
         "show_archived": "Show archived",
         "reset": "Reset",
         "insights": {
-          "subtitle": "Filter the CRM once and use the cards below to understand coverage across countries and archives.",
+          "subtitle": "Party roles, client pipeline stage, recruitment funnel, and service revenue — in one list.",
           "visible": "Visible companies",
           "visible_hint": "{count} match current filters",
           "active": "Active profiles",
@@ -2456,7 +2610,9 @@
             "stage": "Stage",
             "owner": "Owner",
             "active_orders": "Active orders",
-            "revenue": "Revenue (completed)"
+            "revenue": "Revenue (completed)",
+            "recruitment_vacancies": "Active vacancies",
+            "recruitment_candidates": "Candidates"
           },
           "loading": "Loading…",
           "empty": "No companies found.",
@@ -2571,7 +2727,15 @@
           "invoice_email": "Invoice email",
           "invoice_email_hint": "Invoice email hint",
           "orders_total": "Orders total",
-          "orders_total_hint": "Orders total hint"
+          "orders_total_hint": "Orders total hint",
+          "recruitment_vacancies": "Active vacancies",
+          "recruitment_vacancies_hint": "Open roles for this client (employer / both)",
+          "recruitment_candidates": "Candidates in funnel",
+          "recruitment_candidates_hint": "On this client’s vacancies (same scope as Candidates list)",
+          "service_orders_live": "Service orders (active)",
+          "service_orders_live_hint": "Orders not completed or cancelled",
+          "service_revenue": "Completed revenue",
+          "service_revenue_hint": "Sum of completed service order totals"
         },
         "widgets": {
           "vacancies": {
@@ -2630,6 +2794,14 @@
             "link": "Link",
             "subtitle": "Subtitle",
             "title": "Title"
+          },
+          "receivables": {
+            "title": "Receivables",
+            "outstanding_label": "Outstanding on open invoices",
+            "overdue_line": "{count} invoice(s) past due (oldest: {days} days)",
+            "open_invoices": "View invoices",
+            "unavailable": "Could not load invoice summary.",
+            "empty": "Save the company to see receivables."
           }
         },
         "sections": {
@@ -3012,6 +3184,7 @@
           "status": "Status",
           "loading": "Loading catalog…",
           "empty": "No services added yet.",
+          "empty_cta_orders": "Go to orders",
           "badges": {
             "active": "Active",
             "archived": "Archived"
@@ -3106,7 +3279,28 @@
           "meta": "{count} items · {amount}",
           "empty_cta_leads": "Empty CTA leads",
           "empty_desc": "Empty desc",
-          "empty_title": "Empty title"
+          "empty_title": "Empty title",
+          "open_invoice": "Open invoice",
+          "next_step": "Next:"
+        },
+        "next_action": {
+          "cancelled": "Order cancelled",
+          "draft": "Confirm order to start fulfillment",
+          "on_hold": "On hold — review before continuing",
+          "invoice_needed": "Create invoice from completed order",
+          "collect_payment": "Collect payment (outstanding balance)",
+          "closed": "Billing closed for this order",
+          "schedule_slots": "Schedule slots for services that require it",
+          "deliver_lines": "Complete delivery for {count} line(s)",
+          "mark_completed": "Mark order completed when work is done",
+          "review": "Review order status"
+        },
+        "ops": {
+          "next_label": "Next step",
+          "blocking": "Blocking: {count}",
+          "missing_docs": "Missing docs: {count}",
+          "invoice_overdue": "{days}d past due",
+          "updated": "Updated"
         },
         "messages": {
           "owner_required": "Select exactly one order owner (candidate, vacancy, or company).",
@@ -3166,7 +3360,8 @@
             "none": "None",
             "open": "Open",
             "send": "Send",
-            "title": "Title"
+            "title": "Title",
+            "outstanding_line": "Outstanding {{amount}}"
           }
         },
         "actions": {
@@ -3231,6 +3426,15 @@
           "select_order": "Select order"
         },
         "empty": "Empty",
+        "empty_state": {
+          "title": "No invoices in this view",
+          "desc": "Create an invoice from a service order, or open the full invoices list.",
+          "cta_orders": "Go to orders",
+          "cta_invoices": "Open invoices"
+        },
+        "table": {
+          "service_order": "Service order"
+        },
         "filters": {
           "overdue": "Overdue",
           "unpaid": "Unpaid"
@@ -3263,6 +3467,30 @@
           "paid": "Paid"
         },
         "kpi_strip_hint": "KPI strip hint",
+        "flow": {
+          "title": "Revenue path",
+          "subtitle": "Sell → fulfill → invoice → collect — each step jumps to the right tab and filter.",
+          "sell": {
+            "title": "Sell",
+            "desc": "Attach catalog lines to a client, candidate, or vacancy.",
+            "cta": "New order"
+          },
+          "fulfill": {
+            "title": "Fulfill",
+            "desc": "Schedules, documents, mark delivered — then invoice.",
+            "cta": "Orders to fulfill"
+          },
+          "invoice": {
+            "title": "Invoice",
+            "desc": "Create from order, send, track status in Billing.",
+            "cta": "Open billing"
+          },
+          "collect": {
+            "title": "Collect",
+            "desc": "Unpaid and overdue — mark paid from order detail or invoice.",
+            "cta": "Unpaid invoices"
+          }
+        },
         "ops": {
           "approved": "Approved",
           "delivered": "Delivered",
@@ -3663,6 +3891,13 @@
         "no_next_action": "No next action",
         "note": "Note",
         "overdue_reminders": "Overdue reminders",
+        "invoice_outstanding": "Open invoice balance",
+        "invoice_overdue_unpaid": "{count} overdue (unpaid)",
+        "open_vacancies": "Open vacancies",
+        "open_vacancies_pipeline": "{count} candidates on these vacancies",
+        "open_vacancies_capped": "From first 200 open rows — open list for full totals.",
+        "open_service_orders": "Open service orders",
+        "open_service_orders_hint": "Excludes completed and cancelled",
         "subtitle": "Next-action coverage and overdue control",
         "title": "Operational hygiene"
       },
@@ -3832,8 +4067,10 @@
       },
       "control": {
         "title": "Control",
+        "inbox_title": "Inbox",
         "messages_title": "Messages",
-        "open_messages": "Messages"
+        "open_messages": "Messages",
+        "open_unified_inbox": "Open inbox"
       },
       "override_reason_label": "Reason for override",
       "override_reason_placeholder": "Why are you editing restricted fields?",
@@ -3845,7 +4082,19 @@
         "legal_compliance": "Legal/compliance request",
         "other": "Other"
       },
+      "override_modal": {
+        "title": "Confirm manager edit",
+        "hint": "Choose why you are unlocking protected fields. After you continue, this dialog closes and the form stays editable; changes are saved automatically until you leave the card or cancel editing.",
+        "cancel_edit": "Cancel editing",
+        "continue_edit": "Continue editing"
+      },
+      "rail": {
+        "primary_step_badge": "Next step"
+      },
       "next_action": {
+        "docs_in_panel_below": "What’s missing and where to upload are in the Documents section below.",
+        "suggested_focus": "Suggested focus: {label}",
+        "reminder_optional_nudge": "Add a reminder if you want a tracked due date.",
         "docs_verify_title": "Verify uploaded documents",
         "docs_verify_description": "Candidate uploaded documents. Verify and approve/reject before moving stage.",
         "complete": "Complete",
@@ -3859,6 +4108,8 @@
         "empty": "Empty",
         "overdue": "Overdue",
         "snooze": "Snooze",
+        "pipeline_completed_title": "Process completed",
+        "pipeline_completed_body": "This candidate is in a final stage (hired, rejected, declined, or probation completed) — no further pipeline steps apply.",
         "title": "Next action"
       },
       "reminders": {
@@ -4310,6 +4561,7 @@
         "title": "Stage journey"
       },
       "timeline": {
+        "stage_changes_only": "Stage changes only",
         "collapsed_hint": "Collapsed hint",
         "empty": "Empty",
         "filters": {
@@ -4355,6 +4607,7 @@
         "table": "Table",
         "kanban": "Pipeline",
         "save_action": "Save as view",
+        "save_needs_filters_hint": "Apply at least one filter to save this view.",
         "manage_title": "Apply or manage saved views",
         "toggle": "Views",
         "apply_title": "Apply: {name}",
@@ -4372,7 +4625,10 @@
         "quick_no_next_action": "Quick no next action",
         "quick_overdue_next_action": "Quick overdue next action",
         "quick_ready_for_handoff": "Quick ready for handoff",
-        "quick_views_title": "Quick views title"
+        "quick_views_title": "Quick views",
+        "quick_views_placeholder": "Quick view…",
+        "saved_inline_title": "My saved views",
+        "shortcut_filters_title": "Shortcuts"
       },
       "insights": {
         "title": "Insights",
@@ -4402,7 +4658,12 @@
         "more": "More actions",
         "new_candidate_title": "Create a new candidate",
         "new_candidate": "New candidate",
-        "preview": "Preview"
+        "preview": "Preview",
+        "preview_panel_hint": "Open side preview (work panel)",
+        "preview_close": "Close side panel",
+        "preview_close_hint": "Close the right work panel",
+        "remind": "Remind",
+        "remind_title": "Open preview and focus next action (reminder)"
       },
       "docs": {
         "readiness": {
@@ -4559,6 +4820,10 @@
         "open_card_masked": "Open card masked",
         "reorder_column": "Reorder column",
         "resize_column": "Resize column",
+        "customize_layout": "Customize table",
+        "customize_layout_done": "Done customizing",
+        "customize_layout_title": "Reorder columns (⋮⋮) and resize widths. Column visibility stays under ⋯.",
+        "customize_banner": "Layout mode on: drag ⋮⋮ on headers to reorder; drag the right edge of a header to resize.",
         "select": "Select",
         "select_all": "Select all",
         "select_candidate": "Select candidate",
@@ -4610,6 +4875,8 @@
       },
       "context": {
         "open_card": "Open card",
+        "preview_next_action": "Side preview — next action",
+        "preview_next_action_hint": "Open the right panel and expand the next-action block.",
         "select": "Select",
         "deselect": "Deselect",
         "change_stage": "Change stage",
@@ -4672,6 +4939,8 @@
       "messages": {
         "load_failed": "Failed to load candidates.",
         "reason_required": "Select at least one reason.",
+        "row_stage_reason_required": "This stage needs a status reason. Open the candidate card to choose one, or use bulk stage change.",
+        "row_stage_select_hint": "Change stage from the list (some stages need a reason on the card)",
         "bulk_stage_failed": "Failed to change stage.",
         "bulk_stage_partial": "Failed to update {failed} of {total} candidates.",
         "bulk_stage_rodo_blocked": "RODO is missing for {rodo} candidates out of {total}. Open candidate cards, send RODO, then retry bulk stage change.",
@@ -4806,7 +5075,10 @@
         "event": "Event",
         "timeline_empty": "Timeline empty",
         "timeline_title": "Timeline title",
-        "stage_scope_hint": "Stage changes, journey, and compliance gates — in the full card."
+        "stage_scope_hint": "Stage changes, journey, and compliance gates — in the full card.",
+        "reminders_assignee_scope": "Reminder scope for this candidate",
+        "comms_title": "Comms",
+        "open_unified_inbox": "Inbox (all channels)"
       }
     },
     "tasks": {
@@ -4830,7 +5102,8 @@
         "week": "This week",
         "later": "Later",
         "unscheduled": "No due date",
-        "done": "Completed / cancelled"
+        "done": "Completed / cancelled",
+        "sla_queue": "Open tasks (SLA order)"
       },
       "filter": {
         "active": "Active",
@@ -4840,6 +5113,13 @@
       "assignee": {
         "mine": "My tasks",
         "team": "Team tasks"
+      },
+      "sla_sort_hint": "Within each due-date section, order is: SLA breach → due soon → on track, then earliest SLA deadline, then due date.",
+      "sla_flat_hint": "Single list sorted by SLA pressure across all due dates; completed tasks appear below when you show All or Done.",
+      "layout": {
+        "label": "View",
+        "by_due": "Group by due date",
+        "sla_queue": "SLA priority queue (flat)"
       },
       "sla": {
         "status": {
@@ -5118,6 +5398,37 @@
       "subtitle": "Subtitle",
       "title": "Title"
     },
+    "automations": {
+      "hub": {
+        "kicker": "System module",
+        "title": "Automations",
+        "subtitle": "Rules encode operational policy; the log explains what ran. Policy shortcuts below open the same Settings screens — one hub for ops leads before a single merged UI exists.",
+        "card_rules_title": "Automation rules",
+        "card_rules_desc": "Triggers → actions (e.g. reminders on stage change, expiring documents, risk band). Minimal builder; advanced policy also lives in settings.",
+        "card_log_title": "Automation log",
+        "card_log_desc": "Audit trail of automation-fired actions. Filter by target, time range, and action prefix.",
+        "open": "Open",
+        "back": "← Automations",
+        "policy_section": "Policy & enforcement (settings)",
+        "policy_risk_title": "Risk intelligence",
+        "policy_risk_desc": "Hourly risk model, shadow cohorts, stage gate, digest email — team policy in Settings.",
+        "policy_gates_title": "Hiring pipeline gates",
+        "policy_gates_desc": "Stage requirements, documents, and forward guards before candidates advance.",
+        "policy_ruleset_title": "Ruleset versions",
+        "policy_ruleset_desc": "Compliance / document rulesets and published versions used across the tenant.",
+        "policy_docs_title": "Document types",
+        "policy_docs_desc": "Templates and document intelligence configuration (automation inputs for readiness).",
+        "policy_comms_sla_title": "Communications SLA",
+        "policy_comms_sla_desc": "Escalation and overdue policy for conversation threads (ops automation).",
+        "policy_settings_title": "All settings",
+        "policy_settings_desc": "Full settings index — integrations, email, users, billing, and more.",
+        "ops_section": "Fulfillment & billing (execution)",
+        "ops_orders_title": "Service orders",
+        "ops_orders_desc": "Orders tab — next steps, blocking work, and invoice linkage.",
+        "ops_invoices_title": "Invoices",
+        "ops_invoices_desc": "Outstanding balance, aging queues, and correction workflows."
+      }
+    },
     "automation_log": {
       "empty": "Empty",
       "errors": {
@@ -5177,6 +5488,7 @@
         "back_to_calendar": "Back to calendar",
         "back_to_hub": "Back to hub",
         "mark_thread_read": "Mark thread read",
+        "open_inbox_center": "Inbox center",
         "open_thread": "Open thread",
         "refresh": "Refresh"
       },
@@ -5295,11 +5607,17 @@
           "week_short": "Week",
           "month_short": "Month"
         },
+        "tasks_queue_link": "Open full task queue",
+        "scheduling": {
+          "my_availability": "My availability",
+          "team_availability": "Team availability",
+          "time_off": "Time off"
+        },
         "filters": {
           "sources": {
             "all": "All sources",
             "timeoff": "Time-off",
-            "activities": "Activities",
+            "activities": "Tasks & deadlines",
             "planner": "Planner"
           },
           "timeoff": {
@@ -5466,6 +5784,10 @@
           "load": "Failed to load email inbox",
           "send": "Failed to send message"
         },
+        "mandatory_link": {
+          "block_send": "Link this thread to a candidate, client company, or UOS service order before reply or forward.",
+          "composer_banner": "Thread is not linked to a candidate, client, or service order — link in Inbox center when possible (operations policy may still block send)."
+        },
         "poll": {
           "cta": "CTA",
           "diagnostics": "Diagnostics",
@@ -5473,9 +5795,14 @@
           "loading": "Loading",
           "more_accounts": "More accounts",
           "new_threads": "New threads",
+          "reconnect_oauth_hint": "Mailbox authentication failed (e.g. 401). Reconnect the account in Communications setup or run diagnostics.",
+          "reconnect_email_setup": "Reconnect email (setup)",
           "skipped": "Skipped",
           "summary": "Summary"
         },
+        "oauth_redirect_body": "Open Communications setup, step «Connect email», and click «OAuth complete» to exchange the code for tokens. The code is filled in automatically when you open setup.",
+        "oauth_redirect_open_setup": "Open email setup",
+        "oauth_redirect_title": "Gmail authorization code received",
         "signature": {
           "apply": "Apply"
         },
@@ -5504,7 +5831,28 @@
         "folders": {
           "archive": "Archive",
           "deleted": "Deleted",
-          "inbox": "Inbox"
+          "inbox": "Inbox",
+          "unread": "Unread",
+          "sent": "Sent",
+          "all": "All",
+          "unlinked": "Unlinked",
+          "expand": "Show folders",
+          "collapse": "Collapse folders",
+          "more_show": "More folders",
+          "more_hide": "Hide extra folders"
+        },
+        "filters": {
+          "without_candidate": "Without candidate",
+          "assigned_to_me": "Assigned to me",
+          "has_assignee": "Has assignee"
+        },
+        "sync": {
+          "title": "Sync incoming mail"
+        },
+        "row": {
+          "sla_overdue": "SLA overdue",
+          "needs_reply": "Needs reply",
+          "waiting_reply_hours": "{hours}h without reply"
         },
         "labels": {
           "commands": "Commands",
@@ -5520,6 +5868,9 @@
         "preview": {
           "add_signature": "Add signature",
           "assignee": "Assignee",
+          "assignee_short": "assignee {id}",
+          "bind": "Bind",
+          "assign": "Assign",
           "body_placeholder": "Write your message",
           "created": "Created",
           "empty": "Select a conversation to preview.",
@@ -5546,8 +5897,8 @@
         "load": "Load"
       },
       "ia": {
-        "calendar_subtitle": "Calendar subtitle",
-        "calendar_title": "Calendar title",
+        "calendar_subtitle": "Time view of tasks and activities (same data as Tasks). Optional planner and time-off layers. Use Tasks for the execution queue.",
+        "calendar_title": "Calendar",
         "email_title": "Email title",
         "my_availability_subtitle": "My availability subtitle",
         "my_availability_title": "My availability title",
@@ -5586,13 +5937,25 @@
       "scheduler": {
         "run_now": "Run now"
       },
-      "setup": {
+        "setup": {
         "actions": {
           "connect_email": "Connect email",
           "connect_telegram": "Connect telegram",
           "enable_baseline": "Enable baseline",
           "open_settings": "Open settings"
         },
+        "notices": {
+          "oauth_code_prefilled": "Authorization code loaded — click «OAuth complete» to exchange it for tokens."
+        },
+        "oauth_error_url_note": "Google’s error page URL sometimes shows a generic client_id — that is not proof of what was sent. Compare redirect_uri below with Authorized redirect URIs in Google Cloud (must match exactly).",
+        "oauth_google_js_origin_hint": "Required: Authorized JavaScript origins must not be empty. Add «https://hostflow.cc» (same scheme and host as the app, no path). Redirect URI must exactly match «https://hostflow.cc/app/email» in both HostFlow and Google Cloud. Empty JS origins often cause 400 invalid_request.",
+        "oauth_verify_request": "Verify parameters our server sends to Google",
+        "oauth_google_testing_hint": "If the consent screen is in «Testing», add this Google user under Test users in Google Cloud Console — otherwise Google will refuse access.",
+        "oauth_token_required_intro": "Google only accepts requests that include a valid OAuth access token. You get that token after you sign in with Google and exchange the one-time authorization code.",
+        "oauth_token_required_step_complete": "Or paste the \"code\" value from the browser address bar into the field below, then «OAuth complete».",
+        "oauth_token_required_step_consent": "Click «OAuth start», then «Open consent URL», and sign in with the Google account for this mailbox.",
+        "oauth_token_required_step_redirect": "After Google redirects you back (usually to /app/email), the code is saved automatically — return here and click «OAuth complete».",
+        "oauth_token_required_title": "Client ID and Secret are not enough for Gmail",
         "banner_incomplete": "Banner incomplete",
         "incomplete": "Incomplete",
         "next_step": "Next step",
@@ -5781,6 +6144,7 @@
         "service_order": "Service order",
         "status": "Status"
       },
+      "col_days_overdue": "Days overdue",
       "due_date": "Due date",
       "edit": "Edit",
       "edit_only_draft": "Edit only draft",
@@ -7385,93 +7749,96 @@
     "crm_landing": {
       "audience": {
         "items": {
-          "0": "0",
-          "1": "1",
-          "2": "2",
-          "3": "3"
+          "0": "Recruitment agencies with distributed teams",
+          "1": "Employers with high-volume candidate flows",
+          "2": "Operations teams managing onboarding and docs",
+          "3": "Managers who need clear pipeline and ownership"
         },
-        "title": "Title"
+        "title": "Who this CRM is for"
       },
       "compare": {
         "analytics": "Analytics",
-        "communications": "Communications",
+        "communications": "Communications workspace",
         "feature": "Feature",
-        "roles": "Roles",
-        "title": "Title",
+        "roles": "Roles & permissions",
+        "title": "Plan comparison at a glance",
         "users": "Users"
       },
       "faq": {
-        "a1": "A1",
-        "a2": "A2",
-        "a3": "A3",
-        "q1": "Q1",
-        "q2": "Q2",
-        "q3": "Q3",
-        "title": "Title"
+        "a1": "Yes. Core onboarding is account -> company -> first client/lead/action. Advanced settings can be done later.",
+        "a2": "Yes. Start solo, then invite teammates from Team settings when ready.",
+        "a3": "Plans can be changed in Billing. The product flow keeps your workspace data intact.",
+        "q1": "Can we start without configuring everything?",
+        "q2": "Can we invite team later?",
+        "q3": "What if we choose wrong plan?",
+        "title": "FAQ"
       },
       "final_cta": {
-        "button": "Button",
-        "subtitle": "Subtitle",
-        "title": "Title"
+        "button": "Start free trial",
+        "subtitle": "Create workspace now and reach first value in minutes.",
+        "title": "Ready to launch your CRM workflow?"
       },
       "guides": {
         "title": "Explore product guides",
         "subtitle": "Start with the page closest to your current challenge and move to the next linked guide."
       },
       "hero": {
-        "badge": "Badge",
-        "primary_cta": "Primary CTA",
-        "secondary_cta": "Secondary CTA",
-        "subtitle": "Subtitle",
-        "title": "Title",
+        "badge": "CRM for recruitment operations",
+        "primary_cta": "Start free trial",
+        "secondary_cta": "Sign in",
+        "subtitle": "Manage leads, candidates, team workload and communications in one workspace with a fast onboarding.",
+        "title": "Launch your hiring workflow in minutes",
         "value_list": {
-          "0": "0",
-          "1": "1",
-          "2": "2"
+          "0": "Create workspace and company",
+          "1": "Add first lead or client",
+          "2": "Assign status, note and next task"
         },
-        "value_title": "Value title"
+        "value_title": "What you get in the first 5 minutes"
       },
       "objections": {
-        "0": "0",
-        "1": "1",
-        "2": "2",
-        "title": "Title"
+        "0": "Too many settings before work starts.",
+        "1": "Hard to onboard team members.",
+        "2": "Unclear path from lead to next action.",
+        "title": "Common blockers we remove"
       },
       "pricing": {
-        "badge": "Badge",
-        "note": "Note",
+        "badge": "Pricing",
+        "note": "Payment gateway will be connected in the final launch step.",
         "pro": {
-          "best_for": "Best for",
+          "name": "Pro",
+          "best_for": "Best for scaled operations with advanced workflows",
           "features": {
-            "0": "0",
-            "1": "1",
-            "2": "2"
+            "0": "Advanced analytics and reporting",
+            "1": "Priority support",
+            "2": "Expanded integrations"
           },
-          "price": "Price",
-          "seats": "Seats"
+          "price": "$199/mo",
+          "seats": "Advanced limits"
         },
-        "select_cta": "Select CTA",
+        "select_cta": "Select plan",
         "starter": {
-          "best_for": "Best for",
+          "name": "Starter",
+          "best_for": "Best for solo operators starting CRM operations",
           "features": {
-            "0": "0",
-            "1": "1",
-            "2": "2"
+            "0": "Candidate and client management",
+            "1": "Lead source tracking",
+            "2": "Basic dashboard"
           },
-          "price": "Price",
-          "seats": "Seats"
+          "price": "$39/mo",
+          "seats": "1 user"
         },
         "team": {
-          "best_for": "Best for",
+          "name": "Team",
+          "best_for": "Best for small teams managing shared pipelines",
           "features": {
-            "0": "0",
-            "1": "1",
-            "2": "2"
+            "0": "Team roles and permissions",
+            "1": "Shared workspace and assignments",
+            "2": "Communications workspace"
           },
-          "price": "Price",
-          "seats": "Seats"
+          "price": "$99/mo",
+          "seats": "Up to 5 users"
         },
-        "title": "Title"
+        "title": "Choose a plan that fits your team"
       }
     },
     "documents_upload": {
@@ -7571,6 +7938,36 @@
         "passport": "Passport",
         "license": "Driver license",
         "insurance": "Insurance"
+      }
+    },
+    "risk_intel": {
+      "settings": {
+        "load_error": "Failed to load risk intelligence settings",
+        "saved": "Risk intelligence settings saved",
+        "save_error": "Save failed",
+        "kicker": "CRM setup",
+        "title": "Risk intelligence (v1)",
+        "blurb": "Tenant overrides for risk_model_v1: hourly job, stage gate, digest email, and risk-band automations. Effective values merge with product defaults.",
+        "back": "← Settings",
+        "overrides_title": "Stored tenant overrides (read-only)",
+        "overrides_hint": "Raw JSON fragment under settings.risk_model_v1 after save.",
+        "hourly_job": "Hourly risk job enabled",
+        "hourly_job_hint": "When off, the scheduled hourly persistence job skips this workspace.",
+        "stage_gate": "Stage gate",
+        "stage_gate_enabled": "Enforce gate on forward",
+        "min_band": "Minimum band",
+        "block_without_next_action": "Block forward without next action (when gate applies)",
+        "digest": "Shadow digest email",
+        "digest_enabled": "Send digest when criteria match",
+        "max_rows": "Max rows",
+        "skip_if_empty": "Skip send when digest is empty",
+        "digest_to": "Direct emails (comma-separated)",
+        "digest_roles": "Role inboxes (comma-separated)",
+        "automations": "Risk-band automations",
+        "automations_hint": "Runs after hourly scoring when shadow rows exist; uses automation rules for candidate risk bands.",
+        "auto_enabled": "Enable automations",
+        "dedupe_hours": "Dedupe window (hours)",
+        "read_only": "Only workspace administrators can edit these settings."
       }
     },
     "documents": {
@@ -8372,6 +8769,14 @@
         "funnels": {
           "label": "Funnels & stages",
           "description": "Manage candidate and lead pipeline stages."
+        },
+        "hiring_gates": {
+          "label": "Hiring pipeline gates",
+          "description": "Document, vacancy and contact-attempt rules by stage (tenant matrix)."
+        },
+        "risk_intel": {
+          "label": "Risk intelligence (v1)",
+          "description": "Hourly job, stage gate, digest email, and risk-band automation overrides."
         },
         "documents": {
           "label": "Document types",

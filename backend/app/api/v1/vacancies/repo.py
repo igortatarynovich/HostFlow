@@ -28,13 +28,32 @@ class VacancyRepo:
         return or_(*clauses)
 
     async def get(self, vacancy_id: str):
-        # For single vacancy, we also load related data
+        candidate_count_sq = (
+            select(func.count(Candidate.id))
+            .where(
+                Candidate.vacancy_id == vacancy_id,
+                Candidate.tenant_id == self.tenant_id,
+                Candidate.deleted_at.is_(None),
+            )
+            .scalar_subquery()
+        )
+        last_candidate_activity_sq = (
+            select(func.max(Candidate.updated_at))
+            .where(
+                Candidate.vacancy_id == vacancy_id,
+                Candidate.tenant_id == self.tenant_id,
+                Candidate.deleted_at.is_(None),
+            )
+            .scalar_subquery()
+        )
         stmt = (
             select(
                 Vacancy,
                 Company.name.label("company_name"),
                 CandidateProfile.id.label("candidate_profile_id"),
                 CandidateProfile.name.label("candidate_profile_name"),
+                candidate_count_sq.label("candidate_count"),
+                last_candidate_activity_sq.label("last_candidate_activity_at"),
             )
             .where(
                 Vacancy.id == vacancy_id,
@@ -53,8 +72,7 @@ class VacancyRepo:
         row = res.first()
         if row is None:
             return None
-        # Return tuple for compatibility with service layer
-        return row  # (Vacancy, company_name, candidate_profile_id, candidate_profile_name)
+        return row
 
     async def list(
         self,
@@ -69,7 +87,18 @@ class VacancyRepo:
         descending: bool,
         allowed_company_ids: set[str] | None = None,
         allowed_vacancy_ids: set[str] | None = None,
+        include_archived: bool = False,
     ):
+        last_cand_activity_sq = (
+            select(func.max(Candidate.updated_at))
+            .where(
+                Candidate.vacancy_id == Vacancy.id,
+                Candidate.tenant_id == self.tenant_id,
+                Candidate.deleted_at.is_(None),
+            )
+            .correlate(Vacancy)
+            .scalar_subquery()
+        )
         stmt = (
             select(
                 Vacancy,
@@ -77,6 +106,7 @@ class VacancyRepo:
                 CandidateProfile.id.label("candidate_profile_id"),
                 CandidateProfile.name.label("candidate_profile_name"),
                 func.count(Candidate.id).label("candidate_count"),
+                last_cand_activity_sq.label("last_candidate_activity_at"),
             )
             .where(self._scope_clause())
             .join(Company, Company.id == Vacancy.company_id, isouter=True)
@@ -97,8 +127,18 @@ class VacancyRepo:
             stmt = stmt.where(Vacancy.own_company_id == self.own_company_id)
         if company_id:
             stmt = stmt.where(Vacancy.company_id == company_id)
-        if status:
-            stmt = stmt.where(Vacancy.status == status)
+
+        normalized_status = (status or "").strip().lower() if status else None
+        if normalized_status == "archived":
+            col_arch = getattr(Vacancy, "is_archived", None)
+            if col_arch is not None:
+                stmt = stmt.where(col_arch.is_(True))
+        else:
+            col_arch = getattr(Vacancy, "is_archived", None)
+            if col_arch is not None and not include_archived:
+                stmt = stmt.where(col_arch.is_(False))
+            if status and normalized_status != "archived":
+                stmt = stmt.where(Vacancy.status == status)
         if search:
             stmt = stmt.where(Vacancy.title.ilike(f"%{search}%"))
         if candidate_profile_id:

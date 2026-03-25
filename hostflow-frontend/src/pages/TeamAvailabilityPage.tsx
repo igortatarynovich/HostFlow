@@ -99,7 +99,7 @@ export default function TeamAvailabilityPage() {
 
   return (
     <div className="space-y-4">
-      <WorkspaceTopNav active="team_availability" />
+      <WorkspaceTopNav active="calendar" />
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.team_availability_title', { defaultValue: 'Team Availability' })}</h1>
         <p className="text-sm text-slate-500">

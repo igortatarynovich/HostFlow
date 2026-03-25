@@ -29,6 +29,7 @@ import { useToast } from '../components/Toast'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { getLeadErrorSuggestion } from '../utils/leadErrorSuggestion'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
+import { serviceOrderWorkspacePath } from '../modules/services/utils'
 
 const STATUS_FILTERS: Array<'' | LeadStatus> = ['', 'new', 'processed', 'duplicated', 'needs_routing', 'failed']
 const STAGE_FILTERS: Array<'' | LeadStage> = ['', 'new', 'contacted', 'qualified', 'converted', 'lost']
@@ -830,8 +831,8 @@ export default function LeadsPage() {
   )
 
   return (
-    <div className="space-y-3">
-      <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
+      <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">{leadWorkspaceTitle}</h1>
@@ -1078,7 +1079,7 @@ export default function LeadsPage() {
                         }}
                         secondaryAction={{
                           label: secondaryEmptyLabel,
-                          to: '/app/clients',
+                          to: '/app/clients/directory',
                         }}
                       />
                     </td>
@@ -1272,7 +1273,7 @@ export default function LeadsPage() {
                               {lead.service_order_id ? (
                                 <div className="flex flex-wrap items-center gap-2">
                                   <Link
-                                    to={`/app/services?order=${lead.service_order_id}`}
+                                    to={serviceOrderWorkspacePath(String(lead.service_order_id), lead.company_id)}
                                     className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
                                     onClick={(e) => e.stopPropagation()}
                                   >
@@ -1475,7 +1476,7 @@ export default function LeadsPage() {
                       </button>
 
                       <Link
-                        to="/app/automation-rules"
+                        to="/app/automations"
                         className="text-[11px] text-slate-500 hover:text-brand-700 hover:underline"
                       >
                         {t('app.admin.meta_leads.tabs.automation_rules', { defaultValue: 'Automation Rules' })}

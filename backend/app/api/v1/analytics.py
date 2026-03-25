@@ -6,9 +6,9 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Literal, Counter as TCounter
 import json
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select, or_, and_, text
 from sqlalchemy import exists
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,11 +28,13 @@ from backend.app.models import (
     Document,
     Lead,
     Reminder,
+    RiskIntelEntityShadow,
     ServiceOrder,
     Tenant,
     User,
     Vacancy,
 )
+from backend.app.models.additional_service import ServiceOrderStatus
 from backend.app.models.reminder import ReminderStatus
 from backend.app.models.additional_service import Service, ServiceItem
 from backend.app.models.invoice import Invoice
@@ -40,30 +42,92 @@ from backend.app.models.tenant import TenantLink
 from backend.app.services.handoff import is_client_tenant_for_list
 from backend.app.models.enums import CandidateStage
 from backend.app.constants.stages import (
+    PIPELINE_COMPLETED_STAGE_CODES,
     LABELS as STAGE_LABELS,
     STATUS_REASON_CHOICES,
     ORDER as STAGE_ORDER,
     STAGE_META as STAGE_META_CONST,
 )
+
+_CANDIDATE_ACTIVE_FOR_NEXT_ACTION = or_(
+    Candidate.stage.is_(None),
+    Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
+)
 from backend.app.services.tenant_visibility import TenantVisibility, get_tenant_visibility
 from backend.app.services.source_labels import normalize_candidate_source
 from backend.app.services.audit import log_activity
+from backend.app.api.v1.utils.access import resolve_restricted_acl
 from backend.app.api.v1.candidates import repo as candidates_repo
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause as repo_scope_clause
+from backend.app.services.risk_intel_v1 import (
+    compute_candidate_risk_baseline,
+    list_latest_shadow_snapshot,
+    list_risk_intel_hourly_trends,
+    list_shadow_digest_bucket_summaries,
+    list_shadow_snapshot_for_bucket_iso,
+    parse_shadow_bucket_iso,
+    shadow_validation_summary,
+)
 
 router = APIRouter(tags=["analytics"])
+
+RISK_OPS_ROLES = frozenset({"superadmin", "administrator", "supervisor"})
+MANAGER_DIGEST_ACK_ACTION = "risk_intel.manager_digest_ack"
+
+
+async def _manager_digest_last_ack_bucket(db: AsyncSession, tenant_id: str, user_id: str) -> str | None:
+    row = (
+        await db.execute(
+            select(ActivityLog.payload)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.actor_id == user_id,
+                ActivityLog.action == MANAGER_DIGEST_ACK_ACTION,
+            )
+            .order_by(ActivityLog.created_at.desc())
+            .limit(1)
+        )
+    ).first()
+    if not row:
+        return None
+    payload = row[0]
+    p = payload if isinstance(payload, dict) else {}
+    bs = p.get("bucket_start")
+    return str(bs).strip() if bs else None
+
+
+def _require_risk_ops_lead(ctx: UserCtx) -> None:
+    role = (ctx.role or "").lower().strip()
+    if role not in RISK_OPS_ROLES:
+        raise HTTPException(
+            status_code=403,
+            detail="Risk intelligence requires supervisor, administrator, or superadmin role.",
+        )
 
 # Perf budgets: p95 thresholds (ms) by metric key.
 # Keep small and actionable; these values are meant to be tuned after baseline stabilizes.
 PERF_BUDGETS_P95_MS: dict[str, float] = {
     "leads.list.load": 1500.0,
     "candidates.list.load": 2500.0,
+    "candidates.work_panel.load": 800.0,
+    # Frontend-emitted via POST /analytics/events (perf); aligns with R1.5 Phase D SSOT.
+    "candidate.card.open": 1200.0,
+    # R3.4 — Overview risk intelligence (parallel analytics APIs).
+    "dashboard.risk_intel.core.load": 12000.0,
+    "dashboard.risk_intel.shadow_snapshot.load": 8000.0,
+    # R3.4 — team settings risk_model_v1 GET.
+    "settings.risk_intel.page.load": 4000.0,
 }
 
 
 class OpsCountersOut(BaseModel):
     no_next_action_candidates: int = 0
     overdue_reminders: int = 0
+    # Recruitment (open vacancies = status open, not archived; ACL-aligned with list_vacancies)
+    open_vacancies: int = 0
+    open_vacancies_candidates: int = 0
+    # Service orders not completed/cancelled (tenant-wide; aligns with list_service_orders scope)
+    open_service_orders: int = 0
     # Leads next action loop (processed leads only)
     leads_no_next_action: int = 0
     leads_overdue: int = 0
@@ -108,6 +172,7 @@ async def ops_counters(
             .where(
                 Candidate.deleted_at.is_(None),
                 Candidate.tenant_id == tenant_id_str,
+                _CANDIDATE_ACTIVE_FOR_NEXT_ACTION,
                 ~reminder_exists,
             )
         )
@@ -292,9 +357,85 @@ async def ops_counters(
             pass
         automation_events_24h = 0
 
+    open_vacancies = 0
+    open_vacancies_candidates = 0
+    try:
+        acl = await resolve_restricted_acl(db, tenant_id_str, ctx)
+        vac_conds = [
+            Vacancy.tenant_id == tenant_id_str,
+            Vacancy.status == "open",
+            Vacancy.is_archived.is_(False),
+        ]
+        if acl is not None:
+            acl_filters = []
+            if acl.company_ids:
+                acl_filters.append(Vacancy.company_id.in_(list(acl.company_ids)))
+            if acl.vacancy_ids:
+                acl_filters.append(Vacancy.id.in_(list(acl.vacancy_ids)))
+            if not acl_filters:
+                vac_where = None
+            else:
+                vac_where = and_(*vac_conds, or_(*acl_filters))
+        else:
+            vac_where = and_(*vac_conds)
+
+        if vac_where is not None:
+            open_vacancies = int(
+                (await db.execute(select(func.count()).select_from(Vacancy).where(vac_where))).scalar_one() or 0
+            )
+            vac_ids_subq = select(Vacancy.id).where(vac_where)
+            open_vacancies_candidates = int(
+                (
+                    await db.execute(
+                        select(func.count())
+                        .select_from(Candidate)
+                        .where(
+                            Candidate.tenant_id == tenant_id_str,
+                            Candidate.deleted_at.is_(None),
+                            Candidate.vacancy_id.isnot(None),
+                            Candidate.vacancy_id.in_(vac_ids_subq),
+                        )
+                    )
+                ).scalar_one()
+                or 0
+            )
+    except Exception:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        open_vacancies = 0
+        open_vacancies_candidates = 0
+
+    open_service_orders = 0
+    try:
+        terminal = (ServiceOrderStatus.completed.value, ServiceOrderStatus.cancelled.value)
+        open_service_orders = int(
+            (
+                await db.execute(
+                    select(func.count())
+                    .select_from(ServiceOrder)
+                    .where(
+                        ServiceOrder.tenant_id == tenant_id_str,
+                        ServiceOrder.status.notin_(list(terminal)),
+                    )
+                )
+            ).scalar_one()
+            or 0
+        )
+    except Exception:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        open_service_orders = 0
+
     return OpsCountersOut(
         no_next_action_candidates=int(no_next_action_candidates),
         overdue_reminders=int(overdue_reminders),
+        open_vacancies=int(open_vacancies),
+        open_vacancies_candidates=int(open_vacancies_candidates),
+        open_service_orders=int(open_service_orders),
         leads_no_next_action=int(leads_no_next_action),
         leads_overdue=int(leads_overdue),
         leads_with_next_action=int(leads_with_next_action),
@@ -2549,3 +2690,301 @@ async def get_ttv_report(
         actors=len(per_actor_steps),
         steps=steps_out,
     )
+
+
+# --- Risk intelligence v1 (Phase A: read-only baseline / SSOT R3.4) ---
+
+
+class RiskIntelStageAggOut(BaseModel):
+    count: int
+    avg_risk_score: float
+    high_plus_count: int
+
+
+class RiskIntelligenceOut(BaseModel):
+    generated_at: datetime
+    risk_version: str
+    candidates_evaluated: int
+    high_risk_volume: int
+    avg_risk_score: float
+    band_distribution: dict[str, int]
+    risk_distribution_by_stage: dict[str, RiskIntelStageAggOut]
+    first_response_hours_histogram: dict[str, int]
+    effective_weights: dict[str, float]
+
+
+@router.get("/analytics/risk-intelligence", response_model=RiskIntelligenceOut)
+async def risk_intelligence(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    limit: int = Query(5000, ge=50, le=15000, description="Max candidates scored (most recently updated first)"),
+):
+    """
+    Read-only aggregate risk baseline for candidates (transparent weighted v1 model).
+    Uses Tenant.settings.risk_model_v1 when present. Phase B: hourly rows via scheduler (ops roles only).
+    """
+    _require_risk_ops_lead(ctx)
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    visibility = get_tenant_visibility(db, tenant_id_str)
+    is_client = await is_client_tenant_for_list(db, tenant_id_str)
+    scope_clause = repo_scope_clause(tenant_id_str, visibility, is_client_tenant=is_client)
+
+    raw = await compute_candidate_risk_baseline(
+        db,
+        tenant_id_str,
+        scope_clause,
+        limit=limit,
+    )
+    by_stage = {
+        k: RiskIntelStageAggOut(**v) for k, v in (raw.get("risk_distribution_by_stage") or {}).items()
+    }
+    return RiskIntelligenceOut(
+        generated_at=raw["generated_at"],
+        risk_version=str(raw.get("risk_version") or "risk_model_v1"),
+        candidates_evaluated=int(raw.get("candidates_evaluated") or 0),
+        high_risk_volume=int(raw.get("high_risk_volume") or 0),
+        avg_risk_score=float(raw.get("avg_risk_score") or 0.0),
+        band_distribution=dict(raw.get("band_distribution") or {}),
+        risk_distribution_by_stage=by_stage,
+        first_response_hours_histogram=dict(raw.get("first_response_hours_histogram") or {}),
+        effective_weights={str(k): float(v) for k, v in (raw.get("effective_weights") or {}).items()},
+    )
+
+
+class RiskIntelTrendPointOut(BaseModel):
+    bucket_start: str | None
+    avg_risk_score: float
+    high_risk_volume: int
+    candidates_evaluated: int
+    band_low: int
+    band_medium: int
+    band_high: int
+    band_critical: int
+
+
+class RiskIntelTrendsOut(BaseModel):
+    generated_at: datetime
+    days: int
+    points: list[RiskIntelTrendPointOut]
+
+
+class RiskIntelValidationOut(BaseModel):
+    generated_at: str
+    cohort_window: dict[str, str]
+    lag_days_after_cohort: int
+    samples: int
+    forward_stage_progression_count: int
+    forward_stage_progression_rate: float | None = None
+    interpretation: str | None = None
+    note: str | None = None
+
+
+class RiskIntelShadowItemOut(BaseModel):
+    entity_id: str
+    score: float
+    band: str
+    stage_at_score: str | None = None
+    drivers: list[str] = Field(default_factory=list)
+    scored_at: str | None = None
+    short_id: str | None = None
+    display_name: str | None = None
+    recruiter_id: str | None = None
+
+
+class RiskIntelShadowSnapshotOut(BaseModel):
+    bucket_start: str | None = None
+    scored_at: str | None = None
+    risk_version: str = "risk_model_v1"
+    min_band: str = "high"
+    total_matching: int = 0
+    items: list[RiskIntelShadowItemOut] = Field(default_factory=list)
+    note: str | None = None
+
+
+@router.get("/analytics/risk-intelligence/trends", response_model=RiskIntelTrendsOut)
+async def risk_intelligence_trends(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    days: int = Query(30, ge=1, le=90),
+):
+    """Phase B: hourly aggregate time series (persisted by communications scheduler)."""
+    _require_risk_ops_lead(ctx)
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    now = datetime.now(timezone.utc)
+    raw_points = await list_risk_intel_hourly_trends(db, tenant_id_str, days=days, now=now)
+    points = [RiskIntelTrendPointOut(**p) for p in raw_points]
+    return RiskIntelTrendsOut(generated_at=now, days=days, points=points)
+
+
+@router.get("/analytics/risk-intelligence/validation", response_model=RiskIntelValidationOut)
+async def risk_intelligence_validation(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    cohort_days: int = Query(14, ge=8, le=120),
+    lag_days: int = Query(7, ge=1, le=60),
+):
+    """Phase B: proxy validation — forward stage movement after high/critical shadow cohort."""
+    _require_risk_ops_lead(ctx)
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    raw = await shadow_validation_summary(
+        db,
+        tenant_id_str,
+        cohort_days=cohort_days,
+        lag_days=lag_days,
+    )
+    return RiskIntelValidationOut(**raw)
+
+
+@router.get("/analytics/risk-intelligence/shadow-snapshot", response_model=RiskIntelShadowSnapshotOut)
+async def risk_intelligence_shadow_snapshot(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    limit: int = Query(40, ge=1, le=200),
+    min_band: str = Query("high", description="low|medium|high|critical — include rows at or above this band"),
+    bucket_start: str | None = Query(
+        None,
+        description="Hourly bucket (ISO-8601). Omit for latest bucket.",
+    ),
+):
+    """Hourly shadow bucket: at-risk candidates (digest for ops leads). Default = latest row."""
+    _require_risk_ops_lead(ctx)
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    if bucket_start and str(bucket_start).strip():
+        raw = await list_shadow_snapshot_for_bucket_iso(
+            db,
+            tenant_id_str,
+            bucket_start_iso=str(bucket_start).strip(),
+            limit=limit,
+            min_band=min_band,
+        )
+    else:
+        raw = await list_latest_shadow_snapshot(db, tenant_id_str, limit=limit, min_band=min_band)
+    items = [RiskIntelShadowItemOut(**x) for x in (raw.get("items") or [])]
+    return RiskIntelShadowSnapshotOut(
+        bucket_start=raw.get("bucket_start"),
+        scored_at=raw.get("scored_at"),
+        risk_version=str(raw.get("risk_version") or "risk_model_v1"),
+        min_band=str(raw.get("min_band") or "high"),
+        total_matching=int(raw.get("total_matching") or 0),
+        items=items,
+        note=raw.get("note"),
+    )
+
+
+class RiskIntelDigestQueueItemOut(BaseModel):
+    bucket_start: str
+    total_matching: int
+    scored_at: str | None = None
+    unread: bool = False
+
+
+class RiskIntelDigestQueueOut(BaseModel):
+    generated_at: datetime
+    min_band: str
+    last_ack_bucket_start: str | None = None
+    unread_count: int = 0
+    buckets: list[RiskIntelDigestQueueItemOut]
+
+
+class ManagerDigestAckIn(BaseModel):
+    bucket_start: str = Field(..., min_length=4, description="Hourly bucket ISO-8601 (same as queue row)")
+
+
+@router.get("/analytics/risk-intelligence/manager-digest-queue", response_model=RiskIntelDigestQueueOut)
+async def risk_intelligence_manager_digest_queue(
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+    min_band: str = Query("high", description="Band floor for row counts (same as shadow snapshot)"),
+    limit_buckets: int = Query(21, ge=1, le=168, description="Max hourly buckets to return (newest first)"),
+):
+    """
+    In-product manager digest queue: recent hourly shadow buckets + per-user unread (vs last ack).
+    Ack via POST .../manager-digest-queue/ack.
+    """
+    _require_risk_ops_lead(ctx)
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    uid = str(ctx.sub or "").strip()
+    now = datetime.now(timezone.utc)
+    summaries = await list_shadow_digest_bucket_summaries(
+        db,
+        tenant_id_str,
+        min_band=min_band,
+        limit_buckets=limit_buckets,
+    )
+    last_ack: str | None = None
+    if uid:
+        last_ack = await _manager_digest_last_ack_bucket(db, tenant_id_str, uid)
+    last_ack_dt = parse_shadow_bucket_iso(last_ack) if last_ack else None
+    buckets_out: list[RiskIntelDigestQueueItemOut] = []
+    unread_count = 0
+    for idx, s in enumerate(summaries):
+        bs_iso = str(s.get("bucket_start") or "")
+        bs_dt = parse_shadow_bucket_iso(bs_iso)
+        if bs_dt is None:
+            unread = False
+        elif last_ack_dt is None:
+            unread = idx == 0
+        else:
+            unread = bs_dt > last_ack_dt
+        if unread:
+            unread_count += 1
+        buckets_out.append(
+            RiskIntelDigestQueueItemOut(
+                bucket_start=bs_iso,
+                total_matching=int(s.get("total_matching") or 0),
+                scored_at=s.get("scored_at"),
+                unread=unread,
+            )
+        )
+    return RiskIntelDigestQueueOut(
+        generated_at=now,
+        min_band=str(min_band).strip().lower(),
+        last_ack_bucket_start=last_ack,
+        unread_count=unread_count,
+        buckets=buckets_out,
+    )
+
+
+@router.post("/analytics/risk-intelligence/manager-digest-queue/ack")
+async def risk_intelligence_manager_digest_ack(
+    body: ManagerDigestAckIn,
+    db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    ctx: UserCtx = Depends(get_current_user),
+):
+    """Record that this ops user reviewed digest through the given hourly bucket (ActivityLog)."""
+    _require_risk_ops_lead(ctx)
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    uid = str(ctx.sub or "").strip()
+    if not uid:
+        raise HTTPException(status_code=401, detail="Missing user context")
+    buck = parse_shadow_bucket_iso(body.bucket_start)
+    if buck is None:
+        raise HTTPException(status_code=422, detail="Invalid bucket_start")
+    chk = await db.execute(
+        select(func.count())
+        .select_from(RiskIntelEntityShadow)
+        .where(
+            RiskIntelEntityShadow.tenant_id == tenant_id_str,
+            RiskIntelEntityShadow.entity_type == "candidate",
+            RiskIntelEntityShadow.bucket_start == buck,
+        )
+    )
+    if int(chk.scalar_one() or 0) == 0:
+        raise HTTPException(status_code=404, detail="Unknown digest bucket for tenant")
+    await log_activity(
+        db,
+        tenant_id=tenant_id_str,
+        actor_id=uid,
+        action=MANAGER_DIGEST_ACK_ACTION,
+        target_type="tenant",
+        target_id=tenant_id_str,
+        payload={"bucket_start": buck.isoformat()},
+    )
+    await db.commit()
+    return {"ok": True, "bucket_start": buck.isoformat()}

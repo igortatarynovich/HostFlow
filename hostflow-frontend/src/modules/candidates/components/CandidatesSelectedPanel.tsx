@@ -1,11 +1,18 @@
 import { useMemo } from 'react'
-import CandidateDocsRailPanel from '../../../components/candidate/CandidateDocsRailPanel'
+import { useNavigate } from 'react-router-dom'
+import clsx from 'clsx'
+import CandidateDocsRailPanel, {
+  type CandidateDocsRailEmbeddedDocumentsSummary,
+} from '../../../components/candidate/CandidateDocsRailPanel'
+import type { CandidatesWorkPanelCommsLinks } from '../hooks/useCandidatesWorkPanelPreview'
 import CandidateHandoffSection from '../../../components/candidate/CandidateHandoffSection'
 import CandidateNextActionPanel from '../../../components/candidate/CandidateNextActionPanel'
+import { isPipelineCompletedCanonicalStage } from '../../../utils/candidatePipelineCompleted'
 import StageTag from '../../../components/StageTag'
 import { docsIssuesPresent, docsPipelineBlocksForward } from '../../../utils/candidateStageDocPolicy'
 import { canonicalStageKey } from '../../../utils/stageLabels'
 import { formatDateSafe } from '../candidateUtils'
+import { buildInboxHubPath } from '../../../utils/inboxDeepLinks'
 
 type TimelineItem = {
   at: string
@@ -29,9 +36,14 @@ type CandidatesSelectedPanelProps = {
   previewReminderTitle: string
   previewReminderDueAt: string
   previewReminderOffset: number
+  /** Bumped from list context menu to expand next-action editor in preview. */
   nextActionDetailsOpenTrigger: number
   docsBlockers: { missing: string[]; problematic: string[]; inProgress: string[] }
   docsBlockersLoading: boolean
+  docsRailEmbeddedSummary: CandidateDocsRailEmbeddedDocumentsSummary
+  canUseTeamWorkPanelAssigneeScope: boolean
+  workPanelAssigneeScope: 'mine' | 'team'
+  onWorkPanelAssigneeScopeChange: (scope: 'mine' | 'team') => void
   docsOwnerContext: any
   previewTimelineItems: TimelineItem[]
   previewTimelineLoading: boolean
@@ -41,7 +53,7 @@ type CandidatesSelectedPanelProps = {
   onClose: () => void
   onOpenCandidate: (candidateId: string) => void
   onOpenDocuments: (candidateId: string) => void
-  onOpenMessages: (candidateId: string) => void
+  workPanelCommsLinks: CandidatesWorkPanelCommsLinks | null
   onReminderTitleChange: (value: string) => void
   onReminderDueAtChange: (value: string) => void
   onReminderOffsetChange: (value: number) => void
@@ -72,6 +84,10 @@ export function CandidatesSelectedPanel({
   nextActionDetailsOpenTrigger,
   docsBlockers,
   docsBlockersLoading,
+  docsRailEmbeddedSummary,
+  canUseTeamWorkPanelAssigneeScope,
+  workPanelAssigneeScope,
+  onWorkPanelAssigneeScopeChange,
   docsOwnerContext,
   previewTimelineItems,
   previewTimelineLoading,
@@ -81,7 +97,7 @@ export function CandidatesSelectedPanel({
   onClose,
   onOpenCandidate,
   onOpenDocuments,
-  onOpenMessages,
+  workPanelCommsLinks,
   onReminderTitleChange,
   onReminderDueAtChange,
   onReminderOffsetChange,
@@ -95,21 +111,39 @@ export function CandidatesSelectedPanel({
   onTimelineRefresh,
   onTimelineExpandedChange,
 }: CandidatesSelectedPanelProps) {
-  if (!selectedCandidate) return null
+  const navigate = useNavigate()
 
-  const stageCode = String(selectedCandidate?.stage || '').trim() || null
-  const canonicalStageForOps = stageCode ? canonicalStageKey(stageCode, null) || stageCode.toLowerCase() : null
+  const stageCode = selectedCandidate
+    ? String(selectedCandidate?.stage || '').trim() || null
+    : null
+
+  // Hooks must run every render — never place `return` above them (React #310 when selection appears).
   const docsIssues = useMemo(
-    () => docsIssuesPresent(docsBlockers, docsBlockersLoading),
-    [docsBlockers, docsBlockersLoading],
+    () =>
+      selectedCandidate ? docsIssuesPresent(docsBlockers, docsBlockersLoading) : false,
+    [selectedCandidate, docsBlockers, docsBlockersLoading],
   )
   const docsPipelineBlocking = useMemo(
-    () => docsPipelineBlocksForward(stageCode, docsBlockers, docsBlockersLoading),
-    [stageCode, docsBlockers, docsBlockersLoading],
+    () =>
+      selectedCandidate && stageCode
+        ? docsPipelineBlocksForward(stageCode, docsBlockers, docsBlockersLoading)
+        : false,
+    [selectedCandidate, stageCode, docsBlockers, docsBlockersLoading],
   )
 
+  if (!selectedCandidate) return null
+
+  const cid = String(selectedCandidate.id)
+  const inboxHref = buildInboxHubPath({ candidateId: cid })
+  const messagesHref =
+    workPanelCommsLinks?.messagesRelativeUrl ?? buildInboxHubPath({ candidateId: cid, channel: 'messages' })
+  const emailHref =
+    workPanelCommsLinks?.emailRelativeUrl ?? buildInboxHubPath({ candidateId: cid, channel: 'email' })
+
+  const canonicalStageForOps = stageCode ? canonicalStageKey(stageCode, null) || stageCode.toLowerCase() : null
+
   return (
-    <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-slate-900">
@@ -132,16 +166,52 @@ export function CandidatesSelectedPanel({
             </span>
           </div>
           {selectedCandidate.masked !== true ? (
-            <p className="mt-1 text-[10px] leading-snug text-slate-400">
+            <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-slate-400">
               {t('app.candidates.preview.stage_scope_hint', {
                 defaultValue: 'Stage changes, journey, and compliance gates — in the full card.',
               })}
             </p>
           ) : null}
         </div>
-        <button type="button" className="btn-secondary h-8 rounded-lg px-2 text-xs" onClick={onClose}>
-          {t('common.actions.close', { defaultValue: 'Close' })}
-        </button>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {canUseTeamWorkPanelAssigneeScope ? (
+            <div
+              className="inline-flex rounded-lg border border-slate-200 bg-slate-50/80 p-0.5"
+              role="group"
+              aria-label={t('app.candidates.preview.reminders_assignee_scope', {
+                defaultValue: 'Reminder scope for this candidate',
+              })}
+            >
+              <button
+                type="button"
+                className={clsx(
+                  'rounded-md px-2 py-1 text-[10px] font-medium transition-colors',
+                  workPanelAssigneeScope === 'mine'
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-white/80',
+                )}
+                onClick={() => onWorkPanelAssigneeScopeChange('mine')}
+              >
+                {t('app.reminders.assignee.mine', { defaultValue: 'My tasks' })}
+              </button>
+              <button
+                type="button"
+                className={clsx(
+                  'rounded-md px-2 py-1 text-[10px] font-medium transition-colors',
+                  workPanelAssigneeScope === 'team'
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'text-slate-600 hover:bg-white/80',
+                )}
+                onClick={() => onWorkPanelAssigneeScopeChange('team')}
+              >
+                {t('app.reminders.assignee.team', { defaultValue: 'Team tasks' })}
+              </button>
+            </div>
+          ) : null}
+          <button type="button" className="btn-secondary h-8 rounded-lg px-2 text-xs" onClick={onClose}>
+            {t('common.actions.close', { defaultValue: 'Close' })}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -153,7 +223,68 @@ export function CandidatesSelectedPanel({
         </button>
       </div>
 
-      <div className="space-y-3">
+      {!isPipelineCompletedCanonicalStage(canonicalStageForOps) && typeof (selectedCandidate as any).risk_score === 'number' ? (
+        <div className="space-y-1.5 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.candidates.preview.risk_title', { defaultValue: 'Risk (v1)' })}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(() => {
+              const score = (selectedCandidate as any).risk_score as number
+              const bandRaw = String((selectedCandidate as any).risk_band || '')
+              const band =
+                bandRaw ||
+                (score >= 85 ? 'critical' : score >= 65 ? 'high' : score >= 35 ? 'medium' : 'low')
+              const badgeCls =
+                band === 'critical'
+                  ? 'bg-red-50 text-red-800 border-red-200'
+                  : band === 'high'
+                    ? 'bg-rose-50 text-rose-800 border-rose-200'
+                    : band === 'medium'
+                      ? 'bg-amber-50 text-amber-900 border-amber-200'
+                      : 'bg-slate-100 text-slate-700 border-slate-200'
+              const bandLabel =
+                band === 'critical'
+                  ? t('app.candidates.risk.band_critical', { defaultValue: 'Critical' })
+                  : band === 'high'
+                    ? t('app.candidates.risk.band_high', { defaultValue: 'High' })
+                    : band === 'medium'
+                      ? t('app.candidates.risk.band_medium', { defaultValue: 'Medium' })
+                      : t('app.candidates.risk.band_low', { defaultValue: 'Low' })
+              return (
+                <>
+                  <span
+                    className={clsx('text-[11px] rounded border px-2 py-0.5 font-medium', badgeCls)}
+                    title={Array.isArray((selectedCandidate as any).risk_drivers) ? (selectedCandidate as any).risk_drivers.join(' · ') : undefined}
+                  >
+                    {bandLabel}
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-600">{score}</span>
+                  {(selectedCandidate as any).risk_version ? (
+                    <span className="text-[10px] text-slate-400">{(selectedCandidate as any).risk_version}</span>
+                  ) : null}
+                </>
+              )
+            })()}
+          </div>
+          {Array.isArray((selectedCandidate as any).risk_drivers) && (selectedCandidate as any).risk_drivers.length ? (
+            <ul className="list-inside list-disc text-[11px] leading-snug text-slate-600">
+              {(selectedCandidate as any).risk_drivers.slice(0, 4).map((line: string, i: number) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
+          {(selectedCandidate as any).risk_score >= 35 ? (
+            <p className="text-[11px] leading-snug text-amber-900/90">
+              {t('app.candidates.preview.risk_nudge', {
+                defaultValue: 'Elevated risk — review next action, response time, and stage stagnation.',
+              })}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="space-y-2">
         <CandidateNextActionPanel
           candidateId={String(selectedCandidate.id)}
           reminders={previewReminders}
@@ -176,12 +307,14 @@ export function CandidatesSelectedPanel({
           onDocsRequestCreate={onDocsRequestCreate}
           hideToggle
           canonicalStageCode={canonicalStageForOps}
+          documentsChecklistSibling={!selectedCandidate.masked}
         />
 
         {!selectedCandidate.masked ? (
           <CandidateDocsRailPanel
             key={`docs-rail:${selectedCandidate.id}`}
             candidateId={String(selectedCandidate.id)}
+            embeddedDocumentsSummary={docsRailEmbeddedSummary}
             ownerContext={docsOwnerContext}
             uploadBusy={false}
             onUpload={() => onOpenDocuments(String(selectedCandidate.id))}
@@ -197,15 +330,30 @@ export function CandidatesSelectedPanel({
           />
         ) : null}
 
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn-secondary btn-xs w-full" onClick={() => onOpenMessages(String(selectedCandidate.id))}>
-            {t('app.candidate_card.control.open_messages', { defaultValue: 'Messages' })}
+        <div className="space-y-1.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.candidates.preview.comms_title', { defaultValue: 'Comms' })}
+          </div>
+          <button type="button" className="btn-secondary btn-xs w-full" onClick={() => navigate(inboxHref)}>
+            {t('app.candidates.preview.open_unified_inbox', { defaultValue: 'Inbox (all channels)' })}
           </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-secondary btn-xs min-w-[7.5rem] flex-1"
+              onClick={() => navigate(messagesHref)}
+            >
+              {t('app.candidate_card.control.open_messages', { defaultValue: 'Messages' })}
+            </button>
+            <button type="button" className="btn-secondary btn-xs min-w-[7.5rem] flex-1" onClick={() => navigate(emailHref)}>
+              {t('app.nav.items.email', { defaultValue: 'Email' })}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-2 text-xs">
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <div className="space-y-1.5 text-xs">
+        <div className="rounded-lg border border-slate-200 bg-white p-2.5">
           <div className="flex items-center justify-between">
             <div className="text-xs font-semibold text-slate-700">
               {t('app.candidates.preview.timeline_title', { defaultValue: 'Timeline' })}

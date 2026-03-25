@@ -7,6 +7,7 @@ import {
   IconMail,
   IconMenu2,
   IconMessageCircle,
+  IconPlus,
   IconUserCircle,
   IconX,
 } from '@tabler/icons-react'
@@ -22,12 +23,14 @@ import {
 import type { NotificationItem, NotificationListResponse } from '../../api/types'
 import { listCommunicationThreads, reconcileCommunicationThreadUnread } from '../../api/communications'
 import { useToast } from '../Toast'
+import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
 import { usePermissions } from '../../hooks/usePermissions'
 import { searchGlobal, type GlobalSearchResult } from '../../api/search'
 import { useI18n, type LocaleCode } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
 import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
+import { buildInboxThreadPath } from '../../utils/inboxDeepLinks'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, ru, pl } from 'date-fns/locale'
 
@@ -48,6 +51,18 @@ const RESULT_LABEL_KEYS: Record<GlobalSearchResult['type'], string> = {
   candidate: 'app.topbar.search.results.candidate',
   company: 'app.topbar.search.results.company',
   document: 'app.topbar.search.results.document',
+  vacancy: 'app.topbar.search.results.vacancy',
+  invoice: 'app.topbar.search.results.invoice',
+  service_order: 'app.topbar.search.results.service_order',
+  conversation: 'app.topbar.search.results.conversation',
+  task: 'app.topbar.search.results.task',
+}
+
+function appendSearchQueryParam(path: string, query: string): string {
+  const trimmed = query.trim()
+  if (!trimmed) return path
+  const q = encodeURIComponent(trimmed)
+  return path.includes('?') ? `${path}&q=${q}` : `${path}?q=${q}`
 }
 
 function humanizeEventType(eventType: string): string {
@@ -67,7 +82,7 @@ function getNotificationUosGroup(item: NotificationItem): NotificationUosGroup {
   const payload = (item.payload || {}) as Record<string, unknown>
   const source = String(payload.source || '').toLowerCase()
 
-  if (et === 'communications_sla_overdue') return 'sla'
+  if (et === 'communications_sla_overdue' || et === 'communications_thread_escalated') return 'sla'
   if (et === 'lead_no_next_action' || et === 'lead_stuck_stage') return 'sla'
   if (et === 'invoice_overdue' || source.includes('invoice_overdue')) return 'sla'
   if (
@@ -89,9 +104,109 @@ function getNotificationUosGroup(item: NotificationItem): NotificationUosGroup {
   return 'system'
 }
 
+/**
+ * UOS attention tiers for the bell badge (SSOT: CRITICAL = SLA breach / unpaid invoice / lead SLA;
+ * HIGH = overdue tasks, handoffs). Message/email unread stay on their own icons.
+ */
+type NotificationAttentionTier = 'critical' | 'high' | 'normal'
+
+function getNotificationAttentionTier(item: NotificationItem): NotificationAttentionTier {
+  if (getNotificationUosGroup(item) === 'sla') return 'critical'
+  const et = String(item.event_type || '').toLowerCase()
+  if (et === 'reminder_overdue') return 'high'
+  if (et === 'handoff_requested') return 'high'
+  return 'normal'
+}
+
+function NotificationAttentionTierChip({
+  tier,
+  isRead,
+  label,
+}: {
+  tier: NotificationAttentionTier
+  isRead: boolean
+  label: string
+}) {
+  const base =
+    'shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide'
+  if (tier === 'critical') {
+    return (
+      <span
+        className={`${base} ${isRead ? 'bg-rose-100 text-rose-700' : 'bg-rose-600 text-white'}`}
+        title={label}
+      >
+        {label}
+      </span>
+    )
+  }
+  if (tier === 'high') {
+    return (
+      <span
+        className={`${base} ${isRead ? 'bg-amber-100 text-amber-900' : 'bg-amber-500 text-white'}`}
+        title={label}
+      >
+        {label}
+      </span>
+    )
+  }
+  return (
+    <span
+      className={`${base} ${isRead ? 'bg-slate-100 text-slate-500' : 'bg-slate-200 text-slate-800'}`}
+      title={label}
+    >
+      {label}
+    </span>
+  )
+}
+
+function isBellAttentionNotification(item: NotificationItem): boolean {
+  if (item.is_read) return false
+  const t = getNotificationAttentionTier(item)
+  return t === 'critical' || t === 'high'
+}
+
+/** Bell count: urgent notifications + handoffs (max of API pending vs unread handoff notifs — no double count). */
+function notificationThreadId(item: NotificationItem): string {
+  const p = item.payload as Record<string, unknown> | undefined
+  const raw = p?.thread_id
+  if (typeof raw === 'string') return raw.trim()
+  if (raw != null) {
+    const s = String(raw).trim()
+    return s
+  }
+  return ''
+}
+
+function notificationThreadChannel(item: NotificationItem): 'messages' | 'email' | undefined {
+  const p = item.payload as Record<string, unknown> | undefined
+  const c = String(p?.channel || '').trim().toLowerCase()
+  if (c === 'email') return 'email'
+  if (c === 'messages' || c === 'message') return 'messages'
+  return undefined
+}
+
+function computeBellAttentionCount(items: NotificationItem[], pendingHandoffsCount: number): number {
+  const unreadHandoffNotifs = items.filter(
+    (i) => !i.is_read && String(i.event_type || '').toLowerCase() === 'handoff_requested',
+  ).length
+  const handoffPart = Math.max(pendingHandoffsCount, unreadHandoffNotifs)
+  const notifPart = items.filter((i) => {
+    if (!isBellAttentionNotification(i)) return false
+    if (String(i.event_type || '').toLowerCase() === 'handoff_requested') return false
+    return true
+  }).length
+  return notifPart + handoffPart
+}
+
+function formatThreadUnreadBadge(n: number): string {
+  if (n <= 99) return String(n)
+  return '99+'
+}
+
 export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false }: TopbarProps) {
   const navigate = useNavigate()
-  const { can } = usePermissions()
+  const { can, isClientTenant } = usePermissions()
+  const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const { locale, setLocale, t } = useI18n()
   const { canReturnToPlatform, restorePlatformSession } = useAuth()
   const { notify } = useToast()
@@ -105,19 +220,32 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [langOpen, setLangOpen] = useState(false)
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([])
   const [searchError, setSearchError] = useState<string | null>(null)
-  const [remindersCount, setRemindersCount] = useState(0)
+  const [bellAttentionCount, setBellAttentionCount] = useState(0)
   const [messagesUnreadCount, setMessagesUnreadCount] = useState(0)
   const [emailUnreadCount, setEmailUnreadCount] = useState(0)
   const shownNotificationIdsRef = useRef<Set<string>>(new Set())
-  const unreadReconcileDoneRef = useRef(false)
+  const lastUnreadNotificationsRef = useRef<NotificationItem[]>([])
   const menuRef = useRef<HTMLDivElement | null>(null)
   const langRef = useRef<HTMLDivElement | null>(null)
+  const quickCreateRef = useRef<HTMLDivElement | null>(null)
   const pendingHandoffsCount = usePendingHandoffsCount()
+  const pendingHandoffsRef = useRef(pendingHandoffsCount)
+  pendingHandoffsRef.current = pendingHandoffsCount
+  const canSearchTeamReminders = useMemo(() => {
+    const r = String(me?.role || '').trim().toLowerCase()
+    return ['administrator', 'supervisor', 'superadmin', 'admin', 'manager'].includes(r)
+  }, [me?.role])
+  const canInboxDeepLink = useMemo(
+    () => canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email'),
+    [canUseCommunicationsFeature],
+  )
+  const [commPollKey, setCommPollKey] = useState(0)
   const [ownCompanies, setOwnCompanies] = useState<Array<{ id: string; name: string }>>([])
   const [activeOwnCompanyId, setActiveOwnCompanyId] = useState<string | null>(() => ownCompanySettings.get())
 
@@ -158,6 +286,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     if (requiresAction) score += 100
     if (group === 'sla') score += 90
     if (eventType === 'communications_sla_overdue') score += 90
+    if (eventType === 'communications_thread_escalated') score += 88
     if (severity === 'high') score += 40
     else if (severity === 'medium') score += 20
     else if (severity === 'low') score += 5
@@ -210,6 +339,11 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     if (eventType === 'communications_sla_overdue') {
       return t('app.notifications.communications_sla_overdue_title', { defaultValue: 'SLA overdue: reply required in dialog' })
     }
+    if (eventType === 'communications_thread_escalated') {
+      return t('app.notifications.communications_thread_escalated_title', {
+        defaultValue: 'Thread escalated — action needed',
+      })
+    }
     if (typeof item.payload?.title === 'string' && item.payload.title.trim()) {
       return maybeTranslateKey(item.payload.title)
     }
@@ -257,40 +391,56 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   }, [notifOpen])
 
   useEffect(() => {
+    const onVis = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        setCommPollKey((k) => k + 1)
+      }
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
+
+  useEffect(() => {
+    const onCommUnreadSync = () => setCommPollKey((k) => k + 1)
+    window.addEventListener('hf:communications-unread-sync', onCommUnreadSync)
+    return () => window.removeEventListener('hf:communications-unread-sync', onCommUnreadSync)
+  }, [])
+
+  useEffect(() => {
     if (!can('notifications.view')) return
     let cancelled = false
     let timeout: number
 
     const fetchCount = async () => {
       try {
-        if (!unreadReconcileDoneRef.current) {
-          unreadReconcileDoneRef.current = true
-          try {
-            await reconcileCommunicationThreadUnread({ limit: 500 })
-          } catch {
-            // keep polling even when reconcile is temporarily unavailable
-          }
+        try {
+          await reconcileCommunicationThreadUnread({ limit: 5000 })
+        } catch {
+          // keep polling even when reconcile is temporarily unavailable
         }
         const [notifData, commData] = await Promise.all([
           listNotifications({ includeRead: false, limit: 100, scope: 'direct' }) as Promise<NotificationListResponse>,
-          listCommunicationThreads({ limit: 300 }).catch(() => ({ items: [], total: 0 })),
+          listCommunicationThreads({ limit: 500 }).catch(() => ({ items: [], total: 0 })),
         ])
         const data = notifData
         if (!cancelled) {
           const items = Array.isArray(data?.items) ? data.items : []
-          const unread = items.filter((item) => !item.is_read).length
-          setRemindersCount(unread)
+          lastUnreadNotificationsRef.current = items
+          setBellAttentionCount(computeBellAttentionCount(items, pendingHandoffsRef.current))
           const threadItems = Array.isArray((commData as any)?.items)
             ? (commData as any).items.filter(
                 (th: any) => !th?.is_archived && String(th?.status || '').toLowerCase() !== 'deleted',
               )
             : []
-          const emailUnread = threadItems
-            .filter((th: any) => String(th?.channel || '').toLowerCase() === 'email')
-            .reduce((acc: number, th: any) => acc + Math.max(0, Number(th?.unread_count || 0)), 0)
-          const msgUnread = threadItems
-            .filter((th: any) => String(th?.channel || '').toLowerCase() !== 'email')
-            .reduce((acc: number, th: any) => acc + Math.max(0, Number(th?.unread_count || 0)), 0)
+          /** Badge = conversations with any unread, not sum of per-thread counters (avoids inflated 99+). */
+          const emailUnread = threadItems.filter(
+            (th: any) =>
+              String(th?.channel || '').toLowerCase() === 'email' && Number(th?.unread_count || 0) > 0,
+          ).length
+          const msgUnread = threadItems.filter(
+            (th: any) =>
+              String(th?.channel || '').toLowerCase() !== 'email' && Number(th?.unread_count || 0) > 0,
+          ).length
           setEmailUnreadCount(emailUnread)
           setMessagesUnreadCount(msgUnread)
           const toastCandidates = items.filter((item) => {
@@ -322,7 +472,13 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [can, notify, t])
+  }, [can, commPollKey, notify, t])
+
+  useEffect(() => {
+    setBellAttentionCount(
+      computeBellAttentionCount(lastUnreadNotificationsRef.current, pendingHandoffsCount),
+    )
+  }, [pendingHandoffsCount])
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -347,6 +503,17 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   }, [langOpen])
 
   useEffect(() => {
+    const handler = (event: MouseEvent) => {
+      if (!quickCreateOpen) return
+      if (quickCreateRef.current && !quickCreateRef.current.contains(event.target as Node)) {
+        setQuickCreateOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [quickCreateOpen])
+
+  useEffect(() => {
     const onMessagesUnreadSync = (event: Event) => {
       const custom = event as CustomEvent<{ unread?: number }>
       const unread = Math.max(0, Number(custom?.detail?.unread || 0))
@@ -360,6 +527,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     const handler = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
+        setQuickCreateOpen(false)
         setSearchOpen(true)
       }
     }
@@ -367,11 +535,87 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  const quickTargets = [
-    { key: 'candidates', labelKey: 'app.nav.items.candidates', path: '/app/candidates' },
-    { key: 'companies', labelKey: 'app.nav.items.clients', path: '/app/clients' },
-    { key: 'documents', labelKey: 'app.nav.items.documents', path: '/app/documents' },
-  ]
+  useEffect(() => {
+    if (!quickCreateOpen) return
+    const onEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setQuickCreateOpen(false)
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [quickCreateOpen])
+
+  const quickTargets = useMemo(() => {
+    type Target = { key: string; labelKey: string; path: string }
+    const items: Target[] = []
+    if (can('candidates.view')) {
+      items.push({ key: 'candidates', labelKey: 'app.nav.items.candidates', path: '/app/candidates' })
+    }
+    if (can('companies.view')) {
+      items.push({ key: 'companies', labelKey: 'app.nav.items.clients', path: '/app/clients/directory' })
+    }
+    if (can('vacancies.view')) {
+      items.push({ key: 'vacancies', labelKey: 'app.nav.items.vacancies', path: '/app/vacancies' })
+    }
+    if (can('services.view')) {
+      items.push({ key: 'orders', labelKey: 'app.nav.items.orders', path: '/app/orders' })
+      items.push({ key: 'invoices', labelKey: 'app.nav.items.invoices', path: '/app/invoices' })
+    }
+    if (can('leads.view')) {
+      items.push({ key: 'leads', labelKey: 'app.nav.items.leads', path: '/app/leads' })
+    }
+    if (can('documents.manage')) {
+      items.push({ key: 'documents', labelKey: 'app.nav.items.documents', path: '/app/documents' })
+    }
+    if (can('notifications.view')) {
+      items.push({ key: 'tasks', labelKey: 'app.nav.items.tasks', path: '/app/tasks' })
+      items.push({ key: 'inbox', labelKey: 'app.nav.items.inbox', path: '/app/inbox' })
+      if (canUseCommunicationsFeature('calendar')) {
+        items.push({ key: 'calendar', labelKey: 'app.nav.items.calendar', path: '/app/calendar' })
+      }
+      if (canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')) {
+        items.push({
+          key: 'sla-incidents',
+          labelKey: 'app.nav.items.sla_incidents',
+          path: '/app/sla-incidents',
+        })
+      }
+      if (!isClientTenant) {
+        items.push({
+          key: 'automations',
+          labelKey: 'app.nav.items.automations',
+          path: '/app/automations',
+        })
+      }
+    }
+    return items
+  }, [can, canUseCommunicationsFeature, isClientTenant])
+
+  const quickCreateItems = useMemo(() => {
+    type Item = { key: string; to: string; labelKey: string }
+    const items: Item[] = []
+    if (can('candidates.manage')) {
+      items.push({ key: 'candidate', to: '/app/candidates/new', labelKey: 'app.topbar.quick_create.candidate' })
+    }
+    if (can('companies.manage')) {
+      items.push({ key: 'client', to: '/app/clients/new', labelKey: 'app.topbar.quick_create.client' })
+    }
+    if (can('vacancies.view')) {
+      items.push({ key: 'vacancy', to: '/app/vacancies/new', labelKey: 'app.topbar.quick_create.vacancy' })
+    }
+    if (can('services.view') && can('services.orders.manage')) {
+      items.push({ key: 'order', to: '/app/orders', labelKey: 'app.topbar.quick_create.order' })
+    }
+    if (can('notifications.view')) {
+      items.push({ key: 'task', to: '/app/tasks', labelKey: 'app.topbar.quick_create.task' })
+    }
+    if (can('notifications.view') && canUseCommunicationsFeature('calendar')) {
+      items.push({ key: 'meeting', to: '/app/calendar', labelKey: 'app.topbar.quick_create.meeting' })
+    }
+    if (can('services.view')) {
+      items.push({ key: 'invoice', to: '/app/invoices/new', labelKey: 'app.topbar.quick_create.invoice' })
+    }
+    return items
+  }, [can, canUseCommunicationsFeature])
 
   const loadNotifications = useMemo(() => {
     return async () => {
@@ -401,10 +645,17 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     setNotifError(null)
     try {
       await reconcileNotifications()
+      const unreadData = (await listNotifications({
+        includeRead: false,
+        limit: 100,
+        scope: 'direct',
+      })) as NotificationListResponse
+      const unreadItems = Array.isArray(unreadData?.items) ? unreadData.items : []
+      lastUnreadNotificationsRef.current = unreadItems
+      setBellAttentionCount(computeBellAttentionCount(unreadItems, pendingHandoffsCount))
       const data = (await listNotifications({ includeRead: true, limit: 20, scope: 'direct' })) as NotificationListResponse
       const items = Array.isArray(data?.items) ? data.items : []
       setNotifItems(prioritizeNotifications(items))
-      setRemindersCount(items.filter((item) => !item.is_read).length)
     } catch {
       setNotifError(t('app.reminders.errors.load'))
     } finally {
@@ -427,8 +678,9 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const markAllRead = async () => {
     try {
       await markNotificationsRead({ markAll: true })
+      lastUnreadNotificationsRef.current = []
+      setBellAttentionCount(computeBellAttentionCount([], pendingHandoffsCount))
       setNotifItems((prev) => prev.map((i) => ({ ...i, is_read: true })))
-      setRemindersCount(0)
     } catch {
       // ignore
     }
@@ -440,8 +692,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       return
     }
     if (searchQuery.trim()) {
-      const fallback = quickTargets[0]
-      navigate(`${fallback.path}?q=${encodeURIComponent(searchQuery.trim())}`)
+      const fallbackPath = quickTargets[0]?.path ?? '/app'
+      navigate(appendSearchQueryParam(fallbackPath, searchQuery.trim()))
       setSearchOpen(false)
       setSearchQuery('')
     }
@@ -459,7 +711,9 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     setSearchLoading(true)
     setSearchError(null)
     const controller = new AbortController()
-    searchGlobal(trimmed, controller.signal)
+    searchGlobal(trimmed, controller.signal, {
+      reminderAssigneeScope: canSearchTeamReminders ? 'team' : 'mine',
+    })
       .then((results) => {
         setSearchResults(results)
       })
@@ -475,7 +729,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
         }
       })
     return () => controller.abort()
-  }, [searchQuery, searchOpen, t])
+  }, [searchQuery, searchOpen, t, canSearchTeamReminders])
 
   return (
     <>
@@ -553,11 +807,55 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               'hidden items-center gap-2 rounded-md border border-slate-200 px-4 text-sm text-slate-600 transition hover:bg-slate-50 lg:inline-flex',
               compact ? 'py-1.5' : 'py-2',
             ].join(' ')}
-            onClick={() => setSearchOpen(true)}
+            onClick={() => {
+              setQuickCreateOpen(false)
+              setSearchOpen(true)
+            }}
           >
             <span className="text-slate-400">{SEARCH_SHORTCUT_HINT}</span>
             <span>{t('app.topbar.search.open')}</span>
           </button>
+
+          {quickCreateItems.length > 0 ? (
+            <div className="relative" ref={quickCreateRef}>
+              <button
+                type="button"
+                className={[
+                  'inline-flex items-center gap-1.5 rounded-md border border-brand-200 bg-brand-50 px-2.5 text-sm font-semibold text-brand-900 transition hover:bg-brand-100 sm:gap-2 sm:px-3',
+                  compact ? 'py-1.5' : 'py-2',
+                ].join(' ')}
+                aria-haspopup="menu"
+                aria-expanded={quickCreateOpen}
+                title={t('app.topbar.quick_create.button', { defaultValue: 'Create' })}
+                onClick={() => setQuickCreateOpen((v) => !v)}
+              >
+                <IconPlus size={18} stroke={1.9} />
+                <span className="hidden sm:inline">{t('app.topbar.quick_create.button', { defaultValue: 'Create' })}</span>
+              </button>
+              {quickCreateOpen ? (
+                <div
+                  className="absolute right-0 z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl"
+                  role="menu"
+                  aria-label={t('app.topbar.quick_create.menu_label', { defaultValue: 'Quick create' })}
+                >
+                  {quickCreateItems.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full px-4 py-2.5 text-left text-sm text-slate-800 transition hover:bg-slate-50"
+                      onClick={() => {
+                        setQuickCreateOpen(false)
+                        navigate(item.to)
+                      }}
+                    >
+                      {t(item.labelKey as any)}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* Кнопка меню кандидатов - показывается только на странице кандидатов */}
           <CandidatesMenuButton t={t} />
@@ -603,12 +901,12 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                 type="button"
                 className="relative rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50"
                 aria-label={t('app.nav.items.messages', { defaultValue: 'Messages' })}
-                onClick={() => navigate('/app/messages')}
+                onClick={() => navigate('/app/inbox?channel=messages')}
               >
                 <IconMessageCircle size={20} stroke={1.8} />
                 {messagesUnreadCount > 0 && (
                   <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sky-500 px-1 text-[11px] font-semibold text-white">
-                    {messagesUnreadCount}
+                    {formatThreadUnreadBadge(messagesUnreadCount)}
                   </span>
                 )}
               </button>
@@ -617,12 +915,12 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                 type="button"
                 className="relative hidden rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 sm:inline-flex"
                 aria-label={t('app.nav.items.email', { defaultValue: 'Email' })}
-                onClick={() => navigate('/app/email')}
+                onClick={() => navigate('/app/inbox?channel=email')}
               >
                 <IconMail size={20} stroke={1.8} />
                 {emailUnreadCount > 0 && (
                   <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo-500 px-1 text-[11px] font-semibold text-white">
-                    {emailUnreadCount}
+                    {formatThreadUnreadBadge(emailUnreadCount)}
                   </span>
                 )}
               </button>
@@ -631,13 +929,20 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                 <button
                   type="button"
                   className="relative rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50"
-                  aria-label={t('app.topbar.actions.notifications', { defaultValue: 'Notifications' })}
+                  aria-label={
+                    bellAttentionCount > 0
+                      ? t('app.topbar.actions.notifications_with_urgent', {
+                          values: { count: bellAttentionCount },
+                          defaultValue: `Notifications — ${bellAttentionCount} urgent`,
+                        })
+                      : t('app.topbar.actions.notifications', { defaultValue: 'Notifications' })
+                  }
                   onClick={toggleNotifications}
                 >
                   <IconBell size={20} stroke={1.8} />
-                  {(remindersCount > 0 || pendingHandoffsCount > 0) && (
+                  {bellAttentionCount > 0 && (
                     <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-semibold text-white">
-                      {remindersCount + pendingHandoffsCount}
+                      {bellAttentionCount}
                     </span>
                   )}
                 </button>
@@ -766,11 +1071,18 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                         const title = getNotificationTitle(item)
                         const isHandoff = item.event_type === 'handoff_requested' || item.event_type === 'handoff_accepted'
                         const uosGroup = getNotificationUosGroup(item)
+                        const attentionTier = getNotificationAttentionTier(item)
+                        const attentionTierLabelKey =
+                          attentionTier === 'critical'
+                            ? 'app.topbar.notifications.tier.critical'
+                            : attentionTier === 'high'
+                              ? 'app.topbar.notifications.tier.high'
+                              : 'app.topbar.notifications.tier.normal'
+                        const attentionTierDefault =
+                          attentionTier === 'critical' ? 'Critical' : attentionTier === 'high' ? 'High' : 'Normal'
                         const description = getNotificationDescription(item)
-                        const threadId =
-                          typeof (item.payload as any)?.thread_id === 'string'
-                            ? String((item.payload as any).thread_id).trim()
-                            : ''
+                        const threadId = notificationThreadId(item)
+                        const threadChannel = notificationThreadChannel(item)
                         return (
                           <div
                             key={item.id}
@@ -799,6 +1111,11 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                       {t('app.topbar.notifications.groups.system', { defaultValue: 'System' })}
                                     </span>
                                   )}
+                                  <NotificationAttentionTierChip
+                                    tier={attentionTier}
+                                    isRead={Boolean(item.is_read)}
+                                    label={t(attentionTierLabelKey, { defaultValue: attentionTierDefault })}
+                                  />
                                   <p className="max-w-full break-words text-sm font-semibold leading-snug text-slate-900 line-clamp-2">{title}</p>
                                 </div>
                                 {description && (
@@ -817,6 +1134,18 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                     {t('app.notifications.view_handoffs', {
                                       defaultValue: 'Перейти к обработке',
                                     })}
+                                  </button>
+                                )}
+                                {uosGroup === 'sla' && threadId && canInboxDeepLink && (
+                                  <button
+                                    type="button"
+                                    className="mt-1 text-xs font-medium text-brand-700 hover:text-brand-800"
+                                    onClick={() => {
+                                      setNotifOpen(false)
+                                      navigate(buildInboxThreadPath(threadId, threadChannel ? { channel: threadChannel } : undefined))
+                                    }}
+                                  >
+                                    {t('app.topbar.notifications.open_in_inbox', { defaultValue: 'Open in Inbox' })}
                                   </button>
                                 )}
                                 {uosGroup === 'sla' && (
@@ -839,7 +1168,13 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                     className="mt-1 text-xs font-medium text-sky-700 hover:text-sky-800"
                                     onClick={() => {
                                       setNotifOpen(false)
-                                      navigate(`/app/communications/threads/${encodeURIComponent(threadId)}`)
+                                      if (canInboxDeepLink) {
+                                        navigate(
+                                          buildInboxThreadPath(threadId, threadChannel ? { channel: threadChannel } : undefined),
+                                        )
+                                      } else {
+                                        navigate(`/app/communications/threads/${encodeURIComponent(threadId)}`)
+                                      }
                                     }}
                                   >
                                     {t('app.topbar.notifications.open_thread', { defaultValue: 'Open thread' })}
@@ -879,7 +1214,19 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           ({pendingHandoffsCount})
                         </button>
                       )}
-                      <div className="ml-auto flex items-center gap-3">
+                      <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+                        {canInboxDeepLink && (
+                          <button
+                            type="button"
+                            className="text-sm font-semibold text-brand-700 hover:text-brand-800"
+                            onClick={() => {
+                              setNotifOpen(false)
+                              navigate('/app/inbox')
+                            }}
+                          >
+                            {t('app.nav.items.inbox', { defaultValue: 'Inbox' })}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="text-sm font-semibold text-rose-700 hover:text-rose-800"
@@ -1019,7 +1366,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                 </>
               )}
 
-              <div className="grid gap-2 md:grid-cols-3">
+              <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
                 {quickTargets.map((target) => (
                   <button
                     key={target.key}
@@ -1029,8 +1376,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                       const trimmed = searchQuery.trim()
                       setSearchOpen(false)
                       setSearchQuery('')
-                      const dest = trimmed ? `${target.path}?q=${encodeURIComponent(trimmed)}` : target.path
-                      navigate(dest)
+                      navigate(appendSearchQueryParam(target.path, trimmed))
                     }}
                   >
                     <div className="text-xs uppercase text-slate-400">{t('app.topbar.search.quick_section')}</div>

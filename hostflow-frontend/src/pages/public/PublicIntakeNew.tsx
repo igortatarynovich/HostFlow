@@ -246,6 +246,22 @@ export default function PublicIntakeNew() {
     }
   }, [documentsOnlyMode])
 
+  const docUrlFocusAppliedRef = useRef<string | null>(null)
+  useEffect(() => {
+    const raw = searchParams.get('doc')?.trim()
+    if (!raw) {
+      docUrlFocusAppliedRef.current = null
+      return
+    }
+    if (currentStep !== 'documents') return
+    if (hasLicenseWith95 === null) return
+    if (docUrlFocusAppliedRef.current === raw) return
+    const idx = documentFlow.findIndex((d) => d.type === raw)
+    if (idx < 0) return
+    setCurrentDocumentIndex(idx)
+    docUrlFocusAppliedRef.current = raw
+  }, [currentStep, documentFlow, hasLicenseWith95, searchParams])
+
   // Получение текущего ответа на вопрос
   const getCurrentAnswer = useCallback(() => {
     if (currentQuestionIndex >= questions.length) return undefined

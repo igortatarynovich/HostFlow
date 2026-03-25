@@ -735,13 +735,23 @@ export async function processLead(leadId: string) {
 }
 
 // Invoices ---------------------------------------------------------------
-export async function listInvoices(opts?: { company_id?: string; candidate_id?: string; service_order_id?: string; status?: string; unpaid?: boolean; limit?: number; offset?: number }) {
+export async function listInvoices(opts?: {
+  company_id?: string;
+  candidate_id?: string;
+  service_order_id?: string;
+  status?: string;
+  unpaid?: boolean;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}) {
   const params: Record<string, any> = {};
   if (opts?.company_id) params.company_id = opts.company_id;
   if (opts?.candidate_id) params.candidate_id = opts.candidate_id;
   if (opts?.service_order_id) params.service_order_id = opts.service_order_id;
   if (opts?.status) params.status = opts.status;
   if (opts?.unpaid) params.unpaid = true;
+  if (opts?.q) params.q = opts.q;
   if (opts?.limit != null) params.limit = opts.limit;
   if (opts?.offset != null) params.offset = opts.offset;
   const { data } = await api.get(`/invoices`, { params });
@@ -864,6 +874,10 @@ export async function listReminders(opts?: {
   types?: string[];
   dueFrom?: string | Date;
   dueTo?: string | Date;
+  /** Substring match on title, description, or message (backend; uses assignee scope). */
+  q?: string;
+  limit?: number;
+  signal?: AbortSignal;
 }) {
   const params: Record<string, any> = {};
   if (opts?.status) params.status_filter = opts.status;
@@ -874,13 +888,26 @@ export async function listReminders(opts?: {
   if (opts?.entityId) params.entity_id = opts.entityId;
   if (opts?.dueFrom) params.due_from = opts.dueFrom;
   if (opts?.dueTo) params.due_to = opts.dueTo;
-  const { data } = await api.get(`/reminders`, { params });
+  if (opts?.q) params.q = opts.q;
+  if (opts?.limit != null) params.limit = opts.limit;
+  const { data } = await api.get(`/reminders`, { params, signal: opts?.signal });
   return data;
 }
 
 export async function createReminder(payload: Record<string, any>) {
   const { data } = await api.post(`/reminders`, payload);
   return data;
+}
+
+export type BulkReminderCreateResultItem = {
+  entity_id: string
+  ok: boolean
+  reminder_id?: string | null
+  error?: string | null
+}
+
+export type BulkReminderCreateResponse = {
+  results: BulkReminderCreateResultItem[]
 }
 
 export async function createBulkReminders(payload: {
@@ -892,8 +919,12 @@ export async function createBulkReminders(payload: {
   due_at: string | Date
   remind_at?: string | Date
   priority?: string
-}) {
-  const { data } = await api.post(`/reminders/bulk`, payload)
+  assignee_id?: string
+  source?: string
+  channel?: string
+  payload?: Record<string, unknown>
+}): Promise<BulkReminderCreateResponse> {
+  const { data } = await api.post<BulkReminderCreateResponse>(`/reminders/bulk`, payload)
   return data
 }
 
@@ -995,6 +1026,20 @@ export async function getCandidateTimeline(candidateId: string) {
   return data
 }
 
+/** R1.5 Phase D: single bundle for list work panel (profile + reminders + timeline + comms links). */
+export async function getCandidateWorkPanel(
+  candidateId: string,
+  opts?: { timelineLimit?: number; assigneeScope?: 'mine' | 'team' },
+) {
+  const params: Record<string, unknown> = {}
+  if (opts?.timelineLimit != null) params.timeline_limit = opts.timelineLimit
+  if (opts?.assigneeScope) params.assignee_scope = opts.assigneeScope
+  const { data } = await api.get(`/candidates/${candidateId}/work-panel`, {
+    params: Object.keys(params).length ? params : undefined,
+  })
+  return data
+}
+
 export async function getCandidateChangeLog(candidateId: string, opts?: { limit?: number }) {
   const params: Record<string, any> = {}
   if (opts?.limit != null) params.limit = opts.limit
@@ -1015,7 +1060,9 @@ export async function listVacancies(opts?: { limit?: number; offset?: number; se
   const params: Record<string, any> = {};
   if (opts?.limit != null) params.limit = opts.limit;
   if (opts?.offset != null) params.offset = opts.offset;
-  if (opts?.search) params.search = opts.search;
+  if (opts?.search) {
+    params.q = opts.search;
+  }
   const { data } = await api.get(`/vacancies/`, { params });
   return data;
 }

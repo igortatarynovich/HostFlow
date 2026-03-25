@@ -5,7 +5,10 @@ from backend.app.auth.deps import require_roles, Role, get_current_user, UserCtx
 from backend.app.api.v1.utils.access import resolve_restricted_acl
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.modules.companies import schemas, crud
-from backend.app.modules.companies.counters import get_company_counters
+from backend.app.modules.companies.counters import (
+    get_company_counters,
+    company_recruitment_metrics_for_list,
+)
 from backend.app.modules.companies.service_order_metrics import company_service_order_metrics
 from backend.app.modules.companies.service import (
     add_company_bank_account_service,
@@ -72,6 +75,10 @@ async def list_companies(
         False,
         description="Include per-company service order counts and completed revenue",
     ),
+    include_recruitment_metrics: bool = Query(
+        False,
+        description="Include active vacancies and candidate counts scoped like the candidates list",
+    ),
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
 ):
@@ -97,19 +104,28 @@ async def list_companies(
             company_ids=[str(c.id) for c in companies],
         )
 
+    rec_metrics: Dict[str, Dict[str, int]] = {}
+    if include_recruitment_metrics and companies:
+        rec_metrics = await company_recruitment_metrics_for_list(
+            db,
+            tenant_id=str(tenant_id),
+            company_ids=[str(c.id) for c in companies],
+        )
+
     result: List[schemas.CompanyOut] = []
     for c in companies:
         row = schemas.CompanyOut.model_validate(c)
+        updates: Dict[str, object] = {}
         if include_service_metrics:
             m = metrics.get(str(c.id), {"active_orders": 0, "revenue_completed": 0.0})
-            result.append(
-                row.model_copy(
-                    update={
-                        "service_active_orders": int(m["active_orders"]),
-                        "service_revenue_completed": float(m["revenue_completed"]),
-                    }
-                )
-            )
+            updates["service_active_orders"] = int(m["active_orders"])
+            updates["service_revenue_completed"] = float(m["revenue_completed"])
+        if include_recruitment_metrics:
+            r = rec_metrics.get(str(c.id), {"recruitment_vacancies_active": 0, "recruitment_candidates_total": 0})
+            updates["recruitment_vacancies_active"] = int(r["recruitment_vacancies_active"])
+            updates["recruitment_candidates_total"] = int(r["recruitment_candidates_total"])
+        if updates:
+            result.append(row.model_copy(update=updates))
         else:
             result.append(row)
     return result
@@ -145,6 +161,14 @@ async def create_company(
 )
 async def get_company(
     company_id: UUID,
+    include_service_metrics: bool = Query(
+        False,
+        description="Include service order counts and completed revenue for this company",
+    ),
+    include_recruitment_metrics: bool = Query(
+        False,
+        description="Include active vacancies and candidate counts (same scope as list)",
+    ),
     _role: str = Depends(require_roles(Role.manager, Role.admin, Role.recruiter, Role.viewer)),
     db_tenant=Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
@@ -168,8 +192,23 @@ async def get_company(
         # So we only need to check ACL if company is not in ACL AND we want to enforce strict ACL
         # For now, we allow access if company is found (via TenantLink or ownership)
         pass
-    
-    return result
+
+    row = schemas.CompanyOut.model_validate(result)
+    updates: Dict[str, object] = {}
+    cid_str = str(company_id)
+    if include_service_metrics:
+        m = await company_service_order_metrics(db, tenant_id=str(tenant_id), company_ids=[cid_str])
+        pack = m.get(cid_str, {"active_orders": 0, "revenue_completed": 0.0})
+        updates["service_active_orders"] = int(pack["active_orders"])
+        updates["service_revenue_completed"] = float(pack["revenue_completed"])
+    if include_recruitment_metrics:
+        r = await company_recruitment_metrics_for_list(db, tenant_id=str(tenant_id), company_ids=[cid_str])
+        pack = r.get(cid_str, {"recruitment_vacancies_active": 0, "recruitment_candidates_total": 0})
+        updates["recruitment_vacancies_active"] = int(pack["recruitment_vacancies_active"])
+        updates["recruitment_candidates_total"] = int(pack["recruitment_candidates_total"])
+    if updates:
+        return row.model_copy(update=updates)
+    return row
 
 
 @router.put(
@@ -180,9 +219,15 @@ async def update_company(
     company_id: UUID,
     company_in: schemas.CompanyUpdate,
     _role: str = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_with_tenant),
 ):
-    return await update_company_service(db=db, company_id=company_id, data=company_in)
+    return await update_company_service(
+        db=db,
+        company_id=company_id,
+        data=company_in,
+        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+    )
 
 
 @router.patch(
@@ -193,9 +238,15 @@ async def patch_company(
     company_id: UUID,
     company_in: schemas.CompanyUpdate,
     _role: str = Depends(require_roles(Role.manager, Role.admin)),
+    current_user: UserCtx = Depends(get_current_user),
     db: AsyncSession = Depends(get_db_with_tenant),
 ):
-    return await update_company_service(db=db, company_id=company_id, data=company_in)
+    return await update_company_service(
+        db=db,
+        company_id=company_id,
+        data=company_in,
+        actor_user_id=str(current_user.sub) if getattr(current_user, "sub", None) else None,
+    )
 
 
 @router.delete(

@@ -273,6 +273,12 @@ export type HiringPipelineGatesPatch = Partial<{
   non_overridable_doc_types_extra: string[] | null;
 }>;
 
+/** `GET/PATCH /settings/team/risk-model-v1` — effective + raw overrides for `Tenant.settings.risk_model_v1`. */
+export interface RiskModelV1SettingsOut {
+  effective: Record<string, unknown>;
+  overrides: Record<string, unknown>;
+}
+
 export interface TenantBrandingResponse {
   id: string;
   name: string;

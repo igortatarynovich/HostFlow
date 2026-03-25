@@ -36,6 +36,7 @@ class VacancyService:
         order_by: Optional[str],
         descending: bool,
         acl: CandidateACL | None = None,
+        include_archived: bool = False,
     ) -> List[VacancyOut]:
         allowed_company_ids = None
         allowed_vacancy_ids = None
@@ -54,6 +55,7 @@ class VacancyService:
             descending=descending,
             allowed_company_ids=allowed_company_ids,
             allowed_vacancy_ids=allowed_vacancy_ids,
+            include_archived=include_archived,
         )
         return [
             vacancy_to_out(
@@ -62,24 +64,33 @@ class VacancyService:
                 candidate_profile_id=str(profile_id) if profile_id else None,
                 candidate_profile_name=profile_name,
                 candidate_count=cand_count,
+                last_candidate_activity_at=last_act,
             )
-            for (v, company_name, profile_id, profile_name, cand_count) in rows
+            for (v, company_name, profile_id, profile_name, cand_count, last_act) in rows
         ]
 
     async def get(self, vacancy_id: str) -> VacancyOut:
         row = await self.repo.get(vacancy_id)
         if not row:
             raise LookupError("Vacancy not found")
-        # Unpack tuple: (Vacancy, company_name, candidate_profile_id, candidate_profile_name)
-        v, company_name, profile_id, profile_name = row
+        v, company_name, profile_id, profile_name, cand_count, last_act = row
         return vacancy_to_out(
             v,
             company_name=company_name,
             candidate_profile_id=str(profile_id) if profile_id else None,
             candidate_profile_name=profile_name,
+            candidate_count=int(cand_count or 0),
+            last_candidate_activity_at=last_act,
         )
 
-    async def create(self, tenant_id: str, payload: VacancyIn, *, own_company_id: str | None = None) -> VacancyOut:
+    async def create(
+        self,
+        tenant_id: str,
+        payload: VacancyIn,
+        *,
+        own_company_id: str | None = None,
+        actor_user_id: str | None = None,
+    ) -> VacancyOut:
         values: Dict[str, Any] = {
             "id": str(uuid4()),
             "tenant_id": tenant_id,
@@ -97,25 +108,41 @@ class VacancyService:
             "candidate_profile_id": str(payload.candidate_profile_id) if payload.candidate_profile_id else None,
             "required_documents_template_id": str(payload.required_documents_template_id) if payload.required_documents_template_id else None,
             "extra": json.dumps(payload.extra, ensure_ascii=False),
+            "headcount_target": int(payload.headcount_target)
+            if payload.headcount_target is not None and int(payload.headcount_target) > 0
+            else None,
         }
         obj = await self.repo.create(values)
         # Reload with related data
         row = await self.repo.get(obj.id)
         if not row:
             raise LookupError("Failed to reload created vacancy")
-        v, company_name, profile_id, profile_name = row
+        v, company_name, profile_id, profile_name, cand_count, last_act = row
+        aid = str(actor_user_id or "").strip()
+        if aid:
+            from backend.app.services import uos_auto_activities
+
+            await uos_auto_activities.ensure_vacancy_recruiting_follow_up_task(
+                self.repo.db,
+                tenant_id,
+                aid,
+                v,
+                was_recruiting_before=False,
+            )
         return vacancy_to_out(
             v,
             company_name=company_name,
             candidate_profile_id=str(profile_id) if profile_id else None,
             candidate_profile_name=profile_name,
+            candidate_count=int(cand_count or 0),
+            last_candidate_activity_at=last_act,
         )
 
-    async def patch(self, vacancy_id: str, payload: VacancyPatch) -> VacancyOut:
+    async def patch(self, vacancy_id: str, payload: VacancyPatch, *, actor_user_id: str | None = None) -> VacancyOut:
         row = await self.repo.get(vacancy_id)
         if not row:
             raise LookupError("Vacancy not found")
-        obj, _, _, _ = row  # Unpack: (Vacancy, company_name, candidate_profile_id, candidate_profile_name)
+        obj, _, _, _, _, _ = row
 
         values: Dict[str, Any] = {}
         for f in ["title", "description", "location"]:
@@ -177,6 +204,14 @@ class VacancyService:
         if payload.extra is not None:
             values["extra"] = json.dumps(payload.extra, ensure_ascii=False)
 
+        fields_set = getattr(payload, "model_fields_set", None) or set()
+        if "headcount_target" in fields_set:
+            hc = payload.headcount_target
+            if hc is None or int(hc) <= 0:
+                values["headcount_target"] = None
+            else:
+                values["headcount_target"] = int(hc)
+
         if payload.employment_type is not None:
             values["employment_type"] = _to_str_or_none(payload.employment_type)
 
@@ -203,33 +238,49 @@ class VacancyService:
             values["status"] = "open" if open_flag else "closed"
 
         if values:
+            from backend.app.services import uos_auto_activities
+
+            was_rec = uos_auto_activities.vacancy_is_recruiting(obj)
             values["updated_at"] = _now_utc()
             obj = await self.repo.update(obj, values)
             # Reload with related data
             row = await self.repo.get(obj.id)
             if row:
-                v, company_name, profile_id, profile_name = row
+                v, company_name, profile_id, profile_name, cand_count, last_act = row
+                aid = str(actor_user_id or "").strip()
+                if aid:
+                    await uos_auto_activities.ensure_vacancy_recruiting_follow_up_task(
+                        self.repo.db,
+                        self.repo.tenant_id,
+                        aid,
+                        v,
+                        was_recruiting_before=was_rec,
+                    )
                 return vacancy_to_out(
                     v,
                     company_name=company_name,
                     candidate_profile_id=str(profile_id) if profile_id else None,
                     candidate_profile_name=profile_name,
+                    candidate_count=int(cand_count or 0),
+                    last_candidate_activity_at=last_act,
                 )
 
         # If no updates, return current data from initial row
-        _, company_name, profile_id, profile_name = row
+        _, company_name, profile_id, profile_name, cand_count, last_act = row
         return vacancy_to_out(
             obj,
             company_name=company_name,
             candidate_profile_id=str(profile_id) if profile_id else None,
             candidate_profile_name=profile_name,
+            candidate_count=int(cand_count or 0),
+            last_candidate_activity_at=last_act,
         )
 
     async def delete(self, vacancy_id: str) -> None:
         row = await self.repo.get(vacancy_id)
         if not row:
             raise LookupError("Vacancy not found")
-        obj, _, _, _ = row  # Unpack: (Vacancy, company_name, candidate_profile_id, candidate_profile_name)
+        obj, _, _, _, _, _ = row
         if await self.repo.has_linked_candidates(obj.id):
             raise ValueError("Cannot delete vacancy with linked candidates")
         await self.repo.delete(obj)

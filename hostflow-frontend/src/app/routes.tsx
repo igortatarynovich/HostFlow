@@ -1,10 +1,11 @@
 import type { ComponentType } from 'react'
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useParams, useSearchParams } from 'react-router-dom'
 import type { Permission } from '../hooks/usePermissions'
 import CommunicationsFeatureGate from '../components/communications/CommunicationsFeatureGate'
 import {
   AgencyClientsPage,
   AuditLogPage,
+  AutomationsHubPage,
   AutomationLogPage,
   AutomationRulesPage,
   BillingWorkspacePage,
@@ -16,6 +17,8 @@ import {
   CommunicationsCalendarPage,
   CommunicationsCommandAuditPage,
   CommunicationsEmailInboxPage,
+  CommunicationsInboxCenterPage,
+  CommunicationsInboxHubPage,
   CommunicationsMessengerSettingsPage,
   CommunicationsMessagesPage,
   CommunicationsQueueSettingsPage,
@@ -35,6 +38,7 @@ import {
   EmailSettingsPage,
   FunnelsPage,
   HiringPipelineGatesSettingsPage,
+  RiskIntelSettingsPage,
   InvoiceCreatePage,
   InvoiceDetailPage,
   InvoicesPage,
@@ -112,7 +116,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'clients',
     labelKey: 'app.nav.items.clients',
-    path: '/app/clients',
+    path: '/app/clients/directory',
     group: 'people',
     permission: 'companies.view',
   },
@@ -138,6 +142,20 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'documents.manage',
   },
   {
+    key: 'automations',
+    labelKey: 'app.nav.items.automations',
+    path: '/app/automations',
+    group: 'workflows',
+    permission: 'notifications.view',
+  },
+  {
+    key: 'service-orders',
+    labelKey: 'app.nav.items.orders',
+    path: '/app/orders',
+    group: 'workflows',
+    permission: 'services.view',
+  },
+  {
     key: 'services',
     labelKey: 'app.nav.items.services',
     path: '/app/services',
@@ -149,7 +167,7 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'app.nav.items.invoices',
     path: '/app/invoices',
     group: 'workflows',
-    permission: 'admin.users', // TODO: Add proper permission
+    permission: 'services.view',
   },
   {
     key: 'communications-setup',
@@ -161,7 +179,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'inbox',
     labelKey: 'app.nav.items.inbox',
-    path: '/app/messages',
+    path: '/app/inbox',
     group: 'workflows',
     permission: 'notifications.view',
   },
@@ -194,46 +212,11 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'notifications.view',
   },
   {
-    key: 'team-availability',
-    labelKey: 'app.nav.items.team_availability',
-    path: '/app/team-availability',
-    group: 'admin',
-    permission: 'notifications.view',
-  },
-  {
-    key: 'my-availability',
-    labelKey: 'app.nav.items.my_availability',
-    path: '/app/my-availability',
-    group: 'account',
-    permission: 'notifications.view',
-  },
-  {
-    key: 'time-off',
-    labelKey: 'app.nav.items.time_off',
-    path: '/app/time-off',
-    group: 'account',
-    permission: 'notifications.view',
-  },
-  {
     key: 'leads',
     labelKey: 'app.nav.items.leads',
     path: '/app/leads',
     group: 'leads',
     permission: 'leads.view',
-  },
-  {
-    key: 'automation-log',
-    labelKey: 'app.nav.items.automation_log',
-    path: '/app/automation-log',
-    group: 'workflows',
-    permission: 'notifications.view',
-  },
-  {
-    key: 'automation-rules',
-    labelKey: 'app.nav.items.automation_rules',
-    path: '/app/automation-rules',
-    group: 'workflows',
-    permission: 'notifications.view',
   },
   {
     key: 'settings',
@@ -275,6 +258,13 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'settings-hiring-gates',
     labelKey: 'app.nav.items.settings_hiring_gates',
     path: '/app/settings/hiring-pipeline-gates',
+    group: 'admin',
+    permission: 'settings.view',
+  },
+  {
+    key: 'settings-risk-intel',
+    labelKey: 'app.nav.items.settings_risk_intel',
+    path: '/app/settings/risk-intel',
     group: 'admin',
     permission: 'settings.view',
   },
@@ -352,11 +342,19 @@ const LegacyCommunicationsRedirect = () => <Navigate to="../settings/communicati
 const LegacyRemindersRedirect = () => <Navigate to="../tasks" replace />
 const LegacyActivitiesRedirect = () => <Navigate to="../tasks" replace />
 const LegacyPlannerRedirect = () => <Navigate to="../calendar" replace />
-const LegacyCompaniesRedirect = () => <Navigate to="../clients" replace />
+const LegacyCompaniesRedirect = () => <Navigate to="../clients/directory" replace />
 const LegacyCompanyDetailRedirect = () => {
   const { id, tab } = useParams<{ id?: string; tab?: string }>()
-  if (!id) return <Navigate to="../clients" replace />
+  if (!id) return <Navigate to="../clients/directory" replace />
   return <Navigate to={tab ? `../clients/${id}/${tab}` : `../clients/${id}`} replace />
+}
+
+/** Canonical first-class URL for Orders; same shell as Services → Orders (`ServicesPage`). */
+const OrdersStandaloneRedirect = () => {
+  const [searchParams] = useSearchParams()
+  const next = new URLSearchParams(searchParams)
+  next.set('tab', 'orders')
+  return <Navigate to={`/app/services?${next.toString()}`} replace />
 }
 
 function withCommFeature(Component: ComponentType, feature: Parameters<typeof CommunicationsFeatureGate>[0]['feature'], fallbackPath?: string): ComponentType {
@@ -393,9 +391,10 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'candidates-no-next-action', path: 'candidates/no-next-action', Component: CandidatesNoNextActionPage, permission: 'candidates.view' },
   { key: 'candidate-detail', path: 'candidates/:id', Component: CandidateCard, permission: 'candidates.view' },
   { key: 'candidate-tab', path: 'candidates/:id/:tab', Component: CandidateCard, permission: 'candidates.view' },
-  { key: 'clients', path: 'clients', Component: AgencyClientsPage, permission: 'companies.view' },
   { key: 'companies-legacy', path: 'companies', Component: LegacyCompaniesRedirect, permission: 'companies.view' },
   { key: 'client-link-detail', path: 'clients/link/:linkId', Component: ClientLinkDetailPage, permission: 'companies.view' },
+  { key: 'clients-directory', path: 'clients/directory', Component: Companies, permission: 'companies.view' },
+  { key: 'clients', path: 'clients', Component: AgencyClientsPage, permission: 'companies.view' },
   { key: 'procesowani', path: 'procesowani', Component: DoProcesowaniaPage, permission: 'companies.view' },
   { key: 'do-procesowania-legacy', path: 'do-procesowania', Component: LegacyDoProcesowaniaRedirect, permission: 'companies.view' },
   { key: 'client-detail', path: 'clients/:id', Component: Companies, permission: 'companies.view' },
@@ -406,12 +405,25 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'vacancy-detail', path: 'vacancies/:id', Component: VacancyDetailRoute, permission: 'vacancies.view' },
   { key: 'vacancy-tab', path: 'vacancies/:id/:tab', Component: VacancyDetailRoute, permission: 'vacancies.view' },
   { key: 'documents', path: 'documents', Component: DocumentsRegistryPage, permission: 'documents.manage' },
+  { key: 'orders', path: 'orders', Component: OrdersStandaloneRedirect, permission: 'services.view' },
   { key: 'services', path: 'services', Component: ServicesPage, permission: 'services.view' },
-  { key: 'invoices', path: 'invoices', Component: InvoicesPage, permission: 'admin.users' }, // TODO: Add proper permission
-  { key: 'invoice-create', path: 'invoices/new', Component: InvoiceCreatePage, permission: 'admin.users' },
-  { key: 'invoice-edit', path: 'invoices/:id/edit', Component: InvoiceCreatePage, permission: 'admin.users' },
-  { key: 'invoice-detail', path: 'invoices/:id', Component: InvoiceDetailPage, permission: 'admin.users' },
+  { key: 'invoices', path: 'invoices', Component: InvoicesPage, permission: 'services.view' },
+  { key: 'invoice-create', path: 'invoices/new', Component: InvoiceCreatePage, permission: 'services.view' },
+  { key: 'invoice-edit', path: 'invoices/:id/edit', Component: InvoiceCreatePage, permission: 'services.view' },
+  { key: 'invoice-detail', path: 'invoices/:id', Component: InvoiceDetailPage, permission: 'services.view' },
   { key: 'communications-setup', path: 'setup/communications', Component: withCommAnyFeature(CommunicationsSetupPage, ['messages', 'email']), permission: 'notifications.view' },
+  {
+    key: 'communications-inbox-center',
+    path: 'inbox/threads/:threadId',
+    Component: withCommAnyFeature(CommunicationsInboxCenterPage, ['messages', 'email']),
+    permission: 'notifications.view',
+  },
+  {
+    key: 'communications-inbox-hub',
+    path: 'inbox',
+    Component: withCommAnyFeature(CommunicationsInboxHubPage, ['messages', 'email']),
+    permission: 'notifications.view',
+  },
   { key: 'messages-inbox', path: 'messages', Component: withCommFeature(CommunicationsMessagesPage, 'messages'), permission: 'notifications.view' },
   { key: 'email-inbox', path: 'email', Component: withCommFeature(CommunicationsEmailInboxPage, 'email'), permission: 'notifications.view' },
   { key: 'calendar', path: 'calendar', Component: withCommFeature(CommunicationsCalendarPage, 'calendar'), permission: 'notifications.view' },
@@ -427,6 +439,7 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'reminders-legacy', path: 'reminders', Component: LegacyRemindersRedirect, permission: 'notifications.view' },
   { key: 'activities-legacy', path: 'activities', Component: LegacyActivitiesRedirect, permission: 'notifications.view' },
   { key: 'leads', path: 'leads', Component: LeadsPage, permission: 'leads.view' },
+  { key: 'automations', path: 'automations', Component: AutomationsHubPage, permission: 'notifications.view' },
   { key: 'automation-log', path: 'automation-log', Component: AutomationLogPage, permission: 'notifications.view' },
   { key: 'automation-rules', path: 'automation-rules', Component: AutomationRulesPage, permission: 'notifications.view' },
   { key: 'pipeline', path: 'pipeline', Component: PipelineRedirect, permission: 'candidates.pipeline' },
@@ -441,6 +454,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     key: 'settings-hiring-pipeline-gates',
     path: 'settings/hiring-pipeline-gates',
     Component: HiringPipelineGatesSettingsPage,
+    permission: 'settings.view',
+  },
+  {
+    key: 'settings-risk-intel',
+    path: 'settings/risk-intel',
+    Component: RiskIntelSettingsPage,
     permission: 'settings.view',
   },
   { key: 'settings-candidate-profiles', path: 'settings/candidate-profiles', Component: CandidateProfilesPage, permission: 'admin.users' },

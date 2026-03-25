@@ -47,6 +47,7 @@ export type {
   TeamOverviewResponse,
   HiringPipelineGatesPublic,
   HiringPipelineGatesPatch,
+  RiskModelV1SettingsOut,
   TenantBrandingResponse,
   TenantBrandingPayload,
   UserCompanyAccess,

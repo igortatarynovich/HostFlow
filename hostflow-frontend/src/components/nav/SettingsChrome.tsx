@@ -101,7 +101,7 @@ export function SettingsChrome({ pathname, compactMode = false }: SettingsChrome
   })
 
   return (
-    <section className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <section className="mb-0 rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-lg font-semibold text-slate-900">

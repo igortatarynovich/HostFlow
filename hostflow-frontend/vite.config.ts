@@ -6,8 +6,8 @@ import path from "path";
 /**
  * По умолчанию — обычная сборка Vite/Rollup (как до экспериментов с RAM).
  *
- * `HOSTFLOW_LOW_MEM_BUILD=1` — ограничение параллелизма I/O (npm `build` задаёт это по умолчанию).
- * В `manualChunks` выносим только `@tabler/icons*` — безопасно для React (не трогаем react/react-dom).
+ * `HOSTFLOW_LOW_MEM_BUILD=1` — maxParallelFileOps=1 и дробление тяжёлых vendor-чанков (npm `build`).
+ * react + react-dom — один чанк `vendor-react-core`. На VPS без swap сборка часто падает по OOM — нужен swap или сборка на машине с большим RAM.
  * Не использовать `experimentalMinChunkSize`: он склеивает чанки в несколько гигантских графов
  * и на VPS даёт OOM («Killed») + своп → SSH «висит».
  */
@@ -57,11 +57,23 @@ export default defineConfig({
     reportCompressedSize: false,
     cssCodeSplit: false,
     rollupOptions: {
-      ...(lowMemBuild ? { maxParallelFileOps: 2 } : {}),
+      ...(lowMemBuild ? { maxParallelFileOps: 1 } : {}),
       output: {
         manualChunks(id: string) {
           if (!id.includes("node_modules")) return;
           if (id.includes("@tabler/icons")) return "vendor-tabler-icons";
+          if (lowMemBuild) {
+            if (
+              id.includes("node_modules/react/") ||
+              id.includes("node_modules/react-dom/")
+            ) {
+              return "vendor-react-core";
+            }
+            if (id.includes("recharts")) return "vendor-recharts";
+            if (id.includes("@dnd-kit")) return "vendor-dnd-kit";
+            if (id.includes("date-fns")) return "vendor-date-fns";
+            if (id.includes("react-router")) return "vendor-react-router";
+          }
         },
       },
     },

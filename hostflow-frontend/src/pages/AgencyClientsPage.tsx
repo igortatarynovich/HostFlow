@@ -61,7 +61,7 @@ export default function AgencyClientsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
@@ -73,6 +73,12 @@ export default function AgencyClientsPage() {
               values: { entityPlural: entityPluralLower },
             })}
           </p>
+          <Link
+            to="/app/clients/directory"
+            className="mt-2 inline-block text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline"
+          >
+            {t('app.clients.crm_directory_link', { defaultValue: 'Open client CRM directory' })}
+          </Link>
         </div>
         <button type="button" onClick={() => setAddOpen(true)} className="btn-primary">
           {t('app.clients.add_entity_dynamic', {
@@ -104,7 +110,7 @@ export default function AgencyClientsPage() {
             }}
             secondaryAction={{
               label: openEntityLabel || t('app.clients.empty_cta_companies', { defaultValue: 'Open clients' }),
-              to: '/app/clients',
+              to: '/app/clients/directory',
             }}
           />
         </div>

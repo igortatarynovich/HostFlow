@@ -1,3 +1,10 @@
+/**
+ * Staging/local F7 scenarios (Playwright + API).
+ * Env:
+ *   BASE_URL — API + SPA origin (default http://localhost:8000)
+ *   OUT_DIR — screenshot + JSON output directory
+ *   E2E_SCENARIOS — optional comma list: a, b, c (default: all). **Scenario A** = `a` + business type **services** (R0.1 rehearsal).
+ */
 import { chromium } from 'playwright'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -300,28 +307,6 @@ async function runScenario({ page, scenario, businessType }) {
   } catch (err) {
     e5.oauth = { ok: false, error: String(err?.message || err) }
   }
-  try {
-    e5.commandAuditBatch = await apiJson(`${BASE_URL}/api/v1/communications/commands/audit/batch`, {
-      method: 'POST',
-      token: ctx.token,
-      tenantId: ctx.tenantId,
-      body: {
-        channel: 'email',
-        thread_id: String(inbound.thread.id),
-        command_id: 'e2e_cmd',
-        command_label: 'E2E audit',
-        actions_json: [{ type: 'mark_read' }],
-        payload: { scenario, businessType },
-      },
-    })
-    e5.commandAuditList = await apiJson(`${BASE_URL}/api/v1/communications/commands/audit?limit=5`, {
-      method: 'GET',
-      token: ctx.token,
-      tenantId: ctx.tenantId,
-    })
-  } catch (err) {
-    e5.audit = { ok: false, error: String(err?.message || err) }
-  }
 
   // Create a vacancy for employer scenario
   let vacancy = null
@@ -393,6 +378,29 @@ async function runScenario({ page, scenario, businessType }) {
     body: { mark_delivered: true, simulate_failure: false },
   })
 
+  try {
+    e5.commandAuditBatch = await apiJson(`${BASE_URL}/api/v1/communications/commands/audit/batch`, {
+      method: 'POST',
+      token: ctx.token,
+      tenantId: ctx.tenantId,
+      body: {
+        channel: 'email',
+        thread_id: String(inbound.thread.id),
+        command_id: 'e2e_cmd',
+        command_label: 'E2E audit',
+        actions_json: [{ type: 'mark_read' }],
+        payload: { scenario, businessType },
+      },
+    })
+    e5.commandAuditList = await apiJson(`${BASE_URL}/api/v1/communications/commands/audit?limit=5`, {
+      method: 'GET',
+      token: ctx.token,
+      tenantId: ctx.tenantId,
+    })
+  } catch (err) {
+    e5.commandAudit = { ok: false, error: String(err?.message || err) }
+  }
+
   // UI evidence: open created records
   await page.goto(`${BASE_URL}/app/clients/${clientCompany.id}`, { waitUntil: 'domcontentloaded' })
   shots.push(await screenshot(page, `${scenario}-client-company-detail`))
@@ -453,18 +461,38 @@ async function runScenario({ page, scenario, businessType }) {
   }
 }
 
+const ALL_SCENARIOS = [
+  { scenario: 'b', businessType: 'agency' },
+  { scenario: 'c', businessType: 'employer' },
+  { scenario: 'a', businessType: 'services' },
+]
+
+function scenariosToRun() {
+  const raw = process.env.E2E_SCENARIOS?.trim()
+  if (!raw) return ALL_SCENARIOS
+  const want = new Set(
+    raw
+      .split(',')
+      .map((x) => x.trim().toLowerCase())
+      .filter(Boolean),
+  )
+  return ALL_SCENARIOS.filter((s) => want.has(s.scenario.toLowerCase()))
+}
+
 async function main() {
   ensureDir(OUT_DIR)
   const browser = await chromium.launch({ headless: true })
   const ctx = await browser.newContext({ viewport: { width: 1365, height: 900 } })
   const page = await ctx.newPage()
 
+  const plan = scenariosToRun()
+  if (plan.length === 0) {
+    console.error('E2E_SCENARIOS matched no scenarios; use a, b, c (comma-separated) or omit for all.')
+    process.exit(1)
+  }
+
   const runs = []
-  for (const s of [
-    { scenario: 'b', businessType: 'agency' },
-    { scenario: 'c', businessType: 'employer' },
-    { scenario: 'a', businessType: 'services' },
-  ]) {
+  for (const s of plan) {
     try {
       runs.push(await runScenario({ page, ...s }))
     } catch (err) {

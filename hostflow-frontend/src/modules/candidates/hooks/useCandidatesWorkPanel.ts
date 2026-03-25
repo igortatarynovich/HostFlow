@@ -3,9 +3,10 @@ import { useCandidatesWorkPanelPreview } from './useCandidatesWorkPanelPreview'
 
 type UseCandidatesWorkPanelArgs = {
   t: (key: string, options?: any) => string
+  workPanelAssigneeScope?: 'mine' | 'team'
 }
 
-export function useCandidatesWorkPanel({ t }: UseCandidatesWorkPanelArgs) {
+export function useCandidatesWorkPanel({ t, workPanelAssigneeScope = 'mine' }: UseCandidatesWorkPanelArgs) {
   // Selection of the candidate for the persistent right Work panel.
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const selectedCandidateIdRef = useRef<string | null>(null)
@@ -71,7 +72,7 @@ export function useCandidatesWorkPanel({ t }: UseCandidatesWorkPanelArgs) {
 
   const workPanelOpen = useMemo(() => sidebarOpen || selectedCandidateId != null, [sidebarOpen, selectedCandidateId])
 
-  const preview = useCandidatesWorkPanelPreview({ t, selectedCandidateId })
+  const preview = useCandidatesWorkPanelPreview({ t, selectedCandidateId, workPanelAssigneeScope })
 
   return {
     selectedCandidateId,

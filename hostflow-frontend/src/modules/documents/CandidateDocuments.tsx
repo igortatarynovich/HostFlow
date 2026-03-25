@@ -332,7 +332,11 @@ export default function CandidateDocuments({
       value ? t(PROCESS_LABEL_KEYS[value], { defaultValue: value }) : null,
     [t],
   );
-  const canManageDocuments = can("documents.manage");
+  // Backend allows document mutations for anyone with candidate access in DOCUMENT_MUTATE_ROLES
+  // (recruiter, supervisor, …). UI used only documents.manage, which also requires the
+  // "documents" module cell to be editable — misconfigured matrices blocked recruiters who
+  // could still edit candidates. Allow uploads when the user can manage the candidate.
+  const canManageDocuments = can("documents.manage") || can("candidates.manage");
 
   const coreFromDocument = useCallback((doc: Document): CoreFields => ({
     number: doc.number ?? "",

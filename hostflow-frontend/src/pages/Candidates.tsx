@@ -16,16 +16,13 @@ import api, {
   createActivity,
   createBulkActivities,
   createReminder,
-  listReminders,
   withTenant,
-  getCandidateTimeline,
   snoozeActivity,
 } from '../api/client'
 import { recordPerfMeasurement } from '../api/analytics'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import type { Candidate, UserSavedView, Vacancy } from '../api/types'
 import type { ReminderRecord } from '../api/types/notification'
-import StageTag from '../components/StageTag'
 import { Modal } from '../components/Modal'
 import { ActivitiesPanel } from '../components/activities/ActivitiesPanel'
 import EmptyStatePanel from '../components/EmptyStatePanel'
@@ -59,6 +56,7 @@ import {
   SORTABLE_KEYS,
   DEFAULT_VISIBLE_COLS,
   DEFAULT_COLUMN_ORDER,
+  CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX,
 } from '../modules/candidates/constants'
 import type {
   DateRangeFilter,
@@ -113,13 +111,13 @@ import {
   ColumnFilterMenu,
   FilterBadges,
   CandidatesSummaryHero,
+  CandidatesQuickViewsBar,
   CandidatesWorkPanel,
   CandidatesSelectedPanel,
-  CandidatesFiltersActionsPanel,
-  CandidatesSavedViewsPanel,
   CandidatesLeftRailPanel,
   CandidatesTableCheckboxCell,
-  CandidatesTableRowQuickActions,
+  CandidatesTableRowNamePreview,
+  CandidatesTableRowStageCell,
 } from '../modules/candidates/components'
 import { useCandidatesWorkPanel } from '../modules/candidates/hooks/useCandidatesWorkPanel'
 import { useCandidatesInsightsHero } from '../modules/candidates/hooks/useCandidatesInsightsHero'
@@ -180,6 +178,25 @@ async function getWithFallbacks<T = any>(
   throw lastErr
 }
 
+const RISK_SHADOW_MIN_BANDS = new Set<string>(['low', 'medium', 'high', 'critical'])
+
+function parseRiskShadowMinBand(raw: string | null | undefined): string | null {
+  if (raw == null || raw === '') return null
+  const v = String(raw).trim().toLowerCase()
+  return RISK_SHADOW_MIN_BANDS.has(v) ? v : null
+}
+
+/** Align with Reminders inbox: managers can load team-scoped candidate reminders in the work panel. */
+const TEAM_WORK_PANEL_ASSIGNEE_ROLES = new Set([
+  'administrator',
+  'supervisor',
+  'superadmin',
+  'admin',
+  'manager',
+])
+
+const WP_ASSIGNEE_STORAGE_KEY = 'hf:candidates:workPanelAssigneeScope'
+
 export default function Candidates(){
   const { t, locale } = useI18n()
   const location = useLocation()
@@ -201,6 +218,43 @@ export default function Candidates(){
   const [limit] = useState(200)
   // items/total/loading/errorText/listInsights are managed by SSOT hook.
 
+  const { me: meForWorkPanel } = useAuth()
+  const tenantIdForWorkPanel = useCurrentTenantId()
+  const tenantScopeKeyForWorkPanel = (tenantIdForWorkPanel ?? meForWorkPanel?.tenant_id)
+    ? String(tenantIdForWorkPanel ?? meForWorkPanel?.tenant_id)
+    : 'default'
+  const canUseTeamWorkPanelAssigneeScope = useMemo(() => {
+    const r = String(meForWorkPanel?.role || '').trim().toLowerCase()
+    return TEAM_WORK_PANEL_ASSIGNEE_ROLES.has(r)
+  }, [meForWorkPanel?.role])
+  const [workPanelAssigneeScope, setWorkPanelAssigneeScopeState] = useState<'mine' | 'team'>('mine')
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`${WP_ASSIGNEE_STORAGE_KEY}:${tenantScopeKeyForWorkPanel}`)
+      if (raw === 'team' || raw === 'mine') setWorkPanelAssigneeScopeState(raw)
+      else setWorkPanelAssigneeScopeState('mine')
+    } catch {
+      setWorkPanelAssigneeScopeState('mine')
+    }
+  }, [tenantScopeKeyForWorkPanel])
+  useEffect(() => {
+    if (!canUseTeamWorkPanelAssigneeScope && workPanelAssigneeScope === 'team') {
+      setWorkPanelAssigneeScopeState('mine')
+    }
+  }, [canUseTeamWorkPanelAssigneeScope, workPanelAssigneeScope])
+  const setWorkPanelAssigneeScope = useCallback(
+    (next: 'mine' | 'team') => {
+      if (next === 'team' && !canUseTeamWorkPanelAssigneeScope) return
+      setWorkPanelAssigneeScopeState(next)
+      try {
+        localStorage.setItem(`${WP_ASSIGNEE_STORAGE_KEY}:${tenantScopeKeyForWorkPanel}`, next)
+      } catch {
+        /* ignore */
+      }
+    },
+    [canUseTeamWorkPanelAssigneeScope, tenantScopeKeyForWorkPanel],
+  )
+
   const {
     // Work panel selection + open/close state.
     selectedCandidateId,
@@ -211,6 +265,7 @@ export default function Candidates(){
 
     // Preview state + handlers.
     nextActionDetailsOpenTrigger,
+    bumpNextActionDetailsOpen,
     previewReminders,
     previewRemindersLoading,
     previewRemindersError,
@@ -236,7 +291,17 @@ export default function Candidates(){
     handleCompletePreviewReminder,
     handlePreviewReminderSnooze,
     previewCandidateExtra,
-  } = useCandidatesWorkPanel({ t })
+    previewDocumentsSummarySnapshot,
+    previewCommsLinks,
+  } = useCandidatesWorkPanel({ t, workPanelAssigneeScope })
+
+  const docsRailEmbeddedSummary = useMemo(
+    () => ({
+      ready: !previewRemindersLoading,
+      summary: previewDocumentsSummarySnapshot,
+    }),
+    [previewRemindersLoading, previewDocumentsSummarySnapshot],
+  )
 
   // Keep the latest values for stable row click/context handlers.
   const sidebarOpenRef = useRef<boolean>(sidebarOpen)
@@ -327,6 +392,14 @@ export default function Candidates(){
   const { me, preferences, updatePreferences } = useAuth()
   const currentTenantId = useCurrentTenantId()
   const tenantScopeKey = (currentTenantId ?? me?.tenant_id) ? String(currentTenantId ?? me?.tenant_id) : 'default'
+  const digestShadowBucket = useMemo(() => searchParams.get('shadow_bucket')?.trim() || null, [searchParams])
+  const digestShadowMinBand = useMemo(() => {
+    const explicit =
+      parseRiskShadowMinBand(searchParams.get('shadow_min_band')) ??
+      parseRiskShadowMinBand(searchParams.get('shadow_bucket_min_band'))
+    if (!digestShadowBucket) return null
+    return explicit ?? 'high'
+  }, [searchParams, digestShadowBucket])
   const filterStorageKey = useMemo(() => `${FILTER_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
   const visibleColsStorageKey = useMemo(() => `${VISIBLE_COLS_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
   const columnWidthsStorageKey = useMemo(() => `${COLUMN_WIDTHS_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
@@ -346,6 +419,8 @@ export default function Candidates(){
       handoff_status: handoffStatusFilter || '',
       contact_attempts: contactAttemptsFilter || '',
       processor_id: processorFilter || '',
+      shadow_bucket: digestShadowBucket || '',
+      shadow_min_band: digestShadowMinBand || '',
       created_from: createdRange.from || '',
       created_to: createdRange.to || '',
       is_favorite: isFavoriteFilter === null ? '' : String(isFavoriteFilter),
@@ -366,6 +441,8 @@ export default function Candidates(){
     handoffStatusFilter,
     contactAttemptsFilter,
     processorFilter,
+    digestShadowBucket,
+    digestShadowMinBand,
     createdRange.from,
     createdRange.to,
     isFavoriteFilter,
@@ -870,6 +947,22 @@ export default function Candidates(){
     setVisibleCols({ ...DEFAULT_VISIBLE_COLS })
   }, [visibleColsStorageKey])
 
+  /** R1.5 Phase C: DnD + column resize only in this mode (default off). */
+  const [tableLayoutCustomize, setTableLayoutCustomize] = useState(() => {
+    try {
+      return localStorage.getItem('hf:candidates:tableLayoutCustomize') === '1'
+    } catch {
+      return false
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('hf:candidates:tableLayoutCustomize', tableLayoutCustomize ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [tableLayoutCustomize])
+
   const {
     orderedVisibleColumns,
     getColumnWidth,
@@ -884,6 +977,12 @@ export default function Candidates(){
     columnWidthsStorageKey,
     columnOrderStorageKey,
   })
+
+  useEffect(() => {
+    if (tableLayoutCustomize) return
+    setDraggingColumn(null)
+    setDragOverColumn(null)
+  }, [tableLayoutCustomize, setDraggingColumn, setDragOverColumn])
 
   // Компонент для ресайза колонки
   const ColumnResizeHandle = ({ columnKey }: { columnKey: string }) => {
@@ -1071,6 +1170,8 @@ export default function Candidates(){
     handoffStatusFilter,
     contactAttemptsFilter,
     processorFilter,
+    shadowBucketFilter: digestShadowBucket,
+    shadowBucketMinBand: digestShadowMinBand,
     createdRange,
     isFavoriteFilter,
     currentTenantId,
@@ -1196,6 +1297,56 @@ export default function Candidates(){
     }
   }, [filterStorageKey, normalizeArrayFilter, normalizeRangeFilter, normalizeReasonList, normalizeTextFilterState, normalizeOpsModeList])
 
+  const resetCandidatesFiltersCore = useCallback(() => {
+    setQ('')
+    setStageFilter([])
+    setVacancyFilter([])
+    setManagerFilter([])
+    setStatusReasonFilter([])
+    setTagsFilter([])
+    setIsFavoriteFilter(null)
+    setDocsStatusFilter([])
+    setDocsOrderedFilter([])
+    setPreferredChannelFilter([])
+    setInPolandFilter([])
+    setOpsModeFilter([])
+    setPolandBasisFilter([])
+    setTrailerTypesFilter([])
+    setCreatedRange({ from: null, to: null })
+    setFirstContactRange({ from: null, to: null })
+    setDocsValidRange({ from: null, to: null })
+    setDocsHasFilesFilter([])
+    setHandoffStatusFilter('')
+    setContactAttemptsFilter('')
+    setProcessorFilter('')
+    setTextFilters(makeEmptyTextFilters())
+    setSortKey('created_at')
+    setSortDir('desc')
+    persistedFiltersRef.current = false
+    try {
+      localStorage.removeItem(filterStorageKey)
+    } catch {
+      /* ignore */
+    }
+  }, [filterStorageKey])
+
+  const handleResetFilters = useCallback(() => {
+    resetCandidatesFiltersCore()
+    try {
+      const next = new URLSearchParams(searchParams)
+      let changed = false
+      for (const k of ['shadow_bucket', 'shadow_min_band', 'shadow_bucket_min_band', 'qv'] as const) {
+        if (next.has(k)) {
+          next.delete(k)
+          changed = true
+        }
+      }
+      if (changed) setSearchParams(next, { replace: true })
+    } catch {
+      /* ignore */
+    }
+  }, [resetCandidatesFiltersCore, searchParams, setSearchParams])
+
   // Deep-link from Dashboard pivot: apply URL params.
   // Keep it robust to allow drill-down from Overview/Dashboard widgets.
   useEffect(() => {
@@ -1211,6 +1362,7 @@ export default function Candidates(){
     const inPolandParam = searchParams.get('in_poland')
     const handoffStatusParam = searchParams.get('handoff_status') || searchParams.get('handoffStatus')
     const contactAttemptsParam = searchParams.get('contact_attempts') || searchParams.get('contactAttempts')
+    const shadowBucketParam = searchParams.get('shadow_bucket')?.trim() || ''
 
     const hasDeepLink =
       Boolean(qParam && String(qParam).trim()) ||
@@ -1223,10 +1375,12 @@ export default function Candidates(){
       opsModeParam ||
       inPolandParam ||
       handoffStatusParam ||
-      contactAttemptsParam
+      contactAttemptsParam ||
+      Boolean(shadowBucketParam)
     if (!hasDeepLink) return
     // Drill-down must be deterministic: ignore previously persisted filters.
-    handleResetFilters()
+    // Do not strip shadow_bucket here (digest drill-down); full reset uses handleResetFilters.
+    resetCandidatesFiltersCore()
     if (qParam && String(qParam).trim()) setQ(String(qParam).trim())
     if (stageParam) setStageFilter(normalizeArrayFilter([stageParam]))
     if (vacancyParam) setVacancyFilter(normalizeArrayFilter([vacancyParam]))
@@ -1260,6 +1414,7 @@ export default function Candidates(){
     setInPolandFilter,
     setHandoffStatusFilter,
     setContactAttemptsFilter,
+    resetCandidatesFiltersCore,
   ])
 
   useEffect(() => {
@@ -1353,10 +1508,12 @@ export default function Candidates(){
           __reasonFallbackLabels: reasonData.fallbackLabels,
         }
       })
-      console.info('[Candidates] enrichedItems computed: items.length=', items.length, 'enrichedItems.length=', result.length)
+      if (showDebugPanel) {
+        console.info('[Candidates] enrichedItems computed: items.length=', items.length, 'enrichedItems.length=', result.length)
+      }
       return result
     },
-    [items, deriveReasonData]
+    [items, deriveReasonData, showDebugPanel]
   )
 
   const filterSnapshot = useMemo<CandidateFilterSnapshot>(
@@ -1416,15 +1573,7 @@ export default function Candidates(){
       short: normalizeSearchValue(snapshot.textFilters.short ?? ''),
     }
 
-    const debugFiltering = source.length > 0 && source.length === 670 && Object.keys(snapshot).some(key => {
-      const val = (snapshot as any)[key]
-      if (Array.isArray(val)) return val.length > 0
-      if (typeof val === 'object' && val !== null) {
-        if ('from' in val || 'to' in val) return Boolean((val as any).from || (val as any).to)
-        return Object.keys(val).length > 0
-      }
-      return Boolean(val)
-    })
+    const debugFiltering = showDebugPanel
 
     return source.filter((item) => {
       if (normalizedQuery) {
@@ -1470,7 +1619,7 @@ export default function Candidates(){
       }
 
       if (snapshot.manager.length) {
-        const candidateManager = (item as any)?.manager_id || (item as any)?.manager?.id || (item as any)?.manager || null
+        const candidateManager = getCandidateManagerId(item)
         if (!candidateManager || !snapshot.manager.includes(String(candidateManager))) {
           return false
         }
@@ -1564,7 +1713,7 @@ export default function Candidates(){
 
       return true
     })
-  }, [])
+  }, [showDebugPanel])
 
   const buildFilterSource = useCallback(
     (overrides: Partial<CandidateFilterSnapshot>) =>
@@ -1617,37 +1766,49 @@ export default function Candidates(){
       if (toAdd.length > 0) {
         // Добавляем недавно обновленных кандидатов в начало списка
         const result = [...toAdd, ...filtered]
-        console.info('[Candidates] filteredItems computed: enrichedItems.length=', enrichedItems.length, 'filtered.length=', filtered.length, 'result.length=', result.length)
+        if (showDebugPanel) {
+          console.info(
+            '[Candidates] filteredItems computed: enrichedItems.length=',
+            enrichedItems.length,
+            'filtered.length=',
+            filtered.length,
+            'result.length=',
+            result.length,
+          )
+        }
         return result
       }
     }
-    
-    if (enrichedItems.length > 0 && filtered.length === 0) {
+
+    if (showDebugPanel && enrichedItems.length > 0 && filtered.length === 0) {
       console.warn('[Candidates] ALL items filtered out! Active filters:', JSON.stringify(filterSnapshot, null, 2))
-      // Также попробуем понять, какой именно фильтр блокирует
       const sampleItem = enrichedItems[0]
       const sampleIsFavorite = sampleItem.is_favorite ?? false
       console.warn('[Candidates] Sample item for debugging:', {
         id: sampleItem.id,
         stage: sampleItem.stage,
         vacancy_id: (sampleItem as any)?.vacancy_id || (sampleItem as any)?.vacancy?.id,
-        manager_id: (sampleItem as any)?.manager_id || (sampleItem as any)?.manager?.id,
+        manager_id: getCandidateManagerId(sampleItem),
         tags: sampleItem.tags,
         is_favorite: sampleItem.is_favorite,
         is_favorite_raw: sampleItem.is_favorite,
         filter_isFavorite: filterSnapshot.isFavorite,
-        matches_isFavorite: filterSnapshot.isFavorite === null || filterSnapshot.isFavorite === undefined || filterSnapshot.isFavorite === sampleIsFavorite,
+        matches_isFavorite:
+          filterSnapshot.isFavorite === null ||
+          filterSnapshot.isFavorite === undefined ||
+          filterSnapshot.isFavorite === sampleIsFavorite,
         created_at: sampleItem.created_at,
         __docsMeta: sampleItem.__docsMeta,
         __extra: sampleItem.__extra,
       })
-      // Проверим, сколько элементов имеют is_favorite === true
-      const favoriteCount = enrichedItems.filter(item => (item.is_favorite ?? false) === true).length
+      const favoriteCount = enrichedItems.filter((item) => (item.is_favorite ?? false) === true).length
       console.warn('[Candidates] Items with is_favorite=true:', favoriteCount, 'out of', enrichedItems.length)
     }
-    console.info('[Candidates] filteredItems computed: enrichedItems.length=', enrichedItems.length, 'filtered.length=', filtered.length)
+    if (showDebugPanel) {
+      console.info('[Candidates] filteredItems computed: enrichedItems.length=', enrichedItems.length, 'filtered.length=', filtered.length)
+    }
     return filtered
-  }, [enrichedItems, filterSnapshot, filterCandidates])
+  }, [enrichedItems, filterSnapshot, filterCandidates, showDebugPanel])
 
   const candidateInsights = useMemo(() => {
     let newCount = 0
@@ -1778,18 +1939,27 @@ export default function Candidates(){
       }
       return sortDir === 'asc' ? cmp : -cmp
     })
-    console.info('[Candidates] displayedItems computed: filteredItems.length=', filteredItems.length, 'sorted.length=', sorted.length)
+    if (showDebugPanel) {
+      console.info('[Candidates] displayedItems computed: filteredItems.length=', filteredItems.length, 'sorted.length=', sorted.length)
+    }
     return sorted
-  }, [filteredItems, sortKey, sortDir])
+  }, [filteredItems, sortKey, sortDir, showDebugPanel])
 
   const selectedCandidate = useMemo(() => {
     const base =
       selectedCandidateId ? displayedItems.find((c) => c.id === selectedCandidateId) ?? null : null
-    if (!base || !previewCandidateExtra) return base
+    if (!base) return null
+    if (!previewCandidateExtra) return base
+    const ex = previewCandidateExtra
     return {
       ...base,
-      contact_policy_enabled: previewCandidateExtra.contact_policy_enabled,
-      contact_attempt_count: previewCandidateExtra.contact_attempt_count,
+      contact_policy_enabled: ex.contact_policy_enabled,
+      contact_attempt_count: ex.contact_attempt_count,
+      risk_score: ex.risk_score !== undefined ? ex.risk_score : (base as any).risk_score,
+      risk_band: ex.risk_band !== undefined ? ex.risk_band : (base as any).risk_band,
+      risk_drivers: ex.risk_drivers !== undefined ? ex.risk_drivers : (base as any).risk_drivers,
+      risk_updated_at: ex.risk_updated_at !== undefined ? ex.risk_updated_at : (base as any).risk_updated_at,
+      risk_version: ex.risk_version !== undefined ? ex.risk_version : (base as any).risk_version,
     }
   }, [displayedItems, selectedCandidateId, previewCandidateExtra])
 
@@ -2316,11 +2486,15 @@ export default function Candidates(){
     stickyLeft?: string
   }) => {
     const className = clsx(
-      'group px-4 py-2.5 border-r border-slate-200 align-middle whitespace-nowrap',
+      'group py-2.5 border-r border-slate-200 align-middle whitespace-nowrap',
+      columnKey === 'checkbox' ? 'px-4' : tableLayoutCustomize ? 'pl-7 pr-4' : 'px-4',
       isSticky ? 'sticky bg-slate-50 z-[25]' : 'relative',
       'cursor-default',
-      columnKey !== 'checkbox' && 'pl-7',
-      dragOverColumn === columnKey && draggingColumn && draggingColumn !== columnKey && 'bg-brand-100/70',
+      tableLayoutCustomize &&
+        dragOverColumn === columnKey &&
+        draggingColumn &&
+        draggingColumn !== columnKey &&
+        'bg-brand-100/70',
       // thead с pointer-events:none — интерактив в ячейках должен снова ловить события
       'pointer-events-auto',
     )
@@ -2356,6 +2530,14 @@ export default function Candidates(){
       )
     }
 
+    if (!tableLayoutCustomize) {
+      return (
+        <th className={className} style={dynamicStyle}>
+          <div className="flex h-5 min-w-0 w-full items-center gap-1.5 overflow-hidden whitespace-nowrap">{content}</div>
+        </th>
+      )
+    }
+
     return (
       <th
         className={className}
@@ -2378,12 +2560,12 @@ export default function Candidates(){
         }}
       >
         <div className="flex h-5 items-center justify-between gap-2">
-          <div className="flex h-5 items-center gap-1.5 min-w-0 w-full whitespace-nowrap overflow-hidden">
+          <div className="flex h-5 min-w-0 w-full items-center gap-1.5 overflow-hidden whitespace-nowrap">
             <span
               role="button"
               tabIndex={0}
               draggable
-              className="absolute left-1 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 items-center justify-center rounded text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-slate-200 hover:text-slate-600 cursor-grab active:cursor-grabbing select-none"
+              className="absolute left-1 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 cursor-grab select-none items-center justify-center rounded text-slate-300 opacity-0 transition hover:bg-slate-200 hover:text-slate-600 group-hover:opacity-100 active:cursor-grabbing"
               title={t('app.candidates.table.reorder_column') || 'Перетащите, чтобы поменять порядок колонок'}
               onDragStart={(e) => {
                 setDraggingColumn(columnKey)
@@ -2405,7 +2587,7 @@ export default function Candidates(){
             >
               ⋮⋮
             </span>
-            <div className="min-w-0 flex h-5 items-center gap-1.5 whitespace-nowrap overflow-hidden">{content}</div>
+            <div className="flex h-5 min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap">{content}</div>
           </div>
         </div>
         <ColumnResizeHandle columnKey={columnKey} />
@@ -2522,6 +2704,10 @@ export default function Candidates(){
           handoff_status: handoffStatusFilter || undefined,
           contact_attempts: contactAttemptsFilter || undefined,
           processor_id: processorFilter || undefined,
+        }
+        if (digestShadowBucket && digestShadowMinBand) {
+          params.shadow_bucket_start = digestShadowBucket
+          params.shadow_bucket_min_band = digestShadowMinBand
         }
         if (createdRange.from) params.created_from = createdRange.from
         if (createdRange.to) params.created_to = createdRange.to
@@ -2677,6 +2863,8 @@ export default function Candidates(){
     handoffStatusFilter,
     contactAttemptsFilter,
     processorFilter,
+    digestShadowBucket,
+    digestShadowMinBand,
     createdRange,
     firstContactRange,
     docsValidRange,
@@ -3186,6 +3374,10 @@ export default function Candidates(){
           const parsed = parseErrorObject(item?.error)
           return String(parsed?.code || '') === 'stage_blocked_by_documents'
         })
+        const riskGateFailures = failures.filter((item) => {
+          const parsed = parseErrorObject(item?.error)
+          return String(parsed?.code || '') === 'stage_blocked_by_risk_gate'
+        })
         if (rodoBlockedCount > 0) {
           alert(
             t('app.candidates.messages.bulk_stage_rodo_blocked', {
@@ -3231,6 +3423,14 @@ export default function Candidates(){
               defaultValue:
                 '{docs} candidate(s) are blocked by required documents ({total} failures). Fix documents on the card, then retry.',
               values: { docs: pipelineDocFailures.length, total: failures.length },
+            }),
+          )
+        } else if (riskGateFailures.length > 0) {
+          alert(
+            t('app.candidates.messages.bulk_stage_risk_gate_blocked', {
+              defaultValue:
+                '{risk} candidate(s) are blocked by risk policy: add a next-action reminder or adjust risk_model_v1.stage_gate ({total} failures).',
+              values: { risk: riskGateFailures.length, total: failures.length },
             }),
           )
         } else {
@@ -3562,37 +3762,6 @@ export default function Candidates(){
     return digits ? `tel:${digits}` : undefined
   }
 
-  const handleResetFilters = () => {
-    setQ('')
-    setStageFilter([])
-    setVacancyFilter([])
-    setManagerFilter([])
-    setStatusReasonFilter([])
-    setTagsFilter([])
-    setIsFavoriteFilter(null)
-    setDocsStatusFilter([])
-    setDocsOrderedFilter([])
-    setPreferredChannelFilter([])
-    setInPolandFilter([])
-    setOpsModeFilter([])
-    setPolandBasisFilter([])
-    setTrailerTypesFilter([])
-    setCreatedRange({ from: null, to: null })
-    setFirstContactRange({ from: null, to: null })
-    setDocsValidRange({ from: null, to: null })
-    setDocsHasFilesFilter([])
-    setHandoffStatusFilter('')
-    setContactAttemptsFilter('')
-    setProcessorFilter('')
-    setTextFilters(makeEmptyTextFilters())
-    setSortKey('created_at')
-    setSortDir('desc')
-    persistedFiltersRef.current = false
-    try {
-      localStorage.removeItem(filterStorageKey)
-    } catch {/* ignore */}
-  }
-
   const {
     quickViewParam,
     quickFiltersExpanded,
@@ -3602,6 +3771,7 @@ export default function Candidates(){
     applyQuickViewFilters,
   } = useCandidatesQuickViews({
     t,
+    navigate,
     searchParams,
     setSearchParams,
     filtersHydrated,
@@ -3633,6 +3803,7 @@ export default function Candidates(){
     docsHasFilesFilter.length > 0 ||
     !!handoffStatusFilter ||
     !!contactAttemptsFilter ||
+    Boolean(digestShadowBucket) ||
     !!processorFilter ||
     isRangeActive(createdRange) ||
     isRangeActive(firstContactRange) ||
@@ -3742,7 +3913,10 @@ export default function Candidates(){
 
   const visibleCandidatesCount = displayedItems.length
   const hasActiveTableFilters =
-    hasFilterBadges || isFavoriteFilter === true || isFavoriteFilter === false
+    hasFilterBadges ||
+    isFavoriteFilter === true ||
+    isFavoriteFilter === false ||
+    Boolean(quickViewParam)
   const showsFilteredCount = total > 0 && visibleCandidatesCount !== total
 
   if (isKanban) {
@@ -3757,12 +3931,14 @@ export default function Candidates(){
             const reasonTags = c.__reasonCodes
             const fallbackReasons = c.__reasonFallbackLabels
             const isFocused = focusedRowIndex === index
+            const isWorkPanelRow = Boolean(workPanelOpen && selectedCandidateId === c.id)
             return (
               <>
                 {/* Без sticky на body-cells: любой sticky у tbody + sticky thead в Virtuoso давал битый hit-testing (клики/mouseup уходили в шапку). */}
                 <CandidatesTableCheckboxCell
                   c={c}
                   isFocused={isFocused}
+                  isWorkPanelRow={isWorkPanelRow}
                   checked={checked}
                   canManage={canManage}
                   toggle={toggle}
@@ -3782,45 +3958,49 @@ export default function Candidates(){
                         : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || t('common.labels.not_available')
                     const isMasked = (c as AugmentedCandidate).masked === true
                     cellContent = (
-                      <div className="flex min-w-0 flex-col gap-2 group">
-                        <div className="min-w-0 overflow-hidden">
-                          <Link
-                            to={`/app/candidates/${c.id}`}
-                            className="block truncate whitespace-nowrap font-medium text-brand-600 hover:text-brand-700 hover:underline"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              handleCandidateOpen(c.id)
-                              navigate(`/app/candidates/${c.id}`)
-                            }}
-                            title={t('app.candidates.table.open_card') || ((c as AugmentedCandidate).masked === true ? t('app.candidates.table.open_card_masked', { defaultValue: 'Открыть карточку кандидата' }) : `Открыть карточку кандидата ${c.first_name} ${c.last_name}`)}
-                          >
-                            {candidateLabel}
-                          </Link>
-                          {isMasked ? (
-                            <div
-                              className="text-xs text-slate-500 truncate"
+                      <div className="group/name flex min-w-0 flex-col gap-1">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <Link
+                              to={`/app/candidates/${c.id}`}
+                              className="block truncate whitespace-nowrap font-medium text-brand-600 hover:text-brand-700 hover:underline"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleCandidateOpen(c.id)
+                                navigate(`/app/candidates/${c.id}`)
+                              }}
                               title={
-                                c.short_id || ((c as AugmentedCandidate).masked && (c.id ?? '').slice(0, 8))
-                                  ? `Short ID: ${c.short_id || (c.id ?? '').slice(0, 8)}`
-                                  : undefined
+                                t('app.candidates.table.open_card') ||
+                                ((c as AugmentedCandidate).masked === true
+                                  ? t('app.candidates.table.open_card_masked', { defaultValue: 'Открыть карточку кандидата' })
+                                  : `Открыть карточку кандидата ${c.first_name} ${c.last_name}`)
                               }
                             >
-                              {c.short_id ? `ID ${c.short_id}` : `ID ${(c.id ?? '').slice(0, 8)}`}
-                            </div>
-                          ) : null}
+                              {candidateLabel}
+                            </Link>
+                          </div>
+                          <CandidatesTableRowNamePreview
+                            c={c}
+                            isFocused={isFocused}
+                            selectedCandidateId={selectedCandidateId}
+                            workPanelOpen={workPanelOpen}
+                            setSelectedCandidateId={setSelectedCandidateId}
+                            setSidebarOpen={setSidebarOpen}
+                            t={t}
+                          />
                         </div>
-
-                        <CandidatesTableRowQuickActions
-                          c={c}
-                          isFocused={isFocused}
-                          handleCandidateOpen={handleCandidateOpen}
-                          navigate={navigate}
-                          setSelectedCandidateId={setSelectedCandidateId}
-                          setSidebarOpen={setSidebarOpen}
-                          t={t}
-                        />
-
-                        {/* opsMode badge moved into HoverCard to reduce scan noise */}
+                        {isMasked ? (
+                          <div
+                            className="truncate text-xs text-slate-500"
+                            title={
+                              c.short_id || ((c as AugmentedCandidate).masked && (c.id ?? '').slice(0, 8))
+                                ? `Short ID: ${c.short_id || (c.id ?? '').slice(0, 8)}`
+                                : undefined
+                            }
+                          >
+                            {c.short_id ? `ID ${c.short_id}` : `ID ${(c.id ?? '').slice(0, 8)}`}
+                          </div>
+                        ) : null}
                       </div>
                     )
                   } else if (columnKey === 'email') {
@@ -3853,7 +4033,7 @@ export default function Candidates(){
                     const managerName = resolveManagerLabel(c)
                     cellContent = managerName || t('common.labels.not_available')
                   } else if (columnKey === 'stage') {
-                    cellContent = <StageTag code={c.stage} />
+                    cellContent = <CandidatesTableRowStageCell candidate={c} />
                   } else if (columnKey === 'risk') {
                     const score = (c as any).risk_score
                     const bandRaw: string | null | undefined = (c as any).risk_band
@@ -4063,7 +4243,7 @@ export default function Candidates(){
                         ['stage', 'docsStatus', 'vacancy', 'manager'].includes(columnKey)
                           ? 'px-3 py-2.5 align-middle'
                           : 'px-4 py-2.5 align-middle',
-                        isFocused ? "bg-brand-100" : "bg-white",
+                        isFocused ? 'bg-brand-100' : isWorkPanelRow ? 'bg-brand-50/90' : 'bg-white',
                         columnKey === 'name' && "font-medium"
                       )}
                       style={{
@@ -4087,12 +4267,21 @@ export default function Candidates(){
 
   return (
     <div
-      data-hf-ui="candidates-native-table-v7-overlay-rail"
+      data-hf-ui="candidates-native-table-v7-grid-rail"
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      {/* Таблица в стабильной ширине; preview-rail поверх справа, без изменения геометрии таблицы. */}
-      <div className="relative flex flex-1 min-h-0 min-w-0">
-        <div className="flex flex-1 min-h-0 min-w-0 flex flex-col">
+      {/* R1.P0: отдельная grid-колонка под rail, без absolute — стабильный hit-testing. Ширина: `CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX`. */}
+      <div
+        className="grid min-h-0 min-w-0 flex-1"
+        style={
+          workPanelOpen
+            ? {
+                gridTemplateColumns: `minmax(0, 1fr) ${CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX}px`,
+              }
+            : undefined
+        }
+      >
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
         <div
           ref={tableContainerRef}
           className="flex-1 min-h-0 overflow-hidden flex flex-col"
@@ -4278,108 +4467,206 @@ export default function Candidates(){
             </div>
           )}
 
-          {/* Active filter badges */}
-          {hasFilterBadges && (
-            <FilterBadges
-              q={q}
-              textFilters={textFilters}
-              stageFilter={stageFilter}
-              vacancyFilter={vacancyFilter}
-              managerFilter={managerFilter}
-              statusReasonFilter={statusReasonFilter}
-              docsStatusFilter={docsStatusFilter}
-              docsOrderedFilter={docsOrderedFilter}
-              preferredChannelFilter={preferredChannelFilter}
-              inPolandFilter={inPolandFilter}
-              opsModeFilter={opsModeFilter}
-              polandBasisFilter={polandBasisFilter}
-              trailerTypesFilter={trailerTypesFilter}
-              createdRange={createdRange}
-              firstContactRange={firstContactRange}
-              docsValidRange={docsValidRange}
-              docsHasFilesFilter={docsHasFilesFilter}
-              handoffStatusFilter={handoffStatusFilter}
-              contactAttemptsFilter={contactAttemptsFilter}
-              processorFilter={processorFilter}
-              stageLabelMap={stageLabelMap}
-              vacancyLabelMap={vacancyLabelMap}
-              managerLabelMap={managerLabelMap}
-              reasonLabelMap={reasonLabelMap}
-              reasonStageMap={reasonStageMap}
-              preferredChannelLabelMap={preferredChannelLabelMap}
-              inPolandLabelMap={inPolandLabelMap}
-              opsModeLabelMap={opsModeLabelMap}
-              getPolandBasisLabel={getPolandBasisLabel}
-              getTrailerTypeLabel={getTrailerTypeLabel}
-              docsStatusOptions={docsStatusFilterOptions}
-              docsOrderFilterOptions={docsOrderFilterOptions}
-              locale={locale}
-              onQChange={setQ}
-              onTextFilterChange={setTextFilter}
-              onStageFilterChange={setStageFilter}
-              onVacancyFilterChange={setVacancyFilter}
-              onManagerFilterChange={setManagerFilter}
-              onStatusReasonFilterChange={setStatusReasonFilter}
-              onDocsStatusFilterChange={setDocsStatusFilter}
-              onDocsOrderedFilterChange={setDocsOrderedFilter}
-              onPreferredChannelFilterChange={setPreferredChannelFilter}
-              onInPolandFilterChange={setInPolandFilter}
-              onOpsModeFilterChange={setOpsModeFilter}
-              onPolandBasisFilterChange={setPolandBasisFilter}
-              onTrailerTypesFilterChange={setTrailerTypesFilter}
-              onCreatedRangeChange={setCreatedRange}
-              onFirstContactRangeChange={setFirstContactRange}
-              onDocsValidRangeChange={setDocsValidRange}
-              onDocsHasFilesFilterChange={setDocsHasFilesFilter}
-              onHandoffStatusFilterChange={setHandoffStatusFilter}
-              onContactAttemptsFilterChange={setContactAttemptsFilter}
-              onProcessorFilterChange={setProcessorFilter}
-            />
-          )}
+          {digestShadowBucket ? (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-200 bg-indigo-50/60 px-3 py-2 text-sm text-slate-800">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                <span className="font-medium">
+                  {t('app.candidates.digest_shadow.banner', { defaultValue: 'Risk digest cohort' })}
+                </span>
+                <span className="text-xs text-slate-600">
+                  {t('app.candidates.digest_shadow.bucket', {
+                    defaultValue: 'Hourly bucket: {t}',
+                    values: { t: new Date(digestShadowBucket).toLocaleString(locale) },
+                  })}
+                </span>
+                <label className="flex items-center gap-1.5 text-xs text-slate-700">
+                  <span className="shrink-0">
+                    {t('app.candidates.digest_shadow.min_band', { defaultValue: 'Band floor' })}
+                  </span>
+                  <select
+                    className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-xs"
+                    value={digestShadowMinBand ?? 'high'}
+                    onChange={(e) => {
+                      const next = new URLSearchParams(searchParams)
+                      next.set('shadow_min_band', e.target.value)
+                      setSearchParams(next, { replace: true })
+                    }}
+                  >
+                    {(['low', 'medium', 'high', 'critical'] as const).map((b) => (
+                      <option key={b} value={b}>
+                        {b}+
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary btn-sm shrink-0"
+                onClick={() => {
+                  const next = new URLSearchParams(searchParams)
+                  next.delete('shadow_bucket')
+                  next.delete('shadow_min_band')
+                  next.delete('shadow_bucket_min_band')
+                  setSearchParams(next, { replace: true })
+                }}
+              >
+                {t('app.candidates.digest_shadow.clear', { defaultValue: 'Clear digest filter' })}
+              </button>
+            </div>
+          ) : null}
+
+          <div className="mx-4 mb-1.5 shrink-0 rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-2.5 shadow-sm">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <input
+                id="candidates-search"
+                ref={searchRef}
+                className="input min-h-[40px] min-w-0 flex-1 rounded-lg border-slate-200/90 bg-white py-2 text-sm shadow-sm focus:border-brand-400 focus:ring-2 focus:ring-brand-500/15"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={t('app.candidates.search.placeholder')}
+                autoComplete="off"
+                aria-label={t('app.candidates.search.label')}
+              />
+              <CandidatesQuickViewsBar
+                variant="tableToolbar"
+                t={t}
+                quickViewParam={quickViewParam}
+                onApplyQuickViewFilters={(key) => {
+                  void applyQuickViewFilters(key as any, { syncUrl: true })
+                }}
+                isFavoriteFilter={isFavoriteFilter}
+                onFavoriteFilterToggle={() => setIsFavoriteFilter((prev) => (prev === true ? null : true))}
+                quickDocFilters={quickDocFilters}
+                quickFiltersExpanded={quickFiltersExpanded}
+                onToggleQuickDocFilter={toggleQuickDocFilter}
+                onQuickFiltersExpandedChange={setQuickFiltersExpanded}
+                savedViews={savedViews}
+                onApplySavedView={applyView}
+                onDeleteSavedView={(id) => {
+                  void deleteView(id)
+                }}
+              />
+            </div>
+            {hasFilterBadges ? (
+              <div className="mt-2 border-t border-slate-200/90 pt-2">
+                <FilterBadges
+                  embedded
+                  q={q}
+                  textFilters={textFilters}
+                  stageFilter={stageFilter}
+                  vacancyFilter={vacancyFilter}
+                  managerFilter={managerFilter}
+                  statusReasonFilter={statusReasonFilter}
+                  docsStatusFilter={docsStatusFilter}
+                  docsOrderedFilter={docsOrderedFilter}
+                  preferredChannelFilter={preferredChannelFilter}
+                  inPolandFilter={inPolandFilter}
+                  opsModeFilter={opsModeFilter}
+                  polandBasisFilter={polandBasisFilter}
+                  trailerTypesFilter={trailerTypesFilter}
+                  createdRange={createdRange}
+                  firstContactRange={firstContactRange}
+                  docsValidRange={docsValidRange}
+                  docsHasFilesFilter={docsHasFilesFilter}
+                  handoffStatusFilter={handoffStatusFilter}
+                  contactAttemptsFilter={contactAttemptsFilter}
+                  processorFilter={processorFilter}
+                  stageLabelMap={stageLabelMap}
+                  vacancyLabelMap={vacancyLabelMap}
+                  managerLabelMap={managerLabelMap}
+                  reasonLabelMap={reasonLabelMap}
+                  reasonStageMap={reasonStageMap}
+                  preferredChannelLabelMap={preferredChannelLabelMap}
+                  inPolandLabelMap={inPolandLabelMap}
+                  opsModeLabelMap={opsModeLabelMap}
+                  getPolandBasisLabel={getPolandBasisLabel}
+                  getTrailerTypeLabel={getTrailerTypeLabel}
+                  docsStatusOptions={docsStatusFilterOptions}
+                  docsOrderFilterOptions={docsOrderFilterOptions}
+                  locale={locale}
+                  onQChange={setQ}
+                  onTextFilterChange={setTextFilter}
+                  onStageFilterChange={setStageFilter}
+                  onVacancyFilterChange={setVacancyFilter}
+                  onManagerFilterChange={setManagerFilter}
+                  onStatusReasonFilterChange={setStatusReasonFilter}
+                  onDocsStatusFilterChange={setDocsStatusFilter}
+                  onDocsOrderedFilterChange={setDocsOrderedFilter}
+                  onPreferredChannelFilterChange={setPreferredChannelFilter}
+                  onInPolandFilterChange={setInPolandFilter}
+                  onOpsModeFilterChange={setOpsModeFilter}
+                  onPolandBasisFilterChange={setPolandBasisFilter}
+                  onTrailerTypesFilterChange={setTrailerTypesFilter}
+                  onCreatedRangeChange={setCreatedRange}
+                  onFirstContactRangeChange={setFirstContactRange}
+                  onDocsValidRangeChange={setDocsValidRange}
+                  onDocsHasFilesFilterChange={setDocsHasFilesFilter}
+                  onHandoffStatusFilterChange={setHandoffStatusFilter}
+                  onContactAttemptsFilterChange={setContactAttemptsFilter}
+                  onProcessorFilterChange={setProcessorFilter}
+                />
+              </div>
+            ) : null}
+          </div>
 
           {/* Bulk actions appear only when there is a selection */}
           {canManage && Object.values(checked).some(Boolean) && (
-            <div className="card p-3 flex flex-wrap items-center gap-2 m-4">
-              <div className="text-sm">
+            <div className="mx-4 mb-2 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/90 bg-gradient-to-b from-slate-50/95 to-white px-3 py-2.5 shadow-sm">
+              <span className="inline-flex items-center rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-200/60">
                 {t('app.candidates.bulk.selected', { values: { count: Object.values(checked).filter(Boolean).length } })}
-              </div>
+              </span>
               <button
-                className="btn-primary"
+                className="inline-flex items-center rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
                 title={t('app.candidates.bulk.stage.title')}
-                onClick={()=>{ setBulkStage(stageOptions[0] || 'new'); setBulkReasons([]); setBulkOpen(true) }}
+                onClick={() => {
+                  setBulkStage(stageOptions[0] || 'new')
+                  setBulkReasons([])
+                  setBulkOpen(true)
+                }}
               >
                 {t('app.candidates.bulk.stage.action')}
               </button>
               <button
-                className="btn"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.manager.title')}
-                onClick={()=>{ setBulkManagerId(preferredManagerId); setBulkManagerOpen(true) }}
+                onClick={() => {
+                  setBulkManagerId(preferredManagerId)
+                  setBulkManagerOpen(true)
+                }}
               >
                 {t('app.candidates.bulk.manager.action')}
               </button>
               <button
-                className="btn"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.vacancy.title')}
-                onClick={()=>{ setBulkVacancyId(vacancies[0]?.id || ''); setBulkVacancyOpen(true) }}
+                onClick={() => {
+                  setBulkVacancyId(vacancies[0]?.id || '')
+                  setBulkVacancyOpen(true)
+                }}
               >
                 {t('app.candidates.bulk.vacancy.action')}
               </button>
               <button
-                className="btn"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.handoff.title', { defaultValue: 'Przekaż wybranych do klienta' })}
-                onClick={()=> setBulkHandoffOpen(true)}
+                onClick={() => setBulkHandoffOpen(true)}
               >
                 {t('app.candidates.bulk.handoff.action', { defaultValue: 'Przekaż do klienta (wybrani)' })}
               </button>
               <button
-                className="btn"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.tags.title')}
-                onClick={()=>{ setBulkTagsOperation('add'); setBulkTagsList(''); setBulkTagsOpen(true) }}
+                onClick={() => {
+                  setBulkTagsOperation('add')
+                  setBulkTagsList('')
+                  setBulkTagsOpen(true)
+                }}
               >
                 {t('app.candidates.bulk.tags.action')}
               </button>
               <button
-                className="btn"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-white px-2.5 py-2 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
                 title={t('app.candidates.bulk.activities.title', { defaultValue: 'Create activities for selected' })}
                 onClick={() => {
                   setBulkActivityTitle(t('app.candidates.bulk.activities.default_title', { defaultValue: 'Follow up' }))
@@ -4391,17 +4678,19 @@ export default function Candidates(){
                 {t('app.candidates.bulk.activities.action', { defaultValue: 'Create activity' })}
               </button>
               <button
-                className="btn bg-red-600 hover:bg-red-700 text-white"
+                className="inline-flex items-center rounded-lg border border-red-200/90 bg-white px-2.5 py-2 text-xs font-medium text-red-700 shadow-sm transition-colors hover:border-red-300 hover:bg-red-50"
                 title={t('app.candidates.bulk.delete.title')}
-                onClick={()=>{ setBulkDeleteOpen(true) }}
+                onClick={() => {
+                  setBulkDeleteOpen(true)
+                }}
               >
                 {t('app.candidates.bulk.delete.action')}
               </button>
-              <div className="flex-1" />
+              <div className="min-w-[1rem] flex-1" />
               <button
-                className="btn-secondary"
+                className="inline-flex items-center rounded-lg border border-slate-200/90 bg-slate-50 px-2.5 py-2 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-100"
                 title={t('app.candidates.bulk.clear_title')}
-                onClick={()=> setChecked({})}
+                onClick={() => setChecked({})}
               >
                 {t('app.candidates.bulk.clear_action')}
               </button>
@@ -4423,6 +4712,13 @@ export default function Candidates(){
           )}
 
           <div className="card m-0 relative flex-1 min-h-0 flex flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
+        {tableLayoutCustomize ? (
+          <div className="border-b border-brand-200/80 bg-brand-50 px-3 py-1.5 text-[11px] font-medium text-brand-900">
+            {t('app.candidates.table.customize_banner', {
+              defaultValue: 'Layout mode on: drag ⋮⋮ on headers to reorder; drag the right edge of a header to resize.',
+            })}
+          </div>
+        ) : null}
         {loading && displayedItems.length > 0 && (
           <div className="absolute top-2 right-2 z-30 bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg px-3 py-1.5 shadow-lg">
             <div className="flex items-center gap-2 text-xs text-slate-600">
@@ -4447,6 +4743,7 @@ export default function Candidates(){
                 const id = c.id
                 const index = dataIndex
                 const isFocused = focusedRowIndex === index && index >= 0
+                const isWorkPanelRow = Boolean(workPanelOpen && id && selectedCandidateId === id)
                 return (
                   <tr
                     key={id}
@@ -4455,6 +4752,8 @@ export default function Candidates(){
                     }}
                     data-candidate-id={id}
                     data-index={index}
+                    data-work-panel-row={isWorkPanelRow ? 'true' : undefined}
+                    aria-current={isWorkPanelRow ? 'true' : undefined}
                     tabIndex={-1}
                     onMouseDown={(e) => {
                       if (e.button !== 0) return
@@ -4487,11 +4786,19 @@ export default function Candidates(){
                     }}
                     className={clsx(
                       'border-t border-slate-200/90 transition-colors duration-150 cursor-pointer',
+                      isWorkPanelRow && 'border-l-[3px] border-l-brand-600 bg-brand-50/90 shadow-[inset_0_0_0_1px_rgb(191_219_254_/_0.35)]',
                       isFocused && 'ring-2 ring-brand-500 ring-inset outline-none',
-                      !isFocused && 'hover:bg-brand-50/50',
-                      id && selectedCandidateId === id && !isFocused && 'bg-brand-50',
-                      id && recentlyOpenedId === id && !isFocused && 'bg-amber-50/60',
-                      id && (items.find((row) => row.id === id)?.is_favorite) && !isFocused && 'bg-yellow-50/40 border-l-2 border-l-yellow-400',
+                      !isFocused && !isWorkPanelRow && 'hover:bg-brand-50/50',
+                      id &&
+                        recentlyOpenedId === id &&
+                        !isFocused &&
+                        !isWorkPanelRow &&
+                        'bg-amber-50/60',
+                      id &&
+                        (items.find((row) => row.id === id)?.is_favorite) &&
+                        !isFocused &&
+                        !isWorkPanelRow &&
+                        'bg-yellow-50/40 border-l-2 border-l-yellow-400',
                     )}
                   >
                     {renderCandidateRowTds(index, c)}
@@ -4581,7 +4888,18 @@ export default function Candidates(){
           </div>
         </div>
       </div>
-        <CandidatesWorkPanel open={workPanelOpen} summaryHero={summaryHero}>
+        {workPanelOpen ? (
+          <div
+            className={clsx(
+              'flex min-w-0 w-full flex-col overflow-hidden',
+              selectedCandidate ? 'h-full min-h-0' : 'max-h-full self-start',
+            )}
+            style={{ maxWidth: CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX }}
+          >
+            <CandidatesWorkPanel
+              summaryHero={summaryHero}
+              previewVisible={Boolean(selectedCandidate)}
+              previewSlot={
           <CandidatesSelectedPanel
             t={t}
             locale={locale}
@@ -4606,6 +4924,10 @@ export default function Candidates(){
             nextActionDetailsOpenTrigger={nextActionDetailsOpenTrigger}
             docsBlockers={docsBlockers}
             docsBlockersLoading={docsBlockersLoading}
+            docsRailEmbeddedSummary={docsRailEmbeddedSummary}
+            canUseTeamWorkPanelAssigneeScope={canUseTeamWorkPanelAssigneeScope}
+            workPanelAssigneeScope={workPanelAssigneeScope}
+            onWorkPanelAssigneeScopeChange={setWorkPanelAssigneeScope}
             docsOwnerContext={docsOwnerContext}
             previewTimelineItems={previewTimelineItems}
             previewTimelineLoading={previewTimelineLoading}
@@ -4618,7 +4940,7 @@ export default function Candidates(){
             }}
             onOpenCandidate={(candidateId) => navigate(`/app/candidates/${candidateId}`)}
             onOpenDocuments={(candidateId) => navigate(`/app/candidates/${candidateId}/documents`)}
-            onOpenMessages={(candidateId) => navigate(`/app/messages?candidateId=${candidateId}`)}
+            workPanelCommsLinks={previewCommsLinks}
             onReminderTitleChange={setPreviewReminderTitle}
             onReminderDueAtChange={setPreviewReminderDueAt}
             onReminderOffsetChange={setPreviewReminderOffset}
@@ -4640,12 +4962,10 @@ export default function Candidates(){
             onTimelineRefresh={(candidateId) => void loadPreviewTimeline(candidateId)}
             onTimelineExpandedChange={setPreviewTimelineExpanded}
           />
-
+              }
+              controlsSlot={
           <CandidatesLeftRailPanel
             t={t}
-            searchRef={searchRef}
-            q={q}
-            onQChange={setQ}
             handoffStatusFilter={handoffStatusFilter}
             onHandoffStatusFilterChange={setHandoffStatusFilter}
             contactAttemptsFilter={contactAttemptsFilter}
@@ -4676,9 +4996,6 @@ export default function Candidates(){
             columnLabelMap={columnLabelMap}
             canManage={canManage}
             quickViewParam={quickViewParam}
-            onQuickViewNavigate={(path) => {
-              void navigate(path)
-            }}
             onApplyQuickViewFilters={(key) => {
               void applyQuickViewFilters(key as any, { syncUrl: true })
             }}
@@ -4689,12 +5006,18 @@ export default function Candidates(){
             onToggleQuickDocFilter={toggleQuickDocFilter}
             onQuickFiltersExpandedChange={setQuickFiltersExpanded}
             savedViews={savedViews}
-            onApplyView={applyView}
-            onDeleteView={(id) => {
+            onApplySavedView={applyView}
+            onDeleteSavedView={(id) => {
               void deleteView(id)
             }}
+            viewSaveEnabled={hasActiveTableFilters}
+            tableLayoutCustomize={tableLayoutCustomize}
+            onTableLayoutCustomizeChange={setTableLayoutCustomize}
           />
-        </CandidatesWorkPanel>
+              }
+            />
+          </div>
+        ) : null}
       </div>
       {/* Контекстное меню для строк */}
       {contextMenu && (
@@ -4720,6 +5043,22 @@ export default function Candidates(){
                     }}
                   >
                     {t('app.candidates.context.open_card')}
+                  </button>
+                  <button
+                    className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
+                    title={t('app.candidates.context.preview_next_action_hint', {
+                      defaultValue: 'Open the right panel and expand the next-action block.',
+                    })}
+                    onClick={() => {
+                      setSelectedCandidateId(candidate.id)
+                      setSidebarOpen(true)
+                      window.requestAnimationFrame(() => bumpNextActionDetailsOpen())
+                      setContextMenu(null)
+                    }}
+                  >
+                    {t('app.candidates.context.preview_next_action', {
+                      defaultValue: 'Preview — next action',
+                    })}
                   </button>
                   <button
                     className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"

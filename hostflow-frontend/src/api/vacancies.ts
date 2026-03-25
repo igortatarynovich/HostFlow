@@ -18,6 +18,8 @@ export interface VacancyPayload {
   is_archived?: boolean;
   is_open?: boolean;
   candidate_profile_id?: string | null;
+  /** Planned positions to fill; omit, 0, or null clears */
+  headcount_target?: number | null;
   extra?: Record<string, unknown> | string | null;
 }
 
@@ -36,6 +38,8 @@ export interface Vacancy {
   candidate_profile_id?: string | null;
   candidate_profile_name?: string | null;
   candidate_count?: number;
+  last_candidate_activity_at?: string | null;
+  headcount_target?: number | null;
   created_at?: string;
   updated_at?: string;
 }
