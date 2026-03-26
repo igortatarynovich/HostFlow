@@ -1,6 +1,8 @@
 /**
  * CRM shell: без Services (огромная страница) и без leads/docs/automation — отдельные чанки.
  */
+export { default as AnalyticsHubPage } from '../../pages/AnalyticsHubPage'
+export { default as WorkHubPage } from '../../pages/WorkHubPage'
 export { default as Dashboard } from '../../pages/Dashboard'
 export { default as Companies } from '../../pages/Companies'
 export { default as MyCompanyPage } from '../../pages/MyCompanyPage'

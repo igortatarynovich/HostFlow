@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { listInvoices } from '../../api/client'
 import type { Invoice } from '../../api/types'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { invoiceDaysPastDue, invoiceOutstandingAmount } from '../../modules/services/utils'
 
 type InvoiceWithPaid = Invoice & { paid_amount?: number | null }
@@ -67,7 +68,7 @@ export function CompanyReceivablesOverview({ companyId }: { companyId: string })
     return <p className="text-xs text-slate-500">{t('app.companies.detail.overview.receivables.unavailable')}</p>
   }
 
-  const invHref = `/app/invoices?company_id=${encodeURIComponent(companyId)}`
+  const invHref = `${CRM_APP_PATHS.invoices}?company_id=${encodeURIComponent(companyId)}`
 
   return (
     <div className="space-y-2">

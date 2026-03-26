@@ -58,6 +58,7 @@ async def test_patch_thread_escalated_emits_notification_and_reminder(
     hit = [x for x in items if str(x.get("event_type") or "") == "communications_thread_escalated"]
     assert hit, "expected communications_thread_escalated notification"
     assert str((hit[0].get("entity_id") or "")) == thread_id
+    assert str(hit[0].get("priority") or "") == "critical"
 
     reminders = await client.get(
         "/api/v1/reminders",

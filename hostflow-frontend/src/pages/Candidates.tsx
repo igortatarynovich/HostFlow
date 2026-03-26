@@ -26,6 +26,7 @@ import type { ReminderRecord } from '../api/types/notification'
 import { Modal } from '../components/Modal'
 import { ActivitiesPanel } from '../components/activities/ActivitiesPanel'
 import EmptyStatePanel from '../components/EmptyStatePanel'
+import { ActiveOwnCompanyBadge } from '../components/shell/ActiveOwnCompanyBadge'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useMetaStages } from '../store/useMeta'
 import { usePermissions } from '../hooks/usePermissions'
@@ -58,6 +59,7 @@ import {
   DEFAULT_COLUMN_ORDER,
   CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX,
 } from '../modules/candidates/constants'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import type {
   DateRangeFilter,
   ColumnTextFilters,
@@ -2897,7 +2899,7 @@ export default function Candidates(){
     const prevPath = prevLocationRef.current
     
     // Если вернулись на страницу списка с другой страницы (например, с карточки кандидата)
-    if (prevPath && prevPath !== currentPath && currentPath === '/app/candidates') {
+    if (prevPath && prevPath !== currentPath && currentPath === CRM_APP_PATHS.candidates) {
       // Проверяем, был ли недавно обновлен кандидат (в течение последних 10 секунд)
       let shouldFullReload = true
       try {
@@ -3111,7 +3113,7 @@ export default function Candidates(){
   // Сбрасываем флаг восстановления при изменении пути (возврат к списку)
   // И читаем returnFromCandidateId из location.state (при возврате из CandidateCard)
   useEffect(() => {
-    const isOnCandidatesList = location.pathname === '/app/candidates' || location.pathname.startsWith('/app/candidates?')
+    const isOnCandidatesList = location.pathname === CRM_APP_PATHS.candidates
     if (isOnCandidatesList) {
       restoredScrollRef.current = false
       restoreAttemptsRef.current = 0
@@ -3962,12 +3964,12 @@ export default function Candidates(){
                         <div className="flex min-w-0 items-center gap-1.5">
                           <div className="min-w-0 flex-1 overflow-hidden">
                             <Link
-                              to={`/app/candidates/${c.id}`}
+                              to={`${CRM_APP_PATHS.candidates}/${c.id}`}
                               className="block truncate whitespace-nowrap font-medium text-brand-600 hover:text-brand-700 hover:underline"
                               onClick={(e) => {
                                 e.preventDefault()
                                 handleCandidateOpen(c.id)
-                                navigate(`/app/candidates/${c.id}`)
+                                navigate(`${CRM_APP_PATHS.candidates}/${c.id}`)
                               }}
                               title={
                                 t('app.candidates.table.open_card') ||
@@ -4517,6 +4519,9 @@ export default function Candidates(){
           ) : null}
 
           <div className="mx-4 mb-1.5 shrink-0 rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-2.5 shadow-sm">
+            <div className="mb-2 flex justify-end">
+              <ActiveOwnCompanyBadge />
+            </div>
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
               <input
                 id="candidates-search"
@@ -4857,18 +4862,18 @@ export default function Candidates(){
                           }
                         : {
                             label: t('app.candidates.table.empty_cta_leads', { defaultValue: 'Open leads' }),
-                            to: '/app/leads',
+                            to: CRM_APP_PATHS.leads,
                           }
                     }
                     secondaryAction={
                       hasActiveTableFilters
                         ? {
                             label: t('app.candidates.table.empty_cta_leads', { defaultValue: 'Open leads' }),
-                            to: '/app/leads',
+                            to: CRM_APP_PATHS.leads,
                           }
                         : {
                             label: t('app.candidates.table.empty_cta_pipeline', { defaultValue: 'Open pipeline' }),
-                            to: '/app/pipeline',
+                            to: CRM_APP_PATHS.pipeline,
                           }
                     }
                   />
@@ -4938,8 +4943,10 @@ export default function Candidates(){
               setSelectedCandidateId(null)
               setSidebarOpen(false)
             }}
-            onOpenCandidate={(candidateId) => navigate(`/app/candidates/${candidateId}`)}
-            onOpenDocuments={(candidateId) => navigate(`/app/candidates/${candidateId}/documents`)}
+            onOpenCandidate={(candidateId) => navigate(`${CRM_APP_PATHS.candidates}/${candidateId}`)}
+            onOpenDocuments={(candidateId) =>
+              navigate(`${CRM_APP_PATHS.candidates}/${candidateId}/documents`)
+            }
             workPanelCommsLinks={previewCommsLinks}
             onReminderTitleChange={setPreviewReminderTitle}
             onReminderDueAtChange={setPreviewReminderDueAt}
@@ -4957,7 +4964,9 @@ export default function Candidates(){
             }
             onDocsLoadingChange={setDocsBlockersLoading}
             onDocsSelectType={(candidateId, typeCode) =>
-              navigate(`/app/candidates/${candidateId}/documents?type=${encodeURIComponent(typeCode)}`)
+              navigate(
+                `${CRM_APP_PATHS.candidates}/${candidateId}/documents?type=${encodeURIComponent(typeCode)}`,
+              )
             }
             onTimelineRefresh={(candidateId) => void loadPreviewTimeline(candidateId)}
             onTimelineExpandedChange={setPreviewTimelineExpanded}
@@ -5038,7 +5047,7 @@ export default function Candidates(){
                     className="btn-secondary w-full justify-start text-left text-xs py-1.5 px-2"
                     onClick={() => {
                       handleCandidateOpen(candidate.id)
-                      navigate(`/app/candidates/${candidate.id}`)
+                      navigate(`${CRM_APP_PATHS.candidates}/${candidate.id}`)
                       setContextMenu(null)
                     }}
                   >

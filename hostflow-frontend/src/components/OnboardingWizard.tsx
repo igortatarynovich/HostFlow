@@ -40,27 +40,27 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
               id: 'vacancy',
               done: Boolean(status?.steps?.first_vacancy_created),
               href: ACTIVATION_PATHS.vacancies,
-              label: t('app.onboarding.first_value.step_vacancy', { defaultValue: 'Create first vacancy' }),
+              label: t('app.onboarding.first_value.step_vacancy'),
             }
           : businessType === 'services'
             ? {
                 id: 'first_client_services',
                 done: Boolean(status?.steps?.first_client_created || status?.steps?.first_lead_created),
                 href: ACTIVATION_PATHS.clients,
-                label: t('app.onboarding.first_value.step_services_client', { defaultValue: 'Create first client or capture lead (services mode)' }),
+                label: t('app.onboarding.first_value.step_services_client'),
               }
             : {
                 id: 'first_client',
                 done: Boolean(status?.steps?.first_client_created),
                 href: ACTIVATION_PATHS.clients,
-                label: t('app.onboarding.first_value.step_client', { defaultValue: 'Create first client' }),
+                label: t('app.onboarding.first_value.step_client'),
               }
       return [
         {
           id: 'company',
           done: Boolean(status?.steps?.company_created),
           href: companyHref,
-          label: t('app.onboarding.first_value.step_company', { defaultValue: 'Company created' }),
+          label: t('app.onboarding.first_value.step_company'),
         },
         typeStep,
         {
@@ -69,10 +69,8 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
           href: businessType === 'services' ? ACTIVATION_PATHS.leads : getBusinessNextActionPath(businessType),
           label:
             businessType === 'services'
-              ? t('app.onboarding.first_value.step_services_leads', {
-                  defaultValue: 'Process ad leads (potential clients)',
-                })
-              : t('app.onboarding.first_value.step_next_action', { defaultValue: 'Create next action (task/reminder)' }),
+              ? t('app.onboarding.first_value.step_services_leads')
+              : t('app.onboarding.first_value.step_next_action'),
         },
       ]
     },
@@ -89,19 +87,16 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
         <div>
           <div className="mb-2 inline-flex items-center gap-1 rounded-md bg-white px-2 py-1 text-xs font-medium text-brand-700">
             <IconRocket size={14} stroke={1.9} />
-            {t('app.onboarding.first_value.badge', { defaultValue: 'First Value Checklist' })}
+            {t('app.onboarding.first_value.badge')}
           </div>
           <h3 className="text-lg font-semibold text-slate-900">
-            {t('app.onboarding.first_value.title', { defaultValue: 'Start working in 5 minutes' })}
+            {t('app.onboarding.first_value.title')}
           </h3>
           <p className="mt-1 text-sm text-slate-600">
-            {t('app.onboarding.first_value.subtitle', {
-              defaultValue: 'No technical setup required. Complete these three business steps to get immediate value.',
-            })}
+            {t('app.onboarding.first_value.subtitle')}
           </p>
           <p className="mt-2 text-xs font-medium text-brand-700">
             {t('app.onboarding.first_value.progress', {
-              defaultValue: 'Progress: {done}/{total}',
               values: { done: doneCount, total: steps.length },
             })}
           </p>
@@ -119,7 +114,7 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
                 <Link to={step.href} className="text-xs font-medium text-brand-700 hover:underline">
                   {step.href === ACTIVATION_PATHS.clients
                     ? openEntityLabel
-                    : t('app.onboarding.first_value.open', { defaultValue: 'Open' })}
+                    : t('app.onboarding.first_value.open')}
                 </Link>
               </li>
             ))}

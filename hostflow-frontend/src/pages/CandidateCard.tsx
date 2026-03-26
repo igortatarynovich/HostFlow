@@ -43,6 +43,18 @@ import {
 
 const DEFAULT_PROFILE_CODE = 'driver_ce_default'
 
+function translateDocTypeLabel(t: TranslateFn, docCode: string): string {
+  const key = `admin.documents.types.${docCode}`
+  const out = t(key)
+  return out === key ? docCode : out
+}
+
+function translateCandidateFieldKey(t: TranslateFn, fieldKey: string, label: string): string {
+  const key = `app.candidate_card.fields.${fieldKey}`
+  const out = t(key)
+  return out === key ? label || fieldKey : out
+}
+
 type CandidateEditPhase = 'idle' | 'picking_reason' | 'editing'
 import { getFunnel } from '../api/funnels'
 import { validateRequiredFields } from '../utils/profileUtils'
@@ -50,7 +62,7 @@ import { buildInboxHubPath } from '../utils/inboxDeepLinks'
 import { usePermissions } from '../hooks/usePermissions'
 import { useServiceOrders } from '../hooks/useAdditionalServices'
 import { servicesWorkspacePath } from '../modules/services/utils'
-import { useI18n } from '../i18n'
+import { useI18n, type TranslateFn } from '../i18n'
 import { PREFERRED_CONTACT_VALUES } from '../data/preferredContactChannels'
 import { isPipelineCompletedCanonicalStage } from '../utils/candidatePipelineCompleted'
 import { canonicalStageKey, translateReasonLabel, translateStageLabel } from '../utils/stageLabels'
@@ -66,6 +78,7 @@ import {
 import { useHiringPipelineGates } from '../contexts/HiringPipelineGatesContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useToast } from '../components/Toast'
 import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import CandidateHeader from '../components/candidate/CandidateHeader'
@@ -661,12 +674,17 @@ export default function CandidateCard(){
   const meta = useMetaStages()
   const originPath = useMemo(() => {
     const originFromState = (location.state as any)?.originPath
-    if (typeof originFromState === 'string' && originFromState.startsWith('/app/')) {
+    if (
+      typeof originFromState === 'string' &&
+      originFromState.startsWith(`${CRM_APP_PATHS.appShellPrefix}/`)
+    ) {
       return originFromState
     }
-    return '/app/candidates'
+    return CRM_APP_PATHS.candidates
   }, [location.state])
-  const fromProcesowani = originPath.startsWith('/app/procesowani') || location.pathname.includes('/app/procesowani')
+  const fromProcesowani =
+    originPath.startsWith(CRM_APP_PATHS.procesowani) ||
+    location.pathname.includes(CRM_APP_PATHS.procesowani)
   const isClientJourneyView = fromProcesowani || isClientTenant
   
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null)
@@ -1335,7 +1353,7 @@ export default function CandidateCard(){
             if (cancelled) return
             if (err?.response?.status === 404) {
               outcome = 'not_found'
-              nav('/app/candidates')
+              nav(CRM_APP_PATHS.candidates)
               return
             }
             outcome = 'error'
@@ -1352,7 +1370,10 @@ export default function CandidateCard(){
           void recordPerfMeasurement({
             metricKey: 'candidate.card.open',
             durationMs: Math.round(elapsed),
-            route: typeof window !== 'undefined' ? window.location.pathname : '/app/candidates',
+            route:
+              typeof window !== 'undefined'
+                ? window.location.pathname
+                : CRM_APP_PATHS.candidates,
             meta: { candidateId: String(id), isNew, outcome },
           })
         }
@@ -1799,28 +1820,20 @@ export default function CandidateCard(){
         await persistStage()
       } catch (err: any) {
         if (isRodoStageBlockedError(err)) {
-          const shouldSendRodo = window.confirm(
-            t('app.candidate_card.messages.rodo_stage_blocked_confirm', {
-              defaultValue: 'RODO is required before contact stage. Send RODO now and retry stage change?',
-            })
-          )
+          const shouldSendRodo = window.confirm(t('app.candidate_card.messages.rodo_stage_blocked_confirm'))
           if (shouldSendRodo) {
             try {
               await sendRodo(model.id)
               setRodoSentTrigger((x) => x + 1)
               await persistStage()
               notify({
-                title: t('app.candidate_card.messages.rodo_sent_retry_success', {
-                  defaultValue: 'RODO sent and stage updated.',
-                }),
+                title: t('app.candidate_card.messages.rodo_sent_retry_success'),
                 variant: 'success',
               })
               return
             } catch (retryErr: any) {
               const retryMessage = formatErrorForDisplay(retryErr, {
-                fallback: t('app.candidate_card.messages.rodo_send_or_retry_failed', {
-                  defaultValue: 'Failed to send RODO or apply stage change.',
-                }),
+                fallback: t('app.candidate_card.messages.rodo_send_or_retry_failed'),
               })
               notify({ title: retryMessage, variant: 'error' })
               await revertStageOptimistic()
@@ -1828,9 +1841,7 @@ export default function CandidateCard(){
             }
           }
           notify({
-            title: t('app.candidate_card.messages.rodo_stage_blocked', {
-              defaultValue: 'RODO must be sent before moving to contact stage.',
-            }),
+            title: t('app.candidate_card.messages.rodo_stage_blocked'),
             variant: 'error',
           })
           await revertStageOptimistic()
@@ -1842,14 +1853,11 @@ export default function CandidateCard(){
             const code = String((d as any).code || '')
             if (code === 'stage_blocked_by_risk_gate') {
               notify({
-                title: t('app.candidate_card.stage_blocked_by_risk_gate.title', { defaultValue: 'Stage blocked by risk' }),
+                title: t('app.candidate_card.stage_blocked_by_risk_gate.title'),
                 description:
                   typeof (d as any).message === 'string' && (d as any).message
                     ? String((d as any).message)
-                    : t('app.candidate_card.stage_blocked_by_risk_gate.description', {
-                        defaultValue:
-                          'Create an active next action (reminder) or lower risk before moving forward. Tenant setting: risk_model_v1.stage_gate.',
-                      }),
+                    : t('app.candidate_card.stage_blocked_by_risk_gate.description'),
                 variant: 'error',
               })
               await revertStageOptimistic()
@@ -1866,8 +1874,8 @@ export default function CandidateCard(){
                   ? String((d as any).message)
                   : ''
               notify({
-                title: t('app.candidate_card.stage_blocked_by_docs.title', { defaultValue: 'Stage is blocked by documents' }),
-                description: docHint || t('app.candidate_card.stage_blocked_by_docs.description_generic', { defaultValue: 'Request missing documents or complete review first.' }),
+                title: t('app.candidate_card.stage_blocked_by_docs.title'),
+                description: docHint || t('app.candidate_card.stage_blocked_by_docs.description_generic'),
                 variant: 'error',
               })
               await revertStageOptimistic()
@@ -1875,16 +1883,11 @@ export default function CandidateCard(){
             }
             if (code === 'stage_blocked_by_vacancy') {
               notify({
-                title: t('app.candidate_card.stage_blocked_by_vacancy.title', {
-                  defaultValue: 'Assign a vacancy first',
-                }),
+                title: t('app.candidate_card.stage_blocked_by_vacancy.title'),
                 description:
                   typeof (d as any).message === 'string' && (d as any).message
                     ? String((d as any).message)
-                    : t('app.candidate_card.stage_blocked_by_vacancy.description', {
-                        defaultValue:
-                          'Link this candidate to a vacancy (or client vacancy) before moving to the next stage.',
-                      }),
+                    : t('app.candidate_card.stage_blocked_by_vacancy.description'),
                 variant: 'error',
               })
               await revertStageOptimistic()
@@ -1892,16 +1895,11 @@ export default function CandidateCard(){
             }
             if (code === 'stage_blocked_by_contact_attempt') {
               notify({
-                title: t('app.candidate_card.stage_blocked_by_contact_attempt.title', {
-                  defaultValue: 'Log a contact attempt first',
-                }),
+                title: t('app.candidate_card.stage_blocked_by_contact_attempt.title'),
                 description:
                   typeof (d as any).message === 'string' && (d as any).message
                     ? String((d as any).message)
-                    : t('app.candidate_card.stage_blocked_by_contact_attempt.description', {
-                        defaultValue:
-                          'Your client policy requires at least one registered contact attempt before leaving New.',
-                      }),
+                    : t('app.candidate_card.stage_blocked_by_contact_attempt.description'),
                 variant: 'error',
               })
               await revertStageOptimistic()
@@ -1912,14 +1910,10 @@ export default function CandidateCard(){
         const handoffDocs = parseHandoffDocsIncomplete(err)
         if (handoffDocs) {
           const missingLabels = handoffDocs.missingTypes.length > 0
-            ? handoffDocs.missingTypes
-                .map((docCode) => t(`admin.documents.types.${docCode}`, { defaultValue: docCode }))
-                .join(', ')
+            ? handoffDocs.missingTypes.map((docCode) => translateDocTypeLabel(t, docCode)).join(', ')
             : ''
           notify({
-            title: t('app.candidate_card.messages.handoff_docs_incomplete', {
-              defaultValue: 'Cannot move to ready-for-handoff: required documents checklist is incomplete.',
-            }),
+            title: t('app.candidate_card.messages.handoff_docs_incomplete'),
             description: missingLabels || undefined,
             variant: 'error',
           })
@@ -2058,7 +2052,7 @@ export default function CandidateCard(){
       const missingFields = validateRequiredFields(candidateProfile, model, extra)
       if (missingFields.length > 0) {
         const fieldLabels = missingFields
-          .map((f) => t(`app.candidate_card.fields.${f.fieldKey}`, { defaultValue: f.label || f.fieldKey }))
+          .map((f) => translateCandidateFieldKey(t, f.fieldKey, f.label))
           .join(', ')
         notify({
           title: t('app.candidate_card.messages.required_fields_missing', {
@@ -2074,10 +2068,7 @@ export default function CandidateCard(){
         const createdId = data?.id
         const notifyPartialAfterCreate = (err: unknown) => {
           notify({
-            title: t('app.candidate_card.messages.partial_save_after_create', {
-              defaultValue:
-                'Кандидат создан; часть данных не сохранена. Откройте карточку и сохраните снова.',
-            }),
+            title: t('app.candidate_card.messages.partial_save_after_create'),
             description: formatErrorForDisplay(err, { fallback: unknownErrorLabel }),
             variant: 'warning',
           })
@@ -2121,7 +2112,7 @@ export default function CandidateCard(){
           /* ignore */
         }
         if (createdId) {
-          nav(`/app/candidates/${createdId}`, { replace: true })
+          nav(`${CRM_APP_PATHS.candidates}/${createdId}`, { replace: true })
         }
       } else {
         if (model.id) {
@@ -2172,14 +2163,10 @@ export default function CandidateCard(){
           const handoffDocs = parseHandoffDocsIncomplete(err)
           if (handoffDocs) {
             const missingLabels = handoffDocs.missingTypes.length > 0
-              ? handoffDocs.missingTypes
-                  .map((docCode) => t(`admin.documents.types.${docCode}`, { defaultValue: docCode }))
-                  .join(', ')
+              ? handoffDocs.missingTypes.map((docCode) => translateDocTypeLabel(t, docCode)).join(', ')
               : ''
             notify({
-              title: t('app.candidate_card.messages.handoff_docs_incomplete', {
-                defaultValue: 'Cannot move to ready-for-handoff: required documents checklist is incomplete.',
-              }),
+              title: t('app.candidate_card.messages.handoff_docs_incomplete'),
               description: missingLabels || undefined,
               variant: 'error',
             })
@@ -2212,14 +2199,10 @@ export default function CandidateCard(){
       const handoffDocs = parseHandoffDocsIncomplete(err)
       if (handoffDocs) {
         const missingLabels = handoffDocs.missingTypes.length > 0
-          ? handoffDocs.missingTypes
-              .map((docCode) => t(`admin.documents.types.${docCode}`, { defaultValue: docCode }))
-              .join(', ')
+          ? handoffDocs.missingTypes.map((docCode) => translateDocTypeLabel(t, docCode)).join(', ')
           : ''
         notify({
-          title: t('app.candidate_card.messages.handoff_docs_incomplete', {
-            defaultValue: 'Cannot move to ready-for-handoff: required documents checklist is incomplete.',
-          }),
+          title: t('app.candidate_card.messages.handoff_docs_incomplete'),
           description: missingLabels || undefined,
           variant: 'error',
         })
@@ -2525,11 +2508,11 @@ export default function CandidateCard(){
     // - in_progress -> verify and approve/reject uploaded docs
     const dt = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
     if (docsNeedsVerification) {
-      setReminderTitle(t('app.candidate_card.next_action.docs_verify_title', { defaultValue: 'Verify uploaded documents' }))
+      setReminderTitle(t('app.candidate_card.next_action.docs_verify_title'))
       setReminderDueAt(dt)
       return
     }
-    setReminderTitle(t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' }))
+    setReminderTitle(t('app.candidate_card.next_action.docs_request_title'))
     setReminderDueAt(dt)
     // Convenience only: pre-generate docs upload URL for recruiter, but keep
     // "Create task" semantic as task creation (no auto-copy/toast side effects).
@@ -2564,10 +2547,8 @@ export default function CandidateCard(){
     void (async () => {
       try {
         await createActivity({
-          title: t('app.candidate_card.next_action.docs_verify_title', { defaultValue: 'Verify uploaded documents' }),
-          description: t('app.candidate_card.next_action.docs_verify_description', {
-            defaultValue: '[AUTO:DOCS_VERIFY] Candidate uploaded documents. Verify and approve/reject before moving stage.',
-          }),
+          title: t('app.candidate_card.next_action.docs_verify_title'),
+          description: `[AUTO:DOCS_VERIFY] ${t('app.candidate_card.next_action.docs_verify_description')}`,
           type: 'document_review',
           entity_type: 'candidate',
           entity_id: model.id,
@@ -2592,12 +2573,12 @@ export default function CandidateCard(){
 
   const overrideReasonOptions = useMemo(
     () => [
-      t('app.candidate_card.override_reasons.data_correction', { defaultValue: 'Data correction after candidate clarification' }),
-      t('app.candidate_card.override_reasons.docs_fix', { defaultValue: 'Document metadata/status correction' }),
-      t('app.candidate_card.override_reasons.pipeline_fix', { defaultValue: 'Pipeline status normalization' }),
-      t('app.candidate_card.override_reasons.manager_request', { defaultValue: 'Manager request' }),
-      t('app.candidate_card.override_reasons.legal_compliance', { defaultValue: 'Legal/compliance request' }),
-      t('app.candidate_card.override_reasons.other', { defaultValue: 'Other' }),
+      t('app.candidate_card.override_reasons.data_correction'),
+      t('app.candidate_card.override_reasons.docs_fix'),
+      t('app.candidate_card.override_reasons.pipeline_fix'),
+      t('app.candidate_card.override_reasons.manager_request'),
+      t('app.candidate_card.override_reasons.legal_compliance'),
+      t('app.candidate_card.override_reasons.other'),
     ],
     [t],
   )
@@ -2708,7 +2689,7 @@ export default function CandidateCard(){
       await refreshHandoffMeta()
       await handleAttemptCreated()
       notify({
-        title: t('app.candidate_card.handoff.created', { defaultValue: 'Transferred to client' }),
+        title: t('app.candidate_card.handoff.created'),
         variant: 'success',
       })
     } catch (e: any) {
@@ -2771,7 +2752,7 @@ export default function CandidateCard(){
     try {
       await api.delete(`/candidates/${model.id}`)
       notify({ title: t('app.candidate_card.messages.deleted'), variant: 'success' })
-      nav('/app/candidates', { state: { returnFromCandidateId: model?.id } })
+      nav(CRM_APP_PATHS.candidates, { state: { returnFromCandidateId: model?.id } })
     } catch (err: any) {
       const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.delete_failed') })
       notify({ title: errorMessage, variant: 'error' })
@@ -2816,7 +2797,7 @@ export default function CandidateCard(){
       try {
         await createCandidatePipelineOverride(String(model.id), input)
         notify({
-          title: t('app.candidate_card.pipeline_override.requested', { defaultValue: 'Waiver requested' }),
+          title: t('app.candidate_card.pipeline_override.requested'),
           variant: 'success',
         })
         bumpPipelineAndDocsRefresh()
@@ -2839,7 +2820,7 @@ export default function CandidateCard(){
       try {
         await approveCandidatePipelineOverride(String(model.id), overrideId, { granted_scope: granted })
         notify({
-          title: t('app.candidate_card.pipeline_override.approved', { defaultValue: 'Waiver approved' }),
+          title: t('app.candidate_card.pipeline_override.approved'),
           variant: 'success',
         })
         bumpPipelineAndDocsRefresh()
@@ -2862,7 +2843,7 @@ export default function CandidateCard(){
       try {
         await rejectCandidatePipelineOverride(String(model.id), overrideId, {})
         notify({
-          title: t('app.candidate_card.pipeline_override.rejected', { defaultValue: 'Waiver rejected' }),
+          title: t('app.candidate_card.pipeline_override.rejected'),
           variant: 'success',
         })
         bumpPipelineAndDocsRefresh()
@@ -2883,10 +2864,9 @@ export default function CandidateCard(){
   const handoffRequestedAt = handoffStatus?.accepted?.requested_at || handoffStatus?.pending?.requested_at || null
   const handoffButtonLabel = handoffRequestedAt
     ? t('app.candidate_card.handoff.transferred_at', {
-        defaultValue: 'Transferred {{date}}',
         values: { date: formatDateTime(handoffRequestedAt, locale) || handoffRequestedAt },
       })
-    : t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })
+    : t('app.candidate_card.handoff.transfer_btn')
 
   // Pipedrive-style indicator: show how long candidate is in current stage.
   // Best-effort: uses stage history and loads quietly (does not block UI).
@@ -2915,7 +2895,7 @@ export default function CandidateCard(){
     setDocsSummaryRefreshTrigger((x) => x + 1)
     const currentId = modelRef.current?.id
     if (currentId && location.pathname.includes('/documents')) {
-      nav(`/app/candidates/${currentId}`)
+      nav(`${CRM_APP_PATHS.candidates}/${currentId}`)
     }
   }, [location.pathname, nav])
 
@@ -3220,37 +3200,26 @@ export default function CandidateCard(){
             effectiveDocsBlockersForPipeline.problematic[0] ||
             effectiveDocsBlockersForPipeline.inProgress[0]
           notify({
-            title: t('app.candidate_card.stage_blocked_by_docs.title', { defaultValue: 'Stage is blocked by documents' }),
+            title: t('app.candidate_card.stage_blocked_by_docs.title'),
             description: firstMissing
-              ? t('app.candidate_card.stage_blocked_by_docs.description', {
-                  defaultValue: `Missing or invalid document: ${firstMissing}`,
-                })
-              : t('app.candidate_card.stage_blocked_by_docs.description_generic', { defaultValue: 'Request missing documents first.' }),
+              ? t('app.candidate_card.stage_blocked_by_docs.missing_type_detail', { values: { label: firstMissing } })
+              : t('app.candidate_card.stage_blocked_by_docs.description_generic'),
             variant: 'info',
           })
           return
         }
         if (contactAttemptPipelineBlockingValue) {
           notify({
-            title: t('app.candidate_card.stage_blocked_by_contact_attempt.title', {
-              defaultValue: 'Log a contact attempt first',
-            }),
-            description: t('app.candidate_card.stage_blocked_by_contact_attempt.description', {
-              defaultValue:
-                'Your client policy requires at least one registered contact attempt before leaving New.',
-            }),
+            title: t('app.candidate_card.stage_blocked_by_contact_attempt.title'),
+            description: t('app.candidate_card.stage_blocked_by_contact_attempt.description'),
             variant: 'info',
           })
           return
         }
         if (vacancyPipelineBlockingValue) {
           notify({
-            title: t('app.candidate_card.stage_blocked_by_vacancy.title', {
-              defaultValue: 'Assign a vacancy first',
-            }),
-            description: t('app.candidate_card.stage_blocked_by_vacancy.description', {
-              defaultValue: 'Link this candidate to a vacancy (or client vacancy) before moving to the next stage.',
-            }),
+            title: t('app.candidate_card.stage_blocked_by_vacancy.title'),
+            description: t('app.candidate_card.stage_blocked_by_vacancy.description'),
             variant: 'info',
           })
           return
@@ -3309,12 +3278,10 @@ export default function CandidateCard(){
               effectiveDocsBlockersForPipeline.problematic[0] ||
               effectiveDocsBlockersForPipeline.inProgress[0]
             notify({
-              title: t('app.candidate_card.stage_blocked_by_docs.title', { defaultValue: 'Stage is blocked by documents' }),
+              title: t('app.candidate_card.stage_blocked_by_docs.title'),
               description: firstMissing
-                ? t('app.candidate_card.stage_blocked_by_docs.description', {
-                    defaultValue: `Missing or invalid document: ${firstMissing}`,
-                  })
-                : t('app.candidate_card.stage_blocked_by_docs.description_generic', { defaultValue: 'Request missing documents first.' }),
+                ? t('app.candidate_card.stage_blocked_by_docs.missing_type_detail', { values: { label: firstMissing } })
+                : t('app.candidate_card.stage_blocked_by_docs.description_generic'),
               variant: 'info',
             })
             await revertBasicStageUi()
@@ -3322,13 +3289,8 @@ export default function CandidateCard(){
           }
           if (contactAttemptPipelineBlockingValue) {
             notify({
-              title: t('app.candidate_card.stage_blocked_by_contact_attempt.title', {
-                defaultValue: 'Log a contact attempt first',
-              }),
-              description: t('app.candidate_card.stage_blocked_by_contact_attempt.description', {
-                defaultValue:
-                  'Your client policy requires at least one registered contact attempt before leaving New.',
-              }),
+              title: t('app.candidate_card.stage_blocked_by_contact_attempt.title'),
+              description: t('app.candidate_card.stage_blocked_by_contact_attempt.description'),
               variant: 'info',
             })
             await revertBasicStageUi()
@@ -3336,13 +3298,8 @@ export default function CandidateCard(){
           }
           if (vacancyPipelineBlockingValue) {
             notify({
-              title: t('app.candidate_card.stage_blocked_by_vacancy.title', {
-                defaultValue: 'Assign a vacancy first',
-              }),
-              description: t('app.candidate_card.stage_blocked_by_vacancy.description', {
-                defaultValue:
-                  'Link this candidate to a vacancy (or client vacancy) before moving to the next stage.',
-              }),
+              title: t('app.candidate_card.stage_blocked_by_vacancy.title'),
+              description: t('app.candidate_card.stage_blocked_by_vacancy.description'),
               variant: 'info',
             })
             await revertBasicStageUi()
@@ -3401,7 +3358,11 @@ export default function CandidateCard(){
         onDeleteRequest={handleDeleteRequest}
         onCancel={() => nav(originPath, { state: { returnFromCandidateId: model?.id } })}
         backPath={originPath}
-        backLabel={originPath.startsWith('/app/procesowani') ? t('app.candidate_card.header.back_to_procesowani') : undefined}
+        backLabel={
+          originPath.startsWith(CRM_APP_PATHS.procesowani)
+            ? t('app.candidate_card.header.back_to_procesowani')
+            : undefined
+        }
         onFavoriteToggle={handleFavoriteToggle}
         candidateProfile={candidateProfile}
         profileLoading={profileLoading}
@@ -3646,9 +3607,9 @@ export default function CandidateCard(){
                 docsIssuesPresent={docsIssuesPresentValue}
                 docsPipelineBlocking={docsPipelineBlockingValue || docsPipelineSoftWarnValue}
                 docsRequestTitle={docsNeedsVerification
-                  ? t('app.candidate_card.next_action.docs_verify_title', { defaultValue: 'Verify uploaded documents' })
-                  : t('app.candidate_card.next_action.docs_request_title', { defaultValue: 'Request documents' })}
-                docsRequestDueLabel={t('common.today', { defaultValue: 'Today' })}
+                  ? t('app.candidate_card.next_action.docs_verify_title')
+                  : t('app.candidate_card.next_action.docs_request_title')}
+                docsRequestDueLabel={t('common.today')}
                 docsBlockerKind={docsNeedsVerification ? 'review' : (docsNeedsRequest ? 'request' : null)}
                 onDocsRequestCreate={handleDocsNextActionCreate}
                 hideToggle
@@ -3713,7 +3674,7 @@ export default function CandidateCard(){
               <div className="rounded-2xl border border-slate-200 bg-white p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-xs font-semibold text-slate-800">
-                    {t('app.candidate_card.control.inbox_title', { defaultValue: 'Inbox' })}
+                    {t('app.candidate_card.control.inbox_title')}
                   </div>
                 </div>
                 <div className="mt-3">
@@ -3721,7 +3682,7 @@ export default function CandidateCard(){
                     to={buildInboxHubPath({ candidateId: String(model.id) })}
                     className="btn-secondary btn-sm w-full text-center"
                   >
-                    {t('app.candidate_card.control.open_unified_inbox', { defaultValue: 'Open inbox' })}
+                    {t('app.candidate_card.control.open_unified_inbox')}
                   </Link>
                 </div>
               </div>
@@ -3756,10 +3717,10 @@ export default function CandidateCard(){
           >
             <div className="flex items-center justify-between gap-3">
               <div className="text-sm font-semibold text-slate-900">
-                {t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
+                {t('app.candidate_card.handoff.transfer_btn')}
               </div>
               <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
-                {t('common.actions.close', { defaultValue: 'Close' })}
+                {t('common.actions.close')}
               </button>
             </div>
 
@@ -3767,15 +3728,14 @@ export default function CandidateCard(){
               <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 {handoffRequestedAt
                   ? t('app.candidate_card.handoff.transferred_at', {
-                      defaultValue: 'Transferred {{date}}',
                       values: { date: formatDateTime(handoffRequestedAt, locale) || handoffRequestedAt },
                     })
-                  : t('app.candidate_card.handoff.locked', { defaultValue: 'Candidate is already transferred. Repeat transfer is disabled.' })}
+                  : t('app.candidate_card.handoff.locked_detail')}
               </div>
             ) : (
               <>
                 <div className="mt-3">
-                  <label className="label">{t('app.candidate_card.handoff.client', { defaultValue: 'Client' })}</label>
+                  <label className="label">{t('app.candidate_card.handoff.client')}</label>
                   <select
                     className="input w-full"
                     value={handoffClientLinkId}
@@ -3791,7 +3751,7 @@ export default function CandidateCard(){
                 </div>
                 <div className="mt-4 flex items-center justify-end gap-2">
                   <button type="button" className="btn-secondary btn-sm" onClick={() => setHandoffModalOpen(false)}>
-                    {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                    {t('common.actions.cancel')}
                   </button>
                   <button
                     type="button"
@@ -3800,8 +3760,8 @@ export default function CandidateCard(){
                     onClick={() => void handleHandoffCreate()}
                   >
                     {handoffSubmitting
-                      ? t('common.saving', { defaultValue: 'Saving...' })
-                      : t('app.candidate_card.handoff.transfer_btn', { defaultValue: 'Transfer to client' })}
+                      ? t('common.saving')
+                      : t('app.candidate_card.handoff.transfer_btn')}
                   </button>
                 </div>
               </>
@@ -3825,10 +3785,10 @@ export default function CandidateCard(){
           >
             <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
               <div id="candidate-activity-modal-title" className="text-sm font-semibold text-slate-900">
-                {t('app.candidate_card.activity_feed.title', { defaultValue: 'Activity' })}
+                {t('app.candidate_card.activity_feed.title')}
               </div>
               <button type="button" className="btn-secondary btn-sm" onClick={() => setActivityModalOpen(false)}>
-                {t('common.actions.close', { defaultValue: 'Close' })}
+                {t('common.actions.close')}
               </button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -3864,7 +3824,7 @@ export default function CandidateCard(){
               <button
                 type="button"
                 className="fixed inset-0 z-[10000] cursor-default bg-slate-900/40"
-                aria-label={t('common.actions.close', { defaultValue: 'Close' })}
+                aria-label={t('common.actions.close')}
                 onClick={() => setCandidateEditPhase('idle')}
               />
               <div
@@ -3880,7 +3840,7 @@ export default function CandidateCard(){
                   {t('app.candidate_card.override_modal.hint')}
                 </p>
                 <label className="mt-3 block text-xs font-medium text-slate-700" htmlFor="candidate-override-reason">
-                  {t('app.candidate_card.override_reason_label', { defaultValue: 'Reason for override' })}
+                  {t('app.candidate_card.override_reason_label')}
                 </label>
                 <select
                   id="candidate-override-reason"
@@ -3888,7 +3848,7 @@ export default function CandidateCard(){
                   value={candidateOverrideReason}
                   onChange={(e) => setCandidateOverrideReason(e.target.value)}
                 >
-                  <option value="">{t('app.candidate_card.override_reason_placeholder', { defaultValue: 'Why are you editing restricted fields?' })}</option>
+                  <option value="">{t('app.candidate_card.override_reason_placeholder')}</option>
                   {overrideReasonOptions.map((reason) => (
                     <option key={reason} value={reason}>
                       {reason}
@@ -3923,10 +3883,10 @@ export default function CandidateCard(){
             <div className="border-b border-slate-200 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 text-sm font-semibold text-slate-900 truncate">
-                  {t('app.candidate_card.docs_panel.title', { defaultValue: 'Documents' })}
+                  {t('app.candidate_card.docs_panel.title')}
                 </div>
                 <button type="button" className="btn-secondary btn-sm" onClick={closeDocsDrawer}>
-                  {t('common.actions.close', { defaultValue: 'Close' })}
+                  {t('common.actions.close')}
                 </button>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -3937,8 +3897,8 @@ export default function CandidateCard(){
                   disabled={uploadLinkBusy}
                 >
                   {uploadLinkBusy
-                    ? t('app.candidate_card.actions.upload_link_creating', { defaultValue: 'Creating link...' })
-                    : t('app.candidate_card.actions.upload_link', { defaultValue: 'Upload link' })}
+                    ? t('app.candidate_card.actions.upload_link_creating')
+                    : t('app.candidate_card.actions.upload_link')}
                 </button>
                 <button
                   type="button"
@@ -3947,23 +3907,21 @@ export default function CandidateCard(){
                   disabled={downloadingBundle}
                 >
                   {downloadingBundle
-                    ? t('app.candidate_card.actions.exporting_bundle', { defaultValue: 'Preparing archive...' })
-                    : t('app.candidate_card.actions.export_bundle', { defaultValue: 'Download candidate profile' })}
+                    ? t('app.candidate_card.actions.exporting_bundle')
+                    : t('app.candidate_card.actions.export_bundle')}
                 </button>
                 <button
                   type="button"
                   className="btn-secondary btn-sm"
                   onClick={() => setDocsSummaryRefreshTrigger((x) => x + 1)}
                 >
-                  {t('app.candidate_card.actions.refresh', { defaultValue: 'Refresh' })}
+                  {t('app.candidate_card.actions.refresh')}
                 </button>
               </div>
               {(uploadLink?.documents_url || uploadLink?.apply_url) ? (
                 <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-700">
                   <div className="font-medium text-slate-800">
-                    {t('app.candidate_card.docs.upload_link_label', {
-                      defaultValue: 'Send this link to the candidate so they can upload documents.',
-                    })}
+                    {t('app.candidate_card.docs.upload_link_label')}
                   </div>
                   <div className="mt-1 break-all text-slate-600">
                     {new URL(uploadLink.documents_url || uploadLink.apply_url, window.location.origin).toString()}
@@ -3971,7 +3929,6 @@ export default function CandidateCard(){
                   {uploadLink.expires_at ? (
                     <div className="mt-1 text-[11px] text-slate-500">
                       {t('app.candidate_card.docs.upload_link_expires', {
-                        defaultValue: 'Link valid until {date}',
                         values: { date: formatDateSafe(uploadLink.expires_at, locale) || uploadLink.expires_at },
                       })}
                     </div>

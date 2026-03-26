@@ -13,6 +13,7 @@ import { useToast } from '../components/Toast'
 import { listCompanies } from '../api/client'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 export default function ClientLinkDetailPage() {
   const { linkId } = useParams<{ linkId: string }>()
@@ -149,7 +150,7 @@ export default function ClientLinkDetailPage() {
   if (!link) {
     return (
       <div className="space-y-4">
-        <Link to="/app/clients" className="text-sm text-brand-600 hover:underline">
+        <Link to={CRM_APP_PATHS.agencyClients} className="text-sm text-brand-600 hover:underline">
           ← {backToListLabel}
         </Link>
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
@@ -175,7 +176,7 @@ export default function ClientLinkDetailPage() {
   return (
     <div className="space-y-4">
       <div>
-        <Link to="/app/clients" className="text-sm text-brand-600 hover:underline">
+        <Link to={CRM_APP_PATHS.agencyClients} className="text-sm text-brand-600 hover:underline">
           ← {backToListLabel}
         </Link>
       </div>
@@ -185,7 +186,7 @@ export default function ClientLinkDetailPage() {
           <div>
             {(link.client_company_id || link.handoff_include_company_id || companyId) ? (
               <Link 
-                to={`/app/clients/${link.client_company_id || link.handoff_include_company_id || companyId}`}
+                to={`${CRM_APP_PATHS.agencyClients}/${link.client_company_id || link.handoff_include_company_id || companyId}`}
                 className="text-xl font-semibold text-brand-600 hover:text-brand-700 hover:underline"
               >
                 {name}

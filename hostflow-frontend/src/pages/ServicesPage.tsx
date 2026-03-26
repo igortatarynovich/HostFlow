@@ -33,7 +33,9 @@ import { getVacancy, listVacancies } from '../api/vacancies'
 import { getAnalyticsProfileSummary, getServicesAnalyticsOverview, type ServicesAnalyticsOverview } from '../api/analytics'
 import { createInvoiceFromServiceOrder, createPayment, listInvoices, listInvoicesByServiceOrders, sendInvoice } from '../api/client'
 import { useI18n } from '../i18n'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import {
+  OPEN_SERVICE_ORDER_STATUSES,
   ORDER_STATUSES,
   SCHEDULE_STATUSES,
   ITEM_STATUSES,
@@ -229,7 +231,7 @@ export function ServicesPage() {
       qs.set('order_id', orderId)
       if (companyIdFromUrl) qs.set('company_id', companyIdFromUrl)
       const q = qs.toString()
-      navigate(q ? `/app/orders?${q}` : '/app/orders')
+      navigate(q ? `${CRM_APP_PATHS.orders}?${q}` : CRM_APP_PATHS.orders)
     },
     [companyIdFromUrl, navigate],
   )
@@ -238,14 +240,18 @@ export function ServicesPage() {
     const qs = new URLSearchParams()
     if (companyIdFromUrl) qs.set('company_id', companyIdFromUrl)
     const q = qs.toString()
-    navigate(q ? `/app/orders?${q}` : '/app/orders')
+    navigate(q ? `${CRM_APP_PATHS.orders}?${q}` : CRM_APP_PATHS.orders)
   }, [companyIdFromUrl, navigate])
 
   const catalogHook = useAdditionalServiceCatalog(includeInactive)
 
   const orderQuery = useMemo((): ServiceOrderQuery => {
     const q: ServiceOrderQuery = {}
-    if (statusFilter !== 'all') q.status = statusFilter as ServiceOrderStatus
+    if (statusFilter === 'open') {
+      q.status = OPEN_SERVICE_ORDER_STATUSES
+    } else if (statusFilter !== 'all') {
+      q.status = statusFilter as ServiceOrderStatus
+    }
     if (companyIdFromUrl) q.companyId = companyIdFromUrl
     if (candidateIdFromUrlForQuery) q.candidateId = candidateIdFromUrlForQuery
     if (vacancyIdFromUrlForQuery) q.vacancyId = vacancyIdFromUrlForQuery
@@ -293,7 +299,7 @@ export function ServicesPage() {
         (prev) => {
           const next = new URLSearchParams(prev)
           if (!value || value === 'all') next.delete('status')
-          else if (ORDER_STATUSES.includes(value as ServiceOrderStatus)) next.set('status', value)
+          else if (value === 'open' || ORDER_STATUSES.includes(value as ServiceOrderStatus)) next.set('status', value)
           else next.delete('status')
           return next
         },
@@ -359,7 +365,7 @@ export function ServicesPage() {
       setSelectedOrderId(orderId)
     }
     const statusParam = String(searchParams.get('status') || '').trim()
-    if (statusParam && ORDER_STATUSES.includes(statusParam as ServiceOrderStatus)) {
+    if (statusParam === 'open' || (statusParam && ORDER_STATUSES.includes(statusParam as ServiceOrderStatus))) {
       setStatusFilter(statusParam)
     }
     const candParam = companyIdFromUrl ? '' : String(searchParams.get('candidate_id') || '').trim()
@@ -824,7 +830,7 @@ export function ServicesPage() {
               }
               try {
                 const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
-                navigate(`/app/invoices/${invoice.id}`)
+                navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
               } catch (e: any) {
                 setBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
                 setTabAndUrl('billing')
@@ -1207,7 +1213,7 @@ export function ServicesPage() {
           onAnalyticsTrendBucketChange={setAnalyticsTrendBucket}
           onAnalyticsSliceByChange={setAnalyticsSliceBy}
           onOpenClient={(companyId) => {
-            if (companyId) navigate(`/app/clients/${companyId}`)
+            if (companyId) navigate(`${CRM_APP_PATHS.agencyClients}/${companyId}`)
           }}
           onOpenInvoices={(params) => {
             const search = new URLSearchParams()
@@ -1215,7 +1221,7 @@ export function ServicesPage() {
             if (params.serviceOrderId) search.set('service_order_id', params.serviceOrderId)
             if (params.status) search.set('status', params.status)
             if (!params.status) search.set('unpaid', '1')
-            navigate(`/app/invoices${search.toString() ? `?${search.toString()}` : ''}`)
+            navigate(`${CRM_APP_PATHS.invoices}${search.toString() ? `?${search.toString()}` : ''}`)
           }}
           onOpenServicesBilling={(filter) => {
             setTabAndUrl('billing')
@@ -1299,7 +1305,7 @@ export function ServicesPage() {
                     if (!selectedOrderId) return
                     try {
                       const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
-                      navigate(`/app/invoices/${invoice.id}`)
+                      navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
                     } catch (e: any) {
                       setBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
                     }
@@ -1310,7 +1316,11 @@ export function ServicesPage() {
                 <button
                   type="button"
                   className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                  onClick={() => navigate(`/app/invoices${selectedOrderId ? `?service_order_id=${selectedOrderId}` : ''}`)}
+                  onClick={() =>
+                    navigate(
+                      `${CRM_APP_PATHS.invoices}${selectedOrderId ? `?service_order_id=${selectedOrderId}` : ''}`,
+                    )
+                  }
                 >
                   {t('app.services.billing.actions.open_all', { defaultValue: 'Open invoices' })}
                 </button>
@@ -1340,7 +1350,11 @@ export function ServicesPage() {
                   <button
                     type="button"
                     className="btn-secondary btn-sm"
-                    onClick={() => navigate(`/app/invoices${selectedOrderId ? `?service_order_id=${selectedOrderId}` : ''}`)}
+                    onClick={() =>
+                      navigate(
+                        `${CRM_APP_PATHS.invoices}${selectedOrderId ? `?service_order_id=${selectedOrderId}` : ''}`,
+                      )
+                    }
                   >
                     {t('app.services.billing.empty_state.cta_invoices', { defaultValue: 'Open invoices' })}
                   </button>
@@ -1379,7 +1393,7 @@ export function ServicesPage() {
                         ].join(' ')}
                       >
                         <td className="py-2 pr-3 font-medium text-slate-900">
-                          <button type="button" className="hover:underline" onClick={() => navigate(`/app/invoices/${inv.id}`)}>
+                          <button type="button" className="hover:underline" onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${inv.id}`)}>
                             {inv.invoice_number}
                           </button>
                         </td>
@@ -1406,7 +1420,7 @@ export function ServicesPage() {
                             <button
                               type="button"
                               className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-                              onClick={() => navigate(`/app/invoices/${inv.id}`)}
+                              onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${inv.id}`)}
                             >
                               {t('common.actions.open', { defaultValue: 'Open' })}
                             </button>
@@ -2349,7 +2363,10 @@ function OrdersTab({
               {t('app.services.orders.scope.company', {
                 values: { name: urlCompanyScopeName || urlCompanyScopeId },
               })}{' '}
-              <Link className="whitespace-nowrap text-xs font-medium text-brand-700 hover:underline" to={`/app/clients/${urlCompanyScopeId}`}>
+              <Link
+                className="whitespace-nowrap text-xs font-medium text-brand-700 hover:underline"
+                to={`${CRM_APP_PATHS.agencyClients}/${urlCompanyScopeId}`}
+              >
                 {t('app.services.orders.scope.open_client')}
               </Link>
             </span>
@@ -2706,6 +2723,7 @@ function OrdersTab({
                 onChange={(e) => onStatusFilterChange(e.target.value)}
               >
                 <option value="all">{t('app.services.orders.filters.status_all')}</option>
+                <option value="open">{t('app.services.orders.filters.status_open')}</option>
                 {ORDER_STATUSES.map((status) => (
                   <option key={status} value={status}>{orderStatusLabels[status] ?? status}</option>
                 ))}
@@ -2789,7 +2807,7 @@ function OrdersTab({
                       <button
                         type="button"
                         className="btn-secondary btn-xs"
-                        onClick={() => navigate(`/app/invoices/${selectedInvoiceSummary.invoice_id}`)}
+                        onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${selectedInvoiceSummary.invoice_id}`)}
                       >
                         {t('common.actions.open', { defaultValue: 'Open' })}
                       </button>
@@ -2856,7 +2874,7 @@ function OrdersTab({
                         try {
                           const invoice = await createInvoiceFromServiceOrder(selectedOrderId)
                           onRefreshInvoices()
-                          navigate(`/app/invoices/${invoice.id}`)
+                          navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
                         } catch (e: any) {
                           setOrderBillingError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
                         } finally {
@@ -2892,11 +2910,11 @@ function OrdersTab({
                   })}
                   primaryAction={{
                     label: openEntityLabel,
-                    to: '/app/clients/directory',
+                    to: CRM_APP_PATHS.clientsDirectory,
                   }}
                   secondaryAction={{
                     label: t('app.services.orders.list.empty_cta_leads', { defaultValue: 'Open leads' }),
-                    to: '/app/leads',
+                    to: CRM_APP_PATHS.leads,
                   }}
                 />
               </div>
@@ -2930,7 +2948,7 @@ function OrdersTab({
                         <span className="flex min-w-0 flex-wrap items-center justify-end gap-2">
                           {hasInv && inv?.invoice_id ? (
                             <Link
-                              to={`/app/invoices/${inv.invoice_id}`}
+                              to={`${CRM_APP_PATHS.invoices}/${inv.invoice_id}`}
                               className="shrink-0 text-[10px] font-semibold text-brand-700 underline-offset-2 hover:underline"
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -3561,7 +3579,7 @@ function OrderDetail({
                 setCreatingInvoice(true)
                 try {
                   const invoice = await createInvoiceFromServiceOrder(order.id)
-                  navigate(`/app/invoices/${invoice.id}`)
+                  navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
                 } catch (e: any) {
                   setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
                 } finally {
@@ -3673,7 +3691,7 @@ function OrderDetail({
                 <button
                   type="button"
                   className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
-                  onClick={() => navigate(`/app/invoices/${invoiceSummary.invoice_id}`)}
+                  onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${invoiceSummary.invoice_id}`)}
                 >
                   {t('app.services.orders.detail.invoice.open', { defaultValue: 'Open' })}
                 </button>
@@ -3739,7 +3757,7 @@ function OrderDetail({
                   setCreatingInvoice(true)
                   try {
                     const invoice = await createInvoiceFromServiceOrder(order.id)
-                    navigate(`/app/invoices/${invoice.id}`)
+                    navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
                   } catch (e: any) {
                     setInvoiceError(e?.response?.data?.detail || e?.message || 'Failed to create invoice')
                   } finally {

@@ -41,6 +41,7 @@ import type {
   ContactInfo,
 } from '../modules/companies/types'
 import { ORDER_TYPE_OPTIONS } from '../modules/companies/types'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { servicesWorkspacePath } from '../modules/services/utils'
 import {
   asRecord,
@@ -166,8 +167,10 @@ export default function Companies(){
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const isOperatingProfileRoute = location.pathname.startsWith('/app/my-company')
-  const listBasePath = isOperatingProfileRoute ? '/app/my-company' : '/app/clients/directory'
+  const isOperatingProfileRoute = location.pathname.startsWith(CRM_APP_PATHS.myCompany)
+  const listBasePath = isOperatingProfileRoute
+    ? CRM_APP_PATHS.myCompany
+    : CRM_APP_PATHS.clientsDirectory
   const sectionFocus = String(searchParams.get('section') || '').trim().toLowerCase()
   const showExtendedSections = String(searchParams.get('extended') || '').trim() === '1'
   const toggleExtendedSections = useCallback(() => {
@@ -177,10 +180,10 @@ export default function Companies(){
     navigate(`${location.pathname}?${next.toString()}`, { replace: true })
   }, [location.pathname, navigate, searchParams, showExtendedSections])
   const handleCreateClientCompany = useCallback(() => {
-    navigate('/app/clients/new')
+    navigate(CRM_APP_PATHS.clientNew)
   }, [navigate])
   const handleCreateOperatingCompany = useCallback(() => {
-    navigate('/app/onboarding/company')
+    navigate(CRM_APP_PATHS.onboardingCompany)
   }, [navigate])
 
   const rawClientWorkspaceTab = String(searchParams.get('ctab') || 'overview').trim().toLowerCase()
@@ -1546,11 +1549,11 @@ export default function Companies(){
       })
       const role = getCompanyRoleFromAny(asRecord(data))
       if (isOperatingProfileRoute && role !== 'operating') {
-        navigate(`/app/clients/${companyId}`, { replace: true })
+        navigate(`${CRM_APP_PATHS.agencyClients}/${companyId}`, { replace: true })
         return
       }
       if (!isOperatingProfileRoute && role === 'operating') {
-        navigate(`/app/my-company/${companyId}`, { replace: true })
+        navigate(`${CRM_APP_PATHS.myCompany}/${companyId}`, { replace: true })
         return
       }
       setCurrent(data)
@@ -1964,7 +1967,7 @@ export default function Companies(){
                       defaultValue: 'Create and manage invoices issued from this operating profile.',
                     })}
                   </p>
-                  <Link to="/app/invoices" className="text-sm text-brand-600 hover:underline">
+                  <Link to={CRM_APP_PATHS.invoices} className="text-sm text-brand-600 hover:underline">
                     {t('app.my_company.open_invoices', { defaultValue: 'Open invoices' })}
                   </Link>
                 </div>
@@ -1992,7 +1995,7 @@ export default function Companies(){
                   </button>
                   <div>
                     <Link
-                      to={`/app/invoices/new?company_id=${currentAny?.id ?? ''}`}
+                      to={`${CRM_APP_PATHS.invoiceNew}?company_id=${currentAny?.id ?? ''}`}
                       className="text-sm text-brand-600 hover:underline"
                     >
                       {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
@@ -2078,13 +2081,13 @@ export default function Companies(){
                 {isOperatingCompany ? (
                   <>
                     <Link
-                      to="/app/invoices/new"
+                      to={CRM_APP_PATHS.invoiceNew}
                       className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
                     >
                       {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
                     </Link>
                     <Link
-                      to="/app/settings/billing"
+                      to={CRM_APP_PATHS.settingsBilling}
                       className="btn-secondary border-white/40 bg-white/10 text-white hover:bg-white/20"
                     >
                       {t('app.my_company.open_billing', { defaultValue: 'Open billing' })}
@@ -2092,7 +2095,7 @@ export default function Companies(){
                   </>
                 ) : (
                   <Link
-                    to={`/app/invoices/new?company_id=${currentAny?.id ?? ''}`}
+                    to={`${CRM_APP_PATHS.invoiceNew}?company_id=${currentAny?.id ?? ''}`}
                     className="btn-primary bg-white/20 text-white hover:bg-white/30 border border-white/40"
                   >
                     {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
@@ -2203,7 +2206,11 @@ export default function Companies(){
                               <li key={vacId ?? `vacancy-${index}`} className="rounded-xl border border-slate-100 bg-white/80 p-3">
                                 <div className="flex items-center justify-between gap-2">
                                   <Link
-                                    to={vacId ? `/app/vacancies/${vacId}` : '/app/vacancies'}
+                                    to={
+                                      vacId
+                                        ? `${CRM_APP_PATHS.vacancies}/${vacId}`
+                                        : CRM_APP_PATHS.vacancies
+                                    }
                                     className="font-semibold text-slate-900 hover:text-brand-600 hover:underline"
                                   >
                                     {(vacancy.title as string) ?? (vacancy.position as string) ?? t('common.labels.unnamed')}
@@ -2224,7 +2231,7 @@ export default function Companies(){
                                   </span>
                                   {vacId && (
                                     <Link
-                                      to={`/app/candidates?view=kanban&vacancy=${vacId}`}
+                                      to={`${CRM_APP_PATHS.candidates}?view=kanban&vacancy=${vacId}`}
                                       className="text-xs font-medium text-brand-600 hover:underline"
                                     >
                                       {t('app.companies.detail.widgets.vacancies.pipeline_link', { defaultValue: 'Пайплайн' })}
@@ -2427,7 +2434,7 @@ export default function Companies(){
                   <div className="flex flex-wrap gap-2">
                     <Link
                       className="btn-secondary btn-sm"
-                      to={`/app/invoices?company_id=${encodeURIComponent(String(currentAny?.id ?? ''))}`}
+                      to={`${CRM_APP_PATHS.invoices}?company_id=${encodeURIComponent(String(currentAny?.id ?? ''))}`}
                     >
                       {t('app.companies.detail.workspace.activity.link_invoices')}
                     </Link>
@@ -2439,7 +2446,7 @@ export default function Companies(){
                     </Link>
                     <Link
                       className="btn-secondary btn-sm"
-                      to={`/app/vacancies?company=${encodeURIComponent(String(currentAny?.id ?? ''))}&page=1`}
+                      to={`${CRM_APP_PATHS.vacancies}?company=${encodeURIComponent(String(currentAny?.id ?? ''))}&page=1`}
                     >
                       {t('app.companies.detail.workspace.activity.link_vacancies')}
                     </Link>
@@ -3880,7 +3887,10 @@ export default function Companies(){
               filteredItems.map((it) => (
                 <tr key={(it as any).id} className="border-t border-slate-100 hover:bg-slate-50/70 transition">
                   <td className="border-r border-slate-200 px-4 py-3 font-medium text-brand-700">
-                    <Link className="hover:underline" to={`/app/clients/${(it as any).id}`}>
+                    <Link
+                      className="hover:underline"
+                      to={`${CRM_APP_PATHS.agencyClients}/${(it as any).id}`}
+                    >
                       {(it as any).name}
                     </Link>
                   </td>
@@ -3916,7 +3926,7 @@ export default function Companies(){
                   <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
                     <Link
                       className="font-medium text-brand-700 hover:underline"
-                      to={`/app/vacancies?company=${(it as any).id}`}
+                      to={`${CRM_APP_PATHS.vacancies}?company=${(it as any).id}`}
                     >
                       {(it as any).recruitment_vacancies_active != null
                         ? Number((it as any).recruitment_vacancies_active)
@@ -3924,7 +3934,7 @@ export default function Companies(){
                     </Link>
                   </td>
                   <td className="border-r border-slate-200 px-4 py-3 text-right tabular-nums">
-                    <Link className="font-medium text-brand-700 hover:underline" to="/app/candidates">
+                    <Link className="font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.candidates}>
                       {(it as any).recruitment_candidates_total != null
                         ? Number((it as any).recruitment_candidates_total)
                         : '—'}
@@ -3936,7 +3946,10 @@ export default function Companies(){
                     {(it as any).is_archived ? t('common.words.yes') : t('common.words.no')}
                   </td>
                   <td className="px-4 py-3 space-x-2 text-right">
-                    <button className="btn-secondary" onClick={() => navigate(`/app/clients/${(it as any).id}`)}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => navigate(`${CRM_APP_PATHS.agencyClients}/${(it as any).id}`)}
+                    >
                       {t('app.companies.list.table.actions.edit')}
                     </button>
                     <button

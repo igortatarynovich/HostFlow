@@ -23,6 +23,7 @@ import { useAuth } from '../store/useAuth'
 import { useI18n, type LocaleCode } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { usePermissions } from '../hooks/usePermissions'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import {
   readStoredDefaultAppHome,
   writeStoredDefaultAppHome,
@@ -806,22 +807,22 @@ export default function ProfilePage() {
             <p className="mb-4 mt-1 text-sm text-slate-500">{t('app.profile.scheduling.description')}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
               {canUseCommunicationsFeature('calendar') && (
-                <Link className="font-medium text-brand-700 hover:underline" to="/app/calendar">
+                <Link className="font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.calendar}>
                   {t('app.profile.scheduling.calendar_link')}
                 </Link>
               )}
               {canUseCommunicationsFeature('myAvailability') && (
-                <Link className="font-medium text-brand-700 hover:underline" to="/app/my-availability">
+                <Link className="font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.myAvailability}>
                   {t('app.communications.calendar.scheduling.my_availability', { defaultValue: 'My availability' })}
                 </Link>
               )}
               {canUseCommunicationsFeature('teamAvailability') && !isSoloWorkspace && (
-                <Link className="font-medium text-brand-700 hover:underline" to="/app/team-availability">
+                <Link className="font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.teamAvailability}>
                   {t('app.communications.calendar.scheduling.team_availability', { defaultValue: 'Team availability' })}
                 </Link>
               )}
               {canUseCommunicationsFeature('timeOffRequests') && (
-                <Link className="font-medium text-brand-700 hover:underline" to="/app/time-off">
+                <Link className="font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.timeOff}>
                   {t('app.communications.calendar.scheduling.time_off', { defaultValue: 'Time off' })}
                 </Link>
               )}

@@ -12,6 +12,7 @@ import {
   signupContextToSearchParams,
 } from '../constants/signupContext'
 import { recordTtvStepCompleted } from '../api/analytics'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 export default function SignupPage() {
   const { t } = useI18n()
@@ -85,7 +86,7 @@ export default function SignupPage() {
       void recordTtvStepCompleted({ event: 'ttv_step', action: 'completed', step_key: 'signup' })
       await login(email.trim(), password)
       const params = signupContextToSearchParams(signupContext)
-      navigate(`/app/onboarding/company?${params.toString()}`, { replace: true })
+      navigate(`${CRM_APP_PATHS.onboardingCompany}?${params.toString()}`, { replace: true })
     } catch (err: any) {
       if (typeof window !== 'undefined') {
         try {

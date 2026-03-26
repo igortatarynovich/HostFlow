@@ -8,6 +8,7 @@ import {
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 function errorTextFrom(err: any, fallback: string): string {
   const detail = err?.response?.data?.detail
@@ -126,7 +127,7 @@ export default function TimeOffRequestsPage() {
               info={{ title: errorText, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
               onRetry={() => void loadAll()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              secondaryTo="/app/my-availability"
+              secondaryTo={CRM_APP_PATHS.myAvailability}
               secondaryLabel={t('app.nav.items.my_availability', { defaultValue: 'My availability' })}
               compact
             />

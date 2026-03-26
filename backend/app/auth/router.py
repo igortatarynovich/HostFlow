@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from backend.app.auth.jwt_tools import encode as encode_jwt
+from backend.app.constants.spa_paths import SETTINGS_BILLING
 from backend.app.core.config import settings
 from backend.app.core.security import hash_password, verify_password
 from backend.app.db.session import async_session_maker
@@ -147,7 +148,7 @@ def _signup_welcome_email_body(
     trial_expires_at: str,
 ) -> str:
     base = _frontend_base_url()
-    billing_url = f"{base}/app/settings/billing"
+    billing_url = f"{base}{SETTINGS_BILLING}"
     privacy_url = f"{base}/legal/privacy.html"
     terms_url = f"{base}/legal/terms.html"
     cookies_url = f"{base}/legal/cookies.html"

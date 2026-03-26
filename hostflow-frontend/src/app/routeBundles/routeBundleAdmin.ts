@@ -1,6 +1,8 @@
 export { default as UsersPage } from '../../pages/admin/UsersPage'
 export { default as TenantsPage } from '../../pages/admin/TenantsPage'
 export { default as RulesetVersionsPage } from '../../pages/admin/RulesetVersionsPage'
+export { default as IntegrationsHubPage } from '../../pages/admin/IntegrationsHubPage'
+export { default as IntegrationsSourcePlaceholderPage } from '../../pages/admin/IntegrationsSourcePlaceholderPage'
 export { default as MetaLeadsAdminPage } from '../../pages/admin/MetaLeadsAdminPage'
 export { default as DeletionRequestsPage } from '../../pages/admin/DeletionRequestsPage'
 export { default as AuditLogPage } from '../../pages/admin/AuditLogPage'

@@ -42,8 +42,8 @@ from backend.app.models.tenant import TenantLink
 from backend.app.services.handoff import is_client_tenant_for_list
 from backend.app.models.enums import CandidateStage
 from backend.app.constants.stages import (
-    PIPELINE_COMPLETED_STAGE_CODES,
     LABELS as STAGE_LABELS,
+    PIPELINE_COMPLETED_STAGE_CODES,
     STATUS_REASON_CHOICES,
     ORDER as STAGE_ORDER,
     STAGE_META as STAGE_META_CONST,
@@ -53,6 +53,7 @@ _CANDIDATE_ACTIVE_FOR_NEXT_ACTION = or_(
     Candidate.stage.is_(None),
     Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
 )
+from backend.app.services.onboarding_demo_seed import onboarding_demo_still_active
 from backend.app.services.tenant_visibility import TenantVisibility, get_tenant_visibility
 from backend.app.services.source_labels import normalize_candidate_source
 from backend.app.services.audit import log_activity
@@ -123,6 +124,10 @@ PERF_BUDGETS_P95_MS: dict[str, float] = {
 class OpsCountersOut(BaseModel):
     no_next_action_candidates: int = 0
     overdue_reminders: int = 0
+    # Onboarding / overview highlights (tenant-wide, complements assignee-scoped no_next_action_*)
+    overview_pipeline_total: int = 0
+    overview_stuck: int = 0
+    overview_active_today: int = 0
     # Recruitment (open vacancies = status open, not archived; ACL-aligned with list_vacancies)
     open_vacancies: int = 0
     open_vacancies_candidates: int = 0
@@ -430,9 +435,120 @@ async def ops_counters(
             pass
         open_service_orders = 0
 
+    overview_pipeline_total = 0
+    overview_stuck = 0
+    overview_active_today = 0
+    try:
+        tenant_row = (await db.execute(select(Tenant).where(Tenant.id == tenant_id_str).limit(1))).scalar_one_or_none()
+        tsett = tenant_row.settings if tenant_row is not None and isinstance(tenant_row.settings, dict) else {}
+        if onboarding_demo_still_active(tenant_row):
+            bt_ov = str(tsett.get("business_type") or "agency").strip().lower()
+            if bt_ov not in ("agency", "employer", "services"):
+                bt_ov = "agency"
+            today_d = datetime.now(timezone.utc).date()
+            lead_terminal = ("won", "lost", "converted")
+            if bt_ov == "services":
+                overview_pipeline_total = int(
+                    (
+                        await db.execute(
+                            select(func.count())
+                            .select_from(Lead)
+                            .where(
+                                Lead.tenant_id == tenant_id_str,
+                                Lead.status == "processed",
+                                or_(Lead.stage.is_(None), Lead.stage.notin_(lead_terminal)),
+                            )
+                        )
+                    ).scalar_one()
+                    or 0
+                )
+                overview_stuck = int(
+                    (
+                        await db.execute(
+                            select(func.count())
+                            .select_from(Lead)
+                            .where(Lead.tenant_id == tenant_id_str, Lead.status == "processed", Lead.stage == "negotiation")
+                        )
+                    ).scalar_one()
+                    or 0
+                )
+                overview_active_today = int(
+                    (
+                        await db.execute(
+                            select(func.count())
+                            .select_from(Lead)
+                            .where(
+                                Lead.tenant_id == tenant_id_str,
+                                Lead.status == "processed",
+                                func.date(Lead.created_at) == today_d,
+                            )
+                        )
+                    ).scalar_one()
+                    or 0
+                )
+            else:
+                overview_pipeline_total = int(
+                    (
+                        await db.execute(
+                            select(func.count())
+                            .select_from(Candidate)
+                            .where(
+                                Candidate.tenant_id == tenant_id_str,
+                                Candidate.deleted_at.is_(None),
+                                or_(Candidate.stage.is_(None), Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES))),
+                            )
+                        )
+                    ).scalar_one()
+                    or 0
+                )
+                stuck_stage = "waiting_docs" if bt_ov == "agency" else "interview"
+                overview_stuck = int(
+                    (
+                        await db.execute(
+                            select(func.count())
+                            .select_from(Candidate)
+                            .where(
+                                Candidate.tenant_id == tenant_id_str,
+                                Candidate.deleted_at.is_(None),
+                                Candidate.stage == stuck_stage,
+                            )
+                        )
+                    ).scalar_one()
+                    or 0
+                )
+                overview_active_today = int(
+                    (
+                        await db.execute(
+                            select(func.count())
+                            .select_from(Candidate)
+                            .where(
+                                Candidate.tenant_id == tenant_id_str,
+                                Candidate.deleted_at.is_(None),
+                                func.date(Candidate.updated_at) == today_d,
+                                or_(
+                                    Candidate.stage.is_(None),
+                                    Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
+                                ),
+                            )
+                        )
+                    ).scalar_one()
+                    or 0
+                )
+    except Exception:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        overview_pipeline_total = 0
+        overview_stuck = 0
+        overview_active_today = 0
+
     return OpsCountersOut(
         no_next_action_candidates=int(no_next_action_candidates),
         overdue_reminders=int(overdue_reminders),
+        overview_pipeline_total=int(overview_pipeline_total),
+        overview_stuck=int(overview_stuck),
+        overview_active_today=int(overview_active_today),
         open_vacancies=int(open_vacancies),
         open_vacancies_candidates=int(open_vacancies_candidates),
         open_service_orders=int(open_service_orders),

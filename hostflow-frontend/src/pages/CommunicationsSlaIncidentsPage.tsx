@@ -15,6 +15,7 @@ import {
   type CommunicationIncidentGroup,
   type CommunicationOpsMode,
 } from '../utils/communicationsOpsMode'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
 const DATE_LOCALES = { en: enUS, ru: ruLocale, pl: plLocale }
@@ -202,7 +203,7 @@ export default function CommunicationsSlaIncidentsPage() {
       navigate(buildInboxThreadPath(threadId))
       return
     }
-    navigate('/app/inbox')
+    navigate(CRM_APP_PATHS.inbox)
   }
 
   const markOneRead = async (item: NotificationItem) => {
@@ -378,7 +379,7 @@ export default function CommunicationsSlaIncidentsPage() {
             }}
             onRetry={() => void load()}
             retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-            secondaryTo="/app/settings/communications/sla"
+            secondaryTo={CRM_APP_PATHS.settingsCommunicationsSla}
             secondaryLabel={t('admin.communications_sla.title', { defaultValue: 'SLA settings' })}
             compact
           />

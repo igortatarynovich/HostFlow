@@ -2,23 +2,32 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.auth.deps import UserCtx, get_current_user
+from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import Company, Lead, OwnCompany, Reminder, ServiceOrder, Tenant, Vacancy
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
+from backend.app.services.onboarding_demo_seed import clear_onboarding_demo_data, onboarding_demo_still_active
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
+
+
+class OnboardingClearDemoOut(BaseModel):
+    reminders: int
+    leads: int
+    candidates: int
+    companies: int
 
 
 class OnboardingStatusOut(BaseModel):
     business_type: str
     onboarding_required: bool
     activation_required: bool
+    demo_seeded: bool = False
     companies_count: int
     leads_count: int
     vacancies_count: int
@@ -168,10 +177,13 @@ async def get_onboarding_status(
         type_specific_ready and steps["next_action_created"]
     )
 
+    demo_seeded = bool(onboarding_demo_still_active(tenant))
+
     return OnboardingStatusOut(
         business_type=business_type,
         onboarding_required=onboarding_required,
         activation_required=activation_required,
+        demo_seeded=demo_seeded,
         companies_count=operating_companies_count,
         leads_count=leads_count,
         vacancies_count=vacancies_count,
@@ -181,3 +193,29 @@ async def get_onboarding_status(
         counterparties_count=counterparties_count,
         steps=steps,
     )
+
+
+@router.post(
+    "/clear-demo-data",
+    response_model=OnboardingClearDemoOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def post_clear_demo_data(
+    _user: UserCtx = Depends(get_current_user),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    """Remove onboarding sample leads/candidates/company and related reminders (§2.2)."""
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    try:
+        summary = await clear_onboarding_demo_data(db, tenant_id=tenant_id)
+    except Exception as exc:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to clear demo data",
+        ) from exc
+    return OnboardingClearDemoOut(**summary)

@@ -15,6 +15,8 @@ import { useAuth } from '../store/useAuth'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { useTenantInfo } from '../contexts/TenantInfo'
 import { OnboardingWizard } from '../components/OnboardingWizard'
+import { DashboardLeadAutoFixCard } from '../components/dashboard/DashboardLeadAutoFixCard'
+import { DashboardNbaSection } from '../components/nba/DashboardNbaSection'
 import {
   getTrialRetentionReport,
   getAnalyticsProfileSummary,
@@ -73,7 +75,11 @@ import { DEFAULT_VISIBLE_WIDGETS, DEFAULT_VISIBLE_FILTERS, type DashboardFilterI
 import { formatDateInput, calcRange, calcPrevPeriod, formatDelta, normalizeKey, normalizeTotal } from '../modules/dashboard/utils'
 import { getRegionDisplayName } from '../utils/catalogLocale'
 import { toCSV } from '../modules/candidates/candidateUtils'
-import { CANDIDATES_QUICK_VIEW_NAV_PATHS } from '../modules/candidates/constants'
+import {
+  CRM_APP_DRILLDOWN_HREFS,
+  CRM_APP_PATHS,
+  dashboardInvoiceOpsDrilldownPath,
+} from '../app/crmAppPaths'
 import { ACTIVATION_PATHS, getRetentionNextPath, getRetentionStepKey } from '../app/activationRoutes'
 import { servicesOrdersTabPath } from '../modules/services/utils'
 
@@ -376,6 +382,17 @@ export default function Dashboard() {
   const { can, role, isClientTenant } = usePermissions()
   const canServicesOpsWidgets = useMemo(() => can('services.view'), [can])
   const canVacanciesOpenWidget = useMemo(() => can('vacancies.view'), [can])
+  const canWorkHub = useMemo(
+    () =>
+      can('candidates.view') ||
+      can('companies.view') ||
+      can('leads.view') ||
+      can('vacancies.view') ||
+      can('services.view') ||
+      can('documents.manage'),
+    [can],
+  )
+  const canAnalyticsHub = useMemo(() => can('leads.view') || can('admin.users'), [can])
   const tenant = useTenantInfo()
   const currentTenantId = useCurrentTenantId()
   const tenantId = (currentTenantId ?? (me as { tenant_id?: string })?.tenant_id) ?? 'default'
@@ -705,16 +722,11 @@ export default function Dashboard() {
         const recruiter = row.recruiter_id?.trim()
         const assignee_id = explicit || recruiter || undefined
         await createReminder({
-          title: t('app.dashboard.risk_intel.shadow_handoff_reminder_title', {
-            defaultValue: 'Risk digest: follow up — {name}',
-            values: { name: label },
-          }),
+          title: t('app.dashboard.risk_intel.shadow_handoff_reminder_title', { values: { name: label } }),
           description:
             row.drivers?.length ?
               row.drivers.slice(0, 5).join('; ')
-            : t('app.dashboard.risk_intel.shadow_handoff_reminder_fallback', {
-                defaultValue: 'Created from shadow risk digest.',
-              }),
+            : t('app.dashboard.risk_intel.shadow_handoff_reminder_fallback'),
           type: 'custom',
           entity_type: 'candidate',
           entity_id: row.entity_id,
@@ -816,13 +828,8 @@ export default function Dashboard() {
       }
       if (bulkPick) {
         const data = await createBulkReminders({
-          title: t('app.dashboard.risk_intel.shadow_bulk_reminder_title', {
-            defaultValue: 'Risk digest: follow up ({n})',
-            values: { n: ids.length },
-          }),
-          description: t('app.dashboard.risk_intel.shadow_bulk_reminder_desc', {
-            defaultValue: 'Bulk reminder from shadow risk digest.',
-          }),
+          title: t('app.dashboard.risk_intel.shadow_bulk_reminder_title', { values: { n: ids.length } }),
+          description: t('app.dashboard.risk_intel.shadow_bulk_reminder_desc'),
           type: 'custom',
           entity_type: 'candidate',
           entity_ids: ids,
@@ -837,7 +844,7 @@ export default function Dashboard() {
           results.length > 0 ? results.length - ok : ids.length > 0 ? ids.length : 0
         const errors =
           results.length === 0 && ids.length > 0 ?
-            [t('app.dashboard.risk_intel.shadow_bulk_empty_response', { defaultValue: 'No per-row results from server.' })]
+            [t('app.dashboard.risk_intel.shadow_bulk_empty_response')]
           : results
               .filter((r) => !r.ok)
               .map((r) => String(r.error || r.entity_id || 'Unknown').slice(0, 220))
@@ -857,16 +864,11 @@ export default function Dashboard() {
               (row.short_id ? `#${row.short_id}` : row.entity_id.slice(0, 8))
             const recruiter = row.recruiter_id?.trim()
             return createReminder({
-              title: t('app.dashboard.risk_intel.shadow_handoff_reminder_title', {
-                defaultValue: 'Risk digest: follow up — {name}',
-                values: { name: label },
-              }),
+              title: t('app.dashboard.risk_intel.shadow_handoff_reminder_title', { values: { name: label } }),
               description:
                 row.drivers?.length ?
                   row.drivers.slice(0, 5).join('; ')
-                : t('app.dashboard.risk_intel.shadow_handoff_reminder_fallback', {
-                    defaultValue: 'Created from shadow risk digest.',
-                  }),
+                : t('app.dashboard.risk_intel.shadow_handoff_reminder_fallback'),
               type: 'custom',
               entity_type: 'candidate',
               entity_id: id,
@@ -1094,10 +1096,10 @@ export default function Dashboard() {
     const source = retentionReport?.buckets ?? []
     const order: Array<'d1' | 'd2' | 'd3' | 'd7'> = ['d1', 'd2', 'd3', 'd7']
     const labels: Record<string, string> = {
-      d1: t('app.dashboard.trial_center.retention.day1', { defaultValue: 'Day 1' }),
-      d2: t('app.dashboard.trial_center.retention.day2', { defaultValue: 'Day 2' }),
-      d3: t('app.dashboard.trial_center.retention.day3', { defaultValue: 'Day 3' }),
-      d7: t('app.dashboard.trial_center.retention.day7', { defaultValue: 'Day 7' }),
+      d1: t('app.dashboard.trial_center.retention.day1'),
+      d2: t('app.dashboard.trial_center.retention.day2'),
+      d3: t('app.dashboard.trial_center.retention.day3'),
+      d7: t('app.dashboard.trial_center.retention.day7'),
     }
     const map = new Map(source.map((row) => [row.day_bucket, row]))
     return order.map((key) => {
@@ -1372,7 +1374,7 @@ export default function Dashboard() {
   const stageLabels = useMemo<StageLabelConfig>(() => STAGE_HIGHLIGHT_CODES, [])
   const untitledLabel = t('app.dashboard.labels.no_title')
   const notAvailableLabel = t('common.labels.not_available')
-  const startStageLabel = t('app.dashboard.stage_metrics.start_stage', { defaultValue: 'Start' })
+  const startStageLabel = t('app.dashboard.stage_metrics.start_stage')
 
   const translateStageLabel = useCallback(
     (code?: string | null, fallback?: string | null) => {
@@ -2048,25 +2050,25 @@ export default function Dashboard() {
     const businessType = profileSummary.business_type
     if (businessType === 'services') {
       return [
-        { key: 'clients_total', label: t('app.dashboard.business.services.clients_total', { defaultValue: 'Clients' }), value: Number(kpis.clients_total || 0) },
-        { key: 'counterparties_total', label: t('app.dashboard.business.services.counterparties_total', { defaultValue: 'Counterparties' }), value: Number(kpis.counterparties_total || 0) },
-        { key: 'service_orders_in_progress', label: t('app.dashboard.business.services.orders_in_progress', { defaultValue: 'Orders in progress' }), value: Number(kpis.service_orders_in_progress || 0) },
-        { key: 'service_orders_delivered', label: t('app.dashboard.business.services.orders_delivered', { defaultValue: 'Delivered orders' }), value: Number(kpis.service_orders_delivered || 0) },
+        { key: 'clients_total', label: t('app.dashboard.business.services.clients_total'), value: Number(kpis.clients_total || 0) },
+        { key: 'counterparties_total', label: t('app.dashboard.business.services.counterparties_total'), value: Number(kpis.counterparties_total || 0) },
+        { key: 'service_orders_in_progress', label: t('app.dashboard.business.services.orders_in_progress'), value: Number(kpis.service_orders_in_progress || 0) },
+        { key: 'service_orders_delivered', label: t('app.dashboard.business.services.orders_delivered'), value: Number(kpis.service_orders_delivered || 0) },
       ]
     }
     if (businessType === 'employer') {
       return [
-        { key: 'vacancies_active', label: t('app.dashboard.business.employer.vacancies_active', { defaultValue: 'Active vacancies' }), value: Number(kpis.vacancies_active || 0) },
-        { key: 'candidates_total', label: t('app.dashboard.business.employer.candidates_total', { defaultValue: 'Candidates' }), value: Number(kpis.candidates_total || 0) },
-        { key: 'leads_total', label: t('app.dashboard.business.employer.leads_total', { defaultValue: 'Leads' }), value: Number(kpis.leads_total || 0) },
-        { key: 'companies_total', label: t('app.dashboard.business.employer.companies_total', { defaultValue: 'Companies' }), value: Number(kpis.companies_total || 0) },
+        { key: 'vacancies_active', label: t('app.dashboard.business.employer.vacancies_active'), value: Number(kpis.vacancies_active || 0) },
+        { key: 'candidates_total', label: t('app.dashboard.business.employer.candidates_total'), value: Number(kpis.candidates_total || 0) },
+        { key: 'leads_total', label: t('app.dashboard.business.employer.leads_total'), value: Number(kpis.leads_total || 0) },
+        { key: 'companies_total', label: t('app.dashboard.business.employer.companies_total'), value: Number(kpis.companies_total || 0) },
       ]
     }
     return [
-      { key: 'companies_total', label: t('app.dashboard.business.agency.companies_total', { defaultValue: 'Clients' }), value: Number(kpis.companies_total || 0) },
-      { key: 'vacancies_active', label: t('app.dashboard.business.agency.vacancies_active', { defaultValue: 'Active vacancies' }), value: Number(kpis.vacancies_active || 0) },
-      { key: 'candidates_total', label: t('app.dashboard.business.agency.candidates_total', { defaultValue: 'Candidates' }), value: Number(kpis.candidates_total || 0) },
-      { key: 'leads_total', label: t('app.dashboard.business.agency.leads_total', { defaultValue: 'Leads' }), value: Number(kpis.leads_total || 0) },
+      { key: 'companies_total', label: t('app.dashboard.business.agency.companies_total'), value: Number(kpis.companies_total || 0) },
+      { key: 'vacancies_active', label: t('app.dashboard.business.agency.vacancies_active'), value: Number(kpis.vacancies_active || 0) },
+      { key: 'candidates_total', label: t('app.dashboard.business.agency.candidates_total'), value: Number(kpis.candidates_total || 0) },
+      { key: 'leads_total', label: t('app.dashboard.business.agency.leads_total'), value: Number(kpis.leads_total || 0) },
     ]
   }, [profileSummary, t])
 
@@ -2079,25 +2081,26 @@ export default function Dashboard() {
       case 'clients_total':
       case 'counterparties_total':
       case 'companies_total':
-        return '/app/clients/directory'
+        return CRM_APP_PATHS.clientsDirectory
       case 'vacancies_active':
-        return '/app/vacancies'
+        return CRM_APP_PATHS.vacancies
       case 'candidates_total':
-        return '/app/candidates'
+        return CRM_APP_PATHS.candidates
       case 'leads_total':
-        return '/app/leads'
+        return CRM_APP_PATHS.leads
       default:
-        return '/app/overview'
+        return CRM_APP_PATHS.overview
     }
   }, [])
 
   const documentQuickFilterHref = useCallback((statusKey: string): string => {
+    const base = CRM_APP_PATHS.documents
     const key = String(statusKey || '').toLowerCase()
-    if (['missing', 'not_uploaded'].includes(key)) return '/app/documents?quick=missing'
-    if (['requested'].includes(key)) return '/app/documents?quick=requested'
-    if (['approved', 'ready', 'received', 'delivered', 'completed'].includes(key)) return '/app/documents?quick=ready'
-    if (['in_progress', 'uploaded', 'submitted', 'pending_verification'].includes(key)) return '/app/documents?quick=in_progress'
-    return `/app/documents?status=${encodeURIComponent(key)}`
+    if (['missing', 'not_uploaded'].includes(key)) return `${base}?quick=missing`
+    if (['requested'].includes(key)) return `${base}?quick=requested`
+    if (['approved', 'ready', 'received', 'delivered', 'completed'].includes(key)) return `${base}?quick=ready`
+    if (['in_progress', 'uploaded', 'submitted', 'pending_verification'].includes(key)) return `${base}?quick=in_progress`
+    return `${base}?status=${encodeURIComponent(key)}`
   }, [])
 
   const makeCandidatesHref = useCallback((params: Record<string, string | null | undefined>) => {
@@ -2107,30 +2110,31 @@ export default function Dashboard() {
       if (value) sp.set(k, value)
     })
     const qs = sp.toString()
-    return qs ? `/app/candidates?${qs}` : '/app/candidates'
+    const base = CRM_APP_PATHS.candidates
+    return qs ? `${base}?${qs}` : base
   }, [])
-  const drilldownTitle = t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })
+  const drilldownTitle = t('app.dashboard.ops.drilldown')
   const drillInlineClass = 'cursor-pointer hover:underline underline-offset-2 decoration-dotted'
 
   const dashboardCompanyLabels = useMemo(() => {
     const bt = profileSummary?.business_type
     if (bt === 'employer') {
       return {
-        plural: t('app.dashboard.terms.companies_plural', { defaultValue: 'Companies' }),
-        singular: t('app.dashboard.terms.companies_singular', { defaultValue: 'Company' }),
+        plural: t('app.dashboard.terms.companies_plural'),
+        singular: t('app.dashboard.terms.companies_singular'),
       }
     }
     return {
-      plural: t('app.dashboard.terms.clients_plural', { defaultValue: 'Clients' }),
-      singular: t('app.dashboard.terms.clients_singular', { defaultValue: 'Client' }),
+      plural: t('app.dashboard.terms.clients_plural'),
+      singular: t('app.dashboard.terms.clients_singular'),
     }
   }, [profileSummary?.business_type, t])
 
   const businessTypeLabel = useMemo(() => {
     const bt = profileSummary?.business_type
-    if (bt === 'services') return t('app.dashboard.business.type.services', { defaultValue: 'Services' })
-    if (bt === 'employer') return t('app.dashboard.business.type.employer', { defaultValue: 'Employer' })
-    if (bt === 'agency') return t('app.dashboard.business.type.agency', { defaultValue: 'Agency' })
+    if (bt === 'services') return t('app.dashboard.business.type.services')
+    if (bt === 'employer') return t('app.dashboard.business.type.employer')
+    if (bt === 'agency') return t('app.dashboard.business.type.agency')
     return t('common.labels.not_available')
   }, [profileSummary?.business_type, t])
 
@@ -2329,14 +2333,42 @@ export default function Dashboard() {
     <section className="h-full min-h-0 w-full flex flex-col">
       <div className="min-h-0 flex-1 space-y-0 gap-0 overflow-auto px-0 py-0">
         {tenantId && retentionStatus?.onboarding_required === true && <OnboardingWizard tenantId={tenantId} />}
+        <DashboardNbaSection />
+        <DashboardLeadAutoFixCard opsCounters={opsCounters} onRefreshOps={loadOpsCounters} />
+        {canWorkHub || canAnalyticsHub ? (
+          <div
+            className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5"
+            role="navigation"
+            aria-label={t('app.dashboard.hubs.aria')}
+          >
+            {canWorkHub ? (
+              <Link
+                to={CRM_APP_PATHS.work}
+                className="text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline"
+                title={t('app.dashboard.hubs.work_aria')}
+              >
+                {t('app.dashboard.hubs.work')} <span className="text-[10px] font-normal text-slate-500">↗</span>
+              </Link>
+            ) : null}
+            {canAnalyticsHub ? (
+              <Link
+                to={CRM_APP_PATHS.analytics}
+                className="text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline"
+                title={t('app.dashboard.hubs.analytics_aria')}
+              >
+                {t('app.dashboard.hubs.analytics')} <span className="text-[10px] font-normal text-slate-500">↗</span>
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">
-                {t('app.dashboard.ops.title', { defaultValue: 'Operational widgets' })}
+                {t('app.dashboard.ops.title')}
               </div>
               <div className="mt-0.5 text-xs text-slate-500">
-                {t('app.dashboard.ops.subtitle', { defaultValue: 'Fast drill-down views for daily work.' })}
+                {t('app.dashboard.ops.subtitle')}
               </div>
             </div>
             <button
@@ -2349,30 +2381,30 @@ export default function Dashboard() {
               disabled={opsCountersLoading || invoiceMoneyLoading || vacanciesOpenLoading}
             >
               {opsCountersLoading || invoiceMoneyLoading || vacanciesOpenLoading
-                ? t('common.loading', { defaultValue: 'Loading…' })
-                : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                ? t('common.loading')
+                : t('common.actions.refresh')}
             </button>
           </div>
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Link
-              to={CANDIDATES_QUICK_VIEW_NAV_PATHS.no_next_action}
+              to={CRM_APP_DRILLDOWN_HREFS.candidatesQueueNoNextAction}
               title={drilldownTitle}
               className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100"
             >
-              <div className="text-xs text-slate-500">{t('app.dashboard.ops.no_next_action', { defaultValue: 'No next action' })}</div>
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.no_next_action')}</div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.no_next_action_candidates ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span></div>
             </Link>
 
             {canVacanciesOpenWidget ? (
               <Link
-                to="/app/vacancies?status=open"
+                to={CRM_APP_DRILLDOWN_HREFS.vacanciesOpen}
                 title={drilldownTitle}
                 className="rounded-xl border border-slate-200 bg-brand-50/50 p-3 hover:bg-brand-50/80"
               >
                 <div className="text-xs text-slate-500">
-                  {t('app.dashboard.ops.open_vacancies', { defaultValue: 'Open vacancies' })}
+                  {t('app.dashboard.ops.open_vacancies')}
                 </div>
                 <div className="mt-1 text-2xl font-semibold text-brand-950">
                   {vacanciesOpenLoading
@@ -2385,68 +2417,61 @@ export default function Dashboard() {
                 </div>
                 {vacanciesOpenSummary && !vacanciesOpenLoading ? (
                   <div className="mt-1 text-xs text-slate-600">
-                    {t('app.dashboard.ops.open_vacancies_pipeline', {
-                      defaultValue: '{count} candidates on these vacancies',
-                      values: { count: vacanciesOpenSummary.candidatesInOpen },
-                    })}
+                    {t('app.dashboard.ops.open_vacancies_pipeline', { values: { count: vacanciesOpenSummary.candidatesInOpen } })}
                   </div>
                 ) : null}
                 {vacanciesOpenSummary?.capped ? (
                   <div className="mt-0.5 text-[11px] text-slate-500">
-                    {t('app.dashboard.ops.open_vacancies_capped', {
-                      defaultValue: 'Count from first 200 open rows — open list for full totals.',
-                    })}
+                    {t('app.dashboard.ops.open_vacancies_capped')}
                   </div>
                 ) : null}
                 <div className="mt-1 text-xs text-slate-600">
-                  {t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span>
+                  {t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span>
                 </div>
               </Link>
             ) : null}
 
-            <Link to="/app/tasks" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50">
-              <div className="text-xs text-slate-500">{t('app.dashboard.ops.overdue_reminders', { defaultValue: 'Overdue reminders' })}</div>
+            <Link
+              to={CRM_APP_DRILLDOWN_HREFS.tasksOverdueReminders}
+              title={drilldownTitle}
+              className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50"
+            >
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.overdue_reminders')}</div>
               <div className="mt-1 text-2xl font-semibold text-rose-700">{opsCounters?.overdue_reminders ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span></div>
             </Link>
 
             {canServicesOpsWidgets ? (
               <Link
-                to="/app/orders"
+                to={CRM_APP_DRILLDOWN_HREFS.ordersOpen}
                 title={drilldownTitle}
                 className="rounded-xl border border-slate-200 bg-sky-50/60 p-3 hover:bg-sky-50"
               >
                 <div className="text-xs text-slate-500">
-                  {t('app.dashboard.ops.open_service_orders', { defaultValue: 'Open service orders' })}
+                  {t('app.dashboard.ops.open_service_orders')}
                 </div>
                 <div className="mt-1 text-2xl font-semibold text-slate-900">
                   {opsCountersLoading ? '…' : opsCounters?.open_service_orders ?? '—'}
                 </div>
                 <div className="mt-1 text-xs text-slate-600">
-                  {t('app.dashboard.ops.open_service_orders_hint', {
-                    defaultValue: 'Excludes completed and cancelled',
-                  })}
+                  {t('app.dashboard.ops.open_service_orders_hint')}
                 </div>
                 <div className="mt-1 text-xs text-slate-600">
-                  {t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span>
+                  {t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span>
                 </div>
               </Link>
             ) : null}
 
             {canServicesOpsWidgets ? (
               <Link
-                to={
-                  invoiceMoney && invoiceMoney.overdueUnpaidCount > 0
-                    ? '/app/invoices?queue=overdue_unpaid'
-                    : '/app/invoices'
-                }
+                to={dashboardInvoiceOpsDrilldownPath(invoiceMoney?.overdueUnpaidCount ?? 0)}
                 title={drilldownTitle}
                 className={`rounded-xl border border-slate-200 p-3 hover:bg-slate-100 ${
                   invoiceMoney && invoiceMoney.overdueUnpaidCount > 0 ? 'bg-amber-50/70' : 'bg-slate-50'
                 }`}
               >
                 <div className="text-xs text-slate-500">
-                  {t('app.dashboard.ops.invoice_outstanding', { defaultValue: 'Open invoice balance' })}
+                  {t('app.dashboard.ops.invoice_outstanding')}
                 </div>
                 <div className="mt-1 text-2xl font-semibold text-slate-900">
                   {invoiceMoneyLoading
@@ -2466,70 +2491,91 @@ export default function Dashboard() {
                 </div>
                 {invoiceMoney && invoiceMoney.overdueUnpaidCount > 0 ? (
                   <div className="mt-1 text-xs font-medium text-rose-700">
-                    {t('app.dashboard.ops.invoice_overdue_unpaid', {
-                      defaultValue: '{count} overdue (unpaid)',
-                      values: { count: invoiceMoney.overdueUnpaidCount },
-                    })}
+                    {t('app.dashboard.ops.invoice_overdue_unpaid', { values: { count: invoiceMoney.overdueUnpaidCount } })}
                   </div>
                 ) : null}
                 <div className="mt-1 text-xs text-slate-600">
-                  {t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span>
+                  {t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span>
                 </div>
               </Link>
             ) : null}
 
-            <Link to="/app/leads?status=needs_routing" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50">
-              <div className="text-xs text-slate-500">{t('app.dashboard.ops.leads_needs_routing', { defaultValue: 'Leads need routing' })}</div>
+            <Link
+              to={CRM_APP_DRILLDOWN_HREFS.leadsNeedsRouting}
+              title={drilldownTitle}
+              className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50"
+            >
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.leads_needs_routing')}</div>
               <div className="mt-1 text-2xl font-semibold text-amber-700">{opsCounters?.leads_needs_routing ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/leads?status=failed" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50">
-              <div className="text-xs text-slate-500">{t('app.dashboard.ops.leads_failed', { defaultValue: 'Leads failed' })}</div>
+            <Link
+              to={CRM_APP_DRILLDOWN_HREFS.leadsFailed}
+              title={drilldownTitle}
+              className="rounded-xl border border-slate-200 bg-rose-50/60 p-3 hover:bg-rose-50"
+            >
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.leads_failed')}</div>
               <div className="mt-1 text-2xl font-semibold text-rose-700">{opsCounters?.leads_failed ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/leads?status=processed&next_action=no_next_action" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50">
+            <Link
+              to={CRM_APP_DRILLDOWN_HREFS.leadsProcessedNoNextAction}
+              title={drilldownTitle}
+              className="rounded-xl border border-slate-200 bg-amber-50/60 p-3 hover:bg-amber-50"
+            >
               <div className="text-xs text-slate-500">
-                {t('app.dashboard.ops.leads_no_next_action', { defaultValue: 'Leads: no next action' })}
+                {t('app.dashboard.ops.leads_no_next_action')}
               </div>
               <div className="mt-1 text-2xl font-semibold text-amber-700">{opsCounters?.leads_no_next_action ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/tasks?type=leads_no_next_action" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+            <Link
+              to={CRM_APP_DRILLDOWN_HREFS.tasksLeadsSlaNudges}
+              title={drilldownTitle}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100"
+            >
               <div className="text-xs text-slate-500">
-                {t('app.dashboard.ops.leads_sla_nudges', { defaultValue: 'Leads SLA nudges (assigned)' })}
+                {t('app.dashboard.ops.leads_sla_nudges')}
               </div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.leads_sla_no_next_action_reminders ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/leads?status=processed&next_action=stuck" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+            <Link
+              to={CRM_APP_DRILLDOWN_HREFS.leadsProcessedStuck}
+              title={drilldownTitle}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100"
+            >
               <div className="text-xs text-slate-500">
-                {t('app.dashboard.ops.leads_stuck_nudges', { defaultValue: 'Leads stuck nudges (assigned)' })}
+                {t('app.dashboard.ops.leads_stuck_nudges')}
               </div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.leads_sla_stuck_stage_reminders ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/candidates?debug=1" title={drilldownTitle} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
-              <div className="text-xs text-slate-500">{t('app.dashboard.ops.draft_intake', { defaultValue: 'Draft intake stale (24h+)' })}</div>
+            <Link
+              to={CRM_APP_DRILLDOWN_HREFS.candidatesDraftIntakeDebug}
+              title={drilldownTitle}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100"
+            >
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.draft_intake')}</div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.draft_intake_stale ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.note', { defaultValue: 'Operational signal' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.note')}</div>
             </Link>
 
-            <Link to="/app/automation-rules" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
-              <div className="text-xs text-slate-500">{t('app.dashboard.ops.automation_rules', { defaultValue: 'Automation rules enabled' })}</div>
+            <Link to={CRM_APP_PATHS.automationRules} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.automation_rules')}</div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.automation_rules_enabled ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })} <span className="text-[10px]">↗</span></div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown')} <span className="text-[10px]">↗</span></div>
             </Link>
 
-            <Link to="/app/automation-log" className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
-              <div className="text-xs text-slate-500">{t('app.dashboard.ops.automation_24h', { defaultValue: 'Automation events (24h)' })}</div>
+            <Link to={CRM_APP_PATHS.automationLog} className="rounded-xl border border-slate-200 bg-slate-50 p-3 hover:bg-slate-100">
+              <div className="text-xs text-slate-500">{t('app.dashboard.ops.automation_24h')}</div>
               <div className="mt-1 text-2xl font-semibold text-slate-900">{opsCounters?.automation_events_24h ?? '—'}</div>
-              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown', { defaultValue: 'Open list' })}</div>
+              <div className="mt-1 text-xs text-slate-600">{t('app.dashboard.ops.drilldown')}</div>
             </Link>
           </div>
         </div>
@@ -2538,10 +2584,10 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">
-                {t('app.dashboard.goals.title', { defaultValue: 'Goals (operational)' })}
+                {t('app.dashboard.goals.title')}
               </div>
               <div className="mt-0.5 text-xs text-slate-500">
-                {t('app.dashboard.goals.subtitle', { defaultValue: 'Activity/next-action compliance goals.' })}
+                {t('app.dashboard.goals.subtitle')}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -2551,17 +2597,17 @@ export default function Dashboard() {
                   className="btn-secondary btn-sm"
                   onClick={() => void navigator.clipboard?.writeText(`${window.location.origin}${goals.share_url}`).catch(() => {})}
                 >
-                  {t('app.dashboard.goals.copy_share', { defaultValue: 'Copy share link' })}
+                  {t('app.dashboard.goals.copy_share')}
                 </button>
               ) : null}
               <button type="button" className="btn-secondary btn-sm" onClick={() => void loadGoals()} disabled={goalsLoading}>
-                {goalsLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                {goalsLoading ? t('common.loading') : t('common.actions.refresh')}
               </button>
             </div>
           </div>
 
           {!goals ? (
-            <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.goals.empty', { defaultValue: 'No goals data yet.' })}</div>
+            <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.goals.empty')}</div>
           ) : (
             <div className="mt-3 grid gap-3 lg:grid-cols-2">
               {(goals.goals || []).map((g) => {
@@ -2597,13 +2643,10 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">
-                {t('app.dashboard.risk_intel.title', { defaultValue: 'Risk intelligence (v1 baseline)' })}
+                {t('app.dashboard.risk_intel.title')}
               </div>
               <div className="mt-0.5 text-xs text-slate-500">
-                {t('app.dashboard.risk_intel.subtitle', {
-                  defaultValue:
-                    'Ops leads only. Live aggregate + hourly shadow snapshots (scheduler). Phase B — trends & validation; no user alerts.',
-                })}
+                {t('app.dashboard.risk_intel.subtitle')}
               </div>
             </div>
             <button
@@ -2613,32 +2656,32 @@ export default function Dashboard() {
               disabled={riskIntelLoading || riskIntelShadowLoading}
             >
               {riskIntelLoading || riskIntelShadowLoading
-                ? t('common.loading', { defaultValue: 'Loading…' })
-                : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                ? t('common.loading')
+                : t('common.actions.refresh')}
             </button>
           </div>
 
           {!riskIntel ? (
             <div className="mt-3 text-sm text-slate-500">
-              {t('app.dashboard.risk_intel.empty', { defaultValue: 'No data yet.' })}
+              {t('app.dashboard.risk_intel.empty')}
             </div>
           ) : (
             <div className="mt-3 grid gap-3 lg:grid-cols-3">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="text-xs font-semibold text-slate-700">
-                  {t('app.dashboard.risk_intel.summary', { defaultValue: 'Summary' })}
+                  {t('app.dashboard.risk_intel.summary')}
                 </div>
                 <div className="mt-2 space-y-1 text-sm text-slate-700">
                   <div className="flex justify-between gap-2">
-                    <span>{t('app.dashboard.risk_intel.evaluated', { defaultValue: 'Candidates scored' })}</span>
+                    <span>{t('app.dashboard.risk_intel.evaluated')}</span>
                     <span className="font-semibold">{riskIntel.candidates_evaluated}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span>{t('app.dashboard.risk_intel.avg_score', { defaultValue: 'Avg risk score' })}</span>
+                    <span>{t('app.dashboard.risk_intel.avg_score')}</span>
                     <span className="font-semibold">{riskIntel.avg_risk_score}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span>{t('app.dashboard.risk_intel.high_plus', { defaultValue: 'High + critical' })}</span>
+                    <span>{t('app.dashboard.risk_intel.high_plus')}</span>
                     <span className="font-semibold text-amber-800">{riskIntel.high_risk_volume}</span>
                   </div>
                   <div className="pt-1 text-xs text-slate-500">
@@ -2650,7 +2693,7 @@ export default function Dashboard() {
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="text-xs font-semibold text-slate-700">
-                  {t('app.dashboard.risk_intel.bands', { defaultValue: 'Risk bands' })}
+                  {t('app.dashboard.risk_intel.bands')}
                 </div>
                 <div className="mt-2 space-y-1 text-sm">
                   {(['low', 'medium', 'high', 'critical'] as const).map((b) => (
@@ -2664,7 +2707,7 @@ export default function Dashboard() {
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                 <div className="text-xs font-semibold text-slate-700">
-                  {t('app.dashboard.risk_intel.first_response', { defaultValue: 'First touch from create' })}
+                  {t('app.dashboard.risk_intel.first_response')}
                 </div>
                 <div className="mt-2 space-y-1 text-sm">
                   <div className="flex justify-between gap-2">
@@ -2684,7 +2727,7 @@ export default function Dashboard() {
                     <span className="font-semibold text-slate-900">{riskIntel.first_response_hours_histogram?.['72h_plus'] ?? 0}</span>
                   </div>
                   <div className="flex justify-between gap-2">
-                    <span className="text-slate-600">{t('app.dashboard.risk_intel.no_touch', { defaultValue: 'No touch yet' })}</span>
+                    <span className="text-slate-600">{t('app.dashboard.risk_intel.no_touch')}</span>
                     <span className="font-semibold text-slate-900">{riskIntel.first_response_hours_histogram?.['no_touch'] ?? 0}</span>
                   </div>
                 </div>
@@ -2692,7 +2735,7 @@ export default function Dashboard() {
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 lg:col-span-3">
                 <div className="text-xs font-semibold text-slate-700">
-                  {t('app.dashboard.risk_intel.by_stage', { defaultValue: 'By stage (avg score · high+)' })}
+                  {t('app.dashboard.risk_intel.by_stage')}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {Object.entries(riskIntel.risk_distribution_by_stage || {})
@@ -2717,7 +2760,7 @@ export default function Dashboard() {
           {!riskIntelLoading && riskTrends && riskTrends.points && riskTrends.points.length > 0 ? (
             <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="text-xs font-semibold text-slate-700">
-                {t('app.dashboard.risk_intel.trend_title', { defaultValue: 'Hourly trend (persisted snapshots)' })}
+                {t('app.dashboard.risk_intel.trend_title')}
               </div>
               <div className="mt-2 h-52 w-full min-w-0 shrink-0">
                 <ResponsiveContainer width="100%" height={208} minHeight={160} minWidth={0}>
@@ -2747,7 +2790,7 @@ export default function Dashboard() {
                       stroke="#2E6F74"
                       strokeWidth={2}
                       dot={false}
-                      name={t('app.dashboard.risk_intel.avg_score', { defaultValue: 'Avg risk score' })}
+                      name={t('app.dashboard.risk_intel.avg_score')}
                     />
                     <Line
                       yAxisId="r"
@@ -2756,7 +2799,7 @@ export default function Dashboard() {
                       stroke="#c2410c"
                       strokeWidth={2}
                       dot={false}
-                      name={t('app.dashboard.risk_intel.high_plus', { defaultValue: 'High + critical' })}
+                      name={t('app.dashboard.risk_intel.high_plus')}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -2764,9 +2807,7 @@ export default function Dashboard() {
             </div>
           ) : !riskIntelLoading && riskTrends ? (
             <div className="mt-4 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-xs text-slate-500">
-              {t('app.dashboard.risk_intel.trend_empty', {
-                defaultValue: 'No hourly snapshots yet — ensure DB migration is applied and the communications scheduler is running.',
-              })}
+              {t('app.dashboard.risk_intel.trend_empty')}
             </div>
           ) : null}
 
@@ -2775,12 +2816,10 @@ export default function Dashboard() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                   <div className="text-xs font-semibold text-slate-800">
-                    {t('app.dashboard.risk_intel.digest_queue_title', {
-                      defaultValue: 'Manager digest queue',
-                    })}
+                    {t('app.dashboard.risk_intel.digest_queue_title')}
                   </div>
                   <label className="flex items-center gap-1 text-[11px] text-slate-700">
-                    <span className="shrink-0 capitalize">{t('app.dashboard.risk_intel.digest_queue_min_band', { defaultValue: 'Band' })}</span>
+                    <span className="shrink-0 capitalize">{t('app.dashboard.risk_intel.digest_queue_min_band')}</span>
                     <select
                       className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] capitalize"
                       value={riskDigestMinBand}
@@ -2799,7 +2838,7 @@ export default function Dashboard() {
                     </select>
                   </label>
                   <label className="flex items-center gap-1 text-[11px] text-slate-700">
-                    <span className="shrink-0">{t('app.dashboard.risk_intel.digest_queue_filter', { defaultValue: 'Show' })}</span>
+                    <span className="shrink-0">{t('app.dashboard.risk_intel.digest_queue_filter')}</span>
                     <select
                       className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px]"
                       value={riskDigestQueueReadFilter}
@@ -2808,17 +2847,14 @@ export default function Dashboard() {
                         if (v === 'all' || v === 'unread' || v === 'read') setRiskDigestQueueReadFilter(v)
                       }}
                     >
-                      <option value="all">{t('app.dashboard.risk_intel.digest_queue_filter_all', { defaultValue: 'All buckets' })}</option>
-                      <option value="unread">{t('app.dashboard.risk_intel.digest_queue_filter_unread', { defaultValue: 'Unread only' })}</option>
-                      <option value="read">{t('app.dashboard.risk_intel.digest_queue_filter_read', { defaultValue: 'Reviewed only' })}</option>
+                      <option value="all">{t('app.dashboard.risk_intel.digest_queue_filter_all')}</option>
+                      <option value="unread">{t('app.dashboard.risk_intel.digest_queue_filter_unread')}</option>
+                      <option value="read">{t('app.dashboard.risk_intel.digest_queue_filter_read')}</option>
                     </select>
                   </label>
                   {riskDigestQueue.unread_count > 0 ? (
                     <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-800">
-                      {t('app.dashboard.risk_intel.digest_queue_unread', {
-                        defaultValue: '{n} new',
-                        values: { n: riskDigestQueue.unread_count },
-                      })}
+                      {t('app.dashboard.risk_intel.digest_queue_unread', { values: { n: riskDigestQueue.unread_count } })}
                     </span>
                   ) : null}
                 </div>
@@ -2830,8 +2866,8 @@ export default function Dashboard() {
                     onClick={() => void onManagerDigestAckLatest()}
                   >
                     {digestAckLoading
-                      ? t('common.loading', { defaultValue: 'Loading…' })
-                      : t('app.dashboard.risk_intel.digest_queue_ack_latest', { defaultValue: 'Mark through latest' })}
+                      ? t('common.loading')
+                      : t('app.dashboard.risk_intel.digest_queue_ack_latest')}
                   </button>
                   <button
                     type="button"
@@ -2840,28 +2876,21 @@ export default function Dashboard() {
                     onClick={() => void onManagerDigestAck()}
                   >
                     {digestAckLoading
-                      ? t('common.loading', { defaultValue: 'Loading…' })
-                      : t('app.dashboard.risk_intel.digest_queue_ack', { defaultValue: 'Mark reviewed' })}
+                      ? t('common.loading')
+                      : t('app.dashboard.risk_intel.digest_queue_ack')}
                   </button>
                 </div>
               </div>
               <div className="mt-2 text-[11px] text-slate-600">
-                {t('app.dashboard.risk_intel.digest_queue_hint', {
-                  defaultValue:
-                    'Pick an hourly bucket to inspect the cohort. “Mark through latest” acks the newest bucket; “Mark reviewed” acks the cohort you are viewing.',
-                })}
+                {t('app.dashboard.risk_intel.digest_queue_hint')}
               </div>
               {riskDigestQueue.buckets.length === 0 ? (
                 <div className="mt-2 text-xs text-slate-500">
-                  {t('app.dashboard.risk_intel.digest_queue_empty', {
-                    defaultValue: 'No digest history for this band threshold yet.',
-                  })}
+                  {t('app.dashboard.risk_intel.digest_queue_empty')}
                 </div>
               ) : filteredDigestBuckets.length === 0 ? (
                 <div className="mt-2 text-xs text-slate-500">
-                  {t('app.dashboard.risk_intel.digest_queue_filter_empty', {
-                    defaultValue: 'No buckets match this filter.',
-                  })}
+                  {t('app.dashboard.risk_intel.digest_queue_filter_empty')}
                 </div>
               ) : (
                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -2876,7 +2905,7 @@ export default function Dashboard() {
                       minute: '2-digit',
                     })
                     const label = isLatestRow
-                      ? `${t('app.dashboard.risk_intel.digest_queue_latest', { defaultValue: 'Latest' })} · ${shortWhen}`
+                      ? `${t('app.dashboard.risk_intel.digest_queue_latest')} · ${shortWhen}`
                       : shortWhen
                     return (
                       <button
@@ -2907,33 +2936,31 @@ export default function Dashboard() {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="text-xs font-semibold text-slate-700">
-                  {t('app.dashboard.risk_intel.shadow_snapshot_title', {
-                    defaultValue: 'Latest hourly at-risk (shadow cohort)',
-                  })}
+                  {t('app.dashboard.risk_intel.shadow_snapshot_title')}
                 </div>
                 {riskShadowSnapshot?.bucket_start && riskShadowSnapshot.total_matching > 0 ? (
                   <Link
-                    to={`/app/candidates?shadow_bucket=${encodeURIComponent(riskShadowSnapshot.bucket_start)}&shadow_min_band=${encodeURIComponent(
-                      ['low', 'medium', 'high', 'critical'].includes(String(riskShadowSnapshot.min_band || ''))
+                    to={makeCandidatesHref({
+                      shadow_bucket: riskShadowSnapshot.bucket_start,
+                      shadow_min_band: ['low', 'medium', 'high', 'critical'].includes(String(riskShadowSnapshot.min_band || ''))
                         ? String(riskShadowSnapshot.min_band)
                         : 'high',
-                    )}`}
+                    })}
                     className="shrink-0 text-[11px] font-medium text-brand-700 hover:underline"
                   >
-                    {t('app.dashboard.risk_intel.open_cohort_in_list', { defaultValue: 'Open cohort in list' })}
+                    {t('app.dashboard.risk_intel.open_cohort_in_list')}
                   </Link>
                 ) : null}
               </div>
               {!riskShadowSnapshot ? (
                 <div className="mt-2 text-sm text-slate-500">
-                  {t('common.loading', { defaultValue: 'Loading…' })}
+                  {t('common.loading')}
                 </div>
               ) : (
                 <>
                   <div className="mt-1 text-[11px] text-slate-500">
                     {riskShadowSnapshot.bucket_start
                       ? t('app.dashboard.risk_intel.shadow_snapshot_bucket', {
-                          defaultValue: 'Bucket UTC: {bucket} · rows ≥ {min_band}: {total} (showing top {shown})',
                           values: {
                             bucket: new Date(riskShadowSnapshot.bucket_start).toLocaleString(locale),
                             min_band: riskShadowSnapshot.min_band,
@@ -2941,29 +2968,21 @@ export default function Dashboard() {
                             shown: riskShadowSnapshot.items.length,
                           },
                         })
-                      : t('app.dashboard.risk_intel.shadow_snapshot_empty_hint', {
-                          defaultValue: 'No shadow rows yet.',
-                        })}
+                      : t('app.dashboard.risk_intel.shadow_snapshot_empty_hint')}
                     {riskShadowSnapshot.note ? ` ${riskShadowSnapshot.note}` : ''}
                   </div>
                   {riskShadowSnapshot.items.length > 0 ? (
                     <>
                       <div className="mt-1 text-[10px] text-slate-500">
-                        {t('app.dashboard.risk_intel.shadow_handoff_hint', {
-                          defaultValue:
-                            'Handoff: Remind creates a task due in 24h. Use the dropdown to assign to a teammate; leave on auto for candidate owner (or you if unowned). Assign to me sets you as recruiter. Select rows for bulk Remind / Assign to me.',
-                        })}
+                        {t('app.dashboard.risk_intel.shadow_handoff_hint')}
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50/90 px-2 py-1.5 text-[11px] text-slate-700">
                         <span className="font-medium text-slate-600">
-                          {t('app.dashboard.risk_intel.shadow_bulk_selected', {
-                            defaultValue: 'Selected: {n}',
-                            values: { n: digestBulkSelected.size },
-                          })}
+                          {t('app.dashboard.risk_intel.shadow_bulk_selected', { values: { n: digestBulkSelected.size } })}
                         </span>
                         <label className="flex items-center gap-1">
                           <span className="shrink-0 text-slate-500">
-                            {t('app.dashboard.risk_intel.shadow_bulk_assignee', { defaultValue: 'Bulk remind' })}
+                            {t('app.dashboard.risk_intel.shadow_bulk_assignee')}
                           </span>
                           <select
                             className="max-w-[10rem] truncate rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px]"
@@ -2972,9 +2991,7 @@ export default function Dashboard() {
                             onChange={(e) => setDigestBulkReminderAssignee(e.target.value.trim())}
                           >
                             <option value="">
-                              {t('app.dashboard.risk_intel.shadow_handoff_assignee_auto', {
-                                defaultValue: 'Remind → auto',
-                              })}
+                              {t('app.dashboard.risk_intel.shadow_handoff_assignee_auto')}
                             </option>
                             {managerOptions.map((opt) => (
                               <option key={opt.id} value={opt.id}>
@@ -2990,8 +3007,8 @@ export default function Dashboard() {
                           onClick={() => void onShadowDigestBulkRemind()}
                         >
                           {digestBulkBusy
-                            ? t('common.loading', { defaultValue: 'Loading…' })
-                            : t('app.dashboard.risk_intel.shadow_bulk_remind', { defaultValue: 'Remind selected' })}
+                            ? t('common.loading')
+                            : t('app.dashboard.risk_intel.shadow_bulk_remind')}
                         </button>
                         <button
                           type="button"
@@ -3000,8 +3017,8 @@ export default function Dashboard() {
                           onClick={() => void onShadowDigestBulkClaim()}
                         >
                           {digestBulkBusy
-                            ? t('common.loading', { defaultValue: 'Loading…' })
-                            : t('app.dashboard.risk_intel.shadow_bulk_claim', { defaultValue: 'Assign selected to me' })}
+                            ? t('common.loading')
+                            : t('app.dashboard.risk_intel.shadow_bulk_claim')}
                         </button>
                       </div>
                       {digestBulkResultReport ? (
@@ -3017,14 +3034,12 @@ export default function Dashboard() {
                               <div className="font-semibold">
                                 {digestBulkResultReport.kind === 'remind' ?
                                   t('app.dashboard.risk_intel.shadow_bulk_result_remind', {
-                                    defaultValue: 'Reminders: {ok} created, {fail} failed.',
                                     values: {
                                       ok: digestBulkResultReport.ok,
                                       fail: digestBulkResultReport.fail,
                                     },
                                   })
                                 : t('app.dashboard.risk_intel.shadow_bulk_result_claim', {
-                                    defaultValue: 'Assign to me: {ok} updated, {fail} failed.',
                                     values: {
                                       ok: digestBulkResultReport.ok,
                                       fail: digestBulkResultReport.fail,
@@ -3040,9 +3055,7 @@ export default function Dashboard() {
                               ) : null}
                               {digestBulkResultReport.fail > 0 ? (
                                 <div className="mt-1 text-[10px] text-slate-700">
-                                  {t('app.dashboard.risk_intel.shadow_bulk_result_keep_selection', {
-                                    defaultValue: 'Selection kept so you can retry failures.',
-                                  })}
+                                  {t('app.dashboard.risk_intel.shadow_bulk_result_keep_selection')}
                                 </div>
                               ) : null}
                             </div>
@@ -3051,7 +3064,7 @@ export default function Dashboard() {
                               className="shrink-0 rounded border border-slate-300/80 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-700 hover:bg-slate-50"
                               onClick={() => setDigestBulkResultReport(null)}
                             >
-                              {t('app.dashboard.risk_intel.shadow_bulk_dismiss', { defaultValue: 'Dismiss' })}
+                              {t('app.dashboard.risk_intel.shadow_bulk_dismiss')}
                             </button>
                           </div>
                         </div>
@@ -3075,16 +3088,14 @@ export default function Dashboard() {
                                     digestHandoffBusyId !== null
                                   }
                                   onChange={() => toggleDigestBulkAll()}
-                                  title={t('app.dashboard.risk_intel.shadow_bulk_select_all', {
-                                    defaultValue: 'Select all in table',
-                                  })}
+                                  title={t('app.dashboard.risk_intel.shadow_bulk_select_all')}
                                 />
                               </th>
-                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_candidate', { defaultValue: 'Candidate' })}</th>
-                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_band', { defaultValue: 'Band' })}</th>
-                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_score', { defaultValue: 'Score' })}</th>
-                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_stage', { defaultValue: 'Stage @ score' })}</th>
-                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_handoff', { defaultValue: 'Handoff' })}</th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_candidate')}</th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_band')}</th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_score')}</th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_stage')}</th>
+                              <th className="px-2 py-1.5 font-medium">{t('app.dashboard.risk_intel.col_handoff')}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -3108,7 +3119,10 @@ export default function Dashboard() {
                                     />
                                   </td>
                                   <td className="px-2 py-1">
-                                    <Link className="font-medium text-brand-700 hover:underline" to={`/app/candidates/${row.entity_id}`}>
+                                    <Link
+                                      className="font-medium text-brand-700 hover:underline"
+                                      to={`${CRM_APP_PATHS.candidates}/${row.entity_id}`}
+                                    >
                                       {label}
                                     </Link>
                                   </td>
@@ -3120,9 +3134,7 @@ export default function Dashboard() {
                                       <select
                                         className="max-w-[12rem] truncate rounded border border-slate-200 bg-white px-1 py-0.5 text-[10px] text-slate-800 disabled:opacity-50"
                                         disabled={rowDisabled}
-                                        title={t('app.dashboard.risk_intel.shadow_handoff_assignee_title', {
-                                          defaultValue: 'Who should get the reminder',
-                                        })}
+                                        title={t('app.dashboard.risk_intel.shadow_handoff_assignee_title')}
                                         value={digestReminderAssigneePick[row.entity_id] ?? ''}
                                         onChange={(e) => {
                                           const v = e.target.value.trim()
@@ -3135,9 +3147,7 @@ export default function Dashboard() {
                                         }}
                                       >
                                         <option value="">
-                                          {t('app.dashboard.risk_intel.shadow_handoff_assignee_auto', {
-                                            defaultValue: 'Remind → auto',
-                                          })}
+                                          {t('app.dashboard.risk_intel.shadow_handoff_assignee_auto')}
                                         </option>
                                         {managerOptions.map((opt) => (
                                           <option key={opt.id} value={opt.id}>
@@ -3155,8 +3165,8 @@ export default function Dashboard() {
                                         }
                                       >
                                         {rowBusy
-                                          ? t('common.loading', { defaultValue: 'Loading…' })
-                                          : t('app.dashboard.risk_intel.shadow_handoff_remind', { defaultValue: 'Remind' })}
+                                          ? t('common.loading')
+                                          : t('app.dashboard.risk_intel.shadow_handoff_remind')}
                                       </button>
                                       {showClaim ? (
                                         <button
@@ -3166,8 +3176,8 @@ export default function Dashboard() {
                                           onClick={() => void onShadowDigestClaim(row)}
                                         >
                                           {rowBusy
-                                            ? t('common.loading', { defaultValue: 'Loading…' })
-                                            : t('app.dashboard.risk_intel.shadow_handoff_claim', { defaultValue: 'Assign to me' })}
+                                            ? t('common.loading')
+                                            : t('app.dashboard.risk_intel.shadow_handoff_claim')}
                                         </button>
                                       ) : null}
                                       </div>
@@ -3189,16 +3199,16 @@ export default function Dashboard() {
           {riskValidation ? (
             <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="text-xs font-semibold text-slate-700">
-                {t('app.dashboard.risk_intel.validation_title', { defaultValue: 'Shadow cohort validation' })}
+                {t('app.dashboard.risk_intel.validation_title')}
               </div>
               <div className="mt-2 space-y-1 text-sm text-slate-700">
                 <div>
-                  {t('app.dashboard.risk_intel.validation_samples', { defaultValue: 'Cohort samples' })}:{' '}
+                  {t('app.dashboard.risk_intel.validation_samples')}:{' '}
                   <span className="font-semibold">{riskValidation.samples}</span>
                   {riskValidation.forward_stage_progression_rate != null ? (
                     <>
                       {' '}
-                      · {t('app.dashboard.risk_intel.validation_rate', { defaultValue: 'Stage forward rate' })}:{' '}
+                      · {t('app.dashboard.risk_intel.validation_rate')}:{' '}
                       <span className="font-semibold">{riskValidation.forward_stage_progression_rate}%</span>
                     </>
                   ) : null}
@@ -3217,23 +3227,23 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">
-                {t('app.dashboard.stage_metrics.title', { defaultValue: 'Stage metrics' })}
+                {t('app.dashboard.stage_metrics.title')}
               </div>
               <div className="mt-0.5 text-xs text-slate-500">
-                {t('app.dashboard.stage_metrics.subtitle', { defaultValue: 'Stage time, top transitions, readiness distribution.' })}
+                {t('app.dashboard.stage_metrics.subtitle')}
               </div>
             </div>
             <button type="button" className="btn-secondary btn-sm" onClick={() => void loadStageMetrics()} disabled={stageMetricsLoading}>
-              {stageMetricsLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+              {stageMetricsLoading ? t('common.loading') : t('common.actions.refresh')}
             </button>
           </div>
 
           {!stageMetrics ? (
-            <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.stage_metrics.empty', { defaultValue: 'No data yet.' })}</div>
+            <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.stage_metrics.empty')}</div>
           ) : (
             <div className="mt-3 grid gap-3 lg:grid-cols-3">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.readiness', { defaultValue: 'Readiness' })}</div>
+                <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.readiness')}</div>
                 <div className="mt-2 space-y-1 text-sm">
                   {Object.entries(stageMetrics.readiness || {})
                     .sort((a, b) => (b[1] || 0) - (a[1] || 0))
@@ -3255,7 +3265,7 @@ export default function Dashboard() {
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.stage_time', { defaultValue: 'Top stages by avg days' })}</div>
+                <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.stage_time')}</div>
                 <div className="mt-2 space-y-1 text-sm">
                   {(stageMetrics.stage_time || []).slice(0, 8).map((s) => (
                     <div key={s.stage} className="flex items-center justify-between gap-2">
@@ -3269,7 +3279,7 @@ export default function Dashboard() {
               </div>
 
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.transitions', { defaultValue: 'Top transitions' })}</div>
+                <div className="text-xs font-semibold text-slate-700">{t('app.dashboard.stage_metrics.transitions')}</div>
                 <div className="mt-2 space-y-1 text-sm">
                   {(stageMetrics.transitions || []).slice(0, 10).map((tr, idx) => {
                     const fromLabel = translateStageLabel(tr.from_stage, tr.from_stage) || startStageLabel
@@ -3296,30 +3306,30 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-slate-900">
-                {t('app.dashboard.perf.title', { defaultValue: 'Performance baseline (p50/p95)' })}
+                {t('app.dashboard.perf.title')}
               </div>
               <div className="mt-0.5 text-xs text-slate-500">
-                {t('app.dashboard.perf.subtitle', { defaultValue: 'Captured from real user actions (last 14 days).' })}
+                {t('app.dashboard.perf.subtitle')}
               </div>
             </div>
             <button type="button" className="btn-secondary btn-sm" onClick={() => void loadPerfBaseline()} disabled={perfBaselineLoading}>
-              {perfBaselineLoading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.refresh', { defaultValue: 'Refresh' })}
+              {perfBaselineLoading ? t('common.loading') : t('common.actions.refresh')}
             </button>
           </div>
 
           {!perfBaseline || (perfBaseline.rows || []).length === 0 ? (
-            <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.perf.empty', { defaultValue: 'No measurements yet.' })}</div>
+            <div className="mt-3 text-sm text-slate-500">{t('app.dashboard.perf.empty')}</div>
           ) : (
             <div className="mt-3 overflow-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-slate-500">
-                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.metric', { defaultValue: 'Metric' })}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.samples', { defaultValue: 'Samples' })}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.p50', { defaultValue: 'p50 (ms)' })}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.p95', { defaultValue: 'p95 (ms)' })}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.budget', { defaultValue: 'Budget p95 (ms)' })}</th>
-                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.range', { defaultValue: 'min–max (ms)' })}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.metric')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.samples')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.p50')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.p95')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.budget')}</th>
+                    <th className="py-2 pr-3 font-medium">{t('app.dashboard.perf.range')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3349,21 +3359,17 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">
-                  {t('app.dashboard.retention.badge', { defaultValue: 'Trial next step' })}
+                  {t('app.dashboard.retention.badge')}
                 </p>
                 <h2 className="text-sm font-semibold text-brand-950">
-                  {t(`app.dashboard.retention.${retentionNudge.dayKey}.title`, {
-                    defaultValue: retentionNudge.activationDone
-                      ? 'Keep momentum during trial'
-                      : 'Finish activation and get first value',
-                  })}
+                  {retentionNudge.activationDone
+                    ? t('app.dashboard.retention.post_activation.title')
+                    : t(`app.dashboard.retention.${retentionNudge.dayKey}.title`)}
                 </h2>
                 <p className="text-xs text-brand-900/90">
-                  {t(`app.dashboard.retention.${retentionNudge.dayKey}.subtitle`, {
-                    defaultValue: retentionNudge.activationDone
-                      ? 'Your base setup is done. Keep using the workspace and prepare billing before trial ends.'
-                      : 'Complete the next guided step now to keep progress and avoid drop-off during trial.',
-                  })}
+                  {retentionNudge.activationDone
+                    ? t('app.dashboard.retention.post_activation.subtitle')
+                    : t(`app.dashboard.retention.${retentionNudge.dayKey}.subtitle`)}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -3380,10 +3386,12 @@ export default function Dashboard() {
                   }
                 >
                   {retentionNudge.activationDone
-                    ? t('app.dashboard.retention.cta_billing', { defaultValue: 'Open billing' })
-                    : t(`app.dashboard.retention.cta_step.${retentionNudge.stepKey}`, {
-                        defaultValue: 'Continue setup',
-                      })}
+                    ? t('app.dashboard.retention.cta_billing')
+                    : (() => {
+                        const full = `app.dashboard.retention.cta_step.${retentionNudge.stepKey}`
+                        const out = t(full as any)
+                        return out === full ? t('app.dashboard.retention.cta_step.fallback') : out
+                      })()}
                 </Link>
                 <button
                   type="button"
@@ -3398,7 +3406,7 @@ export default function Dashboard() {
                     dismissRetentionNudge()
                   }}
                 >
-                  {t('app.dashboard.retention.dismiss', { defaultValue: 'Hide for now' })}
+                  {t('app.dashboard.retention.dismiss')}
                 </button>
               </div>
             </div>
@@ -3409,53 +3417,45 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <p className={trialCenterClasses.badge}>
-                  {t('app.dashboard.trial_center.badge', { defaultValue: 'Trial Center' })}
+                  {t('app.dashboard.trial_center.badge')}
                 </p>
                 <h2 className={trialCenterClasses.title}>
                   {trialDaysLeft != null
-                    ? t('app.dashboard.trial_center.title_with_days', {
-                        defaultValue: 'Your trial is active: {days} day(s) left',
-                        values: { days: trialDaysLeft },
-                      })
-                    : t('app.dashboard.trial_center.title', {
-                        defaultValue: 'Your trial is active',
-                      })}
+                    ? t('app.dashboard.trial_center.title_with_days', { values: { days: trialDaysLeft } })
+                    : t('app.dashboard.trial_center.title')}
                 </h2>
                 <p className={trialCenterClasses.subtitle}>
-                  {t('app.dashboard.trial_center.subtitle', {
-                    defaultValue:
-                      'Review billing and legal terms now to avoid interruption when trial ends.',
-                  })}
+                  {t('app.dashboard.trial_center.subtitle')}
                 </p>
                 {trialTone === 'critical' && (
                   <span className={trialCenterClasses.urgency}>
-                    {t('app.dashboard.trial_center.urgency_critical', { defaultValue: 'Action required now' })}
+                    {t('app.dashboard.trial_center.urgency_critical')}
                   </span>
                 )}
                 {trialTone === 'warning' && (
                   <span className={trialCenterClasses.urgency}>
-                    {t('app.dashboard.trial_center.urgency_warning', { defaultValue: 'Trial ending soon' })}
+                    {t('app.dashboard.trial_center.urgency_warning')}
                   </span>
                 )}
               </div>
               {canManageBilling && (
-                <Link to="/app/settings/billing" className="btn-secondary">
-                  {t('app.dashboard.trial_center.open_billing', { defaultValue: 'Open billing' })}
+                <Link to={CRM_APP_PATHS.settingsBilling} className="btn-secondary">
+                  {t('app.dashboard.trial_center.open_billing')}
                 </Link>
               )}
             </div>
             <p className={trialCenterClasses.legal}>
-              {t('app.dashboard.trial_center.legal_prefix', { defaultValue: 'Legal:' })}{' '}
+              {t('app.dashboard.trial_center.legal_prefix')}{' '}
               <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
-                {t('app.dashboard.trial_center.legal_terms', { defaultValue: 'Terms' })}
+                {t('app.dashboard.trial_center.legal_terms')}
               </a>
               {', '}
               <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
-                {t('app.dashboard.trial_center.legal_privacy', { defaultValue: 'Privacy' })}
+                {t('app.dashboard.trial_center.legal_privacy')}
               </a>
               {', '}
               <a href="/legal/cookies.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
-                {t('app.dashboard.trial_center.legal_cookies', { defaultValue: 'Cookies' })}
+                {t('app.dashboard.trial_center.legal_cookies')}
               </a>
               .
             </p>
@@ -3463,11 +3463,11 @@ export default function Dashboard() {
               <div className="mt-3 rounded-lg border border-slate-200 bg-white/80 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-700">
-                    {t('app.dashboard.trial_center.retention.title', { defaultValue: 'Retention events (30d)' })}
+                    {t('app.dashboard.trial_center.retention.title')}
                   </p>
                   {retentionReportLoading && (
                     <span className="text-[11px] text-slate-500">
-                      {t('app.dashboard.trial_center.retention.loading', { defaultValue: 'Loading…' })}
+                      {t('app.dashboard.trial_center.retention.loading')}
                     </span>
                   )}
                 </div>
@@ -3475,11 +3475,11 @@ export default function Dashboard() {
                   <table className="table table-sm">
                     <thead>
                       <tr>
-                        <th>{t('app.dashboard.trial_center.retention.columns.day', { defaultValue: 'Day' })}</th>
-                        <th>{t('app.dashboard.trial_center.retention.columns.impression', { defaultValue: 'Impressions' })}</th>
-                        <th>{t('app.dashboard.trial_center.retention.columns.click', { defaultValue: 'CTA clicks' })}</th>
-                        <th>{t('app.dashboard.trial_center.retention.columns.dismiss', { defaultValue: 'Dismiss' })}</th>
-                        <th>{t('app.dashboard.trial_center.retention.columns.ctr', { defaultValue: 'CTR' })}</th>
+                        <th>{t('app.dashboard.trial_center.retention.columns.day')}</th>
+                        <th>{t('app.dashboard.trial_center.retention.columns.impression')}</th>
+                        <th>{t('app.dashboard.trial_center.retention.columns.click')}</th>
+                        <th>{t('app.dashboard.trial_center.retention.columns.dismiss')}</th>
+                        <th>{t('app.dashboard.trial_center.retention.columns.ctr')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3496,15 +3496,12 @@ export default function Dashboard() {
                   </table>
                 </div>
                 <p className="mt-2 text-xs text-slate-600">
-                  {t('app.dashboard.trial_center.retention.summary', {
-                    defaultValue: 'Total impressions: {impression}, clicks: {click}, dismiss: {dismiss}, CTR: {ctr}%.',
-                    values: {
+                  {t('app.dashboard.trial_center.retention.summary', { values: {
                       impression: retentionReport?.totals?.impression ?? 0,
                       click: retentionReport?.totals?.cta_click ?? 0,
                       dismiss: retentionReport?.totals?.dismiss ?? 0,
                       ctr: Number(retentionReport?.totals?.ctr_percent ?? 0).toFixed(2),
-                    },
-                  })}
+                    } })}
                 </p>
               </div>
             )}
@@ -3812,7 +3809,7 @@ export default function Dashboard() {
                     const params = row.filterParams && Object.keys(row.filterParams).length > 0
                       ? new URLSearchParams(row.filterParams).toString()
                       : ''
-                    const href = params ? `/app/candidates?${params}` : null
+                    const href = params ? `${CRM_APP_PATHS.candidates}?${params}` : null
                     return (
                     <tr key={`pivot-${row.key}`} className="border-t border-slate-100">
                       <td className="py-2 pr-4 whitespace-nowrap">
@@ -3903,39 +3900,39 @@ export default function Dashboard() {
           <div className="grid gap-4 md:grid-cols-3">
             {isWidgetVisible('handoff') && handoffStats && (
               <div className="card p-4">
-                <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.handoff.title', { defaultValue: 'Передачи' })}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.handoff.subtitle', { defaultValue: 'По запросам за период' })}</div>
+                <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.handoff.title')}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.handoff.subtitle')}</div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                   <Link
-                    to="/app/candidates?handoff_status=pending"
+                    to={makeCandidatesHref({ handoff_status: 'pending' })}
                     className="rounded-lg bg-slate-50 p-2 hover:bg-slate-100"
                     title={drilldownTitle}
                   >
-                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.requested', { defaultValue: 'Запросов' })}</span>
+                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.requested')}</span>
                     <div className="font-semibold">{formatNumber(handoffStats.total_requested)}</div>
                   </Link>
                   <Link
-                    to="/app/candidates?handoff_status=accepted"
+                    to={makeCandidatesHref({ handoff_status: 'accepted' })}
                     className="rounded-lg bg-emerald-50 p-2 hover:bg-emerald-100"
                     title={drilldownTitle}
                   >
-                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.accepted', { defaultValue: 'Принято' })}</span>
+                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.accepted')}</span>
                     <div className="font-semibold text-emerald-700">{formatNumber(handoffStats.total_accepted)}</div>
                   </Link>
                   <Link
-                    to="/app/candidates?handoff_status=rejected"
+                    to={makeCandidatesHref({ handoff_status: 'rejected' })}
                     className="rounded-lg bg-rose-50 p-2 hover:bg-rose-100"
                     title={drilldownTitle}
                   >
-                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.rejected', { defaultValue: 'Отклонено' })}</span>
+                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.rejected')}</span>
                     <div className="font-semibold text-rose-700">{formatNumber(handoffStats.total_rejected)}</div>
                   </Link>
                   <Link
-                    to="/app/candidates?handoff_status=returned"
+                    to={makeCandidatesHref({ handoff_status: 'returned' })}
                     className="rounded-lg bg-amber-50 p-2 hover:bg-amber-100"
                     title={drilldownTitle}
                   >
-                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.returned', { defaultValue: 'Возвращено' })}</span>
+                    <span className="text-slate-500">{t('app.dashboard.widgets.handoff.returned')}</span>
                     <div className="font-semibold text-amber-700">{formatNumber(handoffStats.total_returned)}</div>
                   </Link>
                 </div>
@@ -3943,23 +3940,31 @@ export default function Dashboard() {
             )}
             {isWidgetVisible('contact') && contactStats && (
               <div className="card p-4">
-                <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.contact_attempts.title', { defaultValue: 'Попытки контакта' })}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.contact_attempts.subtitle', { defaultValue: 'По кандидатам за период' })}</div>
+                <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.contact_attempts.title')}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.contact_attempts.subtitle')}</div>
                 <div className="mt-3 space-y-2 text-sm">
-                  <Link to="/app/candidates?contact_attempts=some" className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50" title={drilldownTitle}>
-                    <span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.total', { defaultValue: 'Всего попыток' })}</span>
-                    <span className="font-semibold">{formatNumber(contactStats.total_attempts)}</span>
-                  </Link>
-                  <Link to="/app/candidates?contact_attempts=some" className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50" title={drilldownTitle}>
-                    <span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.avg', { defaultValue: 'Ср. на кандидата' })}</span>
-                    <span className="font-semibold">{contactStats.avg_per_candidate.toFixed(1)}</span>
-                  </Link>
                   <Link
-                    to="/app/candidates?contact_attempts=limit_reached"
+                    to={makeCandidatesHref({ contact_attempts: 'some' })}
                     className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50"
                     title={drilldownTitle}
                   >
-                    <span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.limit_reached', { defaultValue: 'Достигнут лимит 3+' })}</span>
+                    <span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.total')}</span>
+                    <span className="font-semibold">{formatNumber(contactStats.total_attempts)}</span>
+                  </Link>
+                  <Link
+                    to={makeCandidatesHref({ contact_attempts: 'some' })}
+                    className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50"
+                    title={drilldownTitle}
+                  >
+                    <span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.avg')}</span>
+                    <span className="font-semibold">{contactStats.avg_per_candidate.toFixed(1)}</span>
+                  </Link>
+                  <Link
+                    to={makeCandidatesHref({ contact_attempts: 'limit_reached' })}
+                    className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50"
+                    title={drilldownTitle}
+                  >
+                    <span className="text-slate-500">{t('app.dashboard.widgets.contact_attempts.limit_reached')}</span>
                     <span className="font-semibold">{formatNumber(contactStats.limit_reached_count)}</span>
                   </Link>
                 </div>
@@ -3967,20 +3972,28 @@ export default function Dashboard() {
             )}
             {isWidgetVisible('documents') && documentStats && (
               <div className="card p-4">
-                <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.documents.title', { defaultValue: 'Документы' })}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.documents.subtitle', { defaultValue: 'Реальные данные из БД' })}</div>
+                <div className="text-sm font-semibold text-slate-800">{t('app.dashboard.widgets.documents.title')}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{t('app.dashboard.widgets.documents.subtitle')}</div>
                 <div className="mt-3 space-y-2 text-sm">
-                  <Link to="/app/documents" title={drilldownTitle} className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50">
-                    <span className="text-slate-500">{t('app.dashboard.widgets.documents.total', { defaultValue: 'Всего документов' })} <span className="text-[10px]">↗</span></span>
+                  <Link
+                    to={CRM_APP_PATHS.documents}
+                    title={drilldownTitle}
+                    className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50"
+                  >
+                    <span className="text-slate-500">{t('app.dashboard.widgets.documents.total')} <span className="text-[10px]">↗</span></span>
                     <span className="font-semibold">{formatNumber(documentStats.total_docs)}</span>
                   </Link>
-                  <Link to="/app/documents?quick=ready" title={drilldownTitle} className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50">
-                    <span className="text-slate-500">{t('app.dashboard.widgets.documents.complete', { defaultValue: 'Кандидатов с готовыми' })} <span className="text-[10px]">↗</span></span>
+                  <Link
+                    to={`${CRM_APP_PATHS.documents}?quick=ready`}
+                    title={drilldownTitle}
+                    className="flex justify-between rounded px-1 py-0.5 hover:bg-slate-50"
+                  >
+                    <span className="text-slate-500">{t('app.dashboard.widgets.documents.complete')} <span className="text-[10px]">↗</span></span>
                     <span className="font-semibold">{formatNumber(documentStats.candidates_with_complete_docs)}</span>
                   </Link>
                   {Object.keys(documentStats.by_status || {}).length > 0 && (
                     <div className="mt-2 pt-2 border-t border-slate-100">
-                      <span className="text-xs text-slate-500">{t('app.dashboard.widgets.documents.by_status', { defaultValue: 'По статусу' })}</span>
+                      <span className="text-xs text-slate-500">{t('app.dashboard.widgets.documents.by_status')}</span>
                       <ul className="mt-1 space-y-0.5 text-xs">
                         {Object.entries(documentStats.by_status || {}).slice(0, 5).map(([status, count]) => (
                           <li key={status} className="flex justify-between">
@@ -3993,42 +4006,45 @@ export default function Dashboard() {
                   )}
                   <div className="mt-2 pt-2 border-t border-slate-100">
                     <div className="text-xs text-slate-500">
-                      {t('app.dashboard.widgets.documents.blockers_title', { defaultValue: 'Blockers: where and why' })}
+                      {t('app.dashboard.widgets.documents.blockers_title')}
                     </div>
                     <div className="mt-1 grid grid-cols-1 gap-1.5 text-xs">
-                      <Link to="/app/documents?quick=missing" className="flex items-center justify-between rounded bg-blue-50 px-2 py-1 text-blue-800 hover:bg-blue-100">
-                        <span>{t('app.dashboard.widgets.documents.blockers_missing', { defaultValue: 'Missing/requested docs' })}</span>
+                      <Link
+                        to={`${CRM_APP_PATHS.documents}?quick=missing`}
+                        className="flex items-center justify-between rounded bg-blue-50 px-2 py-1 text-blue-800 hover:bg-blue-100"
+                      >
+                        <span>{t('app.dashboard.widgets.documents.blockers_missing')}</span>
                         <span className="font-semibold">{formatNumber(documentBlockerAnalytics.missingOrRequested)}</span>
                       </Link>
-                      <Link to="/app/documents?quick=in_progress" className="flex items-center justify-between rounded bg-amber-50 px-2 py-1 text-amber-800 hover:bg-amber-100">
-                        <span>{t('app.dashboard.widgets.documents.blockers_review', { defaultValue: 'Uploaded, waiting review' })}</span>
+                      <Link
+                        to={`${CRM_APP_PATHS.documents}?quick=in_progress`}
+                        className="flex items-center justify-between rounded bg-amber-50 px-2 py-1 text-amber-800 hover:bg-amber-100"
+                      >
+                        <span>{t('app.dashboard.widgets.documents.blockers_review')}</span>
                         <span className="font-semibold">{formatNumber(documentBlockerAnalytics.awaitingReview)}</span>
                       </Link>
-                      <Link to="/app/documents?status=rejected" className="flex items-center justify-between rounded bg-rose-50 px-2 py-1 text-rose-800 hover:bg-rose-100">
-                        <span>{t('app.dashboard.widgets.documents.blockers_problematic', { defaultValue: 'Rejected/expired/problematic' })}</span>
+                      <Link
+                        to={`${CRM_APP_PATHS.documents}?status=rejected`}
+                        className="flex items-center justify-between rounded bg-rose-50 px-2 py-1 text-rose-800 hover:bg-rose-100"
+                      >
+                        <span>{t('app.dashboard.widgets.documents.blockers_problematic')}</span>
                         <span className="font-semibold">{formatNumber(documentBlockerAnalytics.problematic)}</span>
                       </Link>
                     </div>
                     {documentBlockerAnalytics.total > 0 ? (
                       <div className="mt-2 text-[11px] text-slate-600">
-                        {t('app.dashboard.widgets.documents.blockers_total_hint', {
-                          defaultValue: 'Total blocker documents: {count}. Focus: remove blockers and prevent repeats.',
-                          values: { count: formatNumber(documentBlockerAnalytics.total) },
-                        })}
+                        {t('app.dashboard.widgets.documents.blockers_total_hint', { values: { count: formatNumber(documentBlockerAnalytics.total) } })}
                       </div>
                     ) : null}
                     {profileSummary?.business_type === 'services' && documentBlockerAnalytics.estimatedBlockedRevenue > 0 ? (
                       <div className="mt-2 rounded border border-rose-200 bg-rose-50 px-2 py-1.5 text-[11px] text-rose-800">
-                        {t('app.dashboard.widgets.documents.blockers_cost_hint', {
-                          defaultValue: 'Estimated revenue at risk due to document blockers: {amount}',
-                          values: {
+                        {t('app.dashboard.widgets.documents.blockers_cost_hint', { values: {
                             amount: new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : 'en-US', {
                               style: 'currency',
                               currency: 'EUR',
                               maximumFractionDigits: 0,
                             }).format(documentBlockerAnalytics.estimatedBlockedRevenue),
-                          },
-                        })}
+                          } })}
                       </div>
                     ) : null}
                   </div>
@@ -4083,19 +4099,22 @@ export default function Dashboard() {
 
         {isWidgetVisible('globalStats') && (
         <div className="grid w-full gap-4 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
-          <Link to="/app/candidates" className="card block p-4 hover:border-brand-200">
+          <Link to={CRM_APP_PATHS.candidates} className="card block p-4 hover:border-brand-200">
             <div className="text-slate-500 text-sm mb-1">{t('app.dashboard.stats.candidates_total')}</div>
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.candidates)}</div>
           </Link>
-          <Link to="/app/clients/directory" className="card block p-4 hover:border-brand-200">
+          <Link to={CRM_APP_PATHS.clientsDirectory} className="card block p-4 hover:border-brand-200">
             <div className="text-slate-500 text-sm mb-1">{dashboardCompanyLabels.plural}</div>
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.companies)}</div>
           </Link>
-          <Link to="/app/vacancies" className="card block p-4 hover:border-brand-200">
+          <Link to={CRM_APP_PATHS.vacancies} className="card block p-4 hover:border-brand-200">
             <div className="text-slate-500 text-sm mb-1">{t('app.dashboard.stats.vacancies')}</div>
             <div className="text-2xl font-semibold">{formatNumber(globalCounts.vacancies)}</div>
           </Link>
-          <Link to="/app/candidates" className="card block p-4 border border-brand-100 hover:border-brand-200">
+          <Link
+            to={CRM_APP_PATHS.candidates}
+            className="card block p-4 border border-brand-100 hover:border-brand-200"
+          >
             <div className="text-slate-500 text-sm mb-1">{t('app.dashboard.stats.period')}</div>
             <div className="text-2xl font-semibold">{formatNumber(periodTotal)}</div>
             <div className="text-xs text-slate-500 mt-1">
@@ -4111,10 +4130,10 @@ export default function Dashboard() {
           <div className="card p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold">
-                {t('app.dashboard.business.title', { defaultValue: 'Business profile analytics' })}
+                {t('app.dashboard.business.title')}
               </div>
               <div className="text-xs text-slate-500">
-                {t('app.dashboard.business.type_label', { defaultValue: 'Type' })}: {businessTypeLabel}
+                {t('app.dashboard.business.type_label')}: {businessTypeLabel}
               </div>
             </div>
             <div className="grid w-full gap-3 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]">
@@ -4217,16 +4236,10 @@ export default function Dashboard() {
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm font-semibold">
-                {t('app.dashboard.companies.title', {
-                  defaultValue: '{label} overview',
-                  values: { label: dashboardCompanyLabels.plural },
-                })}
+                {t('app.dashboard.companies.title', { values: { label: dashboardCompanyLabels.plural } })}
               </div>
               <div className="text-xs text-slate-500">
-                {t('app.dashboard.companies.subtitle', {
-                  defaultValue: 'Top {label} pipelines',
-                  values: { label: dashboardCompanyLabels.plural.toLowerCase() },
-                })}
+                {t('app.dashboard.companies.subtitle', { values: { label: dashboardCompanyLabels.plural.toLowerCase() } })}
               </div>
             </div>
             {slices?.companies?.length ? (
@@ -4277,10 +4290,7 @@ export default function Dashboard() {
               </table>
             ) : (
               <div className="text-sm text-slate-500">
-                {t('app.dashboard.companies.empty', {
-                  defaultValue: 'No {label} data.',
-                  values: { label: dashboardCompanyLabels.singular.toLowerCase() },
-                })}
+                {t('app.dashboard.companies.empty', { values: { label: dashboardCompanyLabels.singular.toLowerCase() } })}
               </div>
             )}
           </div>
@@ -4442,11 +4452,13 @@ export default function Dashboard() {
                       <div key={bucket} className="space-y-1">
                         <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
                           <Link
-                            to={bucket === 'ready'
-                              ? '/app/documents?quick=ready'
-                              : bucket === 'attention'
-                                ? '/app/documents?status=rejected'
-                                : '/app/documents?quick=requested'}
+                            to={
+                              bucket === 'ready'
+                                ? `${CRM_APP_PATHS.documents}?quick=ready`
+                                : bucket === 'attention'
+                                  ? `${CRM_APP_PATHS.documents}?status=rejected`
+                                  : `${CRM_APP_PATHS.documents}?quick=requested`
+                            }
                             className="hover:underline"
                           >
                             {t(`app.dashboard.docs_risk.${bucket}`)}

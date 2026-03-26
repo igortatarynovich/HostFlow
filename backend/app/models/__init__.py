@@ -156,6 +156,7 @@ Invoice = _load_model_module("invoice").Invoice  # type: ignore[attr-defined]
 InvoiceItem = _load_model_module("invoice").InvoiceItem  # type: ignore[attr-defined]
 Payment = _load_model_module("invoice").Payment  # type: ignore[attr-defined]
 Refund = _load_model_module("invoice").Refund  # type: ignore[attr-defined]
+StripeWebhookEventLog = _load_model_module("stripe_webhook_event").StripeWebhookEventLog  # type: ignore[attr-defined]
 
 # Document policies & custom fields
 DocumentPolicy = _load_model_module("document_policy").DocumentPolicy  # type: ignore[attr-defined]
@@ -273,6 +274,7 @@ __all__ = [
     "InvoiceItem",
     "Payment",
     "Refund",
+    "StripeWebhookEventLog",
     "DocumentPolicy",
     "DocumentPolicyScope",
     "RequirementLevel",

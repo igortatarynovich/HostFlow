@@ -2,10 +2,14 @@
  * Notification and reminder-related types
  */
 
+export type NotificationPriority = 'critical' | 'high' | 'normal';
+
 export interface NotificationItem {
   id: string;
   event_type: string;
   channel: string;
+  /** Canonical UOS tier from API (bell / drawer); client heuristics are fallback only. */
+  priority?: NotificationPriority | string | null;
   payload: Record<string, any>;
   entity_type?: string | null;
   entity_id?: string | null;

@@ -14,6 +14,7 @@ import { recordTtvStepCompleted } from '../api/analytics'
 import { useI18n } from '../i18n'
 import { isCommunicationThreadUnlinked } from '../utils/communicationThreadUnlinked'
 import { communicationApiTranslatedDetail } from '../utils/communicationApiTranslatedDetail'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 export function errorTextFromThread(err: any, fallback: string): string {
   const detail = err?.response?.data?.detail
@@ -71,7 +72,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
   const threadListPath = useMemo(() => {
     if (opts?.backListPathOverride) return opts.backListPathOverride
     const email = String(thread?.channel || '').toLowerCase() === 'email'
-    return email ? '/app/inbox?channel=email' : '/app/inbox?channel=messages'
+    return email ? CRM_APP_PATHS.inboxEmailScoped : CRM_APP_PATHS.inboxMessagesScoped
   }, [opts?.backListPathOverride, thread?.channel])
 
   const threadUnlinked = useMemo(() => Boolean(thread && isCommunicationThreadUnlinked(thread)), [thread])
@@ -125,7 +126,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
       setTemplates(nextTemplates)
       if (!selectedTemplateId && nextTemplates.length) setSelectedTemplateId(nextTemplates[0].id)
     } catch (err: any) {
-      setErrorText(errorTextFromThread(err, t('app.communications.errors.load', { defaultValue: 'Failed to load communications data' })))
+      setErrorText(errorTextFromThread(err, t('app.communications.errors.load')))
     } finally {
       setLoading(false)
     }
@@ -175,7 +176,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
         ),
       )
     } catch (err: any) {
-      setErrorText(errorTextFromThread(err, t('app.communications.errors.load', { defaultValue: 'Failed to mark thread as read' })))
+      setErrorText(errorTextFromThread(err, t('app.communications.errors.mark_read')))
     } finally {
       setBusyAction(null)
     }
@@ -191,14 +192,13 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
         setErrorText(
           t('app.communications.queue.auto_assign_failed', {
             values: { reason: result.reason || 'no_eligible_managers' },
-            defaultValue: `Auto-assign failed: ${result.reason || 'no_eligible_managers'}`,
           }),
         )
       } else {
         setErrorText(null)
       }
     } catch (err: any) {
-      setErrorText(errorTextFromThread(err, t('app.communications.errors.load', { defaultValue: 'Failed to auto-assign thread' })))
+      setErrorText(errorTextFromThread(err, t('app.communications.errors.auto_assign')))
     } finally {
       setBusyAction(null)
     }
@@ -245,13 +245,10 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
           } catch (err: any) {
             setErrorText(
               communicationApiTranslatedDetail(err, t) ??
-                errorTextFromThread(
-                  err,
-                  t('app.communications.email.dispatch_failed', { defaultValue: 'Email is queued but dispatch failed.' }),
-                ),
+                errorTextFromThread(err, t('app.communications.email.dispatch_failed')),
             )
-            setErrorSecondaryTo('/app/settings/email')
-            setErrorSecondaryLabel(t('app.settings.email.title', { defaultValue: 'Email settings' }))
+            setErrorSecondaryTo(CRM_APP_PATHS.settingsEmail)
+            setErrorSecondaryLabel(t('app.settings.email.title'))
           }
         }
         setMessages((prev) => [...prev, finalMsg])
@@ -271,13 +268,17 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
       } catch (err: any) {
         setErrorText(
           communicationApiTranslatedDetail(err, t) ??
-            errorTextFromThread(err, t('app.communications.errors.load', { defaultValue: 'Failed to send message' })),
+            errorTextFromThread(err, t('app.communications.errors.send')),
         )
-        setErrorSecondaryTo(String(thread?.channel || '').toLowerCase() === 'email' ? '/app/settings/email' : threadListPath)
+        setErrorSecondaryTo(
+          String(thread?.channel || '').toLowerCase() === 'email'
+            ? CRM_APP_PATHS.settingsEmail
+            : threadListPath,
+        )
         setErrorSecondaryLabel(
           String(thread?.channel || '').toLowerCase() === 'email'
-            ? t('app.settings.email.title', { defaultValue: 'Email settings' })
-            : t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' }),
+            ? t('app.settings.email.title')
+            : t('app.communications.actions.back_to_hub'),
         )
       } finally {
         setSending(false)
@@ -314,13 +315,17 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
     } catch (err: any) {
       setErrorText(
         communicationApiTranslatedDetail(err, t) ??
-          errorTextFromThread(err, t('app.communications.errors.load', { defaultValue: 'Failed to dispatch queued messages' })),
+          errorTextFromThread(err, t('app.communications.errors.dispatch_queued')),
       )
-      setErrorSecondaryTo(String(thread.channel || '').toLowerCase() === 'email' ? '/app/settings/email' : threadListPath)
+      setErrorSecondaryTo(
+        String(thread.channel || '').toLowerCase() === 'email'
+          ? CRM_APP_PATHS.settingsEmail
+          : threadListPath,
+      )
       setErrorSecondaryLabel(
         String(thread.channel || '').toLowerCase() === 'email'
-          ? t('app.settings.email.title', { defaultValue: 'Email settings' })
-          : t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' }),
+          ? t('app.settings.email.title')
+          : t('app.communications.actions.back_to_hub'),
       )
     } finally {
       setDispatchingQueued(false)
@@ -348,13 +353,17 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
       } catch (err: any) {
         setErrorText(
           communicationApiTranslatedDetail(err, t) ??
-            errorTextFromThread(err, t('app.communications.errors.load', { defaultValue: 'Failed to dispatch message' })),
+            errorTextFromThread(err, t('app.communications.errors.dispatch_one')),
         )
-        setErrorSecondaryTo(String(thread?.channel || '').toLowerCase() === 'email' ? '/app/settings/email' : threadListPath)
+        setErrorSecondaryTo(
+          String(thread?.channel || '').toLowerCase() === 'email'
+            ? CRM_APP_PATHS.settingsEmail
+            : threadListPath,
+        )
         setErrorSecondaryLabel(
           String(thread?.channel || '').toLowerCase() === 'email'
-            ? t('app.settings.email.title', { defaultValue: 'Email settings' })
-            : t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' }),
+            ? t('app.settings.email.title')
+            : t('app.communications.actions.back_to_hub'),
         )
       } finally {
         setDispatchingMessageId(null)

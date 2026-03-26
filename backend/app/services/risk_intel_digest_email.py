@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.constants.spa_paths import OVERVIEW, spa_candidate
 from backend.app.core.settings import settings
 from backend.app.models.audit import ActivityLog
 from backend.app.models.tenant import user_memberships
@@ -164,7 +165,7 @@ def _build_digest_body(
             stg = it.get("stage_at_score") or "—"
             drivers = it.get("drivers") or []
             dr = "; ".join(str(d) for d in drivers[:3]) if drivers else "—"
-            card = f"{base}/app/candidates/{eid}" if base and eid else (eid or "—")
+            card = f"{base}{spa_candidate(eid)}" if base and eid else (eid or "—")
             lines.append(f"{i}. {label}")
             lines.append(f"   Score: {score} · Band: {band} · Stage @ score: {stg}")
             lines.append(f"   Drivers: {dr}")
@@ -172,7 +173,7 @@ def _build_digest_body(
             lines.append("")
 
     if base := (frontend_base or "").rstrip("/"):
-        lines.append(f"Overview: {base}/app/overview")
+        lines.append(f"Overview: {base}{OVERVIEW}")
     lines.append("")
     lines.append("—")
     lines.append("To change this digest: Tenant.settings.risk_model_v1.digest_email")

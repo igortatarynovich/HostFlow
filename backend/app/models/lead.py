@@ -189,3 +189,5 @@ class MetaLeadSettings(TimestampMixin, Base):
     last_webhook_check_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_signature_status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     webhook_verify_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
+    # §2.10 / §2.3: Manual / Assisted / Automatic (ingest + normalized stamp; automatic needs Team plan at runtime).
+    leads_processing_mode_v1: Mapped[Optional[str]] = mapped_column(String(24), nullable=True)

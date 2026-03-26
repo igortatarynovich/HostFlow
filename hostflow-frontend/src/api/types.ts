@@ -700,6 +700,8 @@ export interface Lead {
   error?: string | null;
   payload: Record<string, any>;
   normalized?: Record<string, any> | null;
+  /** Lead-scoped custom fields (definition key → value); see Custom fields admin scope LEAD. */
+  custom_fields?: Record<string, unknown>;
   created_at: string;
   last_routed_at?: string | null;
 }
@@ -734,15 +736,20 @@ export interface MetaLeadFieldMappingRule {
   overwrite?: boolean;
 }
 
+export type LeadsProcessingModeV1 = 'manual' | 'assisted' | 'automatic';
+
 export interface MetaLeadSettings {
   tenant_id: UUID;
   default_company_id?: UUID | null;
   fallback_recruiter_id?: UUID | null;
   auto_create_enabled: boolean;
+  leads_processing_mode_v1: LeadsProcessingModeV1;
   reroute_after_hours?: number | null;
   mask_pii_in_logs: boolean;
   pull_field_data_from_graph?: boolean;
   field_mapping?: MetaLeadFieldMappingRule[];
+  plan_field_mapping_rules_limit?: number | null;
+  plan_meta_credentials_limit?: number | null;
   webhook_url?: string | null;
   last_webhook_check_at?: string | null;
   last_signature_status?: string | null;
@@ -755,6 +762,7 @@ export interface MetaLeadSettingsPatch {
   default_company_id?: UUID | null;
   fallback_recruiter_id?: UUID | null;
   auto_create_enabled?: boolean;
+  leads_processing_mode_v1?: LeadsProcessingModeV1;
   reroute_after_hours?: number | null;
   mask_pii_in_logs?: boolean;
   pull_field_data_from_graph?: boolean;
@@ -829,6 +837,24 @@ export interface MetaLeadReroutePayload {
   vacancy_id?: UUID;
   company_id?: UUID;
   force_process?: boolean;
+}
+
+/** §2.11 View incoming — recent Meta lead payload preview (settings admin). */
+export interface MetaIncomingLeadPreviewItem {
+  lead_id: string;
+  created_at: string;
+  external_id?: string | null;
+  ad_id?: number | null;
+  status: string;
+  stage?: string | null;
+  payload_json_preview: string;
+  payload_truncated: boolean;
+  normalized_json_preview?: string | null;
+  normalized_truncated: boolean;
+}
+
+export interface MetaIncomingLeadsPreviewResponse {
+  items: MetaIncomingLeadPreviewItem[];
 }
 
 export type ServiceUnit = 'piece' | 'person' | 'hour' | 'package';

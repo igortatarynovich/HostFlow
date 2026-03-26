@@ -5,6 +5,8 @@ import { ACTIVITY_TEMPLATES } from '../activityTemplates'
 type BulkActivitiesModalProps = {
   open: boolean
   onClose: () => void
+  /** Optional context line (e.g. NBA quick batch size). */
+  hint?: string | null
   title: string
   dueAt: string
   offsetMinutes: number
@@ -22,6 +24,7 @@ type BulkActivitiesModalProps = {
 export function BulkActivitiesModal({
   open,
   onClose,
+  hint,
   title,
   dueAt,
   offsetMinutes,
@@ -42,18 +45,19 @@ export function BulkActivitiesModal({
       onClose={() => {
         if (!loading) onClose()
       }}
-      title={t('app.candidates.modals.activities.title', { defaultValue: 'Create activities for selected' })}
+      title={t('app.candidates.modals.activities.title')}
     >
       <div className="space-y-3">
+        {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
         {loading && (
           <div className="flex items-center gap-2 text-sm text-brand-600 bg-brand-50 p-2 rounded border border-brand-200">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-600"></div>
-            <span>{t('app.candidates.messages.bulk_activities_loading', { defaultValue: 'Creating…' })}</span>
+            <span>{t('app.candidates.messages.bulk_activities_loading')}</span>
           </div>
         )}
 
         <div>
-          <div className="label">{t('app.leads.bulk.activities.template_label', { defaultValue: 'Quick type' })}</div>
+          <div className="label">{t('app.leads.bulk.activities.template_label')}</div>
           <div className="flex flex-wrap gap-2">
             {ACTIVITY_TEMPLATES.map((tmpl) => (
               <button
@@ -71,19 +75,19 @@ export function BulkActivitiesModal({
                   onActivityTypeChange?.(tmpl.type)
                 }}
               >
-                {t(`app.activities.templates.${tmpl.key}`, { defaultValue: tmpl.defaultTitle })}
+                {t(`app.activities.templates.${tmpl.key}`)}
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <div className="label">{t('app.candidates.modals.activities.title_label', { defaultValue: 'Activity title' })}</div>
+          <div className="label">{t('app.candidates.modals.activities.title_label')}</div>
           <input className="input w-full" value={title} onChange={(e) => onTitleChange(e.target.value)} disabled={loading} />
         </div>
 
         <div>
-          <div className="label">{t('app.candidates.modals.activities.due_label', { defaultValue: 'Due at' })}</div>
+          <div className="label">{t('app.candidates.modals.activities.due_label')}</div>
           <input
             className="input w-full"
             type="datetime-local"
@@ -94,7 +98,7 @@ export function BulkActivitiesModal({
         </div>
 
         <div>
-          <div className="label">{t('app.candidates.modals.activities.offset_label', { defaultValue: 'Reminder offset (minutes before)' })}</div>
+          <div className="label">{t('app.candidates.modals.activities.offset_label')}</div>
           <input
             className="input w-full"
             type="number"
@@ -108,10 +112,10 @@ export function BulkActivitiesModal({
 
         <div className="flex gap-2">
           <button className="btn-primary" onClick={onApply} disabled={loading || !title.trim() || !dueAt.trim()}>
-            {loading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.apply', { defaultValue: 'Apply' })}
+            {loading ? t('common.loading') : t('common.actions.apply')}
           </button>
           <button className="btn-secondary" onClick={onClose} disabled={loading}>
-            {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+            {t('common.actions.cancel')}
           </button>
         </div>
       </div>

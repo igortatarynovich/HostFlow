@@ -7,7 +7,7 @@
 Дать возможность продавать и исполнять дополнительные услуги, связанные с трудоустройством кандидатов и обслуживанием клиентов: медосмотр, психотест, Code 95/ADR, оформление виз/ŚK/разрешений, переводы, проживание, трансфер, обучение и т.д.
 
 ## SSOT и терминология
-Канонический пайплайн заказов (`ServiceOrder.status`), модель **Party** (клиент = `companies`), связь счётов с заказами (`invoices.service_order_id`), метрики каталога и deep-link параметры UI описаны в [`docs/SSOT.md`](../../SSOT.md) (раздел *Party model + client workspace + services deep links*). Этот модульный spec дополняет SSOT деталями домена услуг; при расхождении приоритет у SSOT и кода (`backend/app/models/additional_service.py`).
+[`docs/SSOT.md`](../../SSOT.md) — **правила разработки и открытый бэклог** (без длинной доменной документации). Канонический пайплайн заказов (`ServiceOrder.status`), модель **Party** (клиент = `companies`), связь счётов с заказами (`invoices.service_order_id`), метрики каталога и deep-link параметры UI — **в этом spec и в коде** (`hostflow-frontend/src/modules/services/utils.ts`, `ServicesPage.tsx`, API `service-orders` / `analytics/services-overview`). При расхождении приоритет у **кода** и этого файла.
 
 ## Основные сущности
 - **Service** — элемент каталога услуг/товаров, который можно заказать и затем переиспользовать в фактуре.
@@ -17,7 +17,7 @@
 - **ServiceAttachment** — файлы и результаты, прикреплённые к услуге.
 
 ## Связи
-- `ServiceOrder` связан **ровно с одним** владельцем: `candidate_id`, `vacancy_id` или `company_id` (CHECK `ck_service_orders_owner`). Для клиентского workspace заказы по Party — это заказы с `company_id` (см. SSOT).
+- `ServiceOrder` связан **ровно с одним** владельцем: `candidate_id`, `vacancy_id` или `company_id` (CHECK `ck_service_orders_owner`). Для клиентского workspace заказы по Party — это заказы с `company_id` (см. раздел **Связи** ниже и CRM-карточку клиента в коде).
 - `ServiceItem.service_id → Service`.
 - `ServiceItem` может иметь поле `required_documents` (список типов документов, которые должны быть одобрены до исполнения).
 - Услуга может порождать новый документ (`result_document_type`), например результат медосмотра.
@@ -154,7 +154,7 @@ created_at TIMESTAMPTZ
 - `POST /service-items/{id}/deliver` — завершить позицию (с созданием документа при необходимости).
 - `GET /candidates/{id}/service-orders` — заказы кандидата.
 
-Префикс в продукте: `/api/v1/…`. Параметры UI для workspace «Услуги»: `tab`, `order_id`, `company_id` (см. SSOT).
+Префикс в продукте: `/api/v1/…`. Параметры UI для workspace «Услуги»: `tab`, `order_id`, `company_id` (см. **`hostflow-frontend/src/modules/services/utils.ts`**).
 
 ### Пример контракта
 ```json
@@ -224,11 +224,11 @@ POST /service-items/{id}/deliver
 - **Поля заказа**: `start_date`, `end_date`; счёт — `invoices.service_order_id`.
 - **Клиент / Party**: заказы с `company_id`; список компаний с опциональными метриками по заказам (`include_service_metrics`); фильтр заказов по `company_id`.
 - **Каталог**: `GET /services?include_metrics=true` для столбцов заказов/выручки в UI.
-- **Фронтенд**: колонки метрик в каталоге; deep links `tab`, `order_id`, `company_id`; в карточке компании — вкладки workspace (в т.ч. заказы услуг и счета). Подробности — в `docs/SSOT.md`.
+- **Фронтенд**: колонки метрик в каталоге; deep links `tab`, `order_id`, `company_id`; в карточке компании — вкладки workspace (в т.ч. заказы услуг и счета). Подробности — в этом spec и фронтовом модуле **`modules/services/`**.
 
 ## Release contract additions (`2026-03-13`)
 
-- Каталог должен поддерживать как услуги, так и товары (`kind=service/product`), чтобы tenant мог выставлять счета не только за worklog, но и за продаваемые позиции. *(В текущей ORM `Service` поле `kind` ещё не введено — до появления в схеме биллинг опирается на каталог услуг и позиции заказа; см. SSOT.)*
+- Каталог должен поддерживать как услуги, так и товары (`kind=service/product`), чтобы tenant мог выставлять счета не только за worklog, но и за продаваемые позиции. *(В текущей ORM `Service` поле `kind` ещё не введено — до появления в схеме биллинг опирается на каталог услуг и позиции заказа.)*
 - Для каждой позиции в каталоге обязательны reusable billing defaults: `currency`, `tax_mode`, `vat_rate`, `unit`, `base_price`, `sku/code`, `is_active`.
 - `ServiceOrder` должен позволять выбирать эти позиции из каталога и сохранять snapshot на уровне `ServiceItem`.
 - Дальнейший invoicing flow обязан уметь переиспользовать `ServiceItem` как основу invoice line items без ручного повторного ввода.

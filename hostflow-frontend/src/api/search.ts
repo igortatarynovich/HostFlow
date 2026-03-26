@@ -1,10 +1,13 @@
 import { api, docsApi, listReminders } from './client'
 import { listCommunicationThreads } from './communications'
 import type { Candidate, Company, Document } from './types'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
+const P = CRM_APP_PATHS
+
 export type GlobalSearchResult = {
-  type: 'candidate' | 'company' | 'document' | 'vacancy' | 'invoice' | 'service_order' | 'conversation' | 'task'
+  type: 'candidate' | 'company' | 'document' | 'vacancy' | 'lead' | 'invoice' | 'service_order' | 'conversation' | 'task'
   id: string
   title: string
   subtitle?: string
@@ -112,36 +115,72 @@ function mergeSearchResultsHeuristic(results: GlobalSearchResult[], rawQuery: st
 export type SearchGlobalOptions = {
   /** `team` = tenant-wide reminder list (manager/admin roles on API); default `mine`. */
   reminderAssigneeScope?: 'mine' | 'team'
+  /** Same as lists that send `scope_tenant_id` (e.g. client tenant context). */
+  scopeTenantId?: string
 }
 
-export async function searchGlobal(
-  query: string,
-  signal?: AbortSignal,
-  opts?: SearchGlobalOptions,
-): Promise<GlobalSearchResult[]> {
-  const q = query.trim()
-  if (!q || q.length < MIN_SEARCH_LENGTH) return []
-  const base = { q, limit: PER_TYPE, offset: 0 }
-  const reminderScope = opts?.reminderAssigneeScope === 'team' ? 'team' : 'mine'
+type UnifiedSearchResponse = { items?: unknown }
 
-  const [
-    candidates,
-    companies,
-    vacancies,
-    documents,
-    threads,
-    tasks,
-    invoices,
-    serviceOrders,
-  ] = await Promise.allSettled([
+function isGlobalSearchResult(x: unknown): x is GlobalSearchResult {
+  if (!x || typeof x !== 'object') return false
+  const o = x as Record<string, unknown>
+  const t = o.type
+  const id = o.id
+  const title = o.title
+  const link = o.link
+  return (
+    typeof id === 'string' &&
+    typeof title === 'string' &&
+    typeof link === 'string' &&
+    (t === 'candidate' ||
+      t === 'company' ||
+      t === 'vacancy' ||
+      t === 'lead' ||
+      t === 'document' ||
+      t === 'invoice' ||
+      t === 'service_order' ||
+      t === 'conversation' ||
+      t === 'task')
+  )
+}
+
+/** Core CRM hits from `GET /search` when the API is available; otherwise `null` (caller falls back). */
+async function fetchUnifiedCoreSearch(
+  q: string,
+  signal: AbortSignal | undefined,
+  scopeTenantId: string | undefined,
+): Promise<GlobalSearchResult[] | null> {
+  try {
+    const params: Record<string, string | number> = {
+      q,
+      limit: PER_TYPE,
+      max_results: MAX_RESULTS,
+    }
+    if (scopeTenantId) params.scope_tenant_id = scopeTenantId
+    const { data } = await api.get<UnifiedSearchResponse>('/search', { params, signal })
+    const raw = data?.items
+    if (!Array.isArray(raw)) return null
+    const out: GlobalSearchResult[] = []
+    for (const x of raw) {
+      if (isGlobalSearchResult(x)) out.push(x)
+    }
+    return out
+  } catch {
+    return null
+  }
+}
+
+async function fetchLegacyCoreAndSupplementary(
+  q: string,
+  signal: AbortSignal | undefined,
+  reminderScope: 'mine' | 'team',
+): Promise<GlobalSearchResult[]> {
+  const base = { q, limit: PER_TYPE, offset: 0 }
+
+  const [candidates, companies, vacancies] = await Promise.allSettled([
     api.get('/candidates/', { params: base, signal }),
     api.get('/companies/', { params: base, signal }),
     api.get('/vacancies/', { params: base, signal }),
-    docsApi.get('/documents', { params: { q, limit: PER_TYPE }, signal }),
-    listCommunicationThreads({ q, limit: PER_TYPE, offset: 0, signal }),
-    listReminders({ q, limit: PER_TYPE, assigneeScope: reminderScope, signal }),
-    api.get('/invoices', { params: { ...base, q }, signal }),
-    api.get('/service-orders', { params: { q }, signal }),
   ])
 
   const results: GlobalSearchResult[] = []
@@ -156,7 +195,7 @@ export async function searchGlobal(
         id: item.id,
         title,
         subtitle: item.stage || item.email || undefined,
-        link: `/app/candidates/${item.id}`,
+        link: `${P.candidates}/${item.id}`,
       })
     })
   }
@@ -169,7 +208,7 @@ export async function searchGlobal(
         id: item.id,
         title: item.name || item.legal_name || 'Company',
         subtitle: item.city || item.country_code || undefined,
-        link: `/app/clients/${item.id}`,
+        link: `${P.agencyClients}/${item.id}`,
       })
     })
   }
@@ -183,10 +222,31 @@ export async function searchGlobal(
         id: item.id,
         title: item.title || 'Vacancy',
         subtitle,
-        link: `/app/vacancies/${item.id}`,
+        link: `${P.vacancies}/${item.id}`,
       })
     })
   }
+
+  const supplementary = await fetchSupplementaryOnly(q, signal, reminderScope)
+  return [...results, ...supplementary]
+}
+
+async function fetchSupplementaryOnly(
+  q: string,
+  signal: AbortSignal | undefined,
+  reminderScope: 'mine' | 'team',
+): Promise<GlobalSearchResult[]> {
+  const base = { q, limit: PER_TYPE, offset: 0 }
+
+  const [documents, threads, tasks, invoices, serviceOrders] = await Promise.allSettled([
+    docsApi.get('/documents', { params: { q, limit: PER_TYPE }, signal }),
+    listCommunicationThreads({ q, limit: PER_TYPE, offset: 0, signal }),
+    listReminders({ q, limit: PER_TYPE, assigneeScope: reminderScope, signal }),
+    api.get('/invoices', { params: { ...base, q }, signal }),
+    api.get('/service-orders', { params: { q }, signal }),
+  ])
+
+  const results: GlobalSearchResult[] = []
 
   if (documents.status === 'fulfilled') {
     asArray<Document>(documents.value.data).forEach((doc) => {
@@ -197,7 +257,7 @@ export async function searchGlobal(
         id: doc.id,
         title: doc.title || doc.custom_name || doc.doc_type || 'Document',
         subtitle: doc.status ? `Status: ${doc.status}` : undefined,
-        link: ownerId ? `/app/candidates/${ownerId}/documents` : '/app/documents',
+        link: ownerId ? `${P.candidates}/${ownerId}/documents` : P.documents,
       })
     })
   }
@@ -247,7 +307,7 @@ export async function searchGlobal(
         id: String(r.id),
         title,
         subtitle,
-        link: `/app/tasks?${taskParams.toString()}`,
+        link: `${P.tasks}?${taskParams.toString()}`,
       })
     })
   }
@@ -263,7 +323,7 @@ export async function searchGlobal(
         id: inv.id,
         title: inv.invoice_number || 'Invoice',
         subtitle: [inv.status, money].filter(Boolean).join(' · ') || undefined,
-        link: `/app/invoices/${inv.id}`,
+        link: `${P.invoices}/${inv.id}`,
       })
     })
   }
@@ -284,10 +344,30 @@ export async function searchGlobal(
         id: sid,
         title: shortId,
         subtitle: [row.status, money].filter(Boolean).join(' · ') || undefined,
-        link: `/app/orders?order_id=${encodeURIComponent(sid)}`,
+        link: `${P.orders}?order_id=${encodeURIComponent(sid)}`,
       })
     })
   }
 
-  return mergeSearchResultsHeuristic(results, q, MAX_RESULTS)
+  return results
+}
+
+export async function searchGlobal(
+  query: string,
+  signal?: AbortSignal,
+  opts?: SearchGlobalOptions,
+): Promise<GlobalSearchResult[]> {
+  const q = query.trim()
+  if (!q || q.length < MIN_SEARCH_LENGTH) return []
+  const reminderScope = opts?.reminderAssigneeScope === 'team' ? 'team' : 'mine'
+  const scopeTenantId = opts?.scopeTenantId?.trim() || undefined
+
+  const unifiedCore = await fetchUnifiedCoreSearch(q, signal, scopeTenantId)
+  if (unifiedCore !== null) {
+    const extra = await fetchSupplementaryOnly(q, signal, reminderScope)
+    return mergeSearchResultsHeuristic([...unifiedCore, ...extra], q, MAX_RESULTS)
+  }
+
+  const legacy = await fetchLegacyCoreAndSupplementary(q, signal, reminderScope)
+  return mergeSearchResultsHeuristic(legacy, q, MAX_RESULTS)
 }

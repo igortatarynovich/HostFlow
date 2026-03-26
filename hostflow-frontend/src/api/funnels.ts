@@ -1,5 +1,13 @@
 import { api } from './client'
 
+/** §2.3 optional per-stage pipeline contract (stored as JSON on backend). */
+export interface FunnelStageContractV1 {
+  owner_role?: string | null
+  required_actions?: string[] | null
+  sla_hours?: number | null
+  auto_rules?: Record<string, unknown> | null
+}
+
 export interface FunnelStage {
   id: string
   funnel_id: string
@@ -8,6 +16,7 @@ export interface FunnelStage {
   system_stage: 'new' | 'in_progress' | 'hired' | 'declined_rejected'
   order: number
   is_terminal: boolean
+  stage_contract?: FunnelStageContractV1 | null
 }
 
 export interface FunnelStageCreate {
@@ -16,6 +25,8 @@ export interface FunnelStageCreate {
   system_stage?: 'new' | 'in_progress' | 'hired' | 'declined_rejected'
   order?: number
   is_terminal?: boolean
+  /** Omit on create if unused; send `null` on update to clear. */
+  stage_contract?: FunnelStageContractV1 | null
 }
 
 export interface Funnel {

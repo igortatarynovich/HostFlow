@@ -2,6 +2,7 @@
  * Utility functions for services module
  */
 
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { ORDER_STATUSES, SERVICES_BILLING_URL_FILTER_SET } from './constants';
 
 const ORDER_STATUS_SET = new Set<string>(ORDER_STATUSES);
@@ -52,7 +53,7 @@ function buildServicesWorkspaceUrl(opts: {
   }
   const bf = opts.billingFilter != null ? String(opts.billingFilter).trim() : '';
   if (bf && SERVICES_BILLING_URL_FILTER_SET.has(bf) && bf !== 'all') qs.set('billing_filter', bf);
-  const path = ordersStandalone ? '/app/orders' : '/app/services';
+  const path = ordersStandalone ? CRM_APP_PATHS.orders : CRM_APP_PATHS.services;
   const q = qs.toString();
   return q ? `${path}?${q}` : path;
 }

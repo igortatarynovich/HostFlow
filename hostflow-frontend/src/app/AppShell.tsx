@@ -7,10 +7,12 @@ import { getOnboardingStatus, settings, type OnboardingStatus } from '../api/cli
 import { setTenantId } from '../api/http'
 import { CurrentTenantProvider } from '../contexts/CurrentTenant'
 import { TenantInfoProvider } from '../contexts/TenantInfo'
+import { TeamOverviewNavProvider } from '../contexts/TeamOverviewNavContext'
 import { HiringPipelineGatesProvider } from '../contexts/HiringPipelineGatesContext'
 import type { NavItem } from './routes'
 import { Sidebar } from '../components/nav/Sidebar'
 import { Topbar } from '../components/nav/Topbar'
+import WorkContextTabs from '../components/nav/WorkContextTabs'
 import { SettingsChrome } from '../components/nav/SettingsChrome'
 import { LicenseExpiredBanner } from '../components/LicenseExpiredBanner'
 import { TrialStatusBanner } from '../components/TrialStatusBanner'
@@ -20,6 +22,7 @@ import { useRobotsMeta } from '../hooks/useRobotsMeta'
 import { ACTIVATION_PATHS, getActivationSetupTarget } from './activationRoutes'
 import { usePermissions } from '../hooks/usePermissions'
 import { maybeMigrateDefaultAppHomeToTasks } from '../utils/defaultAppHome'
+import { CRM_APP_PATHS } from './crmAppPaths'
 
 type AppShellProps = {
   me: WhoAmI | null
@@ -33,12 +36,12 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const path = location.pathname
-  const isOnboardingPage = location.pathname.startsWith('/app/onboarding/')
-  const isSettingsArea = location.pathname.startsWith('/app/settings')
+  const isOnboardingPage = location.pathname.startsWith(ACTIVATION_PATHS.onboarding)
+  const isSettingsArea = location.pathname.startsWith(CRM_APP_PATHS.settings)
   /** Весь CRM workspace: без внешних отступов у main, компактный topbar (как список кандидатов). Onboarding оставляем с полями. */
-  const isCrmWorkspace = path.startsWith('/app') && !isOnboardingPage
+  const isCrmWorkspace = path.startsWith(CRM_APP_PATHS.appShellPrefix) && !isOnboardingPage
   /** Список кандидатов (таблица): убираем scroll у main — иначе два скролла (main + таблица) ломают hit-testing/клики. */
-  const isCandidatesTablePage = path === '/app/candidates'
+  const isCandidatesTablePage = path === CRM_APP_PATHS.candidates
   const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null)
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(false)
 
@@ -138,7 +141,11 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
     if (!guidedTrialWorkspace) return navItems
     return navItems.filter((item) => {
       if (!item.path) return false
-      if (item.path === '/app/settings' || item.path.startsWith('/app/settings/')) return false
+      if (
+        item.path === CRM_APP_PATHS.settings ||
+        item.path.startsWith(`${CRM_APP_PATHS.settings}/`)
+      )
+        return false
       return item.group !== 'admin'
     })
   }, [guidedTrialWorkspace, navItems])
@@ -152,7 +159,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   }
   if (
     guidedTrialWorkspace &&
-    path.startsWith('/app/settings') &&
+    path.startsWith(CRM_APP_PATHS.settings) &&
     path !== ACTIVATION_PATHS.billing
   ) {
     return <Navigate to={ACTIVATION_PATHS.overview} replace />
@@ -161,6 +168,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
   return (
     <CurrentTenantProvider value={currentTenantId}>
       <TenantInfoProvider tenant={tenant}>
+        <TeamOverviewNavProvider tenantId={currentTenantId}>
         <HiringPipelineGatesProvider tenantId={currentTenantId}>
         <div className="flex h-screen bg-slate-50 text-slate-900">
           <Sidebar
@@ -215,6 +223,9 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                     : 'w-full px-6 py-6 lg:px-10'
                 }
               >
+                {isCrmWorkspace && !isSettingsArea && !isOnboardingPage && (
+                  <WorkContextTabs businessType={onboardingStatus?.business_type ?? 'agency'} />
+                )}
                 {isSettingsArea && <SettingsChrome pathname={location.pathname} compactMode={guidedTrialWorkspace} />}
                 <div
                   className={clsx(
@@ -231,6 +242,7 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
           </div>
         </div>
         </HiringPipelineGatesProvider>
+        </TeamOverviewNavProvider>
       </TenantInfoProvider>
     </CurrentTenantProvider>
   )

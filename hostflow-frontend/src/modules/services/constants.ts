@@ -13,6 +13,9 @@ export const ORDER_STATUSES: ServiceOrderStatus[] = [
   'cancelled',
 ];
 
+/** Matches ops counter `open_service_orders` (not completed / cancelled). */
+export const OPEN_SERVICE_ORDER_STATUSES: ServiceOrderStatus[] = ['draft', 'confirmed', 'in_progress', 'on_hold'];
+
 export const SCHEDULE_STATUSES: ServiceScheduleStatus[] = [
   'reserved',
   'confirmed',

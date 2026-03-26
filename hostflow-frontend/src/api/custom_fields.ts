@@ -1,8 +1,8 @@
 import { api } from "./client";
 
-export type CustomFieldScope = "CANDIDATE" | "DOCUMENT";
+export type CustomFieldScope = "CANDIDATE" | "LEAD" | "DOCUMENT";
 export type CustomFieldType = "TEXT" | "TEXTAREA" | "NUMBER" | "DATE" | "CHECKBOX" | "SELECT" | "MULTISELECT";
-export type CustomFieldEntityType = "CANDIDATE" | "CANDIDATE_DOCUMENT";
+export type CustomFieldEntityType = "CANDIDATE" | "LEAD" | "CANDIDATE_DOCUMENT";
 
 export interface CustomFieldDefinition {
   id: string;

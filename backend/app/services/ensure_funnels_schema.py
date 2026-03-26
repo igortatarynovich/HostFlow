@@ -113,6 +113,11 @@ def ensure_funnels_schema() -> None:
                     ),
                 )
 
+        if _table_exists(cur, "funnel_stages") and not _column_exists(
+            cur, "funnel_stages", "stage_contract_v1"
+        ):
+            cur.execute("ALTER TABLE funnel_stages ADD COLUMN stage_contract_v1 TEXT")
+
         # funnel_id on candidate_profiles
         if _table_exists(cur, "candidate_profiles") and not _column_exists(
             cur, "candidate_profiles", "funnel_id"

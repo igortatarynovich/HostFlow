@@ -2,29 +2,44 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from typing import Tuple
+from datetime import datetime, timezone
+from typing import Any, Dict, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import exists, select, or_
+from sqlalchemy import select, or_
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.additional_services import ServiceOrderOut
-from backend.app.modules.leads import admin_service, service
+from backend.app.modules.leads import admin_service, lead_custom_fields, next_action_enforcement, pipeline_hooks, service
+from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
 from backend.app.modules.leads.schemas import (
+    BulkAutoProcessQueueItemOut,
+    BulkAutoProcessQueueRequest,
+    BulkAutoProcessQueueResponse,
     BulkLeadUpdateRequest,
     BulkLeadUpdateResponse,
+    LeadDistributionOut,
+    LeadDistributionPatch,
+    LeadDistributionAlert,
+    LeadDistributionFeatureGate,
+    LeadDistributionNextPreview,
+    LeadDistributionStats,
+    LeadDistributionTeamMemberOut,
+    LeadConversionFunnelResponse,
     LeadListResponse,
     LeadOut,
+    LeadStageHealthResponse,
     LeadStageUpdate,
     LeadTimelineResponse,
     MetaLeadResponse,
 )
+from backend.app.services.lead_distribution import build_distribution_snapshot, patch_distribution_settings
+from backend.app.services.plan_feature_gates import plan_allows_team_tier_features, resolve_tenant_plan_code
 from backend.app.services.additional_services import AdditionalServicesService
-from backend.app.models import Tenant, Reminder
-from backend.app.models.reminder import ReminderStatus
+from backend.app.models import Lead, User
 from backend.app.services.audit import log_activity
 from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
 
@@ -47,6 +62,9 @@ async def list_leads_endpoint(
     status_filter: str | None = Query(None, alias="status"),
     stage_filter: str | None = Query(None, alias="stage"),
     next_action_filter: str | None = Query(None, alias="next_action"),
+    search_q: str | None = Query(None, alias="q", max_length=200),
+    custom_field_key: str | None = Query(None, alias="custom_field_key"),
+    custom_field_value: str | None = Query(None, alias="custom_field_value"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -54,16 +72,204 @@ async def list_leads_endpoint(
     _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
 ) -> LeadListResponse:
     db, tenant_id = db_tenant
+    tid = str(tenant_id)
+    cf_def_id: str | None = None
+    cf_match: str | None = None
+    key_trim = (custom_field_key or "").strip()
+    if key_trim:
+        if custom_field_value is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="custom_field_value is required when custom_field_key is set",
+            )
+        resolved = await lead_custom_fields.resolve_lead_definition_id_by_key(db, tenant_id=tid, key=key_trim)
+        if not resolved:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Unknown custom_field_key for lead scope",
+            )
+        cf_def_id = resolved
+        cf_match = custom_field_value
+    elif custom_field_value is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="custom_field_key is required when custom_field_value is set",
+        )
+
     return await service.list_leads(
         db,
-        tenant_id=str(tenant_id),
+        tenant_id=tid,
         own_company_id=own_company_id,
         status=status_filter,
         stage=stage_filter,
         next_action=next_action_filter,
+        search=(search_q or "").strip() or None,
+        custom_field_definition_id=cf_def_id,
+        custom_field_match_value=cf_match,
         limit=limit,
         offset=offset,
     )
+
+
+def _distribution_response(snap: dict) -> LeadDistributionOut:
+    cfg = snap["config"]
+    np = snap.get("next_preview")
+    fg = snap["feature_gate"]
+    mode = str(cfg.get("mode") or "manual").strip().lower()
+    if mode not in ("automatic", "manual"):
+        mode = "manual"
+    strategy = str(cfg.get("strategy") or "smart").strip().lower()
+    if strategy not in ("smart", "round_robin", "manual_rules"):
+        strategy = "smart"
+    lr_raw = cfg.get("language_routing_v1")
+    language_routing: dict[str, list[str]] = {}
+    if isinstance(lr_raw, dict):
+        for lk, ids in lr_raw.items():
+            if isinstance(ids, list):
+                language_routing[str(lk)] = [str(u) for u in ids if str(u).strip()]
+
+    return LeadDistributionOut(
+        mode=mode,  # type: ignore[arg-type]
+        strategy=strategy,  # type: ignore[arg-type]
+        criteria_order=list(cfg.get("criteria_order") or []),
+        max_leads_per_person=int(cfg.get("max_leads_per_person") or 10),
+        only_active_employees=bool(cfg.get("only_active_employees", True)),
+        preview_language=str(cfg.get("preview_language") or "pl"),
+        language_routing_v1=language_routing,
+        assignment_detail_lines=list(snap.get("assignment_detail_lines") or []),
+        rules_summary_lines=list(snap.get("rules_summary_lines") or []),
+        next_preview=LeadDistributionNextPreview(**np) if isinstance(np, dict) else None,
+        team=[LeadDistributionTeamMemberOut(**x) for x in (snap.get("team") or [])],
+        flow_steps=list(snap.get("flow_steps") or []),
+        alerts=[LeadDistributionAlert(**x) for x in (snap.get("alerts") or [])],
+        stats=LeadDistributionStats(**(snap.get("stats") or {})),
+        feature_gate=LeadDistributionFeatureGate(**fg),
+    )
+
+
+@router.get("/distribution", response_model=LeadDistributionOut)
+async def get_lead_distribution(
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor, Role.recruiter)),
+):
+    db, tenant_uuid = db_tenant
+    snap = await build_distribution_snapshot(db, tenant_id=str(tenant_uuid))
+    return _distribution_response(snap)
+
+
+@router.patch("/distribution", response_model=LeadDistributionOut)
+async def patch_lead_distribution(
+    payload: LeadDistributionPatch,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.supervisor)),
+):
+    db, tenant_uuid = db_tenant
+    tid = str(tenant_uuid)
+    updates = payload.model_dump(exclude_unset=True)
+    await patch_distribution_settings(db, tenant_id=tid, patch=updates)
+    await db.commit()
+    try:
+        await log_activity(
+            db,
+            tenant_id=tid,
+            actor_id=str(current_user.sub or "").strip() or None,
+            action="lead_distribution.updated",
+            target_type="tenant",
+            target_id=tid,
+            payload={"fields": sorted(updates.keys())},
+        )
+        await db.commit()
+    except Exception:
+        pass
+    snap = await build_distribution_snapshot(db, tenant_id=tid)
+    return _distribution_response(snap)
+
+
+@router.get("/stage-health", response_model=LeadStageHealthResponse)
+async def lead_stage_health_endpoint(
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+) -> LeadStageHealthResponse:
+    db, tenant_uuid = db_tenant
+    return await service.lead_stage_health_snapshot(
+        db,
+        tenant_id=str(tenant_uuid),
+        own_company_id=own_company_id,
+    )
+
+
+@router.get("/conversion-funnel", response_model=LeadConversionFunnelResponse)
+async def lead_conversion_funnel_endpoint(
+    funnel_source: str | None = Query(None, alias="source", max_length=64),
+    funnel_vacancy_id: str | None = Query(None, alias="vacancy_id", max_length=36),
+    funnel_funnel_id: str | None = Query(None, alias="funnel_id", max_length=36),
+    funnel_assignee_user_id: str | None = Query(None, alias="assignee_user_id", max_length=36),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+) -> LeadConversionFunnelResponse:
+    db, tenant_uuid = db_tenant
+    tid = str(tenant_uuid)
+    sp = service.ConversionFunnelSliceParams.normalize(
+        source=funnel_source,
+        vacancy_id=funnel_vacancy_id,
+        funnel_id=funnel_funnel_id,
+        assignee_user_id=funnel_assignee_user_id,
+    )
+    if sp.any_set():
+        plan = await resolve_tenant_plan_code(db, tid)
+        if not plan_allows_team_tier_features(plan):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "plan_requires_team",
+                    "feature": "leads_conversion_funnel_slices",
+                    "plan": plan,
+                },
+            )
+    if sp.assignee_user_id:
+        row = await db.execute(
+            select(User.id).where(
+                User.id == sp.assignee_user_id,
+                User.tenant_id == tid,
+                User.is_active.is_(True),
+            ).limit(1)
+        )
+        if row.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="assignee_user_id is not an active user in this tenant",
+            )
+    return await service.lead_conversion_funnel_snapshot(
+        db,
+        tenant_id=tid,
+        own_company_id=own_company_id,
+        slice_params=sp,
+    )
+
+
+@router.get("/{lead_id}", response_model=LeadOut)
+async def get_lead_detail_endpoint(
+    lead_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
+) -> LeadOut:
+    """Full lead row (same shape as GET /leads items) for workspace / deep links."""
+    db, tenant_uuid = db_tenant
+    res = await service.list_leads(
+        db,
+        tenant_id=str(tenant_uuid),
+        own_company_id=own_company_id,
+        only_lead_id=lead_id,
+        limit=1,
+        offset=0,
+    )
+    if not res.items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+    return res.items[0]
 
 
 @router.patch("/{lead_id}", response_model=LeadOut)
@@ -84,80 +290,92 @@ async def update_lead_stage_endpoint(
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
-    # Next action enforcement (tenant setting).
-    # settings.next_action_enforcement_v1 = { mode: 'off' | 'warn' | 'block' }
-    try:
-        row = (await db.execute(select(Tenant.settings).where(Tenant.id == tenant_id_str).limit(1))).first()
-        settings_payload = row[0] if row else {}
-        settings_dict = settings_payload if isinstance(settings_payload, dict) else {}
-    except Exception:
-        settings_dict = {}
-    enforcement = settings_dict.get("next_action_enforcement_v1") if isinstance(settings_dict, dict) else None
-    enforcement_mode = ""
-    if isinstance(enforcement, dict):
-        enforcement_mode = str(enforcement.get("mode") or "").strip().lower()
-    elif isinstance(enforcement, str):
-        enforcement_mode = enforcement.strip().lower()
-    if enforcement_mode in {"warn", "block"} and payload.stage is not None:
-        active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
-        has_active = (
-            await db.execute(
-                select(
-                    exists().where(
-                        Reminder.tenant_id == tenant_id_str,
-                        Reminder.entity_type == "lead",
-                        Reminder.entity_id == str(lead.id),
-                        Reminder.status.in_(active_statuses),
-                    )
-                )
+    enforcement_mode = await next_action_enforcement.get_next_action_enforcement_mode(db, tenant_id=tenant_id_str)
+    actor_for_enforcement = str(current_user.sub or "").strip() or None
+    prev_stage = getattr(lead, "stage", None)
+
+    if "assignment_locked" in payload.model_fields_set:
+        norm = dict(lead.normalized or {})
+        lock = norm.get("assignment_lock_v1")
+        if not isinstance(lock, dict):
+            lock = {}
+        lock["locked"] = bool(payload.assignment_locked)
+        lock["updated_at"] = datetime.now(timezone.utc).isoformat()
+        if actor_for_enforcement:
+            lock["updated_by"] = actor_for_enforcement
+        norm["assignment_lock_v1"] = lock
+        lead.normalized = norm
+        await db.flush()
+
+    stage_changed = False
+    if "stage" in payload.model_fields_set:
+        stage_will_change = str(payload.stage or "") != str(prev_stage or "")
+        if enforcement_mode in {"warn", "block"} and stage_will_change:
+            has_active = await next_action_enforcement.lead_has_active_next_action_reminder(
+                db, tenant_id=tenant_id_str, lead_id=str(lead.id)
             )
-        ).scalar_one()
-        if not has_active:
-            # Warn: log an ops signal, but allow. Block: stop transition.
-            try:
-                await log_activity(
+            if not has_active:
+                await next_action_enforcement.maybe_log_missing_next_action(
                     db,
                     tenant_id=tenant_id_str,
-                    actor_id=str(current_user.sub or "").strip() or None,
-                    action="analytics.next_action.missing",
-                    target_type="lead",
-                    target_id=str(lead.id),
-                    payload={
-                        "entity_type": "lead",
-                        "entity_id": str(lead.id),
-                        "attempted_stage": payload.stage,
-                        "mode": enforcement_mode,
-                    },
+                    actor_id=actor_for_enforcement,
+                    lead_id=str(lead.id),
+                    attempted_stage=payload.stage,
+                    mode=enforcement_mode,
                 )
-            except Exception:
-                pass
-            if enforcement_mode == "block":
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Next action required: create an activity before changing stage.",
-                )
-    prev_stage = getattr(lead, "stage", None)
-    await crud.update_lead_stage(db, lead, stage=payload.stage)
-    # Audit trail for stage changes (used for "stuck in stage" detection).
-    if payload.stage is not None and str(payload.stage) != str(prev_stage or ""):
-        try:
-            await log_activity(
-                db,
-                tenant_id=tenant_id_str,
-                actor_id=str(current_user.sub or "").strip() or None,
-                action="lead.stage_changed",
-                target_type="lead",
-                target_id=str(lead.id),
-                payload={
-                    "lead_id": str(lead.id),
-                    "from_stage": prev_stage,
-                    "to_stage": payload.stage,
-                },
-            )
-        except Exception:
-            pass
+                if enforcement_mode == "block":
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Next action required: create an activity before changing stage.",
+                    )
+        await crud.update_lead_stage(db, lead, stage=payload.stage)
+        stage_changed = str(getattr(lead, "stage", None) or "") != str(prev_stage or "")
+
+    lost_reason_code: str | None = None
+    lost_reason_note: str | None = None
+    if stage_changed and str(payload.stage or "") == "lost":
+        lost_reason_code = payload.lost_reason_code
+        lost_reason_note = payload.lost_reason_note
+
+    if stage_changed:
+        norm = dict(lead.normalized or {})
+        ns = str(payload.stage or "")
+        ps = str(prev_stage or "")
+        if ns == "lost":
+            lr_block: Dict[str, Any] = {"at": datetime.now(timezone.utc).isoformat()}
+            if actor_for_enforcement:
+                lr_block["set_by"] = actor_for_enforcement
+            if lost_reason_code:
+                lr_block["code"] = lost_reason_code
+            if lost_reason_note:
+                lr_block["note"] = lost_reason_note
+            norm["lead_lost_reason_v1"] = lr_block
+            lead.normalized = norm
+        elif ps == "lost":
+            norm.pop("lead_lost_reason_v1", None)
+            lead.normalized = norm
+        await db.flush()
+        await pipeline_hooks.record_lead_stage_change(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead,
+            from_stage=prev_stage,
+            to_stage=payload.stage,
+            actor_id=str(current_user.sub or "").strip() or None,
+            lost_reason_code=lost_reason_code,
+            lost_reason_note=lost_reason_note,
+        )
     await db.commit()
     await db.refresh(lead)
+    if stage_changed:
+        await pipeline_hooks.run_lead_stage_change_automations(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead,
+            from_stage=prev_stage,
+            to_stage=payload.stage,
+            actor_id=str(current_user.sub or "").strip() or None,
+        )
     business_type = await service._load_tenant_business_type(db, tenant_id_str)
     outcome_entity_type, outcome_entity_id, outcome_entity_name = service._build_lead_outcome(
         business_type=business_type,
@@ -182,6 +400,12 @@ async def update_lead_stage_endpoint(
         )
         await db.commit()
 
+    sc_map = await batch_lead_stage_contracts(db, tenant_id=tenant_id_str, leads=[lead])
+    stage_contract_out = sc_map.get(str(lead.id))
+    cf_maps = await lead_custom_fields.batch_lead_custom_field_maps(
+        db, tenant_id=tenant_id_str, lead_ids=[str(lead.id)]
+    )
+
     return LeadOut(
         id=PyUUID(lead.id),
         tenant_id=PyUUID(lead.tenant_id),
@@ -195,6 +419,8 @@ async def update_lead_stage_endpoint(
         ad_id=lead.ad_id,
         status=lead.status,  # type: ignore[arg-type]
         stage=lead.stage,
+        funnel_id=PyUUID(lead.funnel_id) if lead.funnel_id else None,
+        stage_contract=stage_contract_out,
         candidate_id=PyUUID(lead.candidate_id) if lead.candidate_id else None,
         candidate_name=None,
         outcome_entity_type=outcome_entity_type,
@@ -205,8 +431,89 @@ async def update_lead_stage_endpoint(
         error=lead.error,
         payload=lead.payload or {},
         normalized=lead.normalized,
+        custom_fields=cf_maps.get(str(lead.id), {}),
         created_at=lead.created_at,
         last_routed_at=lead.last_routed_at,
+    )
+
+
+@router.post("/bulk/auto-process-queue", response_model=BulkAutoProcessQueueResponse)
+async def bulk_auto_process_meta_queue_endpoint(
+    body: BulkAutoProcessQueueRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+) -> BulkAutoProcessQueueResponse:
+    """
+    §2.3 Auto-fix: run Meta pipeline for leads in needs_routing / failed (up to max_items).
+    Gated to Team-tier plans (same set as automation / distribution upsell).
+    """
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    plan = await resolve_tenant_plan_code(db, tenant_id_str)
+    if not plan_allows_team_tier_features(plan):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "plan_requires_team",
+                "feature": "leads_bulk_auto_process_queue",
+                "plan": plan,
+            },
+        )
+    raw = await service.bulk_auto_process_meta_lead_queue(
+        db,
+        tenant_id=tenant_id_str,
+        own_company_id=own_company_id or None,
+        max_items=body.max_items,
+    )
+    items = [BulkAutoProcessQueueItemOut(**row) for row in raw["results"]]
+    return BulkAutoProcessQueueResponse(
+        results=items,
+        attempted=int(raw["attempted"]),
+        succeeded=int(raw["succeeded"]),
+        failed=int(raw["failed"]),
+    )
+
+
+@router.post("/bulk/process-new-queue", response_model=BulkAutoProcessQueueResponse)
+async def bulk_process_new_meta_queue_endpoint(
+    body: BulkAutoProcessQueueRequest,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+) -> BulkAutoProcessQueueResponse:
+    """
+    §2.10 NBA: batch-run Meta pipeline for leads still in status=new (up to max_items, FIFO by created_at).
+    Same Team-tier gate as /bulk/auto-process-queue.
+    """
+    db, tenant_id = db_tenant
+    tenant_id_str = str(tenant_id)
+    plan = await resolve_tenant_plan_code(db, tenant_id_str)
+    if not plan_allows_team_tier_features(plan):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "plan_requires_team",
+                "feature": "leads_bulk_process_new_queue",
+                "plan": plan,
+            },
+        )
+    raw = await service.bulk_auto_process_meta_lead_queue(
+        db,
+        tenant_id=tenant_id_str,
+        own_company_id=own_company_id or None,
+        max_items=body.max_items,
+        statuses=("new",),
+        prefer_oldest_first=True,
+    )
+    items = [BulkAutoProcessQueueItemOut(**row) for row in raw["results"]]
+    return BulkAutoProcessQueueResponse(
+        results=items,
+        attempted=int(raw["attempted"]),
+        succeeded=int(raw["succeeded"]),
+        failed=int(raw["failed"]),
     )
 
 
@@ -222,6 +529,43 @@ async def bulk_update_leads_endpoint(
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     lead_ids = [str(item) for item in payload.lead_ids]
+    actor_id = str(current_user.sub or "").strip() or None
+
+    stage_transitions: list[tuple[str, Any]] = []
+    if payload.stage is not None and lead_ids:
+        prev_rows = await db.execute(
+            select(Lead.id, Lead.stage).where(
+                Lead.tenant_id == tenant_id_str,
+                Lead.id.in_(lead_ids),
+            )
+        )
+        new_stage_s = str(payload.stage)
+        for row in prev_rows.all():
+            lid, prev = row[0], row[1]
+            if str(prev or "") != new_stage_s:
+                stage_transitions.append((str(lid), prev))
+
+    enforcement_mode = await next_action_enforcement.get_next_action_enforcement_mode(db, tenant_id=tenant_id_str)
+    if enforcement_mode in {"warn", "block"} and payload.stage is not None and stage_transitions:
+        for lid, _prev in stage_transitions:
+            if await next_action_enforcement.lead_has_active_next_action_reminder(
+                db, tenant_id=tenant_id_str, lead_id=lid
+            ):
+                continue
+            await next_action_enforcement.maybe_log_missing_next_action(
+                db,
+                tenant_id=tenant_id_str,
+                actor_id=actor_id,
+                lead_id=lid,
+                attempted_stage=payload.stage,
+                mode=enforcement_mode,
+            )
+            if enforcement_mode == "block":
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Next action required: create an activity before changing stage (one or more selected leads).",
+                )
+
     updated = await crud.bulk_update_leads(
         db,
         tenant_id=tenant_id_str,
@@ -229,11 +573,50 @@ async def bulk_update_leads_endpoint(
         stage=payload.stage,
         status=payload.status,
     )
+
+    lost_rc: str | None = None
+    lost_rn: str | None = None
+    if payload.stage is not None and str(payload.stage) == "lost":
+        lost_rc = payload.lost_reason_code
+        lost_rn = payload.lost_reason_note
+
+    for lid, prev_stage in stage_transitions:
+        lead_row = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lid)
+        if not lead_row:
+            continue
+        if payload.stage is not None:
+            ns = str(payload.stage)
+            ps = str(prev_stage or "")
+            norm = dict(lead_row.normalized or {})
+            if ns == "lost":
+                lr_block: Dict[str, Any] = {"at": datetime.now(timezone.utc).isoformat()}
+                if actor_id:
+                    lr_block["set_by"] = actor_id
+                if lost_rc:
+                    lr_block["code"] = lost_rc
+                if lost_rn:
+                    lr_block["note"] = lost_rn
+                norm["lead_lost_reason_v1"] = lr_block
+                lead_row.normalized = norm
+            elif ps == "lost":
+                norm.pop("lead_lost_reason_v1", None)
+                lead_row.normalized = norm
+            await db.flush()
+        await pipeline_hooks.record_lead_stage_change(
+            db,
+            tenant_id=tenant_id_str,
+            lead=lead_row,
+            from_stage=prev_stage,
+            to_stage=payload.stage,
+            actor_id=actor_id,
+            lost_reason_code=lost_rc if str(payload.stage or "") == "lost" else None,
+            lost_reason_note=lost_rn if str(payload.stage or "") == "lost" else None,
+        )
     try:
         await log_activity(
             db,
             tenant_id=tenant_id_str,
-            actor_id=str(current_user.sub or "").strip() or None,
+            actor_id=actor_id,
             action="lead.bulk_update",
             target_type="lead",
             target_id="bulk",
@@ -242,11 +625,31 @@ async def bulk_update_leads_endpoint(
                 "updated": updated,
                 "stage": payload.stage,
                 "status": payload.status,
+                "stage_hook_count": len(stage_transitions),
+                **(
+                    {
+                        "lost_reason_code": lost_rc,
+                        "lost_reason_note": lost_rn,
+                    }
+                    if str(payload.stage or "") == "lost"
+                    else {}
+                ),
             },
         )
     except Exception:
         pass
     await db.commit()
+    for lid, prev_stage in stage_transitions:
+        lead_row = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lid)
+        if lead_row and payload.stage is not None:
+            await pipeline_hooks.run_lead_stage_change_automations(
+                db,
+                tenant_id=tenant_id_str,
+                lead=lead_row,
+                from_stage=prev_stage,
+                to_stage=payload.stage,
+                actor_id=actor_id,
+            )
     return BulkLeadUpdateResponse(updated=updated)
 
 
@@ -373,7 +776,7 @@ async def process_lead_endpoint(
             force_existing=force_existing,
         )
     except service.LeadProcessingError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise service.lead_processing_error_as_http(exc) from exc
 
     try:
         await log_activity(
@@ -448,7 +851,7 @@ async def ingest_meta_lead(
             payload=payload,
         )
     except service.LeadProcessingError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise service.lead_processing_error_as_http(exc) from exc
 
     await admin_service.mark_signature_status(db, tenant_id, signature_status)
     await db.commit()

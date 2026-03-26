@@ -8,6 +8,7 @@ import type { AdditionalService, Company, Invoice } from '../api/types'
 import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 type InvoiceItemDraft = {
   line_no: number
@@ -712,10 +713,10 @@ export default function InvoiceCreatePage() {
           recipient_email: normalizedRecipientEmail || undefined,
         })
       }
-      navigate(`/app/invoices/${invoice.id}`)
+      navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}`)
     } catch (err: any) {
       if (submitMode === 'save_and_send' && persistedInvoiceId) {
-        navigate(`/app/invoices/${persistedInvoiceId}?send_error=1`)
+        navigate(`${CRM_APP_PATHS.invoices}/${persistedInvoiceId}?send_error=1`)
         return
       }
       setError(
@@ -731,7 +732,11 @@ export default function InvoiceCreatePage() {
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
       <div className="space-y-2">
-        <button type="button" className="text-sm text-brand-700 hover:underline" onClick={() => navigate('/app/invoices')}>
+        <button
+          type="button"
+          className="text-sm text-brand-700 hover:underline"
+          onClick={() => navigate(CRM_APP_PATHS.invoices)}
+        >
           {t('app.invoices.back', { defaultValue: 'Back to invoices' })}
         </button>
         <h1 className="text-2xl font-bold text-slate-900">
@@ -891,7 +896,7 @@ export default function InvoiceCreatePage() {
                   <button
                     type="button"
                     className="font-semibold underline"
-                    onClick={() => navigate('/app/companies?role=operating&section=billing')}
+                    onClick={() => navigate(CRM_APP_PATHS.companiesOperatingBilling)}
                   >
                     {t('app.companies.my_company.open_billing', { defaultValue: 'Open billing' })}
                   </button>
@@ -1193,7 +1198,7 @@ export default function InvoiceCreatePage() {
                 ? t('common.loading', { defaultValue: 'Loading...' })
                 : t('app.invoices.save_and_send', { defaultValue: 'Save and send' })}
             </button>
-            <button type="button" className="btn-secondary" onClick={() => navigate('/app/invoices')}>
+            <button type="button" className="btn-secondary" onClick={() => navigate(CRM_APP_PATHS.invoices)}>
               {t('common.actions.cancel', { defaultValue: 'Cancel' })}
             </button>
           </div>

@@ -1,22 +1,21 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript'
 
+import {
+  findArrayLiteral,
+  getPropertyName,
+  loadSource,
+  parseCrmAppPathsMap,
+  readString,
+  resolvePathToAppSegment,
+} from './crm-paths-ast.mjs'
+
 const routesFile = path.join(process.cwd(), 'src', 'app', 'routes.tsx')
-const source = fs.readFileSync(routesFile, 'utf-8')
-const sf = ts.createSourceFile(routesFile, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+const crmPathsFile = path.join(process.cwd(), 'src', 'app', 'crmAppPaths.generated.ts')
 
-function getPropertyName(node) {
-  if (!node) return null
-  if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text
-  return null
-}
-
-function readString(node) {
-  if (!node) return null
-  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
-  return null
-}
+const routesSf = loadSource(routesFile, ts.ScriptKind.TSX)
+const crmSf = loadSource(crmPathsFile, ts.ScriptKind.TS)
+const crmPaths = parseCrmAppPathsMap(crmSf)
 
 function readPermission(node) {
   if (!node) return []
@@ -25,19 +24,6 @@ function readPermission(node) {
     return node.elements.map((el) => readString(el)).filter(Boolean)
   }
   return []
-}
-
-function findArrayLiteral(variableName) {
-  for (const stmt of sf.statements) {
-    if (!ts.isVariableStatement(stmt)) continue
-    for (const decl of stmt.declarationList.declarations) {
-      if (!ts.isIdentifier(decl.name) || decl.name.text !== variableName) continue
-      if (decl.initializer && ts.isArrayLiteralExpression(decl.initializer)) {
-        return decl.initializer
-      }
-    }
-  }
-  return null
 }
 
 function collectObjects(arrayNode) {
@@ -51,15 +37,19 @@ function collectObjects(arrayNode) {
       const name = getPropertyName(prop.name)
       if (!name) continue
       if (name === 'permission') row.permission = readPermission(prop.initializer)
-      else if (name === 'path' || name === 'key' || name === 'action') row[name] = readString(prop.initializer)
+      else if (name === 'path') {
+        row.path = resolvePathToAppSegment(prop.initializer, crmPaths)
+      } else if (name === 'key' || name === 'action') {
+        row[name] = readString(prop.initializer)
+      }
     }
     out.push(row)
   }
   return out
 }
 
-const navItems = collectObjects(findArrayLiteral('NAV_ITEMS'))
-const appRoutes = collectObjects(findArrayLiteral('APP_ROUTES'))
+const navItems = collectObjects(findArrayLiteral(routesSf, 'NAV_ITEMS'))
+const appRoutes = collectObjects(findArrayLiteral(routesSf, 'APP_ROUTES'))
 
 const appRouteByPath = new Map(appRoutes.map((r) => [r.path, r]))
 const errors = []
@@ -67,15 +57,10 @@ const warnings = []
 
 for (const nav of navItems) {
   if (!nav.path || nav.action === 'logout') continue
-  if (!nav.path.startsWith('/app/')) {
-    warnings.push(`[nav:${nav.key}] non-app path "${nav.path}" skipped`)
-    continue
-  }
 
-  const appPath = nav.path.slice('/app/'.length)
-  const route = appRouteByPath.get(appPath)
+  const route = appRouteByPath.get(nav.path)
   if (!route) {
-    errors.push(`[nav:${nav.key}] path "${nav.path}" has no matching APP_ROUTES entry ("${appPath}")`)
+    errors.push(`[nav:${nav.key}] path segment "${nav.path}" has no matching APP_ROUTES entry`)
     continue
   }
 
@@ -84,14 +69,14 @@ for (const nav of navItems) {
 
   if (navPerms.size === 0 && routePerms.size > 0) {
     errors.push(
-      `[nav:${nav.key}] "${nav.path}" has no nav permission, but route requires [${[...routePerms].join(', ')}]`,
+      `[nav:${nav.key}] "/app/${nav.path}" has no nav permission, but route requires [${[...routePerms].join(', ')}]`,
     )
     continue
   }
 
   if (navPerms.size > 0 && routePerms.size === 0) {
     warnings.push(
-      `[nav:${nav.key}] "${nav.path}" has nav permission [${[...navPerms].join(', ')}], but route is unguarded`,
+      `[nav:${nav.key}] "/app/${nav.path}" has nav permission [${[...navPerms].join(', ')}], but route is unguarded`,
     )
     continue
   }
@@ -100,7 +85,7 @@ for (const nav of navItems) {
     const overlap = [...navPerms].filter((perm) => routePerms.has(perm))
     if (overlap.length === 0) {
       errors.push(
-        `[nav:${nav.key}] "${nav.path}" permission mismatch: nav=[${[...navPerms].join(', ')}] route=[${[...routePerms].join(', ')}]`,
+        `[nav:${nav.key}] "/app/${nav.path}" permission mismatch: nav=[${[...navPerms].join(', ')}] route=[${[...routePerms].join(', ')}]`,
       )
     }
   }

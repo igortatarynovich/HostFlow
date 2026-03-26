@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import sqlalchemy as sa
 from sqlalchemy import distinct, exists, func, select
@@ -20,10 +20,12 @@ from backend.app.models.catalogs import (
     user_short_expr,
 )
 from backend.app.models.invite import UserInvite
+from backend.app.models.tenant import TenantLicense
 from backend.app.models.session import UserSession
 from backend.app.models.user import Role, User
 from backend.app.services.audit import log_activity
 from backend.app.services.auth import generate_token, hash_token, revoke_refresh_tokens
+from backend.app.services.tenant_limits import get_tenant_limits
 
 user_memberships = sa.table(
     "user_memberships",
@@ -82,8 +84,8 @@ DEFAULT_SAVED_VIEWS = {
 
 
 class UserServiceError(Exception):
-    def __init__(self, detail: str, status_code: int = 400):
-        super().__init__(detail)
+    def __init__(self, detail: Union[str, Dict[str, Any]], status_code: int = 400):
+        super().__init__(detail if isinstance(detail, str) else str(detail))
         self.detail = detail
         self.status_code = status_code
 
@@ -97,6 +99,196 @@ def _normalize_role(role: str) -> str:
     if not value:
         raise UserServiceError("Unsupported role", 422)
     return value
+
+
+async def _tenant_row_has_license(db: AsyncSession, tenant_id: str) -> bool:
+    stmt = select(TenantLicense.id).where(TenantLicense.tenant_id == tenant_id).limit(1)
+    return (await db.execute(stmt)).scalar_one_or_none() is not None
+
+
+def _quota_attr_for_tenant_role(role: str) -> Optional[str]:
+    mapping = {
+        Role.recruiter.value: "max_recruiters",
+        Role.supervisor.value: "max_supervisors",
+        Role.client_manager.value: "max_client_managers",
+        Role.client_processor.value: "max_client_managers",
+        Role.viewer.value: "max_viewers",
+    }
+    return mapping.get(role)
+
+
+async def _get_membership_role_for_tenant(
+    db: AsyncSession, tenant_id: str, user_id: str
+) -> Optional[str]:
+    stmt = (
+        select(user_memberships.c.role)
+        .where(user_memberships.c.tenant_id == tenant_id)
+        .where(user_memberships.c.user_id == user_id)
+        .limit(1)
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def _count_active_users_in_tenant_role(
+    db: AsyncSession,
+    tenant_id: str,
+    role: str,
+    *,
+    exclude_user_id: Optional[str] = None,
+) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(user_memberships)
+        .join(User, User.id == user_memberships.c.user_id)
+        .where(user_memberships.c.tenant_id == tenant_id)
+        .where(user_memberships.c.role == role)
+        .where(User.is_active.is_(True))
+        .where(User.deleted_at.is_(None))
+    )
+    if exclude_user_id:
+        stmt = stmt.where(User.id != exclude_user_id)
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+async def _count_pending_invites_for_role(
+    db: AsyncSession,
+    tenant_id: str,
+    role: str,
+    *,
+    exclude_invite_email: Optional[str] = None,
+) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(UserInvite)
+        .where(UserInvite.tenant_id == tenant_id)
+        .where(UserInvite.role == role)
+        .where(UserInvite.revoked_at.is_(None))
+        .where(UserInvite.accepted_at.is_(None))
+    )
+    if exclude_invite_email:
+        em = exclude_invite_email.strip().lower()
+        stmt = stmt.where(func.lower(UserInvite.email) != em)
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+async def _ensure_role_seat_available_for_invite_or_user_add(
+    db: AsyncSession,
+    tenant_id: str,
+    role: str,
+    *,
+    exclude_invite_email: Optional[str] = None,
+) -> None:
+    """Hard seat gate when TenantLicense exists (§2.2 / §2.16)."""
+    if not await _tenant_row_has_license(db, tenant_id):
+        return
+    attr = _quota_attr_for_tenant_role(role)
+    if not attr:
+        return
+    limits = await get_tenant_limits(db, tenant_id)
+    limit = int(getattr(limits, attr))
+    if limit <= 0:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": role,
+                "limit": limit,
+                "current": 0,
+            },
+            403,
+        )
+    active = await _count_active_users_in_tenant_role(db, tenant_id, role)
+    pending = await _count_pending_invites_for_role(
+        db, tenant_id, role, exclude_invite_email=exclude_invite_email
+    )
+    total = active + pending
+    if total >= limit:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": role,
+                "limit": limit,
+                "current": total,
+            },
+            403,
+        )
+
+
+async def _ensure_role_change_respects_seat_cap(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    user_id: str,
+    old_role: Optional[str],
+    new_role: str,
+) -> None:
+    if old_role == new_role:
+        return
+    if not await _tenant_row_has_license(db, tenant_id):
+        return
+    attr = _quota_attr_for_tenant_role(new_role)
+    if not attr:
+        return
+    limits = await get_tenant_limits(db, tenant_id)
+    limit = int(getattr(limits, attr))
+    if limit <= 0:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": new_role,
+                "limit": limit,
+                "current": 0,
+            },
+            403,
+        )
+    active = await _count_active_users_in_tenant_role(
+        db, tenant_id, new_role, exclude_user_id=user_id
+    )
+    pending = await _count_pending_invites_for_role(db, tenant_id, new_role)
+    if active + pending >= limit:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": new_role,
+                "limit": limit,
+                "current": active + pending,
+            },
+            403,
+        )
+
+
+async def _ensure_invite_accept_seat_still_valid(
+    db: AsyncSession, tenant_id: str, role: str
+) -> None:
+    """Blocks accept if license was tightened below current commitments."""
+    if not await _tenant_row_has_license(db, tenant_id):
+        return
+    attr = _quota_attr_for_tenant_role(role)
+    if not attr:
+        return
+    limits = await get_tenant_limits(db, tenant_id)
+    limit = int(getattr(limits, attr))
+    if limit <= 0:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": role,
+                "limit": limit,
+                "current": 0,
+            },
+            403,
+        )
+    active = await _count_active_users_in_tenant_role(db, tenant_id, role)
+    pending = await _count_pending_invites_for_role(db, tenant_id, role)
+    if active + pending > limit:
+        raise UserServiceError(
+            {
+                "code": "seat_limit_reached",
+                "role": role,
+                "limit": limit,
+                "current": active + pending,
+            },
+            403,
+        )
 
 
 def _apply_global_role(user: User, tenant_role: str) -> None:
@@ -451,6 +643,8 @@ async def create_invite(
     normalized_email = email.strip().lower()
     company_ids = company_ids or []
 
+    await _ensure_role_seat_available_for_invite_or_user_add(db, tenant_id, normalized_role)
+
     existing_invite_stmt = (
         select(UserInvite)
         .where(UserInvite.tenant_id == tenant_id)
@@ -569,6 +763,23 @@ async def create_user(
     stmt = select(User).where(func.lower(User.email) == normalized_email)
     user = (await db.execute(stmt)).scalar_one_or_none()
 
+    prev_membership: Optional[str] = None
+    if user:
+        prev_membership = await _get_membership_role_for_tenant(db, tenant_id, user.id)
+    idempotent_active = bool(
+        user
+        and user.tenant_id == tenant_id
+        and user.is_active
+        and prev_membership == normalized_role
+    )
+    if not idempotent_active:
+        await _ensure_role_seat_available_for_invite_or_user_add(
+            db,
+            tenant_id,
+            normalized_role,
+            exclude_invite_email=normalized_email,
+        )
+
     generated_password: Optional[str] = None
     supervisor_ref: Optional[User] = None
 
@@ -666,6 +877,14 @@ async def change_user_role(
 ) -> Dict[str, Any]:
     normalized_role = _normalize_role(role)
     user = await _load_user(db, tenant_id=tenant_id, user_id=user_id)
+    prev_membership = await _get_membership_role_for_tenant(db, tenant_id, user_id)
+    await _ensure_role_change_respects_seat_cap(
+        db,
+        tenant_id,
+        user_id=user_id,
+        old_role=prev_membership,
+        new_role=normalized_role,
+    )
 
     _apply_global_role(user, normalized_role)
     user.updated_at = _now()
@@ -1262,6 +1481,7 @@ async def accept_invite(
             raise UserServiceError("Invite expired", 410)
 
     tenant_id = invite.tenant_id
+    await _ensure_invite_accept_seat_still_valid(db, tenant_id, invite.role)
     supervisor_candidate_id = invite.supervisor_id
 
     user: User | None = None

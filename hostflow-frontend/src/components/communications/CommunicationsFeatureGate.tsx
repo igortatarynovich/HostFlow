@@ -2,6 +2,7 @@ import type { PropsWithChildren } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useCommunicationsAccess, type CommunicationsFeatureKey } from '../../hooks/useCommunicationsAccess'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 type Props = PropsWithChildren<{
   feature?: CommunicationsFeatureKey
@@ -12,7 +13,7 @@ type Props = PropsWithChildren<{
 export default function CommunicationsFeatureGate({
   feature,
   anyOf,
-  fallbackPath = '/app/overview',
+  fallbackPath = CRM_APP_PATHS.overview,
   children,
 }: Props) {
   const { t } = useI18n()

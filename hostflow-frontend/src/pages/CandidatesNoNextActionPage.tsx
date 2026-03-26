@@ -5,6 +5,7 @@ import { IconRefresh, IconSearch } from '@tabler/icons-react'
 import { createReminder, listCandidatesNoNextAction } from '../api/client'
 import { useI18n } from '../i18n'
 import { useToast } from '../components/Toast'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 type NoNextActionCandidate = {
   id: string
@@ -34,7 +35,7 @@ export default function CandidatesNoNextActionPage() {
       const list = Array.isArray(res?.items) ? (res.items as NoNextActionCandidate[]) : []
       setItems(list)
     } catch (err: any) {
-      setError(err?.response?.data?.detail ?? err?.message ?? t('common.errors.unknown', { defaultValue: 'Unknown error' }))
+      setError(err?.response?.data?.detail ?? err?.message ?? t('common.errors.unknown'))
       setItems([])
     } finally {
       setLoading(false)
@@ -61,7 +62,7 @@ export default function CandidatesNoNextActionPage() {
         const due = new Date(Date.now() + 24 * 60 * 60 * 1000)
         const remindAt = new Date(due.getTime() - 15 * 60 * 1000)
         await createReminder({
-          title: t('app.candidates.no_next_action.default_title', { defaultValue: 'Follow up' }),
+          title: t('app.candidates.no_next_action.default_title'),
           description: '',
           type: 'custom',
           entity_type: 'candidate',
@@ -70,10 +71,10 @@ export default function CandidatesNoNextActionPage() {
           remind_at: remindAt.toISOString(),
           priority: 'normal',
         })
-        notify({ title: t('app.reminders.messages.created', { defaultValue: 'Reminder created' }), variant: 'success' })
+        notify({ title: t('app.reminders.messages.created'), variant: 'success' })
         await load()
       } catch (err: any) {
-        const detail = err?.response?.data?.detail ?? err?.message ?? t('app.reminders.errors.create', { defaultValue: 'Failed to create reminder' })
+        const detail = err?.response?.data?.detail ?? err?.message ?? t('app.reminders.errors.create')
         notify({ title: typeof detail === 'string' ? detail : t('app.reminders.errors.create'), variant: 'error' })
       } finally {
         setCreatingForId(null)
@@ -88,15 +89,15 @@ export default function CandidatesNoNextActionPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">
-              {t('app.candidates.no_next_action.title', { defaultValue: 'No next action' })}
+              {t('app.candidates.no_next_action.title')}
             </h1>
             <p className="text-xs text-slate-500">
-              {t('app.candidates.no_next_action.subtitle', { defaultValue: 'Candidates without active reminders (next action).' })}
+              {t('app.candidates.no_next_action.subtitle')}
             </p>
           </div>
           <button type="button" className="btn-secondary h-9 rounded-lg px-3 text-xs" onClick={() => void load()} disabled={loading}>
             <IconRefresh size={14} />
-            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            {t('common.actions.refresh')}
           </button>
         </div>
 
@@ -104,13 +105,13 @@ export default function CandidatesNoNextActionPage() {
           <label className="min-w-[260px] text-xs font-medium text-slate-600">
             <span className="mb-1 inline-flex items-center gap-1">
               <IconSearch size={12} />
-              {t('common.search', { defaultValue: 'Search' })}
+              {t('common.search')}
             </span>
             <input
               className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder={t('app.candidates.no_next_action.search_placeholder', { defaultValue: 'Name or ID…' })}
+              placeholder={t('app.candidates.no_next_action.search_placeholder')}
             />
           </label>
         </div>
@@ -122,10 +123,10 @@ export default function CandidatesNoNextActionPage() {
           <table className="table min-w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
-                <th>{t('app.candidates.no_next_action.columns.candidate', { defaultValue: 'Candidate' })}</th>
-                <th>{t('app.candidates.no_next_action.columns.stage', { defaultValue: 'Stage' })}</th>
-                <th>{t('app.candidates.no_next_action.columns.updated', { defaultValue: 'Updated' })}</th>
-                <th className="text-right">{t('common.actions.actions', { defaultValue: 'Actions' })}</th>
+                <th>{t('app.candidates.no_next_action.columns.candidate')}</th>
+                <th>{t('app.candidates.no_next_action.columns.stage')}</th>
+                <th>{t('app.candidates.no_next_action.columns.updated')}</th>
+                <th className="text-right">{t('common.actions.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -138,7 +139,7 @@ export default function CandidatesNoNextActionPage() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-3 py-6 text-center text-slate-500">
-                    {t('app.candidates.no_next_action.empty', { defaultValue: 'All good — every candidate has a next action.' })}
+                    {t('app.candidates.no_next_action.empty')}
                   </td>
                 </tr>
               ) : (
@@ -149,7 +150,10 @@ export default function CandidatesNoNextActionPage() {
                   return (
                     <tr key={c.id} className="hover:bg-slate-50">
                       <td className="text-slate-900">
-                        <Link className="font-medium text-brand-600 hover:text-brand-700 hover:underline" to={`/app/candidates/${c.id}`}>
+                        <Link
+                          className="font-medium text-brand-600 hover:text-brand-700 hover:underline"
+                          to={`${CRM_APP_PATHS.candidates}/${c.id}`}
+                        >
                           {label}
                         </Link>
                         <div className="text-xs text-slate-500">{c.short_id ? `ID ${c.short_id}` : `ID ${c.id.slice(0, 8)}`}</div>
@@ -163,9 +167,7 @@ export default function CandidatesNoNextActionPage() {
                           disabled={creatingForId === c.id}
                           onClick={() => void handleCreateFollowUp(c.id)}
                         >
-                          {creatingForId === c.id
-                            ? t('common.loading', { defaultValue: 'Loading…' })
-                            : t('app.candidates.no_next_action.actions.add_next', { defaultValue: 'Add next action' })}
+                          {creatingForId === c.id ? t('common.loading') : t('app.candidates.no_next_action.actions.add_next')}
                         </button>
                       </td>
                     </tr>

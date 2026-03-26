@@ -146,6 +146,7 @@ export type {
   LeadStatus,
   Lead,
   LeadListResponse,
+  LeadsProcessingModeV1,
   MetaCredentialStatus,
   MetaLeadSettings,
   MetaLeadSettingsPatch,

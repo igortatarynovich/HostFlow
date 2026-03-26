@@ -24,6 +24,7 @@ class UserNotification(Base):
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     event_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    priority: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
     entity_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     entity_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     payload: Mapped[dict | None] = mapped_column(JSONType, nullable=True)

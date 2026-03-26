@@ -1,5 +1,9 @@
 {
   "scripts": {
+    "codegen:crm-app-paths": "python3 scripts/codegen/generate_crm_app_paths.py",
+    "codegen:crm-app-paths:check": "python3 scripts/codegen/generate_crm_app_paths.py --check",
+    "spa-paths:check": "python3 backend/scripts/check_spa_path_literals.py",
+    "paths:qa": "npm run codegen:crm-app-paths:check && npm run spa-paths:check && cd hostflow-frontend && npm run routes:check && npm run activation:check && npm run comm:gates:check && npm run permissions:check",
     "f7:run-record:new": "node scripts/create-f7-run-record.mjs",
     "f7:run-record:apply": "node scripts/create-f7-run-record.mjs --append-ssot --sync-board-status",
     "f7:run-record:upsert": "node scripts/create-f7-run-record.mjs --upsert-ssot --sync-board-status",

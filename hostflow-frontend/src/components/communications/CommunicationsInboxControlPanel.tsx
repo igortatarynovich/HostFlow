@@ -12,6 +12,7 @@ import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 import CommunicationsInboxThreadContextCard from './CommunicationsInboxThreadContextCard'
 import CommunicationsInboxWorkflowCard from './CommunicationsInboxWorkflowCard'
 import CommunicationsThreadEntityLinkForms from './CommunicationsThreadEntityLinkForms'
+import { communicationsThreadPath, CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { formatThreadDateTime } from './CommunicationsThreadWorkArea'
 
 type ThreadModel = ReturnType<typeof useCommunicationsThread>
@@ -73,7 +74,7 @@ export default function CommunicationsInboxControlPanel({
   const isThreadArchived = Boolean(thread.is_archived) && !isThreadDeleted
   const isThreadInboxActive = !thread.is_archived && !isThreadDeleted
 
-  const fallbackTitle = t('app.communications_inbox_center.task_default_title', { defaultValue: 'Follow up on conversation' })
+  const fallbackTitle = t('app.communications_inbox_center.task_default_title')
 
   const [taskTitle, setTaskTitle] = useState(() => defaultTitleFromThread(thread))
   const [taskDescription, setTaskDescription] = useState('')
@@ -111,7 +112,7 @@ export default function CommunicationsInboxControlPanel({
   }, [thread.id, thread.assignee_id])
 
   useEffect(() => {
-    const fb = t('app.communications_inbox_center.task_default_title', { defaultValue: 'Follow up on conversation' })
+    const fb = t('app.communications_inbox_center.task_default_title')
     setTaskTitle(defaultTitleFromThread(thread) || fb)
     setTaskDescription('')
     setTaskDueLocal(defaultDueLocal())
@@ -135,7 +136,7 @@ export default function CommunicationsInboxControlPanel({
     } catch (err: unknown) {
       const fe = getFriendlyErrorInfo(
         err,
-        t('app.communications_inbox_center.assignee_save_failed', { defaultValue: 'Could not update assignee.' }),
+        t('app.communications_inbox_center.assignee_save_failed'),
       )
       setLinkError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
     } finally {
@@ -154,7 +155,7 @@ export default function CommunicationsInboxControlPanel({
     } catch (err: unknown) {
       const fe = getFriendlyErrorInfo(
         err,
-        t('app.communications_inbox_center.folder_error', { defaultValue: 'Could not update thread folder.' }),
+        t('app.communications_inbox_center.folder_error'),
       )
       setFolderError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
     } finally {
@@ -173,7 +174,7 @@ export default function CommunicationsInboxControlPanel({
     if (!title) return
     const due = parseLocalDue(taskDueLocal)
     if (!due) {
-      setTaskError(t('app.communications_inbox_center.task_error_due', { defaultValue: 'Choose a valid due date.' }))
+      setTaskError(t('app.communications_inbox_center.task_error_due'))
       return
     }
     const remindAt = new Date(due.getTime() - REMIND_BEFORE_MS)
@@ -214,7 +215,7 @@ export default function CommunicationsInboxControlPanel({
     } catch (err: unknown) {
       const fe = getFriendlyErrorInfo(
         err,
-        t('app.communications_inbox_center.task_error_create', { defaultValue: 'Could not create task.' }),
+        t('app.communications_inbox_center.task_error_create'),
       )
       setTaskError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
     } finally {
@@ -227,12 +228,10 @@ export default function CommunicationsInboxControlPanel({
       {!compact && (
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('app.communications_inbox_center.control_title', { defaultValue: 'Thread control' })}
+            {t('app.communications_inbox_center.control_title')}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            {t('app.communications_inbox_center.control_subtitle', {
-              defaultValue: 'Linked records, SLA, and quick navigation.',
-            })}
+            {t('app.communications_inbox_center.control_subtitle')}
           </p>
         </div>
       )}
@@ -244,13 +243,8 @@ export default function CommunicationsInboxControlPanel({
           {unlinked && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
               {compact
-                ? t('app.communications_inbox_center.unlinked_hint_short', {
-                    defaultValue: 'Not linked — use search below.',
-                  })
-                : t('app.communications_inbox_center.unlinked_hint', {
-                    defaultValue:
-                      'This thread is not linked to a candidate, client, or service order. Link below to enable full context and outbound where required.',
-                  })}
+                ? t('app.communications_inbox_center.unlinked_hint_short')
+                : t('app.communications_inbox_center.unlinked_hint')}
             </div>
           )}
           <div className="card p-4">
@@ -261,18 +255,16 @@ export default function CommunicationsInboxControlPanel({
 
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-slate-900">
-          {t('app.communications_inbox_center.task_section_title', { defaultValue: 'Follow-up task' })}
+          {t('app.communications_inbox_center.task_section_title')}
         </h3>
         {!compact && (
           <p className="mt-1 text-xs text-slate-500">
-            {t('app.communications_inbox_center.task_section_hint', {
-              defaultValue: 'Creates a reminder on Tasks. Linked candidate or client is set when available.',
-            })}
+            {t('app.communications_inbox_center.task_section_hint')}
           </p>
         )}
         <form className="mt-3 space-y-2" onSubmit={(ev) => void submitFollowUpTask(ev)}>
           <label className="block text-xs font-medium text-slate-600">
-            {t('app.communications_inbox_center.task_title_label', { defaultValue: 'Title' })}
+            {t('app.communications_inbox_center.task_title_label')}
             <input
               type="text"
               className="input mt-1 w-full text-sm"
@@ -284,7 +276,7 @@ export default function CommunicationsInboxControlPanel({
             />
           </label>
           <label className="block text-xs font-medium text-slate-600">
-            {t('app.communications_inbox_center.task_due_label', { defaultValue: 'Due' })}
+            {t('app.communications_inbox_center.task_due_label')}
             <input
               type="datetime-local"
               className="input mt-1 w-full text-sm"
@@ -294,7 +286,7 @@ export default function CommunicationsInboxControlPanel({
             />
           </label>
           <label className="block text-xs font-medium text-slate-600">
-            {t('app.communications_inbox_center.task_notes_label', { defaultValue: 'Notes (optional)' })}
+            {t('app.communications_inbox_center.task_notes_label')}
             <textarea
               className="input mt-1 min-h-[4rem] w-full resize-y text-sm"
               value={taskDescription}
@@ -306,16 +298,16 @@ export default function CommunicationsInboxControlPanel({
           {taskError && <p className="text-xs text-rose-600">{taskError}</p>}
           {taskCreated && (
             <p className="text-xs text-emerald-700">
-              {t('app.communications_inbox_center.task_created', { defaultValue: 'Task created.' })}{' '}
-              <Link className="font-medium underline" to="/app/tasks">
-                {t('app.communications_inbox_center.task_open_tasks', { defaultValue: 'Open Tasks' })}
+              {t('app.communications_inbox_center.task_created')}{' '}
+              <Link className="font-medium underline" to={CRM_APP_PATHS.tasks}>
+                {t('app.communications_inbox_center.task_open_tasks')}
               </Link>
             </p>
           )}
           <button type="submit" className="btn-primary btn-sm w-full disabled:opacity-50" disabled={taskBusy}>
             {taskBusy
-              ? t('common.loading', { defaultValue: 'Loading...' })
-              : t('app.communications_inbox_center.task_submit', { defaultValue: 'Create task' })}
+              ? t('common.loading')
+              : t('app.communications_inbox_center.task_submit')}
           </button>
         </form>
       </div>
@@ -324,11 +316,11 @@ export default function CommunicationsInboxControlPanel({
 
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-slate-900">
-          {t('app.communications_inbox_center.ops_state', { defaultValue: 'Operations' })}
+          {t('app.communications_inbox_center.ops_state')}
         </h3>
         <dl className="mt-3 space-y-1 text-xs text-slate-600">
           <div className="flex justify-between gap-2">
-            <dt>{t('app.communications.queue.assignee', { defaultValue: 'Assignee' })}</dt>
+            <dt>{t('app.communications.queue.assignee')}</dt>
             <dd className="max-w-[65%] text-right text-xs">
               {thread.assignee_id
                 ? managerOptions.find((m) => String(m.id) === String(thread.assignee_id))?.label ||
@@ -337,25 +329,25 @@ export default function CommunicationsInboxControlPanel({
             </dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt>{t('app.communications_inbox_center.priority_label', { defaultValue: 'Priority' })}</dt>
+            <dt>{t('app.communications_inbox_center.priority_label')}</dt>
             <dd className="text-right">{thread.priority || '—'}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt>{t('app.communications_inbox_center.sla_due', { defaultValue: 'SLA due' })}</dt>
+            <dt>{t('app.communications_inbox_center.sla_due')}</dt>
             <dd className="text-right">{formatThreadDateTime(thread.sla_due_at)}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt>{t('app.communications.labels.unread', { defaultValue: 'Unread' })}</dt>
+            <dt>{t('app.communications.labels.unread')}</dt>
             <dd className="text-right">{thread.unread_count ?? 0}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt>{t('app.communications.email.preview.status', { defaultValue: 'Status' })}</dt>
+            <dt>{t('app.communications.email.preview.status')}</dt>
             <dd className="text-right">{thread.status || '—'}</dd>
           </div>
         </dl>
         <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
           <div className="text-xs font-medium text-slate-700">
-            {t('app.communications_inbox_center.assign_manager_title', { defaultValue: 'Назначить менеджера' })}
+            {t('app.communications_inbox_center.assign_manager_title')}
           </div>
           {linkError && <p className="text-xs text-rose-600">{linkError}</p>}
           <select
@@ -364,7 +356,7 @@ export default function CommunicationsInboxControlPanel({
             onChange={(e) => setAssigneeDraft(e.target.value)}
             disabled={assigneeBusy || folderBusy}
           >
-            <option value="">{t('app.communications_messages.manager.unassigned', { defaultValue: 'Не назначен' })}</option>
+            <option value="">{t('app.communications_messages.manager.unassigned')}</option>
             {managerOptions.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.label}
@@ -378,12 +370,12 @@ export default function CommunicationsInboxControlPanel({
             onClick={() => void saveManualAssignee()}
           >
             {assigneeBusy
-              ? t('common.loading', { defaultValue: 'Loading...' })
-              : t('app.communications_messages.manager.save', { defaultValue: 'Сохранить' })}
+              ? t('common.loading')
+              : t('common.actions.save')}
           </button>
           {assigneeOk && (
             <p className="text-xs text-emerald-700">
-              {t('app.communications_inbox_center.assignee_saved', { defaultValue: 'Менеджер обновлён.' })}
+              {t('app.communications_inbox_center.assignee_saved')}
             </p>
           )}
         </div>
@@ -395,8 +387,8 @@ export default function CommunicationsInboxControlPanel({
             onClick={() => void handleAutoAssign()}
           >
             {busyAction === 'assign'
-              ? t('common.loading', { defaultValue: 'Loading...' })
-              : t('app.communications.queue.auto_assign', { defaultValue: 'Auto assign' })}
+              ? t('common.loading')
+              : t('app.communications.queue.auto_assign')}
           </button>
           <button
             type="button"
@@ -405,13 +397,13 @@ export default function CommunicationsInboxControlPanel({
             onClick={() => void handleMarkRead()}
           >
             {busyAction === 'read'
-              ? t('common.loading', { defaultValue: 'Loading...' })
-              : t('app.communications.actions.mark_thread_read', { defaultValue: 'Mark read' })}
+              ? t('common.loading')
+              : t('app.communications.actions.mark_thread_read')}
           </button>
         </div>
         <div className="mt-4 border-t border-slate-100 pt-3">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('app.communications_inbox_center.folder_section', { defaultValue: 'Archive & trash' })}
+            {t('app.communications_inbox_center.folder_section')}
           </div>
           {folderError && <p className="mt-2 text-xs text-rose-600">{folderError}</p>}
           <div className="mt-2 flex flex-col gap-2">
@@ -426,8 +418,8 @@ export default function CommunicationsInboxControlPanel({
                   }
                 >
                   {folderBusy
-                    ? t('common.loading', { defaultValue: 'Loading...' })
-                    : t('app.communications.email.commands.archive', { defaultValue: 'Archive' })}
+                    ? t('common.loading')
+                    : t('app.communications.email.commands.archive')}
                 </button>
                 <button
                   type="button"
@@ -438,8 +430,8 @@ export default function CommunicationsInboxControlPanel({
                   }
                 >
                   {folderBusy
-                    ? t('common.loading', { defaultValue: 'Loading...' })
-                    : t('app.communications.email.commands.delete', { defaultValue: 'Delete' })}
+                    ? t('common.loading')
+                    : t('app.communications.email.commands.delete')}
                 </button>
               </>
             )}
@@ -451,18 +443,16 @@ export default function CommunicationsInboxControlPanel({
                 onClick={() => void applyThreadFolderPatch({ is_archived: false, status: 'open' }, false)}
               >
                 {folderBusy
-                  ? t('common.loading', { defaultValue: 'Loading...' })
+                  ? t('common.loading')
                   : isThreadDeleted
-                    ? t('app.communications.email.commands.restore', { defaultValue: 'Restore' })
-                    : t('app.communications.email.commands.unarchive', { defaultValue: 'Unarchive' })}
+                    ? t('app.communications.email.commands.restore')
+                    : t('app.communications.email.commands.unarchive')}
               </button>
             )}
           </div>
           {isThreadInboxActive && onAfterArchiveOrDelete && (
             <p className="mt-2 text-[11px] leading-snug text-slate-500">
-              {t('app.communications_inbox_center.folder_exit_hint', {
-                defaultValue: 'Archive or delete clears your selection and refreshes the list.',
-              })}
+              {t('app.communications_inbox_center.folder_exit_hint')}
             </p>
           )}
         </div>
@@ -470,28 +460,34 @@ export default function CommunicationsInboxControlPanel({
 
       <div className="card p-4">
         <h3 className="text-sm font-semibold text-slate-900">
-          {t('app.communications_inbox_center.quick_links', { defaultValue: 'Quick links' })}
+          {t('app.communications_inbox_center.quick_links')}
         </h3>
         <ul className="mt-3 space-y-2 text-sm">
           <li>
-            <Link className="inline-flex items-center gap-1.5 text-brand-700 hover:text-brand-900" to="/app/tasks">
+            <Link
+              className="inline-flex items-center gap-1.5 text-brand-700 hover:text-brand-900"
+              to={CRM_APP_PATHS.tasks}
+            >
               <IconListCheck size={16} stroke={1.75} />
-              {t('app.nav.items.tasks', { defaultValue: 'Tasks' })}
+              {t('app.nav.items.tasks')}
             </Link>
           </li>
           <li>
-            <Link className="inline-flex items-center gap-1.5 text-rose-700 hover:text-rose-900" to="/app/sla-incidents">
+            <Link
+              className="inline-flex items-center gap-1.5 text-rose-700 hover:text-rose-900"
+              to={CRM_APP_PATHS.slaIncidents}
+            >
               <IconShield size={16} stroke={1.75} />
-              {t('app.nav.items.sla_incidents', { defaultValue: 'SLA incidents' })}
+              {t('app.communications_inbox_hub.cta_sla')}
             </Link>
           </li>
           <li>
             <Link
               className="inline-flex items-center gap-1.5 text-slate-600 hover:text-slate-900"
-              to={`/app/communications/threads/${thread.id}`}
+              to={communicationsThreadPath(thread.id)}
             >
               <IconExternalLink size={16} stroke={1.75} />
-              {t('app.communications_inbox_center.classic_view', { defaultValue: 'Classic thread page' })}
+              {t('app.communications_inbox_center.classic_view')}
             </Link>
           </li>
         </ul>

@@ -16,6 +16,7 @@ import {
   BulkManagerModal,
   BulkVacancyModal,
 } from '../modules/candidates/components'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 // --- dnd-kit ---
 import {
@@ -1163,11 +1164,11 @@ export default function Pipeline(){
             })}
             primaryAction={{
               label: t('app.candidates.pipeline.empty_cta_candidates', { defaultValue: 'Open candidates' }),
-              to: '/app/candidates',
+              to: CRM_APP_PATHS.candidates,
             }}
             secondaryAction={{
               label: t('app.candidates.pipeline.empty_cta_leads', { defaultValue: 'Open leads' }),
-              to: '/app/leads',
+              to: CRM_APP_PATHS.leads,
             }}
           />
         </div>
@@ -1212,7 +1213,9 @@ export default function Pipeline(){
             const viewInListParams = new URLSearchParams()
             if (stageForFilter) viewInListParams.set('stage', stageForFilter)
             if (vacancyId) viewInListParams.set('vacancy_id', vacancyId)
-            const viewInListHref = viewInListParams.toString() ? `/app/candidates?${viewInListParams.toString()}` : '/app/candidates'
+            const viewInListHref = viewInListParams.toString()
+              ? `${CRM_APP_PATHS.candidates}?${viewInListParams.toString()}`
+              : CRM_APP_PATHS.candidates
             return (
             <DroppableColumn
               key={code}
@@ -1293,7 +1296,7 @@ export default function Pipeline(){
                           <div className="font-medium">
                             <Link
                               className="hover:underline"
-                              to={`/app/candidates/${candidateId}`}
+                              to={`${CRM_APP_PATHS.candidates}/${candidateId}`}
                               onClick={(evt)=>{
                                 if (suppressClickAfterDragRef.current.has(candidateId)){
                                   evt.preventDefault()
@@ -1418,9 +1421,9 @@ export default function Pipeline(){
                   {loading ? t('app.candidates.actions.refreshing') : t('app.candidates.actions.refresh')}
                 </button>
                 {canManage && (
-                  <Link 
-                    className="btn-primary text-xs py-1.5 px-2.5 font-medium" 
-                    to="/app/candidates/new" 
+                  <Link
+                    className="btn-primary text-xs py-1.5 px-2.5 font-medium"
+                    to={CRM_APP_PATHS.candidateNew}
                     title={t('app.candidates.actions.new_candidate_title')}
                   >
                     {t('app.candidates.actions.new_candidate')}
@@ -1510,7 +1513,7 @@ export default function Pipeline(){
                   <button
                     className="btn-secondary w-full text-left text-xs py-1.5 px-2 hover:bg-slate-100"
                     onClick={() => {
-                      navigate(`/app/candidates/${candidateId}`)
+                      navigate(`${CRM_APP_PATHS.candidates}/${candidateId}`)
                       setContextMenu(null)
                     }}
                   >

@@ -12,6 +12,7 @@ import {
   type WorkingHoursSchedule,
 } from '../api/communications'
 import { useI18n } from '../i18n'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 function toLocalInput(dt?: string | null): string {
   if (!dt) return ''
@@ -185,7 +186,7 @@ export default function CommunicationsPlannerPage() {
                 }}
                 onRetry={() => void load()}
                 retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-                secondaryTo="/app/calendar"
+                secondaryTo={CRM_APP_PATHS.calendar}
                 secondaryLabel={t('app.nav.items.calendar', { defaultValue: 'Calendar' })}
                 compact
               />
@@ -229,10 +230,10 @@ export default function CommunicationsPlannerPage() {
             </button>
           </form>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Link to="/app/calendar" className="btn-secondary">
+            <Link to={CRM_APP_PATHS.calendar} className="btn-secondary">
               {t('app.nav.items.calendar', { defaultValue: 'Calendar' })}
             </Link>
-            <Link to="/app/my-availability" className="btn-secondary">
+            <Link to={CRM_APP_PATHS.myAvailability} className="btn-secondary">
               {t('app.nav.items.my_availability', { defaultValue: 'My availability' })}
             </Link>
           </div>

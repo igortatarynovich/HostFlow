@@ -1,26 +1,54 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional, Tuple
 from uuid import UUID
 
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 import json
 
-from sqlalchemy import case, func, or_, select, exists, and_, inspect as sa_inspect
+from sqlalchemy import Text, case, cast, func, literal, or_, select, exists, and_, inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.service import create_candidate_full
+from backend.app.constants.spa_paths import CANDIDATES_NO_NEXT_ACTION_PAGE, TASKS
+from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
 from backend.app.models import Candidate, Company, Lead, OwnCompany, Tenant, User, Vacancy, ActivityLog
+from backend.app.models.custom_field import CustomFieldEntityType, CustomFieldValue
+from backend.app.models.tenant import TenantLicense
 from backend.app.models.user import Role
-from backend.app.modules.leads import crud, normalizer
-from backend.app.modules.leads.schemas import LeadListResponse, LeadOut, MetaLeadResponse, LeadTimelineResponse, LeadTimelineEventOut
+from backend.app.modules.leads import crud, lead_custom_fields, normalizer
+from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
+from backend.app.modules.leads.schemas import (
+    LeadConversionFunnelEdge,
+    LeadConversionFunnelLostFromStage,
+    LeadConversionFunnelLostReasonRow,
+    LeadConversionFunnelResponse,
+    LeadConversionFunnelStage,
+    LeadListResponse,
+    LeadNextActionsResponse,
+    LeadOut,
+    LeadStageHealthResponse,
+    LeadStageHealthRow,
+    MetaLeadResponse,
+    NextActionGroupOut,
+    NextActionQueryParams,
+    LeadTimelineResponse,
+    LeadTimelineEventOut,
+)
 from backend.app.modules.leads import pipeline
 from backend.app.services import events
 from backend.app.services.events import EventAudience
 from backend.app.services import reminder_tasks
+from backend.app.services import billing_restrictions
 from backend.app.services.automation_rules import run_rules as run_automation_rules
+from backend.app.services.plan_feature_gates import (
+    plan_allows_team_tier_features,
+    plan_is_pro_tier,
+    resolve_tenant_plan_code,
+)
 from backend.app.models import Reminder
 from backend.app.models.reminder import ReminderStatus
 
@@ -212,7 +240,27 @@ async def _pick_lead_assignee_id(
     *,
     tenant_id: str,
     preferred_user_id: Optional[str] = None,
+    normalized: Optional[Dict[str, Any]] = None,
+    lead_id: Optional[str] = None,
 ) -> Optional[str]:
+    """
+    Actor for lead.processed automations and related side effects.
+
+    Order:
+    1) Automatic lead distribution (Tenant.settings.lead_distribution_v1, team/pro plan) when mode=automatic.
+    2) preferred_user_id (vacancy recruiter, supervisor, meta fallback recruiter).
+    3) Legacy: first active administrator/supervisor/manager on tenant.
+    """
+    from backend.app.services.lead_distribution import pick_assignee_user_id_for_ingest
+
+    dist_id = await pick_assignee_user_id_for_ingest(
+        db,
+        tenant_id=tenant_id,
+        normalized=normalized,
+        lead_id=lead_id,
+    )
+    if dist_id:
+        return dist_id
     if preferred_user_id:
         return preferred_user_id
     row = await db.execute(
@@ -266,6 +314,26 @@ class LeadProcessingError(Exception):
         super().__init__(message)
 
 
+def lead_processing_error_as_http(exc: LeadProcessingError) -> HTTPException:
+    if exc.status == "billing_blocked":
+        if exc.message == "BILLING_TRIAL_EXPIRED":
+            return HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "billing_trial_expired",
+                    "message": "Your trial has ended. Choose a plan in Billing to create new leads.",
+                },
+            )
+        return HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "billing_past_due",
+                "message": "New leads are paused until subscription payment succeeds. Open Billing to retry payment.",
+            },
+        )
+    return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message)
+
+
 async def _validate_company_id(
     db: AsyncSession,
     tenant_id: str,
@@ -294,6 +362,43 @@ async def _load_settings(
         auto_create_enabled=True,
         mask_pii_in_logs=True,
     )
+
+
+def _normalize_stored_leads_processing_mode_v1(raw: Any) -> str:
+    s = str(raw or "").strip().lower()
+    if s in ("manual", "assisted", "automatic"):
+        return s
+    return "assisted"
+
+
+async def _apply_leads_processing_mode_v1_to_normalized(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    normalized: Dict[str, Any],
+    settings_row: Any,
+) -> Dict[str, Any]:
+    """
+    Stamp configured + effective qualification mode on lead.normalized (§2.10 / §2.3).
+    Automatic without Team-tier plan is downgraded to manual for this ingest only.
+    """
+    stored = _normalize_stored_leads_processing_mode_v1(
+        getattr(settings_row, "leads_processing_mode_v1", None)
+    )
+    effective = stored
+    downgrade: Optional[str] = None
+    if stored == "automatic":
+        plan = await resolve_tenant_plan_code(db, tenant_id)
+        if not plan_allows_team_tier_features(plan):
+            effective = "manual"
+            downgrade = "team_plan_required"
+    normalized["leads_processing_mode_configured_v1"] = stored
+    normalized["leads_processing_mode_v1"] = effective
+    if downgrade:
+        normalized["leads_processing_mode_downgrade_v1"] = downgrade
+    else:
+        normalized.pop("leads_processing_mode_downgrade_v1", None)
+    return normalized
 
 
 async def _validate_recruiter_id(
@@ -330,19 +435,40 @@ async def _resolve_vacancy(
     return None
 
 
-async def list_leads(
+def _lead_list_text_search_or(q_norm: str) -> Any:
+    """
+    Case-insensitive substring match on payload/normalized JSON text, id, source, stage, status,
+    lead_type, linked company name (align with global_search_v1._search_leads_slice).
+    `q_norm` must be lowercased, len >= 2.
+    """
+    like = f"%{q_norm}%"
+    text_norm = cast(Lead.normalized, Text)
+    text_payload = cast(Lead.payload, Text)
+    company_l = func.lower(func.coalesce(Company.name, ""))
+    return or_(
+        func.lower(text_norm).like(like),
+        func.lower(text_payload).like(like),
+        func.lower(Lead.id).like(like),
+        func.lower(Lead.source).like(like),
+        func.lower(func.coalesce(Lead.stage, "")).like(like),
+        func.lower(func.coalesce(Lead.status, "")).like(like),
+        func.lower(func.coalesce(Lead.lead_type, "")).like(like),
+        company_l.like(like),
+    )
+
+
+async def _build_lead_list_filters(
     db: AsyncSession,
     *,
     tenant_id: str,
-    own_company_id: str | None = None,
-    status: Optional[str] = None,
-    stage: Optional[str] = None,
-    next_action: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
-) -> LeadListResponse:
-    business_type = await _load_tenant_business_type(db, tenant_id, own_company_id)
-    filters = [Lead.tenant_id == tenant_id]
+    own_company_id: str | None,
+    status: Optional[str],
+    stage: Optional[str],
+    next_action: Optional[str],
+    custom_field_definition_id: Optional[str] = None,
+    custom_field_match_value: Optional[str] = None,
+) -> Tuple[List[Any], Any, Any, datetime]:
+    filters: List[Any] = [Lead.tenant_id == tenant_id]
     if own_company_id:
         filters.append(Lead.own_company_id == own_company_id)
     if status:
@@ -354,7 +480,6 @@ async def list_leads(
     stuck_stage_subq = None
     stuck_stage_join_on = None
 
-    # Next action filters (entity-level, not assignee-level)
     if next_action:
         normalized = str(next_action or "").strip().lower()
         reminder_exists_active = (
@@ -385,8 +510,6 @@ async def list_leads(
         elif normalized in {"scheduled", "has_next_action"}:
             filters.append(reminder_exists_active)
         elif normalized in {"stuck", "stuck_stage"}:
-            # "Stuck" = processed lead in active stages with no stage change for D days.
-            # Uses ActivityLog lead.stage_changed; falls back to Lead.created_at if no events.
             tenant_row = (await db.execute(select(Tenant.settings).where(Tenant.id == tenant_id).limit(1))).first()
             settings_payload = tenant_row[0] if tenant_row else {}
             settings_dict = settings_payload if isinstance(settings_payload, dict) else {}
@@ -420,12 +543,787 @@ async def list_leads(
             stuck_stage_join_on = last_change_subq.c.lead_id == Lead.id
             last_changed_at = func.coalesce(last_change_subq.c.last_changed_at, Lead.created_at)
             filters.append(Lead.status == "processed")
-            filters.append(func.coalesce(Lead.stage, "new").in_(sorted(active_stages)))
+            # Global stuck bucket: only CRM stages configured for SLA tracking.
+            # When `stage` is already pinned (e.g. per-stage health / ?stage=x&next_action=stuck), respect that stage.
+            if not stage:
+                filters.append(func.coalesce(Lead.stage, "new").in_(sorted(active_stages)))
             filters.append(last_changed_at <= cutoff)
+
+    if custom_field_definition_id and custom_field_match_value is not None:
+        did = str(custom_field_definition_id).strip()
+        if did:
+            # Stored shape from custom field API / ingest: {"v": <scalar>}; v1 compares string form from query.
+            cf_exists = (
+                exists()
+                .where(
+                    CustomFieldValue.tenant_id == tenant_id,
+                    CustomFieldValue.entity_type == CustomFieldEntityType.LEAD,
+                    CustomFieldValue.definition_id == did,
+                    CustomFieldValue.entity_id == Lead.id,
+                    CustomFieldValue.value == {"v": custom_field_match_value},
+                )
+                .correlate(Lead)
+            )
+            filters.append(cf_exists)
+
+    return filters, stuck_stage_subq, stuck_stage_join_on, now
+
+
+async def count_leads(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None = None,
+    status: Optional[str] = None,
+    stage: Optional[str] = None,
+    next_action: Optional[str] = None,
+    custom_field_definition_id: Optional[str] = None,
+    custom_field_match_value: Optional[str] = None,
+) -> int:
+    filters, stuck_stage_subq, stuck_stage_join_on, _now = await _build_lead_list_filters(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        status=status,
+        stage=stage,
+        next_action=next_action,
+        custom_field_definition_id=custom_field_definition_id,
+        custom_field_match_value=custom_field_match_value,
+    )
+    total_stmt = select(func.count()).select_from(Lead)
+    if stuck_stage_subq is not None and stuck_stage_join_on is not None:
+        total_stmt = total_stmt.outerjoin(stuck_stage_subq, stuck_stage_join_on)
+    total_stmt = total_stmt.where(*filters)
+    return int((await db.execute(total_stmt)).scalar_one() or 0)
+
+
+async def _lost_from_stage_breakdown(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None,
+    slice_params: ConversionFunnelSliceParams,
+) -> list[LeadConversionFunnelLostFromStage]:
+    """
+    Distinct leads per prior CRM stage when `lead.stage_changed` moved them into `lost`
+    (payload.from_stage → payload.to_stage=lost). Respects conversion-funnel slice filters on Lead.
+    """
+    from_stage_txt = func.coalesce(
+        func.nullif(ActivityLog.payload["from_stage"].as_string(), ""),
+        literal("unknown"),
+    )
+    cnt = func.count(func.distinct(Lead.id))
+    stmt = (
+        select(from_stage_txt.label("fs"), cnt)
+        .select_from(ActivityLog)
+        .join(Lead, Lead.id == ActivityLog.target_id)
+        .where(
+            ActivityLog.tenant_id == tenant_id,
+            ActivityLog.target_type == "lead",
+            ActivityLog.action == "lead.stage_changed",
+            ActivityLog.payload["to_stage"].as_string() == "lost",
+            Lead.tenant_id == tenant_id,
+        )
+    )
+    if own_company_id:
+        stmt = stmt.where(Lead.own_company_id == own_company_id)
+    for pred in _conversion_funnel_slice_predicates(tenant_id=tenant_id, sp=slice_params):
+        stmt = stmt.where(pred)
+    stmt = stmt.group_by(from_stage_txt).order_by(cnt.desc())
+    rows = (await db.execute(stmt)).all()
+    return [
+        LeadConversionFunnelLostFromStage(from_stage=str(fs or "unknown"), lead_count=int(n or 0))
+        for fs, n in rows
+    ]
+
+
+async def _lost_reason_code_breakdown(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None,
+    slice_params: ConversionFunnelSliceParams,
+) -> list[LeadConversionFunnelLostReasonRow]:
+    reason_txt = func.coalesce(
+        func.nullif(ActivityLog.payload["lost_reason_code"].as_string(), ""),
+        literal("unknown"),
+    )
+    cnt = func.count(func.distinct(Lead.id))
+    stmt = (
+        select(reason_txt.label("rc"), cnt)
+        .select_from(ActivityLog)
+        .join(Lead, Lead.id == ActivityLog.target_id)
+        .where(
+            ActivityLog.tenant_id == tenant_id,
+            ActivityLog.target_type == "lead",
+            ActivityLog.action == "lead.stage_changed",
+            ActivityLog.payload["to_stage"].as_string() == "lost",
+            Lead.tenant_id == tenant_id,
+        )
+    )
+    if own_company_id:
+        stmt = stmt.where(Lead.own_company_id == own_company_id)
+    for pred in _conversion_funnel_slice_predicates(tenant_id=tenant_id, sp=slice_params):
+        stmt = stmt.where(pred)
+    stmt = stmt.group_by(reason_txt).order_by(cnt.desc())
+    rows = (await db.execute(stmt)).all()
+    return [
+        LeadConversionFunnelLostReasonRow(reason_code=str(rc or "unknown"), lead_count=int(n or 0))
+        for rc, n in rows
+    ]
+
+
+async def count_candidates_no_next_action_for_assignee(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    assignee_id: str,
+    own_company_id: str | None = None,
+) -> int:
+    """Same contract as GET /candidates/no-next-action (assignee-scoped)."""
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+    reminder_exists = (
+        exists()
+        .where(
+            Reminder.tenant_id == tenant_id,
+            Reminder.entity_type == "candidate",
+            Reminder.entity_id == Candidate.id,
+            Reminder.assignee_id == assignee_id,
+            Reminder.status.in_(active_statuses),
+        )
+        .correlate(Candidate)
+    )
+    active_stage = or_(
+        Candidate.stage.is_(None),
+        Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
+    )
+    where = [
+        Candidate.tenant_id == tenant_id,
+        Candidate.deleted_at.is_(None),
+        active_stage,
+        ~reminder_exists,
+    ]
+    if own_company_id:
+        where.append(Candidate.own_company_id == own_company_id)
+    row = await db.execute(select(func.count()).select_from(Candidate).where(*where))
+    return int(row.scalar_one() or 0)
+
+
+async def count_candidate_overdue_reminders_for_assignee(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    assignee_id: str,
+    own_company_id: str | None = None,
+) -> int:
+    """Active candidate reminders for assignee that are overdue (status or due_at)."""
+    now = datetime.now(timezone.utc)
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
+    stmt = (
+        select(func.count())
+        .select_from(Reminder)
+        .join(
+            Candidate,
+            and_(
+                Reminder.entity_type == "candidate",
+                Reminder.entity_id == Candidate.id,
+            ),
+        )
+        .where(
+            Reminder.tenant_id == tenant_id,
+            Candidate.tenant_id == tenant_id,
+            Candidate.deleted_at.is_(None),
+            Reminder.assignee_id == assignee_id,
+            Reminder.status.in_(active_statuses),
+            or_(Reminder.status == ReminderStatus.overdue, Reminder.due_at < now),
+        )
+    )
+    if own_company_id:
+        stmt = stmt.where(Candidate.own_company_id == own_company_id)
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+def _nba_lead_locked_and_required(
+    min_plan: Optional[str],
+    *,
+    plan: str,
+    team_ok: bool,
+) -> tuple[bool, Optional[str]]:
+    """If bucket requires a higher plan, return (locked, required_plan code for UI)."""
+    if not min_plan:
+        return False, None
+    mp = str(min_plan).strip().lower()
+    if mp == "team":
+        if team_ok:
+            return False, None
+        return True, "team"
+    if mp == "pro":
+        if plan_is_pro_tier(plan):
+            return False, None
+        return True, "pro"
+    return False, None
+
+
+async def lead_next_actions_snapshot(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None = None,
+    actor_user_id: str | None = None,
+) -> LeadNextActionsResponse:
+    """
+    NBA: lead buckets (tenant / own_company) + assignee-scoped candidate buckets (§2.3).
+    Plan gating: some lead buckets locked on solo/starter — counts still returned; sort: unlocked first.
+    """
+    plan = await resolve_tenant_plan_code(db, tenant_id)
+    team_ok = plan_allows_team_tier_features(plan)
+    nba_tier: Literal["solo", "team"] = "team" if team_ok else "solo"
+
+    # (id, reason, title, priority, status, stage, next_action, min_plan)
+    specs: List[tuple[str, str, str, int, Optional[str], Optional[str], Optional[str], Optional[str]]] = [
+        (
+            "leads_no_next_action",
+            "no_next_action_on_processed",
+            "Processed leads without a next action",
+            30,
+            "processed",
+            None,
+            "no_next_action",
+            None,
+        ),
+        (
+            "leads_next_overdue",
+            "lead_reminder_overdue",
+            "Leads with an overdue next action",
+            25,
+            "processed",
+            None,
+            "overdue",
+            None,
+        ),
+        (
+            "leads_stuck_in_stage",
+            "lead_stuck_in_stage",
+            "Leads stuck in stage (SLA)",
+            20,
+            None,
+            None,
+            "stuck",
+            "team",
+        ),
+        (
+            "leads_needs_routing",
+            "needs_routing",
+            "Leads waiting for routing",
+            90,
+            "needs_routing",
+            None,
+            None,
+            None,
+        ),
+        (
+            "leads_failed",
+            "lead_failed",
+            "Failed leads",
+            80,
+            "failed",
+            None,
+            None,
+            None,
+        ),
+        (
+            "leads_new_unprocessed",
+            "lead_new_unprocessed",
+            "New leads (not yet processed)",
+            15,
+            "new",
+            None,
+            None,
+            None,
+        ),
+    ]
+    groups: List[NextActionGroupOut] = []
+    for gid, reason, title, priority, st, stg, na, min_plan in specs:
+        cnt = await count_leads(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            status=st,
+            stage=stg,
+            next_action=na,
+        )
+        locked, req = _nba_lead_locked_and_required(min_plan, plan=plan, team_ok=team_ok)
+        groups.append(
+            NextActionGroupOut(
+                id=gid,
+                entity="lead",
+                reason=reason,
+                title=title,
+                count=cnt,
+                priority=priority,
+                query=NextActionQueryParams(status=st, stage=stg, next_action=na),
+                locked=locked,
+                required_plan=req,
+            )
+        )
+
+    aid = (actor_user_id or "").strip()
+    if aid:
+        c_nna = await count_candidates_no_next_action_for_assignee(
+            db,
+            tenant_id=tenant_id,
+            assignee_id=aid,
+            own_company_id=own_company_id,
+        )
+        groups.append(
+            NextActionGroupOut(
+                id="candidates_no_next_action",
+                entity="candidate",
+                reason="candidate_no_next_action",
+                title="Candidates without a next action (you)",
+                count=c_nna,
+                priority=28,
+                query=NextActionQueryParams(),
+                path=CANDIDATES_NO_NEXT_ACTION_PAGE,
+                locked=False,
+                required_plan=None,
+            )
+        )
+        c_ov = await count_candidate_overdue_reminders_for_assignee(
+            db,
+            tenant_id=tenant_id,
+            assignee_id=aid,
+            own_company_id=own_company_id,
+        )
+        groups.append(
+            NextActionGroupOut(
+                id="candidates_next_overdue",
+                entity="candidate",
+                reason="candidate_reminder_overdue",
+                title="Candidate reminders overdue (you)",
+                count=c_ov,
+                priority=23,
+                query=NextActionQueryParams(
+                    tab="tasks",
+                    t_status="active",
+                    t_entity="candidate",
+                    t_due_bucket="overdue",
+                ),
+                path=TASKS,
+                locked=False,
+                required_plan=None,
+            )
+        )
+
+    groups.sort(key=lambda g: (g.locked, -g.priority, -g.count, g.id))
+    return LeadNextActionsResponse(
+        generated_at=datetime.now(timezone.utc),
+        own_company_id=own_company_id,
+        plan_code=plan,
+        nba_tier=nba_tier,
+        groups=groups,
+    )
+
+
+LEAD_CRM_STAGES_FOR_HEALTH: tuple[str, ...] = ("new", "contacted", "qualified", "converted", "lost")
+
+# Win path for §2.12 v0 funnel (snapshot); "lost" is reported separately.
+LEAD_CRM_WIN_PATH_FOR_FUNNEL: tuple[str, ...] = ("new", "contacted", "qualified", "converted")
+
+_DWELL_LOG_CHUNK = 800
+
+
+@dataclass(frozen=True)
+class ConversionFunnelSliceParams:
+    """Optional TEAM-tier filters for conversion funnel counts + dwell (§2.12)."""
+
+    source: Optional[str] = None
+    vacancy_id: Optional[str] = None
+    funnel_id: Optional[str] = None
+    assignee_user_id: Optional[str] = None
+
+    @staticmethod
+    def normalize(
+        *,
+        source: Optional[str] = None,
+        vacancy_id: Optional[str] = None,
+        funnel_id: Optional[str] = None,
+        assignee_user_id: Optional[str] = None,
+    ) -> "ConversionFunnelSliceParams":
+        def _s(v: Optional[str]) -> Optional[str]:
+            if v is None:
+                return None
+            t = str(v).strip()
+            return t or None
+
+        return ConversionFunnelSliceParams(
+            source=_s(source),
+            vacancy_id=_s(vacancy_id),
+            funnel_id=_s(funnel_id),
+            assignee_user_id=_s(assignee_user_id),
+        )
+
+    def any_set(self) -> bool:
+        return bool(self.source or self.vacancy_id or self.funnel_id or self.assignee_user_id)
+
+
+def _conversion_funnel_slice_predicates(*, tenant_id: str, sp: ConversionFunnelSliceParams) -> List[Any]:
+    extra: List[Any] = []
+    if sp.source:
+        extra.append(func.lower(Lead.source) == str(sp.source).lower())
+    if sp.vacancy_id:
+        extra.append(Lead.vacancy_id == sp.vacancy_id)
+    if sp.funnel_id:
+        extra.append(Lead.funnel_id == sp.funnel_id)
+    if sp.assignee_user_id:
+        extra.append(
+            exists()
+            .where(
+                Candidate.id == Lead.candidate_id,
+                Candidate.recruiter_id == sp.assignee_user_id,
+                Candidate.tenant_id == tenant_id,
+                Candidate.deleted_at.is_(None),
+            )
+            .correlate(Lead)
+        )
+    return extra
+
+
+async def _count_leads_for_conversion_funnel(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None,
+    status: Optional[str],
+    stage: Optional[str],
+    slice_params: ConversionFunnelSliceParams,
+) -> int:
+    filters, stuck_subq, stuck_join, _n = await _build_lead_list_filters(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        status=status,
+        stage=stage,
+        next_action=None,
+    )
+    filters.extend(_conversion_funnel_slice_predicates(tenant_id=tenant_id, sp=slice_params))
+    total_stmt = select(func.count()).select_from(Lead)
+    if stuck_subq is not None and stuck_join is not None:
+        total_stmt = total_stmt.outerjoin(stuck_subq, stuck_join)
+    total_stmt = total_stmt.where(*filters)
+    return int((await db.execute(total_stmt)).scalar_one() or 0)
+
+
+def _percentile_sorted(sorted_vals: List[float], p: float) -> float:
+    if not sorted_vals:
+        return 0.0
+    if p <= 0:
+        return float(sorted_vals[0])
+    if p >= 1:
+        return float(sorted_vals[-1])
+    idx = int(round((len(sorted_vals) - 1) * p))
+    idx = max(0, min(len(sorted_vals) - 1, idx))
+    return float(sorted_vals[idx])
+
+
+def _as_utc(dt: Optional[datetime]) -> Optional[datetime]:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _dwell_avg_p50(days: List[float]) -> tuple[Optional[float], Optional[float], int]:
+    if not days:
+        return None, None, 0
+    s = sorted(days)
+    n = len(s)
+    avg = round(float(sum(s)) / float(n), 2)
+    p50 = round(_percentile_sorted(s, 0.5), 2)
+    return avg, p50, n
+
+
+async def _lead_conversion_funnel_dwell_by_stage(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None,
+    stages: tuple[str, ...],
+    slice_params: ConversionFunnelSliceParams,
+) -> dict[str, tuple[Optional[float], Optional[float], int]]:
+    """
+    Per CRM stage: avg/median days since entering that stage (last ActivityLog lead.stage_changed with
+    payload.to_stage == current stage), else Lead.created_at. Only processed leads in `stages`.
+    """
+    if not stages:
+        return {}
+    filt: List[Any] = [
+        Lead.tenant_id == tenant_id,
+        Lead.status == "processed",
+        Lead.stage.in_(stages),
+    ]
+    if own_company_id:
+        filt.append(Lead.own_company_id == own_company_id)
+    filt.extend(_conversion_funnel_slice_predicates(tenant_id=tenant_id, sp=slice_params))
+    lead_rows = (await db.execute(select(Lead.id, Lead.stage, Lead.created_at).where(*filt))).all()
+    if not lead_rows:
+        return {s: (None, None, 0) for s in stages}
+
+    lead_stage_created: dict[str, tuple[str, datetime]] = {}
+    for lid, st, cat in lead_rows:
+        sid = str(lid)
+        stage_code = str(st or "").strip() or "new"
+        lead_stage_created[sid] = (stage_code, cat)
+
+    ids = list(lead_stage_created.keys())
+    by_lead_logs: dict[str, List[Tuple[datetime, str]]] = defaultdict(list)
+    for i in range(0, len(ids), _DWELL_LOG_CHUNK):
+        chunk = ids[i : i + _DWELL_LOG_CHUNK]
+        log_stmt = (
+            select(ActivityLog.target_id, ActivityLog.created_at, ActivityLog.payload)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.target_type == "lead",
+                ActivityLog.action == "lead.stage_changed",
+                ActivityLog.target_id.in_(chunk),
+            )
+            .order_by(ActivityLog.created_at.asc())
+        )
+        for tid, cat, payload in (await db.execute(log_stmt)).all():
+            pl = payload if isinstance(payload, dict) else {}
+            to_st = str(pl.get("to_stage") or "").strip()
+            if not to_st:
+                continue
+            by_lead_logs[str(tid)].append((_as_utc(cat) or cat, to_st))
+
+    now = datetime.now(timezone.utc)
+    by_stage_days: dict[str, List[float]] = defaultdict(list)
+
+    for lid, (st, created_at) in lead_stage_created.items():
+        entered: Optional[datetime] = None
+        for at, to_st in by_lead_logs.get(lid, []):
+            if to_st == st:
+                if entered is None or at > entered:
+                    entered = at
+        base = _as_utc(created_at)
+        ref = entered if entered is not None else base
+        if ref is None:
+            continue
+        days = max(0.0, (now - ref).total_seconds() / 86400.0)
+        by_stage_days[st].append(days)
+
+    out: dict[str, tuple[Optional[float], Optional[float], int]] = {}
+    for s in stages:
+        avg, p50, n = _dwell_avg_p50(by_stage_days.get(s, []))
+        out[s] = (avg, p50, n)
+    return out
+
+
+async def lead_conversion_funnel_snapshot(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None = None,
+    slice_params: ConversionFunnelSliceParams | None = None,
+) -> LeadConversionFunnelResponse:
+    """
+    Snapshot counts by current CRM stage for processed leads on the win path, plus progression shares
+    between adjacent stages (at_or_beyond(next) / at_or_beyond(from)).
+    """
+    sp = slice_params or ConversionFunnelSliceParams()
+    win = LEAD_CRM_WIN_PATH_FOR_FUNNEL
+    counts: dict[str, int] = {}
+    for s in win:
+        counts[s] = await _count_leads_for_conversion_funnel(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            status="processed",
+            stage=s,
+            slice_params=sp,
+        )
+    lost_processed = await _count_leads_for_conversion_funnel(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        status="processed",
+        stage="lost",
+        slice_params=sp,
+    )
+    status_new = await _count_leads_for_conversion_funnel(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        status="new",
+        stage=None,
+        slice_params=sp,
+    )
+    total_win = int(sum(counts[s] for s in win))
+    dwell_stages = tuple(win) + ("lost",)
+    dwell_map = await _lead_conversion_funnel_dwell_by_stage(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        stages=dwell_stages,
+        slice_params=sp,
+    )
+    steps: list[LeadConversionFunnelStage] = []
+    for i, s in enumerate(win):
+        at_or_beyond = int(sum(counts[x] for x in win[i:]))
+        da, dp, dn = dwell_map.get(s, (None, None, 0))
+        steps.append(
+            LeadConversionFunnelStage(
+                stage=s,
+                count=counts[s],
+                at_or_beyond=at_or_beyond,
+                dwell_avg_days=da,
+                dwell_p50_days=dp,
+                dwell_sample_size=dn,
+            )
+        )
+    edges: list[LeadConversionFunnelEdge] = []
+    for i in range(len(win) - 1):
+        den = steps[i].at_or_beyond
+        num = steps[i + 1].at_or_beyond
+        share = round(float(num) / float(den), 4) if den else None
+        edges.append(
+            LeadConversionFunnelEdge(from_stage=win[i], to_stage=win[i + 1], progressed_share=share)
+        )
+    l_avg, l_p50, l_n = dwell_map.get("lost", (None, None, 0))
+    lost_from = await _lost_from_stage_breakdown(
+        db, tenant_id=tenant_id, own_company_id=own_company_id, slice_params=sp
+    )
+    lost_reason_rows = await _lost_reason_code_breakdown(
+        db, tenant_id=tenant_id, own_company_id=own_company_id, slice_params=sp
+    )
+    return LeadConversionFunnelResponse(
+        generated_at=datetime.now(timezone.utc),
+        own_company_id=own_company_id,
+        filter_source=sp.source,
+        filter_vacancy_id=sp.vacancy_id,
+        filter_funnel_id=sp.funnel_id,
+        filter_assignee_user_id=sp.assignee_user_id,
+        status_new_count=status_new,
+        lost_processed_count=lost_processed,
+        lost_dwell_avg_days=l_avg,
+        lost_dwell_p50_days=l_p50,
+        lost_dwell_sample_size=l_n,
+        total_win_path_processed=total_win,
+        lost_from_stage=lost_from,
+        lost_reason_breakdown=lost_reason_rows,
+        stages=steps,
+        edges=edges,
+    )
+
+
+async def lead_stage_health_snapshot(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None = None,
+) -> LeadStageHealthResponse:
+    """
+    Per-stage counts for processed pipeline + next-action health (same semantics as GET /leads filters).
+    Sequential queries (safe for one AsyncSession).
+    """
+    rows: list[LeadStageHealthRow] = []
+    for s in LEAD_CRM_STAGES_FOR_HEALTH:
+        proc_total = await count_leads(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            status="processed",
+            stage=s,
+        )
+        nna = await count_leads(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            status="processed",
+            stage=s,
+            next_action="no_next_action",
+        )
+        ovd = await count_leads(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            status="processed",
+            stage=s,
+            next_action="overdue",
+        )
+        stk = await count_leads(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            stage=s,
+            next_action="stuck",
+        )
+        rows.append(
+            LeadStageHealthRow(
+                stage=s,
+                processed_total=proc_total,
+                no_next_action=nna,
+                overdue=ovd,
+                stuck=stk,
+            )
+        )
+    return LeadStageHealthResponse(
+        generated_at=datetime.now(timezone.utc),
+        own_company_id=own_company_id,
+        stages=rows,
+    )
+
+
+async def list_leads(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None = None,
+    status: Optional[str] = None,
+    stage: Optional[str] = None,
+    next_action: Optional[str] = None,
+    custom_field_definition_id: Optional[str] = None,
+    custom_field_match_value: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+    only_lead_id: Optional[str] = None,
+) -> LeadListResponse:
+    business_type = await _load_tenant_business_type(db, tenant_id, own_company_id)
+    if only_lead_id:
+        oid = str(only_lead_id or "").strip()
+        filters = [Lead.tenant_id == tenant_id, Lead.id == oid]
+        if own_company_id:
+            filters.append(Lead.own_company_id == own_company_id)
+        stuck_stage_subq = None
+        stuck_stage_join_on = None
+        now = datetime.now(timezone.utc)
+        limit = 1
+        offset = 0
+        text_search_or = None
+    else:
+        filters, stuck_stage_subq, stuck_stage_join_on, now = await _build_lead_list_filters(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            status=status,
+            stage=stage,
+            next_action=next_action,
+            custom_field_definition_id=custom_field_definition_id,
+            custom_field_match_value=custom_field_match_value,
+        )
+        sq = (search or "").strip().lower()
+        text_search_or = _lead_list_text_search_or(sq) if len(sq) >= 2 else None
+        if text_search_or is not None:
+            filters = [*filters, text_search_or]
+    active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
 
     total_stmt = select(func.count()).select_from(Lead)
     if stuck_stage_subq is not None and stuck_stage_join_on is not None:
         total_stmt = total_stmt.outerjoin(stuck_stage_subq, stuck_stage_join_on)
+    if only_lead_id is None and text_search_or is not None:
+        total_stmt = total_stmt.outerjoin(Company, Company.id == Lead.company_id)
     total_stmt = total_stmt.where(*filters)
     total = (await db.execute(total_stmt)).scalar_one()
 
@@ -522,6 +1420,13 @@ async def list_leads(
             entry["next_title"] = str(title or "") or None
             entry["next_type"] = str(rtype or "") or None
             next_action_map[str(lid)] = entry
+
+    lead_objects = [row[0] for row in raw_rows]
+    contract_by_lead = await batch_lead_stage_contracts(db, tenant_id=tenant_id, leads=lead_objects)
+    lead_id_strs = [str(row[0].id) for row in raw_rows]
+    custom_field_maps = await lead_custom_fields.batch_lead_custom_field_maps(
+        db, tenant_id=tenant_id, lead_ids=lead_id_strs
+    )
 
     def _uuid_or_none(value: Optional[str]) -> Optional[UUID]:
         if not value:
@@ -657,6 +1562,8 @@ async def list_leads(
                 ad_id=lead.ad_id,
                 status=lead.status,  # type: ignore[arg-type]
                 stage=getattr(lead, "stage", None),
+                funnel_id=_uuid_or_none(lead.funnel_id),
+                stage_contract=contract_by_lead.get(str(lead.id)),
                 candidate_id=_uuid_or_none(cand_id),
                 candidate_name=candidate_name,
                 outcome_entity_type=outcome_entity_type,
@@ -681,6 +1588,7 @@ async def list_leads(
                 next_action_title=(next_action_map.get(str(lead.id)) or {}).get("next_title"),
                 fit_status=fit_status,
                 fit_reasons=fit_reasons,
+                custom_fields=custom_field_maps.get(str(lead.id), {}),
             )
         )
 
@@ -831,6 +1739,14 @@ async def process_normalized_lead(
     fallback_company_hint = settings_row.default_company_id
     fallback_recruiter_hint = settings_row.fallback_recruiter_id
     auto_create_enabled = bool(settings_row.auto_create_enabled)
+    await _apply_leads_processing_mode_v1_to_normalized(
+        db,
+        tenant_id=tenant_id,
+        normalized=normalized,
+        settings_row=settings_row,
+    )
+    effective_processing_mode = str(normalized.get("leads_processing_mode_v1") or "assisted").strip().lower()
+    should_auto_create = bool(auto_create_enabled) and effective_processing_mode != "manual"
 
     normalized_external_id: Optional[str] = None
     if external_id is not None:
@@ -939,7 +1855,15 @@ async def process_normalized_lead(
                 candidate_id=candidate_id,
                 candidate_name=None,
             )
-            
+
+            await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+                db,
+                tenant_id=tenant_id,
+                lead_id=str(lead.id),
+                normalized=normalized,
+            )
+            await db.flush()
+
             return MetaLeadResult(
                 lead_id=lead.id,
                 status=lead.status,
@@ -1005,6 +1929,14 @@ async def process_normalized_lead(
     resolved_company_name = next((hint for hint in company_hints if hint), None)
 
     if lead is None:
+        tenant_row = await db.get(Tenant, tenant_id)
+        lic_row = (
+            await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id).limit(1))
+        ).scalar_one_or_none()
+        if tenant_row and billing_restrictions.tenant_billing_blocks_new_leads(tenant_row, lic_row):
+            reason = billing_restrictions.billing_write_block_reason(tenant_row, lic_row)
+            code = "BILLING_TRIAL_EXPIRED" if reason == "trial_expired" else "BILLING_PAST_DUE"
+            raise LeadProcessingError("billing_blocked", code)
         # Always prefer the active OwnCompany (Topbar) so that:
         # - lead.own_company_id matches current scope
         # - candidates/clients remain visible in the UI after conversion
@@ -1049,6 +1981,14 @@ async def process_normalized_lead(
         lead.normalized = normalized
         lead.ad_id = normalized.get("ad_id")
         await db.flush()
+
+    await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+        db,
+        tenant_id=tenant_id,
+        lead_id=str(lead.id),
+        normalized=normalized,
+    )
+    await db.flush()
 
     # At this point `lead.own_company_id` is known (from vacancy or OwnCompany fallback),
     # so we can determine the scenario using OwnCompany settings.
@@ -1118,6 +2058,13 @@ async def process_normalized_lead(
             normalized=normalized,
             error=None,
         )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        await db.flush()
         await db.commit()
         return MetaLeadResult(
             lead_id=lead.id,
@@ -1133,7 +2080,7 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
-    if not auto_create_enabled:
+    if not should_auto_create:
         now_marker = datetime.now(timezone.utc)
         await crud.update_lead(
             db,
@@ -1155,6 +2102,13 @@ async def process_normalized_lead(
             outcome_entity_id=resolved_company_id,
             outcome_entity_name=resolved_company_name,
         )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        await db.flush()
         await db.commit()
         return MetaLeadResult(
             lead_id=lead.id,
@@ -1188,6 +2142,13 @@ async def process_normalized_lead(
             normalized=normalized,
             error=None,
         )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        await db.flush()
         await _emit_lead_event(
             db,
             tenant_id=tenant_id,
@@ -1221,6 +2182,14 @@ async def process_normalized_lead(
                 db,
                 tenant_id=tenant_id,
                 preferred_user_id=fallback_recruiter_hint,
+                normalized=normalized,
+                lead_id=str(services_lead_id),
+            )
+            rule_ctx_extras = await lead_custom_fields.automation_context_for_lead(
+                db,
+                tenant_id=tenant_id,
+                lead_id=services_lead_id,
+                normalized=normalized if isinstance(normalized, dict) else {},
             )
             await run_automation_rules(
                 db,
@@ -1237,6 +2206,7 @@ async def process_normalized_lead(
                     "company_id": resolved_company_id,
                     "vacancy_id": services_lead_vacancy_id,
                     "assignee_id": assignee_id,
+                    **rule_ctx_extras,
                 },
             )
             await db.commit()
@@ -1280,6 +2250,13 @@ async def process_normalized_lead(
             outcome_entity_name=resolved_company_name,
             error="VACANCY_NOT_RESOLVED",
         )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=needs_routing_lead_id,
+            normalized=normalized,
+        )
+        await db.flush()
         await db.commit()
         return MetaLeadResult(
             lead_id=needs_routing_lead_id,
@@ -1410,7 +2387,15 @@ async def process_normalized_lead(
         normalized=normalized,
         error=None,
     )
+    await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+        db,
+        tenant_id=tenant_id,
+        lead_id=str(lead.id),
+        normalized=normalized,
+    )
+    await db.flush()
     # Commit lead status update before automation to avoid losing it on rollback.
+    agency_lead_id = str(lead.id)
     await db.commit()
     supervisor_id = await _load_supervisor_id(db, recruiter_id)
     recipient_ids: List[str] = []
@@ -1422,9 +2407,17 @@ async def process_normalized_lead(
         db,
         tenant_id=tenant_id,
         preferred_user_id=recruiter_id or supervisor_id,
+        normalized=normalized,
+        lead_id=agency_lead_id,
     )
     # Minimal rules builder (R2.2): trigger lead.processed automation rules (agency/employer path).
     try:
+        rule_ctx_extras = await lead_custom_fields.automation_context_for_lead(
+            db,
+            tenant_id=tenant_id,
+            lead_id=agency_lead_id,
+            normalized=normalized if isinstance(normalized, dict) else {},
+        )
         await run_automation_rules(
             db,
             tenant_id=tenant_id,
@@ -1432,8 +2425,8 @@ async def process_normalized_lead(
             actor_id=assignee_id,
             context={
                 "entity_type": "lead",
-                "entity_id": lead.id,
-                "lead_id": lead.id,
+                "entity_id": agency_lead_id,
+                "lead_id": agency_lead_id,
                 "source": lead.source,
                 "status": "processed",
                 "business_type": business_type,
@@ -1442,6 +2435,7 @@ async def process_normalized_lead(
                 "candidate_id": str(candidate.id),
                 "recruiter_id": recruiter_id,
                 "assignee_id": assignee_id,
+                **rule_ctx_extras,
             },
         )
         await db.commit()
@@ -1475,6 +2469,99 @@ async def process_normalized_lead(
         error=None,
         is_new=created_new,
     )
+
+
+async def bulk_auto_process_meta_lead_queue(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: Optional[str],
+    max_items: int = 25,
+    statuses: tuple[str, ...] = ("needs_routing", "failed"),
+    prefer_oldest_first: bool = False,
+) -> Dict[str, Any]:
+    """
+    Process up to `max_items` Meta leads (same pipeline as POST .../process).
+    Default: needs_routing / failed (auto-fix). Optional: status=new (NBA «unprocessed» batch).
+    Each successful item commits inside `process_meta_lead`; failures roll back the session before continuing.
+    """
+    max_items = max(1, min(int(max_items or 25), 50))
+    st_tuple = tuple(str(s).strip() for s in statuses if str(s or "").strip()) or ("needs_routing", "failed")
+    filters = [
+        Lead.tenant_id == tenant_id,
+        func.lower(Lead.source) == "meta",
+        Lead.status.in_(st_tuple),
+    ]
+    if own_company_id:
+        filters.append(Lead.own_company_id == own_company_id)
+
+    order = Lead.created_at.asc() if prefer_oldest_first else Lead.updated_at.desc()
+    stmt = select(Lead).where(*filters).order_by(order).limit(max_items)
+    rows = (await db.execute(stmt)).scalars().all()
+
+    results: List[Dict[str, Any]] = []
+    for lead in rows:
+        lid = str(lead.id)
+        if not getattr(lead, "payload", None):
+            results.append(
+                {
+                    "lead_id": lid,
+                    "ok": False,
+                    "status_after": lead.status,
+                    "error": "Lead payload is missing",
+                }
+            )
+            continue
+        force_existing = bool(getattr(lead, "candidate_id", None) is None) and getattr(lead, "status", None) in {
+            "processed",
+            "duplicated",
+        }
+        try:
+            out = await process_meta_lead(
+                db,
+                tenant_id=tenant_id,
+                own_company_id=own_company_id,
+                payload=lead.payload,
+                force_existing=force_existing,
+            )
+            results.append(
+                {
+                    "lead_id": lid,
+                    "ok": True,
+                    "status_after": out.status,
+                    "error": None,
+                }
+            )
+        except LeadProcessingError as exc:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            results.append(
+                {
+                    "lead_id": lid,
+                    "ok": False,
+                    "status_after": getattr(lead, "status", None),
+                    "error": str(exc.message or exc),
+                }
+            )
+        except Exception as exc:
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            results.append(
+                {
+                    "lead_id": lid,
+                    "ok": False,
+                    "status_after": getattr(lead, "status", None),
+                    "error": str(exc),
+                }
+            )
+
+    succeeded = sum(1 for r in results if r.get("ok"))
+    failed = len(results) - succeeded
+    return {"results": results, "attempted": len(results), "succeeded": succeeded, "failed": failed}
 
 
 async def process_meta_lead(

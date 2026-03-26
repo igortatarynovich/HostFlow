@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { listFunnels, type Funnel } from '../../api/funnels'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 interface FunnelSelectorProps {
   value: string | null | undefined
@@ -53,7 +54,7 @@ export default function FunnelSelector({ value, onChange, disabled = false }: Fu
         </select>
         <p className="mt-1 text-xs text-slate-500">
           Этапы берутся из справочника воронок.{' '}
-          <Link to="/app/settings/funnels" className="text-brand-600 hover:underline">
+          <Link to={CRM_APP_PATHS.settingsFunnels} className="text-brand-600 hover:underline">
             Редактировать воронки
           </Link>
         </p>

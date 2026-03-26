@@ -41,6 +41,10 @@ help:
 	@echo "  make curl-list      - GET /api/v1/candidates (needs TOKEN)"
 	@echo "  make curl-create    - POST /api/v1/candidates (needs TOKEN)"
 	@echo "  make get-token      - print JWT for admin@hostflow.dev / admin"
+	@echo "  make check-spa-paths - fail on stray /app/... URL literals in backend/app"
+	@echo "  make codegen-crm-app-paths - regenerate TS/Python from shared/crm_app_paths.json"
+	@echo "  make check-codegen-crm-paths - fail if generated files drift from manifest"
+	@echo "  make paths-qa - codegen + SPA literals + frontend route static checks (needs npm in hostflow-frontend)"
 	@echo ""
 
 # ---- Deps ----
@@ -97,6 +101,23 @@ seed: upg
 seed-demo: upg
 	@echo "[seed-demo] Using DB: $(SYNC_DATABASE_URL)"
 	$(PY) backend/scripts/seed_demo.py
+
+# ---- Static checks (no venv deps) ----
+.PHONY: check-spa-paths
+check-spa-paths:
+	python3 backend/scripts/check_spa_path_literals.py
+
+.PHONY: codegen-crm-app-paths
+codegen-crm-app-paths:
+	python3 scripts/codegen/generate_crm_app_paths.py
+
+.PHONY: check-codegen-crm-paths
+check-codegen-crm-paths:
+	python3 scripts/codegen/generate_crm_app_paths.py --check
+
+.PHONY: paths-qa
+paths-qa:
+	npm run paths:qa
 
 # ---- Utils ----
 .PHONY: env-print

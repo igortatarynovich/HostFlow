@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createAutomationRule, deleteAutomationRule, listAutomationRules, patchAutomationRule, type AutomationRule } from '../api/automationRules'
 import { useI18n } from '../i18n'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 const TRIGGERS = [
   { value: 'candidate.created', label: 'candidate.created' },
@@ -12,6 +13,7 @@ const TRIGGERS = [
   },
   { value: 'document.expiring', label: 'document.expiring' },
   { value: 'lead.processed', label: 'lead.processed' },
+  { value: 'lead.pipeline.stage_changed', label: 'lead.pipeline.stage_changed' },
 ] as const
 
 export default function AutomationRulesPage() {
@@ -85,29 +87,26 @@ export default function AutomationRulesPage() {
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <Link to="/app/automations" className="text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline">
-          {t('app.automations.hub.back', { defaultValue: '← Automations' })}
+        <Link to={CRM_APP_PATHS.automations} className="text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline">
+          {t('app.automations.hub.back')}
         </Link>
         <h1 className="mt-2 text-xl font-semibold text-slate-900">
-          {t('app.automation_rules.title', { defaultValue: 'Automation rules (minimal builder)' })}
+          {t('app.automation_rules.title')}
         </h1>
         <p className="text-xs text-slate-500">
-          {t('app.automation_rules.subtitle', { defaultValue: 'Define simple triggers → create reminder actions.' })}
+          {t('app.automation_rules.subtitle')}
         </p>
         <p className="mt-2 text-xs text-amber-800/90">
-          {t('app.automation_rules.risk_band_hint', {
-            defaultValue:
-              'candidate.risk_band runs only when Tenant.settings.risk_model_v1.automations.enabled is true and the hourly risk job is on. Enable dedupe via automations.dedupe_hours (default 24).',
-          })}
+          {t('app.automation_rules.risk_band_hint')}
         </p>
       </header>
 
       <section className="card p-4 space-y-3">
-        <div className="text-sm font-semibold">{t('app.automation_rules.create', { defaultValue: 'Create rule' })}</div>
+        <div className="text-sm font-semibold">{t('app.automation_rules.create')}</div>
         {error ? <div className="text-sm text-red-600">{String(error)}</div> : null}
         <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
           <label className="text-sm">
-            <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.trigger', { defaultValue: 'Trigger' })}</div>
+            <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.trigger')}</div>
             <select className="input w-full" value={newTrigger} onChange={(e) => setNewTrigger(e.target.value as any)}>
               {TRIGGERS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -115,26 +114,26 @@ export default function AutomationRulesPage() {
             </select>
           </label>
           <label className="text-sm">
-            <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.title', { defaultValue: 'Reminder title' })}</div>
+            <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.title')}</div>
             <input className="input w-full" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
           </label>
           <label className="text-sm">
-            <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.due_in', { defaultValue: 'Due in (minutes)' })}</div>
+            <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.due_in')}</div>
             <input className="input w-full" type="number" min={0} value={newDueMin} onChange={(e) => setNewDueMin(Number(e.target.value) || 0)} />
           </label>
           <label className="text-sm">
-            <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.stage_to', { defaultValue: 'Stage to (optional)' })}</div>
+            <div className="mb-1 text-xs text-slate-600">{t('app.automation_rules.fields.stage_to')}</div>
             <input
               className="input w-full"
               value={newStageTo}
               onChange={(e) => setNewStageTo(e.target.value)}
-              placeholder={t('app.automation_rules.fields.stage_to_placeholder', { defaultValue: 'contacted' })}
+              placeholder={t('app.automation_rules.fields.stage_to_placeholder')}
               disabled={newTrigger !== 'candidate.stage_changed'}
             />
           </label>
           <label className="text-sm">
             <div className="mb-1 text-xs text-slate-600">
-              {t('app.automation_rules.fields.risk_band', { defaultValue: 'Risk band (risk trigger)' })}
+              {t('app.automation_rules.fields.risk_band')}
             </div>
             <select
               className="input w-full"
@@ -149,29 +148,29 @@ export default function AutomationRulesPage() {
         </div>
         <div className="flex gap-2">
           <button type="button" className="btn-primary btn-sm" onClick={() => void handleCreate()} disabled={loading}>
-            {loading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.create', { defaultValue: 'Create' })}
+            {loading ? t('common.loading') : t('common.actions.create')}
           </button>
           <button type="button" className="btn-secondary btn-sm" onClick={() => void load()} disabled={loading}>
-            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            {t('common.actions.refresh')}
           </button>
         </div>
       </section>
 
       <section className="card p-4 space-y-3">
-        <div className="text-sm font-semibold">{t('app.automation_rules.list', { defaultValue: 'Rules' })}</div>
+        <div className="text-sm font-semibold">{t('app.automation_rules.list')}</div>
         {sorted.length === 0 ? (
-          <div className="text-sm text-slate-500">{t('app.automation_rules.empty', { defaultValue: 'No rules yet.' })}</div>
+          <div className="text-sm text-slate-500">{t('app.automation_rules.empty')}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs uppercase text-slate-500 border-b border-slate-200">
-                  <th className="py-2 pr-3">{t('app.automation_rules.columns.enabled', { defaultValue: 'On' })}</th>
-                  <th className="py-2 pr-3">{t('app.automation_rules.columns.trigger', { defaultValue: 'Trigger' })}</th>
-                  <th className="py-2 pr-3">{t('app.automation_rules.columns.title', { defaultValue: 'Title' })}</th>
-                  <th className="py-2 pr-3">{t('app.automation_rules.columns.conditions', { defaultValue: 'Conditions' })}</th>
-                  <th className="py-2 pr-3">{t('app.automation_rules.columns.actions', { defaultValue: 'Actions' })}</th>
-                  <th className="py-2 text-right">{t('common.actions.actions', { defaultValue: 'Actions' })}</th>
+                  <th className="py-2 pr-3">{t('app.automation_rules.columns.enabled')}</th>
+                  <th className="py-2 pr-3">{t('app.automation_rules.columns.trigger')}</th>
+                  <th className="py-2 pr-3">{t('app.automation_rules.columns.title')}</th>
+                  <th className="py-2 pr-3">{t('app.automation_rules.columns.conditions')}</th>
+                  <th className="py-2 pr-3">{t('app.automation_rules.columns.actions')}</th>
+                  <th className="py-2 text-right">{t('common.actions.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -198,7 +197,7 @@ export default function AutomationRulesPage() {
                         className="btn-secondary btn-xs"
                         onClick={() => void deleteAutomationRule(r.id).then(load)}
                       >
-                        {t('common.actions.delete', { defaultValue: 'Delete' })}
+                        {t('common.actions.delete')}
                       </button>
                     </td>
                   </tr>

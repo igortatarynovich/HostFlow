@@ -13,6 +13,7 @@ import {
 } from '../../api/communications'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 function errorTextFrom(err: any, fallback: string) {
   const d = err?.response?.data?.detail
@@ -162,10 +163,10 @@ export default function CommunicationsQueueSettingsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/app/settings/communications" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.settingsCommunications} className="btn-secondary">
             {t('admin.communications_queue.actions.all_settings', { defaultValue: 'All communication settings' })}
           </Link>
-          <Link to="/app/messages" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.messages} className="btn-secondary">
             {t('admin.communications_queue.actions.open_messages', { defaultValue: 'Open messages' })}
           </Link>
         </div>
@@ -180,7 +181,7 @@ export default function CommunicationsQueueSettingsPage() {
           }}
           onRetry={() => window.location.reload()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo="/app/settings/communications"
+          secondaryTo={CRM_APP_PATHS.settingsCommunications}
           secondaryLabel={t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
           compact
         />
@@ -270,7 +271,7 @@ export default function CommunicationsQueueSettingsPage() {
               </div>
             </div>
             <div>
-              <Link to="/app/settings/communications/sla" className="btn-secondary">
+              <Link to={CRM_APP_PATHS.settingsCommunicationsSla} className="btn-secondary">
                 {t('admin.communications_settings.open_sla', { defaultValue: 'Open SLA settings' })}
               </Link>
             </div>

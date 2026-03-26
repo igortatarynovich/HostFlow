@@ -4,6 +4,7 @@ import { listManagers } from '../api/client'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 function errorTextFrom(err: any, fallback: string): string {
   const detail = err?.response?.data?.detail
@@ -168,7 +169,7 @@ export default function TeamAvailabilityPage() {
               info={{ title: errorText, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
               onRetry={() => window.location.reload()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              secondaryTo="/app/calendar"
+              secondaryTo={CRM_APP_PATHS.calendar}
               secondaryLabel={t('app.nav.items.calendar', { defaultValue: 'Calendar' })}
               compact
             />

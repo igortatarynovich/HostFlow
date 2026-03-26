@@ -16,6 +16,8 @@ from backend.app.models.tenant import TenantType
 from backend.app.models.tenant import TenantLink
 from backend.app.models.user import Role as UserRole, User
 from backend.app.services.operating_company_slots import get_operating_company_slots
+
+from .funnel_presets import business_funnel_presets, normalize_industry
 from .schemas import (
     BillingProfile,
     ComplianceProfile,
@@ -634,56 +636,28 @@ def _bootstrap_tenant_settings_for_company_type(
     return settings_payload
 
 
-def _business_funnel_presets(company_type: str | None) -> Dict[str, Dict[str, Any]]:
-    normalized = str(company_type or "").strip().lower() or "agency"
-    candidate_presets = {
-        "agency": {
-            "name": "Candidate Pipeline",
-            "stages": [
-                ("new", "New", "new", False),
-                ("screening", "In progress", "in_progress", False),
-                ("hired", "Hired", "hired", True),
-                ("rejected", "Declined / Rejected", "declined_rejected", True),
-            ],
-        },
-        "employer": {
-            "name": "Hiring Pipeline",
-            "stages": [
-                ("new", "New", "new", False),
-                ("screening", "Screening", "in_progress", False),
-                ("interview", "Interview", "in_progress", False),
-                ("offer", "Offer", "in_progress", False),
-                ("hired", "Hired", "hired", True),
-                ("rejected", "Declined / Rejected", "declined_rejected", True),
-            ],
-        },
-    }
-    lead_presets = {
-        "agency": {
-            "name": "Lead Pipeline",
-            "stages": [
-                ("new", "New", "new", False),
-                ("contacted", "Contact made", "in_progress", False),
-                ("qualified", "Qualified", "in_progress", False),
-                ("converted", "Converted", "hired", True),
-                ("lost", "Lost", "declined_rejected", True),
-            ],
-        },
-        "services": {
-            "name": "Service Sales Pipeline",
-            "stages": [
-                ("new", "New request", "new", False),
-                ("contacted", "In progress", "in_progress", False),
-                ("qualified", "Proposal sent", "in_progress", False),
-                ("converted", "Won", "hired", True),
-                ("lost", "Lost", "declined_rejected", True),
-            ],
-        },
-    }
-    return {
-        "candidate": candidate_presets.get(normalized, candidate_presets["agency"]),
-        "lead": lead_presets.get(normalized, lead_presets["agency"]),
-    }
+def _tenant_industry_from_settings(settings: Any) -> str | None:
+    if not isinstance(settings, dict):
+        return None
+    ob = settings.get("onboarding")
+    if isinstance(ob, dict):
+        raw = ob.get("industry")
+        if raw is not None and str(raw).strip():
+            return str(raw).strip()
+    return None
+
+
+def _coalesce_industry(*candidates: str | None) -> str | None:
+    for c in candidates:
+        if c is None:
+            continue
+        s = str(c).strip()
+        if not s:
+            continue
+        n = normalize_industry(s)
+        if n:
+            return s.strip()
+    return None
 
 
 async def _ensure_default_funnel_if_missing(
@@ -757,8 +731,9 @@ async def _bootstrap_default_funnels_for_business_type(
     tenant_id: str,
     company_type: str | None,
     modules: Dict[str, bool] | None,
+    industry: str | None = None,
 ) -> None:
-    presets = _business_funnel_presets(company_type)
+    presets = business_funnel_presets(company_type, industry)
     enabled_modules = modules or {}
     if bool(enabled_modules.get("candidates", True)):
         candidate = presets["candidate"]
@@ -778,6 +753,81 @@ async def _bootstrap_default_funnels_for_business_type(
             name=str(lead["name"]),
             stages=list(lead["stages"]),
         )
+
+
+async def bootstrap_tenant_for_own_company_onboarding(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    company_type: str | None,
+    industry: str | None = None,
+    team_size: str | None = None,
+    workspace_name: str | None = None,
+    workspace_count: int | None = None,
+    working_hours_preset: str | None = None,
+    actor_user_id: str | None = None,
+) -> None:
+    """
+    When the first OwnCompany is created (no legacy operating Company yet), align tenant type,
+    module profile, business_type in settings, optional onboarding metadata, and seed default funnels.
+    Optionally seeds the creating user's `working_hours_v1` from `working_hours_preset` when empty.
+    """
+    normalized = str(company_type or "").strip().lower()
+    if normalized not in ("agency", "employer", "services"):
+        normalized = "agency"
+
+    tenant = (
+        await db.execute(select(Tenant).where(Tenant.id == tenant_id).limit(1))
+    ).scalar_one_or_none()
+    if tenant is None:
+        return
+
+    if normalized == "employer":
+        tenant.type = TenantType.company
+    else:
+        tenant.type = TenantType.agency
+
+    settings_payload = _bootstrap_tenant_settings_for_company_type(
+        tenant.settings,
+        company_type=normalized,
+    )
+    onboarding_prev = _ensure_dict(settings_payload.get("onboarding"))
+    onboarding_patch: Dict[str, Any] = {}
+    if industry is not None and str(industry).strip():
+        onboarding_patch["industry"] = str(industry).strip()
+    if team_size is not None and str(team_size).strip():
+        onboarding_patch["team_size"] = str(team_size).strip()
+    if workspace_name is not None and str(workspace_name).strip():
+        onboarding_patch["workspace_name"] = str(workspace_name).strip()
+    if workspace_count is not None:
+        try:
+            onboarding_patch["workspace_count"] = int(workspace_count)
+        except (TypeError, ValueError):
+            pass
+    if working_hours_preset is not None and str(working_hours_preset).strip():
+        onboarding_patch["working_hours_preset"] = str(working_hours_preset).strip()
+    if onboarding_patch:
+        merged_onboarding = {**onboarding_prev, **onboarding_patch}
+        settings_payload["onboarding"] = merged_onboarding
+
+    tenant.settings = settings_payload
+    db.add(tenant)
+
+    tenant_modules = _ensure_dict(settings_payload.get("modules"))
+    await _bootstrap_default_funnels_for_business_type(
+        db,
+        tenant_id=tenant_id,
+        company_type=normalized,
+        modules=tenant_modules,
+        industry=industry,
+    )
+    aid = str(actor_user_id or "").strip()
+    whp = str(working_hours_preset or "").strip()
+    if aid and whp:
+        from backend.app.services.working_hours_presets import apply_working_hours_preset_to_user_if_empty
+
+        await apply_working_hours_preset_to_user_if_empty(db, user_id=aid, preset=whp)
+    await db.flush()
 
 
 async def update_company_extra_section(
@@ -1291,11 +1341,17 @@ async def create_company(db: AsyncSession, data, *, actor_user_id: str | None = 
             )
             session.add(tenant)
             tenant_modules = _ensure_dict(tenant.settings.get("modules")) if isinstance(tenant.settings, dict) else {}
+            ind_raw = extra_normalized.get("industry")
+            industry_eff = _coalesce_industry(
+                ind_raw if isinstance(ind_raw, str) else None,
+                _tenant_industry_from_settings(tenant.settings),
+            )
             await _bootstrap_default_funnels_for_business_type(
                 session,
                 tenant_id=tenant_id,
                 company_type=company_type,
                 modules=tenant_modules,
+                industry=industry_eff,
             )
 
     await session.commit()
@@ -1383,11 +1439,17 @@ async def update_company(db: AsyncSession, company_id: UUID, data) -> Optional[C
                 session.add(tenant)
 
                 tenant_modules = _ensure_dict(tenant.settings.get("modules")) if isinstance(tenant.settings, dict) else {}
+                ind_raw = updated_extra.get("industry")
+                industry_eff = _coalesce_industry(
+                    ind_raw if isinstance(ind_raw, str) else None,
+                    _tenant_industry_from_settings(tenant.settings),
+                )
                 await _bootstrap_default_funnels_for_business_type(
                     session,
                     tenant_id=tenant_id,
                     company_type=company_type,
                     modules=tenant_modules,
+                    industry=industry_eff,
                 )
     except Exception:
         # Best-effort: company update should not fail due to tenant bootstrap sync.

@@ -6,6 +6,7 @@ import type { ReminderListResponse, ReminderRecord } from '../../api/types'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { buildInboxThreadPath } from '../../utils/inboxDeepLinks'
 
 type LoadState = 'idle' | 'loading' | 'error'
@@ -21,13 +22,13 @@ function reminderEntityHref(item: ReminderRecord): string | null {
   if (!entityId) return null
   switch (item.entity_type) {
     case 'candidate':
-      return `/app/candidates/${entityId}`
+      return `${CRM_APP_PATHS.candidates}/${entityId}`
     case 'vacancy':
-      return `/app/vacancies/${entityId}`
+      return `${CRM_APP_PATHS.vacancies}/${entityId}`
     case 'lead':
-      return `/app/leads`
+      return CRM_APP_PATHS.leads
     case 'company':
-      return `/app/clients/${entityId}`
+      return `${CRM_APP_PATHS.agencyClients}/${entityId}`
     case 'communication_thread':
       return buildInboxThreadPath(entityId)
     default:
@@ -38,7 +39,7 @@ function reminderEntityHref(item: ReminderRecord): string | null {
 type ActivitiesPanelProps = {
   /** Tighter spacing for modal embedding */
   compact?: boolean
-  /** Show link to full /app/tasks page (e.g. in modal footer) */
+  /** Show link to full tasks workspace (Reminders, same as **`tasksWorkspace`**) */
   showFullPageLink?: boolean
   /** When true, reload list whenever this value changes (e.g. modal open counter) */
   refreshToken?: number
@@ -79,7 +80,7 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
       setState('idle')
     } catch (err: any) {
       setState('error')
-      setError(getFriendlyErrorInfo(err, t('app.activities.errors.load', { defaultValue: 'Failed to load activities' })))
+      setError(getFriendlyErrorInfo(err, t('app.activities.errors.load')))
     }
   }, [statusList, t, typeFilter])
 
@@ -113,7 +114,7 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
         const updated = (await completeActivity(id)) as ReminderRecord
         setItems((prev) => prev.map((r) => (r.id === id ? updated : r)))
       } catch (err: any) {
-        setError(getFriendlyErrorInfo(err, t('app.activities.errors.complete', { defaultValue: 'Failed to complete activity' })))
+        setError(getFriendlyErrorInfo(err, t('app.activities.errors.complete')))
       } finally {
         setBusyId(null)
       }
@@ -136,10 +137,10 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
           className={clsx('input min-w-[180px] flex-1', compact && 'text-sm')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('app.activities.filters.search', { defaultValue: 'Search title, type, entity...' })}
+          placeholder={t('app.activities.filters.search')}
         />
         <select className={clsx('input', compact && 'text-sm')} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-          <option value="">{t('app.activities.filters.type_all', { defaultValue: 'All types' })}</option>
+          <option value="">{t('app.activities.filters.type_all')}</option>
           {typeOptions.map((opt) => (
             <option key={opt} value={opt}>
               {opt}
@@ -160,14 +161,14 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
                   : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
               )}
             >
-              {value === 'active' && t('app.activities.filters.active', { defaultValue: 'Active' })}
-              {value === 'all' && t('app.activities.filters.all', { defaultValue: 'All' })}
-              {value === 'done' && t('app.activities.filters.done', { defaultValue: 'Done' })}
+              {value === 'active' && t('app.activities.filters.active')}
+              {value === 'all' && t('app.activities.filters.all')}
+              {value === 'done' && t('app.activities.filters.done')}
             </button>
           ))}
         </div>
         <button type="button" className={clsx('btn-secondary btn-sm', compact && 'btn-xs')} onClick={() => void load()}>
-          {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          {t('common.actions.refresh')}
         </button>
       </div>
 
@@ -177,15 +178,15 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
           compact
           info={error}
           onRetry={() => void load()}
-          retryLabel={t('common.retry', { defaultValue: 'Retry' })}
-          secondaryTo="/app/leads"
-          secondaryLabel={t('app.reminders.states.empty_cta_leads', { defaultValue: 'Open leads' })}
+          retryLabel={t('common.retry')}
+          secondaryTo={CRM_APP_PATHS.leads}
+          secondaryLabel={t('app.reminders.states.empty_cta_leads')}
         />
       )}
 
       {state !== 'loading' && filtered.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-          {t('app.activities.states.empty', { defaultValue: 'No activities yet' })}
+          {t('app.activities.states.empty')}
         </div>
       )}
 
@@ -207,7 +208,7 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
                     <p className="truncate text-sm font-semibold text-slate-900">{item.title || '—'}</p>
                     {href && (
                       <Link to={href} className="text-xs font-medium text-brand-700 hover:underline">
-                        {t('app.activities.actions.open', { defaultValue: 'Open' })}
+                        {t('app.activities.actions.open')}
                       </Link>
                     )}
                   </div>
@@ -221,12 +222,12 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
                       onClick={() => void handleComplete(item.id)}
                       disabled={busy}
                     >
-                      {busy ? t('common.loading') : t('app.activities.actions.complete', { defaultValue: 'Complete' })}
+                      {busy ? t('common.loading') : t('app.activities.actions.complete')}
                     </button>
                   )}
                   {closed && (
                     <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
-                      {t('app.activities.states.completed', { defaultValue: 'Done' })}
+                      {t('app.activities.states.completed')}
                     </span>
                   )}
                 </div>
@@ -238,8 +239,8 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
 
       {showFullPageLink ? (
         <div className="flex justify-end border-t border-slate-100 pt-3">
-          <Link to="/app/tasks" className="btn-secondary btn-sm">
-            {t('app.candidates.activities_modal.open_full_page', { defaultValue: 'Open full Tasks page' })}
+          <Link to={CRM_APP_PATHS.tasks} className="btn-secondary btn-sm">
+            {t('app.candidates.activities_modal.open_full_page')}
           </Link>
         </div>
       ) : null}

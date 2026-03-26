@@ -1,7 +1,8 @@
 import axios, { AxiosHeaders } from "axios";
+import type { Lead } from "./types";
 
 const API_BASE_STORAGE_KEY = "hf_api_base";
-const OWN_COMPANY_STORAGE_KEY = "hf_own_company_id";
+export const OWN_COMPANY_STORAGE_KEY = "hf_own_company_id";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -286,6 +287,15 @@ export const ownCompanySettings = {
     const trimmed = sanitizeOwnCompanyId(value) ?? "";
     if (!trimmed) safeStorageRemove(OWN_COMPANY_STORAGE_KEY);
     else safeStorageSet(OWN_COMPANY_STORAGE_KEY, trimmed);
+    try {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("hf:own-company-changed", { detail: { id: trimmed || null } }),
+        );
+      }
+    } catch {
+      // ignore
+    }
   },
 };
 
@@ -523,6 +533,13 @@ export type OwnCompanyRecord = {
   id: string
   tenant_id: string
   name: string
+  onboarding_demo?: {
+    entity?: string
+    pipeline_total?: number
+    need_action?: number
+    stuck?: number
+    active_today?: number
+  } | null
   legal_name?: string | null
   tax_id?: string | null
   phone?: string | null
@@ -554,7 +571,17 @@ export async function listOwnCompanies() {
   }
 }
 
-export async function createOwnCompany(payload: Partial<OwnCompanyRecord> & { name: string }) {
+export type OwnCompanyCreatePayload = Partial<OwnCompanyRecord> & {
+  name: string
+  business_type?: 'agency' | 'employer' | 'services'
+  industry?: string
+  team_size?: string
+  workspace_name?: string
+  workspace_count?: number
+  working_hours_preset?: string
+}
+
+export async function createOwnCompany(payload: OwnCompanyCreatePayload) {
   try {
     const { data } = await api.post<OwnCompanyRecord>(`/own-companies`, payload)
     return data
@@ -602,6 +629,7 @@ export type OnboardingStatus = {
   business_type: 'agency' | 'employer' | 'services'
   onboarding_required: boolean
   activation_required: boolean
+  demo_seeded?: boolean
   companies_count: number
   leads_count: number
   vacancies_count: number
@@ -621,6 +649,18 @@ export type OnboardingStatus = {
 
 export async function getOnboardingStatus(): Promise<OnboardingStatus> {
   const { data } = await api.get<OnboardingStatus>('/onboarding/status');
+  return data;
+}
+
+export type OnboardingClearDemoResult = {
+  reminders: number
+  leads: number
+  candidates: number
+  companies: number
+}
+
+export async function clearOnboardingDemoData(): Promise<OnboardingClearDemoResult> {
+  const { data } = await api.post<OnboardingClearDemoResult>('/onboarding/clear-demo-data');
   return data;
 }
 
@@ -698,14 +738,37 @@ export async function getCompanyReadiness(id: string) {
 }
 
 // Leads -----------------------------------------------------------------
-export async function listLeads(opts?: { status?: string; stage?: string; nextAction?: string; limit?: number; offset?: number }) {
+export async function listLeads(opts?: {
+  status?: string;
+  stage?: string;
+  nextAction?: string;
+  /** Substring search (server applies when trimmed length ≥ 2). */
+  q?: string;
+  customFieldKey?: string;
+  /** Sent when customFieldKey is set; use empty string to match blank stored values. */
+  customFieldValue?: string;
+  limit?: number;
+  offset?: number;
+}) {
   const params: Record<string, any> = {};
   if (opts?.status) params.status = opts.status;
   if (opts?.stage) params.stage = opts.stage;
   if (opts?.nextAction) params.next_action = opts.nextAction;
+  const qq = (opts?.q || '').trim();
+  if (qq.length >= 2) params.q = qq;
+  const cfk = (opts?.customFieldKey || '').trim();
+  if (cfk) {
+    params.custom_field_key = cfk;
+    params.custom_field_value = opts?.customFieldValue ?? '';
+  }
   if (opts?.limit != null) params.limit = opts.limit;
   if (opts?.offset != null) params.offset = opts.offset;
   const { data } = await api.get(`/leads`, { params });
+  return data;
+}
+
+export async function getLead(leadId: string): Promise<Lead> {
+  const { data } = await api.get<Lead>(`/leads/${leadId}`);
   return data;
 }
 
@@ -714,14 +777,51 @@ export async function getLeadTimeline(leadId: string) {
   return data;
 }
 
-export async function updateLeadStage(leadId: string, payload: { stage?: string | null }) {
+export async function updateLeadStage(leadId: string, payload: {
+  stage?: string | null
+  assignment_locked?: boolean
+  lost_reason_code?: string
+  lost_reason_note?: string
+}) {
   const { data } = await api.patch(`/leads/${leadId}`, payload);
   return data;
 }
 
-export async function bulkUpdateLeads(payload: { lead_ids: string[]; stage?: string | null; status?: string | null }) {
+export async function bulkUpdateLeads(payload: {
+  lead_ids: string[];
+  stage?: string | null;
+  status?: string | null;
+  lost_reason_code?: string;
+  lost_reason_note?: string;
+}) {
   const { data } = await api.patch(`/leads/bulk`, payload);
   return data;
+}
+
+export type BulkAutoProcessQueueItem = {
+  lead_id: string
+  ok: boolean
+  status_after?: string | null
+  error?: string | null
+}
+
+export type BulkAutoProcessQueueResponse = {
+  results: BulkAutoProcessQueueItem[]
+  attempted: number
+  succeeded: number
+  failed: number
+}
+
+/** §2.3 Team+ gated: batch Meta process for needs_routing / failed leads. */
+export async function bulkAutoProcessLeadQueue(payload?: { max_items?: number }) {
+  const { data } = await api.post<BulkAutoProcessQueueResponse>(`/leads/bulk/auto-process-queue`, payload ?? {})
+  return data
+}
+
+/** §2.10 NBA: Team+ gated batch Meta process for status=new (FIFO). */
+export async function bulkProcessNewMetaLeads(payload?: { max_items?: number }) {
+  const { data } = await api.post<BulkAutoProcessQueueResponse>(`/leads/bulk/process-new-queue`, payload ?? {})
+  return data
 }
 
 export async function createLeadServiceOrder(leadId: string) {

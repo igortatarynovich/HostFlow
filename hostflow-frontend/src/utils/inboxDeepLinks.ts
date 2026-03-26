@@ -1,5 +1,6 @@
 /** Deep links into the unified Inbox (Communication Center). */
 
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { inboxContextQueryString, type InboxListQuery } from './inboxUrlQuery'
 
 function baseListQuery(partial: Partial<InboxListQuery>): InboxListQuery {
@@ -20,8 +21,8 @@ export function buildInboxThreadPath(
   query?: { candidateId?: string; channel?: 'messages' | 'email' },
 ): string {
   const id = String(threadId || '').trim()
-  if (!id) return '/app/inbox'
-  const path = `/app/inbox/threads/${encodeURIComponent(id)}`
+  if (!id) return CRM_APP_PATHS.inbox
+  const path = `${CRM_APP_PATHS.inboxThreadsBase}/${encodeURIComponent(id)}`
   const channel: InboxListQuery['channel'] =
     query?.channel === 'email' ? 'email' : query?.channel === 'messages' ? 'messages' : 'all'
   const list = baseListQuery({
@@ -36,5 +37,5 @@ export function buildInboxHubPath(query?: { candidateId?: string; channel?: 'mes
     channel: query?.channel && query.channel !== 'all' ? query.channel : 'all',
     candidateId: String(query?.candidateId || '').trim(),
   })
-  return `/app/inbox${inboxContextQueryString(list)}`
+  return `${CRM_APP_PATHS.inbox}${inboxContextQueryString(list)}`
 }

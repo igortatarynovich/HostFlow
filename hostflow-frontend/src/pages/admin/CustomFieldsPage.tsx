@@ -12,6 +12,7 @@ import {
   type CustomFieldType,
 } from '../../api/custom_fields'
 import { getDocumentTypes, type DocType } from '../../api/documents/catalog'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 // Field components (inline, similar to Companies.tsx)
 function TextField({ label, value, onChange, placeholder, disabled, type }: {
@@ -199,7 +200,21 @@ export default function CustomFieldsPage() {
       await loadDefinitions()
       setNewDefinitionMode(false)
     } catch (err: any) {
-      setError(err?.message || 'Не удалось создать определение поля')
+      const d = err?.response?.data?.detail
+      if (d && typeof d === 'object' && d.code === 'plan_lead_custom_fields_limit') {
+        setError(
+          t('common.errors.plan_lead_custom_fields_limit', {
+            values: { limit: Number(d.limit) || 10 },
+          }),
+        )
+      } else {
+        const msg =
+          (typeof d === 'object' && d && typeof d.message === 'string' && d.message) ||
+          (typeof d === 'string' && d) ||
+          err?.message ||
+          'Не удалось создать определение поля'
+        setError(msg)
+      }
       throw err
     }
   }
@@ -229,6 +244,7 @@ export default function CustomFieldsPage() {
 
   const scopeOptions: Array<{ value: CustomFieldScope; label: string }> = [
     { value: 'CANDIDATE', label: 'Кандидат' },
+    { value: 'LEAD', label: 'Лид' },
     { value: 'DOCUMENT', label: 'Документ' },
   ]
 
@@ -257,7 +273,11 @@ export default function CustomFieldsPage() {
         <header className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900">Кастомные поля</h2>
-            <p className="text-sm text-slate-500">Управление дополнительными полями для кандидатов и документов</p>
+            <p className="text-sm text-slate-500">
+              Дополнительные поля для кандидатов, лидов и документов. Для лидов ключ должен совпадать с путём в
+              normalized (в т.ч. точки для вложенности); значения подтягиваются при ingest и отдаются в API как{' '}
+              <code className="rounded bg-slate-100 px-1">custom_fields</code>.
+            </p>
           </div>
           <button
             className="btn-primary"
@@ -290,7 +310,7 @@ export default function CustomFieldsPage() {
               }}
               onRetry={() => void loadDefinitions()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-              secondaryTo="/app/settings/crm/custom-fields"
+              secondaryTo={CRM_APP_PATHS.settingsCustomFields}
               secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
               compact
             />
@@ -341,7 +361,11 @@ export default function CustomFieldsPage() {
                               {def.key}
                             </span>
                             <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                              {def.scope === 'CANDIDATE' ? 'Кандидат' : 'Документ'}
+                              {def.scope === 'CANDIDATE'
+                                ? 'Кандидат'
+                                : def.scope === 'LEAD'
+                                  ? 'Лид'
+                                  : 'Документ'}
                             </span>
                             <span className="rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
                               {fieldTypeOptions.find((opt) => opt.value === def.field_type)?.label || def.field_type}
@@ -486,7 +510,7 @@ function DefinitionForm({
           value={scope}
           onChange={(value) => {
             setScope(value as CustomFieldScope)
-            if (value === 'CANDIDATE') {
+            if (value === 'CANDIDATE' || value === 'LEAD') {
               setDocumentTypeId('')
             }
           }}

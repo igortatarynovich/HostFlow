@@ -1,19 +1,26 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.platform import schemas as platform_schemas
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
+from backend.app.constants.spa_paths import (
+    SETTINGS_BILLING,
+    SETTINGS_BILLING_CHECKOUT_CANCEL,
+    SETTINGS_BILLING_CHECKOUT_SUCCESS,
+)
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db, get_db_with_tenant
+from backend.app.models.stripe_webhook_event import StripeWebhookEventLog
 from backend.app.models.tenant import Tenant, TenantLicense
 from backend.app.services.operating_company_slots import (
     extract_extra_operating_company_slots,
@@ -365,12 +372,18 @@ def _stripe_ready() -> bool:
     return bool((settings.stripe_secret_key or "").strip()) and stripe is not None
 
 
-def _subscription_out(tenant: Tenant) -> BillingSubscriptionOut:
+def _subscription_out(tenant: Tenant, *, license_entry: TenantLicense | None = None) -> BillingSubscriptionOut:
     payload = _subscription_payload(tenant)
     provider = "stripe" if str(payload.get("provider") or "").strip().lower() == "stripe" else "mock"
     plan_code = str(payload.get("plan_code") or "starter").strip().lower()
     if plan_code not in PLAN_CODES:
         plan_code = "starter"
+    trial_ends_at = _iso_to_dt(payload.get("trial_ends_at"))
+    if trial_ends_at is None and license_entry is not None:
+        lp = str(license_entry.plan or "").strip().lower()
+        exp = license_entry.expires_at
+        if lp == "trial" and exp is not None:
+            trial_ends_at = datetime.combine(exp, time(23, 59, 59, tzinfo=UTC))
     return BillingSubscriptionOut(
         provider=provider,
         status=str(payload.get("status") or "trial"),
@@ -385,7 +398,7 @@ def _subscription_out(tenant: Tenant) -> BillingSubscriptionOut:
         current_period_start=_iso_to_dt(payload.get("current_period_start")),
         current_period_end=_iso_to_dt(payload.get("current_period_end")),
         activated_at=_iso_to_dt(payload.get("activated_at")),
-        trial_ends_at=_iso_to_dt(payload.get("trial_ends_at")),
+        trial_ends_at=trial_ends_at,
         cancel_at_period_end=bool(payload.get("cancel_at_period_end")),
         canceled_at=_iso_to_dt(payload.get("canceled_at")),
         updated_at=_iso_to_dt(payload.get("updated_at")),
@@ -975,6 +988,83 @@ async def _handle_invoice_paid(db: AsyncSession, obj: dict[str, Any]) -> str:
     return f"Processed invoice.paid for tenant={tenant_id}"
 
 
+async def _handle_invoice_payment_failed(db: AsyncSession, obj: dict[str, Any]) -> str:
+    tenant = await _find_tenant_for_stripe_event(
+        db,
+        customer_id=str(obj.get("customer") or "").strip() or None,
+        subscription_id=str(obj.get("subscription") or "").strip() or None,
+    )
+    if tenant is None:
+        return "Ignored: tenant not found for invoice.payment_failed"
+    tenant_id = str(tenant.id)
+    current = _subscription_payload(tenant)
+    plan_code = _normalize_plan_code(str(current.get("plan_code") or "starter"))
+    now = _now_utc()
+    invoice_id = str(obj.get("id") or "").strip() or None
+    dedupe_key = f"stripe:{invoice_id or 'unknown'}:invoice.payment_failed"
+    history_entry = None if _history_contains(tenant, dedupe_key) else _history_entry(
+        event_type="invoice.payment_failed",
+        status="warning",
+        title="Payment failed",
+        description="Stripe could not collect the invoice payment. Update your payment method in Billing.",
+        source="stripe",
+        occurred_at=now,
+        plan_code=plan_code,
+        invoice_id=invoice_id,
+        hosted_invoice_url=str(obj.get("hosted_invoice_url") or "").strip() or None,
+        invoice_pdf_url=str(obj.get("invoice_pdf") or "").strip() or None,
+        dedupe_key=dedupe_key,
+    )
+    updated = {
+        **current,
+        "provider": "stripe",
+        "status": "past_due",
+        "plan_code": plan_code,
+        "customer_id": str(obj.get("customer") or current.get("customer_id") or "").strip() or None,
+        "subscription_id": str(obj.get("subscription") or current.get("subscription_id") or "").strip() or None,
+        "updated_at": now.isoformat(),
+    }
+    await _store_subscription(db, tenant, updated, history_entry=history_entry)
+    if history_entry:
+        await _send_billing_email(
+            updated.get("billing_contact_email"),
+            subject="HostFlow billing: payment failed",
+            body=(
+                "We could not process your latest HostFlow subscription payment.\n\n"
+                f"Plan: {plan_code.upper()}\n"
+                f"Invoice: {invoice_id or '-'}\n\n"
+                "Please open Billing and update your payment method, or use the Stripe customer portal.\n"
+            ),
+        )
+    return f"Processed invoice.payment_failed for tenant={tenant_id}"
+
+
+async def _stripe_webhook_event_already_processed(db: AsyncSession, event_id: str) -> bool:
+    eid = (event_id or "").strip()
+    if not eid:
+        return False
+    row = (
+        await db.execute(select(StripeWebhookEventLog.event_id).where(StripeWebhookEventLog.event_id == eid).limit(1))
+    ).scalar_one_or_none()
+    return row is not None
+
+
+async def _stripe_webhook_event_record_processed(db: AsyncSession, event_id: str, event_type: str) -> None:
+    eid = (event_id or "").strip()
+    if not eid:
+        return
+    db.add(
+        StripeWebhookEventLog(
+            event_id=eid[:255],
+            event_type=(event_type or "")[:128],
+        )
+    )
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+
+
 async def _handle_subscription_event(db: AsyncSession, obj: dict[str, Any], *, deleted: bool) -> str:
     tenant = await _find_tenant_for_stripe_event(
         db,
@@ -1089,7 +1179,8 @@ async def get_billing_subscription(
     tenant = await db.get(Tenant, tenant_id)
     if tenant is None:
         raise HTTPException(status_code=404, detail="Tenant not found")
-    return _subscription_out(tenant)
+    license_entry = await tenant_service.get_tenant_license(db, tenant_id)
+    return _subscription_out(tenant, license_entry=license_entry)
 
 
 @router.get(
@@ -1126,7 +1217,7 @@ async def get_billing_summary(
             pass
     license_entry = await tenant_service.get_tenant_license(db, tenant_id)
     usage = await tenant_service.get_usage_snapshot(db, tenant_id)
-    subscription = _subscription_out(tenant)
+    subscription = _subscription_out(tenant, license_entry=license_entry)
     invoices = _list_stripe_invoices(_subscription_payload(tenant))
     history = _merge_history_with_invoices(_history_out(tenant), invoices)
     company_slots = await _company_slots_payload(db, tenant=tenant, license_entry=license_entry)
@@ -1159,8 +1250,8 @@ async def create_checkout_session(
         raise HTTPException(status_code=404, detail="Tenant not found")
 
     plan_code = _normalize_plan_code(payload.plan_code)
-    success_url = (payload.success_url or "").strip() or "/app/settings/billing?checkout=success"
-    cancel_url = (payload.cancel_url or "").strip() or "/app/settings/billing?checkout=cancel"
+    success_url = (payload.success_url or "").strip() or SETTINGS_BILLING_CHECKOUT_SUCCESS
+    cancel_url = (payload.cancel_url or "").strip() or SETTINGS_BILLING_CHECKOUT_CANCEL
     session_id = f"cs_{uuid4().hex}"
 
     current = _subscription_payload(tenant)
@@ -1387,8 +1478,8 @@ async def change_plan(
                 period_end=current_period_end,
                 now=now,
             )
-            success_url = (payload.success_url or "").strip() or "/app/settings/billing?checkout=success"
-            cancel_url = (payload.cancel_url or "").strip() or "/app/settings/billing?checkout=cancel"
+            success_url = (payload.success_url or "").strip() or SETTINGS_BILLING_CHECKOUT_SUCCESS
+            cancel_url = (payload.cancel_url or "").strip() or SETTINGS_BILLING_CHECKOUT_CANCEL
             checkout = stripe.checkout.Session.create(  # type: ignore[union-attr]
                 mode="payment",
                 customer=customer_id,
@@ -1753,7 +1844,7 @@ async def create_customer_portal_link(
 
     subscription = _subscription_payload(tenant)
     customer_id = str(subscription.get("customer_id") or "").strip()
-    return_url = (settings.stripe_portal_return_url or "").strip() or "/app/settings/billing"
+    return_url = (settings.stripe_portal_return_url or "").strip() or SETTINGS_BILLING
     if _stripe_ready() and customer_id:
         stripe.api_key = settings.stripe_secret_key
         session = stripe.billing_portal.Session.create(  # type: ignore[union-attr]
@@ -1789,7 +1880,16 @@ async def stripe_webhook(
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Invalid Stripe webhook signature: {exc}") from exc
 
+    event_id = str(getattr(event, "id", "") or "").strip()
+    if not event_id and hasattr(event, "to_dict"):
+        ev_dict = event.to_dict()  # type: ignore[union-attr]
+        if isinstance(ev_dict, dict):
+            event_id = str(ev_dict.get("id") or "").strip()
+
     event_type = str(getattr(event, "type", "") or "")
+    if event_id and await _stripe_webhook_event_already_processed(db, event_id):
+        return BillingWebhookOut(accepted=True, detail=f"Duplicate webhook ignored: {event_id}")
+
     data = getattr(event, "data", None)
     obj = {}
     if isinstance(data, dict):
@@ -1804,13 +1904,20 @@ async def stripe_webhook(
 
     if event_type == "checkout.session.completed":
         detail = await _handle_checkout_completed(db, obj)
-    elif event_type == "invoice.paid":
+    elif event_type in ("invoice.paid", "invoice.payment_succeeded"):
         detail = await _handle_invoice_paid(db, obj)
+    elif event_type == "invoice.payment_failed":
+        detail = await _handle_invoice_payment_failed(db, obj)
+    elif event_type == "customer.subscription.created":
+        detail = await _handle_subscription_event(db, obj, deleted=False)
     elif event_type == "customer.subscription.updated":
         detail = await _handle_subscription_event(db, obj, deleted=False)
     elif event_type == "customer.subscription.deleted":
         detail = await _handle_subscription_event(db, obj, deleted=True)
     else:
         detail = f"Ignored: unsupported event type {event_type or '<empty>'}"
+
+    if event_id:
+        await _stripe_webhook_event_record_processed(db, event_id, event_type)
 
     return BillingWebhookOut(accepted=True, detail=detail)

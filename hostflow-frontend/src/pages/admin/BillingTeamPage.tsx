@@ -20,6 +20,7 @@ import type {
 } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 const ROLE_OPTIONS: { value: SeatRequest['role']; labelKey: string }[] = [
   { value: 'administrator', labelKey: 'app.settings.team.form.roles.administrator' },
@@ -248,7 +249,7 @@ export function TeamManagementPanel({
         }}
         onRetry={() => window.location.reload()}
         retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-        secondaryTo="/app/settings/team"
+        secondaryTo={CRM_APP_PATHS.settingsTeam}
         secondaryLabel={t('app.settings.team.title')}
         compact
       />
@@ -325,7 +326,7 @@ export function TeamManagementPanel({
               }}
               onRetry={() => window.location.reload()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-              secondaryTo="/app/settings/team"
+              secondaryTo={CRM_APP_PATHS.settingsTeam}
               secondaryLabel={t('app.platform.tenants.modules.title')}
               compact
             />
@@ -378,7 +379,7 @@ export function TeamManagementPanel({
             }}
             onRetry={() => void loadSeatRequests()}
             retryLabel={t('app.platform.tenants.seat_requests.actions.refresh')}
-            secondaryTo="/app/settings/team"
+            secondaryTo={CRM_APP_PATHS.settingsTeam}
             secondaryLabel={t('app.platform.tenants.seat_requests.title')}
             compact
           />

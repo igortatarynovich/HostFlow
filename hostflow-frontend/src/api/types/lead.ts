@@ -9,6 +9,14 @@ export type LeadType = 'candidate' | 'client';
 export type LeadStage = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
 export type LeadNextActionStatus = 'scheduled' | 'overdue' | 'no_next_action';
 
+/** From FunnelStage.stage_contract_v1 (§2.3). */
+export interface LeadStageContractV1 {
+  owner_role?: string | null
+  required_actions?: string[] | null
+  sla_hours?: number | null
+  auto_rules?: Record<string, unknown> | null
+}
+
 export interface Lead {
   id: UUID;
   tenant_id: UUID;
@@ -22,6 +30,8 @@ export interface Lead {
   ad_id?: number | null;
   status: LeadStatus;
   stage?: LeadStage | null;
+  funnel_id?: UUID | null;
+  stage_contract?: LeadStageContractV1 | null;
   candidate_id?: UUID | null;
   candidate_name?: string | null;
   outcome_entity_type?: 'candidate' | 'company' | null;
@@ -32,6 +42,8 @@ export interface Lead {
   error?: string | null;
   payload: Record<string, any>;
   normalized?: Record<string, any> | null;
+  /** LEAD-scoped custom field values (key → scalar), mirror of API LeadOut.custom_fields */
+  custom_fields?: Record<string, unknown> | null;
   created_at: string;
   last_routed_at?: string | null;
   next_action_status?: LeadNextActionStatus | null;
@@ -70,15 +82,20 @@ export interface MetaLeadFieldMappingRule {
   overwrite?: boolean;
 }
 
+export type LeadsProcessingModeV1 = 'manual' | 'assisted' | 'automatic';
+
 export interface MetaLeadSettings {
   tenant_id: UUID;
   default_company_id?: UUID | null;
   fallback_recruiter_id?: UUID | null;
   auto_create_enabled: boolean;
+  leads_processing_mode_v1: LeadsProcessingModeV1;
   reroute_after_hours?: number | null;
   mask_pii_in_logs: boolean;
   pull_field_data_from_graph?: boolean;
   field_mapping?: MetaLeadFieldMappingRule[];
+  plan_field_mapping_rules_limit?: number | null;
+  plan_meta_credentials_limit?: number | null;
   webhook_url?: string | null;
   last_webhook_check_at?: string | null;
   last_signature_status?: string | null;
@@ -91,6 +108,7 @@ export interface MetaLeadSettingsPatch {
   default_company_id?: UUID | null;
   fallback_recruiter_id?: UUID | null;
   auto_create_enabled?: boolean;
+  leads_processing_mode_v1?: LeadsProcessingModeV1;
   reroute_after_hours?: number | null;
   mask_pii_in_logs?: boolean;
   pull_field_data_from_graph?: boolean;

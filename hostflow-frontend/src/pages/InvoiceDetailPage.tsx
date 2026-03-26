@@ -16,6 +16,7 @@ import type { Invoice, InvoiceActivity, InvoiceStatus, ReminderRecord } from '..
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { Modal } from '../components/Modal'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
 
 const currencyFormatter = new Intl.NumberFormat('pl-PL', {
@@ -420,13 +421,17 @@ export default function InvoiceDetailPage() {
   }
 
   const isLockedForCompliance = invoice.status === 'sent' || invoice.status === 'paid' || invoice.status === 'overdue'
-  const correctionPath = `/app/invoices/new?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`
+  const correctionPath = `${CRM_APP_PATHS.invoiceNew}?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`
 
   return (
     <div className="flex h-full w-full flex-col gap-4 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-2">
-          <button type="button" className="text-sm text-brand-700 hover:underline" onClick={() => navigate('/app/invoices')}>
+          <button
+            type="button"
+            className="text-sm text-brand-700 hover:underline"
+            onClick={() => navigate(CRM_APP_PATHS.invoices)}
+          >
             {t('app.invoices.back', { defaultValue: 'Back to invoices' })}
           </button>
           <div className="flex flex-wrap items-center gap-3">
@@ -451,7 +456,13 @@ export default function InvoiceDetailPage() {
           <button
             type="button"
             className="btn-secondary btn-sm"
-            onClick={() => navigate(invoice.status === 'draft' ? `/app/invoices/new?source_invoice_id=${invoice.id}` : correctionPath)}
+            onClick={() =>
+              navigate(
+                invoice.status === 'draft'
+                  ? `${CRM_APP_PATHS.invoiceNew}?source_invoice_id=${invoice.id}`
+                  : correctionPath,
+              )
+            }
           >
             {t(
               invoice.status === 'draft' ? 'app.invoices.duplicate' : 'app.invoices.create_correction',
@@ -459,7 +470,11 @@ export default function InvoiceDetailPage() {
             )}
           </button>
           {invoice.status === 'draft' && (
-            <button type="button" className="btn-secondary btn-sm" onClick={() => navigate(`/app/invoices/${invoice.id}/edit`)}>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={() => navigate(`${CRM_APP_PATHS.invoices}/${invoice.id}/edit`)}
+            >
               {t('app.invoices.edit', { defaultValue: 'Edit Draft' })}
             </button>
           )}
@@ -621,7 +636,7 @@ export default function InvoiceDetailPage() {
               <h2 className="text-lg font-semibold text-slate-900">{t('app.invoices.timeline.title', { defaultValue: 'Timeline' })}</h2>
               <p className="text-sm text-slate-500">{t('app.invoices.timeline.subtitle', { defaultValue: 'Status, reminders and payment activity.' })}</p>
             </div>
-            <Link to="/app/tasks" className="text-sm text-brand-700 hover:underline">
+            <Link to={CRM_APP_PATHS.tasks} className="text-sm text-brand-700 hover:underline">
               {t('app.invoices.open_tasks', { defaultValue: 'Open tasks' })}
             </Link>
           </div>
@@ -748,7 +763,10 @@ export default function InvoiceDetailPage() {
             </dl>
             <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
               {invoice.company_id && (
-                <Link to={`/app/clients/${invoice.company_id}`} className="text-sm text-brand-700 hover:underline">
+                <Link
+                  to={`${CRM_APP_PATHS.agencyClients}/${invoice.company_id}`}
+                  className="text-sm text-brand-700 hover:underline"
+                >
                   {t('app.invoices.open_client', { defaultValue: 'Open client' })}
                 </Link>
               )}
@@ -787,7 +805,7 @@ export default function InvoiceDetailPage() {
                   return (
                     <Link
                       key={entry.id}
-                      to={`/app/invoices/${entry.id}`}
+                      to={`${CRM_APP_PATHS.invoices}/${entry.id}`}
                       className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${
                         isCurrent ? 'border-brand-300 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50'
                       }`}

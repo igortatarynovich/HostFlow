@@ -3,6 +3,10 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './store/useAuth'
 import Login from './pages/Login'
 import { AppShell } from './app/AppShell'
+import { WorkAreaLayout } from './app/WorkAreaLayout'
+import { WorkPathAliasRedirect } from './app/WorkPathAliasRedirect'
+import { WorkHubPage } from './app/appRoutePages'
+import { ACTIVATION_PATHS } from './app/activationRoutes'
 import { APP_ROUTES, NAV_ITEMS } from './app/routes'
 import { RoutePermissionGuard } from './app/RoutePermissionGuard'
 import { usePermissions } from './hooks/usePermissions'
@@ -29,6 +33,7 @@ import {
   signupContextToSearchParams,
 } from './constants/signupContext'
 import { resolveDefaultAppHomeHref, resolveDefaultAppHomeSegment } from './utils/defaultAppHome'
+import { CRM_APP_PATHS } from './app/crmAppPaths'
 
 const PublicApplyPage = lazy(() => import('./pages/public/PublicApplyPage'))
 const PublicIntakeNew = lazy(() => import('./pages/public/PublicIntakeNew'))
@@ -44,9 +49,9 @@ function SignupRedirectForAuthed() {
   const context = readSignupSuccessContextFromSessionStorage()
   if (context) {
     const params = signupContextToSearchParams(context)
-    return <Navigate to={`/app/onboarding/company?${params.toString()}`} replace />
+    return <Navigate to={`${ACTIVATION_PATHS.onboardingCompany}?${params.toString()}`} replace />
   }
-  return <Navigate to="/app/overview" replace />
+  return <Navigate to={ACTIVATION_PATHS.overview} replace />
 }
 
 function AuthedDefaultAppNavigate() {
@@ -106,7 +111,7 @@ export default function App(){
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/invite/accept" element={<InviteAcceptPage />} />
-          <Route path="/app/*" element={<Navigate to="/login" replace />} />
+          <Route path={`${CRM_APP_PATHS.appShellPrefix}/*`} element={<Navigate to="/login" replace />} />
           <Route path="*" element={<PublicNotFoundPage />} />
         </>
       )}
@@ -115,11 +120,24 @@ export default function App(){
         <>
           <Route path="/login" element={<AuthedDefaultAppNavigate />} />
           <Route path="/signup" element={<SignupRedirectForAuthed />} />
-          <Route path="/app" element={<AppShell me={me} navItems={navItems} onLogout={logout} />}>
+          <Route path={CRM_APP_PATHS.appShellPrefix} element={<AppShell me={me} navItems={navItems} onLogout={logout} />}>
             <Route index element={<AppShellIndexNavigate />} />
             <Route path="onboarding/company" element={<OnboardingCompanyPage />} />
             <Route path="onboarding/getting-started" element={<OnboardingGettingStartedPage />} />
-            {APP_ROUTES.map(({ key, path, Component, permission }) => (
+            <Route path="work" element={<WorkAreaLayout />}>
+              <Route
+                index
+                element={
+                  <RoutePermissionGuard>
+                    <LazyRoute loadingLabel={t('common.loading')}>
+                      <WorkHubPage />
+                    </LazyRoute>
+                  </RoutePermissionGuard>
+                }
+              />
+              <Route path="*" element={<WorkPathAliasRedirect />} />
+            </Route>
+            {APP_ROUTES.filter((r) => r.key !== 'work').map(({ key, path, Component, permission }) => (
               <Route
                 key={key}
                 path={path}

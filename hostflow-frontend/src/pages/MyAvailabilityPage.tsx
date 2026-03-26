@@ -14,6 +14,7 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 function errorTextFrom(err: any, fallback: string): string {
   const detail = err?.response?.data?.detail
@@ -297,7 +298,7 @@ export default function MyAvailabilityPage() {
               info={{ title: errorText, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
               onRetry={() => void loadMine()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              secondaryTo="/app/time-off"
+              secondaryTo={CRM_APP_PATHS.timeOff}
               secondaryLabel={t('app.communications.ia.timeoff_title', { defaultValue: 'Time-off Requests' })}
               compact
             />
@@ -364,10 +365,10 @@ export default function MyAvailabilityPage() {
           </div>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link to="/app/time-off" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.timeOff} className="btn-secondary">
             {t('app.communications.ia.open_time_off', { defaultValue: 'Open time-off requests' })}
           </Link>
-          <Link to="/app/team-availability" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.teamAvailability} className="btn-secondary">
             {t('app.nav.items.team_availability', { defaultValue: 'Team availability' })}
           </Link>
         </div>

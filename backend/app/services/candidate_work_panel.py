@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from backend.app.auth.deps import UserCtx
     from backend.app.models.candidate import Candidate
 
+from backend.app.constants.spa_paths import EMAIL_LEGACY, MESSAGES_LEGACY, spa_candidate_documents
 from backend.app.constants.stages import is_pipeline_completed_stage
 
 logger = logging.getLogger(__name__)
@@ -150,9 +151,9 @@ async def load_candidate_work_panel(
 
     cid = str(candidate_id)
     comms = CandidateWorkPanelCommsOut(
-        messages_relative_url=f"/app/messages?candidateId={cid}",
-        email_relative_url=f"/app/email?candidateId={cid}",
-        documents_relative_url=f"/app/candidates/{cid}/documents",
+        messages_relative_url=f"{MESSAGES_LEGACY}?candidateId={cid}",
+        email_relative_url=f"{EMAIL_LEGACY}?candidateId={cid}",
+        documents_relative_url=spa_candidate_documents(cid),
     )
 
     return CandidateWorkPanelResponse(

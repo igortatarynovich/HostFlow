@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -13,7 +13,9 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import OwnCompany, User
 from backend.app.models.tenant import Tenant, TenantLicense
+from backend.app.modules.companies import crud as companies_crud
 from backend.app.services.audit import log_activity
+from backend.app.services.onboarding_demo_seed import seed_onboarding_demo_if_needed
 
 
 router = APIRouter(prefix="/own-companies", tags=["own-companies"], redirect_slashes=False)
@@ -41,9 +43,22 @@ class OwnCompanyOut(BaseModel):
     bank_details: dict = Field(default_factory=dict)
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    onboarding_demo: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True
+
+
+_ONBOARDING_CREATE_KEYS = frozenset(
+    {
+        "business_type",
+        "industry",
+        "team_size",
+        "workspace_name",
+        "workspace_count",
+        "working_hours_preset",
+    }
+)
 
 
 class OwnCompanyCreate(BaseModel):
@@ -61,6 +76,13 @@ class OwnCompanyCreate(BaseModel):
     contacts: dict = Field(default_factory=dict)
     extra: dict = Field(default_factory=dict)
     bank_details: dict = Field(default_factory=dict)
+    # Onboarding v2 (merged into `extra` + first-own-company tenant bootstrap)
+    business_type: Optional[str] = Field(default=None, max_length=32)
+    industry: Optional[str] = Field(default=None, max_length=64)
+    team_size: Optional[str] = Field(default=None, max_length=32)
+    workspace_name: Optional[str] = Field(default=None, max_length=255)
+    workspace_count: Optional[int] = Field(default=None, ge=1, le=999)
+    working_hours_preset: Optional[str] = Field(default=None, max_length=64)
 
 
 class OwnCompanyPatch(BaseModel):
@@ -140,24 +162,82 @@ async def create_own_company(
     if current_count >= max_companies:
         raise HTTPException(status_code=402, detail="Company limit reached for current plan")
 
+    dumped = payload.model_dump()
+    ob_fields = {k: dumped.pop(k, None) for k in _ONBOARDING_CREATE_KEYS}
+    extra = dict(dumped.pop("extra") or {})
+    bt_raw = ob_fields.get("business_type") or extra.get("business_type")
+    bt_norm = str(bt_raw or "").strip().lower()
+    if bt_norm not in ("agency", "employer", "services"):
+        bt_norm = "agency"
+    extra["business_type"] = bt_norm
+    if ob_fields.get("industry") is not None:
+        _ind = str(ob_fields["industry"]).strip()
+        if _ind:
+            extra["industry"] = _ind
+    if ob_fields.get("team_size") is not None:
+        _ts = str(ob_fields["team_size"]).strip()
+        if _ts:
+            extra["team_size"] = _ts
+    if ob_fields.get("workspace_name") is not None:
+        _wn = str(ob_fields["workspace_name"]).strip()
+        if _wn:
+            extra["workspace_name"] = _wn
+    if ob_fields.get("workspace_count") is not None:
+        try:
+            _wc = int(ob_fields["workspace_count"])
+            if _wc >= 1:
+                extra["workspace_count"] = _wc
+        except (TypeError, ValueError):
+            pass
+    if ob_fields.get("working_hours_preset") is not None:
+        _wh = str(ob_fields["working_hours_preset"]).strip()
+        if _wh:
+            extra["working_hours_preset"] = _wh
+
     obj = OwnCompany(
         tenant_id=tenant_id,
-        name=payload.name.strip(),
-        legal_name=(payload.legal_name.strip() if isinstance(payload.legal_name, str) else None),
-        tax_id=(payload.tax_id.strip() if isinstance(payload.tax_id, str) else None),
-        phone=(payload.phone.strip() if isinstance(payload.phone, str) else None),
-        email=(payload.email.strip() if isinstance(payload.email, str) else None),
-        website=(payload.website.strip() if isinstance(payload.website, str) else None),
-        country_code=(payload.country_code.strip().upper() if isinstance(payload.country_code, str) else None),
-        country=(payload.country.strip() if isinstance(payload.country, str) else None),
-        city=(payload.city.strip() if isinstance(payload.city, str) else None),
-        address=(payload.address.strip() if isinstance(payload.address, str) else None),
-        notes=(payload.notes.strip() if isinstance(payload.notes, str) else None),
-        contacts=payload.contacts or {},
-        extra=payload.extra or {},
-        bank_details=payload.bank_details or {},
+        name=dumped["name"].strip(),
+        legal_name=(dumped["legal_name"].strip() if isinstance(dumped.get("legal_name"), str) else None),
+        tax_id=(dumped["tax_id"].strip() if isinstance(dumped.get("tax_id"), str) else None),
+        phone=(dumped["phone"].strip() if isinstance(dumped.get("phone"), str) else None),
+        email=(dumped["email"].strip() if isinstance(dumped.get("email"), str) else None),
+        website=(dumped["website"].strip() if isinstance(dumped.get("website"), str) else None),
+        country_code=(
+            dumped["country_code"].strip().upper() if isinstance(dumped.get("country_code"), str) else None
+        ),
+        country=(dumped["country"].strip() if isinstance(dumped.get("country"), str) else None),
+        city=(dumped["city"].strip() if isinstance(dumped.get("city"), str) else None),
+        address=(dumped["address"].strip() if isinstance(dumped.get("address"), str) else None),
+        notes=(dumped["notes"].strip() if isinstance(dumped.get("notes"), str) else None),
+        contacts=dumped.get("contacts") or {},
+        extra=extra,
+        bank_details=dumped.get("bank_details") or {},
     )
     db.add(obj)
+    await db.flush()
+    demo_summary: Dict[str, Any] | None = None
+    if current_count == 0:
+        await companies_crud.bootstrap_tenant_for_own_company_onboarding(
+            db,
+            tenant_id=tenant_id,
+            company_type=bt_norm,
+            industry=extra.get("industry"),
+            team_size=extra.get("team_size"),
+            workspace_name=extra.get("workspace_name"),
+            workspace_count=extra.get("workspace_count"),
+            working_hours_preset=extra.get("working_hours_preset"),
+            actor_user_id=str(current_user.sub).strip() if getattr(current_user, "sub", None) else None,
+        )
+        try:
+            demo_summary = await seed_onboarding_demo_if_needed(
+                db,
+                tenant_id=tenant_id,
+                own_company_id=str(obj.id),
+                business_type=bt_norm,
+                assignee_user_id=str(current_user.sub).strip() if current_user and current_user.sub else None,
+            )
+        except Exception:
+            demo_summary = None
     await db.commit()
     await db.refresh(obj)
     try:
@@ -172,7 +252,10 @@ async def create_own_company(
         )
     except Exception:
         pass
-    return OwnCompanyOut.model_validate(obj)
+    out = OwnCompanyOut.model_validate(obj)
+    if demo_summary:
+        return out.model_copy(update={"onboarding_demo": demo_summary})
+    return out
 
 
 @router.patch("/{own_company_id}", response_model=OwnCompanyOut)

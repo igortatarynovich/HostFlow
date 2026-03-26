@@ -18,6 +18,7 @@ import {
 } from '../../api/communications'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useAuth } from '../../store/auth'
 
 function errorTextFrom(err: any, fallback: string) {
@@ -39,8 +40,6 @@ function errorTextFrom(err: any, fallback: string) {
 }
 
 const CHANNELS = ['telegram', 'whatsapp', 'viber', 'messenger', 'instagram'] as const
-const APP_MESSAGES_ROUTE = '/app/messages'
-const APP_EMAIL_ROUTE = '/app/email'
 
 type MessengerChannel = typeof CHANNELS[number]
 
@@ -590,10 +589,10 @@ export default function CommunicationsMessengerSettingsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/app/settings/communications" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.settingsCommunications} className="btn-secondary">
             {t('admin.communications_messengers.actions.all_settings', { defaultValue: 'All communication settings' })}
           </Link>
-          <Link to="/app/messages" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.messages} className="btn-secondary">
             {t('admin.communications_messengers.actions.open_messages', { defaultValue: 'Open messages' })}
           </Link>
         </div>
@@ -611,7 +610,7 @@ export default function CommunicationsMessengerSettingsPage() {
             void loadAll()
           }}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo="/app/settings/communications"
+          secondaryTo={CRM_APP_PATHS.settingsCommunications}
           secondaryLabel={t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
           compact
         />
@@ -878,7 +877,7 @@ export default function CommunicationsMessengerSettingsPage() {
             {t('admin.communications_messengers.templates.how_used_1', {
               defaultValue: 'Message templates appear as quick buttons in composer on',
             })}{' '}
-            <code>{APP_MESSAGES_ROUTE}</code>.
+            <code>{CRM_APP_PATHS.messages}</code>.
           </li>
           <li>
             {t('admin.communications_messengers.templates.how_used_2', {
@@ -974,7 +973,7 @@ export default function CommunicationsMessengerSettingsPage() {
           </li>
           <li>
             {t('admin.communications_messengers.templates.command_desc_2_before', { defaultValue: 'Now applied in' })}{' '}
-            <code>{APP_EMAIL_ROUTE}</code>{' '}
+            <code>{CRM_APP_PATHS.email}</code>{' '}
             {t('admin.communications_messengers.templates.command_desc_2_after', {
               defaultValue: 'for selected threads via',
             })}{' '}
@@ -982,7 +981,7 @@ export default function CommunicationsMessengerSettingsPage() {
           </li>
           <li>
             {t('admin.communications_messengers.templates.command_desc_3_before', { defaultValue: 'For' })}{' '}
-            <code>{APP_MESSAGES_ROUTE}</code>{' '}
+            <code>{CRM_APP_PATHS.messages}</code>{' '}
             {t('admin.communications_messengers.templates.command_desc_3_after', {
               defaultValue: 'they are prepared and can be wired next as one-click actions.',
             })}

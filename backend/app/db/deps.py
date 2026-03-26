@@ -15,6 +15,64 @@ from backend.app.services.tenant_visibility import TenantVisibility
 # backend/app/db/deps.py
 
 
+async def compute_tenant_visibility_for_tenant(db: AsyncSession, tenant_id: UUID) -> TenantVisibility:
+    """
+    Shared vacancy/company visibility for a tenant (same rules as get_db_with_tenant).
+    Does not mutate db.info — caller assigns the result.
+    """
+    tid = str(tenant_id)
+    shared_vacancy_ids: set[str] = set()
+    shared_company_ids: set[str] = set()
+    try:
+        rows = await db.execute(
+            select(TenantVacancyAccess.vacancy_id, Vacancy.company_id)
+            .join(Vacancy, Vacancy.id == TenantVacancyAccess.vacancy_id, isouter=True)
+            .where(TenantVacancyAccess.tenant_id == tid)
+        )
+        for vacancy_id, company_id in rows:
+            if vacancy_id:
+                shared_vacancy_ids.add(vacancy_id)
+            if company_id:
+                shared_company_ids.add(company_id)
+    except Exception:
+        shared_vacancy_ids = set()
+        shared_company_ids = set()
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+    try:
+        tenant_row = await db.execute(select(Tenant.type).where(Tenant.id == tid).limit(1))
+        ttype = tenant_row.scalar_one_or_none()
+        if ttype == TenantType.company:
+            link_rows = await db.execute(
+                select(TenantLink.handoff_include_company_id)
+                .where(
+                    TenantLink.client_tenant_id == tid,
+                    TenantLink.handoff_include_company_id.isnot(None),
+                    TenantLink.status == "active",
+                )
+            )
+            for (company_id,) in link_rows.all():
+                if company_id:
+                    shared_company_ids.add(str(company_id))
+            if shared_company_ids:
+                vac_rows = await db.execute(select(Vacancy.id).where(Vacancy.company_id.in_(shared_company_ids)))
+                for (vid,) in vac_rows.all():
+                    if vid:
+                        shared_vacancy_ids.add(str(vid))
+    except Exception:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
+    return TenantVisibility(
+        tenant_id=tid,
+        shared_vacancy_ids=shared_vacancy_ids,
+        shared_company_ids=shared_company_ids,
+    )
 
 
 
@@ -55,64 +113,6 @@ async def get_db_with_tenant(
         # SQLite and other dialects will fail here; ignore silently per spec compatibility.
         pass
 
-    shared_vacancy_ids: set[str] = set()
-    shared_company_ids: set[str] = set()
-    try:
-        rows = await db.execute(
-            select(TenantVacancyAccess.vacancy_id, Vacancy.company_id)
-            .join(Vacancy, Vacancy.id == TenantVacancyAccess.vacancy_id, isouter=True)
-            .where(TenantVacancyAccess.tenant_id == str(tenant_id))
-        )
-        for vacancy_id, company_id in rows:
-            if vacancy_id:
-                shared_vacancy_ids.add(vacancy_id)
-            if company_id:
-                shared_company_ids.add(company_id)
-    except Exception:
-        shared_vacancy_ids = set()
-        shared_company_ids = set()
-        try:
-            await db.rollback()
-        except Exception:
-            pass
-
-    # Client tenant (type=company): also include companies from tenant_links (handoff_include_company_id)
-    # so analytics and other visibility-based logic see the same scope as the candidate list.
-    try:
-        tenant_row = await db.execute(
-            select(Tenant.type).where(Tenant.id == str(tenant_id)).limit(1)
-        )
-        ttype = tenant_row.scalar_one_or_none()
-        if ttype == TenantType.company:
-            link_rows = await db.execute(
-                select(TenantLink.handoff_include_company_id)
-                .where(
-                    TenantLink.client_tenant_id == str(tenant_id),
-                    TenantLink.handoff_include_company_id.isnot(None),
-                    TenantLink.status == "active",
-                )
-            )
-            for (company_id,) in link_rows.all():
-                if company_id:
-                    shared_company_ids.add(str(company_id))
-            # Add vacancies of those companies so scope is aligned with candidate list
-            if shared_company_ids:
-                vac_rows = await db.execute(
-                    select(Vacancy.id).where(Vacancy.company_id.in_(shared_company_ids))
-                )
-                for (vid,) in vac_rows.all():
-                    if vid:
-                        shared_vacancy_ids.add(str(vid))
-    except Exception:
-        try:
-            await db.rollback()
-        except Exception:
-            pass
-
-    db.info["tenant_visibility"] = TenantVisibility(
-        tenant_id=str(tenant_id),
-        shared_vacancy_ids=shared_vacancy_ids,
-        shared_company_ids=shared_company_ids,
-    )
+    db.info["tenant_visibility"] = await compute_tenant_visibility_for_tenant(db, tenant_id)
 
     yield db, tenant_id

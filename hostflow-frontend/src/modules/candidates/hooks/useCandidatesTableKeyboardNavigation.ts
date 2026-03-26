@@ -1,5 +1,6 @@
 import type { RefObject, Dispatch, SetStateAction } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
 import type { AugmentedCandidate } from '../types'
 
 type UseCandidatesTableKeyboardNavigationArgs = {
@@ -110,7 +111,7 @@ export function useCandidatesTableKeyboardNavigation({
         const candidate = displayedItems[focusedRowIndex]
         if (candidate) {
           handleCandidateOpen(candidate.id)
-          navigate(`/app/candidates/${candidate.id}`)
+          navigate(`${CRM_APP_PATHS.candidates}/${candidate.id}`)
         }
         return
       }

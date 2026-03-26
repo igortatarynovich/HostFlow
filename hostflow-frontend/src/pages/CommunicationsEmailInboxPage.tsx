@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { inboxContextSearchParams, readInboxListQuery, type InboxListQuery } from '../utils/inboxUrlQuery'
 import { stashPendingGmailOAuthCode } from '../utils/oauthRedirectBridge'
 
@@ -26,8 +27,9 @@ export default function CommunicationsEmailInboxPage() {
     }
     const tid = p.get('threadId')?.trim()
     const qs = inboxContextSearchParams(next).toString()
-    if (tid) return `/app/inbox/threads/${encodeURIComponent(tid)}${qs ? `?${qs}` : ''}`
-    return `/app/inbox${qs ? `?${qs}` : ''}`
+    if (tid)
+      return `${CRM_APP_PATHS.inboxThreadsBase}/${encodeURIComponent(tid)}${qs ? `?${qs}` : ''}`
+    return `${CRM_APP_PATHS.inbox}${qs ? `?${qs}` : ''}`
   }, [searchParams])
 
   return <Navigate to={dest} replace />

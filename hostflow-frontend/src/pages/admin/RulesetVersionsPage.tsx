@@ -11,6 +11,7 @@ import {
 import type { RulesetDiff, RulesetUsageResponse, RulesetVersion } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 function formatDate(value?: string | null): string {
   if (!value) return '—'
@@ -227,7 +228,7 @@ export default function RulesetVersionsPage() {
           }}
           onRetry={refreshVersions}
           retryLabel={t('app.admin.ruleset.header.refresh.action')}
-          secondaryTo="/app/settings/crm/rulesets"
+          secondaryTo={CRM_APP_PATHS.settingsRuleset}
           secondaryLabel={t('app.admin.ruleset.header.title')}
           compact
         />
@@ -480,7 +481,7 @@ export default function RulesetVersionsPage() {
               }}
               onRetry={refreshUsage}
               retryLabel={t('app.admin.ruleset.usage.refresh.action')}
-              secondaryTo="/app/settings/crm/rulesets"
+              secondaryTo={CRM_APP_PATHS.settingsRuleset}
               secondaryLabel={t('app.admin.ruleset.usage.title')}
               compact
             />

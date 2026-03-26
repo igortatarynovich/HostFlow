@@ -21,6 +21,7 @@ import {
   type CommunicationThread,
 } from '../api/communications'
 import { useI18n } from '../i18n'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { clearPendingGmailOAuthCode, peekPendingGmailOAuthCode } from '../utils/oauthRedirectBridge'
 
 type EmailFormState = {
@@ -41,7 +42,9 @@ function buildDefaultEmailForm(): EmailFormState {
     inboxAddress: '',
     clientId: '',
     clientSecret: '',
-    redirectUri: origin ? `${origin}/app/email` : 'https://hostflow.cc/app/email',
+    redirectUri: origin
+      ? `${origin}${CRM_APP_PATHS.email}`
+      : `https://hostflow.cc${CRM_APP_PATHS.email}`,
   }
 }
 
@@ -809,7 +812,7 @@ export default function CommunicationsSetupPage() {
             }}
             onRetry={() => void reloadAll()}
             retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-            secondaryTo="/app/settings/communications"
+            secondaryTo={CRM_APP_PATHS.settingsCommunications}
             secondaryLabel={t('app.communications.setup.actions.open_settings', { defaultValue: 'Open settings' })}
             compact
           />
@@ -855,7 +858,7 @@ export default function CommunicationsSetupPage() {
               >
                 {busyKey === 'baseline' ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.setup.actions.enable_baseline', { defaultValue: 'Enable baseline' })}
               </button>
-              <Link to="/app/settings/communications" className="btn-secondary btn-sm">
+              <Link to={CRM_APP_PATHS.settingsCommunications} className="btn-secondary btn-sm">
                 {t('app.communications.setup.actions.open_settings', { defaultValue: 'Open settings' })}
               </Link>
             </div>
@@ -1022,7 +1025,7 @@ export default function CommunicationsSetupPage() {
             >
               {busyKey === 'email-test' ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.email.test_connection', { defaultValue: 'Test connection' })}
             </button>
-            <Link to="/app/email" className="btn-secondary btn-sm">
+            <Link to={CRM_APP_PATHS.email} className="btn-secondary btn-sm">
               {t('app.nav.items.email_inbox', { defaultValue: 'Email inbox' })}
             </Link>
           </div>
@@ -1251,7 +1254,7 @@ export default function CommunicationsSetupPage() {
             >
               {busyKey === 'tg-test' ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.email.test_connection', { defaultValue: 'Test connection' })}
             </button>
-            <Link to="/app/messages" className="btn-secondary btn-sm">
+            <Link to={CRM_APP_PATHS.messages} className="btn-secondary btn-sm">
               {t('app.nav.items.messages_inbox', { defaultValue: 'Messages inbox' })}
             </Link>
           </div>
@@ -1357,16 +1360,16 @@ export default function CommunicationsSetupPage() {
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="text-sm font-semibold text-slate-900">{t('app.communications.setup.next_title', { defaultValue: 'Start daily work' })}</div>
         <div className="mt-3 flex flex-wrap gap-2">
-          <Link to="/app/messages" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.messages} className="btn-secondary">
             {t('app.nav.items.messages_inbox', { defaultValue: 'Messages inbox' })}
           </Link>
-          <Link to="/app/email" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.email} className="btn-secondary">
             {t('app.nav.items.email_inbox', { defaultValue: 'Email inbox' })}
           </Link>
-          <Link to="/app/tasks" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.tasks} className="btn-secondary">
             {t('app.nav.items.tasks', { defaultValue: 'Tasks' })}
           </Link>
-          <Link to="/app/calendar" className="btn-secondary">
+          <Link to={CRM_APP_PATHS.calendar} className="btn-secondary">
             {t('app.nav.items.calendar', { defaultValue: 'Calendar' })}
           </Link>
         </div>

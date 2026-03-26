@@ -20,6 +20,7 @@ import { formatDateTime } from '../utils/dateFormat'
 import { toCSV, formatDateSafe } from '../modules/candidates/candidateUtils'
 import { canonicalStageKey, translateStageLabel } from '../utils/stageLabels'
 import { ColumnFilterMenu } from '../modules/candidates/components'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 type CompanyOption = { id: string; name: string }
 
@@ -763,7 +764,7 @@ export default function DoProcesowaniaPage() {
     Boolean(filters.requested_to)
   const emptyStateColSpan = pendingRows.length > 0 ? 14 : 13
 
-  const originPath = `/app/procesowani?tab=${activeTab}`
+  const originPath = `${CRM_APP_PATHS.procesowani}?tab=${activeTab}`
 
   const HeaderButton = ({ col, label }: { col: SortKey; label: string }) => (
     <button
@@ -1111,7 +1112,7 @@ export default function DoProcesowaniaPage() {
                       )}
                       <td className="px-4 py-3">
                         <Link
-                          to={`/app/candidates/${row.candidate.id}`}
+                          to={`${CRM_APP_PATHS.candidates}/${row.candidate.id}`}
                           state={{ originPath }}
                           className="font-medium text-brand-600 hover:underline"
                         >

@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 type WorkspaceSection = 'calendar' | 'tasks' | 'messages' | 'email' | null
 
@@ -9,10 +10,10 @@ type Props = {
 }
 
 const ITEMS: Array<{ key: Exclude<WorkspaceSection, null>; to: string; labelKey: string; defaultLabel: string }> = [
-  { key: 'calendar', to: '/app/calendar', labelKey: 'app.nav.items.calendar', defaultLabel: 'Calendar' },
-  { key: 'tasks', to: '/app/tasks', labelKey: 'app.nav.items.tasks', defaultLabel: 'Tasks' },
-  { key: 'messages', to: '/app/inbox?channel=messages', labelKey: 'app.nav.items.messages', defaultLabel: 'Messages' },
-  { key: 'email', to: '/app/inbox?channel=email', labelKey: 'app.nav.items.email', defaultLabel: 'Email' },
+  { key: 'calendar', to: CRM_APP_PATHS.calendar, labelKey: 'app.nav.items.calendar', defaultLabel: 'Calendar' },
+  { key: 'tasks', to: CRM_APP_PATHS.tasks, labelKey: 'app.nav.items.tasks', defaultLabel: 'Tasks' },
+  { key: 'messages', to: CRM_APP_PATHS.inboxMessagesScoped, labelKey: 'app.nav.items.messages', defaultLabel: 'Messages' },
+  { key: 'email', to: CRM_APP_PATHS.inboxEmailScoped, labelKey: 'app.nav.items.email', defaultLabel: 'Email' },
 ]
 
 export default function WorkspaceTopNav({ active }: Props) {

@@ -32,6 +32,7 @@ import { getPlatformTenant, listPlatformTenants } from '../../api/tenants'
 import { useAuth } from '../../store/useAuth'
 import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { UserFormCreate } from '../../components/admin/UserFormCreate'
 import { UserFormInvite } from '../../components/admin/UserFormInvite'
 import { useI18n } from '../../i18n'
@@ -270,7 +271,7 @@ function UserDetailCard({
             }}
             onRetry={onRefresh}
             retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-            secondaryTo="/app/settings/team"
+            secondaryTo={CRM_APP_PATHS.settingsTeam}
             secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
             compact
           />
@@ -477,7 +478,10 @@ function UserDetailCard({
                       })}
                     </div>
                   </div>
-                  <Link className="btn-secondary btn-xs" to={`/app/settings/company-access?company=${company.company_id}`}>
+                  <Link
+                    className="btn-secondary btn-xs"
+                    to={`${CRM_APP_PATHS.settingsCompanyAccess}?company=${company.company_id}`}
+                  >
                     {t('app.admin.users.detail.companies.configure_acl')}
                   </Link>
                 </li>
@@ -502,7 +506,7 @@ function UserDetailCard({
               }}
               onRetry={onRefreshAudit}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-              secondaryTo="/app/settings/team"
+              secondaryTo={CRM_APP_PATHS.settingsTeam}
               secondaryLabel={t('app.admin.users.detail.audit.title', { defaultValue: 'Аудит' })}
               compact
             />
@@ -1099,7 +1103,7 @@ export default function UsersPage() {
           }}
           onRetry={() => void loadUsers()}
           retryLabel={t('app.admin.users.page.refresh.action')}
-          secondaryTo="/app/settings/team"
+          secondaryTo={CRM_APP_PATHS.settingsTeam}
           secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
           compact
         />

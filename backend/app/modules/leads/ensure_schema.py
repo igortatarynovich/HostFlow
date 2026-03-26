@@ -226,6 +226,8 @@ def ensure_leads_schema() -> None:
                 cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN last_webhook_check_at TEXT")
             if not _column_exists(cur, "meta_lead_settings", "last_signature_status"):
                 cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN last_signature_status TEXT")
+            if not _column_exists(cur, "meta_lead_settings", "leads_processing_mode_v1"):
+                cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN leads_processing_mode_v1 TEXT")
 
         cur.execute(
             """

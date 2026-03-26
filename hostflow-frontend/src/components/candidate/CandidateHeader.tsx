@@ -12,6 +12,7 @@ import type { Candidate } from '../../api/types'
 import StageTag from '../StageTag'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { CandidateProfile } from '../../api/candidate_profiles'
 
 interface CandidateHeaderProps {
@@ -74,7 +75,7 @@ function CandidateHeader({
   handoffLabel,
   onDeleteRequest,
   onCancel,
-  backPath = '/app/candidates',
+  backPath = CRM_APP_PATHS.candidates,
   backLabel,
   onFavoriteToggle,
   candidateProfile,
@@ -183,7 +184,7 @@ function CandidateHeader({
               )}
               {!profileLoading && candidateProfile && (
                 <Link
-                  to={`/app/settings/candidate-profiles`}
+                  to={CRM_APP_PATHS.settingsCandidateProfiles}
                   className="text-[11px] inline-flex items-center gap-1 rounded-md border border-white/30 bg-white/20 px-2 py-0.5 transition-colors hover:bg-white/30"
                   title={candidateProfile.description || candidateProfile.name}
                   onClick={(e) => {

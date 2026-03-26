@@ -5,7 +5,9 @@ import type { Icon as TablerIcon } from '@tabler/icons-react'
 import {
   IconBell,
   IconBolt,
+  IconBriefcase,
   IconBuilding,
+  IconChartBar,
   IconCalendarEvent,
   IconCalendarOff,
   IconChevronDown,
@@ -22,10 +24,12 @@ import {
   IconMail,
   IconMessageCircle,
   IconPlugConnected,
+  IconRoute,
   IconSettings,
   IconShield,
   IconUsers,
   IconUser,
+  IconUserQuestion,
   IconUsersGroup,
 } from '@tabler/icons-react'
 import type { TenantSummary } from '../../api/types'
@@ -33,9 +37,16 @@ import type { NavItem } from '../../app/routes'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
-import { getTeamOverview, getTenantModules } from '../../api/tenants'
-import type { TeamOverviewResponse, TenantModuleSettings } from '../../api/types'
+import { getTenantModules } from '../../api/tenants'
+import type { TenantModuleSettings } from '../../api/types'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
+import { useTeamOverviewNav } from '../../contexts/TeamOverviewNavContext'
+import {
+  FINANCE_NAV_ORDER,
+  resolveNavPlanFromTeamOverview,
+  shouldShowFinanceNavSection,
+} from '../../nav/financeNavVisibility'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 type SidebarProps = {
   items: NavItem[]
@@ -50,9 +61,15 @@ type SidebarProps = {
 const GROUP_STORAGE_KEY = 'hf:ui:sidebar-groups'
 const DEFAULT_ICON: TablerIcon = IconChecklist
 
+/** SSOT §2.13: stateful queues — primary entry via Dashboard / Work / Inbox / notifications; keep routes + `NAV_ITEMS` for deep links. */
+const SIDEBAR_HIDDEN_ITEM_KEYS = new Set<string>(['candidates-no-next-action', 'sla-incidents'])
+
 const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   overview: IconDashboard,
+  analytics: IconChartBar,
+  'work-hub': IconBriefcase,
   candidates: IconUsers,
+  'candidates-no-next-action': IconUserQuestion,
   clients: IconBuilding,
   'do-procesowania': IconFilter,
   vacancies: IconLayoutKanban,
@@ -66,6 +83,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
   calendar: IconCalendarEvent,
   'sla-incidents': IconBell,
   'command-audit': IconShield,
+  'leads-distribution': IconRoute,
   automations: IconBolt,
   'team-availability': IconUsersGroup,
   'my-availability': IconClock,
@@ -91,7 +109,7 @@ const ITEM_ICONS: Partial<Record<string, TablerIcon>> = {
 export function Sidebar({
   items,
   tenant,
-  businessType: _businessType = 'agency',
+  businessType = 'agency',
   open,
   onClose,
   onLogout,
@@ -99,15 +117,16 @@ export function Sidebar({
 }: SidebarProps) {
   const { t } = useI18n()
   const location = useLocation()
+  const p = CRM_APP_PATHS
   const inboxNavActive =
-    location.pathname.startsWith('/app/inbox') ||
-    location.pathname.startsWith('/app/messages') ||
-    location.pathname.startsWith('/app/email') ||
-    location.pathname.startsWith('/app/communications/threads')
-  const clientsNavActive = location.pathname.startsWith('/app/clients')
-  const automationsNavActive = location.pathname.startsWith('/app/automation')
-  const servicesWorkspacePath = location.pathname === '/app/services'
-  const ordersStandalonePath = location.pathname === '/app/orders'
+    location.pathname.startsWith(p.communicationsInbox) ||
+    location.pathname.startsWith(p.communicationsMessages) ||
+    location.pathname.startsWith(p.communicationsEmail) ||
+    location.pathname.startsWith(p.communicationsAppThreadsBase)
+  const clientsNavActive = location.pathname.startsWith(p.agencyClients)
+  const automationsNavActive = location.pathname.startsWith(p.appAutomationsAreaPrefix)
+  const servicesWorkspacePath = location.pathname === p.servicesWorkspace
+  const ordersStandalonePath = location.pathname === p.ordersEntry
   const servicesTabParam = useMemo(() => {
     const sp = new URLSearchParams(location.search)
     return (sp.get('tab') || 'overview').trim().toLowerCase()
@@ -118,45 +137,44 @@ export function Sidebar({
   }, [location.search])
   const ordersNavActive = ordersStandalonePath || (servicesWorkspacePath && servicesTabParam === 'orders')
   const servicesModuleNavActive = servicesWorkspacePath && servicesTabParam !== 'orders'
-  const { isClientTenant, role } = usePermissions()
-  /** Matches backend `GET /settings/team` (administrator | supervisor only). */
-  const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
+  const { isClientTenant, role, can } = usePermissions()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const [modules, setModules] = useState<TenantModuleSettings | null>(null)
-  const [teamOverview, setTeamOverview] = useState<TeamOverviewResponse | null>(null)
+  const { teamOverview, canLoadTeamOverview: canLoadTeamOverviewCtx } = useTeamOverviewNav()
 
   useEffect(() => {
     let mounted = true
     ;(async () => {
       try {
         if (!tenant?.id) {
-          if (mounted) {
-            setModules(null)
-            setTeamOverview(null)
-          }
+          if (mounted) setModules(null)
           return
         }
-        const [modulesData, teamData] = await Promise.all([
-          getTenantModules({ tenantId: tenant.id }),
-          canLoadTeamOverview
-            ? getTeamOverview({ tenantId: tenant.id }).catch(() => null)
-            : Promise.resolve(null),
-        ])
-        if (mounted) {
-          setModules(modulesData)
-          setTeamOverview(teamData)
-        }
+        const modulesData = await getTenantModules({ tenantId: tenant.id })
+        if (mounted) setModules(modulesData)
       } catch {
-        if (mounted) {
-          setModules(null)
-          setTeamOverview(null)
-        }
+        if (mounted) setModules(null)
       }
     })()
     return () => {
       mounted = false
     }
-  }, [tenant?.id, canLoadTeamOverview])
+  }, [tenant?.id])
+
+  const resolvedNavPlan = useMemo(
+    () => resolveNavPlanFromTeamOverview(canLoadTeamOverviewCtx, teamOverview),
+    [canLoadTeamOverviewCtx, teamOverview],
+  )
+
+  const showFinanceSidebarSection = useMemo(
+    () =>
+      shouldShowFinanceNavSection({
+        isClientTenant,
+        businessType,
+        resolvedNavPlan,
+      }),
+    [businessType, isClientTenant, resolvedNavPlan],
+  )
 
   const isSoloWorkspace = useMemo(() => {
     const membersCount = Array.isArray(teamOverview?.members) ? teamOverview!.members.length : null
@@ -174,10 +192,12 @@ export function Sidebar({
   const visibleItems = useMemo(() => {
     const moduleByItemKey: Partial<Record<string, keyof TenantModuleSettings>> = {
       candidates: 'candidates',
+      'candidates-no-next-action': 'candidates',
       clients: 'companies',
       vacancies: 'vacancies',
       documents: 'documents',
       leads: 'leads',
+      'leads-distribution': 'leads',
       'service-orders': 'services',
       services: 'services',
       invoices: 'services',
@@ -204,15 +224,23 @@ export function Sidebar({
     }
 
     const moduleFiltered = items.filter((item) => {
+      if (SIDEBAR_HIDDEN_ITEM_KEYS.has(item.key)) return false
+      if (item.key === 'work-hub') {
+        return (
+          can('candidates.view') ||
+          can('companies.view') ||
+          can('leads.view') ||
+          can('vacancies.view') ||
+          can('services.view') ||
+          can('documents.manage')
+        )
+      }
       if (item.key === 'communications') return false
       if (item.key === 'team-availability' && isSoloWorkspace) return false
       if (item.key === 'communications-setup') {
         return canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')
       }
       if (item.key === 'inbox') {
-        return canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')
-      }
-      if (item.key === 'sla-incidents') {
         return canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')
       }
       const commFeature = commFeatureByItemKey[item.key]
@@ -224,14 +252,29 @@ export function Sidebar({
     })
 
     if (!isClientTenant) return moduleFiltered
-    const allowed = new Set(['candidates', 'do-procesowania', 'tasks', 'sla-incidents', 'inbox'])
+    const allowed = new Set(['work-hub', 'candidates', 'do-procesowania', 'tasks', 'inbox', 'analytics'])
     return moduleFiltered.filter((item) => allowed.has(item.key))
-  }, [canUseCommunicationsFeature, isClientTenant, isSoloWorkspace, items, modules])
+  }, [can, canUseCommunicationsFeature, isClientTenant, isSoloWorkspace, items, modules])
 
-  /** SSOT § Target sidebar — Business row: Candidates → Clients → do-procesowania → Vacancies → Orders → Services → Invoices → Documents → Leads (single order for all business types). */
-  const { coreNavItems, businessNavItems, systemNavItems, primaryNavItems, sidebarBucketed } = useMemo(() => {
-    const coreOrder = ['overview', 'inbox', 'tasks', 'calendar', 'sla-incidents']
+  /** SSOT §2.13: Dashboard / Inbox / Tasks / Work / System — Work row order below. */
+  const {
+    dashboardNavItems,
+    inboxNavItems,
+    tasksNavItems,
+    analyticsNavItems,
+    coreNavItems,
+    businessNavItems,
+    financeNavItems,
+    systemNavItems,
+    primaryNavItems,
+    sidebarBucketed,
+  } = useMemo(() => {
+    const dashboardOrder = ['overview']
+    const inboxOrder = ['inbox']
+    const tasksOrder = ['tasks', 'calendar']
+    const analyticsOrder = ['analytics']
     const businessOrderSsot = [
+      'work-hub',
       'candidates',
       'clients',
       'do-procesowania',
@@ -241,7 +284,9 @@ export function Sidebar({
       'invoices',
       'documents',
       'leads',
+      'leads-distribution',
     ]
+    const workCoreOrderSsot = businessOrderSsot.filter((k) => !FINANCE_NAV_ORDER.includes(k as (typeof FINANCE_NAV_ORDER)[number]))
     const systemOrder = ['automations']
 
     const pickOrdered = (order: string[]) => {
@@ -252,29 +297,44 @@ export function Sidebar({
     }
 
     if (isClientTenant) {
-      const order = ['inbox', 'tasks', 'candidates', 'do-procesowania', 'sla-incidents']
+      const order = ['inbox', 'tasks', 'analytics', 'candidates', 'do-procesowania']
       const flat = pickOrdered(order)
       return {
+        dashboardNavItems: [] as NavItem[],
+        inboxNavItems: [] as NavItem[],
+        tasksNavItems: [] as NavItem[],
+        analyticsNavItems: [] as NavItem[],
         coreNavItems: flat,
         businessNavItems: [] as NavItem[],
+        financeNavItems: [] as NavItem[],
         systemNavItems: [] as NavItem[],
         primaryNavItems: flat,
         sidebarBucketed: false,
       }
     }
 
-    const coreNavItems = pickOrdered(coreOrder)
-    const businessNavItems = pickOrdered(businessOrderSsot)
+    const dashboardNavItems = pickOrdered(dashboardOrder)
+    const inboxNavItems = pickOrdered(inboxOrder)
+    const tasksNavItems = pickOrdered(tasksOrder)
+    const analyticsNavItems = pickOrdered(analyticsOrder)
+    const businessNavItems = pickOrdered(showFinanceSidebarSection ? workCoreOrderSsot : businessOrderSsot)
+    const financeNavItems = showFinanceSidebarSection ? pickOrdered([...FINANCE_NAV_ORDER]) : []
     const systemNavItems = pickOrdered(systemOrder)
-    const primaryNavItems = [...coreNavItems, ...businessNavItems, ...systemNavItems]
+    const coreNavItems = [...dashboardNavItems, ...inboxNavItems, ...tasksNavItems, ...analyticsNavItems]
+    const primaryNavItems = [...coreNavItems, ...businessNavItems, ...financeNavItems, ...systemNavItems]
     return {
+      dashboardNavItems,
+      inboxNavItems,
+      tasksNavItems,
+      analyticsNavItems,
       coreNavItems,
       businessNavItems,
+      financeNavItems,
       systemNavItems,
       primaryNavItems,
       sidebarBucketed: true,
     }
-  }, [isClientTenant, visibleItems])
+  }, [isClientTenant, showFinanceSidebarSection, visibleItems])
 
   const sections = useMemo(() => {
     const sectionDefs: {
@@ -423,14 +483,14 @@ export function Sidebar({
             <div className="ml-7 flex flex-wrap gap-1 pt-0.5">
               {showMessagesChild && (
                 <NavLink
-                  to="/app/inbox?channel=messages"
+                  to={p.communicationsInboxMessages}
                   title={t('app.nav.items.messages_inbox', { defaultValue: 'Messages' })}
                   onClick={handleNavigate}
                   className={() =>
                     clsx(
                       'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
-                      location.pathname.startsWith('/app/messages') ||
-                        (location.pathname.startsWith('/app/inbox') && inboxChannelParam === 'messages')
+                      location.pathname.startsWith(p.communicationsMessages) ||
+                        (location.pathname.startsWith(p.communicationsInbox) && inboxChannelParam === 'messages')
                         ? 'bg-white/20 text-white'
                         : 'text-white/80 hover:bg-white/10 hover:text-white',
                     )
@@ -442,14 +502,14 @@ export function Sidebar({
               )}
               {showEmailChild && (
                 <NavLink
-                  to="/app/inbox?channel=email"
+                  to={p.communicationsInboxEmail}
                   title={t('app.nav.items.email_inbox', { defaultValue: 'Email' })}
                   onClick={handleNavigate}
                   className={() =>
                     clsx(
                       'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium transition',
-                      location.pathname.startsWith('/app/email') ||
-                        (location.pathname.startsWith('/app/inbox') && inboxChannelParam === 'email')
+                      location.pathname.startsWith(p.communicationsEmail) ||
+                        (location.pathname.startsWith(p.communicationsInbox) && inboxChannelParam === 'email')
                         ? 'bg-white/20 text-white'
                         : 'text-white/80 hover:bg-white/10 hover:text-white',
                     )
@@ -475,13 +535,15 @@ export function Sidebar({
             'block rounded-md px-3 py-2.5 text-sm font-medium transition',
             (item.key === 'clients'
               ? clientsNavActive
-              : item.key === 'automations'
-                ? automationsNavActive
-                : item.key === 'service-orders'
-                  ? ordersNavActive
-                  : item.key === 'services'
-                    ? servicesModuleNavActive
-                    : isActive)
+              : item.key === 'work-hub'
+                ? location.pathname.startsWith(p.workHub) || location.pathname.startsWith(`${p.workHub}/`)
+                : item.key === 'automations'
+                  ? automationsNavActive
+                  : item.key === 'service-orders'
+                    ? ordersNavActive
+                    : item.key === 'services'
+                      ? servicesModuleNavActive
+                      : isActive)
               ? 'bg-white text-brand-900 shadow-sm'
               : 'text-white hover:bg-white/15 hover:text-white',
           )
@@ -536,20 +598,52 @@ export function Sidebar({
           <nav className="flex-1 overflow-y-auto px-3 pb-6">
             {sidebarBucketed ? (
               <>
-                {coreNavItems.length > 0 && (
+                {dashboardNavItems.length > 0 && (
                   <div className="mb-3">
                     <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
-                      {t('app.shell.sidebar.core_workspace')}
+                      {t('app.shell.sidebar.section_dashboard')}
                     </div>
-                    <div className="space-y-1">{coreNavItems.map(renderPrimaryNavItem)}</div>
+                    <div className="space-y-1">{dashboardNavItems.map(renderPrimaryNavItem)}</div>
+                  </div>
+                )}
+                {inboxNavItems.length > 0 && (
+                  <div className="mb-3">
+                    <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                      {t('app.shell.sidebar.section_inbox')}
+                    </div>
+                    <div className="space-y-1">{inboxNavItems.map(renderPrimaryNavItem)}</div>
+                  </div>
+                )}
+                {tasksNavItems.length > 0 && (
+                  <div className="mb-3">
+                    <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                      {t('app.shell.sidebar.section_tasks')}
+                    </div>
+                    <div className="space-y-1">{tasksNavItems.map(renderPrimaryNavItem)}</div>
+                  </div>
+                )}
+                {analyticsNavItems.length > 0 && (
+                  <div className="mb-3">
+                    <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                      {t('app.shell.sidebar.section_analytics')}
+                    </div>
+                    <div className="space-y-1">{analyticsNavItems.map(renderPrimaryNavItem)}</div>
                   </div>
                 )}
                 {businessNavItems.length > 0 && (
                   <div className="mb-3">
                     <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
-                      {t('app.shell.sidebar.business')}
+                      {t('app.shell.sidebar.work')}
                     </div>
                     <div className="space-y-1">{businessNavItems.map(renderPrimaryNavItem)}</div>
+                  </div>
+                )}
+                {financeNavItems.length > 0 && (
+                  <div className="mb-3">
+                    <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">
+                      {t('app.shell.sidebar.section_finance', { defaultValue: 'Finance' })}
+                    </div>
+                    <div className="space-y-1">{financeNavItems.map(renderPrimaryNavItem)}</div>
                   </div>
                 )}
                 {systemNavItems.length > 0 && (
@@ -582,13 +676,15 @@ export function Sidebar({
                       'block rounded-md px-3 py-2 text-sm transition',
                       (item.key === 'clients'
                         ? clientsNavActive
-                        : item.key === 'automations'
-                          ? automationsNavActive
-                          : item.key === 'service-orders'
-                            ? ordersNavActive
-                            : item.key === 'services'
-                              ? servicesModuleNavActive
-                              : isActive)
+                        : item.key === 'work-hub'
+                          ? location.pathname.startsWith(p.workHub) || location.pathname.startsWith(`${p.workHub}/`)
+                          : item.key === 'automations'
+                            ? automationsNavActive
+                            : item.key === 'service-orders'
+                              ? ordersNavActive
+                              : item.key === 'services'
+                                ? servicesModuleNavActive
+                                : isActive)
                         ? 'bg-white text-brand-900'
                         : 'text-white/90 hover:bg-white/10',
                     )

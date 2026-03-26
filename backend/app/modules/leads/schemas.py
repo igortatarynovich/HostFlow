@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from backend.app.constants.spa_paths import LEADS as SPA_LEADS
 
 
 LeadStatus = Literal["new", "processed", "duplicated", "failed", "needs_routing"]
@@ -13,6 +15,17 @@ LeadStage = Literal["new", "contacted", "qualified", "converted", "lost"]
 LeadImportStatus = Literal["pending", "running", "completed", "failed"]
 LeadNextActionStatus = Literal["scheduled", "overdue", "no_next_action"]
 LeadFitStatus = Literal["fit", "no_fit", "needs_info", "no_criteria"]
+
+
+class LeadStageContractOut(BaseModel):
+    """Mirrors FunnelStage.stage_contract_v1 (§2.3)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    owner_role: Optional[str] = None
+    required_actions: Optional[List[str]] = None
+    sla_hours: Optional[int] = None
+    auto_rules: Optional[Dict[str, Any]] = None
 
 
 class MetaLeadResponse(BaseModel):
@@ -41,6 +54,8 @@ class LeadOut(BaseModel):
     ad_id: Optional[int] = None
     status: LeadStatus
     stage: Optional[str] = None
+    funnel_id: Optional[UUID] = None
+    stage_contract: Optional[LeadStageContractOut] = None
     candidate_id: Optional[UUID] = None
     candidate_name: Optional[str] = None
     outcome_entity_type: Optional[str] = None
@@ -51,6 +66,7 @@ class LeadOut(BaseModel):
     error: Optional[str] = None
     payload: Dict[str, Any]
     normalized: Optional[Dict[str, Any]] = None
+    custom_fields: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     last_routed_at: Optional[datetime] = None
     # Next action (reminders-based activity loop)
@@ -67,16 +83,90 @@ class LeadOut(BaseModel):
 
 class LeadStageUpdate(BaseModel):
     stage: Optional[LeadStage] = None
+    assignment_locked: Optional[bool] = Field(
+        default=None,
+        description="When set, merges normalized.assignment_lock_v1 (blocks auto-distribution for this lead).",
+    )
+    lost_reason_code: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="When moving to stage lost, optional stable code (stored in audit + normalized.lead_lost_reason_v1).",
+    )
+    lost_reason_note: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="Optional free-text note when marking lost.",
+    )
+
+    @field_validator("lost_reason_code", "lost_reason_note", mode="before")
+    @classmethod
+    def _strip_lost_reason(cls, v: Any) -> Any:
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
+
+    @model_validator(mode="after")
+    def _lost_reason_only_with_lost_stage(self) -> "LeadStageUpdate":
+        has = bool(self.lost_reason_code) or bool(self.lost_reason_note)
+        if has and str(self.stage or "") != "lost":
+            raise ValueError("lost_reason_code and lost_reason_note are only allowed when stage is 'lost'")
+        return self
 
 
 class BulkLeadUpdateRequest(BaseModel):
     lead_ids: List[UUID] = Field(min_length=1)
     stage: Optional[LeadStage] = None
     status: Optional[LeadStatus] = None
+    lost_reason_code: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="When bulk-setting stage to lost, optional reason code (audit + normalized per lead).",
+    )
+    lost_reason_note: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="Optional shared note for all leads moved to lost in this bulk call.",
+    )
+
+    @field_validator("lost_reason_code", "lost_reason_note", mode="before")
+    @classmethod
+    def _strip_bulk_lost_reason(cls, v: Any) -> Any:
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
+
+    @model_validator(mode="after")
+    def _bulk_lost_reason_only_lost_stage(self) -> "BulkLeadUpdateRequest":
+        has = bool(self.lost_reason_code) or bool(self.lost_reason_note)
+        if has and str(self.stage or "") != "lost":
+            raise ValueError("lost_reason_code and lost_reason_note are only allowed when stage is 'lost'")
+        return self
 
 
 class BulkLeadUpdateResponse(BaseModel):
     updated: int
+
+
+class BulkAutoProcessQueueRequest(BaseModel):
+    """§2.3 Dashboard auto-fix: batch Meta lead processing (Team+ plan)."""
+
+    max_items: int = Field(default=25, ge=1, le=50, description="Max Meta leads to process in one call.")
+
+
+class BulkAutoProcessQueueItemOut(BaseModel):
+    lead_id: str
+    ok: bool
+    status_after: Optional[str] = None
+    error: Optional[str] = None
+
+
+class BulkAutoProcessQueueResponse(BaseModel):
+    results: List[BulkAutoProcessQueueItemOut]
+    attempted: int
+    succeeded: int
+    failed: int
 
 
 class LeadListResponse(BaseModel):
@@ -84,6 +174,144 @@ class LeadListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class NextActionQueryParams(BaseModel):
+    """Query keys for SPA drill-down (leads list, candidates quick view, tasks inbox)."""
+
+    status: Optional[str] = None
+    stage: Optional[str] = None
+    next_action: Optional[str] = None
+    tab: Optional[str] = None
+    t_status: Optional[str] = None
+    t_entity: Optional[str] = None
+    t_due_bucket: Optional[str] = None
+
+
+class NextActionGroupOut(BaseModel):
+    """One grouped NBA bucket (leads and/or candidates)."""
+
+    id: str
+    entity: Literal["lead", "candidate"] = "lead"
+    reason: str
+    title: str
+    count: int
+    priority: int = 0
+    query: NextActionQueryParams
+    path: str = Field(default=SPA_LEADS, description="SPA path; merge query client-side.")
+    locked: bool = Field(
+        default=False,
+        description="True when tenant plan is below required_plan — count still visible, drill-down disabled.",
+    )
+    required_plan: Optional[str] = Field(
+        default=None,
+        description="Minimum plan code to use this bucket (e.g. team, pro).",
+    )
+
+
+class LeadNextActionsResponse(BaseModel):
+    generated_at: datetime
+    own_company_id: Optional[str] = None
+    plan_code: str = Field(default="starter", description="Resolved TenantLicense.plan (lowercase).")
+    nba_tier: Literal["solo", "team"] = Field(
+        default="solo",
+        description="solo: starter/trial/free/solo — some NBA groups may be locked; team: Team-tier and above.",
+    )
+    groups: List[NextActionGroupOut] = Field(default_factory=list)
+
+
+class LeadStageHealthRow(BaseModel):
+    """Per CRM stage: processed volume + next-action health (§2.3)."""
+
+    stage: str
+    processed_total: int
+    no_next_action: int
+    overdue: int
+    stuck: int
+
+
+class LeadStageHealthResponse(BaseModel):
+    generated_at: datetime
+    own_company_id: Optional[str] = None
+    stages: List[LeadStageHealthRow] = Field(default_factory=list)
+
+
+class LeadConversionFunnelStage(BaseModel):
+    """One CRM stage on the win path: exact count + cumulative at-or-beyond (§2.12 v0)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    stage: str
+    count: int
+    at_or_beyond: int
+    dwell_avg_days: Optional[float] = Field(
+        default=None,
+        description="Mean days since last transition into this stage (ActivityLog), else lead.created_at.",
+    )
+    dwell_p50_days: Optional[float] = Field(default=None, description="Median days in current stage.")
+    dwell_sample_size: int = Field(default=0, description="Leads with computed dwell for this stage.")
+
+
+class LeadConversionFunnelEdge(BaseModel):
+    """Snapshot progression: at_or_beyond(next) / at_or_beyond(from); None if denominator is 0."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    from_stage: str
+    to_stage: str
+    progressed_share: Optional[float] = None
+
+
+class LeadConversionFunnelLostFromStage(BaseModel):
+    """Distinct leads that reached CRM stage lost from a prior stage (audit `lead.stage_changed`)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    from_stage: str
+    lead_count: int
+
+
+class LeadConversionFunnelLostReasonRow(BaseModel):
+    """Distinct leads marked lost per audit payload.lost_reason_code (unknown if unset)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason_code: str
+    lead_count: int
+
+
+class LeadConversionFunnelResponse(BaseModel):
+    """MVP conversion snapshot by current lead CRM stage (no per-tenant stage→root mapping yet)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    generated_at: datetime
+    own_company_id: Optional[str] = None
+    filter_source: Optional[str] = Field(default=None, description="Applied slice: lead.source (case-insensitive exact).")
+    filter_vacancy_id: Optional[str] = Field(default=None, description="Applied slice: Lead.vacancy_id.")
+    filter_funnel_id: Optional[str] = Field(default=None, description="Applied slice: Lead.funnel_id.")
+    filter_assignee_user_id: Optional[str] = Field(
+        default=None,
+        description="Applied slice: Candidate.recruiter_id for linked candidate.",
+    )
+    status_new_count: int = Field(description="Leads with status=new (ingest / not yet processed).")
+    lost_processed_count: int = Field(description="Processed leads currently in CRM stage lost.")
+    lost_dwell_avg_days: Optional[float] = Field(default=None, description="Mean days in lost for processed leads.")
+    lost_dwell_p50_days: Optional[float] = Field(default=None, description="Median days in lost.")
+    lost_dwell_sample_size: int = Field(default=0, description="Processed leads in lost with dwell computed.")
+    total_win_path_processed: int = Field(
+        description="Sum of processed leads in stages new|contacted|qualified|converted."
+    )
+    lost_from_stage: List[LeadConversionFunnelLostFromStage] = Field(
+        default_factory=list,
+        description="Count of distinct leads per prior CRM stage on transitions into lost (ActivityLog).",
+    )
+    lost_reason_breakdown: List[LeadConversionFunnelLostReasonRow] = Field(
+        default_factory=list,
+        description="Distinct leads per lost_reason_code on transitions into lost (ActivityLog).",
+    )
+    stages: List[LeadConversionFunnelStage] = Field(default_factory=list)
+    edges: List[LeadConversionFunnelEdge] = Field(default_factory=list)
 
 
 class LeadTimelineEventOut(BaseModel):
@@ -215,15 +443,22 @@ class MetaCredentialRotateResponse(BaseModel):
     secret: str
 
 
+LeadsProcessingModeV1 = Literal["manual", "assisted", "automatic"]
+
+
 class MetaLeadSettingsOut(BaseModel):
     tenant_id: UUID
     default_company_id: Optional[UUID] = None
     fallback_recruiter_id: Optional[UUID] = None
     auto_create_enabled: bool
+    leads_processing_mode_v1: LeadsProcessingModeV1 = "assisted"
     reroute_after_hours: Optional[int] = None
     mask_pii_in_logs: bool
     pull_field_data_from_graph: bool
     field_mapping: List[MetaLeadFieldMappingRule] = Field(default_factory=list)
+    # §2.11 plan hints for UI (None = no cap on Team+).
+    plan_field_mapping_rules_limit: Optional[int] = None
+    plan_meta_credentials_limit: Optional[int] = None
     webhook_url: Optional[str] = None
     last_webhook_check_at: Optional[datetime] = None
     last_signature_status: Optional[str] = None
@@ -238,12 +473,32 @@ class MetaLeadSettingsUpdate(BaseModel):
     default_company_id: Optional[UUID] = None
     fallback_recruiter_id: Optional[UUID] = None
     auto_create_enabled: Optional[bool] = None
+    leads_processing_mode_v1: Optional[LeadsProcessingModeV1] = None
     reroute_after_hours: Optional[int] = None
     mask_pii_in_logs: Optional[bool] = None
     webhook_url: Optional[str] = None
     webhook_verify_token: Optional[str] = None
     pull_field_data_from_graph: Optional[bool] = None
     field_mapping: Optional[List[MetaLeadFieldMappingRule]] = None
+
+
+class MetaIncomingLeadPreviewItem(BaseModel):
+    """Recent Meta lead row for troubleshooting / field-mapping trust (§2.11 View incoming)."""
+
+    lead_id: str
+    created_at: datetime
+    external_id: Optional[str] = None
+    ad_id: Optional[int] = None
+    status: str
+    stage: Optional[str] = None
+    payload_json_preview: str = Field(description="Truncated JSON text of Lead.payload")
+    payload_truncated: bool = False
+    normalized_json_preview: Optional[str] = Field(default=None, description="Truncated JSON of Lead.normalized if present")
+    normalized_truncated: bool = False
+
+
+class MetaIncomingLeadsPreviewResponse(BaseModel):
+    items: List[MetaIncomingLeadPreviewItem]
 
 
 class MetaAdsMapEntry(BaseModel):
@@ -321,3 +576,79 @@ class MetaLeadRetryResponse(BaseModel):
     processed: int
     failed: int
     skipped: int
+
+
+# --- Lead auto-distribution (control panel) ---------------------------------
+
+DistributionMode = Literal["automatic", "manual"]
+DistributionStrategy = Literal["smart", "round_robin", "manual_rules"]
+
+
+class LeadDistributionTeamMemberOut(BaseModel):
+    user_id: str
+    display_name: str
+    status: Literal["available", "busy", "offline"]
+    lead_load: int
+    languages: List[str] = Field(default_factory=list)
+    working_hours_configured: bool = False
+    within_working_hours: bool = True
+    role: Optional[str] = Field(
+        default=None,
+        description="Tenant User.role (for pipeline stage_contract.owner_role filtering at ingest, §2.3).",
+    )
+
+
+class LeadDistributionNextPreview(BaseModel):
+    user_id: str
+    display_name: str
+    reason_codes: List[str] = Field(default_factory=list)
+    subtitle: str = ""
+    detail_lines: List[str] = Field(default_factory=list)
+
+
+class LeadDistributionAlert(BaseModel):
+    severity: str
+    code: str
+    message: str
+
+
+class LeadDistributionFeatureGate(BaseModel):
+    automatic_allowed: bool
+    advanced_rules_allowed: bool
+    load_balance_pro: bool
+    plan_code: str = "starter"
+
+
+class LeadDistributionStats(BaseModel):
+    unassigned_processed_leads: int = 0
+
+
+class LeadDistributionOut(BaseModel):
+    mode: DistributionMode
+    strategy: DistributionStrategy
+    criteria_order: List[str]
+    max_leads_per_person: int
+    only_active_employees: bool
+    preview_language: str = "pl"
+    language_routing_v1: Dict[str, List[str]] = Field(default_factory=dict)
+    assignment_detail_lines: List[str] = Field(
+        default_factory=list,
+        description="Working hours / language routing context (even when no assignee).",
+    )
+    rules_summary_lines: List[str] = Field(default_factory=list)
+    next_preview: Optional[LeadDistributionNextPreview] = None
+    team: List[LeadDistributionTeamMemberOut] = Field(default_factory=list)
+    flow_steps: List[str] = Field(default_factory=list)
+    alerts: List[LeadDistributionAlert] = Field(default_factory=list)
+    stats: LeadDistributionStats = Field(default_factory=LeadDistributionStats)
+    feature_gate: LeadDistributionFeatureGate
+
+
+class LeadDistributionPatch(BaseModel):
+    mode: Optional[DistributionMode] = None
+    strategy: Optional[DistributionStrategy] = None
+    criteria_order: Optional[List[str]] = None
+    max_leads_per_person: Optional[int] = Field(default=None, ge=1, le=500)
+    only_active_employees: Optional[bool] = None
+    preview_language: Optional[str] = Field(default=None, max_length=16)
+    language_routing_v1: Optional[Dict[str, List[str]]] = None

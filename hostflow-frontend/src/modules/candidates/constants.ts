@@ -2,6 +2,8 @@
  * Constants for candidates module
  */
 
+import { CRM_APP_DRILLDOWN_HREFS } from '../../app/crmAppPaths'
+
 /** Правый work-panel: ширина колонки грида и `max-width` aside (должны совпадать). */
 export const CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX = 440
 
@@ -36,10 +38,13 @@ export const QUICK_DOC_STATUS_SETS: Record<string, string[]> = {
   pending: ['pending', 'requested', 'ordered'],
 };
 
-/** Навигационные quick views (не фильтры списка): единый источник для хука и drill-down ссылок. */
+/**
+ * Навигационные quick views (не фильтры списка): единый источник для хука и drill-down ссылок.
+ * Очередь no-next-action: канонический query на списке → редирект на страницу очереди (`CandidatesListGate` в routes).
+ */
 export const CANDIDATES_QUICK_VIEW_NAV_PATHS = {
-  no_next_action: '/app/candidates/no-next-action',
-  overdue_next_action: '/app/tasks?tab=tasks&t_status=active&t_entity=candidate',
+  no_next_action: CRM_APP_DRILLDOWN_HREFS.candidatesQueueNoNextAction,
+  overdue_next_action: CRM_APP_DRILLDOWN_HREFS.tasksCandidateOverdueNextAction,
 } as const
 
 export const FILTER_STORAGE_KEY = 'cand.filters';

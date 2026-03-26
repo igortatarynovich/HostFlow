@@ -19,6 +19,7 @@ import {
   type InboxChannelScope,
   type InboxListQuery,
 } from '../utils/inboxUrlQuery'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { stashPendingGmailOAuthCode } from '../utils/oauthRedirectBridge'
 
 function isActiveThread(th: CommunicationThread): boolean {
@@ -210,20 +211,17 @@ export default function CommunicationsInboxHubPage() {
         {oauthRedirectNotice && (
           <div className="max-w-4xl rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
             <div className="font-medium">
-              {t('app.communications.email.oauth_redirect_title', { defaultValue: 'Gmail authorization code received' })}
+              {t('app.communications.email.oauth_redirect_title')}
             </div>
             <p className="mt-1 text-xs text-emerald-900/90">
-              {t('app.communications.email.oauth_redirect_body', {
-                defaultValue:
-                  'Open Communications setup, step «Connect email», and click «OAuth complete» to exchange the code for tokens.',
-              })}
+              {t('app.communications.email.oauth_redirect_body')}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Link to="/app/setup/communications#step-2" className="btn-primary btn-xs">
-                {t('app.communications.email.oauth_redirect_open_setup', { defaultValue: 'Open email setup' })}
+              <Link to={`${CRM_APP_PATHS.setupCommunications}#step-2`} className="btn-primary btn-xs">
+                {t('app.communications.email.oauth_redirect_open_setup')}
               </Link>
               <button type="button" className="btn-secondary btn-xs" onClick={() => setOauthRedirectNotice(false)}>
-                {t('common.dismiss', { defaultValue: 'Dismiss' })}
+                {t('common.actions.dismiss')}
               </button>
             </div>
           </div>
@@ -231,10 +229,10 @@ export default function CommunicationsInboxHubPage() {
 
         {!commSetup.loading && !commSetup.isComplete && anyChannel && (
           <div className="max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <div className="font-medium">{t('app.communications.setup.banner_incomplete', { defaultValue: 'Communications setup is not complete yet.' })}</div>
+            <div className="font-medium">{t('app.communications.setup.banner_incomplete')}</div>
             <div className="mt-2">
-              <Link to="/app/setup/communications" className="btn-secondary btn-xs">
-                {t('app.nav.items.communications_setup', { defaultValue: 'Comms setup' })}
+              <Link to={CRM_APP_PATHS.setupCommunications} className="btn-secondary btn-xs">
+                {t('app.nav.items.communications_setup')}
               </Link>
             </div>
           </div>
@@ -243,24 +241,21 @@ export default function CommunicationsInboxHubPage() {
         {!commSetup.loading && commSetup.isComplete && effectiveChannel === 'email' && serverIncomingEnabled === false && hasEmail && (
           <div className="max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <div className="font-medium">
-              {t('app.communications.email.incoming_disabled_title', { defaultValue: 'Server-side incoming email sync is off' })}
+              {t('app.communications.email.incoming_disabled_title')}
             </div>
             <p className="mt-1 text-xs text-amber-950/90">
-              {t('app.communications.email.incoming_disabled_body_inbox', {
-                defaultValue:
-                  'New mail is fetched when you open the Inbox (email scope) or tap Sync unless background sync is enabled.',
-              })}
+              {t('app.communications.email.incoming_disabled_body_inbox')}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {canPatchCommunicationsSettings(me?.role) && (
                 <button type="button" className="btn-primary btn-xs disabled:opacity-50" disabled={enablingIncoming} onClick={() => void enableServerIncoming()}>
                   {enablingIncoming
-                    ? t('common.loading', { defaultValue: 'Loading…' })
-                    : t('app.communications.email.incoming_enable_cta', { defaultValue: 'Enable background sync' })}
+                    ? t('common.loading')
+                    : t('app.communications.email.incoming_enable_cta')}
                 </button>
               )}
-              <Link to="/app/setup/communications" className="btn-secondary btn-xs">
-                {t('app.nav.items.communications_setup', { defaultValue: 'Comms setup' })}
+              <Link to={CRM_APP_PATHS.setupCommunications} className="btn-secondary btn-xs">
+                {t('app.nav.items.communications_setup')}
               </Link>
             </div>
           </div>
@@ -278,9 +273,9 @@ export default function CommunicationsInboxHubPage() {
                   effectiveChannel === c && 'border-brand-600 bg-brand-50 text-brand-800',
                 )}
               >
-                {c === 'all' && t('app.communications_inbox_hub.channel_all', { defaultValue: 'All channels' })}
-                {c === 'messages' && t('app.communications_inbox_hub.channel_messages', { defaultValue: 'Messages' })}
-                {c === 'email' && t('app.communications_inbox_hub.channel_email', { defaultValue: 'Email' })}
+                {c === 'all' && t('app.communications_inbox_hub.channel_all')}
+                {c === 'messages' && t('app.communications_inbox_hub.channel_messages')}
+                {c === 'email' && t('app.communications_inbox_hub.channel_email')}
               </button>
             ))}
           </div>
@@ -309,7 +304,7 @@ export default function CommunicationsInboxHubPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50/90 px-3 py-2 text-sm text-sky-950">
                   <span>{t('app.communications_inbox_hub.scoped_candidate_hint')}</span>
                   <Link
-                    to={`/app/inbox${inboxContextQueryString({ ...listQueryForLinks, candidateId: '' })}`}
+                    to={`${CRM_APP_PATHS.inbox}${inboxContextQueryString({ ...listQueryForLinks, candidateId: '' })}`}
                     className="font-medium text-brand-700 hover:underline"
                   >
                     {t('app.communications_inbox_hub.scoped_candidate_clear')}
@@ -322,7 +317,7 @@ export default function CommunicationsInboxHubPage() {
                   value={qDraft}
                   onChange={(e) => setQDraft(e.target.value)}
                   className="input min-w-[12rem] flex-1 py-1.5 text-sm"
-                  placeholder={t('app.communications_inbox_hub.search_placeholder', { defaultValue: 'Search threads…' })}
+                  placeholder={t('app.communications_inbox_hub.search_placeholder')}
                 />
                 {effectiveChannel === 'email' && hasEmail && (
                   <button
@@ -330,8 +325,8 @@ export default function CommunicationsInboxHubPage() {
                     onClick={() => void fetchInboundNow()}
                     disabled={pollBusy}
                     className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-                    title={t('app.communications.email.sync.title', { defaultValue: 'Sync incoming mail' })}
-                    aria-label={t('app.communications.email.sync.title', { defaultValue: 'Sync incoming mail' })}
+                    title={t('app.communications.email.sync.title')}
+                    aria-label={t('app.communications.email.sync.title')}
                   >
                     <IconRefresh size={18} stroke={1.75} className={pollBusy ? 'animate-spin' : ''} />
                   </button>
@@ -349,7 +344,7 @@ export default function CommunicationsInboxHubPage() {
                       listQuery.assignedToMe && 'border-brand-600 bg-brand-50 text-brand-900',
                     )}
                   >
-                    {t('app.communications.email.filters.assigned_to_me', { defaultValue: 'Assigned to me' })}
+                    {t('app.communications.email.filters.assigned_to_me')}
                   </button>
                   <button
                     type="button"
@@ -359,7 +354,7 @@ export default function CommunicationsInboxHubPage() {
                       listQuery.hasAssignee && 'border-slate-700 bg-slate-100 text-slate-900',
                     )}
                   >
-                    {t('app.communications.email.filters.has_assignee', { defaultValue: 'Has assignee' })}
+                    {t('app.communications.email.filters.has_assignee')}
                   </button>
                 </div>
               )}
@@ -370,7 +365,7 @@ export default function CommunicationsInboxHubPage() {
                 onHubFilterChange={setHubFilter}
                 hasMessages={effectiveChannel === 'email' ? false : hasMessages}
                 hasEmail={effectiveChannel === 'messages' ? false : hasEmail}
-                threadLinkPrefix="/app/inbox/threads"
+                threadLinkPrefix={CRM_APP_PATHS.inboxThreadsBase}
                 linkedCandidateId={listQuery.candidateId || undefined}
                 hideSectionHeading
                 listQuery={listQueryForLinks}
@@ -385,7 +380,10 @@ export default function CommunicationsInboxHubPage() {
 
         {!showLoading && !error && anyChannel && (
           <div className="max-w-5xl">
-            <Link to="/app/sla-incidents" className="text-xs font-medium text-rose-700 hover:text-rose-800">
+            <Link
+              to={CRM_APP_PATHS.slaIncidents}
+              className="text-xs font-medium text-rose-700 hover:text-rose-800"
+            >
               <span className="inline-flex items-center gap-1">
                 <IconBell size={14} stroke={1.75} />
                 {t('app.communications_inbox_hub.cta_sla')}

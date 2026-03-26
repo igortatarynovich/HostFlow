@@ -4,6 +4,7 @@ import { cancelInvoice, createPayment, createReminder, getInvoicePdf, listInvoic
 import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { invoiceDaysPastDue, invoiceOutstandingAmount, serviceOrderWorkspacePath } from '../modules/services/utils'
 
 const STATUS_OPTIONS: InvoiceStatus[] = ['draft', 'issued', 'sent', 'paid', 'overdue', 'cancelled']
@@ -413,7 +414,7 @@ export default function InvoicesPage() {
         <h1 className="text-2xl font-bold text-slate-900">{t('app.invoices.title', { defaultValue: 'Invoices' })}</h1>
         <button
           className="btn-primary"
-          onClick={() => navigate('/app/invoices/new')}
+          onClick={() => navigate(CRM_APP_PATHS.invoiceNew)}
         >
           {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
         </button>
@@ -676,7 +677,7 @@ export default function InvoicesPage() {
                     </td>
                     <td className="py-3 px-4">
                       <a
-                        href={`/app/invoices/${invoice.id}`}
+                        href={`${CRM_APP_PATHS.invoices}/${invoice.id}`}
                         className="text-blue-600 hover:underline font-medium"
                       >
                         {invoice.invoice_number}
@@ -718,7 +719,10 @@ export default function InvoicesPage() {
                     <td className="py-3 px-4 text-sm text-slate-700">
                       <div className="flex flex-wrap gap-2">
                         {invoice.company_id && (
-                          <Link to={`/app/clients/${invoice.company_id}`} className="text-brand-700 hover:underline">
+                          <Link
+                            to={`${CRM_APP_PATHS.agencyClients}/${invoice.company_id}`}
+                            className="text-brand-700 hover:underline"
+                          >
                             {t('app.invoices.open_client', { defaultValue: 'Open client' })}
                           </Link>
                         )}
@@ -851,8 +855,8 @@ export default function InvoicesPage() {
                           onClick={() =>
                             navigate(
                               invoice.status === 'draft'
-                                ? `/app/invoices/new?source_invoice_id=${invoice.id}`
-                                : `/app/invoices/new?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`,
+                                ? `${CRM_APP_PATHS.invoiceNew}?source_invoice_id=${invoice.id}`
+                                : `${CRM_APP_PATHS.invoiceNew}?source_invoice_id=${invoice.id}&invoice_kind=correction&correction_of_invoice_id=${invoice.id}&correction_of_invoice_number=${encodeURIComponent(invoice.invoice_number)}`,
                             )
                           }
                         >

@@ -18,6 +18,7 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.automation_rule import AutomationRule
 from backend.app.services.automation_rules import TRIGGERS
+from backend.app.services.plan_feature_gates import ensure_automation_rules_mutation_allowed
 
 
 router = APIRouter(prefix="/automation-rules", tags=["automation-rules"])
@@ -129,13 +130,14 @@ async def list_rules(
 )
 async def create_rule(
     body: AutomationRuleCreateIn,
-    ctx: UserCtx = Depends(get_current_user),
+    _ctx: UserCtx = Depends(get_current_user),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     if body.trigger not in TRIGGERS:
         raise HTTPException(status_code=422, detail=f"Unsupported trigger. Allowed: {sorted(TRIGGERS)}")
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
+    await ensure_automation_rules_mutation_allowed(db, tenant_id)
     rule = AutomationRule(
         tenant_id=tenant_id,
         enabled=bool(body.enabled),
@@ -176,6 +178,14 @@ async def patch_rule(
     rule = row.scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
+    only_disable = (
+        body.enabled is False
+        and body.title is None
+        and body.conditions is None
+        and body.actions is None
+    )
+    if not only_disable:
+        await ensure_automation_rules_mutation_allowed(db, tenant_id)
     if body.enabled is not None:
         rule.enabled = bool(body.enabled)
     if body.title is not None:

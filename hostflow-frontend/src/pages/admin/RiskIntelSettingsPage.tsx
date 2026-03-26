@@ -5,6 +5,7 @@ import { recordPerfMeasurement } from '../../api/analytics'
 import { getRiskModelV1Settings, patchRiskModelV1Settings } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 const RISK_BANDS = ['low', 'medium', 'high', 'critical'] as const
 type RiskBand = (typeof RISK_BANDS)[number]
@@ -180,7 +181,7 @@ export default function RiskIntelSettingsPage() {
             })}
           </p>
         </div>
-        <Link to="/app/settings" className="btn-secondary btn-sm">
+        <Link to={CRM_APP_PATHS.settings} className="btn-secondary btn-sm">
           {t('admin.risk_intel.settings.back', { defaultValue: '← Settings' })}
         </Link>
       </div>

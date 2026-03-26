@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -52,6 +52,57 @@ def _resolve_system_stage(value: Optional[str], code: str) -> str:
     return normalized
 
 
+class StageContractV1(BaseModel):
+    """Per-stage pipeline contract (§2.3): optional until UI/engine consume it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    owner_role: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="Intended owner role for work in this stage (e.g. recruiter, manager).",
+    )
+    required_actions: Optional[List[str]] = Field(
+        default=None,
+        description="Human-readable required actions before leaving the stage.",
+    )
+    sla_hours: Optional[int] = Field(
+        default=None,
+        ge=0,
+        le=8760,
+        description="Optional SLA window in hours for this stage.",
+    )
+    auto_rules: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Opaque JSON for future automation links (e.g. rule ids, triggers).",
+    )
+
+    @field_validator("required_actions")
+    @classmethod
+    def _normalize_actions(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if not v:
+            return None
+        out = [str(x).strip() for x in v if str(x).strip()]
+        if not out:
+            return None
+        return out[:48]
+
+    @field_validator("owner_role")
+    @classmethod
+    def _strip_owner(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
+
+
+def _stage_contract_db_value(payload: Optional[StageContractV1]) -> Optional[dict[str, Any]]:
+    if payload is None:
+        return None
+    dumped = payload.model_dump(exclude_none=True)
+    return dumped if dumped else None
+
+
 class FunnelStageIn(BaseModel):
     code: str = Field(..., min_length=1, max_length=64)
     label: str = Field(..., min_length=1, max_length=255)
@@ -61,6 +112,10 @@ class FunnelStageIn(BaseModel):
     )
     order: int = Field(0, ge=0)
     is_terminal: bool = False
+    stage_contract: Optional[StageContractV1] = Field(
+        default=None,
+        description="Optional pipeline contract (owner_role, required_actions, sla_hours, auto_rules).",
+    )
 
 
 class FunnelStageOut(BaseModel):
@@ -71,9 +126,17 @@ class FunnelStageOut(BaseModel):
     system_stage: str
     order: int
     is_terminal: bool
+    stage_contract: Optional[StageContractV1] = None
 
     @classmethod
     def from_model(cls, s: FunnelStage) -> "FunnelStageOut":
+        raw = getattr(s, "stage_contract_v1", None)
+        contract: Optional[StageContractV1] = None
+        if isinstance(raw, dict) and raw:
+            try:
+                contract = StageContractV1.model_validate(raw)
+            except Exception:
+                contract = None
         return cls(
             id=s.id,
             funnel_id=s.funnel_id,
@@ -82,6 +145,7 @@ class FunnelStageOut(BaseModel):
             system_stage=s.system_stage,
             order=s.order,
             is_terminal=s.is_terminal,
+            stage_contract=contract,
         )
 
 
@@ -282,15 +346,19 @@ async def add_funnel_stage(
         raise HTTPException(status_code=409, detail=f"Stage code '{payload.code}' already exists")
 
     resolved_system_stage = _resolve_system_stage(payload.system_stage, payload.code)
-    stage = FunnelStage(
+    stage_kwargs: dict[str, Any] = dict(
         id=str(uuid.uuid4()),
         funnel_id=funnel_id,
         code=payload.code,
         label=payload.label,
         system_stage=resolved_system_stage,
         order=payload.order,
-        is_terminal=payload.is_terminal or resolved_system_stage in {SYSTEM_STAGE_HIRED, SYSTEM_STAGE_DECLINED_OR_REJECTED},
+        is_terminal=payload.is_terminal
+        or resolved_system_stage in {SYSTEM_STAGE_HIRED, SYSTEM_STAGE_DECLINED_OR_REJECTED},
     )
+    if "stage_contract" in payload.model_fields_set:
+        stage_kwargs["stage_contract_v1"] = _stage_contract_db_value(payload.stage_contract)
+    stage = FunnelStage(**stage_kwargs)
     db.add(stage)
     await db.commit()
     await db.refresh(stage)
@@ -344,6 +412,8 @@ async def update_funnel_stage(
     stage.system_stage = resolved_system_stage
     stage.order = payload.order
     stage.is_terminal = payload.is_terminal or resolved_system_stage in {SYSTEM_STAGE_HIRED, SYSTEM_STAGE_DECLINED_OR_REJECTED}
+    if "stage_contract" in payload.model_fields_set:
+        stage.stage_contract_v1 = _stage_contract_db_value(payload.stage_contract)
     await db.commit()
     await db.refresh(stage)
     return FunnelStageOut.from_model(stage)

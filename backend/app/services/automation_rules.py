@@ -19,6 +19,7 @@ TRIGGERS = {
     "candidate.risk_band",
     "document.expiring",
     "lead.processed",
+    "lead.pipeline.stage_changed",
 }
 
 RISK_BAND_ORDER = {"low": 0, "medium": 1, "high": 2, "critical": 3}

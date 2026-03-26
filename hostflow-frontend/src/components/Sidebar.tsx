@@ -1,6 +1,7 @@
 // src/components/Sidebar.tsx
 import { Link } from "react-router-dom";
 import { settings, resolveApiBase, apiBaseSettings } from "../api/client";
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useI18n } from "../i18n";
 
 export function Sidebar() {
@@ -25,7 +26,7 @@ export function Sidebar() {
         <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/">Дашборд</Link>
         <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/companies">Компании</Link>
         <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/vacancies">Вакансии</Link>
-        <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/app/candidates">Кандидаты</Link>
+        <Link className="px-3 py-2 rounded hover:bg-brand-800" to={CRM_APP_PATHS.candidates}>Кандидаты</Link>
         <Link className="px-3 py-2 rounded hover:bg-brand-800" to="/pipeline">Канбан</Link>
       </nav>
 

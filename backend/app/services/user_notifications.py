@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Literal, Optional
 from uuid import uuid4
 
 from sqlalchemy import and_, select, update
@@ -10,6 +10,79 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.models.communication import CommunicationThread
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.user_notification import UserNotification
+
+NotificationPriority = Literal["critical", "high", "normal"]
+_VALID_PRIORITIES = frozenset({"critical", "high", "normal"})
+
+
+def _notification_uos_group(event_type: str, payload: dict[str, Any]) -> str:
+    """Mirror of frontend getNotificationUosGroup (UOS attention center)."""
+    et = str(event_type or "").strip().lower()
+    source = str(payload.get("source") or "").lower()
+
+    if et in ("communications_sla_overdue", "communications_thread_escalated"):
+        return "sla"
+    if et in ("lead_no_next_action", "lead_stuck_stage"):
+        return "sla"
+    if et == "invoice_overdue" or "invoice_overdue" in source:
+        return "sla"
+    if source in ("leads_next_action_sla", "leads_stuck_stage_sla", "invoice_overdue_sla"):
+        return "sla"
+
+    if et in ("reminder_due", "reminder_overdue"):
+        return "tasks"
+    if source == "reminders":
+        return "tasks"
+
+    thread_id = payload.get("thread_id")
+    if thread_id is not None and str(thread_id).strip():
+        return "messages"
+    if "communication" in et:
+        return "messages"
+    if "inbound" in et and ("email" in et or "message" in et):
+        return "messages"
+    return "system"
+
+
+def resolve_notification_priority(
+    event_type: str,
+    payload: Optional[dict],
+) -> NotificationPriority:
+    """
+    Canonical UOS priority for bell / drawer tiers (critical | high | normal).
+    Used at write time and as fallback for legacy rows with NULL DB column.
+    """
+    p = payload if isinstance(payload, dict) else {}
+    raw = str(p.get("priority") or "").strip().lower()
+    if raw in _VALID_PRIORITIES:
+        return raw  # type: ignore[return-value]
+
+    group = _notification_uos_group(event_type, p)
+    if group == "sla":
+        return "critical"
+
+    et = str(event_type or "").strip().lower()
+    if et == "reminder_overdue":
+        return "high"
+    if et == "handoff_requested":
+        return "high"
+    return "normal"
+
+
+def _coerce_priority(value: Optional[str]) -> Optional[NotificationPriority]:
+    if value is None:
+        return None
+    v = str(value).strip().lower()
+    if v in _VALID_PRIORITIES:
+        return v  # type: ignore[return-value]
+    return None
+
+
+def notification_out_priority(row: UserNotification) -> NotificationPriority:
+    stored = _coerce_priority(getattr(row, "priority", None))
+    if stored is not None:
+        return stored
+    return resolve_notification_priority(row.event_type, row.payload if isinstance(row.payload, dict) else {})
 
 
 def _infer_source(event_type: str) -> str:
@@ -80,6 +153,7 @@ async def create_notification(
     channel: str = "in_app",
     delivered_at: Optional[datetime] = None,
     dedupe_window_minutes: Optional[int] = None,
+    priority: Optional[str] = None,
 ) -> UserNotification:
     normalized_payload = _normalize_payload(
         event_type=event_type,
@@ -87,6 +161,14 @@ async def create_notification(
         entity_type=entity_type,
         entity_id=entity_id,
     )
+    rp = normalized_payload.get("priority")
+    explicit_payload = _coerce_priority(str(rp).strip()) if rp not in (None, "") else None
+    resolved_priority = (
+        _coerce_priority(priority)
+        or explicit_payload
+        or resolve_notification_priority(event_type, normalized_payload)
+    )
+    normalized_payload["priority"] = resolved_priority
     dedupe_key = str(normalized_payload.get("dedupe_key") or "").strip() or None
 
     if dedupe_window_minutes is not None and int(dedupe_window_minutes) > 0:
@@ -133,6 +215,7 @@ async def create_notification(
         tenant_id=tenant_id,
         user_id=user_id,
         event_type=event_type,
+        priority=resolved_priority,
         entity_type=entity_type,
         entity_id=entity_id,
         payload=normalized_payload,
@@ -167,7 +250,22 @@ async def list_notifications(
     if not include_read:
         stmt = stmt.where(UserNotification.is_read.is_(False))
     rows = await db.execute(stmt)
-    return list(rows.scalars().all())
+    out = list(rows.scalars().all())
+
+    def _ts(n: UserNotification) -> float:
+        ca = n.created_at
+        if ca.tzinfo is None:
+            return ca.replace(tzinfo=timezone.utc).timestamp()
+        return ca.timestamp()
+
+    tier_rank = {"critical": 0, "high": 1, "normal": 2}
+    out.sort(
+        key=lambda n: (
+            tier_rank.get(notification_out_priority(n), 2),
+            -_ts(n),
+        )
+    )
+    return out
 
 
 async def cleanup_stale_sla_notifications(

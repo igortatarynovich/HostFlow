@@ -28,6 +28,7 @@ import {
   type Funnel,
   type FunnelStage,
   type FunnelStageCreate,
+  type FunnelStageContractV1,
   type FunnelCreate,
 } from '../../api/funnels'
 import { Modal } from '../../components/Modal'
@@ -91,8 +92,8 @@ function SortableStageRow({
           className={`inline-flex rounded-md px-2 py-0.5 text-xs font-medium ${stage.is_terminal ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}
         >
           {stage.is_terminal
-            ? t('admin.funnels.status_terminal', { defaultValue: 'Terminal' })
-            : t('admin.funnels.status_in_progress', { defaultValue: 'In progress' })}
+            ? t('admin.funnels.status_terminal')
+            : t('admin.funnels.status_in_progress')}
         </span>
       </td>
       <td className="py-2 text-right">
@@ -102,7 +103,7 @@ function SortableStageRow({
           disabled={disabled}
           className="text-brand-600 hover:text-brand-700 text-sm mr-2"
         >
-          {t('common.actions.edit', { defaultValue: 'Edit' })}
+          {t('common.actions.edit')}
         </button>
         <button
           type="button"
@@ -110,7 +111,7 @@ function SortableStageRow({
           disabled={disabled}
           className="text-rose-600 hover:text-rose-700 text-sm"
         >
-          {t('common.actions.delete', { defaultValue: 'Delete' })}
+          {t('common.actions.delete')}
         </button>
       </td>
     </tr>
@@ -136,19 +137,84 @@ function StageCreateEditModal({
   const [systemStage, setSystemStage] = useState<FunnelStageCreate['system_stage']>(stage?.system_stage || 'in_progress')
   const [order, setOrder] = useState(stage?.order ?? 0)
   const [isTerminal, setIsTerminal] = useState(stage?.is_terminal ?? false)
+  const [ownerRole, setOwnerRole] = useState('')
+  const [slaHoursStr, setSlaHoursStr] = useState('')
+  const [requiredActionsText, setRequiredActionsText] = useState('')
+  const [autoRulesJsonStr, setAutoRulesJsonStr] = useState('')
+
+  useEffect(() => {
+    const c = stage?.stage_contract
+    setOwnerRole(c?.owner_role?.trim() ? String(c.owner_role) : '')
+    setSlaHoursStr(
+      c?.sla_hours !== undefined && c.sla_hours !== null && Number.isFinite(Number(c.sla_hours))
+        ? String(c.sla_hours)
+        : ''
+    )
+    setRequiredActionsText(c?.required_actions?.length ? c.required_actions.join('\n') : '')
+    setAutoRulesJsonStr(c?.auto_rules ? JSON.stringify(c.auto_rules, null, 2) : '')
+  }, [stage])
 
   const handleSubmit = async () => {
     if (!code.trim() || !label.trim()) {
-      alert(t('admin.funnels.validation_required', { defaultValue: 'Code and label are required' }))
+      alert(t('admin.funnels.validation_stage'))
       return
     }
-    await onSave({
+    const actions = requiredActionsText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    let auto_rules: Record<string, unknown> | undefined
+    if (autoRulesJsonStr.trim()) {
+      try {
+        const parsed = JSON.parse(autoRulesJsonStr) as unknown
+        if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          alert(t('admin.funnels.auto_rules_not_object'))
+          return
+        }
+        auto_rules = parsed as Record<string, unknown>
+      } catch {
+        alert(t('admin.funnels.invalid_auto_rules_json'))
+        return
+      }
+    }
+    let sla_hours: number | undefined
+    if (slaHoursStr.trim()) {
+      const n = parseInt(slaHoursStr, 10)
+      if (!Number.isFinite(n) || n < 0) {
+        alert(t('admin.funnels.invalid_sla_hours'))
+        return
+      }
+      sla_hours = n
+    }
+    const hasContract =
+      Boolean(ownerRole.trim()) || actions.length > 0 || sla_hours !== undefined || auto_rules !== undefined
+
+    const payload: FunnelStageCreate = {
       code: code.trim(),
       label: label.trim(),
       system_stage: systemStage || 'in_progress',
       order: order || 0,
       is_terminal: isTerminal,
-    })
+    }
+    if (stage) {
+      const contract: FunnelStageContractV1 | null = hasContract
+        ? {
+            owner_role: ownerRole.trim() || undefined,
+            required_actions: actions.length ? actions : undefined,
+            sla_hours,
+            auto_rules,
+          }
+        : null
+      payload.stage_contract = contract
+    } else if (hasContract) {
+      payload.stage_contract = {
+        owner_role: ownerRole.trim() || undefined,
+        required_actions: actions.length ? actions : undefined,
+        sla_hours,
+        auto_rules,
+      }
+    }
+    await onSave(payload)
   }
 
   return (
@@ -156,15 +222,13 @@ function StageCreateEditModal({
       open={true}
       onClose={onClose}
       title={
-        stage
-          ? t('admin.funnels.edit_stage', { defaultValue: 'Edit stage' })
-          : t('admin.funnels.create_stage', { defaultValue: 'Create stage' })
+        stage ? t('admin.funnels.edit_stage') : t('admin.funnels.create_stage')
       }
     >
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            {t('admin.funnels.label_field', { defaultValue: 'Label' })} *
+            {t('admin.funnels.label_field')} *
           </label>
           <input
             type="text"
@@ -182,13 +246,13 @@ function StageCreateEditModal({
               }
             }}
             className="input w-full"
-            placeholder={t('admin.funnels.placeholders.stage_label', { defaultValue: 'e.g. Initial interview' })}
+            placeholder={t('admin.funnels.placeholders.stage_label')}
             disabled={disabled}
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            {t('admin.funnels.code_field', { defaultValue: 'Code' })} *
+            {t('admin.funnels.code_field')} *
           </label>
           <input
             type="text"
@@ -197,21 +261,19 @@ function StageCreateEditModal({
               setCode(e.target.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_'))
             }
             className="input w-full font-mono text-sm"
-            placeholder={t('admin.funnels.placeholders.stage_code', { defaultValue: 'initial_interview' })}
+            placeholder={t('admin.funnels.placeholders.stage_code')}
             disabled={disabled || !!stage}
           />
           {stage && (
             <p className="mt-1 text-xs text-slate-500">
-              {t('admin.funnels.code_readonly', { defaultValue: 'Code cannot be changed' })}
+              {t('admin.funnels.code_readonly')}
             </p>
           )}
         </div>
         {!stage && referenceCodes && referenceCodes.length > 0 && (
           <div className="mt-2">
             <p className="text-xs text-slate-500 mb-1">
-              {t('admin.funnels.pick_existing_code', {
-                defaultValue: 'Or pick from existing system stages:',
-              })}
+              {t('admin.funnels.pick_existing_code')}
             </p>
             <div className="flex flex-wrap gap-2 max-h-24 overflow-auto">
               {referenceCodes.map((c) => (
@@ -235,7 +297,7 @@ function StageCreateEditModal({
         )}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            {t('admin.funnels.system_stage', { defaultValue: 'System stage' })} *
+            {t('admin.funnels.system_stage')} *
           </label>
           <select
             value={systemStage || 'in_progress'}
@@ -243,20 +305,18 @@ function StageCreateEditModal({
             className="input w-full"
             disabled={disabled}
           >
-            <option value="new">{t('admin.funnels.system_stage_new', { defaultValue: 'New' })}</option>
-            <option value="in_progress">{t('admin.funnels.system_stage_in_progress', { defaultValue: 'In progress' })}</option>
-            <option value="hired">{t('admin.funnels.system_stage_hired', { defaultValue: 'Hired' })}</option>
-            <option value="declined_rejected">{t('admin.funnels.system_stage_declined_rejected', { defaultValue: 'Declined / Rejected' })}</option>
+            <option value="new">{t('admin.funnels.system_stage_new')}</option>
+            <option value="in_progress">{t('admin.funnels.system_stage_in_progress')}</option>
+            <option value="hired">{t('admin.funnels.system_stage_hired')}</option>
+            <option value="declined_rejected">{t('admin.funnels.system_stage_declined_rejected')}</option>
           </select>
           <p className="mt-1 text-xs text-slate-500">
-            {t('admin.funnels.system_stage_hint', {
-              defaultValue: 'Each custom stage must be mapped to one canonical system stage.',
-            })}
+            {t('admin.funnels.system_stage_hint')}
           </p>
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            {t('admin.funnels.order_field', { defaultValue: 'Order' })}
+            {t('admin.funnels.order_field')}
           </label>
           <input
             type="number"
@@ -277,13 +337,74 @@ function StageCreateEditModal({
               className="rounded border-slate-300"
             />
             <span className="text-sm text-slate-700">
-              {t('admin.funnels.terminal_stage', { defaultValue: 'Terminal stage (e.g. Employed, Rejected)' })}
+              {t('admin.funnels.terminal_stage')}
             </span>
           </label>
         </div>
+        <details className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+          <summary className="cursor-pointer select-none text-sm font-medium text-slate-800">
+            {t('admin.funnels.stage_contract_section')}
+          </summary>
+          <p className="mt-2 text-xs text-slate-500">
+            {t('admin.funnels.stage_contract_hint')}
+          </p>
+          <div className="mt-3 space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                {t('admin.funnels.owner_role')}
+              </label>
+              <input
+                type="text"
+                value={ownerRole}
+                onChange={(e) => setOwnerRole(e.target.value)}
+                className="input w-full text-sm"
+                placeholder={t('admin.funnels.owner_role_placeholder')}
+                disabled={disabled}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                {t('admin.funnels.sla_hours')}
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={slaHoursStr}
+                onChange={(e) => setSlaHoursStr(e.target.value)}
+                className="input w-full text-sm"
+                placeholder="48"
+                disabled={disabled}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                {t('admin.funnels.required_actions')}
+              </label>
+              <textarea
+                value={requiredActionsText}
+                onChange={(e) => setRequiredActionsText(e.target.value)}
+                className="input w-full text-sm font-mono min-h-[72px]"
+                placeholder={t('admin.funnels.required_actions_placeholder')}
+                disabled={disabled}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                {t('admin.funnels.auto_rules_json')}
+              </label>
+              <textarea
+                value={autoRulesJsonStr}
+                onChange={(e) => setAutoRulesJsonStr(e.target.value)}
+                className="input w-full text-sm font-mono min-h-[64px]"
+                placeholder='{"automation_rule_ids": []}'
+                disabled={disabled}
+              />
+            </div>
+          </div>
+        </details>
         <div className="flex gap-2 justify-end pt-4">
           <button type="button" onClick={onClose} disabled={disabled} className="btn-secondary">
-            {t('common.cancel', { defaultValue: 'Cancel' })}
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -291,7 +412,7 @@ function StageCreateEditModal({
             disabled={disabled || !label.trim() || !code.trim()}
             className="btn-primary"
           >
-            {stage ? t('common.save', { defaultValue: 'Save' }) : t('admin.funnels.create', { defaultValue: 'Create' })}
+            {stage ? t('common.save') : t('admin.funnels.create')}
           </button>
         </div>
       </div>
@@ -303,10 +424,12 @@ function FunnelCreateModal({
   onClose,
   onSave,
   disabled,
+  funnelType,
 }: {
   onClose: () => void
   onSave: (data: FunnelCreate) => Promise<void>
   disabled?: boolean
+  funnelType: 'candidate' | 'lead'
 }) {
   const { t } = useI18n()
   const [name, setName] = useState('')
@@ -314,29 +437,29 @@ function FunnelCreateModal({
 
   const handleSubmit = async () => {
     if (!name.trim()) {
-      alert(t('admin.funnels.validation_required', { defaultValue: 'Name is required' }))
+      alert(t('admin.funnels.validation_funnel_name'))
       return
     }
-    await onSave({ type: 'candidate', name: name.trim(), is_default: isDefault })
+    await onSave({ type: funnelType, name: name.trim(), is_default: isDefault })
   }
 
   return (
     <Modal
       open={true}
       onClose={onClose}
-      title={t('admin.funnels.create_funnel', { defaultValue: 'Create funnel' })}
+      title={t('admin.funnels.create_funnel')}
     >
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
-            {t('admin.funnels.funnel_name', { defaultValue: 'Funnel name' })} *
+            {t('admin.funnels.funnel_name')} *
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="input w-full"
-            placeholder={t('admin.funnels.placeholders.funnel_name', { defaultValue: 'e.g. Driver Recruitment' })}
+            placeholder={t('admin.funnels.placeholders.funnel_name')}
             disabled={disabled}
           />
         </div>
@@ -350,13 +473,15 @@ function FunnelCreateModal({
               className="rounded border-slate-300"
             />
             <span className="text-sm text-slate-700">
-              {t('admin.funnels.default_funnel', { defaultValue: 'Default funnel for candidates' })}
+              {funnelType === 'lead'
+                ? t('admin.funnels.default_funnel_leads')
+                : t('admin.funnels.default_funnel')}
             </span>
           </label>
         </div>
         <div className="flex gap-2 justify-end pt-4">
           <button type="button" onClick={onClose} disabled={disabled} className="btn-secondary">
-            {t('common.cancel', { defaultValue: 'Cancel' })}
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -364,7 +489,7 @@ function FunnelCreateModal({
             disabled={disabled || !name.trim()}
             className="btn-primary"
           >
-            {t('admin.funnels.create', { defaultValue: 'Create' })}
+            {t('admin.funnels.create')}
           </button>
         </div>
       </div>
@@ -374,6 +499,7 @@ function FunnelCreateModal({
 
 export default function FunnelsPage() {
   const { t } = useI18n()
+  const [funnelTab, setFunnelTab] = useState<'candidate' | 'lead'>('candidate')
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [selectedFunnel, setSelectedFunnel] = useState<Funnel | null>(null)
   const [stages, setStages] = useState<FunnelStage[]>([])
@@ -395,12 +521,14 @@ export default function FunnelsPage() {
 
   const loadFunnels = useCallback(async () => {
     try {
-      const list = await listFunnels({ type: 'candidate' })
+      const list = await listFunnels({ type: funnelTab })
       setFunnels(list)
-      if (list.length > 0 && !selectedFunnel) {
-        const defaultF = list.find((f) => f.is_default) || list[0]
-        setSelectedFunnel(defaultF)
-      } else if (list.length === 0) {
+      if (list.length > 0) {
+        setSelectedFunnel((prev) => {
+          if (prev && list.some((f) => f.id === prev.id)) return prev
+          return list.find((f) => f.is_default) || list[0]
+        })
+      } else {
         setSelectedFunnel(null)
         setStages([])
       }
@@ -412,9 +540,10 @@ export default function FunnelsPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [funnelTab])
 
   useEffect(() => {
+    setLoading(true)
     loadFunnels()
   }, [loadFunnels])
 
@@ -453,7 +582,7 @@ export default function FunnelsPage() {
           'response' in err &&
           typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
             ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : t('admin.funnels.errors.unknown', { defaultValue: 'Unknown error' })
+            : t('admin.funnels.errors.unknown')
         alert(msg)
       } finally {
         setSaving(false)
@@ -478,7 +607,7 @@ export default function FunnelsPage() {
           'response' in err &&
           typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
             ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : t('admin.funnels.errors.unknown', { defaultValue: 'Unknown error' })
+            : t('admin.funnels.errors.unknown')
         alert(msg)
       } finally {
         setSaving(false)
@@ -503,7 +632,7 @@ export default function FunnelsPage() {
           'response' in err &&
           typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
             ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : t('admin.funnels.errors.unknown', { defaultValue: 'Unknown error' })
+            : t('admin.funnels.errors.unknown')
         alert(msg)
       } finally {
         setSaving(false)
@@ -517,10 +646,7 @@ export default function FunnelsPage() {
       if (!selectedFunnel) return
       if (
         !confirm(
-          t('admin.funnels.confirm_delete', {
-            values: { label: stage.label },
-            defaultValue: `Delete stage "${stage.label}"?`,
-          })
+          t('admin.funnels.confirm_delete', { values: { label: stage.label } })
         )
       )
         return
@@ -535,7 +661,7 @@ export default function FunnelsPage() {
           'response' in err &&
           typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
             ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : t('admin.funnels.errors.unknown', { defaultValue: 'Unknown error' })
+            : t('admin.funnels.errors.unknown')
         alert(msg)
       }
     },
@@ -560,6 +686,7 @@ export default function FunnelsPage() {
           await updateFunnelStage(selectedFunnel.id, s.id, {
             code: s.code,
             label: s.label,
+            system_stage: s.system_stage,
             order: i,
             is_terminal: s.is_terminal,
           })
@@ -578,7 +705,7 @@ export default function FunnelsPage() {
     return (
       <div className="space-y-4">
         <div className="text-sm text-slate-500">
-          {t('common.loading', { defaultValue: 'Loading…' })}
+          {t('common.loading')}
         </div>
       </div>
     )
@@ -587,28 +714,48 @@ export default function FunnelsPage() {
   if (funnels.length === 0) {
     return (
       <div className="space-y-4">
+        <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+          <button
+            type="button"
+            onClick={() => setFunnelTab('candidate')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              funnelTab === 'candidate'
+                ? 'bg-brand-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            {t('admin.funnels.tab_candidates')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFunnelTab('lead')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+              funnelTab === 'lead'
+                ? 'bg-brand-600 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            {t('admin.funnels.tab_leads')}
+          </button>
+        </div>
         <header>
           <h1 className="text-xl font-semibold text-slate-900">
-            {t('admin.funnels.title', { defaultValue: 'Candidate funnels' })}
+            {funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {t('admin.funnels.subtitle', {
-              defaultValue: 'Manage candidate pipeline stages. Pipeline and Dashboard use these stages.',
-            })}
+            {funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
           </p>
         </header>
         <div className="card p-8 text-center">
           <p className="text-slate-600 mb-4">
-            {t('admin.funnels.no_funnels', {
-              defaultValue: 'No candidate funnels yet. Create your first funnel to manage pipeline stages.',
-            })}
+            {funnelTab === 'lead' ? t('admin.funnels.no_funnels_leads') : t('admin.funnels.no_funnels')}
           </p>
           <button
             type="button"
             onClick={() => setShowCreateFunnelModal(true)}
             className="btn-primary"
           >
-            + {t('admin.funnels.create_funnel', { defaultValue: 'Create funnel' })}
+            + {t('admin.funnels.create_funnel')}
           </button>
         </div>
         {showCreateFunnelModal && (
@@ -616,6 +763,7 @@ export default function FunnelsPage() {
             onClose={() => setShowCreateFunnelModal(false)}
             onSave={handleCreateFunnel}
             disabled={saving}
+            funnelType={funnelTab}
           />
         )}
       </div>
@@ -624,21 +772,43 @@ export default function FunnelsPage() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+        <button
+          type="button"
+          onClick={() => setFunnelTab('candidate')}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+            funnelTab === 'candidate'
+              ? 'bg-brand-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          {t('admin.funnels.tab_candidates')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setFunnelTab('lead')}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+            funnelTab === 'lead'
+              ? 'bg-brand-600 text-white'
+              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          }`}
+        >
+          {t('admin.funnels.tab_leads')}
+        </button>
+      </div>
       <header>
         <h1 className="text-xl font-semibold text-slate-900">
-          {t('admin.funnels.title', { defaultValue: 'Candidate funnels' })}
+          {funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          {t('admin.funnels.subtitle', {
-            defaultValue: 'Manage candidate pipeline stages. Pipeline and Dashboard use these stages.',
-          })}
+          {funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
         </p>
       </header>
 
       <div className="flex flex-wrap items-center gap-4">
         <div>
           <label className="block text-xs font-medium text-slate-500 mb-1">
-            {t('admin.funnels.select_funnel', { defaultValue: 'Funnel' })}
+            {t('admin.funnels.select_funnel')}
           </label>
           <select
             value={selectedFunnel?.id || ''}
@@ -661,14 +831,14 @@ export default function FunnelsPage() {
           onClick={() => setShowCreateFunnelModal(true)}
           className="btn-secondary text-sm mt-5"
         >
-          + {t('admin.funnels.new_funnel', { defaultValue: 'New funnel' })}
+          + {t('admin.funnels.new_funnel')}
         </button>
       </div>
 
       <div className="card overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-900">
-            {selectedFunnel?.name || ''} — {t('admin.funnels.stages', { defaultValue: 'Stages' })}
+            {selectedFunnel?.name || ''} — {t('admin.funnels.stages')}
           </h2>
           {selectedFunnel && (
             <button
@@ -676,19 +846,17 @@ export default function FunnelsPage() {
               onClick={() => setShowCreateStageModal(true)}
               className="btn-primary text-sm"
             >
-              + {t('admin.funnels.add_stage', { defaultValue: 'Add stage' })}
+              + {t('admin.funnels.add_stage')}
             </button>
           )}
         </div>
         {!selectedFunnel ? (
           <div className="p-8 text-center text-sm text-slate-500">
-            {t('admin.funnels.select_funnel_first', { defaultValue: 'Select a funnel' })}
+            {t('admin.funnels.select_funnel_first')}
           </div>
         ) : stages.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-500">
-            {t('admin.funnels.no_stages', {
-              defaultValue: 'No stages. Add your first stage.',
-            })}
+            {t('admin.funnels.no_stages')}
           </div>
         ) : (
           <DndContext
@@ -700,12 +868,12 @@ export default function FunnelsPage() {
               <thead>
                 <tr className="bg-slate-50 text-left text-xs uppercase text-slate-500">
                   <th className="py-2 px-2 w-8" />
-                  <th className="py-2 px-2">{t('admin.funnels.columns.code', { defaultValue: 'Code' })}</th>
-                  <th className="py-2 px-2">{t('admin.funnels.columns.label', { defaultValue: 'Label' })}</th>
-                  <th className="py-2 px-2">{t('admin.funnels.columns.system', { defaultValue: 'System' })}</th>
-                  <th className="py-2 px-2">{t('admin.funnels.columns.order', { defaultValue: 'Order' })}</th>
-                  <th className="py-2 px-2">{t('admin.funnels.columns.status', { defaultValue: 'Status' })}</th>
-                  <th className="py-2 px-2 text-right">{t('admin.funnels.columns.actions', { defaultValue: 'Actions' })}</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.code')}</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.label')}</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.system')}</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.order')}</th>
+                  <th className="py-2 px-2">{t('admin.funnels.columns.status')}</th>
+                  <th className="py-2 px-2 text-right">{t('admin.funnels.columns.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -731,12 +899,10 @@ export default function FunnelsPage() {
 
       <div className="card p-4">
         <h2 className="text-sm font-semibold text-slate-900 mb-2">
-          {t('admin.funnels.reference_stages', { defaultValue: 'Reference: system stage codes' })}
+          {t('admin.funnels.reference_stages')}
         </h2>
         <p className="text-xs text-slate-500 mb-3">
-          {t('admin.funnels.reference_help', {
-            defaultValue: 'You can use these codes or define your own. Pipeline and Dashboard use the stages from your selected funnel.',
-          })}
+          {t('admin.funnels.reference_help')}
         </p>
         <div className="flex flex-wrap gap-2">
           {DEFAULT_STAGE_CODES.map((code) => (
@@ -772,6 +938,7 @@ export default function FunnelsPage() {
           onClose={() => setShowCreateFunnelModal(false)}
           onSave={handleCreateFunnel}
           disabled={saving}
+          funnelType={funnelTab}
         />
       )}
     </div>

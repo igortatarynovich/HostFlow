@@ -20,6 +20,7 @@ from backend.app.modules.leads.schemas import (
     MetaCredentialOut,
     MetaCredentialRotateResponse,
     MetaCredentialUpdate,
+    MetaIncomingLeadsPreviewResponse,
     MetaLeadResponse,
     MetaLeadRetryRequest,
     MetaLeadRetryResponse,
@@ -88,6 +89,22 @@ async def update_settings_endpoint(
     result = await admin_service.update_settings(db, tenant_id, payload)
     await db.commit()
     return result
+
+
+@router.get(
+    "/meta/incoming-preview",
+    response_model=MetaIncomingLeadsPreviewResponse,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def meta_incoming_preview_endpoint(
+    limit: int = Query(default=25, ge=1, le=50, description="Max recent Meta leads to return"),
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> MetaIncomingLeadsPreviewResponse:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    return await admin_service.list_meta_incoming_preview(db, tenant_id, limit=limit)
 
 
 @router.get(

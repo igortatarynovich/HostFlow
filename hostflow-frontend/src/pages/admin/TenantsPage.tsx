@@ -46,6 +46,7 @@ import type {
 } from '../../api/types'
 import { useAuth } from '../../store/useAuth'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { STATUS_BADGE, TYPE_BADGE, MODULE_LABELS, SEAT_STATUS_BADGE } from '../../modules/tenants/constants'
 import type { StatusFilter, TypeFilter, CreateTenantForm } from '../../modules/tenants/types'
 import {
@@ -412,7 +413,7 @@ export default function TenantsPage() {
       setToken(token.token)
       tenantSettings.set(selected.id)
       await refreshSession()
-      window.location.assign('/app/overview')
+      window.location.assign(CRM_APP_PATHS.overview)
     } catch (err) {
       setActionError(formatErrorMessage(err, t('app.platform.tenants.errors.impersonate_failed')))
     } finally {
@@ -586,7 +587,7 @@ export default function TenantsPage() {
 
   const handleOpenTeam = () => {
     if (!selected) return
-    navigate(`/app/settings/users?tenant=${selected.id}`)
+    navigate(`${CRM_APP_PATHS.settingsUsers}?tenant=${selected.id}`)
   }
 
   const handleLogoUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -895,7 +896,7 @@ export default function TenantsPage() {
             }}
             onRetry={() => void refresh()}
             retryLabel={t('app.platform.tenants.actions.refresh')}
-            secondaryTo="/app/admin/tenants"
+            secondaryTo={CRM_APP_PATHS.settingsTenants}
             secondaryLabel={t('app.platform.tenants.title')}
             compact
           />

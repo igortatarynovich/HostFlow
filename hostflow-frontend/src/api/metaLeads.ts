@@ -6,6 +6,7 @@ import type {
   MetaCredentialCreatePayload,
   MetaCredentialRotateResponse,
   MetaCredentialUpdatePayload,
+  MetaIncomingLeadsPreviewResponse,
   MetaLeadAdminResponse,
   MetaLeadCredential,
   MetaLeadReroutePayload,
@@ -136,5 +137,14 @@ export type RetryLeadsResponse = {
 
 export async function retryLeads(payload: RetryLeadsPayload): Promise<RetryLeadsResponse> {
   const { data } = await api.post<RetryLeadsResponse>(`${BASE}/leads/retry`, payload)
+  return data
+}
+
+export async function getMetaIncomingPreview(opts?: { limit?: number }): Promise<MetaIncomingLeadsPreviewResponse> {
+  const params: Record<string, number> = {}
+  if (opts?.limit != null) params.limit = opts.limit
+  const { data } = await api.get<MetaIncomingLeadsPreviewResponse>(`${BASE}/meta/incoming-preview`, {
+    params: Object.keys(params).length ? params : undefined,
+  })
   return data
 }

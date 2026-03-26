@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.db.base import Base
@@ -65,6 +65,8 @@ class FunnelStage(Base):
     is_terminal: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    # §2.3 pipeline: owner_role, required_actions, sla_hours, auto_rules (JSON blob v1).
+    stage_contract_v1: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("funnel_id", "code", name="uq_funnel_stage_code"),

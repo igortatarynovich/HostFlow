@@ -124,6 +124,7 @@ try:
     from backend.app.api.v1.admin import draft_reminders as admin_draft_reminders_router
     from backend.app.api.v1.recruiters.router import router as recruiters_router
     from backend.app.api.v1.leads.router import router as leads_router
+    from backend.app.api.v1.next_actions import router as next_actions_router
     from backend.app.api.v1.notifications import router as notifications_router
     from backend.app.api.v1.communications import router as communications_router
     from backend.app.api.v1.invoices.router import router as invoices_router
@@ -135,6 +136,7 @@ try:
     from backend.app.api.v1 import legal_documents as legal_documents_router
     from backend.app.api.v1 import contact_attempts as contact_attempts_router
     from backend.app.api.v1 import handoffs as handoffs_router
+    from backend.app.api.v1 import global_search as global_search_router
     from backend.app.api.v1 import onboarding as onboarding_router
 except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import meta as meta_router  # type: ignore[no-redef]
@@ -195,6 +197,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1.admin import draft_reminders as admin_draft_reminders_router  # type: ignore[no-redef]
     from .api.v1.recruiters.router import router as recruiters_router  # type: ignore[no-redef]
     from .api.v1.leads.router import router as leads_router  # type: ignore[no-redef]
+    from .api.v1.next_actions import router as next_actions_router  # type: ignore[no-redef]
     from .api.v1.notifications import router as notifications_router  # type: ignore[no-redef]
     from .api.v1.communications import router as communications_router  # type: ignore[no-redef]
     from .api.v1.invoices.router import router as invoices_router  # type: ignore[no-redef]
@@ -206,6 +209,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1 import legal_documents as legal_documents_router  # type: ignore[no-redef]
     from .api.v1 import contact_attempts as contact_attempts_router  # type: ignore[no-redef]
     from .api.v1 import handoffs as handoffs_router  # type: ignore[no-redef]
+    from .api.v1 import global_search as global_search_router  # type: ignore[no-redef]
     from .api.v1 import onboarding as onboarding_router  # type: ignore[no-redef]
 
 try:
@@ -710,6 +714,7 @@ app.include_router(own_companies_router, prefix="/api/v1", tags=["own-companies"
 app.include_router(own_companies_legacy_router, prefix="/api/v1", tags=["own-companies"])
 app.include_router(recruiters_router, prefix="/api/v1", tags=["recruiters"])
 app.include_router(leads_router, prefix="/api/v1", tags=["leads"])
+app.include_router(next_actions_router, prefix="/api/v1", tags=["next-actions"])
 app.include_router(notifications_router, prefix="/api/v1", tags=["notifications"])
 app.include_router(communications_router, prefix="/api/v1", tags=["communications"])
 
@@ -722,6 +727,7 @@ app.include_router(funnels_router, prefix="/api/v1", tags=["funnels"])
 app.include_router(legal_documents_router.router, prefix="/api/v1", tags=["legal-documents"])
 app.include_router(contact_attempts_router.router, prefix="/api/v1", tags=["contact-attempts"])
 app.include_router(handoffs_router.router, prefix="/api/v1", tags=["handoffs"])
+app.include_router(global_search_router.router, prefix="/api/v1", tags=["search"])
 
 # Documents (mount under /api/v1)
 if documents_router is not None:

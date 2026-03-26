@@ -5,6 +5,7 @@ import type { WhoAmI } from '../api/types'
 import { usePermissions } from '../hooks/usePermissions'
 import { useI18n } from '../i18n'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 const SIDEBAR_WIDTH = 256
 const SIDEBAR_STORAGE_KEY = 'hf:ui:sidebar_open'
@@ -170,7 +171,7 @@ export function Sidebar({
         )}
         {can('candidates.view') && (
           <Link
-            to="/app/candidates"
+            to={CRM_APP_PATHS.candidates}
             className="block rounded px-3 py-2 text-sm transition hover:bg-white/10"
             onClick={onNavigate}
           >
@@ -197,7 +198,7 @@ export function Sidebar({
         )}
         {can('admin.companyAcl') && (
           <Link
-            to="/app/settings/company-access"
+            to={CRM_APP_PATHS.settingsCompanyAccess}
             className="block rounded px-3 py-2 text-sm transition hover:bg-white/10"
             onClick={onNavigate}
           >

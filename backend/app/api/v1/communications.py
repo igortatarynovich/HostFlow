@@ -33,7 +33,7 @@ from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.reminder import Reminder, ReminderStatus
-from backend.app.models.tenant import Tenant, user_memberships
+from backend.app.models.tenant import Tenant, TenantLicense, user_memberships
 from backend.app.models.user import User
 from backend.app.constants.stages import LABELS as CANDIDATE_STAGE_LABELS
 from backend.app.services.communications_allocator import allocate_thread, preview_allocation
@@ -75,7 +75,9 @@ from backend.app.services.communications_viber import (
     send_viber_text_message,
     viber_get_account_info,
 )
+from backend.app.services import billing_restrictions
 from backend.app.services.tenant_email import send_email_for_tenant
+from backend.app.constants.spa_paths import EMAIL_LEGACY
 from backend.app.core.settings import settings
 from backend.app.modules.documents.crud import ensure_ruleset_seed
 from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
@@ -88,6 +90,31 @@ from backend.app.services.candidate_telegram_notifications import sync_candidate
 
 router = APIRouter(prefix="/communications", tags=["communications"])
 logger = logging.getLogger(__name__)
+
+
+async def _load_tenant_license_row(db: AsyncSession, tenant_id: str) -> TenantLicense | None:
+    row = await db.execute(sa.select(TenantLicense).where(TenantLicense.tenant_id == tenant_id).limit(1))
+    return row.scalar_one_or_none()
+
+
+def _require_outbound_comms_not_billing_blocked(tenant: Tenant, license_row: TenantLicense | None = None) -> None:
+    reason = billing_restrictions.billing_write_block_reason(tenant, license_row)
+    if reason == "past_due":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "billing_past_due",
+                "message": "Outgoing messages are paused until subscription payment succeeds. Open Billing to retry payment.",
+            },
+        )
+    if reason == "trial_expired":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "billing_trial_expired",
+                "message": "Your trial has ended. Choose a plan in Billing to send messages.",
+            },
+        )
 
 
 _CLOCK_RE = re.compile(r"^(?:[01]?\d|2[0-3]):[0-5]\d$")
@@ -2145,7 +2172,8 @@ def _build_oauth_auth_url(
 ) -> str:
     base = _oauth_authorize_url_for_provider(provider)
     safe_client_id = client_id or "missing_client_id"
-    safe_redirect_uri = redirect_uri or "https://hostflow.cc/app/email"
+    _fe = (settings.frontend_url or "").strip().rstrip("/") or "https://hostflow.cc"
+    safe_redirect_uri = redirect_uri or f"{_fe}{EMAIL_LEGACY}"
     scope_joined = " ".join([s for s in scopes if isinstance(s, str) and s.strip()]) or "openid email"
     # Google: access_type=offline is required for refresh_token; prompt is space-delimited per Google docs.
     # include_granted_scopes helps incremental authorization for Gmail API scopes.
@@ -5302,6 +5330,9 @@ async def create_thread_message(
     tenant = await _get_tenant_or_404(db, tenant_id)
     thread = await _get_thread_or_404(db, tenant_id, thread_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
+    license_row = await _load_tenant_license_row(db, tenant_id)
+    if body.direction == "outbound" and not body.is_internal_note:
+        _require_outbound_comms_not_billing_blocked(tenant, license_row)
     now = _now_utc()
     msg = CommunicationMessage(
         tenant_id=tenant_id,
@@ -5431,6 +5462,13 @@ async def dispatch_message(
     thread = await _get_thread_or_404(db, tenant_id, str(msg.thread_id))
     tenant = await _get_tenant_or_404(db, tenant_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
+    license_row = await _load_tenant_license_row(db, tenant_id)
+    if (
+        str(getattr(msg, "direction", "") or "") == "outbound"
+        and not bool(getattr(msg, "is_internal_note", False))
+        and not body.simulate_failure
+    ):
+        _require_outbound_comms_not_billing_blocked(tenant, license_row)
     actor_id = str(current_user.sub) if getattr(current_user, "sub", None) else None
     if thread.channel == "email" and not body.simulate_failure:
         reason = await _dispatch_email_message_via_tenant_smtp(
@@ -5542,6 +5580,10 @@ async def dispatch_queued_messages(
         await _require_comm_feature(db, tenant_id=tenant_id, current_user=current_user, feature="email")
     else:
         await _require_any_comm_feature(db, tenant_id=tenant_id, current_user=current_user, features=["messages", "email"])
+    tenant = await _get_tenant_or_404(db, tenant_id)
+    license_row = await _load_tenant_license_row(db, tenant_id)
+    if billing_restrictions.tenant_billing_blocks_outbound_comms(tenant, license_row) and not body.simulate_failure:
+        return CommunicationDispatchQueuedResponse(processed=0, dispatched=0, failed=0, items=[])
     fetch_limit = max(body.limit, min(body.limit * 4, 800))
     stmt = (
         sa.select(CommunicationMessage)

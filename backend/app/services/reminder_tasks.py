@@ -205,6 +205,7 @@ async def list_reminders(
     tenant_id: str,
     assignee_id: Optional[str] = None,
     entity: Optional[Tuple[str, str]] = None,
+    entity_type_filter: Optional[str] = None,
     status_in: Optional[Sequence[str]] = None,
     type_in: Optional[Sequence[str]] = None,
     due_range: Optional[Tuple[datetime, datetime]] = None,
@@ -220,6 +221,8 @@ async def list_reminders(
             Reminder.entity_type == entity_type,
             Reminder.entity_id == entity_id,
         )
+    elif entity_type_filter:
+        stmt = stmt.where(Reminder.entity_type == entity_type_filter)
     if status_in:
         stmt = stmt.where(Reminder.status.in_(list(status_in)))
     if type_in:

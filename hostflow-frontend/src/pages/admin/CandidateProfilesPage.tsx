@@ -19,6 +19,7 @@ import ApplyProfileToVacanciesModal from '../../components/profile/ApplyProfileT
 import BulkUpdateProfilesModal from '../../components/profile/BulkUpdateProfilesModal'
 import ProfileUsageStatsModal from '../../components/profile/ProfileUsageStatsModal'
 import ProfileHistoryModal from '../../components/profile/ProfileHistoryModal'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 // Field components (inline, similar to Companies.tsx)
 function TextField({ label, value, onChange, placeholder, disabled, type, className }: {
   label: string
@@ -555,7 +556,7 @@ export default function CandidateProfilesPage() {
               }}
               onRetry={() => void loadProfiles()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-              secondaryTo="/app/settings/crm/profiles"
+              secondaryTo={CRM_APP_PATHS.settingsCandidateProfiles}
               secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
               compact
             />

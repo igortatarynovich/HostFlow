@@ -1,57 +1,20 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript'
 
+import {
+  findArrayLiteral,
+  findObjectLiteral,
+  getPropertyName,
+  loadSource,
+  parseCrmAppPathsMap,
+  readString,
+  readStringArray,
+  resolvePathPatternToAppSegment,
+} from './crm-paths-ast.mjs'
+
 const permissionsFile = path.join(process.cwd(), 'src', 'hooks', 'usePermissions.ts')
 const routesFile = path.join(process.cwd(), 'src', 'app', 'routes.tsx')
-
-function loadSource(file, kind) {
-  const text = fs.readFileSync(file, 'utf-8')
-  return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind)
-}
-
-function getPropertyName(node) {
-  if (!node) return null
-  if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text
-  return null
-}
-
-function readString(node) {
-  if (!node) return null
-  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
-  return null
-}
-
-function readStringArray(node) {
-  if (!node || !ts.isArrayLiteralExpression(node)) return []
-  return node.elements.map((el) => readString(el)).filter(Boolean)
-}
-
-function findObjectLiteral(sf, variableName) {
-  for (const stmt of sf.statements) {
-    if (!ts.isVariableStatement(stmt)) continue
-    for (const decl of stmt.declarationList.declarations) {
-      if (!ts.isIdentifier(decl.name) || decl.name.text !== variableName) continue
-      if (decl.initializer && ts.isObjectLiteralExpression(decl.initializer)) {
-        return decl.initializer
-      }
-    }
-  }
-  return null
-}
-
-function findArrayLiteral(sf, variableName) {
-  for (const stmt of sf.statements) {
-    if (!ts.isVariableStatement(stmt)) continue
-    for (const decl of stmt.declarationList.declarations) {
-      if (!ts.isIdentifier(decl.name) || decl.name.text !== variableName) continue
-      if (decl.initializer && ts.isArrayLiteralExpression(decl.initializer)) {
-        return decl.initializer
-      }
-    }
-  }
-  return null
-}
+const crmPathsFile = path.join(process.cwd(), 'src', 'app', 'crmAppPaths.generated.ts')
 
 function parseRolePermissions(sf) {
   const obj = findObjectLiteral(sf, 'ROLE_PERMISSIONS')
@@ -80,7 +43,7 @@ function parseRoleAliases(sf) {
   return map
 }
 
-function parseAppRoutes(sf) {
+function parseAppRoutes(sf, crmPaths) {
   const arr = findArrayLiteral(sf, 'APP_ROUTES')
   const routes = []
   if (!arr) return routes
@@ -94,7 +57,7 @@ function parseAppRoutes(sf) {
       const name = getPropertyName(prop.name)
       if (!name) continue
       if (name === 'key') key = readString(prop.initializer)
-      if (name === 'path') routePath = readString(prop.initializer)
+      if (name === 'path') routePath = resolvePathPatternToAppSegment(prop.initializer, crmPaths)
       if (name === 'permission') {
         if (ts.isStringLiteral(prop.initializer)) permissions = [prop.initializer.text]
         else permissions = readStringArray(prop.initializer)
@@ -128,10 +91,12 @@ function canAccess(roleKey, routePerms, rolePermissions) {
 
 const permSf = loadSource(permissionsFile, ts.ScriptKind.TS)
 const routeSf = loadSource(routesFile, ts.ScriptKind.TSX)
+const crmSf = loadSource(crmPathsFile, ts.ScriptKind.TS)
+const crmPaths = parseCrmAppPathsMap(crmSf)
 
 const rolePermissions = parseRolePermissions(permSf)
 const roleAliases = parseRoleAliases(permSf)
-const appRoutes = parseAppRoutes(routeSf)
+const appRoutes = parseAppRoutes(routeSf, crmPaths)
 
 const targetRouteKeys = [
   'overview',
@@ -144,6 +109,9 @@ const targetRouteKeys = [
   'settings-company-access',
   'settings-communications',
   'settings-integrations',
+  'settings-integrations-meta',
+  'settings-integrations-google',
+  'settings-integrations-webhook',
 ]
 
 const testRoles = [
@@ -219,6 +187,27 @@ const EXPECTED_BASELINE_DEFAULT = {
     viewer: 'DENY',
   },
   'settings-integrations': {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'DENY',
+    viewer: 'DENY',
+  },
+  'settings-integrations-meta': {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'DENY',
+    viewer: 'DENY',
+  },
+  'settings-integrations-google': {
+    superadmin: 'ALLOW',
+    'owner/admin': 'ALLOW',
+    supervisor: 'ALLOW',
+    recruiter: 'DENY',
+    viewer: 'DENY',
+  },
+  'settings-integrations-webhook': {
     superadmin: 'ALLOW',
     'owner/admin': 'ALLOW',
     supervisor: 'ALLOW',

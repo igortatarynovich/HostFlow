@@ -4,6 +4,7 @@ import type { DeletionRequest } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -113,7 +114,7 @@ export default function DeletionRequestsPage() {
           }}
           onRetry={() => void loadRequests()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-          secondaryTo="/app/settings/audit"
+          secondaryTo={CRM_APP_PATHS.settingsAudit}
           secondaryLabel={t('admin.settings.audit.tabs.deletion', { defaultValue: 'Очередь удаления' })}
           compact
         />

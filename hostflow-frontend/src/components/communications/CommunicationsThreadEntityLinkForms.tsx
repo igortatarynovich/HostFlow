@@ -7,6 +7,7 @@ import { patchCommunicationThread, type CommunicationThread } from '../../api/co
 import { api, listCompanies } from '../../api/client'
 import type { AdditionalServiceOrder, Candidate } from '../../api/types'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { serviceOrderWorkspacePath } from '../../modules/services/utils'
 import { isCommunicationThreadUnlinked, uosLinkedServiceOrderId } from '../../utils/communicationThreadUnlinked'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
@@ -337,7 +338,10 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
       <ul className={clsx('space-y-1', dense ? 'mt-1 text-xs' : 'mt-2 space-y-1.5 text-sm')}>
         {cid ? (
           <li className="flex flex-wrap items-center gap-2">
-            <Link className="font-medium text-brand-700 hover:text-brand-900 hover:underline" to={`/app/candidates/${cid}`}>
+            <Link
+              className="font-medium text-brand-700 hover:text-brand-900 hover:underline"
+              to={`${CRM_APP_PATHS.candidates}/${cid}`}
+            >
               {t('app.communications_inbox_center.open_candidate', { defaultValue: 'Open candidate' })}
             </Link>
             <button
@@ -354,7 +358,10 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
         )}
         {compId ? (
           <li className="flex flex-wrap items-center gap-2">
-            <Link className="font-medium text-brand-700 hover:text-brand-900 hover:underline" to={`/app/clients/${compId}`}>
+            <Link
+              className="font-medium text-brand-700 hover:text-brand-900 hover:underline"
+              to={`${CRM_APP_PATHS.agencyClients}/${compId}`}
+            >
               {t('app.communications_inbox_center.open_client', { defaultValue: 'Open client' })}
             </Link>
             <button

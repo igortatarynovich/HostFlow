@@ -19,12 +19,14 @@ import type {
   ReminderListResponse,
   ReminderRecord,
 } from '../api/types'
+import { getNotificationAttentionTier } from '../utils/notificationUos'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
 const DATE_LOCALES = { en: enUS, ru: ruLocale, pl: plLocale }
@@ -44,6 +46,8 @@ type TaskFiltersState = {
   status: TaskStatusFilter
   entityType: string
   priority: string
+  /** When overdue: client-side filter to due bucket overdue (NBA / deep links). */
+  dueBucket: '' | 'overdue'
 }
 
 type EventsFiltersState = {
@@ -88,6 +92,7 @@ const DEFAULT_TASK_FILTERS: TaskFiltersState = {
   status: 'active',
   entityType: '',
   priority: '',
+  dueBucket: '',
 }
 
 const DEFAULT_EVENTS_FILTERS: EventsFiltersState = {
@@ -138,13 +143,13 @@ function reminderEntityHref(item: ReminderRecord): string | null {
   if (!entityId) return null
   switch (item.entity_type) {
     case 'candidate':
-      return `/app/candidates/${entityId}`
+      return `${CRM_APP_PATHS.candidates}/${entityId}`
     case 'vacancy':
-      return `/app/vacancies/${entityId}`
+      return `${CRM_APP_PATHS.vacancies}/${entityId}`
     case 'lead':
-      return `/app/leads`
+      return CRM_APP_PATHS.leads
     case 'company':
-      return `/app/companies/${entityId}`
+      return `${CRM_APP_PATHS.agencyClients}/${entityId}`
     case 'communication_thread':
       return buildInboxThreadPath(entityId)
     default:
@@ -155,17 +160,17 @@ function reminderEntityHref(item: ReminderRecord): string | null {
 function notificationEntityHref(item: NotificationItem): string | null {
   const entityId = String(item.entity_id || '')
   const eventType = item.event_type || ''
-  if (eventType === 'handoff_requested') return '/app/procesowani'
+  if (eventType === 'handoff_requested') return CRM_APP_PATHS.procesowani
   if (!entityId) return null
   switch (item.entity_type) {
     case 'candidate':
-      return `/app/candidates/${entityId}`
+      return `${CRM_APP_PATHS.candidates}/${entityId}`
     case 'vacancy':
-      return `/app/vacancies/${entityId}`
+      return `${CRM_APP_PATHS.vacancies}/${entityId}`
     case 'lead':
-      return '/app/leads'
+      return CRM_APP_PATHS.leads
     case 'company':
-      return `/app/companies/${entityId}`
+      return `${CRM_APP_PATHS.agencyClients}/${entityId}`
     case 'communication_thread':
       return buildInboxThreadPath(entityId)
     default:
@@ -287,30 +292,30 @@ function ReminderTaskRow({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="truncate text-sm font-semibold text-slate-900">
-              {item.title || t('app.candidate_card.reminders.untitled', { defaultValue: 'Untitled' })}
+              {item.title || t('app.candidate_card.reminders.untitled')}
             </h4>
             {href && (
               <Link to={href} className="text-xs font-medium text-brand-700 hover:underline">
-                {t('app.reminders.actions.open_entity', { defaultValue: 'Open' })}
+                {t('app.reminders.actions.open_entity')}
               </Link>
             )}
           </div>
           {item.description && <p className="text-xs text-slate-600 whitespace-pre-wrap">{item.description}</p>}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
             <span>
-              {t('app.candidate_card.reminders.due', { defaultValue: 'Due' })}: {formatTs(item.dueDate)}
+              {t('app.candidate_card.reminders.due')}: {formatTs(item.dueDate)}
             </span>
             <span>
-              {t('app.candidate_card.reminders.remind', { defaultValue: 'Remind' })}: {formatTs(item.remindDate)}
+              {t('app.candidate_card.reminders.remind')}: {formatTs(item.remindDate)}
             </span>
             <span>
-              {t('app.reminders.relative', { defaultValue: 'Relative' })}: {formatRelative(item.remindDate || item.dueDate)}
+              {t('app.reminders.relative')}: {formatRelative(item.remindDate || item.dueDate)}
             </span>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="btn-secondary btn-xs" onClick={() => onEdit(item)} disabled={busy || editBusy}>
-            {t('common.actions.edit', { defaultValue: 'Edit' })}
+            {t('common.actions.edit')}
           </button>
           <button
             type="button"
@@ -330,7 +335,7 @@ function ReminderTaskRow({
           </button>
           {!isClosedReminderStatus(item.status) && (
             <button type="button" className="btn-primary btn-xs" onClick={() => onComplete(item.id)} disabled={busy}>
-              {busy ? t('common.loading') : t('app.candidate_card.reminders.complete', { defaultValue: 'Complete' })}
+              {busy ? t('common.loading') : t('app.candidate_card.reminders.complete')}
             </button>
           )}
         </div>
@@ -362,7 +367,10 @@ function notificationRank(item: NotificationItem): number {
   const eventType = String(item.event_type || '').toLowerCase()
   const severity = String(payload.severity || '').toLowerCase()
   const requiresAction = Boolean(payload.requires_action)
+  const tier = getNotificationAttentionTier(item)
   let score = 0
+  if (tier === 'critical') score += 120
+  else if (tier === 'high') score += 60
   if (requiresAction) score += 100
   if (eventType === 'communications_sla_overdue') score += 90
   if (severity === 'high') score += 40
@@ -464,6 +472,7 @@ export default function RemindersPage() {
       const tStatus = parseTaskStatus(searchParams.get('t_status'))
       const tQ = searchParams.get('t_q')
       const tEntity = searchParams.get('t_entity')
+      const tDueBucket = searchParams.get('t_due_bucket')
       const tPriority = searchParams.get('t_priority')
       const eScope = parseNotifScope(searchParams.get('e_scope'))
       const eRead = parseNotifRead(searchParams.get('e_read'))
@@ -472,13 +481,14 @@ export default function RemindersPage() {
       const tLayout = parseTaskListMode(searchParams.get('t_layout'))
 
       if (urlTab) setActiveTab(urlTab)
-      if (tStatus || tQ != null || tEntity != null || tPriority != null) {
+      if (tStatus || tQ != null || tEntity != null || tPriority != null || tDueBucket === 'overdue') {
         setTaskFilters((prev) => ({
           ...prev,
           ...(tStatus ? { status: tStatus } : {}),
           ...(tQ != null ? { search: tQ } : {}),
           ...(tEntity != null ? { entityType: tEntity } : {}),
           ...(tPriority != null ? { priority: tPriority } : {}),
+          ...(tDueBucket === 'overdue' ? { dueBucket: 'overdue' as const } : {}),
         }))
       }
       if (eScope || eRead || eQ != null) {
@@ -491,6 +501,16 @@ export default function RemindersPage() {
       }
       if (tAssignee) setAssigneeScope(tAssignee)
       if (tLayout) setTaskListMode(tLayout)
+
+      const legacyTaskType = (searchParams.get('type') || '').trim().toLowerCase()
+      if (legacyTaskType === 'leads_no_next_action' && !searchParams.get('t_entity')) {
+        setActiveTab('tasks')
+        setTaskFilters((prev) => ({
+          ...prev,
+          entityType: 'lead',
+          status: 'active',
+        }))
+      }
     } catch {
       // ignore malformed URL state
     } finally {
@@ -517,6 +537,7 @@ export default function RemindersPage() {
   useEffect(() => {
     if (!hydrated) return
     const next = new URLSearchParams(searchParams)
+    next.delete('type')
 
     next.set('tab', activeTab)
 
@@ -526,6 +547,8 @@ export default function RemindersPage() {
     else next.delete('t_q')
     if (taskFilters.entityType) next.set('t_entity', taskFilters.entityType)
     else next.delete('t_entity')
+    if (taskFilters.dueBucket === 'overdue') next.set('t_due_bucket', 'overdue')
+    else next.delete('t_due_bucket')
     if (taskFilters.priority) next.set('t_priority', taskFilters.priority)
     else next.delete('t_priority')
     if (assigneeScope !== 'mine') next.set('t_assignee', assigneeScope)
@@ -568,6 +591,7 @@ export default function RemindersPage() {
       if (focusTaskIdFromUrl && String(item.id) === focusTaskIdFromUrl) return true
       if (taskFilters.entityType && item.entity_type !== taskFilters.entityType) return false
       if (taskFilters.priority && (item.priority || '') !== taskFilters.priority) return false
+      if (taskFilters.dueBucket === 'overdue' && bucketReminderByDue(item) !== 'overdue') return false
       if (!q) return true
       const hay = [
         item.title,
@@ -581,7 +605,14 @@ export default function RemindersPage() {
         .toLowerCase()
       return hay.includes(q)
     })
-  }, [focusTaskIdFromUrl, reminderRows, taskFilters.entityType, taskFilters.priority, taskFilters.search])
+  }, [
+    focusTaskIdFromUrl,
+    reminderRows,
+    taskFilters.dueBucket,
+    taskFilters.entityType,
+    taskFilters.priority,
+    taskFilters.search,
+  ])
 
   useEffect(() => {
     if (!focusTaskIdFromUrl) return
@@ -659,7 +690,7 @@ export default function RemindersPage() {
       setRemindersState('idle')
     } catch (err: any) {
       setRemindersState('error')
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.load', { defaultValue: 'Failed to load reminders' })))
+      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.load')))
     }
   }, [assigneeScope, canUseTeamAssigneeScope, focusTaskIdFromUrl, t, taskFilters.status])
 
@@ -681,7 +712,7 @@ export default function RemindersPage() {
       setNotificationsState('idle')
     } catch (err: any) {
       setNotificationsState('error')
-      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.load', { defaultValue: 'Failed to load notifications' })))
+      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notifications_load')))
     }
   }, [eventsFilters.read, eventsFilters.scope, t])
 
@@ -699,7 +730,7 @@ export default function RemindersPage() {
       setNotificationsState('idle')
     } catch (err: any) {
       setNotificationsState('error')
-      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.load', { defaultValue: 'Failed to load notifications' })))
+      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notifications_load')))
     }
   }, [eventsFilters.read, eventsFilters.scope, t])
 
@@ -723,12 +754,16 @@ export default function RemindersPage() {
   const notificationTitle = useCallback(
     (item: NotificationItem) => {
       if (item.event_type === 'handoff_requested') {
-        return t('app.notifications.handoff_requested_title', { defaultValue: 'New candidate for processing' })
+        return t('app.notifications.handoff_requested_title')
       }
       const key = `app.reminders.events.${item.event_type}`
       const translated = t(key, { defaultValue: '' })
       if (translated && translated !== key) return translated
-      return (item.payload?.title as string) || item.event_type || t('app.reminders.events.unknown', { defaultValue: 'Event' })
+      return (
+        (item.payload?.title as string) ||
+        item.event_type ||
+        t('app.reminders.events.unknown', { values: { event: String(item.event_type || 'event') } })
+      )
     },
     [t]
   )
@@ -841,7 +876,7 @@ export default function RemindersPage() {
       setFormDueAt(getDefaultDueAtLocal())
       await loadReminders()
     } catch (err: any) {
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.create', { defaultValue: 'Failed to create reminder' })))
+      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.create')))
     } finally {
       setCreateBusy(false)
     }
@@ -854,7 +889,7 @@ export default function RemindersPage() {
       const updated = await completeReminder(id)
       setReminders((prev) => prev.map((r) => (r.id === id ? (updated as ReminderRecord) : r)))
     } catch (err: any) {
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.complete', { defaultValue: 'Failed to complete reminder' })))
+      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.complete')))
     } finally {
       setTaskBusyId(null)
     }
@@ -867,7 +902,7 @@ export default function RemindersPage() {
       const updated = await snoozeReminder(id, { minutes })
       setReminders((prev) => prev.map((r) => (r.id === id ? (updated as ReminderRecord) : r)))
     } catch (err: any) {
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.snooze', { defaultValue: 'Failed to snooze reminder' })))
+      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.snooze')))
     } finally {
       setTaskBusyId(null)
     }
@@ -890,7 +925,7 @@ export default function RemindersPage() {
       setReminders((prev) => prev.map((r) => (r.id === editState.id ? (updated as ReminderRecord) : r)))
       setEditState(null)
     } catch (err: any) {
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.create', { defaultValue: 'Failed to update reminder' })))
+      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.update')))
     } finally {
       setEditBusy(false)
     }
@@ -903,7 +938,7 @@ export default function RemindersPage() {
       await markNotificationsRead({ ids: [id] })
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n)))
     } catch (err: any) {
-      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.mark_one', { defaultValue: 'Failed to mark notification as read' })))
+      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notification_mark_one')))
     } finally {
       setNotifBusyId(null)
     }
@@ -916,7 +951,7 @@ export default function RemindersPage() {
       await markNotificationsRead({ markAll: true })
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true, read_at: n.read_at || new Date().toISOString() })))
     } catch (err: any) {
-      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.mark_all', { defaultValue: 'Failed to clear notifications' })))
+      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notification_mark_all')))
     } finally {
       setMarkAllBusy(false)
     }
@@ -933,13 +968,13 @@ export default function RemindersPage() {
   }
 
   const taskGroupLabels: Array<{ key: keyof typeof reminderGroups; label: string }> = [
-    { key: 'overdue', label: t('app.reminders.status.overdue', { defaultValue: 'Overdue' }) },
-    { key: 'today', label: t('app.reminders.group.today', { defaultValue: 'Today' }) },
-    { key: 'tomorrow', label: t('app.reminders.group.tomorrow', { defaultValue: 'Tomorrow' }) },
-    { key: 'week', label: t('app.reminders.group.week', { defaultValue: 'This week' }) },
-    { key: 'later', label: t('app.reminders.group.later', { defaultValue: 'Later' }) },
-    { key: 'unscheduled', label: t('app.reminders.group.unscheduled', { defaultValue: 'No due date' }) },
-    { key: 'done', label: t('app.reminders.group.done', { defaultValue: 'Completed / cancelled' }) },
+    { key: 'overdue', label: t('app.reminders.status.overdue') },
+    { key: 'today', label: t('app.reminders.group.today') },
+    { key: 'tomorrow', label: t('app.reminders.group.tomorrow') },
+    { key: 'week', label: t('app.reminders.group.week') },
+    { key: 'later', label: t('app.reminders.group.later') },
+    { key: 'unscheduled', label: t('app.reminders.group.unscheduled') },
+    { key: 'done', label: t('app.reminders.group.done') },
   ]
 
   return (
@@ -949,20 +984,22 @@ export default function RemindersPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              {t('app.tasks.hub_eyebrow', { defaultValue: 'Tasks' })}
+              {t('app.tasks.hub_eyebrow')}
             </p>
             <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-              {t('app.tasks.hub_title', { defaultValue: 'Work queue' })}
+              {t('app.tasks.hub_title')}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               {activeTab === 'tasks'
                 ? t('app.reminders.subtitle', {
-                    values: { total: taskCounts.total, unread: taskCounts.active, scope: t('app.reminders.scope_labels.direct', { defaultValue: 'for you' }) },
-                    defaultValue: 'Shown reminders: {total}',
+                    values: { total: taskCounts.total, unread: taskCounts.active, scope: t('app.reminders.scope_labels.direct') },
                   })
                 : t('app.reminders.subtitle', {
-                    values: { total: notificationCounts.total, unread: notificationCounts.unread, scope: t('app.reminders.scope_labels.all', { defaultValue: 'all events' }) },
-                    defaultValue: 'Shown events: {total}',
+                    values: {
+                      total: notificationCounts.total,
+                      unread: notificationCounts.unread,
+                      scope: t('app.reminders.scope_labels.all'),
+                    },
                   })}
             </p>
           </div>
@@ -975,7 +1012,7 @@ export default function RemindersPage() {
               )}
               onClick={() => setActiveTab('tasks')}
             >
-              {t('app.reminders.tab.tasks', { defaultValue: 'Tasks' })} ({taskCounts.active})
+              {t('app.reminders.tab.tasks')} ({taskCounts.active})
             </button>
             <button
               type="button"
@@ -985,7 +1022,7 @@ export default function RemindersPage() {
               )}
               onClick={() => setActiveTab('events')}
             >
-              {t('app.reminders.tab.events', { defaultValue: 'Events' })} ({notificationCounts.unread})
+              {t('app.reminders.tab.events')} ({notificationCounts.unread})
             </button>
           </div>
         </div>
@@ -996,36 +1033,34 @@ export default function RemindersPage() {
           <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-900">
-                {t('app.reminders.quick_create', { defaultValue: 'Quick reminder' })}
+                {t('app.reminders.quick_create')}
               </h2>
               <button
                 type="button"
                 className="btn-secondary btn-xs"
                 onClick={() => setComposerOpen((v) => !v)}
               >
-                {composerOpen
-                  ? t('common.actions.collapse', { defaultValue: 'Collapse' })
-                  : t('common.actions.expand', { defaultValue: 'Expand' })}
+                {composerOpen ? t('common.actions.collapse') : t('common.actions.expand')}
               </button>
             </div>
             {composerOpen && (
               <form onSubmit={submitQuickReminder} className="mt-3 grid gap-3 lg:grid-cols-12">
                 <div className="lg:col-span-4">
                   <label className="block text-xs font-medium text-slate-600">
-                    {t('app.reminders.form.title', { defaultValue: 'Task' })}
+                    {t('app.reminders.form.title')}
                   </label>
                   <input
                     type="text"
                     className="input mt-1 w-full"
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
-                    placeholder={t('app.reminders.form.title_placeholder', { defaultValue: 'Call candidate, send email...' })}
+                    placeholder={t('app.reminders.form.title_placeholder')}
                     required
                   />
                 </div>
                 <div className="lg:col-span-3">
                   <label className="block text-xs font-medium text-slate-600">
-                    {t('app.reminders.form.due', { defaultValue: 'Due date' })}
+                    {t('app.reminders.form.due')}
                   </label>
                   <input
                     type="datetime-local"
@@ -1036,42 +1071,42 @@ export default function RemindersPage() {
                 </div>
                 <div className="lg:col-span-2">
                   <label className="block text-xs font-medium text-slate-600">
-                    {t('app.reminders.form.remind_before', { defaultValue: 'Remind before' })}
+                    {t('app.reminders.form.remind_before')}
                   </label>
                   <select className="input mt-1 w-full" value={remindOffset} onChange={(e) => setRemindOffset(Number(e.target.value))}>
-                    <option value={5}>{t('app.reminders.form.remind_offsets.5m', { defaultValue: '5m' })}</option>
-                    <option value={15}>{t('app.reminders.form.remind_offsets.15m', { defaultValue: '15m' })}</option>
-                    <option value={30}>{t('app.reminders.form.remind_offsets.30m', { defaultValue: '30m' })}</option>
-                    <option value={60}>{t('app.reminders.form.remind_offsets.1h', { defaultValue: '1h' })}</option>
-                    <option value={180}>{t('app.reminders.form.remind_offsets.3h', { defaultValue: '3h' })}</option>
-                    <option value={1440}>{t('app.reminders.form.remind_offsets.1d', { defaultValue: '1d' })}</option>
+                    <option value={5}>{t('app.reminders.form.remind_offsets.5m')}</option>
+                    <option value={15}>{t('app.reminders.form.remind_offsets.15m')}</option>
+                    <option value={30}>{t('app.reminders.form.remind_offsets.30m')}</option>
+                    <option value={60}>{t('app.reminders.form.remind_offsets.1h')}</option>
+                    <option value={180}>{t('app.reminders.form.remind_offsets.3h')}</option>
+                    <option value={1440}>{t('app.reminders.form.remind_offsets.1d')}</option>
                   </select>
                 </div>
                 <div className="lg:col-span-2">
                   <label className="block text-xs font-medium text-slate-600">
-                    {t('app.reminders.form.priority', { defaultValue: 'Priority' })}
+                    {t('app.reminders.form.priority')}
                   </label>
                   <select className="input mt-1 w-full" value={formPriority} onChange={(e) => setFormPriority(e.target.value)}>
-                    <option value="low">{t('app.reminders.priority.low', { defaultValue: 'Low' })}</option>
-                    <option value="normal">{t('app.reminders.priority.normal', { defaultValue: 'Normal' })}</option>
-                    <option value="high">{t('app.reminders.priority.high', { defaultValue: 'High' })}</option>
+                    <option value="low">{t('app.reminders.priority.low')}</option>
+                    <option value="normal">{t('app.reminders.priority.normal')}</option>
+                    <option value="high">{t('app.reminders.priority.high')}</option>
                   </select>
                 </div>
                 <div className="lg:col-span-1 flex items-end">
                   <button type="submit" className="btn-primary w-full" disabled={createBusy || !formTitle.trim()}>
-                    {createBusy ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.reminders.create', { defaultValue: 'Create' })}
+                    {createBusy ? t('common.loading') : t('app.reminders.create')}
                   </button>
                 </div>
                 <div className="lg:col-span-12">
                   <label className="block text-xs font-medium text-slate-600">
-                    {t('app.reminders.form.description', { defaultValue: 'Description' })}
+                    {t('app.reminders.form.description')}
                   </label>
                   <textarea
                     rows={2}
                     className="textarea mt-1 w-full"
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder={t('app.reminders.form.description_placeholder', { defaultValue: 'Optional details...' })}
+                    placeholder={t('app.reminders.form.description_placeholder')}
                   />
                 </div>
               </form>
@@ -1085,7 +1120,7 @@ export default function RemindersPage() {
                   className="input w-full"
                   value={taskFilters.search}
                   onChange={(e) => setTaskFilters((prev) => ({ ...prev, search: e.target.value }))}
-                  placeholder={t('app.reminders.filters.search', { defaultValue: 'Search title, description, entity...' })}
+                  placeholder={t('app.reminders.filters.search_tasks')}
                 />
               </div>
               <select
@@ -1093,7 +1128,7 @@ export default function RemindersPage() {
                 value={taskFilters.entityType}
                 onChange={(e) => setTaskFilters((prev) => ({ ...prev, entityType: e.target.value }))}
               >
-                <option value="">{t('app.reminders.filters.entity_all', { defaultValue: 'All sources' })}</option>
+                <option value="">{t('app.reminders.filters.entity_all')}</option>
                 {entityTypeOptions.map((entityType) => (
                   <option key={entityType} value={entityType}>{entityType}</option>
                 ))}
@@ -1103,13 +1138,13 @@ export default function RemindersPage() {
                 value={taskFilters.priority}
                 onChange={(e) => setTaskFilters((prev) => ({ ...prev, priority: e.target.value }))}
               >
-                <option value="">{t('app.reminders.filters.priority_all', { defaultValue: 'All priorities' })}</option>
-                <option value="low">{t('app.reminders.priority.low', { defaultValue: 'Low' })}</option>
-                <option value="normal">{t('app.reminders.priority.normal', { defaultValue: 'Normal' })}</option>
-                <option value="high">{t('app.reminders.priority.high', { defaultValue: 'High' })}</option>
+                <option value="">{t('app.reminders.filters.priority_all')}</option>
+                <option value="low">{t('app.reminders.priority.low')}</option>
+                <option value="normal">{t('app.reminders.priority.normal')}</option>
+                <option value="high">{t('app.reminders.priority.high')}</option>
               </select>
               <button type="button" className="btn-secondary btn-sm" onClick={() => void loadReminders()}>
-                {t('app.reminders.actions.refresh', { defaultValue: 'Refresh' })}
+                {t('app.reminders.actions.refresh')}
               </button>
               <button
                 type="button"
@@ -1120,7 +1155,7 @@ export default function RemindersPage() {
                   setTaskListMode('by_due')
                 }}
               >
-                {t('common.actions.reset', { defaultValue: 'Reset' })}
+                {t('common.actions.reset')}
               </button>
             </div>
 
@@ -1137,14 +1172,14 @@ export default function RemindersPage() {
                       : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   )}
                 >
-                  {status === 'active' && `${t('app.reminders.filter.active', { defaultValue: 'Active' })} (${taskCounts.active})`}
-                  {status === 'all' && `${t('app.reminders.filter.all', { defaultValue: 'All' })} (${taskCounts.total})`}
-                  {status === 'done' && `${t('app.reminders.filter.done', { defaultValue: 'Done' })} (${taskCounts.done})`}
+                  {status === 'active' && `${t('app.reminders.filter.active')} (${taskCounts.active})`}
+                  {status === 'all' && `${t('app.reminders.filter.all')} (${taskCounts.total})`}
+                  {status === 'done' && `${t('app.reminders.filter.done')} (${taskCounts.done})`}
                 </button>
               ))}
               {taskCounts.overdue > 0 && (
                 <span className="inline-flex items-center rounded-md bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700">
-                  {t('app.reminders.status.overdue', { defaultValue: 'Overdue' })}: {taskCounts.overdue}
+                  {t('app.reminders.status.overdue')}: {taskCounts.overdue}
                 </span>
               )}
               {canUseTeamAssigneeScope && (
@@ -1159,7 +1194,7 @@ export default function RemindersPage() {
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                     )}
                   >
-                    {t('app.reminders.assignee.mine', { defaultValue: 'My tasks' })}
+                    {t('app.reminders.assignee.mine')}
                   </button>
                   <button
                     type="button"
@@ -1171,14 +1206,14 @@ export default function RemindersPage() {
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                     )}
                   >
-                    {t('app.reminders.assignee.team', { defaultValue: 'Team tasks' })}
+                    {t('app.reminders.assignee.team')}
                   </button>
                 </>
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <label htmlFor="hf-task-list-mode" className="text-xs font-medium text-slate-600">
-                {t('app.reminders.layout.label', { defaultValue: 'View' })}
+                {t('app.reminders.layout.label')}
               </label>
               <select
                 id="hf-task-list-mode"
@@ -1186,15 +1221,13 @@ export default function RemindersPage() {
                 value={taskListMode}
                 onChange={(e) => setTaskListMode(e.target.value as TaskListMode)}
               >
-                <option value="by_due">{t('app.reminders.layout.by_due', { defaultValue: 'Group by due date' })}</option>
-                <option value="sla_queue">{t('app.reminders.layout.sla_queue', { defaultValue: 'SLA priority queue (flat)' })}</option>
+                <option value="by_due">{t('app.reminders.layout.by_due')}</option>
+                <option value="sla_queue">{t('app.reminders.layout.sla_queue')}</option>
               </select>
             </div>
             <p className="text-[11px] text-slate-500">
               {taskListMode === 'sla_queue'
-                ? t('app.reminders.sla_flat_hint', {
-                    defaultValue: 'Single list sorted by SLA pressure across all due dates; completed tasks stay in their own section when you show All or Done.',
-                  })
+                ? t('app.reminders.sla_flat_hint')
                 : t('app.reminders.sla_sort_hint')}
             </p>
 
@@ -1204,9 +1237,9 @@ export default function RemindersPage() {
                 compact
                 info={remindersError}
                 onRetry={() => void loadReminders()}
-                retryLabel={t('common.retry', { defaultValue: 'Retry' })}
-                secondaryTo="/app/leads"
-                secondaryLabel={t('app.reminders.states.empty_cta_leads', { defaultValue: 'Open leads' })}
+                retryLabel={t('common.retry')}
+                secondaryTo={CRM_APP_PATHS.leads}
+                secondaryLabel={t('app.reminders.states.empty_cta_leads')}
               />
             )}
 
@@ -1214,17 +1247,15 @@ export default function RemindersPage() {
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <EmptyStatePanel
                   compact
-                  title={t('app.reminders.states.empty_title', { defaultValue: 'No reminders yet' })}
-                  description={t('app.reminders.states.empty_desc', {
-                    defaultValue: 'Create your first reminder to track follow-ups and never lose a lead.',
-                  })}
+                  title={t('app.reminders.states.empty_title')}
+                  description={t('app.reminders.states.empty_desc')}
                   primaryAction={{
-                    label: t('app.reminders.states.empty_cta_create', { defaultValue: 'Create reminder' }),
+                    label: t('app.reminders.states.empty_cta_create'),
                     onClick: openQuickReminderComposer,
                   }}
                   secondaryAction={{
-                    label: t('app.reminders.states.empty_cta_leads', { defaultValue: 'Open leads' }),
-                    to: '/app/leads',
+                    label: t('app.reminders.states.empty_cta_leads'),
+                    to: CRM_APP_PATHS.leads,
                   }}
                 />
               </div>
@@ -1238,7 +1269,7 @@ export default function RemindersPage() {
                       <section className="space-y-2">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-semibold text-slate-900">
-                            {t('app.reminders.group.sla_queue', { defaultValue: 'Open tasks (SLA order)' })}
+                            {t('app.reminders.group.sla_queue')}
                           </h3>
                           <span className="text-xs text-slate-500">{slaFlatLists.open.length}</span>
                         </div>
@@ -1266,7 +1297,7 @@ export default function RemindersPage() {
                       <section className="space-y-2">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-semibold text-slate-900">
-                            {t('app.reminders.group.done', { defaultValue: 'Completed / cancelled' })}
+                            {t('app.reminders.group.done')}
                           </h3>
                           <span className="text-xs text-slate-500">{slaFlatLists.done.length}</span>
                         </div>
@@ -1337,25 +1368,25 @@ export default function RemindersPage() {
                 className="input w-full"
                 value={eventsFilters.search}
                 onChange={(e) => setEventsFilters((prev) => ({ ...prev, search: e.target.value }))}
-                placeholder={t('app.reminders.filters.search', { defaultValue: 'Search events...' })}
+                placeholder={t('app.reminders.filters.search_events')}
               />
             </div>
             <select className="input" value={eventsFilters.scope} onChange={(e) => setEventsFilters((prev) => ({ ...prev, scope: e.target.value as NotificationsScopeFilter }))}>
-              <option value="all">{t('app.reminders.scopes.all', { defaultValue: 'All' })}</option>
-              <option value="direct">{t('app.reminders.scopes.direct', { defaultValue: 'Only mine' })}</option>
+              <option value="all">{t('app.reminders.scopes.all')}</option>
+              <option value="direct">{t('app.reminders.scopes.direct')}</option>
             </select>
             <select className="input" value={eventsFilters.read} onChange={(e) => setEventsFilters((prev) => ({ ...prev, read: e.target.value as NotificationsReadFilter }))}>
-              <option value="unread">{t('app.reminders.filters.unread', { defaultValue: 'Unread' })}</option>
-              <option value="all">{t('app.reminders.filters.all', { defaultValue: 'All' })}</option>
+              <option value="unread">{t('app.reminders.filters.unread')}</option>
+              <option value="all">{t('app.reminders.filters.all')}</option>
             </select>
             <button type="button" className="btn-secondary btn-sm" onClick={() => void loadNotificationsFeed()}>
-              {t('app.reminders.actions.refresh', { defaultValue: 'Refresh' })}
+              {t('app.reminders.actions.refresh')}
             </button>
             <button type="button" className="btn-secondary btn-sm" onClick={() => void reconcileAndReloadNotificationsFeed()}>
-              {t('app.reminders.actions.sync', { defaultValue: 'Sync' })}
+              {t('app.reminders.actions.sync')}
             </button>
             <button type="button" className="btn-secondary btn-sm" onClick={markAllRead} disabled={markAllBusy || notificationCounts.unread === 0}>
-              {markAllBusy ? t('common.loading') : t('app.reminders.actions.mark_all', { defaultValue: 'Mark all read' })}
+              {markAllBusy ? t('common.loading') : t('app.reminders.actions.notifications_mark_all_read')}
             </button>
           </div>
 
@@ -1365,15 +1396,15 @@ export default function RemindersPage() {
               compact
               info={notificationsError}
               onRetry={() => void reconcileAndReloadNotificationsFeed()}
-              retryLabel={t('common.retry', { defaultValue: 'Retry' })}
-              secondaryTo="/app/communications"
-              secondaryLabel={t('app.reminders.actions.open_comm', { defaultValue: 'Open communications' })}
+              retryLabel={t('common.retry')}
+              secondaryTo={CRM_APP_PATHS.communicationsLegacyHub}
+              secondaryLabel={t('app.reminders.actions.open_comm')}
             />
           )}
 
           {notificationsState !== 'loading' && visibleNotifications.length === 0 && (
             <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-              {t('app.reminders.states.empty', { defaultValue: 'No reminders' })}
+              {t('app.reminders.states.events_empty')}
             </div>
           )}
 
@@ -1397,7 +1428,7 @@ export default function RemindersPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           {!item.is_read && (
                             <span className="rounded-md bg-brand-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                              {t('app.reminders.states.badge_new', { defaultValue: 'new' })}
+                              {t('app.reminders.states.badge_new')}
                             </span>
                           )}
                           <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-600">
@@ -1419,7 +1450,7 @@ export default function RemindersPage() {
                             className="btn-secondary btn-xs"
                             onClick={() => navigate(href)}
                           >
-                            {t('app.reminders.actions.open_page', { defaultValue: 'Open' })}
+                            {t('app.reminders.actions.open_notification')}
                           </button>
                         )}
                         {!item.is_read && (
@@ -1429,7 +1460,7 @@ export default function RemindersPage() {
                             onClick={() => void markOneRead(item.id)}
                             disabled={busy}
                           >
-                            {busy ? t('common.loading') : t('app.reminders.actions.mark_one', { defaultValue: 'Mark read' })}
+                            {busy ? t('common.loading') : t('app.reminders.actions.notifications_mark_read')}
                           </button>
                         )}
                       </div>
@@ -1446,41 +1477,41 @@ export default function RemindersPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !editBusy && setEditState(null)}>
           <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-slate-900">
-              {t('app.reminders.edit.title', { defaultValue: 'Edit reminder' })}
+              {t('app.reminders.edit.title')}
             </h3>
             <form onSubmit={submitEdit} className="mt-3 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.title', { defaultValue: 'Task' })}</label>
+                <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.title')}</label>
                 <input className="input mt-1 w-full" value={editState.title} onChange={(e) => setEditState((prev) => prev ? { ...prev, title: e.target.value } : prev)} required />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.description', { defaultValue: 'Description' })}</label>
+                <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.description')}</label>
                 <textarea className="textarea mt-1 w-full" rows={3} value={editState.description} onChange={(e) => setEditState((prev) => prev ? { ...prev, description: e.target.value } : prev)} />
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.due', { defaultValue: 'Due date' })}</label>
+                  <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.due')}</label>
                   <input type="datetime-local" className="input mt-1 w-full" value={editState.dueAtLocal} onChange={(e) => setEditState((prev) => prev ? { ...prev, dueAtLocal: e.target.value } : prev)} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.remind_at', { defaultValue: 'Remind at' })}</label>
+                  <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.remind_at')}</label>
                   <input type="datetime-local" className="input mt-1 w-full" value={editState.remindAtLocal} onChange={(e) => setEditState((prev) => prev ? { ...prev, remindAtLocal: e.target.value } : prev)} />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.priority', { defaultValue: 'Priority' })}</label>
+                <label className="block text-xs font-medium text-slate-600">{t('app.reminders.form.priority')}</label>
                 <select className="input mt-1 w-full" value={editState.priority} onChange={(e) => setEditState((prev) => prev ? { ...prev, priority: e.target.value } : prev)}>
-                  <option value="low">{t('app.reminders.priority.low', { defaultValue: 'Low' })}</option>
-                  <option value="normal">{t('app.reminders.priority.normal', { defaultValue: 'Normal' })}</option>
-                  <option value="high">{t('app.reminders.priority.high', { defaultValue: 'High' })}</option>
+                  <option value="low">{t('app.reminders.priority.low')}</option>
+                  <option value="normal">{t('app.reminders.priority.normal')}</option>
+                  <option value="high">{t('app.reminders.priority.high')}</option>
                 </select>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" className="btn-secondary" onClick={() => setEditState(null)} disabled={editBusy}>
-                  {t('common.actions.cancel', { defaultValue: 'Cancel' })}
+                  {t('common.actions.cancel')}
                 </button>
                 <button type="submit" className="btn-primary" disabled={editBusy}>
-                  {editBusy ? t('common.loading') : t('common.actions.save', { defaultValue: 'Save' })}
+                  {editBusy ? t('common.loading') : t('common.actions.save')}
                 </button>
               </div>
             </form>

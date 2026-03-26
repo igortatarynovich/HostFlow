@@ -5,6 +5,7 @@ import { getInvoicePdf, listInvoices, sendInvoice } from '../../api/client'
 import type { Invoice } from '../../api/types'
 import { recordTtvStepCompleted } from '../../api/analytics'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 const STATUS_BADGE: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-700',
@@ -106,7 +107,7 @@ export function ClientInvoicesBlock({
   const openCreateInvoice = () => {
     const params = new URLSearchParams()
     params.set('company_id', companyId)
-    navigate(`/app/invoices/new?${params.toString()}`)
+    navigate(`${CRM_APP_PATHS.invoiceNew}?${params.toString()}`)
   }
 
   return (
@@ -162,7 +163,7 @@ export function ClientInvoicesBlock({
                 <tr key={invoice.id} className="border-b border-slate-50 last:border-0">
                   <td className="px-3 py-2">
                     <Link
-                      to={`/app/invoices/${invoice.id}`}
+                      to={`${CRM_APP_PATHS.invoices}/${invoice.id}`}
                       className="font-medium text-brand-600 hover:underline"
                     >
                       {invoice.invoice_number}

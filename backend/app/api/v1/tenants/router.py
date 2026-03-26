@@ -18,6 +18,7 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant, get_db
 from backend.app.api.v1.tenants import schemas
 from backend.app.api.v1.tenants import service
+from backend.app.services.portal_link_limits import ensure_portal_token_issue_allowed
 from backend.app.services.tenant_links import list_links_for_agency
 from backend.app.models.tenant import TenantLink, Tenant, TenantType
 from backend.app.models.company import Company
@@ -477,6 +478,11 @@ async def create_or_update_portal_link(
     link = result.scalar_one_or_none()
     if not link:
         raise HTTPException(status_code=404, detail="Tenant link not found")
+    await ensure_portal_token_issue_allowed(
+        db,
+        agency_tenant_id=str(tenant_id),
+        link=link,
+    )
     token = token_urlsafe(32)
     link.portal_token = token
     link.portal_expires_at = None  # optional: set if you add expiry param

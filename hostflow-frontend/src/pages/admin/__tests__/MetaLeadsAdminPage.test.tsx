@@ -22,6 +22,7 @@ const {
   mockListCompanies,
   mockListVacancies,
   mockListAdminUsers,
+  mockGetMetaIncomingPreview,
 } = vi.hoisted(() => ({
   mockGetSettings: vi.fn(),
   mockUpdateSettings: vi.fn(),
@@ -39,6 +40,7 @@ const {
   mockListCompanies: vi.fn(),
   mockListVacancies: vi.fn(),
   mockListAdminUsers: vi.fn(),
+  mockGetMetaIncomingPreview: vi.fn(),
 }))
 
 vi.mock('../../../api/metaLeads', () => ({
@@ -54,6 +56,8 @@ vi.mock('../../../api/metaLeads', () => ({
   deleteMetaAdsMap: mockDeleteMapping,
   getUnmappedLeads: mockGetUnmappedLeads,
   rerouteMetaLead: mockReroute,
+  retryLeads: vi.fn(),
+  getMetaIncomingPreview: mockGetMetaIncomingPreview,
 }))
 
 vi.mock('../../../api/client', () => ({
@@ -68,9 +72,11 @@ vi.mock('../../../api/users', () => ({
 
 describe('MetaLeadsAdminPage', () => {
   it('renders tabs and loads initial data', async () => {
+    mockGetMetaIncomingPreview.mockResolvedValue({ items: [] })
     mockGetSettings.mockResolvedValueOnce({
       tenant_id: '11111111-1111-1111-1111-111111111111',
       auto_create_enabled: true,
+      leads_processing_mode_v1: 'assisted',
       mask_pii_in_logs: true,
       reroute_after_hours: 6,
       webhook_url: 'https://example.com/meta',

@@ -16,6 +16,7 @@ import {
 import { useToast } from '../components/Toast'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 export default function AgencyClientsPage() {
   const { t } = useI18n()
@@ -74,7 +75,7 @@ export default function AgencyClientsPage() {
             })}
           </p>
           <Link
-            to="/app/clients/directory"
+            to={CRM_APP_PATHS.clientsDirectory}
             className="mt-2 inline-block text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline"
           >
             {t('app.clients.crm_directory_link', { defaultValue: 'Open client CRM directory' })}
@@ -110,7 +111,7 @@ export default function AgencyClientsPage() {
             }}
             secondaryAction={{
               label: openEntityLabel || t('app.clients.empty_cta_companies', { defaultValue: 'Open clients' }),
-              to: '/app/clients/directory',
+              to: CRM_APP_PATHS.clientsDirectory,
             }}
           />
         </div>
@@ -251,7 +252,7 @@ function ClientRow({
           <div className="flex flex-wrap items-center gap-2">
             {link.client_company_id ? (
               <Link
-                to={`/app/clients/${link.client_company_id}`}
+                to={`${CRM_APP_PATHS.agencyClients}/${link.client_company_id}`}
                 className="font-medium text-slate-900 hover:text-brand-600 hover:underline"
               >
                 {name}
@@ -261,14 +262,14 @@ function ClientRow({
             )}
             {link.client_company_id ? (
               <Link
-                to={`/app/clients/${link.client_company_id}`}
+                to={`${CRM_APP_PATHS.agencyClients}/${link.client_company_id}`}
                 className="text-sm text-brand-600 hover:underline"
               >
                 {t('app.clients.open_profile', { defaultValue: 'Профиль' })}
               </Link>
             ) : link.client_tenant_id ? (
               <Link
-                to={`/app/clients/link/${link.id}`}
+                to={`${CRM_APP_PATHS.clientsLinkBase}/${link.id}`}
                 className="text-sm text-brand-600 hover:underline"
               >
                 {t('app.clients.open_profile', { defaultValue: 'Профиль' })}

@@ -23,6 +23,7 @@ import {
   type InboxChannelScope,
   type InboxListQuery,
 } from '../utils/inboxUrlQuery'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 function isActiveThread(th: CommunicationThread): boolean {
   return !th.is_archived && String(th.status || '').toLowerCase() !== 'deleted'
@@ -53,7 +54,10 @@ export default function CommunicationsInboxCenterPage() {
     [effectiveChannel, listQuery],
   )
 
-  const backToHubPath = useMemo(() => `/app/inbox${inboxContextQueryString(listQueryForLinks)}`, [listQueryForLinks])
+  const backToHubPath = useMemo(
+    () => `${CRM_APP_PATHS.inbox}${inboxContextQueryString(listQueryForLinks)}`,
+    [listQueryForLinks],
+  )
 
   const [threads, setThreads] = useState<CommunicationThread[]>([])
   const [listLoading, setListLoading] = useState(true)
@@ -134,7 +138,7 @@ export default function CommunicationsInboxCenterPage() {
         to={backToHubPath}
         className="border-b border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-700 hover:bg-slate-50 xl:hidden"
       >
-        {t('app.communications_inbox_center.back_all_threads', { defaultValue: '← All threads' })}
+        {t('app.communications_inbox_center.back_all_threads')}
       </Link>
       <CommunicationsInboxWorkspaceGrid variant="inbox_center" className="min-h-0 flex-1">
         <aside
@@ -150,8 +154,8 @@ export default function CommunicationsInboxCenterPage() {
                   onClick={() => void fetchInboundNow()}
                   disabled={pollBusy}
                   className="inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
-                  title={t('app.communications.email.sync.title', { defaultValue: 'Sync incoming mail' })}
-                  aria-label={t('app.communications.email.sync.title', { defaultValue: 'Sync incoming mail' })}
+                  title={t('app.communications.email.sync.title')}
+                  aria-label={t('app.communications.email.sync.title')}
                 >
                   <IconRefresh size={18} stroke={1.75} className={pollBusy ? 'animate-spin' : ''} />
                 </button>
@@ -180,9 +184,14 @@ export default function CommunicationsInboxCenterPage() {
                       onClick={() => {
                         const tid = String(threadId || '').trim()
                         const qs = inboxContextQueryString({ ...listQueryForLinks, candidateId: '' })
-                        navigate(tid ? `/app/inbox/threads/${encodeURIComponent(tid)}${qs}` : `/app/inbox${qs}`, {
-                          replace: true,
-                        })
+                        navigate(
+                          tid
+                            ? `${CRM_APP_PATHS.inboxThreadsBase}/${encodeURIComponent(tid)}${qs}`
+                            : `${CRM_APP_PATHS.inbox}${qs}`,
+                          {
+                            replace: true,
+                          },
+                        )
                       }}
                     >
                       {t('app.communications_inbox_hub.scoped_candidate_clear')}
@@ -195,7 +204,7 @@ export default function CommunicationsInboxCenterPage() {
                   onHubFilterChange={setHubFilter}
                   hasMessages={effectiveChannel === 'email' ? false : hasMessages}
                   hasEmail={effectiveChannel === 'messages' ? false : hasEmail}
-                  threadLinkPrefix="/app/inbox/threads"
+                  threadLinkPrefix={CRM_APP_PATHS.inboxThreadsBase}
                   linkedCandidateId={listQuery.candidateId || undefined}
                   selectedThreadId={threadId}
                   hideSectionHeading
@@ -208,19 +217,19 @@ export default function CommunicationsInboxCenterPage() {
 
         <main className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50">
           {threadLoading && (
-            <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</p>
+            <p className="text-sm text-slate-500">{t('common.loading')}</p>
           )}
           {!threadLoading && !thread && (
             <div className="space-y-3">
               <ErrorRecoveryBanner
                 info={{
-                  title: errorText || t('app.communications.states.empty', { defaultValue: 'No activity yet' }),
-                  hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+                  title: errorText || t('app.communications.states.empty'),
+                  hint: t('app.common.retry_hint'),
                 }}
                 onRetry={() => void load()}
-                retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                retryLabel={t('common.actions.refresh')}
                 secondaryTo={backToHubPath}
-                secondaryLabel={t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' })}
+                secondaryLabel={t('app.communications.actions.back_to_hub')}
                 compact
               />
             </div>
@@ -249,9 +258,7 @@ export default function CommunicationsInboxCenterPage() {
             />
           ) : (
             <div className="p-4 text-sm text-slate-500">
-              {t('app.communications_inbox_center.channel_rail_empty', {
-                defaultValue: 'Select a thread for links, follow-up task, workflow, and archive.',
-              })}
+              {t('app.communications_inbox_center.channel_rail_empty')}
             </div>
           )}
         </aside>

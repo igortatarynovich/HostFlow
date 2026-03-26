@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { CommunicationThread } from '../../api/communications'
 import type { useCommunicationsThread } from '../../hooks/useCommunicationsThread'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
 
 export function formatThreadDateTime(value?: string | null): string {
@@ -73,7 +74,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
   const actionBar = (
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" className={clsx(btn, 'disabled:opacity-50')} onClick={() => void load()}>
-        {t('app.communications.actions.refresh', { defaultValue: 'Refresh' })}
+        {t('app.communications.actions.refresh')}
       </button>
       <div className="relative" ref={workflowMenuRef}>
         <button
@@ -81,7 +82,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           className={btn}
           onClick={() => setOpenActionMenu((prev) => (prev === 'workflow' ? null : 'workflow'))}
         >
-          {t('app.communications.thread.workflow_actions', { defaultValue: 'Workflow' })}
+          {t('app.communications.thread.workflow_actions')}
         </button>
         {openActionMenu === 'workflow' && (
           <div className="absolute right-0 z-20 mt-1 w-[min(18rem,calc(100vw-2rem))] rounded border border-slate-200 bg-white p-1 shadow-lg">
@@ -95,8 +96,8 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
               disabled={busyAction === 'assign'}
             >
               {busyAction === 'assign'
-                ? t('common.loading', { defaultValue: 'Loading...' })
-                : t('app.communications.queue.auto_assign', { defaultValue: 'Auto assign' })}
+                ? t('common.loading')
+                : t('app.communications.queue.auto_assign')}
             </button>
             <button
               type="button"
@@ -108,8 +109,8 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
               disabled={busyAction === 'read' || (thread.unread_count ?? 0) <= 0}
             >
               {busyAction === 'read'
-                ? t('common.loading', { defaultValue: 'Loading...' })
-                : t('app.communications.actions.mark_thread_read', { defaultValue: 'Mark read' })}
+                ? t('common.loading')
+                : t('app.communications.actions.mark_thread_read')}
             </button>
           </div>
         )}
@@ -120,7 +121,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           className={btn}
           onClick={() => setOpenActionMenu((prev) => (prev === 'delivery' ? null : 'delivery'))}
         >
-          {t('app.communications.thread.delivery_actions', { defaultValue: 'Delivery' })}
+          {t('app.communications.thread.delivery_actions')}
         </button>
         {openActionMenu === 'delivery' && (
           <div className="absolute right-0 z-20 mt-1 w-[min(18rem,calc(100vw-2rem))] rounded border border-slate-200 bg-white p-1 shadow-lg">
@@ -134,8 +135,8 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
               disabled={dispatchingQueued}
             >
               {dispatchingQueued
-                ? t('common.loading', { defaultValue: 'Loading...' })
-                : t('app.communications.thread.dispatch_queued', { defaultValue: 'Dispatch queued' })}
+                ? t('common.loading')
+                : t('app.communications.thread.dispatch_queued')}
             </button>
           </div>
         )}
@@ -146,7 +147,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
   const timelineSection = (
     <section className={clsx('card p-4', layout === 'inboxCenter' && 'min-h-0 flex flex-1 flex-col')}>
       <h2 className="mb-3 shrink-0 text-sm font-semibold text-slate-900">
-        {t('app.communications.thread.timeline', { defaultValue: 'Timeline' })}
+        {t('app.communications.thread.timeline')}
       </h2>
       <div
         className={clsx(
@@ -157,7 +158,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
       >
         {sortedMessages.length === 0 && (
           <div className="rounded-lg border border-dashed border-slate-200 px-3 py-6 text-center text-sm text-slate-500">
-            {t('app.communications.states.empty', { defaultValue: 'No activity yet' })}
+            {t('app.communications.states.empty')}
           </div>
         )}
         {sortedMessages.map((msg) => {
@@ -191,7 +192,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
                       isInbound ? 'bg-amber-100 text-amber-800' : isOutbound ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700',
                     )}
                   >
-                    {isNote ? t('app.communications.thread.note', { defaultValue: 'Note' }) : msg.direction}
+                    {isNote ? t('app.communications.thread.note') : msg.direction}
                   </span>
                   <span className="text-[11px] text-slate-500">{formatThreadDateTime(msg.created_at)}</span>
                 </div>
@@ -201,11 +202,11 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
                 <div className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">{msg.body_text}</div>
               )}
               <div className="mt-1 text-[11px] text-slate-500">
-                {t('app.communications.labels.status', { defaultValue: 'Status' })}: {msg.delivery_status}
+                {t('app.communications.labels.status')}: {msg.delivery_status}
                 {msg.read_at && (
                   <>
                     {' '}
-                    · {t('app.communications.actions.mark_thread_read', { defaultValue: 'Read' })}:{' '}
+                    · {t('app.communications.actions.read_at')}:{' '}
                     {formatThreadDateTime(msg.read_at)}
                   </>
                 )}
@@ -219,8 +220,8 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
                     className="btn-secondary btn-xs disabled:opacity-50"
                   >
                     {dispatchingMessageId === msg.id
-                      ? t('common.loading', { defaultValue: 'Loading...' })
-                      : t('app.communications.thread.dispatch_now', { defaultValue: 'Dispatch now' })}
+                      ? t('common.loading')
+                      : t('app.communications.thread.dispatch_now')}
                   </button>
                 </div>
               )}
@@ -234,7 +235,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
   const composeSection = (
     <div className="card p-4">
       <h2 className="mb-3 text-sm font-semibold text-slate-900">
-        {t('app.communications.thread.compose', { defaultValue: 'Compose reply' })}
+        {t('app.communications.thread.compose')}
       </h2>
       {threadUnlinked && (
         <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
@@ -246,12 +247,12 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
       <form className="space-y-3" onSubmit={handleSend}>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input type="checkbox" checked={internalNote} onChange={(e) => setInternalNote(e.target.checked)} />
-          {t('app.communications.thread.internal_note', { defaultValue: 'Send as internal note' })}
+          {t('app.communications.thread.internal_note')}
         </label>
         {!internalNote && (
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={sendImmediately} onChange={(e) => setSendImmediately(e.target.checked)} />
-            {t('app.communications.thread.send_immediately', { defaultValue: 'Dispatch immediately (simulate provider send)' })}
+            {t('app.communications.thread.send_immediately')}
           </label>
         )}
         {thread.channel === 'email' && !internalNote && (
@@ -259,7 +260,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
             value={draftSubject}
             onChange={(e) => setDraftSubject(e.target.value)}
             className="w-full input"
-            placeholder={t('app.communications.thread.subject', { defaultValue: 'Subject' })}
+            placeholder={t('app.communications.thread.subject')}
           />
         )}
         {!internalNote && (
@@ -267,7 +268,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
             value={recipientAddress}
             onChange={(e) => setRecipientAddress(e.target.value)}
             className="w-full input"
-            placeholder={t('app.communications.thread.recipient', { defaultValue: 'Recipient address (email/phone/chat id)' })}
+            placeholder={t('app.communications.thread.recipient')}
           />
         )}
         {thread.channel === 'email' && !internalNote && templates.length > 0 && (
@@ -294,14 +295,14 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
                 })
               }}
             >
-              {t('common.actions.insert', { defaultValue: 'Insert' })}
+              {t('common.actions.insert')}
             </button>
           </div>
         )}
         {thread.channel === 'email' && !internalNote && inferredSignature && (
           <label className="flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={applySignature} onChange={(e) => setApplySignature(e.target.checked)} />
-            {t('app.communications.email.signature.apply', { defaultValue: 'Add signature' })}
+            {t('app.communications.email.signature.apply')}
           </label>
         )}
         <textarea
@@ -309,14 +310,14 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           value={draftText}
           onChange={(e) => setDraftText(e.target.value)}
           className="w-full textarea"
-          placeholder={t('app.communications.thread.message', { defaultValue: 'Type your message...' })}
+          placeholder={t('app.communications.thread.message')}
         />
         <button
           type="submit"
           disabled={sending || !draftText.trim()}
           className="w-full btn-primary disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {sending ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.thread.send', { defaultValue: 'Send' })}
+          {sending ? t('common.loading') : t('app.communications.thread.send')}
         </button>
       </form>
     </div>
@@ -325,23 +326,23 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
   const metaCard = (
     <div className="card p-4">
       <h3 className="text-sm font-semibold text-slate-900">
-        {t('app.communications.thread.meta', { defaultValue: 'Thread metadata' })}
+        {t('app.communications.thread.meta')}
       </h3>
       <div className="mt-3 space-y-1 text-xs text-slate-600">
         <div>
-          {t('app.communications.labels.channel', { defaultValue: 'Channel' })}: {thread.channel}
+          {t('app.communications.labels.channel')}: {thread.channel}
         </div>
         <div>
-          {t('app.communications.labels.status', { defaultValue: 'Status' })}: {thread.status}
+          {t('app.communications.labels.status')}: {thread.status}
         </div>
         <div>
-          {t('app.communications.queue.assignee', { defaultValue: 'Assignee' })}: {thread.assignee_id || '—'}
+          {t('app.communications.queue.assignee')}: {thread.assignee_id || '—'}
         </div>
         <div>
-          {t('app.communications.labels.unread', { defaultValue: 'Unread' })}: {thread.unread_count}
+          {t('app.communications.labels.unread')}: {thread.unread_count}
         </div>
         <div>
-          {t('app.communications.labels.entity', { defaultValue: 'Entity' })}: {thread.entity_type || '—'} / {thread.entity_id || '—'}
+          {t('app.communications.labels.entity')}: {thread.entity_type || '—'} / {thread.entity_id || '—'}
         </div>
         <div>Last message: {formatThreadDateTime(thread.last_message_at)}</div>
         <div>Updated: {formatThreadDateTime(thread.updated_at)}</div>
@@ -365,7 +366,7 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
                 <>
                   <span>·</span>
                   <span>
-                    {thread.unread_count} {t('app.communications.labels.unread', { defaultValue: 'unread' })}
+                    {thread.unread_count} {t('app.communications.labels.unread_lower')}
                   </span>
                 </>
               ) : null}
@@ -377,12 +378,12 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           <ErrorRecoveryBanner
             info={{
               title: errorText,
-              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+              hint: t('app.common.retry_hint'),
             }}
             onRetry={() => void load()}
-            retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            retryLabel={t('common.actions.refresh')}
             secondaryTo={errorSecondaryTo || threadListPath}
-            secondaryLabel={errorSecondaryLabel || t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' })}
+            secondaryLabel={errorSecondaryLabel || t('app.communications.actions.back_to_hub')}
             compact
           />
         )}
@@ -399,11 +400,11 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex flex-wrap gap-3 text-sm">
-            <Link to="/app/calendar" className="text-brand-700 hover:text-brand-900">
-              {t('app.communications.actions.back_to_calendar', { defaultValue: '← Back to calendar' })}
+            <Link to={CRM_APP_PATHS.calendar} className="text-brand-700 hover:text-brand-900">
+              {t('app.communications.actions.back_to_calendar')}
             </Link>
             <Link to={threadListPath} className="text-slate-600 hover:text-slate-900">
-              {t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' })}
+              {t('app.communications.actions.back_to_hub')}
             </Link>
           </div>
           <h1 className="mt-1 text-xl font-semibold text-slate-900">
@@ -411,19 +412,19 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           </h1>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
             <span>
-              {t('app.communications.labels.thread', { defaultValue: 'Thread' })}: <span className="font-mono">{thread.id}</span>
+              {t('app.communications.labels.thread')}: <span className="font-mono">{thread.id}</span>
             </span>
             <span>
-              {t('app.communications.labels.channel', { defaultValue: 'Channel' })}: {String(thread.channel || '').toUpperCase()}
+              {t('app.communications.labels.channel')}: {String(thread.channel || '').toUpperCase()}
             </span>
             <span>
-              {t('app.communications.queue.assignee', { defaultValue: 'Assignee' })}: {thread.assignee_id || '—'}
+              {t('app.communications.queue.assignee')}: {thread.assignee_id || '—'}
             </span>
             <span>
-              {t('app.communications.labels.status', { defaultValue: 'Status' })}: {thread.status}
+              {t('app.communications.labels.status')}: {thread.status}
             </span>
             <span>
-              {t('app.communications.labels.unread', { defaultValue: 'Unread' })}: {thread.unread_count ?? 0}
+              {t('app.communications.labels.unread')}: {thread.unread_count ?? 0}
             </span>
           </div>
         </div>
@@ -433,12 +434,12 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
         <ErrorRecoveryBanner
           info={{
             title: errorText,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+            hint: t('app.common.retry_hint'),
           }}
           onRetry={() => void load()}
-          retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          retryLabel={t('common.actions.refresh')}
           secondaryTo={errorSecondaryTo || threadListPath}
-          secondaryLabel={errorSecondaryLabel || t('app.communications.actions.back_to_hub', { defaultValue: 'Back to inbox' })}
+          secondaryLabel={errorSecondaryLabel || t('app.communications.actions.back_to_hub')}
           compact
         />
       )}

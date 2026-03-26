@@ -1,6 +1,7 @@
 from typing import Sequence
 from uuid import UUID
 
+from backend.app.constants.spa_paths import SETTINGS_BILLING
 from backend.app.models import Company
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,7 +48,7 @@ def _map_value_error(exc: ValueError) -> HTTPException:
             detail={
                 "code": "OPERATING-COMPANY-LIMIT",
                 "message": "Operating company limit reached for current subscription",
-                "billing_path": "/app/settings/billing",
+                "billing_path": SETTINGS_BILLING,
                 "recommended_extra_slots": missing_slots,
                 "slots": {
                     "included_limit": exc.included_limit,

@@ -16,6 +16,7 @@ import type { EmploymentType } from '../../api/vacancies'
 import { listCandidateProfiles, type CandidateProfile } from '../../api/candidate_profiles'
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { servicesWorkspacePath } from '../../modules/services/utils'
 
 const primaryBtn = 'btn-primary'
@@ -563,7 +564,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <div className="text-xs text-white/80">
-              <Link to="/app/vacancies" className="hover:underline">{'← '}{t('app.nav.items.vacancies')}</Link>
+              <Link to={CRM_APP_PATHS.vacancies} className="hover:underline">{'← '}{t('app.nav.items.vacancies')}</Link>
             </div>
             <h1 className="text-3xl font-semibold">
               {watchTitle || model?.title || t('app.vacancies.detail.untitled', { defaultValue: 'Вакансия' })}
@@ -598,7 +599,11 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             </button>
             <Link
               className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
-              to={model?.id ? `/app/candidates?view=kanban&vacancy=${model.id}` : '/app/candidates?view=kanban'}
+              to={
+                model?.id
+                  ? `${CRM_APP_PATHS.candidates}?view=kanban&vacancy=${model.id}`
+                  : `${CRM_APP_PATHS.candidates}?view=kanban`
+              }
             >
               {t('app.candidates.pipeline.title', { defaultValue: 'Пайплайн' })}
             </Link>
@@ -925,10 +930,10 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 })}
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
-                <Link to="/app/documents" className="btn-secondary btn-xs">
+                <Link to={CRM_APP_PATHS.documents} className="btn-secondary btn-xs">
                   {t('app.nav.items.documents', { defaultValue: 'Documents' })}
                 </Link>
-                <Link to="/app/settings/candidate-profiles" className="btn-secondary btn-xs">
+                <Link to={CRM_APP_PATHS.settingsCandidateProfiles} className="btn-secondary btn-xs">
                   {t('admin.settings.cards.candidate_profiles.label', { defaultValue: 'Candidate profiles' })}
                 </Link>
               </div>
@@ -954,7 +959,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 candItems.map((c:any) => (
                   <tr key={c.id}>
                     <td className="py-2 pr-3">
-                      <a className="hover:underline" href={`/app/candidates/${c.id}`}>{c.name || [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Без имени'}</a>
+                      <a className="hover:underline" href={`${CRM_APP_PATHS.candidates}/${c.id}`}>{c.name || [c.first_name, c.last_name].filter(Boolean).join(' ') || 'Без имени'}</a>
                     </td>
                     <td className="py-2 pr-3 text-slate-600">{c.email || '—'}</td>
                     <td className="py-2 pr-3"><StageTag code={String(c.stage ?? c.status ?? 'new')} /></td>

@@ -7,6 +7,7 @@ import {
   snoozeActivity,
 } from '../../../api/client'
 import { recordPerfMeasurement } from '../../../api/analytics'
+import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
 import type { CandidateDocsRailSummarySnapshot } from '../../../components/candidate/CandidateDocsRailPanel'
 
 /** Relative URLs from `GET .../work-panel` `comms` (snake_case in JSON). */
@@ -191,7 +192,7 @@ export function useCandidatesWorkPanelPreview({
       void recordPerfMeasurement({
         metricKey: 'candidates.work_panel.load',
         durationMs: Math.round(elapsed),
-        route: '/app/candidates',
+        route: CRM_APP_PATHS.candidates,
         meta: { candidateId, assigneeScope: workPanelAssigneeScope },
       })
     } catch (err: any) {

@@ -6,6 +6,7 @@ import type { HiringPipelineGatesPublic } from '../../api/types'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
 import { useHiringPipelineGates } from '../../contexts/HiringPipelineGatesContext'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 function linesToList(text: string): string[] {
   return text
@@ -114,7 +115,7 @@ export default function HiringPipelineGatesSettingsPage() {
             })}
           </p>
         </div>
-        <Link to="/app/settings" className="btn-secondary btn-sm">
+        <Link to={CRM_APP_PATHS.settings} className="btn-secondary btn-sm">
           {t('admin.hiring_gates.back', { defaultValue: '← Settings' })}
         </Link>
       </div>

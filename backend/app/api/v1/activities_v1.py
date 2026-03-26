@@ -131,6 +131,7 @@ async def list_activities(
 ) -> ActivityListResponse:
     db, tenant_id = db_tenant
     entity = (entity_type, entity_id) if (entity_type and entity_id) else None
+    entity_type_filter = str(entity_type).strip() if entity_type and not entity_id else None
     due_range = (due_from or None, due_to or None) if (due_from or due_to) else None
     aid = reminder_tasks.resolve_assignee_for_reminder_list(
         explicit_assignee_id=str(assignee_id) if assignee_id else None,
@@ -143,6 +144,7 @@ async def list_activities(
         tenant_id=str(tenant_id),
         assignee_id=aid,
         entity=entity,
+        entity_type_filter=entity_type_filter or None,
         status_in=status_filter or None,
         type_in=type_filter or None,
         due_range=due_range,

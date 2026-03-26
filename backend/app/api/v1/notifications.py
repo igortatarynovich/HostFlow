@@ -12,6 +12,7 @@ from backend.app.auth.deps import Role, get_current_user, require_roles
 from backend.app.auth.deps import UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.services import user_notifications
+from backend.app.services.user_notifications import notification_out_priority
 from backend.app.services.notification_templates import list_notification_templates
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
@@ -47,6 +48,7 @@ class NotificationOut(BaseModel):
     id: UUID
     event_type: str
     channel: str
+    priority: str = Field(description="UOS attention tier: critical | high | normal (canonical).")
     payload: Dict[str, Any] = Field(default_factory=dict)
     entity_type: Optional[str] = None
     entity_id: Optional[str] = None
@@ -147,6 +149,7 @@ async def list_notifications(
                 id=UUID(n.id),
                 event_type=n.event_type,
                 channel=n.channel,
+                priority=notification_out_priority(n),
                 payload=n.payload or {},
                 entity_type=n.entity_type,
                 entity_id=n.entity_id,

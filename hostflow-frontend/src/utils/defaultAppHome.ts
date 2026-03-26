@@ -1,3 +1,5 @@
+import { ACTIVATION_PATHS } from '../app/activationRoutes'
+
 /** Browser-only preference: first screen after `/app` or app root (UOS). */
 export const DEFAULT_APP_HOME_STORAGE_KEY = 'hf:default_app_home'
 
@@ -24,9 +26,11 @@ export function writeStoredDefaultAppHome(value: StoredDefaultAppHome): void {
   }
 }
 
-export function resolveDefaultAppHomeHref(canOpenTasks: boolean): '/app/overview' | '/app/tasks' {
-  if (readStoredDefaultAppHome() === 'tasks' && canOpenTasks) return '/app/tasks'
-  return '/app/overview'
+export function resolveDefaultAppHomeHref(
+  canOpenTasks: boolean,
+): typeof ACTIVATION_PATHS.overview | typeof ACTIVATION_PATHS.reminders {
+  if (readStoredDefaultAppHome() === 'tasks' && canOpenTasks) return ACTIVATION_PATHS.reminders
+  return ACTIVATION_PATHS.overview
 }
 
 export function resolveDefaultAppHomeSegment(canOpenTasks: boolean): 'tasks' | 'overview' {

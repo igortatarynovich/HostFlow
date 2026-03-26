@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import type { UserSavedView } from '../../../api/types'
 import { toCSV } from '../candidateUtils'
 import type { AugmentedCandidate, CandidateOpsMode } from '../types'
+import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
 import { CandidatesQuickViewsBar, type QuickViewKey } from './CandidatesQuickViewsBar'
 
 type QuickDocFilter = { key: string; label: string; statuses: string[]; active: boolean }
@@ -232,7 +233,11 @@ export function CandidatesFiltersActionsPanel({
           )}
         </div>
         {canManage && (
-          <Link className="btn-primary text-xs py-1.5 px-2.5 font-medium" to="/app/candidates/new" title={t('app.candidates.actions.new_candidate_title')}>
+          <Link
+            className="btn-primary text-xs py-1.5 px-2.5 font-medium"
+            to={CRM_APP_PATHS.candidateNew}
+            title={t('app.candidates.actions.new_candidate_title')}
+          >
             {t('app.candidates.actions.new_candidate')}
           </Link>
         )}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { listAutomationLog, type AutomationLogEntry } from '../api/automationLog'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { formatDateTime } from '../utils/dateFormat'
 
 export default function AutomationLogPage() {
@@ -61,7 +62,7 @@ export default function AutomationLogPage() {
       <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <Link to="/app/automations" className="text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline">
+            <Link to={CRM_APP_PATHS.automations} className="text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline">
               {t('app.automations.hub.back', { defaultValue: '← Automations' })}
             </Link>
             <h1 className="mt-1 text-xl font-semibold text-slate-900">
@@ -134,7 +135,7 @@ export default function AutomationLogPage() {
             }}
             onRetry={() => load()}
             retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-            secondaryTo="/app/automation-log"
+            secondaryTo={CRM_APP_PATHS.automationLog}
             secondaryLabel={t('app.automation_log.title', { defaultValue: 'Automation log' })}
             compact
           />

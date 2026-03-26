@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { IconArrowRight, IconCheck, IconChecklist, IconUsers, IconUserPlus } from '@tabler/icons-react'
+import {
+  IconArrowRight,
+  IconBrandTelegram,
+  IconBrandWhatsapp,
+  IconCheck,
+  IconChecklist,
+  IconClock,
+  IconGitBranch,
+  IconMail,
+  IconPhoto,
+  IconUserPlus,
+  IconUsers,
+} from '@tabler/icons-react'
 import { useI18n } from '../i18n'
 import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
 import { usePermissions, type Permission } from '../hooks/usePermissions'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { ACTIVATION_PATHS, getBusinessHomePath, getBusinessNextActionPath } from '../app/activationRoutes'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 type OnboardingStepCard = {
   key: string
@@ -48,8 +61,8 @@ export default function OnboardingGettingStartedPage() {
           ? {
               key: 'vacancy',
               done: Boolean(status?.steps?.first_vacancy_created),
-              title: t('app.onboarding.getting_started.step_employer.title', { defaultValue: 'Create first vacancy' }),
-              desc: t('app.onboarding.getting_started.step_employer.desc', { defaultValue: 'Open your first position and set responsible recruiter.' }),
+              title: t('app.onboarding.getting_started.step_employer.title'),
+              desc: t('app.onboarding.getting_started.step_employer.desc'),
               href: ACTIVATION_PATHS.vacancies,
               permission: 'vacancies.view',
             }
@@ -57,13 +70,8 @@ export default function OnboardingGettingStartedPage() {
             ? {
                 key: 'first_client_services',
                 done: Boolean(status?.steps?.first_client_created || status?.steps?.first_lead_created),
-                title: t('app.onboarding.getting_started.step_services_client.title', {
-                  defaultValue: 'Create first client or capture lead',
-                }),
-                desc: t('app.onboarding.getting_started.step_services_client.desc', {
-                  defaultValue:
-                    'For services mode, core entity is client. Leads from ads are potential clients and also count as first value.',
-                }),
+                title: t('app.onboarding.getting_started.step_services_client.title'),
+                desc: t('app.onboarding.getting_started.step_services_client.desc'),
                 href: ACTIVATION_PATHS.clients,
                 permission: 'companies.view',
               }
@@ -71,11 +79,9 @@ export default function OnboardingGettingStartedPage() {
                 key: 'first_client',
                 done: Boolean(status?.steps?.first_client_created),
                 title: t('app.onboarding.getting_started.step_agency.title_dynamic', {
-                  defaultValue: 'Create first {entity}',
                   values: { entity: entitySingular.toLowerCase() },
                 }),
                 desc: t('app.onboarding.getting_started.step_agency.desc_dynamic', {
-                  defaultValue: 'Add your first {entity} manually to start working immediately.',
                   values: { entity: entitySingular.toLowerCase() },
                 }),
                 href: ACTIVATION_PATHS.clients,
@@ -85,8 +91,8 @@ export default function OnboardingGettingStartedPage() {
         {
           key: 'company',
           done: Boolean(status?.steps?.company_created),
-          title: t('app.onboarding.getting_started.step0.title', { defaultValue: 'Company created' }),
-          desc: t('app.onboarding.getting_started.step0.desc', { defaultValue: 'Workspace company setup is complete.' }),
+          title: t('app.onboarding.getting_started.step0.title'),
+          desc: t('app.onboarding.getting_started.step0.desc'),
           href: companyHref,
           permission: businessType === 'employer' ? 'vacancies.view' : 'companies.view',
         },
@@ -94,15 +100,11 @@ export default function OnboardingGettingStartedPage() {
         {
           key: 'action',
           done: Boolean(status?.steps?.next_action_created),
-          title: t('app.onboarding.getting_started.step3.title', { defaultValue: 'Set next action' }),
+          title: t('app.onboarding.getting_started.step3.title'),
           desc:
             businessType === 'services'
-              ? t('app.onboarding.getting_started.step3_services.desc', {
-                  defaultValue: 'Open Leads to process incoming ad leads (potential clients) and create follow-up tasks.',
-                })
-              : t('app.onboarding.getting_started.step3.desc', {
-                  defaultValue: 'Add reminder/task so no lead is lost.',
-                }),
+              ? t('app.onboarding.getting_started.step3_services.desc')
+              : t('app.onboarding.getting_started.step3.desc'),
           href: businessType === 'services' ? ACTIVATION_PATHS.leads : getBusinessNextActionPath(businessType),
           permission:
             businessType === 'services'
@@ -120,8 +122,8 @@ export default function OnboardingGettingStartedPage() {
           openLabel: accessible
             ? step.href === ACTIVATION_PATHS.clients
               ? openEntityLabel
-              : t('app.onboarding.getting_started.open', { defaultValue: 'Open' })
-            : t('app.onboarding.getting_started.open_fallback', { defaultValue: 'Open dashboard' }),
+              : t('app.onboarding.getting_started.open')
+            : t('app.onboarding.getting_started.open_fallback'),
         }
       })
     },
@@ -132,33 +134,21 @@ export default function OnboardingGettingStartedPage() {
     if (businessType === 'employer') {
       return {
         href: ACTIVATION_PATHS.vacancies,
-        title: t('app.onboarding.getting_started.primary_cta_employer.title', {
-          defaultValue: 'Create first vacancy',
-        }),
-        desc: t('app.onboarding.getting_started.primary_cta_employer.desc', {
-          defaultValue: 'Publish first position and assign manager to start hiring flow.',
-        }),
+        title: t('app.onboarding.getting_started.primary_cta_employer.title'),
+        desc: t('app.onboarding.getting_started.primary_cta_employer.desc'),
       }
     }
     if (businessType === 'services') {
       return {
         href: ACTIVATION_PATHS.leads,
-        title: t('app.onboarding.getting_started.primary_cta_services.title', {
-          defaultValue: 'Open client leads',
-        }),
-        desc: t('app.onboarding.getting_started.primary_cta_services.desc', {
-          defaultValue: 'Process incoming ad leads as potential clients and convert them into paid work.',
-        }),
+        title: t('app.onboarding.getting_started.primary_cta_services.title'),
+        desc: t('app.onboarding.getting_started.primary_cta_services.desc'),
       }
     }
     return {
       href: ACTIVATION_PATHS.clients,
-      title: t('app.onboarding.getting_started.primary_cta_agency.title', {
-        defaultValue: 'Create first client',
-      }),
-      desc: t('app.onboarding.getting_started.primary_cta_agency.desc', {
-        defaultValue: 'Start with client record, then continue with candidates and communication.',
-      }),
+      title: t('app.onboarding.getting_started.primary_cta_agency.title'),
+      desc: t('app.onboarding.getting_started.primary_cta_agency.desc'),
     }
   }, [businessType, t])
 
@@ -185,19 +175,16 @@ export default function OnboardingGettingStartedPage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700">
           <IconChecklist size={14} stroke={1.9} />
-          {t('app.onboarding.getting_started.badge', { defaultValue: 'Workspace ready' })}
+          {t('app.onboarding.getting_started.badge')}
         </div>
         <h1 className="mt-3 text-2xl font-semibold text-slate-900">
-          {t('app.onboarding.getting_started.title', { defaultValue: 'Start working in 3 steps' })}
+          {t('app.onboarding.getting_started.title')}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
-          {t('app.onboarding.getting_started.subtitle', {
-            defaultValue: 'Skip advanced settings for now. Create your first records and get value immediately.',
-          })}
+          {t('app.onboarding.getting_started.subtitle')}
         </p>
         <p className="mt-2 text-xs font-medium text-brand-700">
           {t('app.onboarding.getting_started.progress', {
-            defaultValue: 'Progress: {done}/{total}',
             values: { done: doneCount, total: totalCount },
           })}
         </p>
@@ -210,8 +197,122 @@ export default function OnboardingGettingStartedPage() {
               className="btn-primary"
               onClick={() => navigate(primaryLaunchAction.href)}
             >
-              {t('app.onboarding.getting_started.primary_cta_launch', { defaultValue: 'Start now' })}
+              {t('app.onboarding.getting_started.primary_cta_launch')}
             </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-sm font-semibold text-slate-900">
+          {t('app.onboarding.getting_started.quick_setup_title')}
+        </h2>
+        <p className="mt-1 text-xs text-slate-600">
+          {t('app.onboarding.getting_started.quick_setup_subtitle')}
+        </p>
+        <ul className="mt-4 space-y-2 text-sm">
+          <li>
+            <Link
+              to={CRM_APP_PATHS.settingsTenants}
+              className="flex items-start gap-2 rounded-lg border border-transparent px-2 py-1.5 hover:border-slate-200 hover:bg-slate-50"
+            >
+              <IconPhoto size={18} stroke={1.8} className="mt-0.5 shrink-0 text-slate-500" />
+              <span>
+                <span className="font-medium text-slate-800">
+                  {t('app.onboarding.getting_started.checklist.logo')}
+                </span>
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {t('app.onboarding.getting_started.checklist.logo_desc')}
+                </span>
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to={CRM_APP_PATHS.myAvailability}
+              className="flex items-start gap-2 rounded-lg border border-transparent px-2 py-1.5 hover:border-slate-200 hover:bg-slate-50"
+            >
+              <IconClock size={18} stroke={1.8} className="mt-0.5 shrink-0 text-slate-500" />
+              <span>
+                <span className="font-medium text-slate-800">
+                  {t('app.onboarding.getting_started.checklist.hours')}
+                </span>
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {t('app.onboarding.getting_started.checklist.hours_desc')}
+                </span>
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to={CRM_APP_PATHS.settingsUsers}
+              className="flex items-start gap-2 rounded-lg border border-transparent px-2 py-1.5 hover:border-slate-200 hover:bg-slate-50"
+            >
+              <IconUsers size={18} stroke={1.8} className="mt-0.5 shrink-0 text-slate-500" />
+              <span>
+                <span className="font-medium text-slate-800">
+                  {t('app.onboarding.getting_started.checklist.team')}
+                </span>
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {t('app.onboarding.getting_started.checklist.team_desc')}
+                </span>
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to={CRM_APP_PATHS.settingsFunnels}
+              className="flex items-start gap-2 rounded-lg border border-transparent px-2 py-1.5 hover:border-slate-200 hover:bg-slate-50"
+            >
+              <IconGitBranch size={18} stroke={1.8} className="mt-0.5 shrink-0 text-slate-500" />
+              <span>
+                <span className="font-medium text-slate-800">
+                  {t('app.onboarding.getting_started.checklist.pipeline')}
+                </span>
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {t('app.onboarding.getting_started.checklist.pipeline_desc')}
+                </span>
+              </span>
+            </Link>
+          </li>
+        </ul>
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <p className="text-xs font-medium text-slate-700">
+            {t('app.onboarding.getting_started.deferred_legal_title')}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {t('app.onboarding.getting_started.deferred_legal_desc')}
+          </p>
+          <Link to={ACTIVATION_PATHS.legal} className="mt-2 inline-flex text-xs font-medium text-brand-700 hover:underline">
+            {t('app.onboarding.getting_started.deferred_legal_link')}
+          </Link>
+        </div>
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <p className="text-xs font-medium text-slate-700">
+            {t('app.onboarding.getting_started.comms_title')}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Link
+              to={CRM_APP_PATHS.settingsIntegrations}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-300"
+            >
+              <IconBrandTelegram size={14} stroke={1.8} />
+              {t('app.onboarding.getting_started.comms_telegram')}
+            </Link>
+            <Link
+              to={CRM_APP_PATHS.settingsEmail}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-300"
+            >
+              <IconMail size={14} stroke={1.8} />
+              {t('app.onboarding.getting_started.comms_email')}
+            </Link>
+            <Link
+              to={CRM_APP_PATHS.settingsCommunications}
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-300"
+            >
+              <IconBrandWhatsapp size={14} stroke={1.8} />
+              {t('app.onboarding.getting_started.comms_whatsapp')}
+            </Link>
           </div>
         </div>
       </section>
@@ -263,8 +364,8 @@ export default function OnboardingGettingStartedPage() {
           className={`inline-flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-medium text-white ${completed ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-brand-600 hover:bg-brand-700'}`}
         >
           {completed
-            ? t('app.onboarding.getting_started.done', { defaultValue: 'Activation completed' })
-            : t('app.onboarding.getting_started.go_dashboard', { defaultValue: 'Go to dashboard' })}
+            ? t('app.onboarding.getting_started.done')
+            : t('app.onboarding.getting_started.go_dashboard')}
           <IconArrowRight size={14} stroke={1.9} />
         </button>
       </div>

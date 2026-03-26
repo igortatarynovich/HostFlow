@@ -173,7 +173,7 @@ async def receive(
             payload=payload,
         )
     except service.LeadProcessingError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise service.lead_processing_error_as_http(exc) from exc
 
     preview = normalizer.normalize_meta_payload(payload)
     logger.info(

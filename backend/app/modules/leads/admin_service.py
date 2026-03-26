@@ -1,16 +1,25 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import text
+from sqlalchemy import desc, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.crypto import decrypt_secret, encrypt_secret, generate_secret
 from backend.app.core.settings import settings
 from backend.app.modules.leads import crud, service
+from backend.app.models.lead import Lead
+from backend.app.services.plan_feature_gates import (
+    ensure_meta_lead_credential_create_allowed,
+    ensure_meta_lead_field_mapping_rows_allowed,
+    lead_meta_credentials_cap,
+    lead_meta_field_mapping_rules_cap,
+    resolve_tenant_plan_code,
+)
 from backend.app.modules.leads.schemas import (
     LeadOut,
     MetaAdsMapCreate,
@@ -20,6 +29,8 @@ from backend.app.modules.leads.schemas import (
     MetaCredentialOut,
     MetaCredentialRotateResponse,
     MetaCredentialUpdate,
+    MetaIncomingLeadPreviewItem,
+    MetaIncomingLeadsPreviewResponse,
     MetaLeadResponse,
     MetaLeadRerouteRequest,
     MetaLeadRetryItem,
@@ -39,6 +50,13 @@ def _to_uuid(value: Optional[str]) -> Optional[UUID]:
         return UUID(str(value))
     except (ValueError, TypeError):
         return None
+
+
+def _meta_leads_processing_mode_v1_out(raw: Any) -> str:
+    s = str(raw or "").strip().lower()
+    if s in ("manual", "assisted", "automatic"):
+        return s
+    return "assisted"
 
 
 def _mask_tail(value: Optional[str], keep: int = 4) -> Optional[str]:
@@ -82,6 +100,11 @@ async def _ensure_settings_schema(db: AsyncSession) -> None:
                 "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS field_mapping JSONB DEFAULT '[]'::jsonb"
             )
         )
+        await db.execute(
+            text(
+                "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS leads_processing_mode_v1 VARCHAR(24)"
+            )
+        )
         await db.flush()
     except Exception:  # pragma: no cover - best effort for legacy DBs
         try:
@@ -108,6 +131,11 @@ async def _ensure_settings_schema(db: AsyncSession) -> None:
             await db.execute(
                 text(
                     "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS field_mapping JSON DEFAULT '[]'"
+                )
+            )
+            await db.execute(
+                text(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS leads_processing_mode_v1 TEXT"
                 )
             )
             await db.flush()
@@ -146,10 +174,15 @@ def _settings_to_schema(entry: crud.MetaLeadSettings) -> MetaLeadSettingsOut:
         default_company_id=_to_uuid(entry.default_company_id),
         fallback_recruiter_id=_to_uuid(entry.fallback_recruiter_id),
         auto_create_enabled=bool(entry.auto_create_enabled),
+        leads_processing_mode_v1=_meta_leads_processing_mode_v1_out(
+            getattr(entry, "leads_processing_mode_v1", None)
+        ),
         reroute_after_hours=entry.reroute_after_hours,
         mask_pii_in_logs=bool(entry.mask_pii_in_logs),
         pull_field_data_from_graph=bool(getattr(entry, "pull_field_data_from_graph", True)),
         field_mapping=normalized_mapping,
+        plan_field_mapping_rules_limit=None,
+        plan_meta_credentials_limit=None,
         webhook_url=entry.webhook_url,
         last_webhook_check_at=entry.last_webhook_check_at,
         last_signature_status=entry.last_signature_status,
@@ -159,9 +192,22 @@ def _settings_to_schema(entry: crud.MetaLeadSettings) -> MetaLeadSettingsOut:
     )
 
 
+async def _enrich_meta_settings_plan_limits(
+    db: AsyncSession, tenant_id: str, out: MetaLeadSettingsOut
+) -> MetaLeadSettingsOut:
+    plan = await resolve_tenant_plan_code(db, tenant_id)
+    return out.model_copy(
+        update={
+            "plan_field_mapping_rules_limit": lead_meta_field_mapping_rules_cap(plan),
+            "plan_meta_credentials_limit": lead_meta_credentials_cap(plan),
+        }
+    )
+
+
 async def get_settings(db: AsyncSession, tenant_id: str) -> MetaLeadSettingsOut:
     entry = await _ensure_settings(db, tenant_id)
-    return _settings_to_schema(entry)
+    base = _settings_to_schema(entry)
+    return await _enrich_meta_settings_plan_limits(db, tenant_id, base)
 
 
 async def update_settings(
@@ -185,8 +231,12 @@ async def update_settings(
             updates["field_mapping"] = mapping_rules
         else:
             updates["field_mapping"] = []
+        await ensure_meta_lead_field_mapping_rows_allowed(
+            db, tenant_id, len(updates["field_mapping"])
+        )
     await crud.update_meta_settings(db, entry, **updates)
-    return _settings_to_schema(entry)
+    base = _settings_to_schema(entry)
+    return await _enrich_meta_settings_plan_limits(db, tenant_id, base)
 
 
 def _credential_to_schema(entry) -> MetaCredentialOut:
@@ -216,6 +266,7 @@ async def create_credential(
     tenant_id: str,
     payload: MetaCredentialCreate,
 ) -> MetaCredentialOut:
+    await ensure_meta_lead_credential_create_allowed(db, tenant_id)
     entry = await crud.create_meta_credential(
         db,
         tenant_id=tenant_id,
@@ -598,3 +649,60 @@ async def retry_leads(
         failed=failed_count,
         skipped=skipped_count,
     )
+
+
+_MAX_PAYLOAD_PREVIEW = 16_384
+_MAX_NORMALIZED_PREVIEW = 8_192
+
+
+async def list_meta_incoming_preview(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    limit: int = 25,
+) -> MetaIncomingLeadsPreviewResponse:
+    lim = min(max(1, limit), 50)
+    stmt = (
+        select(Lead)
+        .where(Lead.tenant_id == tenant_id, Lead.source == "meta")
+        .order_by(desc(Lead.created_at))
+        .limit(lim)
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    items: List[MetaIncomingLeadPreviewItem] = []
+    for row in rows:
+        raw = row.payload if isinstance(row.payload, dict) else {}
+        try:
+            js = json.dumps(raw, ensure_ascii=False, default=str)
+        except Exception:
+            js = "{}"
+        p_trunc = len(js) > _MAX_PAYLOAD_PREVIEW
+        p_preview = js[:_MAX_PAYLOAD_PREVIEW] if p_trunc else js
+
+        n_preview: Optional[str] = None
+        n_trunc = False
+        norm = row.normalized if isinstance(row.normalized, dict) else None
+        if norm:
+            try:
+                nj = json.dumps(norm, ensure_ascii=False, default=str)
+                n_trunc = len(nj) > _MAX_NORMALIZED_PREVIEW
+                n_preview = nj[:_MAX_NORMALIZED_PREVIEW] if n_trunc else nj
+            except Exception:
+                n_preview = None
+                n_trunc = False
+
+        items.append(
+            MetaIncomingLeadPreviewItem(
+                lead_id=str(row.id),
+                created_at=row.created_at,
+                external_id=row.external_id,
+                ad_id=int(row.ad_id) if row.ad_id is not None else None,
+                status=str(row.status or ""),
+                stage=row.stage,
+                payload_json_preview=p_preview,
+                payload_truncated=p_trunc,
+                normalized_json_preview=n_preview,
+                normalized_truncated=n_trunc,
+            )
+        )
+    return MetaIncomingLeadsPreviewResponse(items=items)

@@ -17,6 +17,7 @@ import {
 } from '../api/communications'
 import { useI18n } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 type CalendarSourceFilter = 'all' | 'timeoff' | 'reminders' | 'planner'
 type TimeOffStatusFilter = 'approved' | 'pending' | 'all'
@@ -216,8 +217,10 @@ function statusBadgeClass(status: UnifiedCalendarEvent['status']): string {
 }
 
 function reminderLink(rem: any): string | null {
-  if (rem?.entity_type === 'candidate' && rem?.entity_id) return `/app/candidates/${rem.entity_id}`
-  if (rem?.entity_type === 'company' && rem?.entity_id) return `/app/clients/${rem.entity_id}`
+  if (rem?.entity_type === 'candidate' && rem?.entity_id)
+    return `${CRM_APP_PATHS.candidates}/${rem.entity_id}`
+  if (rem?.entity_type === 'company' && rem?.entity_id)
+    return `${CRM_APP_PATHS.agencyClients}/${rem.entity_id}`
   return null
 }
 
@@ -1302,21 +1305,21 @@ export default function CommunicationsCalendarPage() {
           })}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <Link to="/app/tasks" className="font-medium text-brand-700 hover:underline">
+          <Link to={CRM_APP_PATHS.tasks} className="font-medium text-brand-700 hover:underline">
             {t('app.communications.calendar.tasks_queue_link', { defaultValue: 'Open full task queue' })}
           </Link>
           {canUseCommunicationsFeature('myAvailability') && (
-            <Link to="/app/my-availability" className="text-slate-600 hover:text-brand-700 hover:underline">
+            <Link to={CRM_APP_PATHS.myAvailability} className="text-slate-600 hover:text-brand-700 hover:underline">
               {t('app.communications.calendar.scheduling.my_availability', { defaultValue: 'My availability' })}
             </Link>
           )}
           {canUseCommunicationsFeature('teamAvailability') && (
-            <Link to="/app/team-availability" className="text-slate-600 hover:text-brand-700 hover:underline">
+            <Link to={CRM_APP_PATHS.teamAvailability} className="text-slate-600 hover:text-brand-700 hover:underline">
               {t('app.communications.calendar.scheduling.team_availability', { defaultValue: 'Team availability' })}
             </Link>
           )}
           {canUseCommunicationsFeature('timeOffRequests') && (
-            <Link to="/app/time-off" className="text-slate-600 hover:text-brand-700 hover:underline">
+            <Link to={CRM_APP_PATHS.timeOff} className="text-slate-600 hover:text-brand-700 hover:underline">
               {t('app.communications.calendar.scheduling.time_off', { defaultValue: 'Time off' })}
             </Link>
           )}
@@ -1401,7 +1404,7 @@ export default function CommunicationsCalendarPage() {
               info={{ title: errorText, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
               onRetry={() => void load()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              secondaryTo="/app/communications/setup"
+              secondaryTo={CRM_APP_PATHS.setupCommunications}
               secondaryLabel={t('app.nav.items.setup', { defaultValue: 'Setup' })}
               compact
             />
@@ -2134,7 +2137,7 @@ export default function CommunicationsCalendarPage() {
               {!upcoming.length && <div className="text-sm text-slate-500">{t('app.communications.states.empty', { defaultValue: 'No activity yet' })}</div>}
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
-              <Link to="/app/tasks" className="btn-secondary">
+              <Link to={CRM_APP_PATHS.tasks} className="btn-secondary">
                 {t('app.nav.items.tasks', { defaultValue: 'Tasks' })}
               </Link>
             </div>

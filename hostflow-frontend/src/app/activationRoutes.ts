@@ -1,18 +1,21 @@
+import { CRM_APP_PATHS } from './crmAppPaths'
+
+/** Subset of CRM routes used by onboarding / activation / retention helpers (values from **`CRM_APP_PATHS`**). */
 export const ACTIVATION_PATHS = {
-  overview: '/app/overview',
-  onboarding: '/app/onboarding/',
-  onboardingCompany: '/app/onboarding/company',
-  onboardingGettingStarted: '/app/onboarding/getting-started',
-  clients: '/app/clients/directory',
-  candidates: '/app/candidates',
-  vacancies: '/app/vacancies',
-  leads: '/app/leads',
-  services: '/app/services',
-  messages: '/app/inbox?channel=messages',
-  invoices: '/app/invoices',
-  reminders: '/app/tasks',
-  billing: '/app/settings/billing',
-  legal: '/app/settings/legal',
+  overview: CRM_APP_PATHS.overview,
+  onboarding: CRM_APP_PATHS.onboarding,
+  onboardingCompany: CRM_APP_PATHS.onboardingCompany,
+  onboardingGettingStarted: CRM_APP_PATHS.onboardingGettingStarted,
+  clients: CRM_APP_PATHS.clientsDirectory,
+  candidates: CRM_APP_PATHS.candidates,
+  vacancies: CRM_APP_PATHS.vacancies,
+  leads: CRM_APP_PATHS.leads,
+  services: CRM_APP_PATHS.services,
+  messages: CRM_APP_PATHS.inboxMessagesScoped,
+  invoices: CRM_APP_PATHS.invoices,
+  reminders: CRM_APP_PATHS.tasks,
+  billing: CRM_APP_PATHS.settingsBilling,
+  legal: CRM_APP_PATHS.settingsLegal,
 } as const
 
 export const ACTIVATION_ALLOWED_PREFIXES = [
@@ -35,6 +38,7 @@ export type ActivationStatusLike = {
   business_type: ActivationBusinessType
   onboarding_required: boolean
   activation_required: boolean
+  demo_seeded?: boolean
   steps: {
     company_created: boolean
     first_lead_created?: boolean
@@ -66,7 +70,11 @@ export function getBusinessNextActionPath(businessType: ActivationBusinessType):
 export function getActivationSetupTarget(status: ActivationStatusLike | null | undefined): string {
   if (!status) return ACTIVATION_PATHS.overview
   if (status.onboarding_required) return ACTIVATION_PATHS.onboardingCompany
-  if (status.activation_required) return ACTIVATION_PATHS.onboardingGettingStarted
+  if (status.activation_required) {
+    // New tenants with demo pipeline land on overview; legacy tenants keep guided checklist.
+    if (status.demo_seeded) return ACTIVATION_PATHS.overview
+    return ACTIVATION_PATHS.onboardingGettingStarted
+  }
   return getBusinessHomePath(status.business_type)
 }
 

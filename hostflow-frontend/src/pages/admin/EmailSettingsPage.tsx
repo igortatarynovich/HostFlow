@@ -5,6 +5,7 @@ import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useToast } from '../../components/Toast'
 import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { recordTtvStepCompleted } from '../../api/analytics'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 export default function EmailSettingsPage() {
   const { t } = useI18n()
@@ -147,7 +148,7 @@ export default function EmailSettingsPage() {
           info={pageError}
           onRetry={() => void load()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo="/app/settings/team"
+          secondaryTo={CRM_APP_PATHS.settingsTeam}
           secondaryLabel={t('common.navigation.settings', { defaultValue: 'Settings' })}
         />
       )}

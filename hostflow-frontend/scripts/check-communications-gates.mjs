@@ -1,10 +1,22 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript'
 
+import {
+  findArrayLiteral,
+  getPropertyName,
+  loadSource,
+  parseCrmAppPathsMap,
+  readString,
+  readStringArray,
+  resolvePathPatternToAppSegment,
+} from './crm-paths-ast.mjs'
+
 const routesFile = path.join(process.cwd(), 'src', 'app', 'routes.tsx')
-const source = fs.readFileSync(routesFile, 'utf-8')
-const sf = ts.createSourceFile(routesFile, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+const crmPathsFile = path.join(process.cwd(), 'src', 'app', 'crmAppPaths.generated.ts')
+
+const routesSf = loadSource(routesFile, ts.ScriptKind.TSX)
+const crmSf = loadSource(crmPathsFile, ts.ScriptKind.TS)
+const crmPaths = parseCrmAppPathsMap(crmSf)
 
 const EXPECTED_COMM_GATES = {
   'communications-setup': { type: 'any', features: ['messages', 'email'] },
@@ -25,36 +37,6 @@ const EXPECTED_COMM_GATES = {
   'settings-communications-sla': { type: 'feature', features: ['communicationsAdmin'] },
 }
 
-function getPropertyName(node) {
-  if (!node) return null
-  if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text
-  return null
-}
-
-function readString(node) {
-  if (!node) return null
-  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
-  return null
-}
-
-function readStringArray(node) {
-  if (!node || !ts.isArrayLiteralExpression(node)) return []
-  return node.elements.map((el) => readString(el)).filter(Boolean)
-}
-
-function findArrayLiteral(variableName) {
-  for (const stmt of sf.statements) {
-    if (!ts.isVariableStatement(stmt)) continue
-    for (const decl of stmt.declarationList.declarations) {
-      if (!ts.isIdentifier(decl.name) || decl.name.text !== variableName) continue
-      if (decl.initializer && ts.isArrayLiteralExpression(decl.initializer)) {
-        return decl.initializer
-      }
-    }
-  }
-  return null
-}
-
 function parseComponentGate(node) {
   if (!node) return { type: 'none', features: [] }
   if (!ts.isCallExpression(node) || !ts.isIdentifier(node.expression)) {
@@ -72,7 +54,7 @@ function parseComponentGate(node) {
 }
 
 function parseRoutes() {
-  const arr = findArrayLiteral('APP_ROUTES')
+  const arr = findArrayLiteral(routesSf, 'APP_ROUTES')
   const routes = []
   if (!arr) return routes
   for (const el of arr.elements) {
@@ -85,7 +67,7 @@ function parseRoutes() {
       const name = getPropertyName(prop.name)
       if (!name) continue
       if (name === 'key') key = readString(prop.initializer)
-      if (name === 'path') routePath = readString(prop.initializer)
+      if (name === 'path') routePath = resolvePathPatternToAppSegment(prop.initializer, crmPaths)
       if (name === 'Component') gate = parseComponentGate(prop.initializer)
     }
     if (key && routePath) routes.push({ key, path: routePath, gate })

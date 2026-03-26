@@ -1,32 +1,34 @@
 import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 export default function CommunicationsSettingsPage() {
   const { t } = useI18n()
+  const P = CRM_APP_PATHS
 
   const cards = [
     {
       title: t('admin.settings.cards.communications_messengers.label', { defaultValue: 'Messenger settings' }),
       description: t('admin.settings.cards.communications_messengers.description', { defaultValue: 'Telegram/WhatsApp channels, templates and command presets.' }),
-      to: '/app/settings/communications/messengers',
+      to: P.settingsCommunicationsMessengers,
       cta: t('admin.communications_settings.open_messengers', { defaultValue: 'Open messenger settings' }),
     },
     {
       title: t('admin.settings.cards.email.label', { defaultValue: 'Email settings' }),
       description: t('admin.settings.cards.email.description', { defaultValue: 'Mailbox providers, SMTP/IMAP and inbox delivery configuration.' }),
-      to: '/app/settings/email',
+      to: P.settingsEmail,
       cta: t('admin.communications_settings.open_email', { defaultValue: 'Open email settings' }),
     },
     {
       title: t('admin.settings.cards.communications_queue.label', { defaultValue: 'Queue settings' }),
       description: t('admin.settings.cards.communications_queue.description', { defaultValue: 'Routing strategy and manager allocation queue controls.' }),
-      to: '/app/settings/communications/queue',
+      to: P.settingsCommunicationsQueue,
       cta: t('admin.communications_settings.open_queue', { defaultValue: 'Open queue settings' }),
     },
     {
       title: t('admin.settings.cards.communications_sla.label', { defaultValue: 'SLA settings' }),
       description: t('admin.settings.cards.communications_sla.description', { defaultValue: 'Escalation policy for overdue communication threads.' }),
-      to: '/app/settings/communications/sla',
+      to: P.settingsCommunicationsSla,
       cta: t('admin.communications_settings.open_sla', { defaultValue: 'Open SLA settings' }),
     },
   ]

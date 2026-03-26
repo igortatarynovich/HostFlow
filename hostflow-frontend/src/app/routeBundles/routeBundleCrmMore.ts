@@ -1,4 +1,7 @@
+export { default as LeadDetailPage } from '../../pages/LeadDetailPage'
 export { default as LeadsPage } from '../../pages/LeadsPage'
+export { default as LeadsDistributionPage } from '../../pages/LeadsDistributionPage'
+export { default as LeadsDistributionRulesPage } from '../../pages/LeadsDistributionRulesPage'
 export { default as DocumentsRegistryPage } from '../../pages/DocumentsRegistryPage'
 export { default as AutomationsHubPage } from '../../pages/AutomationsHubPage'
 export { default as AutomationLogPage } from '../../pages/AutomationLogPage'

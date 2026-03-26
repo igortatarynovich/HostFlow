@@ -261,8 +261,11 @@ async def list_reminders(
 ) -> ReminderListResponse:
     db, tenant_id = db_tenant
     entity = None
+    entity_type_filter: Optional[str] = None
     if entity_type and entity_id:
         entity = (entity_type, entity_id)
+    elif entity_type:
+        entity_type_filter = str(entity_type).strip() or None
     due_range = None
     if due_from or due_to:
         due_range = (due_from or None, due_to or None)
@@ -281,6 +284,7 @@ async def list_reminders(
         tenant_id=str(tenant_id),
         assignee_id=aid,
         entity=entity,
+        entity_type_filter=entity_type_filter,
         status_in=status_filter or None,
         type_in=type_filter or None,
         due_range=due_range,

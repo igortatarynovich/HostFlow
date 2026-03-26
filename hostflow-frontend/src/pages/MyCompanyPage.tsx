@@ -8,6 +8,7 @@ import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { usePermissions } from '../hooks/usePermissions'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 function isOperatingCompany(company: Company) {
   const role = String((company.extra as Record<string, any> | undefined)?.company_role || '').trim().toLowerCase()
@@ -89,7 +90,7 @@ export default function MyCompanyPage() {
   const hasAvailableOperatingSlots = Boolean(billing?.company_slots?.unlimited) || availableOperatingSlots > 0
   const usedOperatingSlots = Number(billing?.company_slots?.used ?? managedOperatingCompanies.length)
   const recommendedExtraSlots = Math.max(1, usedOperatingSlots - effectiveOperatingLimit + 1)
-  const billingCompanySlotsPath = `/app/settings/billing?focus=company-slots&recommended_extra_slots=${recommendedExtraSlots}`
+  const billingCompanySlotsPath = `${CRM_APP_PATHS.settingsBilling}?focus=company-slots&recommended_extra_slots=${recommendedExtraSlots}`
   const operatingSlotsOverflow = !billing?.company_slots?.unlimited && effectiveOperatingLimit > 0 && usedOperatingSlots > effectiveOperatingLimit
   const operatingSlotsMissing = operatingSlotsOverflow ? Math.max(1, usedOperatingSlots - effectiveOperatingLimit) : 0
 
@@ -108,7 +109,9 @@ export default function MyCompanyPage() {
           </div>
           <button
             className="btn-primary bg-white text-slate-900 hover:bg-white/90"
-            onClick={() => navigate(hasAvailableOperatingSlots ? '/app/onboarding/company' : billingCompanySlotsPath)}
+            onClick={() =>
+              navigate(hasAvailableOperatingSlots ? CRM_APP_PATHS.onboardingCompany : billingCompanySlotsPath)
+            }
           >
             {hasAvailableOperatingSlots
               ? t('app.my_company.create', { defaultValue: 'Create my company' })
@@ -180,16 +183,25 @@ export default function MyCompanyPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link className="btn-primary" to={`/app/my-company/${primaryCompanyId}?section=legal`}>
+            <Link className="btn-primary" to={`${CRM_APP_PATHS.myCompany}/${primaryCompanyId}?section=legal`}>
               {t('app.my_company.workspace.legal', { defaultValue: 'Legal' })}
             </Link>
-            <Link className="btn-secondary" to={`/app/my-company/${primaryCompanyId}?section=billing`}>
+            <Link
+              className="btn-secondary"
+              to={`${CRM_APP_PATHS.myCompany}/${primaryCompanyId}?section=billing`}
+            >
               {t('app.my_company.workspace.billing', { defaultValue: 'Billing' })}
             </Link>
-            <Link className="btn-secondary" to={`/app/my-company/${primaryCompanyId}?section=bank_accounts`}>
+            <Link
+              className="btn-secondary"
+              to={`${CRM_APP_PATHS.myCompany}/${primaryCompanyId}?section=bank_accounts`}
+            >
               {t('app.my_company.workspace.bank_accounts', { defaultValue: 'Bank Accounts' })}
             </Link>
-            <Link className="btn-secondary" to={`/app/my-company/${primaryCompanyId}?section=branding`}>
+            <Link
+              className="btn-secondary"
+              to={`${CRM_APP_PATHS.myCompany}/${primaryCompanyId}?section=branding`}
+            >
               {t('app.my_company.workspace.branding', { defaultValue: 'Branding' })}
             </Link>
           </div>
@@ -205,7 +217,7 @@ export default function MyCompanyPage() {
           </p>
           <div className="flex flex-wrap gap-2">
             {hasAvailableOperatingSlots ? (
-              <button className="btn-primary" onClick={() => navigate('/app/onboarding/company')}>
+              <button className="btn-primary" onClick={() => navigate(CRM_APP_PATHS.onboardingCompany)}>
                 {t('app.my_company.create', { defaultValue: 'Create my company' })}
               </button>
             ) : null}
@@ -248,14 +260,14 @@ export default function MyCompanyPage() {
                 </div>
               </dl>
               <div className="flex flex-wrap gap-2 pt-2">
-                <Link className="btn-primary" to={`/app/my-company/${company.id}`}>
+                <Link className="btn-primary" to={`${CRM_APP_PATHS.myCompany}/${company.id}`}>
                   {t('common.actions.open', { defaultValue: 'Open' })}
                 </Link>
-                <Link className="btn-secondary" to="/app/invoices">
+                <Link className="btn-secondary" to={CRM_APP_PATHS.invoices}>
                   {t('app.my_company.open_invoices', { defaultValue: 'Open invoices' })}
                 </Link>
                 {can('admin.companyAcl') ? (
-                  <Link className="btn-secondary" to="/app/settings/company-access">
+                  <Link className="btn-secondary" to={CRM_APP_PATHS.settingsCompanyAccess}>
                     {t('app.my_company.manage_access', { defaultValue: 'Manage access' })}
                   </Link>
                 ) : null}

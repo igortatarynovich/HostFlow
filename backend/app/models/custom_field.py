@@ -26,9 +26,10 @@ from .mixins import TimestampMixin
 
 
 class CustomFieldScope(str, Enum):
-    """Где живёт поле: на кандидате целиком или внутри конкретного типа документа."""
+    """Где живёт поле: кандидат, лид, или внутри конкретного типа документа."""
 
     CANDIDATE = "candidate"
+    LEAD = "lead"
     DOCUMENT = "document"
 
 
@@ -36,6 +37,7 @@ class CustomFieldEntityType(str, Enum):
     """К какому типу сущности привязано значение поля."""
 
     CANDIDATE = "candidate"
+    LEAD = "lead"
     CANDIDATE_DOCUMENT = "candidate_document"
 
 

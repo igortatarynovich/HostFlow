@@ -16,6 +16,7 @@ import type { Icon as TablerIcon } from '@tabler/icons-react'
 import { useI18n } from '../i18n'
 import { usePermissions } from '../hooks/usePermissions'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 type PolicyCard = {
   key: string
@@ -35,7 +36,7 @@ export default function AutomationsHubPage() {
     if (can('settings.view')) {
       out.push({
         key: 'risk',
-        to: '/app/settings/risk-intel',
+        to: CRM_APP_PATHS.settingsRiskIntel,
         title: t('app.automations.hub.policy_risk_title', { defaultValue: 'Risk intelligence' }),
         description: t('app.automations.hub.policy_risk_desc', {
           defaultValue: 'Hourly risk model, shadow cohorts, stage gate, digest email — team policy in Settings.',
@@ -44,7 +45,7 @@ export default function AutomationsHubPage() {
       })
       out.push({
         key: 'gates',
-        to: '/app/settings/hiring-pipeline-gates',
+        to: CRM_APP_PATHS.settingsHiringPipelineGates,
         title: t('app.automations.hub.policy_gates_title', { defaultValue: 'Hiring pipeline gates' }),
         description: t('app.automations.hub.policy_gates_desc', {
           defaultValue: 'Stage requirements, documents, and forward guards before candidates advance.',
@@ -55,7 +56,7 @@ export default function AutomationsHubPage() {
     if (can('admin.ruleset')) {
       out.push({
         key: 'ruleset',
-        to: '/app/settings/ruleset',
+        to: CRM_APP_PATHS.settingsRuleset,
         title: t('app.automations.hub.policy_ruleset_title', { defaultValue: 'Ruleset versions' }),
         description: t('app.automations.hub.policy_ruleset_desc', {
           defaultValue: 'Compliance / document rulesets and published versions used across the tenant.',
@@ -66,7 +67,7 @@ export default function AutomationsHubPage() {
     if (can('documents.manage')) {
       out.push({
         key: 'docs',
-        to: '/app/settings/docs',
+        to: CRM_APP_PATHS.settingsDocs,
         title: t('app.automations.hub.policy_docs_title', { defaultValue: 'Document types' }),
         description: t('app.automations.hub.policy_docs_desc', {
           defaultValue: 'Templates and document intelligence configuration (automation inputs for readiness).',
@@ -77,7 +78,7 @@ export default function AutomationsHubPage() {
     if (can('admin.users') && canUseCommunicationsFeature('communicationsAdmin')) {
       out.push({
         key: 'comms_sla',
-        to: '/app/settings/communications/sla',
+        to: CRM_APP_PATHS.settingsCommunicationsSla,
         title: t('app.automations.hub.policy_comms_sla_title', { defaultValue: 'Communications SLA' }),
         description: t('app.automations.hub.policy_comms_sla_desc', {
           defaultValue: 'Escalation and overdue policy for conversation threads (ops automation).',
@@ -88,7 +89,7 @@ export default function AutomationsHubPage() {
     if (can('settings.view')) {
       out.push({
         key: 'settings',
-        to: '/app/settings',
+        to: CRM_APP_PATHS.settings,
         title: t('app.automations.hub.policy_settings_title', { defaultValue: 'All settings' }),
         description: t('app.automations.hub.policy_settings_desc', {
           defaultValue: 'Full settings index — integrations, email, users, billing, and more.',
@@ -104,7 +105,7 @@ export default function AutomationsHubPage() {
     return [
       {
         key: 'orders',
-        to: '/app/orders',
+        to: CRM_APP_PATHS.orders,
         title: t('app.automations.hub.ops_orders_title', { defaultValue: 'Service orders' }),
         description: t('app.automations.hub.ops_orders_desc', {
           defaultValue: 'Orders tab — next steps, blocking work, and invoice linkage.',
@@ -113,7 +114,7 @@ export default function AutomationsHubPage() {
       },
       {
         key: 'invoices',
-        to: '/app/invoices',
+        to: CRM_APP_PATHS.invoices,
         title: t('app.automations.hub.ops_invoices_title', { defaultValue: 'Invoices' }),
         description: t('app.automations.hub.ops_invoices_desc', {
           defaultValue: 'Outstanding balance, aging queues, and correction workflows.',
@@ -142,7 +143,7 @@ export default function AutomationsHubPage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <Link
-          to="/app/automation-rules"
+          to={CRM_APP_PATHS.automationRules}
           className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
         >
           <div className="flex items-start gap-4">
@@ -167,7 +168,7 @@ export default function AutomationsHubPage() {
         </Link>
 
         <Link
-          to="/app/automation-log"
+          to={CRM_APP_PATHS.automationLog}
           className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
         >
           <div className="flex items-start gap-4">

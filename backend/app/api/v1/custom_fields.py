@@ -20,6 +20,7 @@ from backend.app.models.custom_field import (
     CustomFieldType,
 )
 from backend.app.models.user import Role
+from backend.app.services.plan_feature_gates import ensure_lead_custom_field_definition_create_allowed
 
 router = APIRouter(prefix="/custom-fields", tags=["custom-fields"])
 
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/custom-fields", tags=["custom-fields"])
 class CustomFieldDefinitionIn(BaseModel):
     """Payload for creating/updating custom field definition."""
 
-    scope: CustomFieldScope = Field(..., description="CANDIDATE or DOCUMENT")
+    scope: CustomFieldScope = Field(..., description="CANDIDATE, LEAD, or DOCUMENT")
     document_type_id: Optional[str] = Field(None, description="Required if scope=DOCUMENT")
     key: str = Field(..., min_length=1, max_length=128, description="Unique key (slug)")
     label: str = Field(..., min_length=1, max_length=256, description="Display label")
@@ -101,13 +102,17 @@ class CustomFieldValueOut(BaseModel):
     @classmethod
     def from_model(cls, value: CustomFieldValue) -> "CustomFieldValueOut":
         """Create from ORM model."""
+        raw = value.value
+        out_val: Any = raw
+        if isinstance(raw, dict) and set(raw.keys()) == {"v"}:
+            out_val = raw.get("v")
         return cls(
             id=value.id,
             tenant_id=value.tenant_id,
             definition_id=value.definition_id,
             entity_type=value.entity_type,
             entity_id=value.entity_id,
-            value=value.value,
+            value=out_val,
             updated_at=value.updated_at.isoformat() if value.updated_at else "",
             updated_by_user_id=value.updated_by_user_id,
         )
@@ -162,6 +167,11 @@ async def create_custom_field_definition(
             raise HTTPException(
                 status_code=422, detail="document_type_id must be null for CANDIDATE scope"
             )
+    elif payload.scope == CustomFieldScope.LEAD:
+        if payload.document_type_id:
+            raise HTTPException(
+                status_code=422, detail="document_type_id must be null for LEAD scope"
+            )
 
     # Validate options for select/multiselect
     if payload.field_type in (CustomFieldType.SELECT, CustomFieldType.MULTISELECT):
@@ -179,6 +189,12 @@ async def create_custom_field_definition(
             .where(CustomFieldDefinition.key == payload.key)
             .where(CustomFieldDefinition.document_type_id.is_(None))
         )
+    elif payload.scope == CustomFieldScope.LEAD:
+        stmt = (
+            stmt.where(CustomFieldDefinition.scope == CustomFieldScope.LEAD)
+            .where(CustomFieldDefinition.key == payload.key)
+            .where(CustomFieldDefinition.document_type_id.is_(None))
+        )
     else:
         stmt = (
             stmt.where(CustomFieldDefinition.scope == CustomFieldScope.DOCUMENT)
@@ -189,6 +205,9 @@ async def create_custom_field_definition(
     existing = (await db.execute(stmt)).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=409, detail="Custom field definition with this key already exists")
+
+    if payload.scope == CustomFieldScope.LEAD:
+        await ensure_lead_custom_field_definition_create_allowed(db, str(tenant_id))
 
     from uuid import uuid4
 
@@ -326,6 +345,20 @@ async def set_custom_field_value(
     if not definition:
         raise HTTPException(status_code=404, detail="Custom field definition not found or inactive")
 
+    scope_entity_ok = (
+        (definition.scope == CustomFieldScope.CANDIDATE and entity_type == CustomFieldEntityType.CANDIDATE)
+        or (definition.scope == CustomFieldScope.LEAD and entity_type == CustomFieldEntityType.LEAD)
+        or (
+            definition.scope == CustomFieldScope.DOCUMENT
+            and entity_type == CustomFieldEntityType.CANDIDATE_DOCUMENT
+        )
+    )
+    if not scope_entity_ok:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="entity_type does not match definition scope",
+        )
+
     # Check if value already exists
     stmt_value = (
         select(CustomFieldValue)
@@ -339,8 +372,14 @@ async def set_custom_field_value(
     from uuid import uuid4
     from datetime import datetime, timezone
 
+    stored_value: dict
+    if isinstance(payload.value, dict):
+        stored_value = dict(payload.value)
+    else:
+        stored_value = {"v": payload.value}
+
     if existing_value:
-        existing_value.value = payload.value
+        existing_value.value = stored_value
         existing_value.updated_at = datetime.now(timezone.utc)
         existing_value.updated_by_user_id = current_user.user_id
         await db.commit()
@@ -353,7 +392,7 @@ async def set_custom_field_value(
             definition_id=definition_id,
             entity_type=entity_type,
             entity_id=entity_id,
-            value=payload.value,
+            value=stored_value,
             updated_by_user_id=current_user.user_id,
         )
         db.add(new_value)

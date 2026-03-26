@@ -9,6 +9,8 @@ import { patchUserMe } from '../../api/users'
 import type { UserSavedView } from '../../api/types'
 import { resolveApiBase, settings as clientSettings, DEFAULT_TENANT } from '../../api/client'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import { ActiveOwnCompanyBadge } from '../shell/ActiveOwnCompanyBadge'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 // Unify button styles with Candidates page
 const primaryBtn = 'btn-primary'
@@ -571,11 +573,17 @@ export default function VacancyList() {
     <section className="rounded-3xl bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-6 text-white shadow-card">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
-          <p className="text-2xl font-semibold">{t('app.nav.items.vacancies')}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-2xl font-semibold">{t('app.nav.items.vacancies')}</p>
+            <ActiveOwnCompanyBadge variant="onBrand" />
+          </div>
           <p className="text-sm text-white/80">{t('app.vacancies.list.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button className="btn-primary bg-white text-brand-700 hover:bg-white/90" onClick={() => navigate('/app/vacancies/new')}>
+          <button
+            className="btn-primary bg-white text-brand-700 hover:bg-white/90"
+            onClick={() => navigate(CRM_APP_PATHS.vacancyNew)}
+          >
             {t('app.vacancies.list.new_vacancy')}
           </button>
         </div>
@@ -729,10 +737,10 @@ export default function VacancyList() {
           <ErrorRecoveryBanner
             info={{
               title: error,
-              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+              hint: t('app.common.retry_hint'),
             }}
             onRetry={() => refresh()}
-            retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+            retryLabel={t('common.actions.retry')}
             compact
           />
         </div>
@@ -792,7 +800,7 @@ export default function VacancyList() {
                   </td>
                   {visibleCols.title && (
                     <td className="border-r border-slate-200 px-4 py-3 font-medium">
-                      <Link className="hover:underline" to={`/app/vacancies/${v.id}`}>
+                      <Link className="hover:underline" to={`${CRM_APP_PATHS.vacancies}/${v.id}`}>
                         {v.title || t('app.vacancies.list.untitled')}
                       </Link>
                     </td>
@@ -805,7 +813,10 @@ export default function VacancyList() {
                   )}
                   {visibleCols.candidates && (
                     <td className="border-r border-slate-200 px-4 py-3 tabular-nums">
-                      <Link className="font-medium text-brand-700 hover:underline" to={`/app/vacancies/${v.id}/candidates`}>
+                      <Link
+                        className="font-medium text-brand-700 hover:underline"
+                        to={`${CRM_APP_PATHS.vacancies}/${v.id}/candidates`}
+                      >
                         {v.candidate_count ?? 0}
                       </Link>
                     </td>
@@ -813,7 +824,7 @@ export default function VacancyList() {
                   {visibleCols.headcount && (
                     <td className="border-r border-slate-200 px-4 py-3 tabular-nums text-slate-700">
                       {v.headcount_target != null && v.headcount_target > 0 ? (
-                        <span title={t('app.vacancies.list.headcount_title', { defaultValue: 'Candidates / target headcount' })}>
+                        <span title={t('app.vacancies.list.headcount_title')}>
                           {v.candidate_count ?? 0}/{v.headcount_target}
                         </span>
                       ) : (
@@ -831,7 +842,9 @@ export default function VacancyList() {
                     <td className="border-r border-slate-200 px-4 py-3">{v.updated_at ? new Date(v.updated_at).toLocaleDateString() : (v.created_at ? new Date(v.created_at).toLocaleDateString() : '—')}</td>
                   )}
                   <td className="px-4 py-3">
-                    <Link className="btn-secondary btn-sm" to={`/app/vacancies/${v.id}`}>{t('app.vacancies.list.open')}</Link>
+                    <Link className="btn-secondary btn-sm" to={`${CRM_APP_PATHS.vacancies}/${v.id}`}>
+                      {t('app.vacancies.list.open')}
+                    </Link>
                   </td>
                 </tr>
               ))}

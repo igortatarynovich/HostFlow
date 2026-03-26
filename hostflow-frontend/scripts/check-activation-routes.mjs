@@ -1,76 +1,45 @@
-import fs from 'node:fs'
 import path from 'node:path'
 import ts from 'typescript'
 
+import {
+  findArrayLiteral,
+  findObjectLiteral,
+  getPropertyName,
+  loadSource,
+  parseCrmAppPathsMap,
+  readString,
+  resolvePathToFullAppUrl,
+  unwrap,
+} from './crm-paths-ast.mjs'
+
 const activationFile = path.join(process.cwd(), 'src', 'app', 'activationRoutes.ts')
+const crmPathsFile = path.join(process.cwd(), 'src', 'app', 'crmAppPaths.generated.ts')
 const routesFile = path.join(process.cwd(), 'src', 'app', 'routes.tsx')
 
-function loadSource(file, kind) {
-  const text = fs.readFileSync(file, 'utf-8')
-  return ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind)
-}
-
-function getPropertyName(node) {
-  if (!node) return null
-  if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text
-  return null
-}
-
-function readString(node) {
-  if (!node) return null
-  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
-  return null
-}
-
-function readStringArray(node) {
-  if (!node || !ts.isArrayLiteralExpression(node)) return []
-  return node.elements.map((el) => readString(el)).filter(Boolean)
-}
-
-function unwrap(node) {
-  if (!node) return node
-  if (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) || ts.isParenthesizedExpression(node)) {
-    return unwrap(node.expression)
-  }
-  return node
-}
-
-function findObjectLiteral(sf, variableName) {
-  for (const stmt of sf.statements) {
-    if (!ts.isVariableStatement(stmt)) continue
-    for (const decl of stmt.declarationList.declarations) {
-      if (!ts.isIdentifier(decl.name) || decl.name.text !== variableName) continue
-      const init = unwrap(decl.initializer)
-      if (init && ts.isObjectLiteralExpression(init)) {
-        return init
-      }
-    }
+function readCrmPathRef(node, crmPaths) {
+  const init = unwrap(node)
+  const s = readString(init)
+  if (s) return s
+  if (
+    init &&
+    ts.isPropertyAccessExpression(init) &&
+    ts.isIdentifier(init.expression) &&
+    init.expression.text === 'CRM_APP_PATHS'
+  ) {
+    const k = init.name.text
+    return crmPaths[k] ?? null
   }
   return null
 }
 
-function findArrayLiteral(sf, variableName) {
-  for (const stmt of sf.statements) {
-    if (!ts.isVariableStatement(stmt)) continue
-    for (const decl of stmt.declarationList.declarations) {
-      if (!ts.isIdentifier(decl.name) || decl.name.text !== variableName) continue
-      const init = unwrap(decl.initializer)
-      if (init && ts.isArrayLiteralExpression(init)) {
-        return init
-      }
-    }
-  }
-  return null
-}
-
-function parseActivationPaths(sf) {
+function parseActivationPaths(sf, crmPaths) {
   const obj = findObjectLiteral(sf, 'ACTIVATION_PATHS')
   const out = {}
   if (!obj) return out
   for (const prop of obj.properties) {
     if (!ts.isPropertyAssignment(prop)) continue
     const key = getPropertyName(prop.name)
-    const value = readString(prop.initializer)
+    const value = readCrmPathRef(prop.initializer, crmPaths)
     if (!key || !value) continue
     out[key] = value
   }
@@ -94,19 +63,18 @@ function parseActivationPrefixes(sf, activationPaths) {
   return out
 }
 
-function parseAppRoutePaths(sf) {
+function parseAppRoutePaths(sf, crmPaths) {
   const arr = findArrayLiteral(sf, 'APP_ROUTES')
   const out = new Set()
   if (!arr) return out
   for (const el of arr.elements) {
     if (!ts.isObjectLiteralExpression(el)) continue
-    let routePath = null
     for (const prop of el.properties) {
       if (!ts.isPropertyAssignment(prop)) continue
-      const name = getPropertyName(prop.name)
-      if (name === 'path') routePath = readString(prop.initializer)
+      if (getPropertyName(prop.name) !== 'path') continue
+      const full = resolvePathToFullAppUrl(prop.initializer, crmPaths)
+      if (full) out.add(full)
     }
-    if (routePath) out.add(`/app/${routePath}`)
   }
   return out
 }
@@ -116,11 +84,13 @@ function toSet(values) {
 }
 
 const activationSf = loadSource(activationFile, ts.ScriptKind.TS)
+const crmSf = loadSource(crmPathsFile, ts.ScriptKind.TS)
 const routesSf = loadSource(routesFile, ts.ScriptKind.TSX)
 
-const activationPaths = parseActivationPaths(activationSf)
+const crmAppPathsMap = parseCrmAppPathsMap(crmSf)
+const activationPaths = parseActivationPaths(activationSf, crmAppPathsMap)
 const activationPrefixes = parseActivationPrefixes(activationSf, activationPaths)
-const appRoutePaths = parseAppRoutePaths(routesSf)
+const appRoutePaths = parseAppRoutePaths(routesSf, crmAppPathsMap)
 const errors = []
 
 const requiredPathKeys = [

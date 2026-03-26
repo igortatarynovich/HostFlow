@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 type SettingsChromeProps = {
   pathname: string
@@ -27,7 +28,7 @@ type NavItem = {
 }
 
 const isActive = (pathname: string, target: string): boolean => {
-  if (target === '/app/settings') return pathname === '/app/settings'
+  if (target === CRM_APP_PATHS.settings) return pathname === CRM_APP_PATHS.settings
   return pathname.startsWith(target)
 }
 
@@ -39,56 +40,56 @@ export function SettingsChrome({ pathname, compactMode = false }: SettingsChrome
     {
       key: 'overview',
       label: t('app.settings.chrome.overview', { defaultValue: 'Overview' }),
-      to: '/app/settings',
+      to: CRM_APP_PATHS.settings,
       icon: IconLayoutGrid,
       visible: can('settings.view') || can('admin.users'),
     },
     {
       key: 'workspace',
       label: t('app.settings.chrome.workspace', { defaultValue: 'Workspace' }),
-      to: '/app/settings/company-access',
+      to: CRM_APP_PATHS.settingsCompanyAccess,
       icon: IconSettings,
       visible: can('admin.companyAcl') || can('admin.users'),
     },
     {
       key: 'crm',
       label: t('app.settings.chrome.crm_setup', { defaultValue: 'CRM setup' }),
-      to: '/app/settings/funnels',
+      to: CRM_APP_PATHS.settingsFunnels,
       icon: IconAdjustments,
       visible: can('admin.users') || can('users.manage'),
     },
     {
       key: 'team',
       label: t('app.settings.chrome.team', { defaultValue: 'Team' }),
-      to: '/app/settings/users',
+      to: CRM_APP_PATHS.settingsUsers,
       icon: IconUsers,
       visible: can('admin.users') || can('users.manage') || can('users.view'),
     },
     {
       key: 'billing',
       label: t('app.settings.chrome.billing', { defaultValue: 'Billing' }),
-      to: '/app/settings/billing',
+      to: CRM_APP_PATHS.settingsBilling,
       icon: IconCreditCard,
       visible: can('admin.users'),
     },
     {
       key: 'integrations',
       label: t('app.settings.chrome.integrations', { defaultValue: 'Integrations' }),
-      to: '/app/settings/integrations',
+      to: CRM_APP_PATHS.settingsIntegrations,
       icon: IconPlugConnected,
       visible: can('admin.metaLeads') || can('admin.users'),
     },
     {
       key: 'security',
       label: t('app.settings.chrome.security', { defaultValue: 'Security' }),
-      to: '/app/settings/audit',
+      to: CRM_APP_PATHS.settingsAudit,
       icon: IconShield,
       visible: can('admin.deletionQueue') || can('admin.users'),
     },
     {
       key: 'personal',
       label: t('app.settings.chrome.personal', { defaultValue: 'Personal' }),
-      to: '/app/profile',
+      to: CRM_APP_PATHS.profile,
       icon: IconUserCircle,
       visible: true,
     },

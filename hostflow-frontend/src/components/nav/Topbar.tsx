@@ -21,6 +21,12 @@ import {
   ownCompanySettings,
 } from '../../api/client'
 import type { NotificationItem, NotificationListResponse } from '../../api/types'
+import {
+  getNotificationAttentionTier,
+  getNotificationUosGroup,
+  type NotificationAttentionTier,
+  type NotificationUosGroup,
+} from '../../utils/notificationUos'
 import { listCommunicationThreads, reconcileCommunicationThreadUnread } from '../../api/communications'
 import { useToast } from '../Toast'
 import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
@@ -28,8 +34,11 @@ import { usePermissions } from '../../hooks/usePermissions'
 import { searchGlobal, type GlobalSearchResult } from '../../api/search'
 import { useI18n, type LocaleCode } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
+import { TopbarNbaMenu } from '../nba/TopbarNbaMenu'
 import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
+import { communicationsThreadPath } from '../../app/crmAppPaths'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { buildInboxThreadPath } from '../../utils/inboxDeepLinks'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, ru, pl } from 'date-fns/locale'
@@ -52,6 +61,7 @@ const RESULT_LABEL_KEYS: Record<GlobalSearchResult['type'], string> = {
   company: 'app.topbar.search.results.company',
   document: 'app.topbar.search.results.document',
   vacancy: 'app.topbar.search.results.vacancy',
+  lead: 'app.topbar.search.results.lead',
   invoice: 'app.topbar.search.results.invoice',
   service_order: 'app.topbar.search.results.service_order',
   conversation: 'app.topbar.search.results.conversation',
@@ -72,50 +82,6 @@ function humanizeEventType(eventType: string): string {
     .replace(/_/g, ' ')
     .replace(/\s+/g, ' ')
     .replace(/^\w/, (c) => c.toUpperCase())
-}
-
-/** UOS notification groups (top bar attention center). */
-type NotificationUosGroup = 'sla' | 'tasks' | 'messages' | 'system'
-
-function getNotificationUosGroup(item: NotificationItem): NotificationUosGroup {
-  const et = String(item.event_type || '').toLowerCase()
-  const payload = (item.payload || {}) as Record<string, unknown>
-  const source = String(payload.source || '').toLowerCase()
-
-  if (et === 'communications_sla_overdue' || et === 'communications_thread_escalated') return 'sla'
-  if (et === 'lead_no_next_action' || et === 'lead_stuck_stage') return 'sla'
-  if (et === 'invoice_overdue' || source.includes('invoice_overdue')) return 'sla'
-  if (
-    source === 'leads_next_action_sla' ||
-    source === 'leads_stuck_stage_sla' ||
-    source === 'invoice_overdue_sla'
-  ) {
-    return 'sla'
-  }
-
-  if (et === 'reminder_due' || et === 'reminder_overdue') return 'tasks'
-  if (source === 'reminders') return 'tasks'
-
-  const threadId = payload.thread_id
-  if (threadId != null && String(threadId).trim() !== '') return 'messages'
-  if (et.includes('communication')) return 'messages'
-  if (et.includes('inbound') && (et.includes('email') || et.includes('message'))) return 'messages'
-
-  return 'system'
-}
-
-/**
- * UOS attention tiers for the bell badge (SSOT: CRITICAL = SLA breach / unpaid invoice / lead SLA;
- * HIGH = overdue tasks, handoffs). Message/email unread stay on their own icons.
- */
-type NotificationAttentionTier = 'critical' | 'high' | 'normal'
-
-function getNotificationAttentionTier(item: NotificationItem): NotificationAttentionTier {
-  if (getNotificationUosGroup(item) === 'sla') return 'critical'
-  const et = String(item.event_type || '').toLowerCase()
-  if (et === 'reminder_overdue') return 'high'
-  if (et === 'handoff_requested') return 'high'
-  return 'normal'
 }
 
 function NotificationAttentionTierChip({
@@ -282,7 +248,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     const severity = String(payload.severity || '').toLowerCase()
     const requiresAction = Boolean(payload.requires_action)
     const group = getNotificationUosGroup(item)
+    const tier = getNotificationAttentionTier(item)
     let score = 0
+    if (tier === 'critical') score += 120
+    else if (tier === 'high') score += 60
     if (requiresAction) score += 100
     if (group === 'sla') score += 90
     if (eventType === 'communications_sla_overdue') score += 90
@@ -331,18 +300,16 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     }
     const eventType = String(item.event_type || '').trim().toLowerCase()
     if (eventType === 'handoff_requested') {
-      return t('app.notifications.handoff_requested_title', { defaultValue: 'New candidate to process' })
+      return t('app.notifications.handoff_requested_title')
     }
     if (eventType === 'handoff_accepted') {
-      return t('app.notifications.handoff_accepted_title', { defaultValue: 'Candidate handed off' })
+      return t('app.notifications.handoff_accepted_title')
     }
     if (eventType === 'communications_sla_overdue') {
-      return t('app.notifications.communications_sla_overdue_title', { defaultValue: 'SLA overdue: reply required in dialog' })
+      return t('app.notifications.communications_sla_overdue_title')
     }
     if (eventType === 'communications_thread_escalated') {
-      return t('app.notifications.communications_thread_escalated_title', {
-        defaultValue: 'Thread escalated — action needed',
-      })
+      return t('app.notifications.communications_thread_escalated_title')
     }
     if (typeof item.payload?.title === 'string' && item.payload.title.trim()) {
       return maybeTranslateKey(item.payload.title)
@@ -548,42 +515,35 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     type Target = { key: string; labelKey: string; path: string }
     const items: Target[] = []
     if (can('candidates.view')) {
-      items.push({ key: 'candidates', labelKey: 'app.nav.items.candidates', path: '/app/candidates' })
+      items.push({ key: 'candidates', labelKey: 'app.nav.items.candidates', path: CRM_APP_PATHS.candidates })
     }
     if (can('companies.view')) {
-      items.push({ key: 'companies', labelKey: 'app.nav.items.clients', path: '/app/clients/directory' })
+      items.push({ key: 'companies', labelKey: 'app.nav.items.clients', path: CRM_APP_PATHS.clientsDirectory })
     }
     if (can('vacancies.view')) {
-      items.push({ key: 'vacancies', labelKey: 'app.nav.items.vacancies', path: '/app/vacancies' })
+      items.push({ key: 'vacancies', labelKey: 'app.nav.items.vacancies', path: CRM_APP_PATHS.vacancies })
     }
     if (can('services.view')) {
-      items.push({ key: 'orders', labelKey: 'app.nav.items.orders', path: '/app/orders' })
-      items.push({ key: 'invoices', labelKey: 'app.nav.items.invoices', path: '/app/invoices' })
+      items.push({ key: 'orders', labelKey: 'app.nav.items.orders', path: CRM_APP_PATHS.orders })
+      items.push({ key: 'invoices', labelKey: 'app.nav.items.invoices', path: CRM_APP_PATHS.invoices })
     }
     if (can('leads.view')) {
-      items.push({ key: 'leads', labelKey: 'app.nav.items.leads', path: '/app/leads' })
+      items.push({ key: 'leads', labelKey: 'app.nav.items.leads', path: CRM_APP_PATHS.leads })
     }
     if (can('documents.manage')) {
-      items.push({ key: 'documents', labelKey: 'app.nav.items.documents', path: '/app/documents' })
+      items.push({ key: 'documents', labelKey: 'app.nav.items.documents', path: CRM_APP_PATHS.documents })
     }
     if (can('notifications.view')) {
-      items.push({ key: 'tasks', labelKey: 'app.nav.items.tasks', path: '/app/tasks' })
-      items.push({ key: 'inbox', labelKey: 'app.nav.items.inbox', path: '/app/inbox' })
+      items.push({ key: 'tasks', labelKey: 'app.nav.items.tasks', path: CRM_APP_PATHS.tasks })
+      items.push({ key: 'inbox', labelKey: 'app.nav.items.inbox', path: CRM_APP_PATHS.inbox })
       if (canUseCommunicationsFeature('calendar')) {
-        items.push({ key: 'calendar', labelKey: 'app.nav.items.calendar', path: '/app/calendar' })
-      }
-      if (canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')) {
-        items.push({
-          key: 'sla-incidents',
-          labelKey: 'app.nav.items.sla_incidents',
-          path: '/app/sla-incidents',
-        })
+        items.push({ key: 'calendar', labelKey: 'app.nav.items.calendar', path: CRM_APP_PATHS.calendar })
       }
       if (!isClientTenant) {
         items.push({
           key: 'automations',
           labelKey: 'app.nav.items.automations',
-          path: '/app/automations',
+          path: CRM_APP_PATHS.automations,
         })
       }
     }
@@ -594,25 +554,25 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     type Item = { key: string; to: string; labelKey: string }
     const items: Item[] = []
     if (can('candidates.manage')) {
-      items.push({ key: 'candidate', to: '/app/candidates/new', labelKey: 'app.topbar.quick_create.candidate' })
+      items.push({ key: 'candidate', to: CRM_APP_PATHS.candidateNew, labelKey: 'app.topbar.quick_create.candidate' })
     }
     if (can('companies.manage')) {
-      items.push({ key: 'client', to: '/app/clients/new', labelKey: 'app.topbar.quick_create.client' })
+      items.push({ key: 'client', to: CRM_APP_PATHS.clientNew, labelKey: 'app.topbar.quick_create.client' })
     }
     if (can('vacancies.view')) {
-      items.push({ key: 'vacancy', to: '/app/vacancies/new', labelKey: 'app.topbar.quick_create.vacancy' })
+      items.push({ key: 'vacancy', to: CRM_APP_PATHS.vacancyNew, labelKey: 'app.topbar.quick_create.vacancy' })
     }
     if (can('services.view') && can('services.orders.manage')) {
-      items.push({ key: 'order', to: '/app/orders', labelKey: 'app.topbar.quick_create.order' })
+      items.push({ key: 'order', to: CRM_APP_PATHS.orders, labelKey: 'app.topbar.quick_create.order' })
     }
     if (can('notifications.view')) {
-      items.push({ key: 'task', to: '/app/tasks', labelKey: 'app.topbar.quick_create.task' })
+      items.push({ key: 'task', to: CRM_APP_PATHS.tasks, labelKey: 'app.topbar.quick_create.task' })
     }
     if (can('notifications.view') && canUseCommunicationsFeature('calendar')) {
-      items.push({ key: 'meeting', to: '/app/calendar', labelKey: 'app.topbar.quick_create.meeting' })
+      items.push({ key: 'meeting', to: CRM_APP_PATHS.calendar, labelKey: 'app.topbar.quick_create.meeting' })
     }
     if (can('services.view')) {
-      items.push({ key: 'invoice', to: '/app/invoices/new', labelKey: 'app.topbar.quick_create.invoice' })
+      items.push({ key: 'invoice', to: CRM_APP_PATHS.invoiceNew, labelKey: 'app.topbar.quick_create.invoice' })
     }
     return items
   }, [can, canUseCommunicationsFeature])
@@ -692,7 +652,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       return
     }
     if (searchQuery.trim()) {
-      const fallbackPath = quickTargets[0]?.path ?? '/app'
+      const fallbackPath = quickTargets[0]?.path ?? CRM_APP_PATHS.appShellPrefix
       navigate(appendSearchQueryParam(fallbackPath, searchQuery.trim()))
       setSearchOpen(false)
       setSearchQuery('')
@@ -760,9 +720,9 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
           {isTrialTenant ? (
             <span
               className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800"
-              title={t('app.topbar.trial_badge_hint', { defaultValue: 'Trial workspace. Manage plan in Settings → Billing.' })}
+              title={t('app.topbar.trial_badge_hint')}
             >
-              {t('app.topbar.trial_badge', { defaultValue: 'Trial' })}
+              {t('app.topbar.trial_badge')}
             </span>
           ) : null}
         </div>
@@ -770,7 +730,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">
           {ownCompanies.length > 0 && (
             <label className="hidden items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 sm:inline-flex">
-              <span className="text-slate-500">{t('app.topbar.own_company', { defaultValue: 'Company' })}</span>
+              <span className="text-slate-500">{t('app.topbar.own_company')}</span>
               <select
                 className="bg-transparent text-xs font-semibold text-slate-800 outline-none"
                 value={activeOwnCompanyId || ''}
@@ -801,6 +761,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               <span className="hidden sm:inline">{t('app.topbar.actions.return_to_platform')}</span>
             </button>
           )}
+          <TopbarNbaMenu />
           <button
             type="button"
             className={[
@@ -826,17 +787,17 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                 ].join(' ')}
                 aria-haspopup="menu"
                 aria-expanded={quickCreateOpen}
-                title={t('app.topbar.quick_create.button', { defaultValue: 'Create' })}
+                title={t('app.topbar.quick_create.button')}
                 onClick={() => setQuickCreateOpen((v) => !v)}
               >
                 <IconPlus size={18} stroke={1.9} />
-                <span className="hidden sm:inline">{t('app.topbar.quick_create.button', { defaultValue: 'Create' })}</span>
+                <span className="hidden sm:inline">{t('app.topbar.quick_create.button')}</span>
               </button>
               {quickCreateOpen ? (
                 <div
                   className="absolute right-0 z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl"
                   role="menu"
-                  aria-label={t('app.topbar.quick_create.menu_label', { defaultValue: 'Quick create' })}
+                  aria-label={t('app.topbar.quick_create.menu_label')}
                 >
                   {quickCreateItems.map((item) => (
                     <button
@@ -870,7 +831,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               onClick={openLang}
               aria-haspopup="menu"
               aria-expanded={langOpen}
-              title={t('app.topbar.actions.language', { defaultValue: 'Language' })}
+              title={t('app.topbar.actions.language')}
             >
               {locale.toUpperCase()}
             </button>
@@ -900,8 +861,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               <button
                 type="button"
                 className="relative rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50"
-                aria-label={t('app.nav.items.messages', { defaultValue: 'Messages' })}
-                onClick={() => navigate('/app/inbox?channel=messages')}
+                aria-label={t('app.nav.items.messages_inbox')}
+                onClick={() => navigate(CRM_APP_PATHS.inboxMessagesScoped)}
               >
                 <IconMessageCircle size={20} stroke={1.8} />
                 {messagesUnreadCount > 0 && (
@@ -914,8 +875,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               <button
                 type="button"
                 className="relative hidden rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 sm:inline-flex"
-                aria-label={t('app.nav.items.email', { defaultValue: 'Email' })}
-                onClick={() => navigate('/app/inbox?channel=email')}
+                aria-label={t('app.nav.items.email_inbox')}
+                onClick={() => navigate(CRM_APP_PATHS.inboxEmailScoped)}
               >
                 <IconMail size={20} stroke={1.8} />
                 {emailUnreadCount > 0 && (
@@ -933,9 +894,8 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                     bellAttentionCount > 0
                       ? t('app.topbar.actions.notifications_with_urgent', {
                           values: { count: bellAttentionCount },
-                          defaultValue: `Notifications — ${bellAttentionCount} urgent`,
                         })
-                      : t('app.topbar.actions.notifications', { defaultValue: 'Notifications' })
+                      : t('app.topbar.actions.notifications')
                   }
                   onClick={toggleNotifications}
                 >
@@ -952,7 +912,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                     <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">
-                          {t('app.topbar.notifications.title', { defaultValue: 'Notifications' })}
+                          {t('app.topbar.notifications.title')}
                         </p>
                         <p className="text-xs text-slate-500 break-words">
                           {notifLoading
@@ -967,17 +927,17 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                         {!notifLoading && (
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                              {t('app.topbar.notifications.groups.sla', { defaultValue: 'Urgent (SLA)' })}: {unreadByGroup.sla}
+                              {t('app.topbar.notifications.groups.sla')}: {unreadByGroup.sla}
                             </span>
                             <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                              {t('app.topbar.notifications.groups.tasks', { defaultValue: 'Tasks' })}: {unreadByGroup.tasks}
+                              {t('app.topbar.notifications.groups.tasks')}: {unreadByGroup.tasks}
                             </span>
                             <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">
-                              {t('app.topbar.notifications.groups.messages', { defaultValue: 'Messages' })}:{' '}
+                              {t('app.topbar.notifications.groups.messages')}:{' '}
                               {unreadByGroup.messages}
                             </span>
                             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                              {t('app.topbar.notifications.groups.system', { defaultValue: 'System' })}: {unreadByGroup.system}
+                              {t('app.topbar.notifications.groups.system')}: {unreadByGroup.system}
                             </span>
                           </div>
                         )}
@@ -989,7 +949,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           onClick={() => void reconcileAndReloadNotifications()}
                           disabled={notifLoading}
                         >
-                          {t('app.reminders.actions.sync', { defaultValue: 'Sync' })}
+                          {t('app.reminders.actions.sync')}
                         </button>
                         <button
                           type="button"
@@ -1012,7 +972,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           ].join(' ')}
                           onClick={() => setNotifFeedMode('all')}
                         >
-                          {t('app.topbar.notifications.groups.all', { defaultValue: 'All' })} ({notifItems.length})
+                          {t('app.topbar.notifications.groups.all')} ({notifItems.length})
                         </button>
                         <button
                           type="button"
@@ -1022,7 +982,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           ].join(' ')}
                           onClick={() => setNotifFeedMode('sla')}
                         >
-                          {t('app.topbar.notifications.groups.sla', { defaultValue: 'Urgent (SLA)' })} ({unreadByGroup.sla})
+                          {t('app.topbar.notifications.groups.sla')} ({unreadByGroup.sla})
                         </button>
                         <button
                           type="button"
@@ -1032,7 +992,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           ].join(' ')}
                           onClick={() => setNotifFeedMode('tasks')}
                         >
-                          {t('app.topbar.notifications.groups.tasks', { defaultValue: 'Tasks' })} ({unreadByGroup.tasks})
+                          {t('app.topbar.notifications.groups.tasks')} ({unreadByGroup.tasks})
                         </button>
                         <button
                           type="button"
@@ -1044,7 +1004,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           ].join(' ')}
                           onClick={() => setNotifFeedMode('messages')}
                         >
-                          {t('app.topbar.notifications.groups.messages', { defaultValue: 'Messages' })} ({unreadByGroup.messages})
+                          {t('app.topbar.notifications.groups.messages')} ({unreadByGroup.messages})
                         </button>
                         <button
                           type="button"
@@ -1054,7 +1014,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           ].join(' ')}
                           onClick={() => setNotifFeedMode('system')}
                         >
-                          {t('app.topbar.notifications.groups.system', { defaultValue: 'System' })} ({unreadByGroup.system})
+                          {t('app.topbar.notifications.groups.system')} ({unreadByGroup.system})
                         </button>
                       </div>
                     </div>
@@ -1078,8 +1038,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                             : attentionTier === 'high'
                               ? 'app.topbar.notifications.tier.high'
                               : 'app.topbar.notifications.tier.normal'
-                        const attentionTierDefault =
-                          attentionTier === 'critical' ? 'Critical' : attentionTier === 'high' ? 'High' : 'Normal'
                         const description = getNotificationDescription(item)
                         const threadId = notificationThreadId(item)
                         const threadChannel = notificationThreadChannel(item)
@@ -1096,25 +1054,25 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                 <div className="flex flex-wrap items-center gap-2">
                                   {uosGroup === 'sla' ? (
                                     <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                                      {t('app.topbar.notifications.groups.sla', { defaultValue: 'Urgent (SLA)' })}
+                                      {t('app.topbar.notifications.groups.sla')}
                                     </span>
                                   ) : uosGroup === 'tasks' ? (
                                     <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                                      {t('app.topbar.notifications.groups.tasks', { defaultValue: 'Tasks' })}
+                                      {t('app.topbar.notifications.groups.tasks')}
                                     </span>
                                   ) : uosGroup === 'messages' ? (
                                     <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">
-                                      {t('app.topbar.notifications.groups.messages', { defaultValue: 'Messages' })}
+                                      {t('app.topbar.notifications.groups.messages')}
                                     </span>
                                   ) : (
                                     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                                      {t('app.topbar.notifications.groups.system', { defaultValue: 'System' })}
+                                      {t('app.topbar.notifications.groups.system')}
                                     </span>
                                   )}
                                   <NotificationAttentionTierChip
                                     tier={attentionTier}
                                     isRead={Boolean(item.is_read)}
-                                    label={t(attentionTierLabelKey, { defaultValue: attentionTierDefault })}
+                                    label={t(attentionTierLabelKey)}
                                   />
                                   <p className="max-w-full break-words text-sm font-semibold leading-snug text-slate-900 line-clamp-2">{title}</p>
                                 </div>
@@ -1128,12 +1086,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                     className="mt-1 text-xs font-medium text-brand-600 hover:text-brand-700"
                                     onClick={() => {
                                       setNotifOpen(false)
-                                      navigate('/app/procesowani')
+                                      navigate(CRM_APP_PATHS.procesowani)
                                     }}
                                   >
-                                    {t('app.notifications.view_handoffs', {
-                                      defaultValue: 'Перейти к обработке',
-                                    })}
+                                    {t('app.notifications.view_handoffs')}
                                   </button>
                                 )}
                                 {uosGroup === 'sla' && threadId && canInboxDeepLink && (
@@ -1145,7 +1101,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                       navigate(buildInboxThreadPath(threadId, threadChannel ? { channel: threadChannel } : undefined))
                                     }}
                                   >
-                                    {t('app.topbar.notifications.open_in_inbox', { defaultValue: 'Open in Inbox' })}
+                                    {t('app.topbar.notifications.open_in_inbox')}
                                   </button>
                                 )}
                                 {uosGroup === 'sla' && (
@@ -1154,12 +1110,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                     className="mt-1 text-xs font-medium text-rose-700 hover:text-rose-800"
                                     onClick={() => {
                                       setNotifOpen(false)
-                                      navigate('/app/sla-incidents')
+                                      navigate(CRM_APP_PATHS.slaIncidents)
                                     }}
                                   >
-                                    {t('app.notifications.open_sla_incidents', {
-                                      defaultValue: 'Открыть SLA-инциденты',
-                                    })}
+                                    {t('app.notifications.open_sla_incidents')}
                                   </button>
                                 )}
                                 {uosGroup === 'messages' && threadId && (
@@ -1173,11 +1127,11 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                           buildInboxThreadPath(threadId, threadChannel ? { channel: threadChannel } : undefined),
                                         )
                                       } else {
-                                        navigate(`/app/communications/threads/${encodeURIComponent(threadId)}`)
+                                        navigate(communicationsThreadPath(threadId))
                                       }
                                     }}
                                   >
-                                    {t('app.topbar.notifications.open_thread', { defaultValue: 'Open thread' })}
+                                    {t('app.topbar.notifications.open_thread')}
                                   </button>
                                 )}
                                 {uosGroup === 'tasks' && (
@@ -1186,7 +1140,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                                     className="mt-1 text-xs font-medium text-amber-800 hover:text-amber-900"
                                     onClick={() => {
                                       setNotifOpen(false)
-                                      navigate('/app/tasks')
+                                      navigate(CRM_APP_PATHS.tasks)
                                     }}
                                   >
                                     {t('app.reminders.actions.open_page')}
@@ -1205,12 +1159,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           className="text-sm font-semibold text-brand-700 hover:text-brand-800"
                           onClick={() => {
                             setNotifOpen(false)
-                            navigate('/app/procesowani')
+                            navigate(CRM_APP_PATHS.procesowani)
                           }}
                         >
-                          {t('app.notifications.view_handoffs', {
-                            defaultValue: 'На обработку',
-                          })}{' '}
+                          {t('app.notifications.view_handoffs')}{' '}
                           ({pendingHandoffsCount})
                         </button>
                       )}
@@ -1221,10 +1173,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                             className="text-sm font-semibold text-brand-700 hover:text-brand-800"
                             onClick={() => {
                               setNotifOpen(false)
-                              navigate('/app/inbox')
+                              navigate(CRM_APP_PATHS.inbox)
                             }}
                           >
-                            {t('app.nav.items.inbox', { defaultValue: 'Inbox' })}
+                            {t('app.nav.items.inbox')}
                           </button>
                         )}
                         <button
@@ -1232,7 +1184,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           className="text-sm font-semibold text-rose-700 hover:text-rose-800"
                           onClick={() => {
                             setNotifOpen(false)
-                            navigate('/app/sla-incidents')
+                            navigate(CRM_APP_PATHS.slaIncidents)
                           }}
                         >
                           {t('app.notifications.open_sla_incidents')}
@@ -1242,7 +1194,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                           className="text-sm font-semibold text-slate-700 hover:text-slate-800"
                           onClick={() => {
                             setNotifOpen(false)
-                            navigate('/app/tasks')
+                            navigate(CRM_APP_PATHS.tasks)
                           }}
                         >
                           {t('app.reminders.actions.open_page')}
@@ -1270,14 +1222,14 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               <div className="absolute right-0 z-[100] mt-2 w-[min(96vw,320px)] overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-sm shadow-2xl">
                 <div className="border-b border-slate-100 px-4 py-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    {t('app.shell.account.my_account', { defaultValue: 'My account' })}
+                    {t('app.shell.account.my_account')}
                   </p>
                   <button
                     type="button"
                     className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
                     onClick={() => {
                       setMenuOpen(false)
-                      navigate('/app/profile')
+                      navigate(CRM_APP_PATHS.profile)
                     }}
                   >
                     <IconUserCircle size={16} />
@@ -1399,7 +1351,7 @@ function CandidatesMenuButton({ t }: { t: (key: string) => string }) {
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Показываем кнопку только на главной странице кандидатов (не на /new или /:id)
-  const isCandidatesPage = location.pathname === '/app/candidates'
+  const isCandidatesPage = location.pathname === CRM_APP_PATHS.candidates
 
   useEffect(() => {
     if (!isCandidatesPage) return

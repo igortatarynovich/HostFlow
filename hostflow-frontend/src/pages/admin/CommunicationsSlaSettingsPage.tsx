@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getCommunicationsSettings, patchCommunicationsSettings } from '../../api/communications'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 const CHANNEL_OPTIONS = ['telegram', 'whatsapp', 'viber', 'messenger', 'instagram', 'email', 'sms'] as const
 const RESERVED_ESCALATION_TARGETS = new Set(['all', 'none', 'default', 'system', 'auto', 'role', 'queue', 'user'])
@@ -172,8 +173,12 @@ export default function CommunicationsSlaSettingsPage() {
           <p className="text-sm text-slate-500">{t('admin.communications_sla.subtitle', { defaultValue: 'Escalation policy for overdue communication threads.' })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/app/settings/communications" className="btn-secondary">{t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}</Link>
-          <Link to="/app/settings/communications/queue" className="btn-secondary">{t('admin.settings.cards.communications_queue.label', { defaultValue: 'Queue settings' })}</Link>
+          <Link to={CRM_APP_PATHS.settingsCommunications} className="btn-secondary">
+            {t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
+          </Link>
+          <Link to={CRM_APP_PATHS.settingsCommunicationsQueue} className="btn-secondary">
+            {t('admin.settings.cards.communications_queue.label', { defaultValue: 'Queue settings' })}
+          </Link>
         </div>
       </div>
 
@@ -186,7 +191,7 @@ export default function CommunicationsSlaSettingsPage() {
           }}
           onRetry={() => window.location.reload()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo="/app/settings/communications"
+          secondaryTo={CRM_APP_PATHS.settingsCommunications}
           secondaryLabel={t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
           compact
         />

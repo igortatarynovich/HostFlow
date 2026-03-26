@@ -39,6 +39,9 @@ export type AnalyticsProfileSummary = {
 export type OpsCounters = {
   no_next_action_candidates: number
   overdue_reminders: number
+  overview_pipeline_total?: number
+  overview_stuck?: number
+  overview_active_today?: number
   /** Open vacancies (status open, not archived); ACL-aligned with list. */
   open_vacancies?: number
   /** Candidates linked to those vacancies (same scope). */

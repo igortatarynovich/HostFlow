@@ -6,6 +6,7 @@ import { listAdminUsers } from '../../api/users'
 import type { AdminUser, Company, CompanyAccessEntry } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { usePermissions } from '../../hooks/usePermissions'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
 interface AccessFormState {
   userId: string
@@ -205,7 +206,7 @@ export default function CompanyAccessPage() {
           }}
           onRetry={() => selectedCompanyId && void loadAccess(selectedCompanyId)}
           retryLabel="Обновить"
-          secondaryTo="/app/settings/company-access"
+          secondaryTo={CRM_APP_PATHS.settingsCompanyAccess}
           secondaryLabel="Доступ к компаниям"
           compact
         />
