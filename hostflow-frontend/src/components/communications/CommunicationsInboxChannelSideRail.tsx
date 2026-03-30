@@ -35,7 +35,7 @@ export default function CommunicationsInboxChannelSideRail({
     backListPathOverride: backListPath,
     reloadSignal,
   })
-  const { thread, loading, errorText } = model
+  const { thread, loading, threadError } = model
 
   return (
     <section
@@ -55,8 +55,8 @@ export default function CommunicationsInboxChannelSideRail({
       {threadId && loading && !thread && (
         <div className="p-4 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</div>
       )}
-      {threadId && !loading && !thread && errorText && (
-        <div className="p-4 text-sm text-rose-700">{errorText}</div>
+      {threadId && !loading && !thread && threadError && (
+        <div className="p-4 text-sm text-rose-700">{threadError.title}</div>
       )}
       {thread && (
         <div className="min-h-0 flex-1 overflow-y-auto">

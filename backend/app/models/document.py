@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, synonym
 from sqlalchemy.sql import func
 
 from backend.app.db.base import Base
+from backend.app.db.tsvector_compat import TsVector
 from .enums import (
     DocumentKind,
     DocumentProcessType,
@@ -127,6 +128,8 @@ class Document(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    hostflow_document_search_tsv: Mapped[Optional[Any]] = mapped_column(TsVector, nullable=True)
 
     # --- backwards compatibility helpers ---
     key = synonym("doc_type")

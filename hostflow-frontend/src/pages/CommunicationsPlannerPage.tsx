@@ -13,6 +13,9 @@ import {
 } from '../api/communications'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
 function toLocalInput(dt?: string | null): string {
   if (!dt) return ''
@@ -29,18 +32,11 @@ function formatDateTime(dt?: string | null): string {
   return new Intl.DateTimeFormat(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d)
 }
 
-function errText(err: any, fallback: string): string {
-  const detail = err?.response?.data?.detail
-  if (typeof detail === 'string') return detail
-  if (Array.isArray(detail)) return detail.map((x) => x?.msg || JSON.stringify(x)).join('; ')
-  if (detail && typeof detail === 'object') return JSON.stringify(detail)
-  return err?.message || fallback
-}
-
 export default function CommunicationsPlannerPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [loading, setLoading] = useState(true)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [busy, setBusy] = useState(false)
   const [items, setItems] = useState<CommunicationPlannerEvent[]>([])
   const [workingHours, setWorkingHours] = useState<WorkingHoursSchedule | null>(null)
@@ -62,7 +58,7 @@ export default function CommunicationsPlannerPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setErrorText(null)
+    setError(null)
     try {
       const [eventsRes, mgrs, wh] = await Promise.all([
         listCommunicationPlannerEvents({
@@ -79,7 +75,7 @@ export default function CommunicationsPlannerPage() {
       setItems(Array.isArray(eventsRes.items) ? eventsRes.items : [])
       if (wh) setWorkingHours(wh)
     } catch (err: any) {
-      setErrorText(errText(err, t('app.communications.planner.errors.load', { defaultValue: 'Failed to load planner' })))
+      setError(getFriendlyErrorInfo(err, t('app.communications.planner.errors.load', { defaultValue: 'Failed to load planner' }), t))
     } finally {
       setLoading(false)
     }
@@ -113,10 +109,13 @@ export default function CommunicationsPlannerPage() {
         const mNow = toMin(hhmm)
         const inAny = day.windows.some((w) => mNow >= toMin(w.from) && mNow < toMin(w.to))
         if (!inAny) {
-          setErrorText(
-            t('app.communications.planner.errors.outside_hours', {
-              defaultValue: 'Selected start time is outside your working hours. Update My Availability or enable "Create outside hours".',
-            }),
+          setError(
+            friendlyFormHintError(
+              t('app.communications.planner.errors.outside_hours', {
+                defaultValue: 'Selected start time is outside your working hours. Update My Availability or enable "Create outside hours".',
+              }),
+              t,
+            ),
           )
           return
         }
@@ -136,26 +135,40 @@ export default function CommunicationsPlannerPage() {
       })
       setForm((p) => ({ ...p, title: '', description: '' }))
       await load()
-      setErrorText(null)
+      setError(null)
     } catch (err: any) {
-      setErrorText(errText(err, t('app.communications.planner.errors.create', { defaultValue: 'Failed to create planner event' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.planner.errors.create', { defaultValue: 'Failed to create planner event' }),
+        )
+      ) {
+        setError(getFriendlyErrorInfo(err, t('app.communications.planner.errors.create', { defaultValue: 'Failed to create planner event' }), t))
+      }
     } finally {
       setBusy(false)
     }
-  }, [allowOutsideHours, form, load, t, workingHours])
+  }, [allowOutsideHours, form, load, planLimitModal, t, workingHours])
 
   const setEventStatus = useCallback(async (id: string, status: string) => {
     setBusy(true)
     try {
       await patchCommunicationPlannerEvent(id, { status })
       await load()
-      setErrorText(null)
+      setError(null)
     } catch (err: any) {
-      setErrorText(errText(err, t('app.communications.planner.errors.update', { defaultValue: 'Failed to update planner event' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.planner.errors.update', { defaultValue: 'Failed to update planner event' }),
+        )
+      ) {
+        setError(getFriendlyErrorInfo(err, t('app.communications.planner.errors.update', { defaultValue: 'Failed to update planner event' }), t))
+      }
     } finally {
       setBusy(false)
     }
-  }, [load, t])
+  }, [load, planLimitModal, t])
 
   return (
     <div className="space-y-4">
@@ -177,17 +190,17 @@ export default function CommunicationsPlannerPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
         <div className="rounded-lg border border-slate-200 bg-white p-4">
           <div className="mb-3 text-sm font-semibold text-slate-900">{t('app.communications.planner.form.title', { defaultValue: 'New planner event' })}</div>
-          {errorText && (
+          {error && (
             <div className="mb-3">
               <ErrorRecoveryBanner
-                info={{
-                  title: errorText,
-                  hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-                }}
+                info={error}
                 onRetry={() => void load()}
                 retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-                secondaryTo={CRM_APP_PATHS.calendar}
-                secondaryLabel={t('app.nav.items.calendar', { defaultValue: 'Calendar' })}
+                {...friendlyErrorBannerSecondary(
+                  error,
+                  CRM_APP_PATHS.calendar,
+                  t('app.nav.items.calendar', { defaultValue: 'Calendar' }),
+                )}
                 compact
               />
             </div>

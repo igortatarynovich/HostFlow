@@ -67,15 +67,20 @@ try:
     from backend.app.auth.ensure_multitenancy import ensure_auth_multitenancy
     from backend.app.auth.ensure_seed import ensure_auth_seed
     from backend.app.core.settings import settings
+    from app.modules.leads import inbound_public as leads_inbound_public
     from app.modules.leads import webhook as meta_webhook
     from backend.app.modules.companies.router import router as companies_router
     from backend.app.modules.companies.ensure_schema import ensure_companies_schema
     from backend.app.modules.notifications.ensure_schema import ensure_notifications_schema
     from backend.app.services.ensure_reminders_schema import ensure_reminders_schema
-    from backend.app.services.ensure_additional_services_schema import ensure_additional_services_schema
+    from backend.app.services.ensure_additional_services_schema import (
+        ensure_additional_services_schema,
+        ensure_service_orders_own_company_id_column,
+    )
     from backend.app.services.ensure_automation_rules_schema import ensure_automation_rules_schema
     from backend.app.services.ensure_communications_schema import ensure_communications_schema
     from backend.app.services.ensure_funnels_schema import ensure_funnels_schema
+    from backend.app.services.ensure_global_search_fts import ensure_global_search_fts_function_async
     from backend.app.api.v1.vacancies.router import router as vacancies_router
     from backend.app.api.v1.own_companies import legacy_router as own_companies_legacy_router
     from backend.app.api.v1.own_companies import router as own_companies_router
@@ -116,6 +121,7 @@ try:
     from backend.app.api.v1.settings import leads as settings_leads_router
     from backend.app.api.v1.settings import team as settings_team_router
     from backend.app.api.v1.settings import billing as settings_billing_router
+    from backend.app.api.v1.settings import lead_forms as settings_lead_forms_router
     from backend.app.api.v1.settings import email as settings_email_router
     from backend.app.api.v1.settings import communications as settings_communications_router
     from backend.app.api.v1.admin import users as admin_users_router
@@ -155,14 +161,19 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .auth.ensure_multitenancy import ensure_auth_multitenancy  # type: ignore[no-redef]
     from .auth.ensure_seed import ensure_auth_seed  # type: ignore[no-redef]
     from .core.settings import settings  # type: ignore[no-redef]
+    from .modules.leads import inbound_public as leads_inbound_public  # type: ignore[no-redef]
     from .modules.leads import webhook as meta_webhook  # type: ignore[no-redef]
     from .modules.companies.router import router as companies_router  # type: ignore[no-redef]
     from .modules.companies.ensure_schema import ensure_companies_schema  # type: ignore[no-redef]
     from .modules.notifications.ensure_schema import ensure_notifications_schema  # type: ignore[no-redef]
     from .services.ensure_reminders_schema import ensure_reminders_schema  # type: ignore[no-redef]
-    from .services.ensure_additional_services_schema import ensure_additional_services_schema  # type: ignore[no-redef]
+    from .services.ensure_additional_services_schema import (  # type: ignore[no-redef]
+        ensure_additional_services_schema,
+        ensure_service_orders_own_company_id_column,
+    )
     from .services.ensure_communications_schema import ensure_communications_schema  # type: ignore[no-redef]
     from .services.ensure_funnels_schema import ensure_funnels_schema  # type: ignore[no-redef]
+    from .services.ensure_global_search_fts import ensure_global_search_fts_function_async  # type: ignore[no-redef]
     from .api.v1.vacancies.router import router as vacancies_router  # type: ignore[no-redef]
     from .api.public import intake as public_intake_router  # type: ignore[no-redef]
     public_scanner_router = None  # type: ignore[assignment]
@@ -189,6 +200,7 @@ except ModuleNotFoundError:  # pragma: no cover - backend package alias
     from .api.v1.settings import leads as settings_leads_router  # type: ignore[no-redef]
     from .api.v1.settings import team as settings_team_router  # type: ignore[no-redef]
     from .api.v1.settings import billing as settings_billing_router  # type: ignore[no-redef]
+    from .api.v1.settings import lead_forms as settings_lead_forms_router  # type: ignore[no-redef]
     from .api.v1.settings import email as settings_email_router  # type: ignore[no-redef]
     from .api.v1.settings import communications as settings_communications_router  # type: ignore[no-redef]
     from .api.v1.admin import users as admin_users_router  # type: ignore[no-redef]
@@ -427,6 +439,11 @@ async def lifespan(app: FastAPI):
         logger.warning("[startup:ensure_additional_services_schema] skipped (%s)", e)
 
     try:
+        ensure_service_orders_own_company_id_column()
+    except Exception as e:
+        logger.warning("[startup:ensure_service_orders_own_company_id] skipped (%s)", e)
+
+    try:
         ensure_automation_rules_schema()
     except Exception as e:
         logger.warning("[startup:ensure_automation_rules_schema] skipped (%s)", e)
@@ -440,6 +457,11 @@ async def lifespan(app: FastAPI):
         ensure_funnels_schema()
     except Exception as e:
         logger.warning("[startup:ensure_funnels_schema] skipped (%s)", e)
+
+    try:
+        await ensure_global_search_fts_function_async()
+    except Exception as e:
+        logger.warning("[startup:ensure_global_search_fts_function_async] skipped (%s)", e)
 
     try:
         await ensure_auth_multitenancy()
@@ -677,6 +699,7 @@ app.include_router(meta_router.router, prefix="/api/v1", tags=["meta"])
 app.include_router(analytics_router.router, prefix="/api/v1", tags=["analytics"])
 app.include_router(goals_router.router, prefix="/api/v1", tags=["goals"])
 app.include_router(meta_webhook.router, prefix="/api/v1/leads/meta", tags=["meta-leads"])
+app.include_router(leads_inbound_public.router, prefix="/api/v1", tags=["public-leads-inbound"])
 app.include_router(general_users_router.router)
 
 app.include_router(catalogs_router.router, prefix="/api/v1", tags=["catalogs"])
@@ -696,6 +719,7 @@ app.include_router(admin_draft_reminders_router.router, prefix="/api/v1")
 app.include_router(settings_leads_router.router, prefix="/api/v1/settings")
 app.include_router(settings_team_router.router, prefix="/api/v1/settings")
 app.include_router(settings_billing_router.router, prefix="/api/v1/settings")
+app.include_router(settings_lead_forms_router.router, prefix="/api/v1/settings")
 app.include_router(settings_email_router.router, prefix="/api/v1/settings")
 app.include_router(settings_communications_router.router, prefix="/api/v1/settings")
 app.include_router(public_intake_router.router, prefix="/api/v1", tags=["public-intake"])

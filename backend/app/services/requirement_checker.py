@@ -14,6 +14,7 @@ from backend.app.models.document_policy import DocumentPolicy, RequirementLevel
 from backend.app.models.document_type import DocumentType
 from backend.app.models.enums import DocumentStatus, DocumentStatusModel, GateCode, RequirementType
 from backend.app.models.requirement_type import RequirementTypeDefinition
+from backend.app.services.own_company_doc_scope import document_policies_own_company_clause
 from backend.app.services.status_transitions import StatusTransitionService
 
 
@@ -232,6 +233,7 @@ async def check_gate_requirements(
     client_id: Optional[str] = None,
     vacancy_id: Optional[str] = None,
     candidate_is_eu: bool = False,
+    own_company_id: Optional[str] = None,
 ) -> GateCheckResult:
     """Проверяет, пройден ли gate для кандидата.
 
@@ -253,6 +255,9 @@ async def check_gate_requirements(
         .where(DocumentPolicy.tenant_id == tenant_id)
         .where(DocumentPolicy.enabled == True)
     )
+    pol_scope = document_policies_own_company_clause(own_company_id)
+    if pol_scope is not None:
+        stmt_policies = stmt_policies.where(pol_scope)
 
     # Фильтруем по gates (JSONB массив содержит gate_code)
     # В PostgreSQL: WHERE gate_code = ANY(gates)

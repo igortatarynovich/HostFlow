@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import {
@@ -14,6 +14,8 @@ import ProfileFieldConstructor, { type FieldConfig } from '../../components/prof
 import ProfileDocumentConstructor from '../../components/profile/ProfileDocumentConstructor'
 import FunnelSelector from '../../components/profile/FunnelSelector'
 import ProfilePreviewModal from '../../components/profile/ProfilePreviewModal'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 import ImportProfileModal from '../../components/profile/ImportProfileModal'
 import ApplyProfileToVacanciesModal from '../../components/profile/ApplyProfileToVacanciesModal'
 import BulkUpdateProfilesModal from '../../components/profile/BulkUpdateProfilesModal'
@@ -386,6 +388,16 @@ export default function CandidateProfilesPage() {
     }
   }
 
+  const profilesLoadErrorBanner = useMemo<FriendlyErrorInfo | null>(
+    () =>
+      error
+        ? {
+            title: error,
+            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+          }
+        : null,
+    [error, t],
+  )
 
   return (
     <div className="space-y-4">
@@ -547,17 +559,17 @@ export default function CandidateProfilesPage() {
           </div>
         )}
 
-        {error && (
+        {profilesLoadErrorBanner && (
           <div className="mb-4">
             <ErrorRecoveryBanner
-              info={{
-                title: error,
-                hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-              }}
+              info={profilesLoadErrorBanner}
               onRetry={() => void loadProfiles()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-              secondaryTo={CRM_APP_PATHS.settingsCandidateProfiles}
-              secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
+              {...friendlyErrorBannerSecondary(
+                profilesLoadErrorBanner,
+                CRM_APP_PATHS.settingsCandidateProfiles,
+                t('common.navigation.settings', { defaultValue: 'Настройки' }),
+              )}
               compact
             />
           </div>

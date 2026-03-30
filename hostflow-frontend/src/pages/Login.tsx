@@ -6,6 +6,13 @@ import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import { PublicCookieBanner } from '../components/public/PublicCookieBanner'
 import { PublicLegalFooter } from '../components/public/PublicLegalFooter'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import {
+  friendlyErrorBannerSecondary,
+  friendlyFormHintError,
+  getFriendlyErrorInfo,
+  type FriendlyErrorInfo,
+} from '../utils/friendlyError'
 import { consumeLoginNotice } from '../store/auth'
 import { useSeoMeta } from '../hooks/useSeoMeta'
 
@@ -14,6 +21,7 @@ export default function Login(){
   const nav = useNavigate()
   const [searchParams] = useSearchParams()
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   useSeoMeta({
     title: t('app.seo.login.title', { defaultValue: 'Sign In to HostFlow' }),
     description: t('app.seo.login.description', {
@@ -23,7 +31,7 @@ export default function Login(){
   })
   const [email, setEmail] = useState(() => (searchParams.get('email') || '').trim())
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const valuePropKeys = ['pipeline', 'documents', 'support'] as const
@@ -42,9 +50,12 @@ export default function Login(){
       nav('/', { replace: true })
     }catch(err:any){
       if(err?.response?.status === 401){
-        setError(t('app.login.errors.invalid'))
-      }else{
-        setError(err?.response?.data?.detail || t('app.login.errors.generic'))
+        setError(friendlyFormHintError(t('app.login.errors.invalid'), t))
+      } else {
+        const fb = t('app.login.errors.generic')
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setError(getFriendlyErrorInfo(err, fb, t))
+        }
       }
     }finally{
       setLoading(false)
@@ -54,7 +65,7 @@ export default function Login(){
   useEffect(() => {
     const notice = consumeLoginNotice()
     if (notice === 'expired') {
-      setError(t('app.login.errors.expired'))
+      setError(friendlyFormHintError(t('app.login.errors.expired'), t))
     } else if (notice === 'invite_accepted') {
       setNotice(t('app.login.notices.invite_accepted', { defaultValue: 'Invitation accepted. Sign in to continue.' }))
     } else if (notice === 'password_reset_success') {
@@ -93,7 +104,12 @@ export default function Login(){
             )}
             {error && (
               <ErrorRecoveryBanner
-                info={{ title: error, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+                info={error}
+                {...friendlyErrorBannerSecondary(
+                  error,
+                  '/forgot-password',
+                  t('app.forgot_password.title', { defaultValue: 'Forgot password?' }),
+                )}
                 compact
               />
             )}

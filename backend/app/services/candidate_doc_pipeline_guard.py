@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException
 
@@ -207,10 +208,19 @@ async def enforce_pipeline_doc_forward_block(
 
     owner_ctx = _owner_context_for_docs(candidate_id=candidate_id, extra=extra, personal=personal)
 
+    oc_row = await db.execute(
+        select(Candidate.own_company_id).where(
+            Candidate.id == candidate_id,
+            Candidate.tenant_id == tenant_id,
+        ).limit(1)
+    )
+    oc = oc_row.scalar_one_or_none()
+    own_company_id = str(oc).strip() if oc else None
     ruleset_version = await documents_crud.ensure_ruleset_seed(
         db,
         tenant_id,
         load_default_ruleset(),
+        own_company_id=own_company_id,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
 
@@ -219,6 +229,7 @@ async def enforce_pipeline_doc_forward_block(
         tenant_id,
         candidate_id,
         include_deleted=False,
+        active_own_company_id=own_company_id,
     )
     active_docs = [d for d in existing_docs if getattr(d, "deleted_at", None) is None]
     doc_ids = [str(d.id) for d in active_docs]

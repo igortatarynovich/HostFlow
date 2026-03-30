@@ -24,6 +24,8 @@ import {
   type InboxListQuery,
 } from '../utils/inboxUrlQuery'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
 function isActiveThread(th: CommunicationThread): boolean {
   return !th.is_archived && String(th.status || '').toLowerCase() !== 'deleted'
@@ -31,6 +33,7 @@ function isActiveThread(th: CommunicationThread): boolean {
 
 export default function CommunicationsInboxCenterPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -61,7 +64,7 @@ export default function CommunicationsInboxCenterPage() {
 
   const [threads, setThreads] = useState<CommunicationThread[]>([])
   const [listLoading, setListLoading] = useState(true)
-  const [listError, setListError] = useState<string | null>(null)
+  const [listError, setListError] = useState<FriendlyErrorInfo | null>(null)
   const [hubFilter, setHubFilter] = useState<InboxHubFilter>('all')
 
   const loadList = useCallback(async () => {
@@ -75,13 +78,15 @@ export default function CommunicationsInboxCenterPage() {
         q: listQuery.q,
       })
       setThreads(items)
-    } catch {
+    } catch (err: unknown) {
       setThreads([])
-      setListError(t('app.communications_inbox_hub.error'))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications_inbox_hub.error'))) {
+        setListError(getFriendlyErrorInfo(err, t('app.communications_inbox_hub.error'), t))
+      }
     } finally {
       setListLoading(false)
     }
-  }, [effectiveChannel, hasEmail, hasMessages, listQuery.q, t])
+  }, [effectiveChannel, hasEmail, hasMessages, listQuery.q, planLimitModal, t])
 
   useEffect(() => {
     void loadList()
@@ -128,12 +133,22 @@ export default function CommunicationsInboxCenterPage() {
   }
 
   const model = useCommunicationsThread(threadId, { backListPathOverride: backToHubPath })
-  const { thread, loading: threadLoading, load, errorText } = model
+  const { thread, loading: threadLoading, load, threadError } = model
 
   const showListLoading = accessLoading || listLoading
 
+  const threadMissingBannerInfo = useMemo<FriendlyErrorInfo | null>(() => {
+    if (threadLoading || thread) return null
+    return (
+      threadError ?? {
+        title: t('app.communications.states.empty'),
+        hint: t('app.common.retry_hint'),
+      }
+    )
+  }, [thread, threadLoading, threadError, t])
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-slate-50 crm-page-inset">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden bg-slate-50">
       <Link
         to={backToHubPath}
         className="border-b border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-brand-700 hover:bg-slate-50 xl:hidden"
@@ -166,12 +181,17 @@ export default function CommunicationsInboxCenterPage() {
             )}
             {showListLoading && <p className="text-sm text-slate-500">{t('app.communications_inbox_hub.loading')}</p>}
             {!showListLoading && listError && (
-              <div className="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-sm text-rose-800">
-                <p>{listError}</p>
-                <button type="button" className="btn-secondary btn-sm mt-2" onClick={() => void loadList()}>
-                  {t('app.communications_inbox_hub.retry')}
-                </button>
-              </div>
+              <ErrorRecoveryBanner
+                info={listError}
+                onRetry={() => void loadList()}
+                retryLabel={t('app.communications_inbox_hub.retry')}
+                {...friendlyErrorBannerSecondary(
+                  listError,
+                  backToHubPath,
+                  t('app.communications.actions.back_to_hub'),
+                )}
+                compact
+              />
             )}
             {!showListLoading && !listError && (hasMessages || hasEmail) && (
               <>
@@ -219,17 +239,17 @@ export default function CommunicationsInboxCenterPage() {
           {threadLoading && (
             <p className="text-sm text-slate-500">{t('common.loading')}</p>
           )}
-          {!threadLoading && !thread && (
+          {threadMissingBannerInfo && (
             <div className="space-y-3">
               <ErrorRecoveryBanner
-                info={{
-                  title: errorText || t('app.communications.states.empty'),
-                  hint: t('app.common.retry_hint'),
-                }}
+                info={threadMissingBannerInfo}
                 onRetry={() => void load()}
                 retryLabel={t('common.actions.refresh')}
-                secondaryTo={backToHubPath}
-                secondaryLabel={t('app.communications.actions.back_to_hub')}
+                {...friendlyErrorBannerSecondary(
+                  threadMissingBannerInfo,
+                  backToHubPath,
+                  t('app.communications.actions.back_to_hub'),
+                )}
                 compact
               />
             </div>

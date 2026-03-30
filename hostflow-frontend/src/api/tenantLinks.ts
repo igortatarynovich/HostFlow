@@ -69,8 +69,32 @@ export async function revokePortalLink(tenantId: string, linkId: string): Promis
   await api.delete(`/tenants/${tenantId}/links/${linkId}/portal-link`)
 }
 
+export type ClientPortalPresentedBy =
+  | { kind: 'generic' }
+  | { kind: 'named'; first_name: string }
+
+export type ClientPortalHandoff = {
+  id: string
+  status: string
+  requested_at: string | null
+  waiting_hours: number | null
+  presented_by: ClientPortalPresentedBy
+}
+
+export type ClientPortalActivityRow = {
+  handoff_id: string
+  candidate_id: string
+  status: string
+  at: string | null
+}
+
 export type ClientPortalData = {
   company_name: string | null
+  summary?: {
+    pending_decisions: number
+    candidates_in_progress: number
+  }
+  activity?: ClientPortalActivityRow[]
   candidates: Array<{
     id: string
     short_id?: string
@@ -80,12 +104,33 @@ export type ClientPortalData = {
     status?: string | null
     email?: string | null
     phone?: string | null
+    handoff?: ClientPortalHandoff
   }>
 }
 
 export async function getClientPortalByToken(token: string): Promise<ClientPortalData> {
   const { data } = await api.get<ClientPortalData>('/public/client-portal', { params: { token } })
   return data
+}
+
+export async function portalAcceptHandoff(token: string, handoffId: string): Promise<void> {
+  await api.post(`/public/client-portal/handoffs/${encodeURIComponent(handoffId)}/accept`, {}, { params: { token } })
+}
+
+export async function portalRejectHandoff(token: string, handoffId: string, reason: string): Promise<void> {
+  await api.post(
+    `/public/client-portal/handoffs/${encodeURIComponent(handoffId)}/reject`,
+    { reason },
+    { params: { token } },
+  )
+}
+
+export async function portalRequestClarification(token: string, handoffId: string, message: string): Promise<void> {
+  await api.post(
+    `/public/client-portal/handoffs/${encodeURIComponent(handoffId)}/request-clarification`,
+    { message },
+    { params: { token } },
+  )
 }
 
 export function getContactPolicy(link: TenantLink): ContactPolicy {

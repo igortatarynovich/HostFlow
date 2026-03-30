@@ -6,6 +6,8 @@ import type { EffectiveRoleModules, TenantModuleSettings } from '../api/types'
 
 export type Permission =
   | '*'
+  /** Leadership / supervisor analytics & reports — not granted to recruiter. */
+  | 'manager.tools'
   | 'settings.view'
   | 'users.view'
   | 'users.manage'
@@ -33,6 +35,7 @@ export type Permission =
 const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   administrator: ['*'],
   supervisor: [
+    'manager.tools',
     'settings.view',
     'users.view',
     'companies.view',
@@ -75,6 +78,7 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'documents.manage',
   ],
   client_manager: [
+    'manager.tools',
     'companies.view',
     'candidates.view',
     'candidates.manage',

@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 from fastapi import HTTPException, UploadFile
-from PIL import Image, UnidentifiedImageError
-
 
 _ROOT = Path(os.environ.get("UPLOAD_DIR") or Path(__file__).resolve().parents[2] / "uploads")
 LOGO_ROOT = _ROOT / "tenant-logos"
@@ -19,6 +17,14 @@ MAX_WIDTH = 160
 
 
 async def save_tenant_logo(tenant_id: str, upload: UploadFile) -> Tuple[str, Dict[str, object]]:
+    try:
+        from PIL import Image, UnidentifiedImageError
+    except ImportError as exc:  # pragma: no cover - env without Pillow
+        raise HTTPException(
+            status_code=503,
+            detail="Image processing is unavailable (install Pillow).",
+        ) from exc
+
     data = await upload.read()
     if not data:
         raise HTTPException(status_code=400, detail="Empty file")

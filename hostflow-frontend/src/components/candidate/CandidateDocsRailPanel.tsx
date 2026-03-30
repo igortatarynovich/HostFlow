@@ -9,6 +9,9 @@ import {
   isNonOverridableDocTypeCode,
 } from '../../constants/pipelineOverridePolicy'
 import { useHiringPipelineGates } from '../../contexts/HiringPipelineGatesContext'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 
 type RequiredState = {
   missing: string[]
@@ -106,34 +109,34 @@ export default function CandidateDocsRailPanel({
   primaryStepHighlight = false,
 }: Props) {
   const { t, locale } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { gates } = useHiringPipelineGates()
   const nonOverridableEffective = useMemo(
     () => effectiveNonOverridableDocTypesSet(gates?.effective_non_overridable_doc_types),
     [gates?.effective_non_overridable_doc_types],
   )
   const [loading, setLoading] = useState(false)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [documentsError, setDocumentsError] = useState<FriendlyErrorInfo | null>(null)
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
 
   const load = useCallback(async () => {
     if (!candidateId) return
     setLoading(true)
-    setErrorText(null)
+    setDocumentsError(null)
     try {
       const res = await getSummary(candidateId, { context: ownerContext || null, fillMissing: true })
       const s = (res as any)?.summary as SummaryResponse | undefined
       setSummary(s ?? null)
     } catch (err: any) {
-      setErrorText(
-        err?.response?.data?.detail ??
-          err?.message ??
-          t('common.errors.request_failed', { defaultValue: 'Request failed' }),
-      )
+      const fb = t('common.errors.request_failed', { defaultValue: 'Request failed' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setDocumentsError(getFriendlyErrorInfo(err, fb, t))
+      }
       setSummary(null)
     } finally {
       setLoading(false)
     }
-  }, [candidateId, ownerContext, t])
+  }, [candidateId, ownerContext, planLimitModal, t])
 
   useEffect(() => {
     if (embeddedDocumentsSummary !== undefined) return
@@ -152,7 +155,7 @@ export default function CandidateDocsRailPanel({
     }
     if (embeddedDocumentsSummary.summary) {
       setSummary(embeddedDocumentsSummary.summary)
-      setErrorText(null)
+      setDocumentsError(null)
       setLoading(false)
       return
     }
@@ -545,8 +548,13 @@ export default function CandidateDocsRailPanel({
         <div className="mt-3">
           {loading ? (
             <div className="text-xs text-slate-500">{t('common.loading')}</div>
-          ) : errorText ? (
-            <div className="text-xs text-rose-600">{errorText}</div>
+          ) : documentsError ? (
+            <div className="text-xs text-rose-600">
+              <div>{documentsError.title}</div>
+              {documentsError.detail ? (
+                <div className="mt-0.5 text-[11px] text-rose-700/90">{documentsError.detail}</div>
+              ) : null}
+            </div>
           ) : (
             <div className="space-y-1">
               {rows.length ? (

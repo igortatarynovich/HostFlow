@@ -18,6 +18,10 @@ class TenantLicenseBase(BaseModel):
     max_viewers: int = Field(default=0, ge=0)
     max_storage_gb: int = Field(default=0, ge=0)
     max_companies: int = Field(default=0, ge=0)
+    max_candidates_active: int = Field(default=0, ge=0)
+    max_vacancies_active: int = Field(default=0, ge=0)
+    max_documents: int = Field(default=0, ge=0)
+    max_public_portal_links: int = Field(default=0, ge=0)
     expires_at: date | None = None
     auto_renew: bool = False
     notes: str | None = Field(default=None, max_length=4000)
@@ -35,6 +39,10 @@ class TenantLicensePatch(BaseModel):
     max_viewers: int | None = Field(default=None, ge=0)
     max_storage_gb: int | None = Field(default=None, ge=0)
     max_companies: int | None = Field(default=None, ge=0)
+    max_candidates_active: int | None = Field(default=None, ge=0)
+    max_vacancies_active: int | None = Field(default=None, ge=0)
+    max_documents: int | None = Field(default=None, ge=0)
+    max_public_portal_links: int | None = Field(default=None, ge=0)
     expires_at: date | None = None
     auto_renew: bool | None = None
     notes: str | None = Field(default=None, max_length=4000)
@@ -55,6 +63,11 @@ class TenantUsageOut(BaseModel):
     client_manager_count: int = 0
     viewer_count: int = 0
     storage_used_gb: float = 0
+    leads_created_this_month: int = 0
+    candidates_active_count: int = 0
+    documents_count: int = 0
+    vacancies_open_count: int = 0
+    portal_links_active_count: int = 0
 
 
 class TenantModuleSettings(BaseModel):
@@ -166,6 +179,12 @@ class PlatformTenantPatch(BaseModel):
 class PlatformTenantList(BaseModel):
     total: int
     items: list[PlatformTenantOut]
+
+
+class PlatformFounderEnrollOut(BaseModel):
+    enrolled: bool
+    founder_slots_used: int
+    founder_slots_max: int = 50
 
 
 class TenantStatusChange(BaseModel):

@@ -179,8 +179,8 @@ export default function LeadsDistributionRulesPage() {
 
   const canEdit = base.feature_gate.advanced_rules_allowed
 
-  return (
-    <div className="mx-auto max-w-xl space-y-6 px-4 py-6">
+    return (
+    <div className="w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6">
       <Link to={CRM_APP_PATHS.leadsDistribution} className="text-xs font-medium text-brand-700 hover:underline">
         ← {t('app.leads.distribution.rules.back')}
       </Link>

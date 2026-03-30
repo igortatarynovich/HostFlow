@@ -25,13 +25,14 @@ import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
-import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
 const DATE_LOCALES = { en: enUS, ru: ruLocale, pl: plLocale }
 const DEFAULT_REMIND_OFFSET = 15
-const STORAGE_KEY = 'hf:inbox:reminders:v2'
+const STORAGE_KEY = 'hf:inbox:reminders:v3'
 
 type LoadState = 'idle' | 'loading' | 'error'
 type InboxTab = 'tasks' | 'events'
@@ -383,6 +384,7 @@ const TEAM_ASSIGNEE_ROLES = new Set(['administrator', 'supervisor', 'superadmin'
 
 export default function RemindersPage() {
   const { t, locale } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const focusTaskIdFromUrl = (searchParams.get('t_id') || '').trim() || null
@@ -401,8 +403,8 @@ export default function RemindersPage() {
   const [taskFilters, setTaskFilters] = useState<TaskFiltersState>(DEFAULT_TASK_FILTERS)
   const [eventsFilters, setEventsFilters] = useState<EventsFiltersState>(DEFAULT_EVENTS_FILTERS)
   const [assigneeScope, setAssigneeScope] = useState<AssigneeScopeFilter>('mine')
-  /** New profiles default to SLA-first flat queue; legacy `hf:inbox:reminders:v2` without `taskListMode` stays by-due. */
-  const [taskListMode, setTaskListMode] = useState<TaskListMode>('sla_queue')
+  /** Default: group by due date; SLA flat queue is opt-in (persisted). */
+  const [taskListMode, setTaskListMode] = useState<TaskListMode>('by_due')
 
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
   const [remindersState, setRemindersState] = useState<LoadState>('idle')
@@ -420,7 +422,7 @@ export default function RemindersPage() {
   const [formDueAt, setFormDueAt] = useState<string>(() => getDefaultDueAtLocal())
   const [remindOffset, setRemindOffset] = useState<number>(DEFAULT_REMIND_OFFSET)
   const [formPriority, setFormPriority] = useState<string>('normal')
-  const [composerOpen, setComposerOpen] = useState(true)
+  const [composerOpen, setComposerOpen] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
 
   const [editState, setEditState] = useState<EditState>(null)
@@ -689,10 +691,14 @@ export default function RemindersPage() {
       setReminders(Array.isArray(data?.items) ? data.items : [])
       setRemindersState('idle')
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.load'))) {
+        setRemindersState('idle')
+        return
+      }
       setRemindersState('error')
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.load')))
+      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.load'), t))
     }
-  }, [assigneeScope, canUseTeamAssigneeScope, focusTaskIdFromUrl, t, taskFilters.status])
+  }, [assigneeScope, canUseTeamAssigneeScope, focusTaskIdFromUrl, planLimitModal, t, taskFilters.status])
 
   const loadNotificationsFeed = useCallback(async () => {
     setNotificationsState('loading')
@@ -711,10 +717,14 @@ export default function RemindersPage() {
       setNotifications(Array.isArray(data?.items) ? data.items : [])
       setNotificationsState('idle')
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.notifications_load'))) {
+        setNotificationsState('idle')
+        return
+      }
       setNotificationsState('error')
-      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notifications_load')))
+      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notifications_load'), t))
     }
-  }, [eventsFilters.read, eventsFilters.scope, t])
+  }, [eventsFilters.read, eventsFilters.scope, planLimitModal, t])
 
   const reconcileAndReloadNotificationsFeed = useCallback(async () => {
     setNotificationsState('loading')
@@ -729,10 +739,14 @@ export default function RemindersPage() {
       setNotifications(Array.isArray(data?.items) ? data.items : [])
       setNotificationsState('idle')
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.notifications_load'))) {
+        setNotificationsState('idle')
+        return
+      }
       setNotificationsState('error')
-      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notifications_load')))
+      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notifications_load'), t))
     }
-  }, [eventsFilters.read, eventsFilters.scope, t])
+  }, [eventsFilters.read, eventsFilters.scope, planLimitModal, t])
 
   useEffect(() => {
     void loadReminders()
@@ -876,7 +890,9 @@ export default function RemindersPage() {
       setFormDueAt(getDefaultDueAtLocal())
       await loadReminders()
     } catch (err: any) {
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.create')))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.create'))) {
+        setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.create'), t))
+      }
     } finally {
       setCreateBusy(false)
     }
@@ -889,7 +905,9 @@ export default function RemindersPage() {
       const updated = await completeReminder(id)
       setReminders((prev) => prev.map((r) => (r.id === id ? (updated as ReminderRecord) : r)))
     } catch (err: any) {
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.complete')))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.complete'))) {
+        setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.complete'), t))
+      }
     } finally {
       setTaskBusyId(null)
     }
@@ -902,7 +920,9 @@ export default function RemindersPage() {
       const updated = await snoozeReminder(id, { minutes })
       setReminders((prev) => prev.map((r) => (r.id === id ? (updated as ReminderRecord) : r)))
     } catch (err: any) {
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.snooze')))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.snooze'))) {
+        setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.snooze'), t))
+      }
     } finally {
       setTaskBusyId(null)
     }
@@ -925,7 +945,9 @@ export default function RemindersPage() {
       setReminders((prev) => prev.map((r) => (r.id === editState.id ? (updated as ReminderRecord) : r)))
       setEditState(null)
     } catch (err: any) {
-      setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.update')))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.update'))) {
+        setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.update'), t))
+      }
     } finally {
       setEditBusy(false)
     }
@@ -938,7 +960,9 @@ export default function RemindersPage() {
       await markNotificationsRead({ ids: [id] })
       setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n)))
     } catch (err: any) {
-      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notification_mark_one')))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.notification_mark_one'))) {
+        setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notification_mark_one'), t))
+      }
     } finally {
       setNotifBusyId(null)
     }
@@ -951,7 +975,9 @@ export default function RemindersPage() {
       await markNotificationsRead({ markAll: true })
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true, read_at: n.read_at || new Date().toISOString() })))
     } catch (err: any) {
-      setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notification_mark_all')))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.notification_mark_all'))) {
+        setNotificationsError(getFriendlyErrorInfo(err, t('app.reminders.errors.notification_mark_all'), t))
+      }
     } finally {
       setMarkAllBusy(false)
     }
@@ -1003,7 +1029,12 @@ export default function RemindersPage() {
                   })}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {activeTab === 'tasks' && (
+              <button type="button" className="btn-primary text-sm" onClick={openQuickReminderComposer}>
+                {t('app.reminders.header.create_task', { defaultValue: 'Create task' })}
+              </button>
+            )}
             <button
               type="button"
               className={clsx(
@@ -1123,26 +1154,6 @@ export default function RemindersPage() {
                   placeholder={t('app.reminders.filters.search_tasks')}
                 />
               </div>
-              <select
-                className="input"
-                value={taskFilters.entityType}
-                onChange={(e) => setTaskFilters((prev) => ({ ...prev, entityType: e.target.value }))}
-              >
-                <option value="">{t('app.reminders.filters.entity_all')}</option>
-                {entityTypeOptions.map((entityType) => (
-                  <option key={entityType} value={entityType}>{entityType}</option>
-                ))}
-              </select>
-              <select
-                className="input"
-                value={taskFilters.priority}
-                onChange={(e) => setTaskFilters((prev) => ({ ...prev, priority: e.target.value }))}
-              >
-                <option value="">{t('app.reminders.filters.priority_all')}</option>
-                <option value="low">{t('app.reminders.priority.low')}</option>
-                <option value="normal">{t('app.reminders.priority.normal')}</option>
-                <option value="high">{t('app.reminders.priority.high')}</option>
-              </select>
               <button type="button" className="btn-secondary btn-sm" onClick={() => void loadReminders()}>
                 {t('app.reminders.actions.refresh')}
               </button>
@@ -1158,6 +1169,41 @@ export default function RemindersPage() {
                 {t('common.actions.reset')}
               </button>
             </div>
+
+            <details className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                {t('app.reminders.filters.more', { defaultValue: 'More filters' })}
+                {(taskFilters.entityType || taskFilters.priority) && (
+                  <span className="ml-2 font-normal text-slate-500">
+                    ({[taskFilters.entityType, taskFilters.priority].filter(Boolean).join(' · ')})
+                  </span>
+                )}
+              </summary>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <select
+                  className="input"
+                  value={taskFilters.entityType}
+                  onChange={(e) => setTaskFilters((prev) => ({ ...prev, entityType: e.target.value }))}
+                  aria-label={t('app.reminders.filters.entity_all')}
+                >
+                  <option value="">{t('app.reminders.filters.entity_all')}</option>
+                  {entityTypeOptions.map((entityType) => (
+                    <option key={entityType} value={entityType}>{entityType}</option>
+                  ))}
+                </select>
+                <select
+                  className="input"
+                  value={taskFilters.priority}
+                  onChange={(e) => setTaskFilters((prev) => ({ ...prev, priority: e.target.value }))}
+                  aria-label={t('app.reminders.filters.priority_all')}
+                >
+                  <option value="">{t('app.reminders.filters.priority_all')}</option>
+                  <option value="low">{t('app.reminders.priority.low')}</option>
+                  <option value="normal">{t('app.reminders.priority.normal')}</option>
+                  <option value="high">{t('app.reminders.priority.high')}</option>
+                </select>
+              </div>
+            </details>
 
             <div className="flex flex-wrap gap-2">
               {(['active', 'all', 'done'] as TaskStatusFilter[]).map((status) => (
@@ -1177,10 +1223,29 @@ export default function RemindersPage() {
                   {status === 'done' && `${t('app.reminders.filter.done')} (${taskCounts.done})`}
                 </button>
               ))}
-              {taskCounts.overdue > 0 && (
-                <span className="inline-flex items-center rounded-md bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700">
-                  {t('app.reminders.status.overdue')}: {taskCounts.overdue}
-                </span>
+              {(taskCounts.overdue > 0 || taskFilters.dueBucket === 'overdue') && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setTaskFilters((prev) => ({
+                      ...prev,
+                      dueBucket: prev.dueBucket === 'overdue' ? '' : 'overdue',
+                    }))
+                  }
+                  className={clsx(
+                    'rounded-md border px-3 py-1.5 text-xs font-semibold transition',
+                    taskFilters.dueBucket === 'overdue'
+                      ? 'border-rose-600 bg-rose-600 text-white shadow-sm'
+                      : 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
+                  )}
+                >
+                  {taskFilters.dueBucket === 'overdue'
+                    ? t('app.reminders.filters.overdue_clear', { defaultValue: 'Show all due dates' })
+                    : t('app.reminders.filters.overdue_only', {
+                        defaultValue: 'Overdue only ({count})',
+                        values: { count: taskCounts.overdue },
+                      })}
+                </button>
               )}
               {canUseTeamAssigneeScope && (
                 <>
@@ -1211,25 +1276,30 @@ export default function RemindersPage() {
                 </>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <label htmlFor="hf-task-list-mode" className="text-xs font-medium text-slate-600">
-                {t('app.reminders.layout.label')}
-              </label>
-              <select
-                id="hf-task-list-mode"
-                className="input max-w-xs py-1.5 text-sm"
-                value={taskListMode}
-                onChange={(e) => setTaskListMode(e.target.value as TaskListMode)}
-              >
-                <option value="by_due">{t('app.reminders.layout.by_due')}</option>
-                <option value="sla_queue">{t('app.reminders.layout.sla_queue')}</option>
-              </select>
-            </div>
-            <p className="text-[11px] text-slate-500">
-              {taskListMode === 'sla_queue'
-                ? t('app.reminders.sla_flat_hint')
-                : t('app.reminders.sla_sort_hint')}
-            </p>
+            <details className="rounded-lg border border-dashed border-slate-200 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-medium text-slate-600">
+                {t('app.reminders.layout.advanced_toggle', { defaultValue: 'List layout (advanced)' })}
+              </summary>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <label htmlFor="hf-task-list-mode" className="text-xs font-medium text-slate-600">
+                  {t('app.reminders.layout.label')}
+                </label>
+                <select
+                  id="hf-task-list-mode"
+                  className="input max-w-xs py-1.5 text-sm"
+                  value={taskListMode}
+                  onChange={(e) => setTaskListMode(e.target.value as TaskListMode)}
+                >
+                  <option value="by_due">{t('app.reminders.layout.by_due')}</option>
+                  <option value="sla_queue">{t('app.reminders.layout.sla_queue')}</option>
+                </select>
+              </div>
+              <p className="mt-2 text-[11px] text-slate-500">
+                {taskListMode === 'sla_queue'
+                  ? t('app.reminders.sla_flat_hint')
+                  : t('app.reminders.sla_sort_hint')}
+              </p>
+            </details>
 
             {remindersState === 'loading' && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
             {remindersState === 'error' && remindersError && (
@@ -1238,8 +1308,7 @@ export default function RemindersPage() {
                 info={remindersError}
                 onRetry={() => void loadReminders()}
                 retryLabel={t('common.retry')}
-                secondaryTo={CRM_APP_PATHS.leads}
-                secondaryLabel={t('app.reminders.states.empty_cta_leads')}
+                {...friendlyErrorBannerSecondary(remindersError, CRM_APP_PATHS.leads, t('app.reminders.states.empty_cta_leads'))}
               />
             )}
 
@@ -1397,8 +1466,11 @@ export default function RemindersPage() {
               info={notificationsError}
               onRetry={() => void reconcileAndReloadNotificationsFeed()}
               retryLabel={t('common.retry')}
-              secondaryTo={CRM_APP_PATHS.communicationsLegacyHub}
-              secondaryLabel={t('app.reminders.actions.open_comm')}
+              {...friendlyErrorBannerSecondary(
+                notificationsError,
+                CRM_APP_PATHS.communicationsLegacyHub,
+                t('app.reminders.actions.open_comm'),
+              )}
             />
           )}
 

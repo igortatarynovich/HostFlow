@@ -63,6 +63,15 @@ export type PublicIntakeCreateRequest = {
   vacancy_id?: string
   locale?: string
   source?: string
+  /** Send at most one of these (backend rejects both set). */
+  lead_form_id?: string | null
+  lead_form_slug?: string | null
+}
+
+export type PublicLeadFormListItem = {
+  id: string
+  title: string
+  public_slug: string
 }
 
 export type PublicIntakeCreateResponse = {
@@ -207,6 +216,11 @@ export type MagicLinkRedeemResponse = {
 
 export async function createPublicIntake(payload: PublicIntakeCreateRequest): Promise<PublicIntakeCreateResponse> {
   const { data } = await http.post('/public/intake', payload)
+  return data
+}
+
+export async function listPublicIntakeLeadForms(): Promise<PublicLeadFormListItem[]> {
+  const { data } = await http.get<PublicLeadFormListItem[]>('/public/intake/lead-forms')
   return data
 }
 

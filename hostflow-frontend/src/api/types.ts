@@ -149,6 +149,12 @@ export interface PlatformTenantListResponse {
   items: PlatformTenant[];
 }
 
+export interface PlatformFounderEnrollResponse {
+  enrolled: boolean;
+  founder_slots_used: number;
+  founder_slots_max: number;
+}
+
 export interface TenantSummary {
   id: string;
   name: string;
@@ -723,6 +729,7 @@ export type MetaFieldMappingFormat =
   | 'float'
   | 'uuid'
   | 'country'
+  | 'geo_country'
   | 'contact_channel'
   | 'list'
   | 'csv'
@@ -738,18 +745,28 @@ export interface MetaLeadFieldMappingRule {
 
 export type LeadsProcessingModeV1 = 'manual' | 'assisted' | 'automatic';
 
+export interface GenericInboundWebhookRotateResponse {
+  secret: string;
+  ingest_url: string;
+}
+
 export interface MetaLeadSettings {
   tenant_id: UUID;
   default_company_id?: UUID | null;
   fallback_recruiter_id?: UUID | null;
   auto_create_enabled: boolean;
+  /** §2.4: when Automatic + auto_create, create candidate on fit only if true */
+  leads_auto_convert_on_fit_v1?: boolean;
   leads_processing_mode_v1: LeadsProcessingModeV1;
   reroute_after_hours?: number | null;
   mask_pii_in_logs: boolean;
   pull_field_data_from_graph?: boolean;
+  /** Fallback vacancy order when ad/ID mapping is empty (Tenant.settings.lead_fit_routing_v1). */
+  lead_fit_ordered_vacancy_ids?: UUID[];
   field_mapping?: MetaLeadFieldMappingRule[];
   plan_field_mapping_rules_limit?: number | null;
   plan_meta_credentials_limit?: number | null;
+  generic_inbound_webhook_enabled?: boolean;
   webhook_url?: string | null;
   last_webhook_check_at?: string | null;
   last_signature_status?: string | null;
@@ -762,10 +779,12 @@ export interface MetaLeadSettingsPatch {
   default_company_id?: UUID | null;
   fallback_recruiter_id?: UUID | null;
   auto_create_enabled?: boolean;
+  leads_auto_convert_on_fit_v1?: boolean;
   leads_processing_mode_v1?: LeadsProcessingModeV1;
   reroute_after_hours?: number | null;
   mask_pii_in_logs?: boolean;
   pull_field_data_from_graph?: boolean;
+  lead_fit_ordered_vacancy_ids?: UUID[];
   field_mapping?: MetaLeadFieldMappingRule[];
   webhook_url?: string | null;
   webhook_verify_token?: string | null;

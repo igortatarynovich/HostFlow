@@ -1,5 +1,6 @@
 import { api } from './client'
 import type {
+  GenericInboundWebhookRotateResponse,
   MetaAdsMapCreatePayload,
   MetaAdsMapEntry,
   MetaAdsMapUpdatePayload,
@@ -23,6 +24,11 @@ export async function getMetaLeadSettings(): Promise<MetaLeadSettings> {
 
 export async function updateMetaLeadSettings(payload: MetaLeadSettingsPatch): Promise<MetaLeadSettings> {
   const { data } = await api.patch(`${BASE}/settings`, payload)
+  return data
+}
+
+export async function rotateGenericInboundWebhook(): Promise<GenericInboundWebhookRotateResponse> {
+  const { data } = await api.post(`${BASE}/inbound-webhook/rotate`)
   return data
 }
 
@@ -140,9 +146,14 @@ export async function retryLeads(payload: RetryLeadsPayload): Promise<RetryLeads
   return data
 }
 
-export async function getMetaIncomingPreview(opts?: { limit?: number }): Promise<MetaIncomingLeadsPreviewResponse> {
-  const params: Record<string, number> = {}
+export async function getMetaIncomingPreview(opts?: {
+  limit?: number
+  /** Lead.source: meta | webhook */
+  source?: 'meta' | 'webhook'
+}): Promise<MetaIncomingLeadsPreviewResponse> {
+  const params: Record<string, number | string> = {}
   if (opts?.limit != null) params.limit = opts.limit
+  if (opts?.source) params.source = opts.source
   const { data } = await api.get<MetaIncomingLeadsPreviewResponse>(`${BASE}/meta/incoming-preview`, {
     params: Object.keys(params).length ? params : undefined,
   })

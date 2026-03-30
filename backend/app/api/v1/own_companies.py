@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,11 @@ from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import OwnCompany, User
 from backend.app.models.tenant import Tenant, TenantLicense
+from backend.app.api.v1.utils.own_company_acl import (
+    allowed_own_company_ids_from_prefs,
+    is_own_company_id_allowed_for_user,
+    role_bypasses_own_company_acl,
+)
 from backend.app.modules.companies import crud as companies_crud
 from backend.app.services.audit import log_activity
 from backend.app.services.onboarding_demo_seed import seed_onboarding_demo_if_needed
@@ -21,6 +26,33 @@ from backend.app.services.onboarding_demo_seed import seed_onboarding_demo_if_ne
 router = APIRouter(prefix="/own-companies", tags=["own-companies"], redirect_slashes=False)
 # Back-compat for older deployments using underscore paths.
 legacy_router = APIRouter(prefix="/own_companies", tags=["own-companies"], redirect_slashes=False)
+
+
+async def _load_own_company_acl_context(
+    db: AsyncSession,
+    current_user: UserCtx | None,
+) -> tuple[bool, Optional[set[str]], dict[str, Any]]:
+    prefs: dict[str, Any] = {}
+    if current_user and current_user.sub:
+        user_row = await db.execute(select(User.preferences).where(User.id == str(current_user.sub)).limit(1))
+        raw = user_row.scalar_one_or_none()
+        if isinstance(raw, dict):
+            prefs = dict(raw)
+    bypass = role_bypasses_own_company_acl(current_user.role if current_user else None)
+    allowed = allowed_own_company_ids_from_prefs(prefs)
+    return bypass, allowed, prefs
+
+
+def _filter_own_companies_by_acl(
+    items: List[OwnCompany],
+    *,
+    bypass: bool,
+    allowed: Optional[set[str]],
+) -> List[OwnCompany]:
+    if allowed is None or bypass:
+        return items
+    allow = allowed
+    return [x for x in items if str(x.id) in allow]
 
 
 class OwnCompanyOut(BaseModel):
@@ -129,12 +161,12 @@ async def list_own_companies(
     )
     items = list(rows.scalars().all())
 
-    active = None
-    if current_user and current_user.sub:
-        user_row = await db.execute(select(User.preferences).where(User.id == str(current_user.sub)).limit(1))
-        prefs = user_row.scalar_one_or_none()
-        if isinstance(prefs, dict):
-            active = str(prefs.get("active_own_company_id") or "").strip() or None
+    bypass, allowed, prefs = await _load_own_company_acl_context(db, current_user)
+    items = _filter_own_companies_by_acl(items, bypass=bypass, allowed=allowed)
+
+    active = str(prefs.get("active_own_company_id") or "").strip() or None
+    if active and allowed is not None and not bypass and active not in allowed:
+        active = None
     return OwnCompanyListOut(items=[OwnCompanyOut.model_validate(x) for x in items], active_own_company_id=active)
 
 
@@ -299,6 +331,7 @@ async def patch_own_company(
 @router.post("/active", response_model=OwnCompanyListOut)
 @legacy_router.post("/active", response_model=OwnCompanyListOut, include_in_schema=False)
 async def set_active_own_company(
+    request: Request,
     payload: SetActiveOwnCompanyIn,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
@@ -308,9 +341,13 @@ async def set_active_own_company(
     if not current_user or not current_user.sub:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    # Validate belongs to tenant
+    new_id = str(payload.own_company_id)
     row = await db.execute(
-        select(OwnCompany.id).where(OwnCompany.id == str(payload.own_company_id), OwnCompany.tenant_id == tenant_id).limit(1)
+        select(OwnCompany.id).where(
+            OwnCompany.id == new_id,
+            OwnCompany.tenant_id == tenant_id,
+            OwnCompany.is_archived.is_(False),
+        ).limit(1)
     )
     if row.scalar_one_or_none() is None:
         raise HTTPException(status_code=422, detail="Invalid own company")
@@ -319,12 +356,33 @@ async def set_active_own_company(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     prefs = dict(user.preferences or {})
-    prefs["active_own_company_id"] = str(payload.own_company_id)
+    bypass = role_bypasses_own_company_acl(current_user.role)
+    allowed = allowed_own_company_ids_from_prefs(prefs)
+    if not is_own_company_id_allowed_for_user(new_id, allowed=allowed, bypass=bypass):
+        raise HTTPException(status_code=403, detail="Own company not permitted for this user")
+
+    old_active = str(prefs.get("active_own_company_id") or "").strip() or None
+    prefs["active_own_company_id"] = new_id
     user.preferences = prefs
+    await db.flush()
+    try:
+        await log_activity(
+            db,
+            tenant_id=tenant_id,
+            actor_id=str(current_user.sub or "").strip() or None,
+            action="own_company.active_changed",
+            target_type="user",
+            target_id=str(current_user.sub),
+            payload={"from_own_company_id": old_active, "to_own_company_id": new_id},
+            ip=request.client.host if request.client else None,
+            ua=(request.headers.get("user-agent") if request else None),
+        )
+    except Exception:
+        pass
     await db.commit()
     await db.refresh(user)
 
     rows = await db.execute(select(OwnCompany).where(OwnCompany.tenant_id == tenant_id).order_by(OwnCompany.created_at.asc()))
-    items = list(rows.scalars().all())
-    return OwnCompanyListOut(items=[OwnCompanyOut.model_validate(x) for x in items], active_own_company_id=str(payload.own_company_id))
+    items = _filter_own_companies_by_acl(list(rows.scalars().all()), bypass=bypass, allowed=allowed_own_company_ids_from_prefs(prefs))
+    return OwnCompanyListOut(items=[OwnCompanyOut.model_validate(x) for x in items], active_own_company_id=new_id)
 

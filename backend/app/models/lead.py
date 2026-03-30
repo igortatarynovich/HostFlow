@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 import uuid
 
 from sqlalchemy import (
@@ -20,6 +20,7 @@ from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
+from backend.app.db.tsvector_compat import TsVector
 from .mixins import now_utc, TimestampMixin
 
 
@@ -64,6 +65,7 @@ class Lead(Base):
     ad_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     payload: Mapped[dict] = mapped_column(JSONType, nullable=False, default=dict)
     normalized: Mapped[Optional[dict]] = mapped_column(JSONType, nullable=True)
+    hostflow_lead_json_tsv: Mapped[Optional[Any]] = mapped_column(TsVector, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
@@ -191,3 +193,12 @@ class MetaLeadSettings(TimestampMixin, Base):
     webhook_verify_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     # §2.10 / §2.3: Manual / Assisted / Automatic (ingest + normalized stamp; automatic needs Team plan at runtime).
     leads_processing_mode_v1: Mapped[Optional[str]] = mapped_column(String(24), nullable=True)
+    # §2.4: when Automatic + auto_create_enabled, actually create candidate on fit only if True (safeguard).
+    leads_auto_convert_on_fit_v1: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default=text("true"),
+    )
+    # §2.11: path secret for POST /api/v1/public/leads/inbound/{secret} (Team+); unique when set.
+    generic_inbound_webhook_secret: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 from uuid import UUID
@@ -40,6 +41,17 @@ COUNTRY_ALIASES = (
     "country",
     "country_code",
     "страна",
+)
+
+# §2.5: location / current jurisdiction vs citizenship (`country` above).
+GEO_COUNTRY_ALIASES = (
+    "geo_country",
+    "location_country",
+    "current_country",
+    "work_location_country",
+    "current_location_country",
+    "where_do_you_live_country",
+    "country_of_residence",
 )
 
 CONTACT_ALIASES = (
@@ -225,6 +237,8 @@ def _convert_mapped_value(raw_values: List[str], format_name: str) -> Any:
         except (TypeError, ValueError):
             return None
     if fmt == "country":
+        return first.upper()
+    if fmt == "geo_country":
         return first.upper()
     if fmt == "contact_channel":
         return _normalize_preferred_contact(first)
@@ -508,6 +522,46 @@ def _is_poland_value(value: Optional[str]) -> bool:
     return raw in aliases
 
 
+def coerce_generic_json_to_meta_normalizer_payload(body: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Wrap arbitrary JSON objects so normalize_meta_payload can read field_data (§2.11 webhook v1).
+    Accepts Meta leadgen shape unchanged; flat objects become synthetic field_data rows.
+    """
+    if not isinstance(body, dict):
+        raise ValueError("JSON object expected")
+    entry = body.get("entry")
+    if isinstance(entry, list) and entry:
+        return body
+    if isinstance(body.get("field_data"), list):
+        return {"entry": [{"changes": [{"value": dict(body)}]}]}
+    skip = frozenset({"id", "external_id", "lead_id", "leadgen_id"})
+    items: List[Dict[str, Any]] = []
+    for k, v in body.items():
+        if k in skip:
+            continue
+        if v is None:
+            continue
+        name = str(k).strip()
+        if not name:
+            continue
+        if isinstance(v, (dict, list)):
+            items.append(
+                {
+                    "name": name,
+                    "values": [json.dumps(v, ensure_ascii=False, sort_keys=True, default=str)],
+                }
+            )
+        else:
+            items.append({"name": name, "values": [str(v)]})
+    inner: Dict[str, Any] = {"field_data": items}
+    eid = body.get("id") or body.get("external_id") or body.get("leadgen_id")
+    if eid is not None:
+        s = str(eid).strip()
+        if s:
+            inner["leadgen_id"] = s
+    return {"entry": [{"changes": [{"value": inner}]}]}
+
+
 def normalize_meta_payload(
     payload: Dict[str, Any],
     *,
@@ -609,6 +663,10 @@ def normalize_meta_payload(
         normalized["country"] = country_hint.upper()
         if not normalized.get("in_poland") and _is_poland_value(country_hint):
             normalized["in_poland"] = True
+    geo_hint = _first(mapping, *GEO_COUNTRY_ALIASES)
+    if geo_hint:
+        normalized["geo_country_raw"] = geo_hint
+        normalized["geo_country"] = str(geo_hint).strip().upper()
     if preferred_contact:
         normalized["preferred_contact"] = preferred_contact
     in_poland_hint = _first(mapping, *IN_POLAND_ALIASES)

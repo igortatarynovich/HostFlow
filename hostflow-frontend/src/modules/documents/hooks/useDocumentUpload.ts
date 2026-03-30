@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import type { Document } from "../../../api/types";
 import { presignUpload, mockUpload } from "../../../api/documents";
 import { formatErrorForDisplay } from "../../../utils/errorHandling";
+import { usePlanLimitModal } from "../../../contexts/PlanLimitModalContext";
 import { useI18n } from "../../../i18n";
 import { MAX_FILE_MB } from "../constants";
 import { isTooLarge } from "../documentUtils";
@@ -32,6 +33,7 @@ export function useDocumentUpload({
   flash,
 }: UseDocumentUploadProps) {
   const { t } = useI18n();
+  const planLimitModal = usePlanLimitModal();
 
   const handleReplaceUpload = useCallback(
     async (doc: Document, file: File) => {
@@ -74,6 +76,11 @@ export function useDocumentUpload({
       } catch (e: any) {
         if (timer) window.clearInterval(timer);
         setReplacePct((prev) => ({ ...prev, [doc.id]: 0 }));
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.replace_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.notifications.replace_failed"),
         });
@@ -89,6 +96,7 @@ export function useDocumentUpload({
       canManageDocuments,
       createDocumentFromChecklist,
       loadAll,
+      planLimitModal,
       setError,
       setReplaceUploading,
       setReplacePct,

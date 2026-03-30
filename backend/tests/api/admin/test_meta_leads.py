@@ -103,9 +103,11 @@ async def test_meta_leads_settings_patch(client, manager_headers, tenant_id):
     data = resp.json()
     assert data["auto_create_enabled"] is True
     assert "pull_field_data_from_graph" in data
+    assert data.get("leads_auto_convert_on_fit_v1", True) is True
 
     patch_payload = {
         "auto_create_enabled": False,
+        "leads_auto_convert_on_fit_v1": False,
         "mask_pii_in_logs": False,
         "reroute_after_hours": 12,
         "webhook_url": "https://example.com/meta",
@@ -120,6 +122,7 @@ async def test_meta_leads_settings_patch(client, manager_headers, tenant_id):
     assert patch_resp.status_code == 200, patch_resp.text
     patched = patch_resp.json()
     assert patched["auto_create_enabled"] is False
+    assert patched.get("leads_auto_convert_on_fit_v1") is False
     assert patched["mask_pii_in_logs"] is False
     assert patched["reroute_after_hours"] == 12
     assert patched["webhook_url"] == "https://example.com/meta"

@@ -4,9 +4,16 @@ import { useI18n } from '../i18n'
 import { acceptInvite } from '../api/users'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import {
+  friendlyErrorBannerSecondary,
+  friendlyFormHintError,
+  getFriendlyErrorInfo,
+  type FriendlyErrorInfo,
+} from '../utils/friendlyError'
 import { useAuth } from '../store/useAuth'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
 import { rememberLoginNotice } from '../store/auth'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
 export default function InviteAcceptPage() {
   useRobotsMeta({ index: false, follow: false })
@@ -14,6 +21,7 @@ export default function InviteAcceptPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { login } = useAuth()
+  const planLimitModal = usePlanLimitModal()
   const token = searchParams.get('token') || ''
 
   const [password, setPassword] = useState('')
@@ -22,7 +30,7 @@ export default function InviteAcceptPage() {
   const [shortId, setShortId] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [noToken, setNoToken] = useState(false)
 
   useEffect(() => {
@@ -35,11 +43,11 @@ export default function InviteAcceptPage() {
     e.preventDefault()
     setError(null)
     if (password !== confirm) {
-      setError(t('app.invite_accept.errors.mismatch', { defaultValue: 'Hasła nie są identyczne' }))
+      setError(friendlyFormHintError(t('app.invite_accept.errors.mismatch', { defaultValue: 'Passwords do not match' }), t))
       return
     }
     if (password.length < 8) {
-      setError(t('app.invite_accept.errors.too_short', { defaultValue: 'Hasło musi mieć minimum 8 znaków' }))
+      setError(friendlyFormHintError(t('app.invite_accept.errors.too_short', { defaultValue: 'Password must be at least 8 characters' }), t))
       return
     }
     setLoading(true)
@@ -67,8 +75,15 @@ export default function InviteAcceptPage() {
       rememberLoginNotice('invite_accepted')
       navigate('/login', { replace: true })
     } catch (err: unknown) {
-      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
-      setError(detail ?? t('app.invite_accept.errors.generic', { defaultValue: 'Token nieprawidłowy lub wygasł' }))
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.invite_accept.errors.generic', { defaultValue: 'Invalid or expired invitation' }),
+        )
+      ) {
+        return
+      }
+      setError(getFriendlyErrorInfo(err, t('app.invite_accept.errors.generic', { defaultValue: 'Invalid or expired invitation' }), t))
     } finally {
       setLoading(false)
     }
@@ -156,7 +171,8 @@ export default function InviteAcceptPage() {
               </div>
               {error && (
                 <ErrorRecoveryBanner
-                  info={{ title: error, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+                  info={error}
+                  {...friendlyErrorBannerSecondary(error, '/login', t('app.forgot_password.back', { defaultValue: 'Back to sign in' }))}
                   compact
                 />
               )}

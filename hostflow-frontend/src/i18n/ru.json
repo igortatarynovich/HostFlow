@@ -276,6 +276,72 @@
     }
   },
   "app": {
+    "api_errors": {
+      "open_billing": "Открыть биллинг",
+      "network_offline_title": "Нет подключения к интернету",
+      "network_offline_hint": "Проверьте соединение и повторите попытку.",
+      "timeout_title": "Превышено время ожидания",
+      "timeout_hint": "Повторите через несколько секунд.",
+      "access_denied_title": "Действие запрещено",
+      "access_denied_hint": "Обновите сессию или запросите права у администратора.",
+      "not_found_title": "Данные не найдены",
+      "not_found_hint": "Обновите страницу и повторите действие.",
+      "conflict_title": "Конфликт данных",
+      "conflict_hint": "Обновите страницу и повторите попытку.",
+      "rate_limit_title": "Слишком много запросов",
+      "rate_limit_hint": "Подождите немного и попробуйте снова.",
+      "server_error_title": "Сервер временно недоступен",
+      "server_error_hint": "Повторите позже. Если ошибка сохраняется, проверьте состояние сервиса.",
+      "generic_retry_hint": "Повторите действие или обновите страницу.",
+      "quota": {
+        "monthly_leads_title": "Достигнут месячный лимит лидов",
+        "monthly_leads_hint": "Повысьте план в Настройки → Биллинг или дождитесь следующего месяца (UTC).",
+        "candidate_title": "Достигнут лимит активных кандидатов",
+        "candidate_hint": "Архивируйте ненужных кандидатов или повысьте план в Настройки → Биллинг.",
+        "vacancy_title": "Достигнут лимит открытых вакансий",
+        "vacancy_hint": "Закройте неактуальные вакансии или повысьте план в Настройки → Биллинг.",
+        "document_title": "Достигнут лимит документов",
+        "document_hint": "Удалите устаревшие документы или повысьте план в Настройки → Биллинг.",
+        "storage_title": "Достигнут лимит хранилища",
+        "storage_hint": "Удалите крупные файлы или увеличьте объём в Настройки → Биллинг.",
+        "automation_rules_title": "Достигнут лимит правил автоматизации",
+        "automation_rules_hint": "Отключите ненужное правило или повысьте план в Настройки → Биллинг.",
+        "lead_forms_title": "Достигнут лимит лид-форм",
+        "lead_forms_hint": "Отключите форму, купите пак лид-форм или смените тариф в Настройки → Биллинг.",
+        "portal_active_candidates_title": "Достигнут месячный лимит кандидатов портала",
+        "portal_active_candidates_hint": "Повысьте план или добавьте пакет в Настройки → Биллинг. Уже учтённые в этом месяце кандидаты могут обновлять ссылки.",
+        "communication_channels_title": "Достигнут лимит каналов связи",
+        "communication_channels_hint": "Удалите ненужный аккаунт канала или повысьте план в Настройки → Биллинг.",
+        "funnel_definitions_title": "Достигнут лимит воронок (pipelines)",
+        "funnel_definitions_hint": "Удалите или объедините пользовательскую воронку или повысьте план в Настройки → Биллинг.",
+        "plan_generic_title": "Достигнут лимит плана",
+        "plan_generic_hint": "Откройте Настройки → Биллинг, чтобы проверить план и использование.",
+        "operating_company_title": "Достигнут лимит операционных компаний",
+        "operating_company_hint": "Откройте Биллинг и добавьте слоты операционных компаний.",
+        "usage_meter_title": "Достигнут лимит использования",
+        "usage_meter_hint": "Откройте Настройки → Биллинг или повторите попытку в следующем месяце."
+      },
+      "billing": {
+        "portal_title": "Достигнут лимит ссылок клиентского портала",
+        "portal_hint": "Повысьте план в Настройки → Биллинг или отзовите существующую ссылку.",
+        "past_due_title": "Требуется оплата подписки",
+        "past_due_hint": "Откройте Настройки → Биллинг, чтобы повторить платёж или обновить способ оплаты.",
+        "trial_expired_title": "Пробный период окончен",
+        "trial_expired_hint": "Выберите план в Настройки → Биллинг, чтобы продолжить работу."
+      },
+      "plan_gate": {
+        "plan_requires_team_title": "Для этого действия нужен план уровня Team",
+        "plan_requires_team_hint": "Повысьте план в Настройки → Биллинг, чтобы открыть автоматизации и интеграции уровня Team.",
+        "seat_limit_title": "Достигнут лимит мест (seats)",
+        "seat_limit_hint": "Удалите пользователей или приглашения для этой роли либо добавьте места в Настройки → Биллинг.",
+        "meta_field_mapping_title": "Достигнут лимит правил сопоставления полей Meta",
+        "meta_field_mapping_hint": "Повысьте план в Настройки → Биллинг для большей таблицы маппинга на планах Team.",
+        "meta_lead_credentials_title": "Достигнут лимит интеграций Meta Lead",
+        "meta_lead_credentials_hint": "Повысьте план в Настройки → Биллинг, чтобы подключить дополнительные источники Meta.",
+        "lead_custom_fields_title": "Достигнут лимит пользовательских полей лида",
+        "lead_custom_fields_hint": "Архивируйте неиспользуемые поля или повысьте план в Настройки → Биллинг."
+      }
+    },
     "layout": {
       "toggle_sidebar": "Переключить меню",
       "nav": {
@@ -310,7 +376,7 @@
         "account": "Профиль"
       },
       "items": {
-        "overview": "Обзор",
+        "overview": "Аналитика",
         "analytics": "Аналитика",
         "work": "Работа",
         "my_company": "Моя компания",
@@ -339,12 +405,15 @@
         "reminders": "Напоминания",
         "leads": "Лиды",
         "leads_distribution": "Распределение лидов",
+        "leads_distribution_rules": "Правила распределения лидов",
         "settings": "Настройки",
         "settings_users": "Пользователи и роли",
         "settings_billing": "Биллинг и команда",
         "settings_tenants": "Платформа: тенанты",
         "settings_funnels": "Воронки и этапы",
         "settings_docs": "Каталог типов документов",
+        "settings_candidate_profiles": "Профили кандидатов",
+        "settings_custom_fields": "Пользовательские поля",
         "settings_legal": "Юридические документы",
         "settings_company_access": "Доступ к компаниям",
         "settings_email": "Настройки почты",
@@ -353,6 +422,10 @@
         "settings_ruleset": "Версии Ruleset",
         "settings_audit": "Аудит-лог",
         "settings_communications": "Настройки коммуникаций",
+        "settings_communications_messengers": "Мессенджеры",
+        "settings_communications_queue": "Очередь и маршрутизация",
+        "settings_communications_sla": "SLA коммуникаций",
+        "settings_ttv": "Отчёт TTV",
         "profile": "Профиль",
         "logout": "Выйти",
         "email": "электронная почта",
@@ -364,6 +437,11 @@
         "automation_rules": "Правила автоматизаций",
         "settings_hiring_gates": "Барьеры воронки найма",
         "settings_risk_intel": "Операционный риск"
+      },
+      "integrations": {
+        "meta_leads": "Meta Leads",
+        "google": "Google Ads",
+        "webhook": "Webhook и формы"
       }
     },
     "work": {
@@ -382,11 +460,57 @@
         "card_documents_desc": "Типы документов и реестр.",
         "card_invoices_desc": "Счета к оплате и оплаченные, переход к биллингу.",
         "section_core": "Пайплайн и записи",
-        "empty": "Для вашей роли не включены разделы рабочего места."
+        "empty": "Для вашей роли не включены разделы рабочего места.",
+        "operational_title": "Работа",
+        "operational_subtitle": "Что сделать сейчас — не каталог функций.",
+        "plan_upgrade_strip_title": "Автоматизация команды",
+        "plan_upgrade_strip_body": "Массовая обработка лидов Meta, сценарии по воронке и часть автоматизаций доступны на плане Team. На Solo/Starter списки и ручные шаги работают как прежде.",
+        "plan_upgrade_strip_cta": "Биллинг и апгрейд",
+        "block_attention": "Требует внимания",
+        "attention_candidates_no_next": "Кандидаты без следующего шага",
+        "attention_overdue_tasks": "Просроченные задачи",
+        "attention_leads_routing": "Новые лиды к разбору",
+        "action_start_processing": "Начать обработку",
+        "action_fix_tasks": "Исправить",
+        "action_triage_leads": "Разобрать",
+        "queue_no_next": "Без следующего шага",
+        "queue_docs_incomplete": "Ожидают документы",
+        "queue_waiting_reply": "Ждут ответа",
+        "processing_needs_decision": "Требует решения",
+        "processing_client_review": "На рассмотрении у клиента",
+        "processing_returned": "Возврат от клиента",
+        "team_busy": "Заняты сейчас: {count}",
+        "team_timeoff": "В отпуске сегодня: {count}",
+        "team_available": "Доступны: {count}",
+        "team_open": "Открыть команду",
+        "action_create_task": "Добавить задачу",
+        "block_now": "Что делать сейчас",
+        "block_queue": "Очередь работы",
+        "block_processing": "Процессинг у клиента",
+        "block_team": "Команда",
+        "block_quick": "Быстрые действия",
+        "open_list": "Открыть",
+        "go_tasks": "К задачам",
+        "open_leads": "Открыть лидов",
+        "queue_no_next_hint": "В приоритете кандидаты без следующего шага.",
+        "queue_docs_hint": "Документы и контроль сроков.",
+        "queue_leads_decision": "Лиды, ожидающие решения",
+        "processing_blurb": "Handoff и статус у клиента в одном месте.",
+        "team_blurb": "Доступность и нагрузка — раздел «Команда» в левом меню.",
+        "action_new_candidate": "Создать кандидата",
+        "action_add_task": "Задачи",
+        "action_inbox": "Открыть входящие",
+        "metric_candidates_no_next_label": "кандидатов без ответа / следующего шага",
+        "metric_overdue_tasks_label": "просроченных задач",
+        "metric_leads_routing_label": "новых лидов к разбору",
+        "footer_entities": "Полоска под верхней панелью — быстрый переход к {clients}, вакансиям и финансам."
       },
       "context_tabs": {
         "aria": "Навигация по рабочим разделам",
         "finance_group_aria": "Финансы — заказы, услуги и счета"
+      },
+      "context_strip": {
+        "aria": "Операционные разделы"
       }
     },
     "analytics": {
@@ -401,7 +525,57 @@
         "card_leads_desc": "Снимок воронки конверсии, здоровье стадий и очереди лидов.",
         "card_leads_distribution_desc": "Маршрутизация, баланс нагрузки и языковые правила — тот же экран, что в разделе лидов.",
         "card_ttv_title": "Отчёт time-to-value",
-        "card_ttv_desc": "Ключевые шаги онбординга и задержки (админ)."
+        "card_ttv_desc": "Ключевые шаги онбординга и задержки (админ).",
+        "card_lead_conversion_title": "Воронка конверсии",
+        "card_lead_conversion_desc": "Полный вид воронки, переход к лидам и срезы."
+      },
+      "lead_conversion": {
+        "title": "Воронка конверсии лидов",
+        "subtitle": "Корни конверсии по порядку воронки; у каждого шага — ссылка на подходящие лиды.",
+        "back_hub": "← Хаб аналитики",
+        "configure_funnels": "Настроить этапы воронки",
+        "open_leads_workspace": "Открыть рабочее место лидов",
+        "empty": "Пока нет этапов воронки. Сопоставьте стадии CRM с корнями конверсии в настройках воронок.",
+        "at_or_beyond": "На этом шаге или дальше: {n}",
+        "drop_off": "Отвал до следующего: {n}",
+        "dwell_empty": "Пока нет выборки по времени на шаге.",
+        "open_leads": "Открыть подходящие лиды",
+        "step_conversion": "Следующий шаг: {pct}% продолжают",
+        "suggested_title": "Фокус действий",
+        "suggested_intro": "Те же пороги объёма, что у чипов воронки на Dashboard (план Team): слабая передача между корнями и долгое среднее время на шаге.",
+        "suggested_weak": "Слабое звено: {rootLabel} — дальше переходят только {pct}%; около {drop} лидов в этом корне до отвала.",
+        "suggested_slow": "Долго на шаге: {rootLabel} — в среднем ~{days} дн. в стадии (выборка ≥3); сейчас в корне {count} лидов.",
+        "suggested_dashboard": "Открыть Dashboard (NBA)",
+        "suggested_open_weak": "Открыть лидов в этом корне",
+        "suggested_open_slow": "Открыть лидов в этом корне (медленный шаг)",
+        "management_chain_title": "Контур управления",
+        "management_chain_intro": "Связка метрик воронки с настройками и работой: маппинг, правила на смене стадии, очереди в workspace и NBA на дашборде.",
+        "management_chain_pipelines": "Воронки и корни конверсии",
+        "management_chain_automation": "Правила автоматизации",
+        "management_chain_leads": "Рабочее место лидов",
+        "management_chain_nba": "Dashboard (NBA)",
+        "management_chain_automation_hint": "Правила могут реагировать на lead.pipeline.stage_changed (в т.ч. до/после lost), в условиях доступны normalized и custom_fields.",
+        "management_chain_presets_title": "Быстрые очереди lost",
+        "management_chain_combo_title": "Предыдущая стадия × причина lost",
+        "management_chain_combo_item": "{stage} · {reason}",
+        "cohort_title": "Когорта (дата создания лида)",
+        "cohort_intro": "Скользящее окно 7 дней по дате создания лида. Сравнение с предыдущими 7 днями (WoW) — на плане Team.",
+        "cohort_aria": "Окно когорты",
+        "cohort_all": "Всё время",
+        "cohort_7d": "Последние 7 дней",
+        "cohort_7d_wow": "7 дн. vs предыдущие 7 дн.",
+        "cohort_team_only": "Когорта и срезы воронки доступны на плане Team.",
+        "cohort_window_label": "Текущее окно: {from} → {to} (верхняя граница не включается)",
+        "cohort_wow_title": "Сравнение периодов",
+        "cohort_wow_intro": "Счётчики для текущего окна когорты и непосредственно предшествующего окна той же длины.",
+        "cohort_prior_window_label": "Предыдущее окно: {from} → {to} (верхняя граница не включается)",
+        "cohort_metric": "Метрика",
+        "cohort_current": "Текущий",
+        "cohort_prior": "Предыдущий",
+        "cohort_delta": "Δ",
+        "cohort_m_win_path": "На пути к win (processed)",
+        "cohort_m_lost": "Lost (processed)",
+        "cohort_m_new": "New (inbox)"
       }
     },
     "clients": {
@@ -434,7 +608,11 @@
       "crm_directory_link": "Открыть каталог CRM клиентов",
       "not_found": "Клиент не найден",
       "errors": {
-        "name_or_link": "Введите название или привяжите к компании."
+        "name_or_link": "Введите название или привяжите к компании.",
+        "link_load_failed": "Не удалось загрузить привязку клиента",
+        "update_failed": "Не удалось сохранить изменения",
+        "portal_create_failed": "Не удалось создать ссылку портала",
+        "portal_revoke_failed": "Не удалось отозвать ссылку портала"
       },
       "add_entity_dynamic": "Добавить динамику объекта",
       "created_dynamic": "Создано динамично",
@@ -544,7 +722,19 @@
         "criteria": {
           "title": "Критерии для лидов (авто-квалификация)",
           "documents_placeholder": "напр., karta_pobytu, wp_a",
-          "lead_fields": "Сейчас проверяем по полям лида:"
+          "lead_fields": "Сейчас проверяем по полям лида:",
+          "candidate_docs_module": "Модуль Documents — типы документов (по кандидату)",
+          "candidate_docs_placeholder": "driver_license, passport",
+          "candidate_docs_hint": "Проверка по строкам Documents у привязанного к лиду кандидата. Без кандидата — needs_info до конверсии. Коды как в Настройки → Documents.",
+          "allow_statuses": "Допустимые статусы документа (опционально, через запятую)",
+          "allowed_geo_countries": "Разрешённые страны локации (geo, ISO через запятую)",
+          "blocked_geo_countries": "Запрещённые страны локации (geo, ISO через запятую)",
+          "geo_countries_placeholder": "DE, NL, PL",
+          "allowed_geo_hint": "Сверяется с местонахождением лида (geo_country, location_country или current_country), не с гражданством (country). В маппинге полей ведите вопрос анкеты в geo_country.",
+          "blocked_geo_hint": "Если geo-страна лида совпала с кодом — no_fit. Пусто — не проверять.",
+          "lead_fields_geo": "для «где сейчас» против гражданства используйте",
+          "disable_auto_convert": "Отключить автоконверсию лида в кандидата для этой вакансии (§2.4)",
+          "disable_auto_convert_hint": "При режиме Automatic лиды на эту вакансию не создадут кандидата автоматически даже при fit — нужен Process. В extra: leads_auto_convert_on_fit_v1 = false."
         }
       },
       "load_failed": "Загрузка не удалась"
@@ -660,6 +850,9 @@
       "search": "Поиск инцидентов…",
       "include_read": "Показывать прочитанные",
       "empty": "Сейчас SLA-инцидентов нет.",
+      "errors": {
+        "load": "Не удалось загрузить SLA-инциденты"
+      },
       "empty_group": "В группе \"{group}\" инцидентов нет.",
       "open_dialog": "Открыть диалог",
       "mark_read": "Отметить прочитанным",
@@ -920,6 +1113,7 @@
     "shell": {
       "sidebar": {
         "workspace": "Рабочее пространство",
+        "workspace_expand": "Пространство и настройки",
         "close_menu": "Закрыть меню",
         "client_workflow": "Рабочий процесс клиента",
         "account": "Аккаунт",
@@ -929,6 +1123,10 @@
         "section_tasks": "Задачи",
         "section_analytics": "Аналитика",
         "section_finance": "Финансы",
+        "section_settings": "Настройки",
+        "section_automations": "Автоматизации",
+        "section_integrations": "Интеграции",
+        "section_team": "Команда",
         "work": "Работа",
         "business": "Бизнес",
         "communications_workspace": "Рабочее пространство для связи",
@@ -950,11 +1148,18 @@
     "topbar": {
       "actions": {
         "open_menu": "Открыть меню",
+        "open_settings": "Настройки",
         "notifications": "Уведомления",
         "notifications_with_urgent": "Уведомления — {count} срочных (SLA, просроченные задачи, handoff)",
         "reminders": "Напоминания",
         "return_to_platform": "Вернуться к суперадмину",
         "language": "Язык"
+      },
+      "user_menu": {
+        "settings_heading": "Настройки workspace",
+        "settings_home": "Все настройки",
+        "system_settings": "Настройки системы",
+        "manager_tools": "Инструменты руководителя"
       },
       "nba": {
         "button": "Действия",
@@ -968,6 +1173,10 @@
       "notifications": {
         "title": "Уведомления",
         "subtitle": "{unread} непрочитанных · {total} в списке",
+        "panel_subtitle": "Непрочитанных: {count}",
+        "open": "Открыть",
+        "clear": "Скрыть",
+        "clear_all": "Очистить всё",
         "open_thread": "Открыть диалог",
         "open_in_inbox": "Открыть во входящих",
         "groups": {
@@ -1004,6 +1213,17 @@
         }
       },
       "own_company": "Компания",
+      "own_company_create": "Новое пространство",
+      "own_company_create_title": "Создать пространство",
+      "own_company_create_blurb": "Добавляет ещё одно юрлицо (own company) в аккаунте. Скоуп переключается в верхней панели.",
+      "own_company_create_name": "Название",
+      "own_company_create_submit": "Создать",
+      "own_company_create_success": "Пространство создано",
+      "own_company_create_error": "Не удалось создать пространство",
+      "own_company_limit_tooltip": "Достигнут лимит рабочих пространств по текущему тарифу.",
+      "own_company_upgrade_hint": "Чтобы добавить ещё пространства, расширьте тариф в Настройки → Биллинг.",
+      "own_company_plan_limit_402": "Лимит пространств по тарифу исчерпан.",
+      "own_company_open_billing": "Открыть биллинг",
       "trial_badge": "Trial",
       "trial_badge_hint": "Пробный workspace. План и оплата — Настройки → Биллинг.",
       "quick_create": {
@@ -1104,6 +1324,9 @@
         "preferred_contact": "Предпочтительный канал связи"
       },
       "preferences": {
+        "hints": {
+          "interface_language": "Действует по всему приложению (включая верхнюю панель). Переключатель языка — здесь, не в шапке."
+        },
         "labels": {
           "locale": "Язык интерфейса",
           "timezone": "Часовой пояс",
@@ -1257,6 +1480,11 @@
         "workspace_placeholder": "Заполнитель рабочей области"
       },
       "have_account": "Иметь аккаунт",
+      "plan_labels": {
+        "solo": "Solo",
+        "team": "Team",
+        "business": "Business"
+      },
       "selected_plan": "Выбранный план",
       "sign_in": "Войти",
       "submit": "Отправить",
@@ -1378,6 +1606,14 @@
           "max_companies": "Макс. компаний",
           "auto_renew": "Автопродление",
           "notes": "Заметки"
+        },
+        "founder": {
+          "title": "Founder pricing",
+          "subtitle": "Зарезервировать founder-слот для этого тенанта (тариф Team/Business-class, макс. 50 воркспейсов глобально). Те же правила, что и при автозачислении после оплаты.",
+          "enroll": "Зачислить в founder-программу",
+          "enrolling": "Зачисляем…",
+          "success": "Зачислено. Founder-слотов занято глобально: {used} / {max}.",
+          "error_fallback": "Не удалось зачислить"
         },
         "branding": {
           "title": "Брендинг воркспейса",
@@ -1633,6 +1869,7 @@
         "manage_in_stripe": "Управлять оплатой",
         "cancel": "Отменить в конце периода",
         "active_plan": "Активный",
+        "apply_billing_interval": "Применить период оплаты",
         "current_plan": "Текущий тариф",
         "change_in_portal": "Сменить в настройках оплаты",
         "subscribe_plan": "Подписаться на этот тариф",
@@ -1642,11 +1879,51 @@
         "not_available_yet": "Пока недоступно",
         "load_error": "Не удалось загрузить данные подписки.",
         "checkout_error": "Не удалось запустить оплату.",
+        "checkout_summary": {
+          "title": "Подтвердите оплату",
+          "lead": "Сейчас откроется защищённая страница Stripe Checkout с выбранным планом.",
+          "plan_label": "План",
+          "billing_interval": "Период оплаты",
+          "price_label": "Цена в интерфейсе",
+          "tax_note": "Налоги и итоговые позиции считаются на стороне Stripe. Привязка VAT ID и Stripe Tax в приложении пока не сделана.",
+          "proceed": "Перейти к оплате"
+        },
         "popup_blocked_title": "Разрешите всплывающие окна, чтобы продолжить",
         "popup_blocked_hint": "Страница оплаты Stripe была создана, но браузер заблокировал новую вкладку. Разрешите всплывающие окна и повторите попытку.",
         "no_checkout_session": "Сначала запустите checkout, чтобы выполнить симуляцию.",
         "simulation_error": "Не удалось выполнить симуляцию checkout.",
         "portal_error": "Не удалось открыть биллинг-портал.",
+        "portal_pack_error": "Не удалось открыть оплату пакета портала.",
+        "addon_pack_error": "Не удалось открыть оплату доп. пакета.",
+        "addon_offers": {
+          "title": "Доп. пакеты (Stripe)",
+          "hint": "Разовые покупки через checkout. Пакет объёма кандидатов портала — в блоке использования выше.",
+          "not_configured": "Для этого SKU на сервере не задан Stripe Price ID.",
+          "coming_soon": "Цена настроена; автоматическое начисление этого пакета пока не включено.",
+          "unavailable": "Покупка недоступна для вашего аккаунта.",
+          "buy_disabled": "Недоступно",
+          "buy": "Купить +{increment}",
+          "buying": "Открываем оплату…",
+          "block": {
+            "not_effect_ready": "Пока недоступно — начисление этого пакета в продукте ещё не включено.",
+            "requires_team_tier": "Доступно на тарифах Team и Business.",
+            "portal_pack_requires_team_tier": "Доступно на тарифах Team и Business.",
+            "custom_fields_not_on_team_plan": "Только для Solo; на Team и Business поля лидов уже без лимита.",
+            "stripe_price_not_configured": "Для этого дополнения не настроена цена в Stripe.",
+            "plan_blocked": "Недоступно на вашем текущем тарифе."
+          },
+          "sku": {
+            "pack_lead_forms_5": "+5 активных лид-форм",
+            "pack_client_portal_5": "+5 ссылок клиентского портала",
+            "pack_automation_rules_10": "+10 включённых правил автоматизации",
+            "pack_automation_rules_25": "+25 включённых правил автоматизации",
+            "pack_custom_fields_25": "+25 пользовательских полей лида (лимит Solo)",
+            "pack_custom_fields_100": "+100 пользовательских полей лида (лимит Solo)",
+            "pack_leads_500": "+500 входящих лидов в месяц",
+            "pack_active_records_2000": "+2000 активных записей кандидатов",
+            "pack_storage_50gb": "+50 ГБ хранилища"
+          }
+        },
         "change_plan_error": "Не удалось сменить тариф.",
         "cancel_error": "Не удалось отменить подписку.",
         "reactivate_error": "Не удалось возобновить подписку.",
@@ -1722,11 +1999,23 @@
           "company_slots_recommended_text": "Мы подставили {count} доп. слот(а/ов) операционных компаний по предыдущему действию.",
           "company_slots_recommended_title": "Применены рекомендованные доп. слоты",
           "company_slots_text": "Доп. слоты операционных компаний установлены: {count}.",
-          "company_slots_title": "Слоты компаний обновлены"
+          "company_slots_title": "Слоты компаний обновлены",
+          "portal_pack_success_title": "Пак портала применён",
+          "portal_pack_success_text": "Месячный лимит кандидатов портала увеличен. Блок использования ниже обновится автоматически.",
+          "portal_pack_cancel_title": "Оплата пака портала отменена",
+          "portal_pack_cancel_text": "Списания не было. Вы можете снова купить пак на этой странице, когда будете готовы.",
+          "billing_addon_success_title": "Доп. пакет применён",
+          "billing_addon_success_text": "Лимиты обновлены. Блок использования ниже обновится автоматически.",
+          "billing_addon_cancel_title": "Оплата доп. пакета отменена",
+          "billing_addon_cancel_text": "Списания не было. Вы можете снова купить доп. пакет, когда будете готовы."
         },
         "verification": {
           "title": "Проверяем статус оплаты",
-          "text": "Ждем подтверждения оплаты. Обычно это занимает несколько секунд."
+          "text": "Ждем подтверждения оплаты. Обычно это занимает несколько секунд.",
+          "portal_pack_title": "Применяем пак портала",
+          "portal_pack_text": "Синхронизируем новый месячный лимит с биллингом. Обычно это занимает несколько секунд.",
+          "billing_addon_title": "Применяем доп. пакет",
+          "billing_addon_text": "Синхронизируем новые лимиты с биллингом. Обычно это занимает несколько секунд."
         },
         "pending_upgrade": {
           "title": "Смена тарифа ожидает подтверждения оплаты",
@@ -1756,6 +2045,26 @@
           "supervisors": "Супервайзеры: {used} / {limit}",
           "client_managers": "Менеджеры клиента: {used} / {limit}",
           "viewers": "Наблюдатели: {used} / {limit}",
+          "leads_month": "Лиды за месяц (UTC): {used} / {limit}",
+          "candidates": "Активные кандидаты: {used} / {limit}",
+          "documents": "Документы: {used} / {limit}",
+          "vacancies_open": "Открытые вакансии: {used} / {limit}",
+          "portal_links": "Активные ссылки клиентского портала: {used} / {limit}",
+          "portal_candidates_month": "Портал кандидатов (активные кандидаты, UTC месяц): {used} / {cap}",
+          "portal_candidates_policy": "Жёсткий лимит: новые кандидаты с порталом блокируются на месячном капе; уже учтённые могут обновлять ссылки. Апгрейд или пак — чтобы поднять кап.",
+          "portal_candidates_warn_80": "Около 80% месячной квоты candidate portal.",
+          "portal_candidates_warn_100": "Достигнута месячная квота candidate portal (мягкий лимит). Рассмотрите апгрейд или пак.",
+          "portal_candidates_pack_note": "Включено {base}; надбавка от паков +{addon} (кап месяца {cap}).",
+          "portal_candidates_pack_buy": "Купить пак портала (+{increment}/мес)",
+          "portal_candidates_pack_loading": "Открываем оплату…",
+          "lead_forms_active": "Активные лид-формы: {used} / {cap}",
+          "lead_forms_policy": "Каждая активная форма учитывается в лимите плана. Отключите форму, купите пак или смените тариф.",
+          "lead_forms_warn_100": "Достигнут лимит активных лид-форм. Новую можно только после отключения одной или увеличения капа.",
+          "lead_forms_pack_note": "Включено {base}; надбавка от паков +{addon} (кап {cap}).",
+          "lead_forms_pack_buy": "Купить пак лид-форм (+{increment})",
+          "lead_forms_pack_loading": "Открываем оплату…",
+          "founder_program_active": "Для workspace действует founder pricing (пока подписка остаётся eligible).",
+          "founder_program_revoked": "Founder pricing снят после длительной неактивной оплаты и не восстанавливается.",
           "storage": "Хранилище: {used}GB / {limit}GB",
           "companies": "Операционные компании: {used} / {limit}",
           "back_to_onboarding": "Создать операционную компанию",
@@ -1766,24 +2075,40 @@
           "extra_company_slots_hint": "Доп. слоты увеличивают лимит операционных компаний сверх тарифа.",
           "extra_company_slots_recommended": "Рекомендация после восстановления: +{count} слот(а/ов)."
         },
+        "billing_cycle": {
+          "label": "Период оплаты",
+          "monthly": "Ежемесячно",
+          "yearly": "Ежегодно (§2.16)",
+          "hint": "Месяц или год выбирается отдельно для каждого плана перед оплатой или сменой тарифа.",
+          "not_configured_month": "Месячная цена не настроена на сервере (задайте STRIPE_PRICE_* в env бэкенда).",
+          "not_configured_year": "Годовая цена не настроена на сервере (задайте STRIPE_PRICE_*_YEARLY в env бэкенда)."
+        },
+        "plan_price_from_api": {
+          "month": "€{{amount}}/мес (ежемесячно)",
+          "year": "€{{amount}}/мес эквивалент (годовая оплата)"
+        },
+        "pricing_catalog_hint": "Цены из каталога API биллинга (docs/SSOT.md §2.16) совпадают с checkout.",
         "plans": {
           "starter": {
-            "name": "Starter",
-            "price": "39 EUR/мес",
-            "seats": "1 пользователь",
-            "feature": "Базовый CRM"
+            "name": "Solo",
+            "price_month": "€29/мес (ежемесячно)",
+            "price_year": "€24/мес при годовой оплате",
+            "seats": "1 пользователь · без мест команды",
+            "feature": "Базовый CRM без модуля автоматизаций и порталов"
           },
           "team": {
             "name": "Team",
-            "price": "99 EUR/мес",
-            "seats": "До 5 пользователей",
-            "feature": "Совместная работа команды"
+            "price_month": "€129/мес (ежемесячно)",
+            "price_year": "€109/мес при годовой оплате",
+            "seats": "До 3 мест (рекрутеры + супервайзеры)",
+            "feature": "Автоматизации, порталы, процесс (§2.16 Team)"
           },
           "pro": {
-            "name": "Pro",
-            "price": "199 EUR/мес",
-            "seats": "15+ пользователей",
-            "feature": "Продвинутые автоматизации"
+            "name": "Business",
+            "price_month": "€249/мес (ежемесячно)",
+            "price_year": "€219/мес при годовой оплате",
+            "seats": "До 10 мест · до 3 пространств",
+            "feature": "Финансы, расширенные порталы (§2.16 Business)"
           }
         },
         "history": {
@@ -3595,7 +3920,22 @@
       }
     },
     "dashboard": {
-      "title": "Дашборд",
+      "title": "Аналитика",
+      "page_subtitle": "Один экран для сигналов, воронки лидов и срезов по кандидатам. Сворачивайте блоки, настраивайте фильтры и «Сохранить срез» — раскладка хранится для вашей учётной записи на этом устройстве.",
+      "sections": {
+        "shortcuts": {
+          "title": "Быстрые ссылки",
+          "subtitle": "Переходы в хабы и операционные экраны (когда воронка лидов не в фокусе)."
+        },
+        "lead_funnel": {
+          "title": "Воронка конверсии лидов",
+          "subtitle": "Этапы, когорты и подсказки по следующим шагам для рабочей области лидов."
+        },
+        "slices": {
+          "title": "Аналитика и разрезы по кандидатам",
+          "subtitle": "Сводная таблица, KPI операций, пайплайн и гео/менеджеры для фильтров выше."
+        }
+      },
       "nba": {
         "title": "Следующие лучшие действия",
         "subtitle": "Те же очереди, что на лидах — открыть список или массовое напоминание.",
@@ -3621,6 +3961,12 @@
         "plan_blocked_title": "Нужен план Team",
         "plan_blocked_desc": "Оформите Team или Pro, чтобы запускать массовую обработку Meta с дашборда.",
         "error_title": "Авто-обработка не удалась"
+      },
+      "insights_strip": {
+        "title": "Сигналы",
+        "lead_funnel": "Воронка конверсии лидов →",
+        "docs_blockers": "{count} проблем с документами →",
+        "slow_stage": "Среднее время в «{stage}»: ~{days} дн. ({n} кандидатов)"
       },
       "refresh": {
         "action": "Обновить",
@@ -3712,6 +4058,8 @@
         "all_companies": "Все",
         "manager": "Менеджер",
         "all_managers": "Все",
+        "candidate": "Кандидат",
+        "candidate_placeholder": "UUID",
         "stages": "Этапы",
         "stage_view": "Вид этапов",
         "stage_view_all": "Полный",
@@ -3735,6 +4083,7 @@
           "vacancy": "Вакансия",
           "company": "Компания",
           "manager": "Менеджер",
+          "candidate": "Кандидат",
           "stages": "Этапы",
           "compare": "Сравнение",
           "presets": "Срезы",
@@ -4802,6 +5151,15 @@
         "title": "Кандидаты",
         "subtitle": "Визуальный пайплайн по вакансиям"
       },
+      "quick_filters": {
+        "label": "Быстрые фильтры",
+        "stage": "Этап",
+        "manager": "Менеджер",
+        "vacancy": "Вакансия",
+        "all_stages": "Все этапы",
+        "all_managers": "Все менеджеры",
+        "all_vacancies": "Все вакансии"
+      },
       "activities_modal": {
         "subtitle": "Запланированная работа — тот же список, что на странице «Задачи».",
         "open_full_page": "Открыть страницу «Задачи»"
@@ -5100,6 +5458,14 @@
         "citizenship_label": "Гражданство (ISO)",
         "citizenship_placeholder": "RU/UA/PL…",
         "docs_label": "Документы",
+        "column_health_docs": "док.",
+        "column_health_new": "нов.",
+        "bulk_plan_hint": "Массовая авто-обработка Meta и часть автоматизаций лидов — план Team; переносы стадий выше по-прежнему вручную.",
+        "bulk_plan_hint_link": "Биллинг",
+        "action_call": "Позвонить",
+        "action_write": "Написать",
+        "action_open_card": "Карточка",
+        "action_tasks": "Задачи",
         "docs_any": "Любые",
         "docs_ready": "Готовы",
         "docs_partial": "Частично",
@@ -5260,6 +5626,8 @@
         "title": "Название"
       },
       "no_next_action": {
+        "clear_queue": "Показать всех кандидатов",
+        "kanban_disabled_hint": "Канбан недоступен для этой очереди. Снимите фильтр очереди, чтобы открыть pipeline.",
         "actions": {
           "add_next": "Добавить следующий шаг"
         },
@@ -5292,6 +5660,9 @@
       "title": "Напоминания",
       "inbox_title": "Входящие: напоминания и уведомления",
       "subtitle": "Показаны {scope}: {total}, непрочитанных: {unread}",
+      "header": {
+        "create_task": "Создать задачу"
+      },
       "quick_create": "Быстрое напоминание",
       "create": "Создать",
       "relative": "Относительно",
@@ -5322,7 +5693,8 @@
       "layout": {
         "label": "Вид",
         "by_due": "Группы по сроку",
-        "sla_queue": "Очередь по SLA (плоский список)"
+        "sla_queue": "Очередь по SLA (плоский список)",
+        "advanced_toggle": "Вид списка (дополнительно)"
       },
       "sla": {
         "status": {
@@ -5373,7 +5745,10 @@
         "entity_all": "Все источники",
         "priority_all": "Все приоритеты",
         "unread": "Непрочитанные",
-        "all": "Все события"
+        "all": "Все события",
+        "more": "Дополнительные фильтры",
+        "overdue_only": "Только просроченные ({count})",
+        "overdue_clear": "Показать все сроки"
       },
       "actions": {
         "refresh": "Обновить",
@@ -5462,6 +5837,12 @@
         "locked_hint": "Обновите план, чтобы открыть эту очередь в приложении.",
         "badge_team": "Team",
         "badge_pro": "Pro",
+        "groups": {
+          "leads_funnel_weak_step": "Воронка: после {root} продолжают ~{pct}% · отвалов: {count}",
+          "leads_funnel_slow_stage": "Воронка: долго в {root} (ср. ~{days} дн.) · лидов: {count}",
+          "leads_fit_no_match": "Лиды: нет соответствия вакансии · {count}",
+          "leads_fit_needs_info": "Лиды: мало данных для проверки фита · {count}"
+        },
         "do_now": "Сделать",
         "quick_batch_hint": "Для первых {{count}} записей в этой очереди (макс. {{max}}).",
         "quick_no_leads": "В очереди нет лидов",
@@ -5470,6 +5851,7 @@
         "quick_title_overdue": "Связаться (просроченная очередь)",
         "quick_title_candidate_no_next": "Следующий шаг (кандидаты без действия)",
         "quick_title_candidate_overdue": "Связаться (просроченные напоминания по кандидатам)",
+        "quick_title_funnel_insight": "Связаться (очередь по инсайту воронки)",
         "process_new": "Обработать пакет",
         "process_new_upgrade_hint": "Пакетная обработка новых лидов — план Team.",
         "process_new_done": "Успешно: {{ok}} · Ошибок: {{fail}} · Попыток: {{attempted}}.",
@@ -5477,7 +5859,8 @@
         "process_new_partial_title": "Пакетная обработка с ошибками",
         "process_new_error_title": "Пакетная обработка не удалась",
         "process_new_plan_blocked_title": "Нужен план Team",
-        "process_new_plan_blocked_desc": "Оформите план Team в Настройки → Биллинг для пакетной обработки новых Meta-лидов."
+        "process_new_plan_blocked_desc": "Оформите план Team в Настройки → Биллинг для пакетной обработки новых Meta-лидов.",
+        "quick_action_failed": "Не удалось выполнить действие"
       },
       "filters": {
         "status": "Статус",
@@ -5536,6 +5919,23 @@
         "followup_title": "Следующий шаг",
         "stage_update_failed": "Не удалось обновить этап",
         "lock_update_failed": "Не удалось обновить блокировку авто-назначения",
+        "ingest_processing": {
+          "title": "Обработка лида (снимок при ingest):",
+          "modes": {
+            "manual": "Manual — кандидат не создаётся автоматически; решение за оператором.",
+            "assisted": "Assisted — вакансия и fit в панели выше — это предложение до запуска Process.",
+            "automatic": "Automatic — конверсия может выполняться без Process, если правила, fit и авто-конверсия это позволяют."
+          },
+          "mode_labels": {
+            "manual": "Manual",
+            "assisted": "Assisted",
+            "automatic": "Automatic"
+          },
+          "assisted_link": "Смотрите панель квалификации выше: предложенная вакансия, статус fit и причины.",
+          "auto_convert_off": "Авто-конверсия при fit была выключена для этого лида (тенант или вакансия). Используйте Process.",
+          "downgrade_team": "Режим Automatic для этого ingest понижен (нужен Team-план).",
+          "configured_effective_mismatch": "В настройках: {configured}. Фактически при ingest: {effective}."
+        },
         "source_ingest_title": "Источник и данные ingest",
         "ad_id": "ID объявления",
         "mapped_custom_fields": "Сопоставленные поля (custom)",
@@ -5570,6 +5970,47 @@
         "service_order_create_failed": "Не удалось создать заказ услуги",
         "service_order_created": "Заказ услуги создан",
         "service_order_created_desc": "Из лида создан черновик заказа услуги."
+      },
+      "pipeline_errors": {
+        "LEAD_FIT_NO_MATCH": "Не проходит критерии вакансии — автосоздание кандидата отменено.",
+        "LEAD_FIT_NEEDS_INFO": "Недостаточно данных для проверки фита — дополните лид или ослабьте критерии, затем Process."
+      },
+      "qualification": {
+        "title_suggested": "Подсказка по квалификации",
+        "title_blocked": "Автоконверсия остановлена",
+        "vacancy_line": "Вакансия",
+        "fit_status_label": "Проверка фита",
+        "reasons_title": "Почему",
+        "process_cta": "Создать кандидата",
+        "accept_process_cta": "Принять и создать кандидата",
+        "open_meta_settings": "Настройки автоматизации лидов",
+        "open_vacancies": "Вакансии и критерии",
+        "footer_hint": "Критерии — на карточке вакансии. Опционально: Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids, если нет маппинга по ad.",
+        "fit_status": {
+          "fit": "Подходит",
+          "no_fit": "Не подходит",
+          "needs_info": "Нужны данные",
+          "no_criteria": "Без критериев (принять)"
+        },
+        "reasons": {
+          "missing_experience_eu_years": "Нет стажа в ЕС (лет)",
+          "missing_in_poland": "Нет флага «в Польше»",
+          "missing_documents": "Список документов пуст или отсутствует",
+          "missing_experience_eu_years_detail": "Нет стажа в ЕС (лет)",
+          "missing_country": "Нет страны для проверки критериев",
+          "country_not_in_allowed": "Страна не в списке разрешённых",
+          "country_blocked": "Страна в списке блокировки для этой вакансии",
+          "missing_nationality": "Нет гражданства / национальности",
+          "nationality_mismatch": "Национальность не совпадает с требованием",
+          "missing_languages": "Нет данных о языках",
+          "languages_no_overlap": "Ни один из требуемых языков не найден",
+          "missing_geo_country": "Нет страны локации (geo) для критериев вакансии",
+          "geo_country_not_in_allowed": "Страна локации не в списке разрешённых",
+          "geo_country_blocked": "Страна локации запрещена для этой вакансии",
+          "documents_module_no_candidate": "Вакансия требует проверки в Documents; сначала привяжите или создайте кандидата",
+          "candidate_doc_missing": "Требуемый документ не заведён в модуле",
+          "candidate_doc_status_blocked": "Документ есть, но статус не подходит"
+        }
       },
       "pagination": {
         "shown": "Показано {count} из {total}",
@@ -5752,7 +6193,13 @@
       },
       "conversion_funnel": {
         "title": "Воронка конверсии (снимок)",
-        "hint": "Обработанные лиды по CRM-стадиям (new → contacted → qualified → converted). Стрелки — доля «на этом шаге и дальше», дошедших минимум до следующей стадии. Время в стадии — дней с момента входа (аудит, иначе created).",
+        "hint": "Обработанные лиды по корневым этапам (Lead → Qualified → Active → Final) с маппингом из воронки лидов (§2.12) и запасным правилом для стандартных CRM-кодов. Стрелки — переходы между корнями. Время — дни в текущей CRM-стадии, сгруппированные по корню.",
+        "roots": {
+          "lead": "Lead (вход)",
+          "qualified": "Qualified",
+          "active": "Active",
+          "final": "Final / выиграно"
+        },
         "new_status": "New (не обработан)",
         "lost": "Lost (обработан)",
         "dwell_line": "ср. {avg} д · p50 {p50} д",
@@ -5770,12 +6217,22 @@
         "lost_from_title": "Lost — предыдущая CRM-стадия",
         "lost_from_hint": "Уникальные лиды по предыдущей стадии при переводе в lost (аудит). Счётчики учитывают срезы воронки.",
         "lost_reason_title": "Lost — причина",
-        "lost_reason_hint": "Уникальные lost-лиды по коду причины (переход из CRM). Учитываются срезы воронки."
+        "lost_reason_hint": "Уникальные lost-лиды по коду причины (переход из CRM). Учитываются срезы воронки.",
+        "lost_from_filter_banner": "Потеря с CRM-стадии: {stage}",
+        "lost_from_stage_unknown": "Предыдущая стадия неизвестна"
       },
       "subtitle_services": "От первого контакта до квалификации, заказа услуги и выставления счетов.",
       "title_services": "Клиентские лиды",
       "workspace": {
-        "distribution_cta": "Автораспределение"
+        "distribution_cta": "Автораспределение",
+        "view_table": "Таблица",
+        "view_kanban": "Канбан",
+        "view_switch": "Вид рабочего места лидов"
+      },
+      "kanban": {
+        "col_inbox": "Входящие (new)",
+        "hint": "Те же фильтры, что у таблицы; в каждой колонке — до лимита ниже.",
+        "view_all": "Все в списке"
       }
     },
     "common": {
@@ -5874,18 +6331,53 @@
         "actions": "Действия",
         "conditions": "Условия",
         "enabled": "Вкл.",
+        "priority": "Приоритет",
         "title": "Название",
         "trigger": "Триггер"
       },
       "create": "Создать правило",
       "empty": "Пока нет правил.",
+      "errors": {
+        "lq_vacancy_required": "Выберите целевую вакансию для правил lead.qualification.",
+        "lq_condition_required": "Задайте хотя бы source (например meta) или условие по полю normalized.",
+        "lq_recruiter_uuid": "Необязательный рекрутер: укажите корректный UUID активного пользователя воркспейса.",
+        "lq_in_values_required": "Для оператора «in» укажите хотя бы одно значение (через запятую или точку с запятой).",
+        "load_failed": "Не удалось загрузить правила автоматизации",
+        "create_failed": "Не удалось создать правило"
+      },
       "fields": {
         "due_in": "Срок (минуты)",
+        "priority": "Приоритет (больше — раньше)",
         "stage_to": "Этап «в» (необязательно)",
         "title": "Заголовок напоминания",
         "trigger": "Триггер",
         "stage_to_placeholder": "contacted",
         "risk_band": "Диапазон риска (триггер риска)"
+      },
+      "lq": {
+        "default_title": "Маршрутизация лида",
+        "hint": "lead.qualification: при ingest лида, если не сработал маппинг ad/vacancy_id. Условия: source; normalized.<поле> с операторами eq / neq / in / exists / not_exists; неявное AND по полям; в JSON можно $and. Действия: set_vacancy_id (обязательно); set_recruiter_id опционально. Аудит: lead.qualification_rule_matched.",
+        "norm_block_title": "Условия по полям normalized (AND)",
+        "source": "Источник (нижний регистр, напр. meta)",
+        "vacancy": "Целевая вакансия",
+        "vacancy_placeholder": "Выберите вакансию…",
+        "norm_key": "Имя поля в normalized (напр. country)",
+        "norm_op": "Оператор",
+        "norm_value": "Значение / список",
+        "norm_value_placeholder": "напр. PL",
+        "norm_value_placeholder_in": "PL, DE, UA",
+        "add_row": "+ Добавить условие по normalized",
+        "remove_row": "Удалить",
+        "ops": {
+          "eq": "равно (=)",
+          "neq": "не равно (≠)",
+          "in": "одно из (список)",
+          "exists": "поле есть (не пусто)",
+          "not_exists": "нет или пусто"
+        },
+        "note": "Заметка (необяз., в actions)",
+        "recruiter": "ID пользователя-рекрутера (опционально, UUID)",
+        "recruiter_placeholder": "00000000-0000-4000-8000-000000000000"
       },
       "list": "Правила",
       "subtitle": "Простые триггеры → действие «создать напоминание».",
@@ -5893,13 +6385,53 @@
       "risk_band_hint": "candidate.risk_band срабатывает только если в Tenant.settings.risk_model_v1.automations включено automations и работает почасовой job риска. Дедупликация — через automations.dedupe_hours (по умолчанию 24)."
     },
     "client_portal": {
-      "empty": "Пустой",
-      "errors": {
-        "bad_link": "Плохая ссылка",
-        "missing_token": "Отсутствует токен"
+      "empty": "Сейчас нет переданных кандидатов.",
+      "actions": {
+        "accept": "Принять",
+        "reject": "Отклонить",
+        "request_clarification": "Запросить уточнение",
+        "accept_ok": "Кандидат принят.",
+        "reject_ok": "Решение сохранено.",
+        "clarify_ok": "Запрос отправлен агентству."
       },
-      "subtitle": "Субтитры",
-      "title": "Название"
+      "activity": {
+        "status": {
+          "pending_review": "Ожидает решения",
+          "accepted": "Принят",
+          "rejected": "Отклонён",
+          "returned": "Возвращён агентству"
+        }
+      },
+      "errors": {
+        "bad_link": "Ссылка недействительна или истекла.",
+        "missing_token": "Нет токена в ссылке."
+      },
+      "handoff": {
+        "action_required": "Требуется ваше решение",
+        "in_progress": "В работе у вашей команды",
+        "from_agency": "Контакт агентства",
+        "from_named": "От {{name}}",
+        "waiting_hours": "Ожидание ~{{hours}} ч",
+        "waiting_days": "Ожидание ~{{days}} дн."
+      },
+      "home": {
+        "pending": "Требуется действие",
+        "pending_hint": "Решения по переданным кандидатам",
+        "in_progress": "В работе",
+        "in_progress_hint": "Принятые кандидаты",
+        "recent_activity": "Недавняя активность"
+      },
+      "modal": {
+        "reject_title": "Отклонить кандидата",
+        "clarify_title": "Запросить уточнение",
+        "reject_hint": "Кратко укажите причину. Агентство получит уведомление.",
+        "clarify_hint": "Опишите, что нужно от агентства. Передача вернётся к ним.",
+        "reject_placeholder": "Причина…",
+        "clarify_placeholder": "Сообщение…",
+        "send": "Отправить"
+      },
+      "subtitle": "Просмотр кандидатов от агентства и фиксация решения.",
+      "title": "Клиентский портал"
     },
     "communications": {
       "actions": {
@@ -6060,7 +6592,8 @@
           },
           "planner_kinds": {
             "all": "All planner kinds"
-          }
+          },
+          "advanced_panel": "Расширенные фильтры"
         },
         "kinds": {
           "meeting": "Meeting",
@@ -6094,6 +6627,7 @@
         "day": {
           "title": "Day planner: {day}",
           "subtitle": "Meetings, tasks, reminders, and absence context.",
+          "batch_panel": "Пакетные действия планера ({selected} выбрано)",
           "slot_9": "+ 09:00 slot",
           "slot_12": "+ 12:00 slot",
           "slot_15": "+ 15:00 slot",
@@ -6694,6 +7228,9 @@
       "expired_banner": "Баннер с истекшим сроком действия"
     },
     "my_company": {
+      "errors": {
+        "load_failed": "Не удалось загрузить профили компаний"
+      },
       "card": {
         "business_type": "Тип бизнеса",
         "email": "электронная почта",
@@ -7336,9 +7873,15 @@
       }
     },
     "start": {
+      "lead_form": {
+        "banner_title": "Лид-форма",
+        "banner_named": "Вы начинаете анкету: {title}",
+        "banner_slug_only": "Ссылка лид-формы: {slug}"
+      },
       "errors": {
         "contacts_required": "Укажите телефон или email, чтобы продолжить",
-        "create_failed": "Не удалось создать анкету"
+        "create_failed": "Не удалось создать анкету",
+        "lead_form_not_found": "Ссылка лид-формы недействительна или форма отключена. Свяжитесь с рекрутёром или откройте обычную страницу intake."
       },
       "header": {
         "back": "← Вернуться в портал",
@@ -8286,8 +8829,52 @@
         "communications": "Коммуникации и рабочее пространство",
         "feature": "Функция",
         "roles": "Роли и права",
-        "title": "Сравнение планов",
-        "users": "Пользователи"
+        "title": "Сравнение планов детально",
+        "users": "Пользователи",
+        "rows": {
+          "users": {
+            "label": "Пользователи (включено)",
+            "starter": "1",
+            "team": "До 3",
+            "pro": "До 10",
+            "enterprise": "Индивидуально"
+          },
+          "workspaces": {
+            "label": "Пространства / компании",
+            "starter": "1",
+            "team": "1 (доп. за плату)",
+            "pro": "До 3 включено",
+            "enterprise": "Индивидуально"
+          },
+          "automation": {
+            "label": "Автоматизация и распределение",
+            "starter": "Только подсказки",
+            "team": "Правила, автораспределение",
+            "pro": "Расширенные правила и процессы",
+            "enterprise": "Индивидуально"
+          },
+          "portals": {
+            "label": "Порталы кандидата и клиента",
+            "starter": "Нет",
+            "team": "Да (лимиты плана)",
+            "pro": "Расширенные лимиты + базовый бренд",
+            "enterprise": "Индивидуально"
+          },
+          "finance": {
+            "label": "Услуги, заказы и счета",
+            "starter": "Нет",
+            "team": "Нет",
+            "pro": "Да",
+            "enterprise": "Индивидуально"
+          },
+          "analytics": {
+            "label": "Аналитика",
+            "starter": "Базовая воронка",
+            "team": "Воронка, источники, команда",
+            "pro": "Расширенные срезы и отчёты",
+            "enterprise": "Индивидуально"
+          }
+        }
       },
       "faq": {
         "a1": "Да. Базовый онбординг: аккаунт → компания → первый клиент/лид/действие. Расширенные настройки можно добавить позже.",
@@ -8296,29 +8883,173 @@
         "q1": "Можно ли начать без полной настройки?",
         "q2": "Можно ли пригласить команду позже?",
         "q3": "Что если выбрали не тот план?",
-        "title": "FAQ"
+        "title": "FAQ",
+        "launch_q": "Сколько времени нужно на запуск?",
+        "launch_a": "10–30 минут: пространство, компания, первый кандидат или лид.",
+        "training_q": "Нужно ли обучение?",
+        "training_a": "Нет — интерфейс заточен под ежедневную работу рекрутера; подсказки встроены в поток.",
+        "processes_q": "Подходит ли для разных процессов?",
+        "processes_a": "Да: этапы, роли и воронки настраиваются под ваш найм."
       },
       "final_cta": {
-        "button": "Начать бесплатный период",
-        "subtitle": "Создайте пространство сейчас — первая ценность за считанные минуты.",
-        "title": "Готовы запустить процесс в CRM?"
+        "button": "Создать рабочее пространство",
+        "subtitle": "Первая ценность — уже в первые минуты",
+        "title": "Начните выстраивать управляемый процесс найма"
       },
       "guides": {
         "title": "Изучите гайды по продукту",
         "subtitle": "Начните со страницы, которая ближе к вашей задаче, затем переходите к следующему связанному гайду."
       },
-      "hero": {
-        "badge": "CRM для рекрутинговых операций",
-        "primary_cta": "Начать бесплатный период",
-        "secondary_cta": "Войти",
-        "subtitle": "Лиды, кандидаты, загрузка команды и коммуникации в одном месте — быстрый старт.",
-        "title": "Запустите процесс найма за минуты",
-        "value_list": {
-          "0": "Создайте пространство и компанию",
-          "1": "Добавьте первого лида или клиента",
-          "2": "Назначьте статус, заметку и следующую задачу"
+      "benefits": {
+        "badge": "Результат",
+        "title": "Что меняется после внедрения",
+        "items": {
+          "0": "Прозрачный пайплайн найма",
+          "1": "Контроль всех кандидатов",
+          "2": "Чёткое распределение ответственности",
+          "3": "Снижение потерь",
+          "4": "Быстрое принятие решений",
+          "5": "Понимание узких мест"
         },
-        "value_title": "Что вы получите за первые 5 минут"
+        "closing": "Вы начинаете управлять процессом, а не реагировать на хаос."
+      },
+      "before_after": {
+        "badge": "Сравнение",
+        "title": "До и после HostFlow",
+        "before_title": "До",
+        "after_badge": "После",
+        "after_title": "После",
+        "before_items": {
+          "0": "Excel, мессенджеры, хаос",
+          "1": "Потерянные кандидаты",
+          "2": "Ручной контроль",
+          "3": "Постоянные ошибки"
+        },
+        "after_items": {
+          "0": "Одна система",
+          "1": "Полная прозрачность",
+          "2": "Контроль на каждом этапе",
+          "3": "Предсказуемый результат"
+        }
+      },
+      "conviction": {
+        "badge": "Старт",
+        "title": "Почему это начинает работать сразу",
+        "body": "Вам не нужно перестраивать бизнес.",
+        "list_intro": "Вы просто:",
+        "steps": {
+          "0": "начинаете вести кандидатов в системе",
+          "1": "фиксируете этапы",
+          "2": "видите реальную картину"
+        },
+        "closing": "Результат появляется уже в первые дни."
+      },
+      "how": {
+        "badge": "Процесс",
+        "title": "Как выглядит работа в системе",
+        "step_label": "Шаг {n}",
+        "steps": {
+          "0": {
+            "title": "Добавляете кандидата или получаете лид",
+            "caption": "Добавление кандидата / лид-форма — единая точка входа.",
+            "screenshot_src": "/landing/step-lead.svg"
+          },
+          "1": {
+            "title": "Назначаете статус и следующий шаг",
+            "caption": "Pipeline и этапы: что сделано и что дальше.",
+            "screenshot_src": "/landing/step-pipeline.svg"
+          },
+          "2": {
+            "title": "Система фиксирует процесс и напоминает",
+            "caption": "Задачи и напоминания — ничего не «выпадает» из головы.",
+            "screenshot_src": "/landing/step-tasks.svg"
+          },
+          "3": {
+            "title": "Вы видите, кто застрял и где проблема",
+            "caption": "Обзор и аналитика: узкие места на виду.",
+            "screenshot_src": "/landing/step-analytics.svg"
+          }
+        }
+      },
+      "pain": {
+        "badge": "Боль",
+        "title": "Почему найм разваливается и стоит вам денег",
+        "lead": "Проблема не в кандидатах.\nПроблема — в отсутствии системы.",
+        "items": {
+          "0": "Лиды приходят, но никто не ведёт их системно",
+          "1": "Кандидаты теряются между Excel, WhatsApp и звонками",
+          "2": "Команда не понимает, кто за что отвечает",
+          "3": "Статусы ведутся вручную и постоянно устаревают",
+          "4": "Документы хранятся в разных местах",
+          "5": "Руководитель не видит реальную картину"
+        },
+        "closing": "Каждый потерянный кандидат — это прямые финансовые потери."
+      },
+      "roi": {
+        "badge": "Деньги",
+        "title": "Сколько вы теряете без системы",
+        "intro": "Если вы теряете хотя бы 3 кандидата в месяц и каждый «стоит» вам €300–1000 уже на этапе обработки и коммуникаций, прямые потери по одному этому каналу легко доходят до:",
+        "loss_setup": "",
+        "loss_range": "€900–3000+ в месяц",
+        "loss_note": "И это только очевидные потери по «выпавшим» из процесса кандидатам — без учёта срывов сроков и загрузки команды.",
+        "hidden_title": "Скрытые потери:",
+        "hidden_items": {
+          "0": "время команды",
+          "1": "повторная обработка лидов",
+          "2": "затянутые сроки найма",
+          "3": "упущенные клиенты"
+        },
+        "highlight": "HostFlow окупается уже в первый месяц работы при типичной утечке кандидатов.",
+        "pilot_badge": "Пилотные ориентиры",
+        "pilot_note": "Черновая оценка по 6 командам (EU, микс агентства и in-house, 2025–2026): до внедрения единого процесса.",
+        "pilot_m1_label": "Входящие лиды без закреплённого ответственного",
+        "pilot_m1_value": "до 18% → меньше 5% за 4 недели после дисциплины в CRM",
+        "pilot_m2_label": "Медиана дней «простоя» кандидата на одном этапе без системы",
+        "pilot_m2_value": "9–14 рабочих дней",
+        "pilot_m3_label": "Доля кандидатов без явного «следующего шага» в таблицах/чатах (оценка)",
+        "pilot_m3_value": "12–25% → цель в системе: близко к 0% на активных этапах"
+      },
+      "segments": {
+        "badge": "Сегменты",
+        "title": "Кому подходит HostFlow",
+        "items": {
+          "0": "Рекрутинговые агентства",
+          "1": "Массовый найм",
+          "2": "Внутренние HR-команды",
+          "3": "Операционные отделы"
+        },
+        "footnote": "Если у вас есть поток кандидатов — система вам подходит."
+      },
+      "shot": {
+        "placeholder_badge": "Скрин интерфейса"
+      },
+      "solution": {
+        "badge": "Решение",
+        "title": "HostFlow превращает хаос в управляемый процесс",
+        "body": "Каждый кандидат проходит понятный путь.",
+        "see_title": "Вы видите:",
+        "see_items": {
+          "0": "где он находится",
+          "1": "что нужно сделать дальше",
+          "2": "кто за это отвечает"
+        },
+        "footer": "Система не даёт процессу развалиться."
+      },
+      "hero": {
+        "badge": "CRM для операций найма",
+        "primary_cta": "Создать рабочее пространство",
+        "secondary_cta": "Уже есть аккаунт? Войти",
+        "subtitle": "Без потерь кандидатов, хаоса и ручного контроля. Вся команда, процессы и документы — в одной системе.",
+        "title": "Контролируйте найм от первого лида до выхода сотрудника",
+        "bullets": {
+          "0": "Ни один кандидат не теряется",
+          "1": "Понятно, кто за что отвечает",
+          "2": "Вы видите, где застревает процесс",
+          "3": "Документы и этапы под контролем"
+        },
+        "cta_subline": "Первый кандидат в системе — через 2 минуты",
+        "screenshot_caption": "Основной экран: pipeline и кандидаты — сразу ощущение контроля.",
+        "screenshot_src": "/landing/hero.svg"
       },
       "objections": {
         "0": "Слишком много настроек до начала работы.",
@@ -8328,40 +9059,53 @@
       },
       "pricing": {
         "badge": "Тарифы",
-        "note": "Платёжный шлюз будет подключён на финальном этапе запуска.",
-        "pro": {
-          "name": "Pro",
-          "best_for": "Для масштабных операций и сложных процессов",
+        "contact_sales_cta": "Связаться с отделом продаж",
+        "note": "Цены в EUR. Пробный период до оплаты; оплата подключается к запуску (см. Условия / Биллинг).",
+        "featured_badge": "Основной",
+        "enterprise": {
+          "name": "Enterprise",
+          "best_for": "Крупные программы с закупками и требованиями compliance",
           "features": {
-            "0": "Расширенная аналитика и отчёты",
-            "1": "Приоритетная поддержка",
-            "2": "Больше интеграций"
+            "0": "Договорная модель, дорожная карта SSO, кастомные интеграции",
+            "1": "White-label / расширенный брендинг",
+            "2": "Выделенный онбординг и приоритетная поддержка"
           },
-          "price": "$199/мес",
-          "seats": "Расширенные лимиты"
+          "price": "От €499/мес или индивидуально",
+          "seats": "Места, пространства, хранение и SLA — по договору"
+        },
+        "pro": {
+          "name": "Business",
+          "best_for": "Для масштабирования",
+          "features": {
+            "0": "Всё из Team",
+            "1": "Несколько процессов и пространств",
+            "2": "Аналитика и расширенные срезы"
+          },
+          "price": "€249/мес · €219/мес при годовой оплате",
+          "seats": "До 10 пользователей · до 3 пространств"
         },
         "select_cta": "Выбрать план",
         "starter": {
-          "name": "Starter",
-          "best_for": "Для соло и старта с CRM",
+          "name": "Solo",
+          "best_for": "Для одного специалиста",
           "features": {
-            "0": "Кандидаты и клиенты",
-            "1": "Учёт источников лидов",
-            "2": "Базовая панель"
+            "0": "Воронка кандидатов",
+            "1": "Статусы и задачи",
+            "2": "Базовый контроль"
           },
-          "price": "$39/мес",
-          "seats": "1 пользователь"
+          "price": "€29/мес · €24/мес при годовой оплате",
+          "seats": "1 пользователь · 1 пространство"
         },
         "team": {
           "name": "Team",
-          "best_for": "Для небольших команд с общим пайплайном",
+          "best_for": "Для команд",
           "features": {
-            "0": "Роли и права",
-            "1": "Общее пространство и назначения",
-            "2": "Коммуникации"
+            "0": "Всё из Solo",
+            "1": "Совместная работа",
+            "2": "Контроль процессов"
           },
-          "price": "$99/мес",
-          "seats": "До 5 пользователей"
+          "price": "€129/мес · €109/мес при годовой оплате",
+          "seats": "До 3 пользователей · 1 пространство"
         },
         "title": "Выберите план под команду"
       }
@@ -9115,14 +9859,60 @@
     "integrations_hub": {
       "title": "Интеграции",
       "subtitle": "Подключайте источники лидов (Meta, Google, …) и управляйте тем, как сырые данные попадают в CRM.",
+      "subtitle_v2": "У каждого канала свой экран: подключение, проверка и явный статус.",
+      "tile_inbox_title": "Входящие",
+      "tile_inbox_desc": "Потоки из мессенджеров и почты в одном месте — ежедневная работа с перепиской.",
+      "email_title": "Почта (SMTP)",
+      "email_desc": "Исходящая почта, подписи и доставляемость уведомлений CRM.",
+      "comms_title": "Центр коммуникаций",
+      "comms_desc": "Общие политики для inbox (админ).",
+      "status_active": "Подключено",
+      "status_setup": "Не подключено",
+      "status_unknown": "Проверить статус",
+      "status_hint": "По сохранённым учётным данным Meta в этом workspace.",
+      "screen_badge": "Отдельный экран",
       "back_to_hub": "← Все интеграции",
       "meta_title": "Meta Leads",
       "meta_desc": "Вебхук, учётные данные, маппинг ad → вакансия, field mapping и превью последних сырых payload.",
       "google_title": "Google Ads",
       "google_desc": "Лид-формы и кампании — тот же каркас интеграций, что у Meta, когда появится (учётные данные, маппинг, превью входящих).",
       "webhook_title": "Webhook и формы на сайте",
-      "webhook_desc": "Универсальный HTTP-приём и встроенные формы — общая модель маппинга с Meta; пока не подключено.",
-      "open": "Открыть"
+      "webhook_desc": "HTTP JSON — тот же field mapping и контур обработки, что у Meta (Team+).",
+      "open": "Открыть",
+      "product_chain_title": "Цепочка лида в продукте",
+      "product_chain_intro": "От приёма до аналитики конверсии — один pipeline, собранный в ссылках.",
+      "product_chain_sources": "Источники",
+      "product_chain_field_mapping": "Маппинг полей (Meta)",
+      "product_chain_funnels": "Воронки и корни конверсии",
+      "product_chain_automation": "Правила автоматизации",
+      "product_chain_conversion_analytics": "Аналитика воронки конверсии",
+      "product_chain_hint": "Google Ads и webhook используют тот же маппинг и обработку, что Meta, где это уже реализовано."
+    },
+    "integrations_webhook": {
+      "title": "Webhook и формы на сайте",
+      "intro": "POST JSON с сайта, автоматизации или бэкенда формы — лиды создаются через тот же field mapping и pipeline, что и Meta Leads (планы Team+).",
+      "plan_gate": "Универсальный inbound webhook доступен на планах уровня Team и выше.",
+      "upgrade_cta": "Тарифы и апгрейд",
+      "endpoint_title": "URL приёма",
+      "endpoint_desc": "POST application/json на этот URL. Поля id или external_id — для повторной доставки того же лида.",
+      "status_label": "Статус:",
+      "status_on": "настроен",
+      "status_off": "ещё не настроен",
+      "rotate_btn": "Сгенерировать новый URL",
+      "rotate_hint": "После ротации старый URL сразу перестаёт работать.",
+      "new_url_title": "Новый URL — скопируйте сейчас:",
+      "copy_url": "Копировать",
+      "secret_once_hint": "Храните URL как секрет. При утечке — ротируйте.",
+      "mapping_hint": "Правила source → target — в Meta Leads (вкладка «Маппинг полей»). Тело: плоский JSON или Meta-style field_data.",
+      "mapping_cta": "Открыть Meta Leads →",
+      "load_error": "Не удалось загрузить настройки webhook",
+      "rotate_error": "Не удалось сгенерировать URL",
+      "plan_team_required": "Тариф не включает эту интеграцию.",
+      "copy_failed": "Не удалось скопировать в буфер",
+      "recent_title": "Последние webhook-payload",
+      "recent_subtitle": "Несколько последних лидов, созданных через inbound URL (тот же сырой payload, что в CRM).",
+      "view_all_incoming": "Полное превью входящих (Meta admin → Входящие → Webhook)",
+      "recent_empty": "Пока нет лидов с webhook — отправьте тестовый POST на inbound URL."
     },
     "integrations_placeholder": {
       "badge": "Скоро",
@@ -9139,7 +9929,8 @@
         "mapping": "Маппинг объявлений",
         "field_mapping": "Маппинг полей",
         "incoming": "Входящие данные",
-        "logs": "Логи лидов"
+        "logs": "Логи лидов",
+        "automation_rules": "Правила автоматизации"
       },
       "notices": {
         "settings_saved": "Настройки Meta Leads обновлены",
@@ -9147,7 +9938,8 @@
         "secret_rotated": "Новый секрет: {secret}",
         "mapping_saved": "Маппинг сохранён",
         "lead_rerouted": "Лид отправлен в обработку",
-        "lead_retried": "Лид успешно обработан"
+        "lead_retried": "Лид успешно обработан",
+        "unmapped_attached": "Лиды привязаны к вакансии"
       },
       "errors": {
         "load": "Не удалось загрузить данные Meta Leads",
@@ -9190,9 +9982,14 @@
         "auto_create": "Включить автосоздание кандидатов",
         "processing_mode_label": "Режим квалификации лидов",
         "processing_mode_manual": "Вручную — в очередь маршрутизации, без автосоздания кандидата",
-        "processing_mode_assisted": "С подсказками — автосоздание, если включено ниже (по умолчанию)",
-        "processing_mode_automatic": "Автоматически — пока как «с подсказками»; полный авто — план Team (без него на ingest режим считается ручным)",
-        "processing_mode_hint": "Хранится в настройках Meta Leads; при каждом приёме лида в normalized пишется leads_processing_mode_v1. Без плана Team «automatic» понижается до manual.",
+        "processing_mode_assisted": "Полуавтомат — подсказка вакансии и фит (в данных лида); кандидат только после Process вручную",
+        "processing_mode_automatic": "Автоматически — создать кандидата, если маппинг и фит прошли; иначе в очередь (LEAD_FIT_*); план Team (без него на ingest — manual)",
+        "processing_mode_hint": "Один движок фита: Vacancy.extra.lead_criteria_v1. Опционально порядок вакансий: Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids, если нет ad/ID. Без Team «automatic» понижается до manual.",
+        "auto_create_automatic_only": "Действует только в режиме Automatic. В Manual и Assisted кандидат не создаётся без Process (или bulk).",
+        "leads_auto_convert_on_fit": "Автоконверсия лида в кандидата при прохождении fit (§2.4)",
+        "leads_auto_convert_on_fit_hint": "Доп. предохранитель при Automatic + авто-создании: если выключено, лиды в очереди с заблокированным превью до Process. На вакансии можно отключить точечно (extra.leads_auto_convert_on_fit_v1 = false).",
+        "automation_stack_title": "Как связаны настройки",
+        "automation_stack_body": "1) Режим — Manual / Assisted / Automatic. 2) Автосоздание + конверсия при fit — только Automatic (конверсию при fit можно отключить). 3) Маппинг ad → вакансия и ordered_vacancy_ids выбирают вакансию для фита. 4) Критерии на вакансии блокируют авто-конверсию при несоответствии.",
         "mask_pii": "Маскировать PII в интерфейсе",
         "default_company": "Компания по умолчанию",
         "default_recruiter": "Рекрутер по умолчанию",
@@ -9206,7 +10003,10 @@
         "save": "Сохранить настройки",
         "field_mapping_card_title": "Маппинг полей формы",
         "field_mapping_card_body": "Настроено правил маппинга: {count}. Редактирование — на вкладке «Маппинг полей» (имена полей Meta в нижнем регистре).",
-        "open_field_mapping": "Открыть маппинг полей"
+        "open_field_mapping": "Открыть маппинг полей",
+        "lead_fit_order_title": "Порядок вакансий без маппинга ad / vacancy_id",
+        "lead_fit_order_hint": "Если у лида нет привязки по рекламе и нет vacancy_id в payload, пайплайн перебирает эти вакансии по порядку до первой, проходящей фит (или без критериев). То же, что Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids.",
+        "lead_fit_order_pick": "Выберите вакансию…"
       },
       "field_mapping": {
         "title": "Поля формы Meta → нормализованный payload",
@@ -9238,9 +10038,20 @@
         "status": "Статус",
         "webhook_secret": "Секрет вебхука",
         "access_token": "Access token",
+        "statuses": {
+          "active": "active",
+          "disabled": "disabled",
+          "rotation_pending": "rotation_pending"
+        },
+        "fields": {
+          "ad_account_id": "ad_account_id",
+          "page_id": "page_id"
+        },
         "table": {
           "label": "Этикетка",
           "status": "Статус",
+          "ad_id": "ad_id",
+          "page_id": "page_id",
           "signature": "Подпись"
         },
         "actions": {
@@ -9254,12 +10065,24 @@
         "save": "Сохранить маппинг",
         "search_placeholder": "Поиск по ad_id или заметке",
         "created": "Создано",
-        "empty": "Нет записей"
+        "empty": "Нет записей",
+        "fields": {
+          "ad_id": "ad_id",
+          "vacancy_id": "vacancy_id"
+        },
+        "table": {
+          "ad_id": "ad_id",
+          "vacancy_id": "vacancy_id"
+        }
       },
       "incoming": {
-        "title": "Входящие данные (Meta)",
-        "subtitle": "Последние лиды Meta: сырой payload как сохранён (обрезан для безопасности). Для проверки маппинга полей и отладки ingest.",
-        "empty": "В этом workspace пока нет лидов Meta.",
+        "title": "Входящие данные",
+        "subtitle": "Последние лиды выбранного источника: сырой payload как сохранён (обрезан для безопасности). Для проверки маппинга полей и отладки ingest.",
+        "source_label": "Источник",
+        "source_meta": "Meta",
+        "source_webhook": "Webhook",
+        "empty_meta": "В этом workspace пока нет лидов Meta.",
+        "empty_webhook": "В этом workspace пока нет лидов с webhook.",
         "payload": "Сырой payload",
         "normalized": "Нормализовано",
         "truncated": "(обрезано)",
@@ -9280,7 +10103,42 @@
         "actions": {
           "reroute": "Маршрутизировать",
           "retry": "Повторить"
+        },
+        "suggestions": {
+          "graph_no_token": {
+            "action": "Учётные данные",
+            "hint": "Нет Graph access token для этого page_id. Обновите учётные данные и повторите."
+          },
+          "vacancy_not_resolved": {
+            "action": "Маппинг объявлений",
+            "hint": "Вакансия не найдена. Проверьте маппинг ad_id → vacancy_id."
+          },
+          "no_contacts": {
+            "action": "Настройки",
+            "hint": "Meta не прислал email/телефон по вашему маппингу. Проверьте маппинг полей и Retry."
+          },
+          "company_not_resolved": {
+            "action": "Настройки",
+            "hint": "Не удалось определить компанию. Проверьте компанию по умолчанию и маппинг."
+          },
+          "generic": {
+            "action": "Настройки",
+            "hint": "Проверьте настройки и попробуйте Retry или Reroute."
+          }
         }
+      },
+      "quick_start": {
+        "title": "Быстрый старт",
+        "subtitle": "Добавьте подключение, сопоставьте каждый ad_id с вакансией, затем проверьте payload на вкладке «Входящие данные»."
+      },
+      "other_platforms": "TikTok, YouTube, Google — скоро",
+      "unmapped": {
+        "title": "Непривязанные лиды",
+        "subtitle": "Лиды с ad_id без маппинга на вакансию. Привяжите к вакансии и перезапустите маршрутизацию.",
+        "leads": "лидов",
+        "attach_btn": "Привязать к вакансии",
+        "attach_modal_title": "Привязать ad_id {adId} к вакансии",
+        "select_vacancy": "Вакансия"
       }
     },
     "funnels": {
@@ -9344,25 +10202,40 @@
         "code": "Код",
         "label": "Название",
         "system": "Система",
+        "conversion_root": "Корень воронки",
         "order": "Порядок",
         "status": "Статус",
         "actions": "Действия"
       },
+      "conversion_root": "Корень воронки конверсии",
+      "conversion_root_auto": "Авто (по коду стадии)",
+      "conversion_root_lead": "Lead — вход",
+      "conversion_root_qualified": "Qualified",
+      "conversion_root_active": "Active (в работе)",
+      "conversion_root_final": "Final / выиграно",
+      "conversion_root_hint": "Сопоставление CRM-стадии с корневым этапом для аналитики конверсии (§2.12). Авто — по кодам new / contacted / qualified / converted.",
       "placeholders": {
         "stage_label": "например, Initial interview",
         "stage_code": "initial_interview",
         "funnel_name": "например, Driver Recruitment"
       },
       "errors": {
-        "unknown": "Неизвестная ошибка"
+        "unknown": "Неизвестная ошибка",
+        "load_failed": "Не удалось загрузить воронки",
+        "save_failed": "Не удалось сохранить изменения воронки",
+        "reorder_failed": "Не удалось изменить порядок этапов"
       }
     },
     "settings": {
       "title": "Центр управления рабочим пространством",
       "subtitle": "Управляйте командой, лицензиями, документами, интеграциями и аудитом.",
       "actions": {
-        "open": "Открыть"
+        "open": "Открыть",
+        "open_area": "Открыть раздел",
+        "back_to_areas": "Все разделы настроек"
       },
+      "areas_intro": "Сначала выберите раздел — показываем только связанные экраны, без перегруза списком.",
+      "area_empty": "Для вашей роли здесь нечего настраивать.",
       "email": {
         "title": "Настройки почты"
       },
@@ -9407,6 +10280,10 @@
           "label": "Кастомные поля",
           "description": "Управление дополнительными полями для кандидатов и документов."
         },
+        "lead_forms": {
+          "label": "Лид-формы",
+          "description": "Именованные точки входа в публичный intake с опциональным slug для атрибуции."
+        },
         "email": {
           "label": "Почта (SMTP)",
           "description": "Настройка отправки писем (RODO, уведомления)."
@@ -9444,7 +10321,7 @@
           "description": "Очередь удалений и события аудита."
         },
         "communications_setup": {
-          "description": "Описание"
+          "description": "Все экраны интеграций в одном месте: Meta, Google, webhook, почта и админка коммуникаций."
         },
         "company_access": {
           "description": "Описание",
@@ -9670,6 +10547,7 @@
     "legal": {
       "title": "Юридические документы (RODO, политика конфиденциальности)",
       "subtitle": "Настройте активную клаузулу RODO и политику. Без активной клаузулы RODO нельзя отправлять информацию кандидатам.",
+      "section_candidates": "Кандидаты",
       "rodo": "Клаузула RODO",
       "privacy": "Политика конфиденциальности",
       "active": "Активный",
@@ -9679,9 +10557,56 @@
       "set_active": "Сделать активным",
       "version_id": "Версия (напр. 2025-01-01)",
       "content_url": "URL документа (PDF или страница)",
+      "content_html": "HTML-содержимое (необязательно)",
       "add_version": "Добавить версию",
       "created": "Создано",
-      "activated": "Установлено как активный"
+      "activated": "Установлено как активный",
+      "billing": {
+        "section_title": "Биллинг и подписка (приложения к оферте)",
+        "section_subtitle": "Черновики под SSOT §2.16 (trial, downgrade, согласие на overage, retention, automation/mapping). Нужна юридическая проверка; кнопка «Загрузить черновик EN», затем адаптация и публикация.",
+        "missing": "Нет активной опубликованной версии этого типа.",
+        "trial_terms": "Условия trial",
+        "downgrade_cancellation": "Понижение плана и отмена",
+        "overage_autodebit": "Перерасход и автосписание (согласие)",
+        "data_retention": "Хранение данных после отмены",
+        "automation_disclaimer": "Дисклеймер — автоматизация",
+        "mapping_disclaimer": "Дисклеймер — маппинг полей и custom fields",
+        "load_draft": "Загрузить черновик EN (§2.16)",
+        "draft_loaded": "Черновик подставлен в форму",
+        "draft_not_found": "Шаблон черновика не найден"
+      }
+    },
+    "lead_forms": {
+      "title": "Лид-формы",
+      "subtitle": "Точки входа в публичный intake. Укажите публичный slug, чтобы кандидаты открывали форму через /public/intake.",
+      "new_title": "Название новой формы",
+      "create": "Создать форму",
+      "empty": "Пока нет лид-форм. Создайте форму, чтобы размечать источники intake.",
+      "read_only_hint": "Создавать и редактировать лид-формы могут только администраторы воркспейса.",
+      "link_billing": "Биллинг и лимиты",
+      "fields": {
+        "title": "Название",
+        "public_slug": "Публичный slug",
+        "active": "Активна (учитывается в лимите плана)"
+      },
+      "placeholders": {
+        "title": "например, кампании Facebook",
+        "slug": "my-campaign"
+      },
+      "slug_hint": "Строчные буквы, цифры, дефисы; 2–64 символа. Оставьте пустым, чтобы снять публикацию.",
+      "share_url": "Публичный URL intake (этот хост)",
+      "copy": "Копировать",
+      "toast": {
+        "created": "Лид-форма создана",
+        "saved": "Сохранено",
+        "copied": "Скопировано"
+      },
+      "errors": {
+        "load": "Не удалось загрузить лид-формы",
+        "create": "Не удалось создать форму",
+        "save": "Не удалось сохранить форму",
+        "copy": "Не удалось скопировать"
+      }
     },
     "tenant_links": {
       "title": "Передача и попытки контакта",
@@ -9728,7 +10653,19 @@
       "due_date": "Срок оплаты",
       "total": "Сумма",
       "paid": "Оплачено",
-      "empty": "Счета не найдены"
+      "empty": "Счета не найдены",
+      "errors": {
+        "load_failed": "Не удалось загрузить счета",
+        "action_failed": "Не удалось выполнить действие со счётом",
+        "detail_load_failed": "Не удалось загрузить счёт",
+        "companies_load_failed": "Не удалось загрузить список компаний",
+        "client_billing_load_failed": "Не удалось загрузить данные клиента для счёта",
+        "source_invoice_load_failed": "Не удалось загрузить исходный счёт",
+        "issuer_load_failed": "Не удалось загрузить данные компании-выставителя",
+        "edit_invoice_load_failed": "Не удалось загрузить счёт для редактирования",
+        "create_failed": "Не удалось создать счёт",
+        "update_failed": "Не удалось обновить счёт"
+      }
     },
     "email": {
       "description": "Описание",

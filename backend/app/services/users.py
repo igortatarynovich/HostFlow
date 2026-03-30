@@ -23,6 +23,7 @@ from backend.app.models.invite import UserInvite
 from backend.app.models.tenant import TenantLicense
 from backend.app.models.session import UserSession
 from backend.app.models.user import Role, User
+from backend.app.models.own_company import OwnCompany
 from backend.app.services.audit import log_activity
 from backend.app.services.auth import generate_token, hash_token, revoke_refresh_tokens
 from backend.app.services.tenant_limits import get_tenant_limits
@@ -995,6 +996,92 @@ async def update_user_companies(
     return await get_user_detail(db, tenant_id=tenant_id, user_id=user_id)
 
 
+async def update_user_own_company_access(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    actor_id: str | None,
+    user_id: str,
+    allowed_own_company_ids: Sequence[str],
+) -> Dict[str, Any]:
+    """Restrict user to a subset of tenant own-companies (empty list clears ACL)."""
+    user = await _load_user(db, tenant_id=tenant_id, user_id=user_id)
+    normalized = sorted({str(x).strip() for x in allowed_own_company_ids if x and str(x).strip()})
+
+    prefs = dict(user.preferences or {})
+    prev_allowed = prefs.get("allowed_own_company_ids")
+    prev_active = str(prefs.get("active_own_company_id") or "").strip() or None
+
+    if not normalized:
+        prefs.pop("allowed_own_company_ids", None)
+        allowed_set: set[str] | None = None
+    else:
+        cnt_row = await db.execute(
+            select(func.count())
+            .select_from(OwnCompany)
+            .where(
+                OwnCompany.tenant_id == tenant_id,
+                OwnCompany.is_archived.is_(False),
+                OwnCompany.id.in_(normalized),
+            )
+        )
+        found = int(cnt_row.scalar_one() or 0)
+        if found != len(normalized):
+            raise UserServiceError("One or more own company ids are invalid or archived", 422)
+        prefs["allowed_own_company_ids"] = list(normalized)
+        allowed_set = set(normalized)
+
+    if allowed_set:
+        active = str(prefs.get("active_own_company_id") or "").strip()
+        if active and active not in allowed_set:
+            first_row = await db.execute(
+                select(OwnCompany.id)
+                .where(
+                    OwnCompany.tenant_id == tenant_id,
+                    OwnCompany.is_archived.is_(False),
+                    OwnCompany.id.in_(allowed_set),
+                )
+                .order_by(OwnCompany.created_at.asc())
+                .limit(1)
+            )
+            first = first_row.scalar_one_or_none()
+            if first:
+                prefs["active_own_company_id"] = str(first)
+            else:
+                prefs.pop("active_own_company_id", None)
+
+    user.preferences = prefs
+    user.updated_at = _now()
+    await db.flush()
+
+    await record_user_audit(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        target_user_id=user_id,
+        action="user.own_company_access_updated",
+        payload={
+            "allowed_own_company_ids": normalized if normalized else None,
+            "previous_allowed": prev_allowed,
+            "active_own_company_id": prefs.get("active_own_company_id"),
+            "previous_active": prev_active,
+        },
+    )
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        actor_id=actor_id,
+        action="user.own_company_access_updated",
+        target_type="user",
+        target_id=user_id,
+        payload={
+            "allowed_own_company_ids": normalized if normalized else None,
+            "previous_active": prev_active,
+        },
+    )
+    return await get_user_detail(db, tenant_id=tenant_id, user_id=user_id)
+
+
 async def set_user_active(
     db: AsyncSession,
     *,
@@ -1442,6 +1529,14 @@ async def get_user_detail(
                     "status": _status_for_user(recruiter),
                 }
             )
+
+    raw_prefs = user.preferences or {}
+    raw_al = raw_prefs.get("allowed_own_company_ids") if isinstance(raw_prefs, dict) else None
+    if isinstance(raw_al, (list, tuple)):
+        ids = [str(x).strip() for x in raw_al if x is not None and str(x).strip()]
+        entry["allowed_own_company_ids"] = ids if ids else None
+    else:
+        entry["allowed_own_company_ids"] = None
     return entry
 
 
@@ -1718,12 +1813,17 @@ def _ensure_preferences_structure(preferences: dict[str, Any] | None) -> dict[st
             )
         saved_views[module] = cleaned
 
-    return {
+    result: dict[str, Any] = {
         "ui": ui_prefs,
         "notifications": notifications,
         "defaults": defaults,
         "saved_views": saved_views,
     }
+    # Preserve multi-workspace keys not managed by structured UI blocks (§2.4 ACL / switcher).
+    for key in ("active_own_company_id", "allowed_own_company_ids"):
+        if key in base:
+            result[key] = base[key]
+    return result
 
 
 def _extract_profile_dict(user: User) -> Dict[str, Any]:

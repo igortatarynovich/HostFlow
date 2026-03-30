@@ -5,6 +5,8 @@ import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { invoiceDaysPastDue, invoiceOutstandingAmount, serviceOrderWorkspacePath } from '../modules/services/utils'
 
 const STATUS_OPTIONS: InvoiceStatus[] = ['draft', 'issued', 'sent', 'paid', 'overdue', 'cancelled']
@@ -82,13 +84,14 @@ function isLockedForCompliance(status: InvoiceStatus): boolean {
 
 export default function InvoicesPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<FriendlyErrorInfo | null>(null)
   const [activeInvoiceAction, setActiveInvoiceAction] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('')
   const [queueFilter, setQueueFilter] = useState<'all' | 'delivery_failed' | 'missing_recipient' | 'overdue_unpaid' | 'needs_correction'>('all')
@@ -225,7 +228,9 @@ export default function InvoicesPage() {
       })
       .catch((err: any) => {
         if (!cancelled) {
-          setError(err?.response?.data?.detail || err?.message || 'Failed to load invoices')
+          if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.invoices.errors.load_failed'))) {
+            setError(getFriendlyErrorInfo(err, t('app.invoices.errors.load_failed'), t))
+          }
         }
       })
       .finally(() => {
@@ -234,7 +239,7 @@ export default function InvoicesPage() {
     return () => {
       cancelled = true
     }
-  }, [companyIdFilter, serviceOrderIdFilter, statusFilter, reloadKey])
+  }, [companyIdFilter, planLimitModal, serviceOrderIdFilter, statusFilter, reloadKey, t])
 
   useEffect(() => {
     setSelectedIds((current) => current.filter((id) => visibleInvoices.some((invoice) => invoice.id === id)))
@@ -278,7 +283,9 @@ export default function InvoicesPage() {
     try {
       await fn()
     } catch (err: any) {
-      setActionError(err?.response?.data?.detail || err?.message || 'Invoice action failed')
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.invoices.errors.action_failed'))) {
+        setActionError(getFriendlyErrorInfo(err, t('app.invoices.errors.action_failed'), t))
+      }
     } finally {
       setActiveInvoiceAction(null)
     }
@@ -381,7 +388,10 @@ export default function InvoicesPage() {
   ) => {
     const selectedInvoices = visibleInvoices.filter((invoice) => selectedIds.includes(invoice.id)).filter(predicate)
     if (selectedInvoices.length === 0) {
-      setActionError(t('app.invoices.bulk_none', { defaultValue: 'No matching invoices selected for this action.' }))
+      setActionError({
+        title: t('app.invoices.bulk_none', { defaultValue: 'No matching invoices selected for this action.' }),
+        hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+      })
       return
     }
     setActiveInvoiceAction(`bulk:${actionKey}`)
@@ -392,12 +402,13 @@ export default function InvoicesPage() {
     setActiveInvoiceAction(null)
     setReloadKey((prev) => prev + 1)
     if (failed > 0) {
-      setActionError(
-        t('app.invoices.bulk_partial_error', {
+      setActionError({
+        title: t('app.invoices.bulk_partial_error', {
           defaultValue: 'Some bulk actions failed ({{failed}} of {{total}}).',
           values: { failed, total: selectedInvoices.length },
         }),
-      )
+        hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+      })
     } else {
       setActionMessage(
         t('app.invoices.bulk_success', {
@@ -589,24 +600,28 @@ export default function InvoicesPage() {
 
         {error && (
           <ErrorRecoveryBanner
-            info={{
-              title: error,
-              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-            }}
+            info={error}
             onRetry={() => setReloadKey((prev) => prev + 1)}
             retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+            {...friendlyErrorBannerSecondary(
+              error,
+              CRM_APP_PATHS.invoices,
+              t('app.invoices.title', { defaultValue: 'Invoices' }),
+            )}
             compact
           />
         )}
 
         {actionError && (
           <ErrorRecoveryBanner
-            info={{
-              title: actionError,
-              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-            }}
+            info={actionError}
             onRetry={() => setActionError(null)}
             retryLabel={t('common.actions.dismiss', { defaultValue: 'Dismiss' })}
+            {...friendlyErrorBannerSecondary(
+              actionError,
+              CRM_APP_PATHS.invoices,
+              t('app.invoices.title', { defaultValue: 'Invoices' }),
+            )}
             compact
           />
         )}

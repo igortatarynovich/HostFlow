@@ -4,12 +4,20 @@ import { useI18n } from '../i18n'
 import { resetPasswordWithToken } from '../api/users'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import {
+  friendlyErrorBannerSecondary,
+  friendlyFormHintError,
+  getFriendlyErrorInfo,
+  type FriendlyErrorInfo,
+} from '../utils/friendlyError'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
 import { rememberLoginNotice } from '../store/auth'
 
 export default function ResetPasswordPage() {
   useRobotsMeta({ index: false, follow: false })
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const token = searchParams.get('token') || ''
@@ -18,7 +26,7 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [noToken, setNoToken] = useState(false)
 
   useEffect(() => {
@@ -31,11 +39,11 @@ export default function ResetPasswordPage() {
     e.preventDefault()
     setError(null)
     if (password !== confirm) {
-      setError(t('app.reset_password.errors.mismatch', { defaultValue: 'Hasła nie są identyczne' }))
+      setError(friendlyFormHintError(t('app.reset_password.errors.mismatch', { defaultValue: 'Passwords do not match' }), t))
       return
     }
     if (password.length < 8) {
-      setError(t('app.reset_password.errors.too_short', { defaultValue: 'Hasło musi mieć minimum 8 znaków' }))
+      setError(friendlyFormHintError(t('app.reset_password.errors.too_short', { defaultValue: 'Password must be at least 8 characters' }), t))
       return
     }
     setLoading(true)
@@ -45,7 +53,10 @@ export default function ResetPasswordPage() {
       rememberLoginNotice('password_reset_success')
       setTimeout(() => navigate('/login', { replace: true }), 2000)
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? t('app.reset_password.errors.generic', { defaultValue: 'Token nieprawidłowy lub wygasł' }))
+      const fb = t('app.reset_password.errors.generic', { defaultValue: 'Invalid or expired token' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setError(getFriendlyErrorInfo(err, fb, t))
+      }
     } finally {
       setLoading(false)
     }
@@ -114,7 +125,12 @@ export default function ResetPasswordPage() {
               </div>
               {error && (
                 <ErrorRecoveryBanner
-                  info={{ title: error, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+                  info={error}
+                  {...friendlyErrorBannerSecondary(
+                    error,
+                    '/forgot-password',
+                    t('app.forgot_password.title', { defaultValue: 'Forgot password?' }),
+                  )}
                   compact
                 />
               )}

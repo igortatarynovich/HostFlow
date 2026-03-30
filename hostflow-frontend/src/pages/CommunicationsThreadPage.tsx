@@ -5,18 +5,26 @@ import CommunicationsThreadWorkArea from '../components/communications/Communica
 import { useCommunicationsThread } from '../hooks/useCommunicationsThread'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../utils/friendlyError'
 
 export default function CommunicationsThreadPage() {
   const { t } = useI18n()
   const { threadId = '' } = useParams()
   const model = useCommunicationsThread(threadId)
-  const { thread, loading, load, errorText, threadListPath } = model
+  const { thread, loading, load, threadError, threadListPath } = model
 
   if (loading) {
     return <div className="text-sm text-slate-500">{t('common.loading')}</div>
   }
 
   if (!thread) {
+    const missingThreadInfo: FriendlyErrorInfo =
+      threadError ??
+      ({
+        title: t('app.communications.states.empty'),
+        hint: t('app.common.retry_hint'),
+      } satisfies FriendlyErrorInfo)
     return (
       <div className="space-y-3">
         <WorkspaceTopNav active={null} />
@@ -29,14 +37,14 @@ export default function CommunicationsThreadPage() {
           </Link>
         </div>
         <ErrorRecoveryBanner
-          info={{
-            title: errorText || t('app.communications.states.empty'),
-            hint: t('app.common.retry_hint'),
-          }}
+          info={missingThreadInfo}
           onRetry={() => void load()}
           retryLabel={t('common.actions.refresh')}
-          secondaryTo={threadListPath}
-          secondaryLabel={t('app.communications.actions.back_to_hub')}
+          {...friendlyErrorBannerSecondary(
+            missingThreadInfo,
+            threadListPath,
+            t('app.communications.actions.back_to_hub'),
+          )}
           compact
         />
       </div>

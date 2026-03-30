@@ -1,5 +1,6 @@
 export { default as LeadDetailPage } from '../../pages/LeadDetailPage'
 export { default as LeadsPage } from '../../pages/LeadsPage'
+export { default as AnalyticsLeadConversionFunnelPage } from '../../pages/AnalyticsLeadConversionFunnelPage'
 export { default as LeadsDistributionPage } from '../../pages/LeadsDistributionPage'
 export { default as LeadsDistributionRulesPage } from '../../pages/LeadsDistributionRulesPage'
 export { default as DocumentsRegistryPage } from '../../pages/DocumentsRegistryPage'

@@ -19,25 +19,10 @@ import {
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { useAuth } from '../../store/auth'
-
-function errorTextFrom(err: any, fallback: string) {
-  const d = err?.response?.data?.detail
-  if (typeof d === 'string') return d
-  if (Array.isArray(d)) {
-    const msg = d.map((x) => (typeof x?.msg === 'string' ? x.msg : null)).filter(Boolean).join('; ')
-    if (msg) return msg
-  }
-  if (d && typeof d === 'object') {
-    if (typeof d.msg === 'string') return d.msg
-    try {
-      return JSON.stringify(d)
-    } catch {
-      // ignore
-    }
-  }
-  return err?.message || fallback
-}
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
 const CHANNELS = ['telegram', 'whatsapp', 'viber', 'messenger', 'instagram'] as const
 
@@ -152,9 +137,10 @@ function statusBadgeClass(status: string): string {
 export default function CommunicationsMessengerSettingsPage() {
   const { t } = useI18n()
   const { me } = useAuth()
+  const planLimitModal = usePlanLimitModal()
 
   const [loading, setLoading] = useState(true)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
   const [saveBusy, setSaveBusy] = useState(false)
   const [connectionBusyKey, setConnectionBusyKey] = useState<string | null>(null)
@@ -194,7 +180,22 @@ export default function CommunicationsMessengerSettingsPage() {
       try {
         await loadAll()
       } catch (err: any) {
-        if (mounted) setErrorText(errorTextFrom(err, 'Failed to load messenger settings'))
+        if (mounted) {
+          if (
+            !planLimitModal?.showPlanLimitIfNeeded(
+              err,
+              t('admin.communications_messengers.errors.load_failed', { defaultValue: 'Failed to load messenger settings' }),
+            )
+          ) {
+            setError(
+              getFriendlyErrorInfo(
+                err,
+                t('admin.communications_messengers.errors.load_failed', { defaultValue: 'Failed to load messenger settings' }),
+                t,
+              ),
+            )
+          }
+        }
       } finally {
         if (mounted) setLoading(false)
       }
@@ -202,7 +203,7 @@ export default function CommunicationsMessengerSettingsPage() {
     return () => {
       mounted = false
     }
-  }, [loadAll])
+  }, [loadAll, planLimitModal, t])
 
   const commands: CommunicationCommandTemplate[] = Array.isArray(settings?.commands?.items)
     ? settings.commands.items
@@ -258,18 +259,31 @@ export default function CommunicationsMessengerSettingsPage() {
 
   const runConnectionAction = useCallback(async (key: string, action: () => Promise<void>, successText: string) => {
     setConnectionBusyKey(key)
-    setErrorText(null)
+    setError(null)
     setSaveNotice(null)
     try {
       await action()
       await loadAll()
       setSaveNotice(successText)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Connection operation failed'))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('admin.communications_messengers.errors.connection_failed', { defaultValue: 'Connection operation failed' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('admin.communications_messengers.errors.connection_failed', { defaultValue: 'Connection operation failed' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setConnectionBusyKey(null)
     }
-  }, [loadAll])
+  }, [loadAll, planLimitModal, t])
 
   const copyText = useCallback(async (value: string, successText: string) => {
     const text = String(value || '').trim()
@@ -277,11 +291,24 @@ export default function CommunicationsMessengerSettingsPage() {
     try {
       await navigator.clipboard.writeText(text)
       setSaveNotice(successText)
-      setErrorText(null)
+      setError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to copy value'))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('admin.communications_messengers.errors.copy_failed', { defaultValue: 'Failed to copy value' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('admin.communications_messengers.errors.copy_failed', { defaultValue: 'Failed to copy value' }),
+            t,
+          ),
+        )
+      }
     }
-  }, [])
+  }, [planLimitModal, t])
 
   const patchChannelFlags = useCallback(async (channelKey: MessengerChannel, patch: Record<string, any>) => {
     const channels = Array.isArray(settings?.channels?.channels) ? settings.channels.channels : []
@@ -292,7 +319,7 @@ export default function CommunicationsMessengerSettingsPage() {
     })
     setSaveBusy(true)
     setSaveNotice(null)
-    setErrorText(null)
+    setError(null)
     try {
       const patched = await patchCommunicationsSettings({
         channels: {
@@ -310,11 +337,30 @@ export default function CommunicationsMessengerSettingsPage() {
         }),
       )
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, `Failed to update ${channelKey} switches`))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('admin.communications_messengers.errors.update_switches_failed', {
+            defaultValue: 'Failed to update {channel} switches',
+            values: { channel: channelKey },
+          }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('admin.communications_messengers.errors.update_switches_failed', {
+              defaultValue: 'Failed to update {channel} switches',
+              values: { channel: channelKey },
+            }),
+            t,
+          ),
+        )
+      }
     } finally {
       setSaveBusy(false)
     }
-  }, [settings, t])
+  }, [planLimitModal, settings, t])
 
   const createTelegramAccount = useCallback(async () => {
     await createCommunicationAccount({
@@ -415,32 +461,58 @@ export default function CommunicationsMessengerSettingsPage() {
   const saveCommands = useCallback(async (items: CommunicationCommandTemplate[]) => {
     setSaveBusy(true)
     setSaveNotice(null)
-    setErrorText(null)
+    setError(null)
     try {
       const patched = await patchCommunicationsSettings({ commands: { items } })
       setSettings(patched)
       setSaveNotice(t('common.saved', { defaultValue: 'Saved' }))
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to save command templates'))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('admin.communications_messengers.errors.save_commands_failed', { defaultValue: 'Failed to save command templates' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('admin.communications_messengers.errors.save_commands_failed', { defaultValue: 'Failed to save command templates' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setSaveBusy(false)
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   const saveMessageTemplates = useCallback(async (items: CommunicationMessageTemplate[]) => {
     setSaveBusy(true)
     setSaveNotice(null)
-    setErrorText(null)
+    setError(null)
     try {
       const patched = await patchCommunicationsSettings({ messageTemplates: { items } } as any)
       setSettings(patched)
       setSaveNotice(t('common.saved', { defaultValue: 'Saved' }))
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to save message templates'))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('admin.communications_messengers.errors.save_message_templates_failed', { defaultValue: 'Failed to save message templates' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('admin.communications_messengers.errors.save_message_templates_failed', { defaultValue: 'Failed to save message templates' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setSaveBusy(false)
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   const addCommand = useCallback(() => {
     const label = commandDraftLabel.trim()
@@ -599,19 +671,19 @@ export default function CommunicationsMessengerSettingsPage() {
       </div>
 
       {loading && <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
-      {errorText && (
+      {error && (
         <ErrorRecoveryBanner
-          info={{
-            title: errorText,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
+          info={error}
           onRetry={() => {
-            setErrorText(null)
+            setError(null)
             void loadAll()
           }}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo={CRM_APP_PATHS.settingsCommunications}
-          secondaryLabel={t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
+          {...friendlyErrorBannerSecondary(
+            error,
+            CRM_APP_PATHS.settingsCommunications,
+            t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' }),
+          )}
           compact
         />
       )}
@@ -1078,16 +1150,26 @@ export default function CommunicationsMessengerSettingsPage() {
               onClick={() =>
                 void listCommunicationCommandAudit({ limit: 30 })
                   .then((r) => setCommandAudit(r.items || []))
-                  .catch((e) =>
-                    setErrorText(
-                      errorTextFrom(
+                  .catch((e) => {
+                    if (
+                      !planLimitModal?.showPlanLimitIfNeeded(
                         e,
                         t('admin.communications_messengers.errors.audit_reload_failed', {
                           defaultValue: 'Failed to reload command audit',
                         }),
-                      ),
-                    ),
-                  )
+                      )
+                    ) {
+                      setError(
+                        getFriendlyErrorInfo(
+                          e,
+                          t('admin.communications_messengers.errors.audit_reload_failed', {
+                            defaultValue: 'Failed to reload command audit',
+                          }),
+                          t,
+                        ),
+                      )
+                    }
+                  })
               }
               className="btn-secondary btn-sm"
             >

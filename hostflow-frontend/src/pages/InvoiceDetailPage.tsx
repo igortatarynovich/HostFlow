@@ -17,6 +17,8 @@ import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { Modal } from '../components/Modal'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
 
 const currencyFormatter = new Intl.NumberFormat('pl-PL', {
@@ -113,15 +115,16 @@ function invoiceActionMeta(action: string, t: ReturnType<typeof useI18n>['t']): 
 export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [activities, setActivities] = useState<InvoiceActivity[]>([])
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<FriendlyErrorInfo | null>(null)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [sendComposerOpen, setSendComposerOpen] = useState(false)
@@ -132,7 +135,7 @@ export default function InvoiceDetailPage() {
   const hasSendErrorNotice = searchParams.get('send_error') === '1'
   const [correctionChain, setCorrectionChain] = useState<Invoice[]>([])
   const [correctionChainLoading, setCorrectionChainLoading] = useState(false)
-  const [correctionChainError, setCorrectionChainError] = useState<string | null>(null)
+  const [correctionChainError, setCorrectionChainError] = useState<FriendlyErrorInfo | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -152,7 +155,9 @@ export default function InvoiceDetailPage() {
       })
       .catch((err: any) => {
         if (cancelled) return
-        setError(err?.response?.data?.detail || err?.message || 'Failed to load invoice')
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.invoices.errors.detail_load_failed'))) {
+          setError(getFriendlyErrorInfo(err, t('app.invoices.errors.detail_load_failed'), t))
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -160,7 +165,7 @@ export default function InvoiceDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id, reloadKey])
+  }, [id, planLimitModal, reloadKey, t])
 
   const timelineItems = useMemo(() => {
     if (!invoice) return []
@@ -234,11 +239,10 @@ export default function InvoiceDetailPage() {
         setCorrectionChain(chain)
       } catch (err: any) {
         if (!cancelled) {
-          setCorrectionChainError(
-            err?.response?.data?.detail ||
-              err?.message ||
-              t('app.invoices.correction_chain_error', { defaultValue: 'Failed to load correction chain' }),
-          )
+          const fb = t('app.invoices.correction_chain_error', { defaultValue: 'Failed to load correction chain' })
+          if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+            setCorrectionChainError(getFriendlyErrorInfo(err, fb, t))
+          }
           setCorrectionChain([invoice])
         }
       } finally {
@@ -249,7 +253,7 @@ export default function InvoiceDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [invoice, t])
+  }, [invoice, planLimitModal, t])
 
   const withAction = async (action: string, fn: () => Promise<void>) => {
     setBusyAction(action)
@@ -258,7 +262,9 @@ export default function InvoiceDetailPage() {
     try {
       await fn()
     } catch (err: any) {
-      setActionError(err?.response?.data?.detail || err?.message || 'Invoice action failed')
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.invoices.errors.action_failed'))) {
+        setActionError(getFriendlyErrorInfo(err, t('app.invoices.errors.action_failed'), t))
+      }
     } finally {
       setBusyAction(null)
     }
@@ -406,15 +412,23 @@ export default function InvoiceDetailPage() {
   }
 
   if (error || !invoice) {
+    const bannerInfo: FriendlyErrorInfo =
+      error ??
+      ({
+        title: t('app.invoices.not_found', { defaultValue: 'Invoice not found' }),
+        hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+      } satisfies FriendlyErrorInfo)
     return (
       <div className="p-6">
         <ErrorRecoveryBanner
-          info={{
-            title: error || t('app.invoices.not_found', { defaultValue: 'Invoice not found' }),
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
+          info={bannerInfo}
           onRetry={() => setReloadKey((prev) => prev + 1)}
           retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+          {...friendlyErrorBannerSecondary(
+            bannerInfo,
+            CRM_APP_PATHS.invoices,
+            t('app.invoices.title', { defaultValue: 'Invoices' }),
+          )}
         />
       </div>
     )
@@ -521,12 +535,14 @@ export default function InvoiceDetailPage() {
 
       {actionError && (
         <ErrorRecoveryBanner
-          info={{
-            title: actionError,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
+          info={actionError}
           onRetry={() => setActionError(null)}
           retryLabel={t('common.actions.dismiss', { defaultValue: 'Dismiss' })}
+          {...friendlyErrorBannerSecondary(
+            actionError,
+            CRM_APP_PATHS.invoices,
+            t('app.invoices.title', { defaultValue: 'Invoices' }),
+          )}
           compact
         />
       )}
@@ -794,7 +810,11 @@ export default function InvoiceDetailPage() {
               <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
             )}
             {correctionChainError && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{correctionChainError}</div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <p className="font-semibold">{correctionChainError.title}</p>
+                {correctionChainError.detail && <p className="mt-1 text-amber-800/90">{correctionChainError.detail}</p>}
+                <p className="mt-1 text-amber-800">{correctionChainError.hint}</p>
+              </div>
             )}
             {!correctionChainLoading && correctionChain.length > 0 && (
               <div className="space-y-2">

@@ -6,6 +6,7 @@ import { useCallback, useState, useEffect } from "react";
 import type { Document } from "../../../api/types";
 import { getDocumentFileUrl, downloadDocumentFile } from "../../../api/documents";
 import { formatErrorForDisplay } from "../../../utils/errorHandling";
+import { usePlanLimitModal } from "../../../contexts/PlanLimitModalContext";
 import { useI18n } from "../../../i18n";
 import {
   resolveDocumentUrl,
@@ -21,6 +22,7 @@ interface UseDocumentPreviewProps {
 
 export function useDocumentPreview({ setError }: UseDocumentPreviewProps) {
   const { t } = useI18n();
+  const planLimitModal = usePlanLimitModal();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewContentType, setPreviewContentType] = useState<string | null>(null);
@@ -113,6 +115,11 @@ export function useDocumentPreview({ setError }: UseDocumentPreviewProps) {
         URL.revokeObjectURL(objectUrl);
         setPreviewRevoker(null);
       } catch (e: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.errors.file_open_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.errors.file_open_failed"),
         });
@@ -122,7 +129,7 @@ export function useDocumentPreview({ setError }: UseDocumentPreviewProps) {
         }
       }
     },
-    [setError, previewRevoker, t]
+    [planLimitModal, setError, previewRevoker, t]
   );
 
   const closePreview = useCallback(() => {

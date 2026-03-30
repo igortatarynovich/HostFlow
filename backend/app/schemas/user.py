@@ -56,6 +56,10 @@ class UserOut(BaseModel):
 class UserDetailOut(UserOut):
     companies: list[dict[str, str | bool]] = Field(default_factory=list)
     recruiters: list[dict[str, str | None]] = Field(default_factory=list)
+    allowed_own_company_ids: list[str] | None = Field(
+        default=None,
+        description="Subset of own-company UUIDs this user may use; null/omitted = no ACL.",
+    )
 
 
 class UserSupervisorUpdate(BaseModel):
@@ -63,6 +67,13 @@ class UserSupervisorUpdate(BaseModel):
 
 class UserCompaniesUpdate(BaseModel):
     company_ids: Sequence[str] = Field(default_factory=list)
+
+
+class UserOwnCompanyAccessUpdate(BaseModel):
+    allowed_own_company_ids: list[str] = Field(
+        default_factory=list,
+        description="Empty list clears ACL (user may use any tenant own-company).",
+    )
 
 
 class UserInviteOut(BaseModel):

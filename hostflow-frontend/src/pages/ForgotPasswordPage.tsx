@@ -4,15 +4,22 @@ import { useI18n } from '../i18n'
 import { requestPasswordReset } from '../api/users'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import {
+  friendlyErrorBannerSecondary,
+  getFriendlyErrorInfo,
+  type FriendlyErrorInfo,
+} from '../utils/friendlyError'
 import { useRobotsMeta } from '../hooks/useRobotsMeta'
 
 export default function ForgotPasswordPage() {
   useRobotsMeta({ index: false, follow: false })
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -22,7 +29,10 @@ export default function ForgotPasswordPage() {
       await requestPasswordReset(email)
       setSent(true)
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? t('app.forgot_password.errors.generic', { defaultValue: 'Nie udało się wysłać linku' }))
+      const fb = t('app.forgot_password.errors.generic', { defaultValue: 'Could not send reset link' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setError(getFriendlyErrorInfo(err, fb, t))
+      }
     } finally {
       setLoading(false)
     }
@@ -61,7 +71,8 @@ export default function ForgotPasswordPage() {
               </div>
               {error && (
                 <ErrorRecoveryBanner
-                  info={{ title: error, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+                  info={error}
+                  {...friendlyErrorBannerSecondary(error, '/login', t('app.forgot_password.back', { defaultValue: 'Back to sign in' }))}
                   compact
                 />
               )}

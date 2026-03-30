@@ -16,6 +16,8 @@ import {
   type CommunicationOpsMode,
 } from '../utils/communicationsOpsMode'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
 const DATE_LOCALES = { en: enUS, ru: ruLocale, pl: plLocale }
@@ -45,9 +47,10 @@ const groupOf = incidentGroupOf
 
 export default function CommunicationsSlaIncidentsPage() {
   const { t, locale } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<FriendlyErrorInfo | null>(null)
   const [items, setItems] = useState<NotificationItem[]>([])
   const [opsBusyId, setOpsBusyId] = useState<string | null>(null)
   const [opsModeOverrides, setOpsModeOverrides] = useState<Record<string, OpsMode>>({})
@@ -58,7 +61,7 @@ export default function CommunicationsSlaIncidentsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setErrorText(null)
+    setLoadError(null)
     try {
       try {
         await reconcileNotifications()
@@ -100,12 +103,13 @@ export default function CommunicationsSlaIncidentsPage() {
         // Do not block incidents list on thread state fetch errors.
       }
     } catch (err: any) {
-      const detail = err?.response?.data?.detail
-      setErrorText(typeof detail === 'string' ? detail : err?.message || 'Failed to load SLA incidents')
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.sla_incidents.errors.load'))) {
+        setLoadError(getFriendlyErrorInfo(err, t('app.sla_incidents.errors.load'), t))
+      }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [planLimitModal, t])
 
   useEffect(() => {
     void load()
@@ -371,21 +375,21 @@ export default function CommunicationsSlaIncidentsPage() {
           ))}
         </div>
 
-        {errorText && (
+        {loadError && (
           <ErrorRecoveryBanner
-            info={{
-              title: errorText,
-              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-            }}
+            info={loadError}
             onRetry={() => void load()}
             retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-            secondaryTo={CRM_APP_PATHS.settingsCommunicationsSla}
-            secondaryLabel={t('admin.communications_sla.title', { defaultValue: 'SLA settings' })}
+            {...friendlyErrorBannerSecondary(
+              loadError,
+              CRM_APP_PATHS.settingsCommunicationsSla,
+              t('admin.communications_sla.title', { defaultValue: 'SLA settings' }),
+            )}
             compact
           />
         )}
 
-        {!errorText && filtered.length === 0 && !loading && (
+        {!loadError && filtered.length === 0 && !loading && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-8 text-center text-sm text-slate-500">
             {t('app.sla_incidents.empty_group', {
               defaultValue: 'No incidents in "{group}" group.',

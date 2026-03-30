@@ -24,7 +24,10 @@ from backend.app.models.additional_service import (
     ServiceItemStatus,
     ServiceOrderStatus,
 )
+from backend.app.models.candidate import Candidate
+from backend.app.models.company import Company
 from backend.app.models.document import Document
+from backend.app.models.vacancy import Vacancy
 from backend.app.models.enums import DocumentStatus
 from backend.app.services import reminders as reminders_service
 from backend.app.services.document_catalog import (
@@ -62,6 +65,32 @@ def normalize_service_order_status(value: object) -> str:
         return ServiceOrderStatus(canon).value
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=f"Invalid service order status: {raw}") from exc
+
+
+def _service_order_scope_where(active_oc: Optional[str]):
+    """Filter service orders visible under active own-company (§2.4)."""
+    if not active_oc:
+        return None
+    oc = str(active_oc).strip()
+    if not oc:
+        return None
+    return or_(
+        ServiceOrder.own_company_id == oc,
+        and_(
+            ServiceOrder.own_company_id.is_(None),
+            ServiceOrder.candidate_id.is_not(None),
+            or_(Candidate.own_company_id == oc, Candidate.own_company_id.is_(None)),
+        ),
+        and_(
+            ServiceOrder.own_company_id.is_(None),
+            ServiceOrder.vacancy_id.is_not(None),
+            or_(Vacancy.own_company_id == oc, Vacancy.own_company_id.is_(None)),
+        ),
+        and_(
+            ServiceOrder.own_company_id.is_(None),
+            ServiceOrder.company_id.is_not(None),
+        ),
+    )
 
 
 def _now_utc() -> datetime:
@@ -109,6 +138,142 @@ class AdditionalServicesService:
         self.db = db
         self.tenant_id = tenant_id
 
+    async def ensure_order_own_company_scope(
+        self,
+        order: ServiceOrder,
+        active_own_company_id: Optional[str],
+    ) -> None:
+        if not active_own_company_id:
+            return
+        oc = str(active_own_company_id).strip()
+        if not oc:
+            return
+        row_oc = str(getattr(order, "own_company_id", None) or "").strip()
+        if row_oc:
+            if row_oc != oc:
+                raise HTTPException(status_code=404, detail="Service order not found")
+            return
+        if order.candidate_id:
+            res = await self.db.execute(
+                select(Candidate.own_company_id).where(
+                    Candidate.id == order.candidate_id,
+                    Candidate.tenant_id == self.tenant_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            )
+            c_oc = res.scalar_one_or_none()
+            c_oc_s = str(c_oc or "").strip()
+            if c_oc_s and c_oc_s != oc:
+                raise HTTPException(status_code=404, detail="Service order not found")
+            return
+        if order.vacancy_id:
+            res = await self.db.execute(
+                select(Vacancy.own_company_id).where(
+                    Vacancy.id == order.vacancy_id,
+                    Vacancy.tenant_id == self.tenant_id,
+                )
+            )
+            v_oc = res.scalar_one_or_none()
+            v_oc_s = str(v_oc or "").strip()
+            if v_oc_s and v_oc_s != oc:
+                raise HTTPException(status_code=404, detail="Service order not found")
+            return
+        if order.company_id:
+            return
+
+    async def resolve_new_order_own_company_id(
+        self,
+        *,
+        candidate_id: Optional[str],
+        vacancy_id: Optional[str],
+        company_id: Optional[str],
+        active_own_company_id: Optional[str],
+    ) -> Optional[str]:
+        active = str(active_own_company_id or "").strip() or None
+
+        if candidate_id:
+            row = await self.db.execute(
+                select(Candidate).where(
+                    Candidate.id == candidate_id,
+                    Candidate.tenant_id == self.tenant_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            )
+            cand = row.scalar_one_or_none()
+            if not cand:
+                raise HTTPException(status_code=404, detail="Candidate not found")
+            c_set = str(getattr(cand, "own_company_id", None) or "").strip()
+            if active and c_set and c_set != active:
+                raise HTTPException(status_code=404, detail="Candidate not found")
+            return c_set or active
+
+        if vacancy_id:
+            row = await self.db.execute(
+                select(Vacancy).where(
+                    Vacancy.id == vacancy_id,
+                    Vacancy.tenant_id == self.tenant_id,
+                )
+            )
+            vac = row.scalar_one_or_none()
+            if not vac:
+                raise HTTPException(status_code=404, detail="Vacancy not found")
+            v_set = str(getattr(vac, "own_company_id", None) or "").strip()
+            if active and v_set and v_set != active:
+                raise HTTPException(status_code=404, detail="Vacancy not found")
+            return v_set or active
+
+        if company_id:
+            row = await self.db.execute(
+                select(Company).where(
+                    Company.id == company_id,
+                    Company.tenant_id == self.tenant_id,
+                )
+            )
+            if row.scalar_one_or_none() is None:
+                raise HTTPException(status_code=404, detail="Company not found")
+            return active
+
+        return active
+
+    async def ensure_item_branch_scope(
+        self,
+        item_id: str,
+        active_own_company_id: Optional[str],
+    ) -> None:
+        if not active_own_company_id:
+            return
+        oid = (
+            await self.db.execute(
+                select(ServiceItem.order_id).where(
+                    ServiceItem.id == item_id,
+                    ServiceItem.tenant_id == self.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not oid:
+            raise HTTPException(status_code=404, detail="Service item not found")
+        order = await self.get_order(str(oid), with_items=False)
+        await self.ensure_order_own_company_scope(order, active_own_company_id)
+
+    async def ensure_schedule_branch_scope(
+        self,
+        schedule_id: str,
+        active_own_company_id: Optional[str],
+    ) -> None:
+        if not active_own_company_id:
+            return
+        iid = (
+            await self.db.execute(
+                select(ServiceSchedule.item_id).where(
+                    ServiceSchedule.id == schedule_id,
+                    ServiceSchedule.tenant_id == self.tenant_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not iid:
+            raise HTTPException(status_code=404, detail="Service schedule not found")
+        await self.ensure_item_branch_scope(str(iid), active_own_company_id)
+
     # --- Catalog helpers -------------------------------------------------
     async def list_services(self, *, include_inactive: bool = False) -> List[Service]:
         stmt = (
@@ -121,7 +286,11 @@ class AdditionalServicesService:
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
 
-    async def catalog_usage_metrics_map(self) -> Dict[str, Tuple[int, Decimal]]:
+    async def catalog_usage_metrics_map(
+        self,
+        *,
+        own_company_scope: Optional[str] = None,
+    ) -> Dict[str, Tuple[int, Decimal]]:
         """Per catalog service_id: (distinct active orders count, revenue on completed orders)."""
         cancelled_o = ServiceOrderStatus.cancelled.value
         cancelled_i = ServiceItemStatus.cancelled.value
@@ -163,12 +332,17 @@ class AdditionalServicesService:
                 revenue_expr.label("revenue_completed"),
             )
             .join(ServiceOrder, ServiceOrder.id == ServiceItem.order_id)
+            .outerjoin(Candidate, ServiceOrder.candidate_id == Candidate.id)
+            .outerjoin(Vacancy, ServiceOrder.vacancy_id == Vacancy.id)
             .where(
                 ServiceItem.tenant_id == self.tenant_id,
                 ServiceOrder.tenant_id == self.tenant_id,
             )
-            .group_by(ServiceItem.service_id)
         )
+        scope = _service_order_scope_where(own_company_scope)
+        if scope is not None:
+            stmt = stmt.where(scope)
+        stmt = stmt.group_by(ServiceItem.service_id)
         res = await self.db.execute(stmt)
         out: Dict[str, Tuple[int, Decimal]] = {}
         for sid, oc, rev in res.all():
@@ -278,11 +452,19 @@ class AdditionalServicesService:
         company_id: Optional[str] = None,
         status: Optional[Sequence[str]] = None,
         q: Optional[str] = None,
+        limit: Optional[int] = None,
+        own_company_scope: Optional[str] = None,
     ) -> List[ServiceOrder]:
+        stmt = select(ServiceOrder).where(ServiceOrder.tenant_id == self.tenant_id)
+        scope = _service_order_scope_where(own_company_scope)
+        if scope is not None:
+            stmt = (
+                stmt.outerjoin(Candidate, ServiceOrder.candidate_id == Candidate.id)
+                .outerjoin(Vacancy, ServiceOrder.vacancy_id == Vacancy.id)
+                .where(scope)
+            )
         stmt = (
-            select(ServiceOrder)
-            .where(ServiceOrder.tenant_id == self.tenant_id)
-            .options(
+            stmt.options(
                 selectinload(ServiceOrder.items)
                 .selectinload(ServiceItem.service),
                 selectinload(ServiceOrder.items)
@@ -309,6 +491,8 @@ class AdditionalServicesService:
                     ServiceOrder.notes.ilike(like),
                 )
             )
+        if limit is not None:
+            stmt = stmt.limit(int(limit))
 
         res = await self.db.execute(stmt)
         return list(res.scalars().all())
@@ -618,6 +802,7 @@ class AdditionalServicesService:
                 candidate_id=order.candidate_id,
                 doc_type=item.result_document_type,
                 payload=result_document,
+                own_company_id=str(getattr(order, "own_company_id", None) or "").strip() or None,
             )
 
         await self.db.flush()
@@ -766,6 +951,7 @@ class AdditionalServicesService:
         candidate_id: str,
         doc_type: str,
         payload: Dict[str, object],
+        own_company_id: Optional[str] = None,
     ) -> None:
         canonical_type = normalize_doc_type(doc_type)
         defaults = get_doc_type_defaults(canonical_type)
@@ -851,10 +1037,12 @@ class AdditionalServicesService:
             doc.updated_at = _now_utc()
         else:
             await documents_crud.ensure_document_type(self.db, self.tenant_id, canonical_type)
+            doc_own = str(own_company_id or "").strip() or None
             doc = Document(
                 id=str(uuid.uuid4()),
                 tenant_id=self.tenant_id,
                 candidate_id=candidate_id,
+                own_company_id=doc_own,
                 owner_type="candidate",
                 owner_id=candidate_id,
                 kind=defaults.kind,

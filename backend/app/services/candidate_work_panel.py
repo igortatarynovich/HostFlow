@@ -94,6 +94,7 @@ async def load_candidate_work_panel(
     *,
     timeline_limit: int = 80,
     assignee_scope: str = "mine",
+    active_own_company_id: str | None = None,
 ):
     """Bundle: profile ops + reminders + timeline + comms URLs + optional documents_summary (owner checklist blockers)."""
 
@@ -131,7 +132,11 @@ async def load_candidate_work_panel(
     documents_summary: CandidateWorkPanelDocumentsSummaryOut | None = None
     try:
         raw = await fetch_candidate_documents_summary_response(
-            db, tenant_id_str, UUID(str(candidate_id)), owner_context=None
+            db,
+            tenant_id_str,
+            UUID(str(candidate_id)),
+            owner_context=None,
+            active_own_company_id=active_own_company_id,
         )
         s = raw.get("summary") or {}
         req = s.get("required") or {}

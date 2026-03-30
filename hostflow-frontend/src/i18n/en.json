@@ -276,6 +276,72 @@
     }
   },
   "app": {
+    "api_errors": {
+      "open_billing": "Open Billing",
+      "network_offline_title": "No internet connection",
+      "network_offline_hint": "Check connection and retry.",
+      "timeout_title": "Request timed out",
+      "timeout_hint": "Retry in a few seconds.",
+      "access_denied_title": "Access denied for this action",
+      "access_denied_hint": "Refresh session or ask admin for permissions.",
+      "not_found_title": "Requested data was not found",
+      "not_found_hint": "Refresh data and retry the action.",
+      "conflict_title": "Data conflict detected",
+      "conflict_hint": "Refresh page and retry.",
+      "rate_limit_title": "Too many requests",
+      "rate_limit_hint": "Wait a moment and try again.",
+      "server_error_title": "Server is temporarily unavailable",
+      "server_error_hint": "Retry shortly. If the problem persists, check service health.",
+      "generic_retry_hint": "Retry the action or refresh the page.",
+      "quota": {
+        "monthly_leads_title": "Monthly leads limit reached",
+        "monthly_leads_hint": "Upgrade in Settings → Billing or wait until the next month (UTC).",
+        "candidate_title": "Active candidate limit reached",
+        "candidate_hint": "Archive or remove candidates you no longer need, or upgrade in Settings → Billing.",
+        "vacancy_title": "Open vacancy limit reached",
+        "vacancy_hint": "Close vacancies you are not hiring for, or upgrade in Settings → Billing.",
+        "document_title": "Document limit reached",
+        "document_hint": "Remove obsolete documents or upgrade in Settings → Billing.",
+        "storage_title": "Storage limit reached",
+        "storage_hint": "Remove large files or upgrade storage in Settings → Billing.",
+        "automation_rules_title": "Automation rules limit reached",
+        "automation_rules_hint": "Disable a rule you no longer need or upgrade in Settings → Billing.",
+        "lead_forms_title": "Lead forms limit reached",
+        "lead_forms_hint": "Deactivate a form, buy a lead-forms pack, or upgrade in Settings → Billing.",
+        "portal_active_candidates_title": "Monthly candidate portal limit reached",
+        "portal_active_candidates_hint": "Upgrade or add a portal pack in Settings → Billing. Candidates already counted this month can still refresh links.",
+        "communication_channels_title": "Communication channel limit reached",
+        "communication_channels_hint": "Remove a channel account you no longer need or upgrade in Settings → Billing.",
+        "funnel_definitions_title": "Pipeline limit reached",
+        "funnel_definitions_hint": "Remove or merge a custom pipeline or upgrade in Settings → Billing.",
+        "plan_generic_title": "Plan limit reached",
+        "plan_generic_hint": "Open Settings → Billing to review your plan and usage.",
+        "operating_company_title": "Operating company limit reached",
+        "operating_company_hint": "Open Billing and add an extra operating company slot.",
+        "usage_meter_title": "Usage limit reached",
+        "usage_meter_hint": "Open Settings → Billing to review your plan or try again next month."
+      },
+      "billing": {
+        "portal_title": "Client portal link limit reached",
+        "portal_hint": "Upgrade your plan in Settings → Billing or revoke an existing portal link.",
+        "past_due_title": "Subscription payment required",
+        "past_due_hint": "Open Settings → Billing to retry payment or update your payment method.",
+        "trial_expired_title": "Trial has ended",
+        "trial_expired_hint": "Choose a plan in Settings → Billing to keep working."
+      },
+      "plan_gate": {
+        "plan_requires_team_title": "This action needs a Team-tier plan",
+        "plan_requires_team_hint": "Upgrade in Settings → Billing to unlock team-tier automation and integrations.",
+        "seat_limit_title": "Seat limit reached",
+        "seat_limit_hint": "Remove users or invites for this role, or add seats in Settings → Billing.",
+        "meta_field_mapping_title": "Meta field mapping limit reached",
+        "meta_field_mapping_hint": "Upgrade in Settings → Billing for a larger mapping table on Team-tier plans.",
+        "meta_lead_credentials_title": "Meta lead integration limit reached",
+        "meta_lead_credentials_hint": "Upgrade in Settings → Billing to connect additional Meta lead sources.",
+        "lead_custom_fields_title": "Lead custom field limit reached",
+        "lead_custom_fields_hint": "Archive unused fields or upgrade in Settings → Billing to add more."
+      }
+    },
     "layout": {
       "toggle_sidebar": "Toggle menu",
       "nav": {
@@ -310,8 +376,8 @@
         "account": "Account"
       },
       "items": {
-        "overview": "Overview",
-        "analytics": "Analytics",
+        "overview": "Insights",
+        "analytics": "Insights",
         "work": "Work",
         "my_company": "My Company",
         "candidates": "Candidates",
@@ -339,12 +405,15 @@
         "reminders": "Reminders",
         "leads": "Leads",
         "leads_distribution": "Lead routing",
+        "leads_distribution_rules": "Lead routing rules",
         "settings": "Settings",
         "settings_users": "Users & roles",
         "settings_billing": "Billing & Team",
         "settings_tenants": "Platform tenants",
         "settings_funnels": "Funnels & stages",
         "settings_docs": "Document catalog",
+        "settings_candidate_profiles": "Candidate profiles",
+        "settings_custom_fields": "Custom fields",
         "settings_legal": "Legal documents",
         "settings_company_access": "Company access",
         "settings_email": "Email settings",
@@ -353,6 +422,10 @@
         "settings_ruleset": "Ruleset versions",
         "settings_audit": "Audit log",
         "settings_communications": "Communications settings",
+        "settings_communications_messengers": "Messengers",
+        "settings_communications_queue": "Queue & routing",
+        "settings_communications_sla": "Communications SLA",
+        "settings_ttv": "TTV report",
         "profile": "Profile",
         "logout": "Sign out",
         "email": "Email",
@@ -364,6 +437,11 @@
         "automation_rules": "Automation rules",
         "settings_hiring_gates": "Hiring pipeline gates",
         "settings_risk_intel": "Risk intelligence"
+      },
+      "integrations": {
+        "meta_leads": "Meta Leads",
+        "google": "Google Ads",
+        "webhook": "Webhook & forms"
       }
     },
     "work": {
@@ -382,11 +460,57 @@
         "card_documents_desc": "Document types and registry.",
         "card_invoices_desc": "Outstanding and paid invoices, billing drill-down.",
         "section_core": "Pipeline & records",
-        "empty": "No workspace areas are enabled for your role."
+        "empty": "No workspace areas are enabled for your role.",
+        "operational_title": "Work",
+        "operational_subtitle": "What needs attention now — not a list of modules.",
+        "plan_upgrade_strip_title": "Unlock team automation",
+        "plan_upgrade_strip_body": "Bulk Meta lead processing, funnel insight actions, and several automations require a Team-tier plan. Solo/Starter still works for day-to-day lists and manual steps.",
+        "plan_upgrade_strip_cta": "Open billing",
+        "block_attention": "Needs attention",
+        "attention_candidates_no_next": "Candidates without a next step",
+        "attention_overdue_tasks": "Overdue tasks",
+        "attention_leads_routing": "New leads to triage",
+        "action_start_processing": "Start processing",
+        "action_fix_tasks": "Fix now",
+        "action_triage_leads": "Triage",
+        "queue_no_next": "No next step",
+        "queue_docs_incomplete": "Awaiting documents",
+        "queue_waiting_reply": "Waiting for a reply",
+        "processing_needs_decision": "Needs your decision",
+        "processing_client_review": "Under client review",
+        "processing_returned": "Returned from client",
+        "team_busy": "Busy now: {count}",
+        "team_timeoff": "Time-off today: {count}",
+        "team_available": "Available: {count}",
+        "team_open": "Open team view",
+        "action_create_task": "Add task",
+        "block_now": "What to do now",
+        "block_queue": "Work queue",
+        "block_processing": "Client processing",
+        "block_team": "Team",
+        "block_quick": "Quick actions",
+        "open_list": "Open",
+        "go_tasks": "Go to tasks",
+        "open_leads": "Open leads",
+        "queue_no_next_hint": "Prioritize candidates waiting on a next step.",
+        "queue_docs_hint": "Documents and compliance follow-ups.",
+        "queue_leads_decision": "Leads waiting for a decision",
+        "processing_blurb": "Track handoffs and client-side review from one place.",
+        "team_blurb": "Availability, load signals, and follow-ups live under Team in the sidebar.",
+        "action_new_candidate": "New candidate",
+        "action_add_task": "Tasks",
+        "action_inbox": "Open inbox",
+        "metric_candidates_no_next_label": "candidates without a next step",
+        "metric_overdue_tasks_label": "overdue tasks",
+        "metric_leads_routing_label": "leads needing routing",
+        "footer_entities": "Use the strip under the top bar to jump to {clients}, vacancies, and finance."
       },
       "context_tabs": {
         "aria": "Work area navigation",
         "finance_group_aria": "Finance — orders, services, and invoices"
+      },
+      "context_strip": {
+        "aria": "Operational sections"
       }
     },
     "analytics": {
@@ -401,7 +525,57 @@
         "card_leads_desc": "Conversion funnel snapshot, stage health, and lead queues.",
         "card_leads_distribution_desc": "Routing overview, load balancing, and language rules — same screen as in the Leads section.",
         "card_ttv_title": "Time-to-value report",
-        "card_ttv_desc": "North-star onboarding steps and latency (admin)."
+        "card_ttv_desc": "North-star onboarding steps and latency (admin).",
+        "card_lead_conversion_title": "Conversion funnel",
+        "card_lead_conversion_desc": "Full funnel view, drill-down to leads, and slice filters."
+      },
+      "lead_conversion": {
+        "title": "Lead conversion funnel",
+        "subtitle": "Conversion roots in funnel order; each step links to matching leads.",
+        "back_hub": "← Analytics hub",
+        "configure_funnels": "Configure funnel stages",
+        "open_leads_workspace": "Open leads workspace",
+        "empty": "No funnel stages to display yet. Map CRM stages to conversion roots in funnel settings.",
+        "at_or_beyond": "At or past this step: {n}",
+        "drop_off": "Dropped before next: {n}",
+        "dwell_empty": "No dwell-time sample for this step yet.",
+        "open_leads": "Open matching leads",
+        "step_conversion": "Next step: {pct}% continue",
+        "suggested_title": "Suggested focus",
+        "suggested_intro": "Uses the same volume thresholds as Dashboard NBA funnel chips (Team plan): weakest hand-off between roots and slow average dwell.",
+        "suggested_weak": "Weakest hand-off: {rootLabel} — only {pct}% continue to the next root; about {drop} leads in this bucket before the drop.",
+        "suggested_slow": "Slow dwell: {rootLabel} — about {days} days average in-stage (sample ≥3); current bucket count {count}.",
+        "suggested_dashboard": "Open Dashboard (NBA chips)",
+        "suggested_open_weak": "Open leads at this root",
+        "suggested_open_slow": "Open leads at this root (slow dwell)",
+        "management_chain_title": "Management loop",
+        "management_chain_intro": "Tie funnel metrics to configuration and follow-up: mapping, rules on stage changes, workspace queues, and NBA on the dashboard.",
+        "management_chain_pipelines": "Pipelines & conversion roots",
+        "management_chain_automation": "Automation rules",
+        "management_chain_leads": "Leads workspace",
+        "management_chain_nba": "Dashboard (NBA)",
+        "management_chain_automation_hint": "Rules can listen for lead.pipeline.stage_changed (e.g. react before or after lost) using normalized and custom_fields in conditions.",
+        "management_chain_presets_title": "Quick lost queues",
+        "management_chain_combo_title": "Prior stage × lost reason",
+        "management_chain_combo_item": "{stage} · {reason}",
+        "cohort_title": "Cohort (created date)",
+        "cohort_intro": "Rolling 7-day window by lead created time. Compare with the previous 7 days (WoW) on Team-tier plans.",
+        "cohort_aria": "Cohort window",
+        "cohort_all": "All time",
+        "cohort_7d": "Last 7 days",
+        "cohort_7d_wow": "7d vs prior 7d",
+        "cohort_team_only": "Cohort and slice filters require a Team-tier plan.",
+        "cohort_window_label": "Current window: {from} → {to} (end exclusive)",
+        "cohort_wow_title": "Period comparison",
+        "cohort_wow_intro": "Counts for the current cohort window vs the immediately preceding window of the same length.",
+        "cohort_prior_window_label": "Prior window: {from} → {to} (end exclusive)",
+        "cohort_metric": "Metric",
+        "cohort_current": "Current",
+        "cohort_prior": "Prior",
+        "cohort_delta": "Δ",
+        "cohort_m_win_path": "On win path (processed)",
+        "cohort_m_lost": "Lost (processed)",
+        "cohort_m_new": "New (inbox)"
       }
     },
     "clients": {
@@ -434,7 +608,11 @@
       "crm_directory_link": "Open client CRM directory",
       "not_found": "Client not found",
       "errors": {
-        "name_or_link": "Enter a name or link to a company."
+        "name_or_link": "Enter a name or link to a company.",
+        "link_load_failed": "Failed to load client link",
+        "update_failed": "Could not save changes",
+        "portal_create_failed": "Could not create portal link",
+        "portal_revoke_failed": "Could not revoke portal link"
       },
       "add_entity_dynamic": "Add entity dynamic",
       "created_dynamic": "Created dynamic",
@@ -544,7 +722,19 @@
         "criteria": {
           "title": "Lead criteria (auto-qualification)",
           "documents_placeholder": "e.g. karta_pobytu, wp_a",
-          "lead_fields": "Currently checked against lead fields:"
+          "lead_fields": "Currently checked against lead fields:",
+          "candidate_docs_module": "Documents module — required doc types (linked candidate)",
+          "candidate_docs_placeholder": "driver_license, passport",
+          "candidate_docs_hint": "Uses document rows in the Documents module for the candidate linked to the lead. Leads without a candidate get needs_info until conversion. Types use the same catalog as Settings → Documents.",
+          "allow_statuses": "Allowed document statuses (optional override, comma-separated)",
+          "allowed_geo_countries": "Allowed location countries (geo, comma-separated ISO codes)",
+          "blocked_geo_countries": "Blocked location countries (geo, comma-separated ISO codes)",
+          "geo_countries_placeholder": "DE, NL, PL",
+          "allowed_geo_hint": "Compared to the lead’s location field (geo_country, location_country, or current_country), not citizenship (country). Map form questions in Field mapping to geo_country.",
+          "blocked_geo_hint": "If the lead’s geo country matches any code, fit is no_match. Leave empty to disable.",
+          "lead_fields_geo": "for location vs citizenship use",
+          "disable_auto_convert": "Disable automatic lead → candidate conversion for this vacancy (§2.4)",
+          "disable_auto_convert_hint": "When Automatic mode is on, leads matched to this job will not auto-create a candidate even if fit passes; operators use Process. Stored as vacancy.extra.leads_auto_convert_on_fit_v1 = false."
         }
       },
       "load_failed": "Load failed"
@@ -660,6 +850,9 @@
       "search": "Search incidents…",
       "include_read": "Include read",
       "empty": "No SLA incidents right now.",
+      "errors": {
+        "load": "Failed to load SLA incidents"
+      },
       "empty_group": "No incidents in \"{group}\" group.",
       "open_dialog": "Open dialog",
       "mark_read": "Mark read",
@@ -920,6 +1113,7 @@
     "shell": {
       "sidebar": {
         "workspace": "Workspace",
+        "workspace_expand": "Workspace & settings",
         "close_menu": "Close menu",
         "client_workflow": "Client workflow",
         "account": "Account",
@@ -929,6 +1123,10 @@
         "section_tasks": "Tasks",
         "section_analytics": "Analytics",
         "section_finance": "Finance",
+        "section_settings": "Settings",
+        "section_automations": "Automations",
+        "section_integrations": "Integrations",
+        "section_team": "Team",
         "work": "Work",
         "business": "Business",
         "communications_workspace": "Communications workspace",
@@ -950,11 +1148,18 @@
     "topbar": {
       "actions": {
         "open_menu": "Open menu",
+        "open_settings": "Settings",
         "notifications": "Notifications",
         "notifications_with_urgent": "Notifications — {count} urgent (SLA, overdue tasks, handoffs)",
         "reminders": "Reminders",
         "return_to_platform": "Return to platform admin",
         "language": "Language"
+      },
+      "user_menu": {
+        "settings_heading": "Workspace settings",
+        "settings_home": "All settings",
+        "system_settings": "System settings",
+        "manager_tools": "Leadership tools"
       },
       "nba": {
         "button": "Next actions",
@@ -968,6 +1173,10 @@
       "notifications": {
         "title": "Notifications",
         "subtitle": "{unread} unread · {total} loaded",
+        "panel_subtitle": "{count} unread",
+        "open": "Open",
+        "clear": "Clear",
+        "clear_all": "Clear all",
         "open_thread": "Open thread",
         "open_in_inbox": "Open in Inbox",
         "groups": {
@@ -1004,6 +1213,17 @@
         }
       },
       "own_company": "Company",
+      "own_company_create": "New workspace",
+      "own_company_create_title": "Create workspace",
+      "own_company_create_blurb": "Adds another legal entity (own company) for this account. You can switch scope from the top bar.",
+      "own_company_create_name": "Display name",
+      "own_company_create_submit": "Create",
+      "own_company_create_success": "Workspace created",
+      "own_company_create_error": "Could not create workspace",
+      "own_company_limit_tooltip": "You have reached the workspace limit for your current plan.",
+      "own_company_upgrade_hint": "Upgrade your plan in Settings → Billing to add more workspaces.",
+      "own_company_plan_limit_402": "Workspace limit reached for your plan.",
+      "own_company_open_billing": "Open billing",
       "trial_badge": "Trial",
       "trial_badge_hint": "Trial workspace. Manage plan in Settings → Billing.",
       "quick_create": {
@@ -1104,6 +1324,9 @@
         "preferred_contact": "Preferred contact channel"
       },
       "preferences": {
+        "hints": {
+          "interface_language": "Applies across the app (including the top bar). The language switch lives here, not in the header."
+        },
         "labels": {
           "locale": "Interface language",
           "timezone": "Timezone",
@@ -1257,6 +1480,11 @@
         "workspace_placeholder": "Workspace placeholder"
       },
       "have_account": "Have account",
+      "plan_labels": {
+        "solo": "Solo",
+        "team": "Team",
+        "business": "Business"
+      },
       "selected_plan": "Selected plan",
       "sign_in": "Sign in",
       "submit": "Submit",
@@ -1378,6 +1606,14 @@
           "max_companies": "Max companies",
           "auto_renew": "Auto-renew",
           "notes": "Notes"
+        },
+        "founder": {
+          "title": "Founder pricing",
+          "subtitle": "Reserve a founder slot for this tenant (Team/Business-class plan, max 50 workspaces globally). Uses the same rules as automatic enrollment after checkout.",
+          "enroll": "Enroll in founder program",
+          "enrolling": "Enrolling…",
+          "success": "Enrolled. Founder slots in use globally: {used} / {max}.",
+          "error_fallback": "Could not enroll"
         },
         "branding": {
           "title": "Workspace branding",
@@ -1633,6 +1869,7 @@
         "manage_in_stripe": "Manage payment settings",
         "cancel": "Cancel at period end",
         "active_plan": "Active",
+        "apply_billing_interval": "Apply billing period",
         "current_plan": "Current plan",
         "change_in_portal": "Change in payment settings",
         "subscribe_plan": "Subscribe to this plan",
@@ -1642,11 +1879,51 @@
         "not_available_yet": "Not available yet",
         "load_error": "Failed to load billing subscription.",
         "checkout_error": "Failed to start checkout.",
+        "checkout_summary": {
+          "title": "Confirm checkout",
+          "lead": "You are about to open secure Stripe Checkout for the plan below.",
+          "plan_label": "Plan",
+          "billing_interval": "Billing interval",
+          "price_label": "Price shown",
+          "tax_note": "Taxes and final line items are calculated on the Stripe page. In-app VAT ID and Stripe Tax are not wired yet.",
+          "proceed": "Proceed to payment"
+        },
         "popup_blocked_title": "Allow pop-ups to continue",
         "popup_blocked_hint": "Stripe checkout was created, but the browser blocked the payment tab. Allow pop-ups and try again.",
         "no_checkout_session": "Start checkout first to simulate outcome.",
         "simulation_error": "Failed to simulate checkout outcome.",
         "portal_error": "Failed to open customer portal.",
+        "portal_pack_error": "Could not start portal pack checkout.",
+        "addon_pack_error": "Could not start add-on checkout.",
+        "addon_offers": {
+          "title": "Extra packs (Stripe)",
+          "hint": "One-time purchases via checkout. The candidate portal volume pack remains in the usage section above.",
+          "not_configured": "Stripe price ID is not set on the server for this SKU.",
+          "coming_soon": "Price is configured; automated fulfillment for this pack is not enabled yet.",
+          "unavailable": "Not available for purchase on your account.",
+          "buy_disabled": "Unavailable",
+          "buy": "Buy +{increment}",
+          "buying": "Opening checkout…",
+          "block": {
+            "not_effect_ready": "Not available yet — fulfillment for this pack is not enabled in the product.",
+            "requires_team_tier": "Available on Team and Business plans.",
+            "portal_pack_requires_team_tier": "Available on Team and Business plans.",
+            "custom_fields_not_on_team_plan": "Solo-only extension; Team and Business already include unlimited lead custom fields.",
+            "stripe_price_not_configured": "Stripe price is not configured for this add-on.",
+            "plan_blocked": "Not available on your current plan."
+          },
+          "sku": {
+            "pack_lead_forms_5": "+5 active lead form slots",
+            "pack_client_portal_5": "+5 client portal share links",
+            "pack_automation_rules_10": "+10 enabled automation rules",
+            "pack_automation_rules_25": "+25 enabled automation rules",
+            "pack_custom_fields_25": "+25 lead custom fields (starter cap)",
+            "pack_custom_fields_100": "+100 lead custom fields (starter cap)",
+            "pack_leads_500": "+500 inbound leads / month",
+            "pack_active_records_2000": "+2,000 active candidate records",
+            "pack_storage_50gb": "+50 GB storage"
+          }
+        },
         "change_plan_error": "Failed to change plan.",
         "cancel_error": "Failed to cancel subscription.",
         "reactivate_error": "Failed to reactivate subscription.",
@@ -1722,11 +1999,23 @@
           "company_slots_recommended_text": "We prefilled {count} extra operating slot(s) based on your previous action.",
           "company_slots_recommended_title": "Recommended extra slots applied",
           "company_slots_text": "Add-on operating company slots were set to {count}.",
-          "company_slots_title": "Company slots updated"
+          "company_slots_title": "Company slots updated",
+          "portal_pack_success_title": "Portal pack applied",
+          "portal_pack_success_text": "Your monthly candidate portal cap has been increased. Usage below updates automatically.",
+          "portal_pack_cancel_title": "Portal pack checkout canceled",
+          "portal_pack_cancel_text": "No charge was completed. You can buy a portal pack again from this page when you are ready.",
+          "billing_addon_success_title": "Add-on applied",
+          "billing_addon_success_text": "Your limits were updated. Usage below refreshes automatically.",
+          "billing_addon_cancel_title": "Add-on checkout canceled",
+          "billing_addon_cancel_text": "No charge was completed. You can buy an add-on again when you are ready."
         },
         "verification": {
           "title": "Checking payment status",
-          "text": "We are waiting for payment confirmation. This usually takes a few seconds."
+          "text": "We are waiting for payment confirmation. This usually takes a few seconds.",
+          "portal_pack_title": "Applying your portal pack",
+          "portal_pack_text": "We are syncing your new monthly cap with billing. This usually takes a few seconds.",
+          "billing_addon_title": "Applying your add-on",
+          "billing_addon_text": "We are syncing your new limits with billing. This usually takes a few seconds."
         },
         "pending_upgrade": {
           "title": "Plan change is waiting for payment confirmation",
@@ -1756,6 +2045,26 @@
           "supervisors": "Supervisors: {used} / {limit}",
           "client_managers": "Client managers: {used} / {limit}",
           "viewers": "Viewers: {used} / {limit}",
+          "leads_month": "Leads this month (UTC): {used} / {limit}",
+          "candidates": "Active candidates: {used} / {limit}",
+          "documents": "Documents: {used} / {limit}",
+          "vacancies_open": "Open vacancies: {used} / {limit}",
+          "portal_links": "Active client portal links: {used} / {limit}",
+          "portal_candidates_month": "Candidate portal (active candidates, UTC month): {used} / {cap}",
+          "portal_candidates_policy": "Hard limit: new portal-enabled candidates are blocked at the monthly cap; existing candidates can refresh links. Upgrade or buy a pack to raise the cap.",
+          "portal_candidates_warn_80": "You are at about 80% of this month’s candidate portal allowance.",
+          "portal_candidates_warn_100": "You have reached this month’s candidate portal allowance (soft limit). Consider upgrading or buying a pack.",
+          "portal_candidates_pack_note": "Included {base}; add-on from packs +{addon} (this month’s cap {cap}).",
+          "portal_candidates_pack_buy": "Buy portal pack (+{increment}/month)",
+          "portal_candidates_pack_loading": "Opening checkout…",
+          "lead_forms_active": "Active lead forms: {used} / {cap}",
+          "lead_forms_policy": "Each active form counts toward your plan cap. Deactivate a form, buy a pack, or upgrade to add more.",
+          "lead_forms_warn_100": "You are at the active lead form limit. Create another only after deactivating one or raising the cap.",
+          "lead_forms_pack_note": "Included {base}; add-on from packs +{addon} (cap {cap}).",
+          "lead_forms_pack_buy": "Buy lead forms pack (+{increment})",
+          "lead_forms_pack_loading": "Opening checkout…",
+          "founder_program_active": "Founder pricing is active for this workspace (while subscription stays eligible).",
+          "founder_program_revoked": "Founder pricing was revoked after extended inactive billing and cannot be restored.",
           "storage": "Storage: {used}GB / {limit}GB",
           "companies": "Operating companies: {used} / {limit}",
           "back_to_onboarding": "Create operating company now",
@@ -1766,24 +2075,40 @@
           "extra_company_slots_hint": "Add-on slots extend your plan limit for operating companies.",
           "extra_company_slots_recommended": "Recommended by recovery flow: +{count} slot(s)."
         },
+        "billing_cycle": {
+          "label": "Billing cycle",
+          "monthly": "Monthly",
+          "yearly": "Yearly (per §2.16)",
+          "hint": "Pick monthly or yearly per plan before checkout or plan change.",
+          "not_configured_month": "Monthly price is not configured on the server (set STRIPE_PRICE_* in backend env).",
+          "not_configured_year": "Yearly price is not configured on the server (set STRIPE_PRICE_*_YEARLY in backend env)."
+        },
+        "plan_price_from_api": {
+          "month": "€{{amount}}/mo (monthly)",
+          "year": "€{{amount}}/mo equivalent (yearly billing)"
+        },
+        "pricing_catalog_hint": "Displayed prices come from the billing API catalog (docs/SSOT.md §2.16) and match checkout.",
         "plans": {
           "starter": {
-            "name": "Starter",
-            "price": "EUR 39/mo",
-            "seats": "1 user",
-            "feature": "Core CRM"
+            "name": "Solo",
+            "price_month": "€29/mo (monthly)",
+            "price_year": "€24/mo billed yearly",
+            "seats": "1 user · no team seats",
+            "feature": "Core CRM without automation module or portals"
           },
           "team": {
             "name": "Team",
-            "price": "EUR 99/mo",
-            "seats": "Up to 5 users",
-            "feature": "Team collaboration"
+            "price_month": "€129/mo (monthly)",
+            "price_year": "€109/mo billed yearly",
+            "seats": "Up to 3 seats (recruiters + supervisors)",
+            "feature": "Automation, portals, process (§2.16 Team)"
           },
           "pro": {
-            "name": "Pro",
-            "price": "EUR 199/mo",
-            "seats": "15+ users",
-            "feature": "Advanced automations"
+            "name": "Business",
+            "price_month": "€249/mo (monthly)",
+            "price_year": "€219/mo billed yearly",
+            "seats": "Up to 10 seats · up to 3 workspaces",
+            "feature": "Finance, extended portals (§2.16 Business)"
           }
         },
         "history": {
@@ -3595,7 +3920,22 @@
       }
     },
     "dashboard": {
-      "title": "Dashboard",
+      "title": "Insights",
+      "page_subtitle": "One workspace for signals, lead funnel, and candidate slices. Toggle sections, tune filters, then Save slice — your layout is stored for this account on this device.",
+      "sections": {
+        "shortcuts": {
+          "title": "Quick links",
+          "subtitle": "Jump to hubs and operational screens (shown when lead funnel is not the default view)."
+        },
+        "lead_funnel": {
+          "title": "Lead conversion funnel",
+          "subtitle": "Stages, cohorts, and suggested follow-ups for lead workspaces."
+        },
+        "slices": {
+          "title": "Candidate analytics & breakdowns",
+          "subtitle": "Pivot, operations KPIs, pipeline tables, and geo/manager views for the filters above."
+        }
+      },
       "nba": {
         "title": "Next best actions",
         "subtitle": "Same queues as on Leads — open a list or run a quick bulk follow-up.",
@@ -3621,6 +3961,12 @@
         "plan_blocked_title": "Team plan required",
         "plan_blocked_desc": "Upgrade to Team (or Pro) to run bulk Meta processing from the dashboard.",
         "error_title": "Auto-fix failed"
+      },
+      "insights_strip": {
+        "title": "Signals",
+        "lead_funnel": "Lead conversion funnel →",
+        "docs_blockers": "{count} document issues →",
+        "slow_stage": "Avg time in «{stage}»: ~{days} d ({n} candidates)"
       },
       "refresh": {
         "action": "Refresh",
@@ -3712,6 +4058,8 @@
         "all_companies": "All companies",
         "manager": "Manager",
         "all_managers": "All managers",
+        "candidate": "Candidate",
+        "candidate_placeholder": "UUID",
         "stages": "Stages",
         "stage_view": "Stage view",
         "stage_view_all": "Full",
@@ -3735,6 +4083,7 @@
           "vacancy": "Vacancy",
           "company": "Company",
           "manager": "Manager",
+          "candidate": "Candidate",
           "stages": "Stages",
           "compare": "Compare",
           "presets": "Presets",
@@ -4802,6 +5151,15 @@
         "title": "Candidates",
         "subtitle": "Visual pipeline by vacancies"
       },
+      "quick_filters": {
+        "label": "Quick filters",
+        "stage": "Stage",
+        "manager": "Manager",
+        "vacancy": "Vacancy",
+        "all_stages": "All stages",
+        "all_managers": "All managers",
+        "all_vacancies": "All vacancies"
+      },
       "activities_modal": {
         "subtitle": "Your planned work — same list as on the Tasks page.",
         "open_full_page": "Open full Tasks page"
@@ -5100,6 +5458,14 @@
         "citizenship_label": "Citizenship (ISO)",
         "citizenship_placeholder": "RU/UA/PL…",
         "docs_label": "Documents",
+        "column_health_docs": "docs",
+        "column_health_new": "new",
+        "bulk_plan_hint": "Bulk Meta auto-processing and several lead automations need a Team-tier plan — manual moves above still work.",
+        "bulk_plan_hint_link": "Billing",
+        "action_call": "Call",
+        "action_write": "Email",
+        "action_open_card": "Open",
+        "action_tasks": "Tasks",
         "docs_any": "Any",
         "docs_ready": "Ready",
         "docs_partial": "Partial",
@@ -5260,6 +5626,8 @@
         "title": "Title"
       },
       "no_next_action": {
+        "clear_queue": "Show all candidates",
+        "kanban_disabled_hint": "Pipeline view is unavailable for this queue. Clear the queue filter to use kanban.",
         "actions": {
           "add_next": "Add next action"
         },
@@ -5292,6 +5660,9 @@
       "title": "Reminders",
       "inbox_title": "Inbox: reminders and notifications",
       "subtitle": "Showing {scope}: {total}, unread: {unread}",
+      "header": {
+        "create_task": "Create task"
+      },
       "quick_create": "Quick reminder",
       "create": "Create",
       "relative": "Relative",
@@ -5322,7 +5693,8 @@
       "layout": {
         "label": "View",
         "by_due": "Group by due date",
-        "sla_queue": "SLA priority queue (flat)"
+        "sla_queue": "SLA priority queue (flat)",
+        "advanced_toggle": "List layout (advanced)"
       },
       "sla": {
         "status": {
@@ -5373,7 +5745,10 @@
         "entity_all": "All sources",
         "priority_all": "All priorities",
         "unread": "Unread",
-        "all": "All events"
+        "all": "All events",
+        "more": "More filters",
+        "overdue_only": "Overdue only ({count})",
+        "overdue_clear": "Show all due dates"
       },
       "actions": {
         "refresh": "Refresh",
@@ -5462,6 +5837,12 @@
         "locked_hint": "Upgrade your plan to open this queue in the app.",
         "badge_team": "Team",
         "badge_pro": "Pro",
+        "groups": {
+          "leads_funnel_weak_step": "Funnel: ~{pct}% continue after {root} · {count} drop-offs",
+          "leads_funnel_slow_stage": "Funnel: slow stage {root} (~{days} d avg) · {count} leads",
+          "leads_fit_no_match": "Leads: no vacancy fit · {count}",
+          "leads_fit_needs_info": "Leads: need more data for fit · {count}"
+        },
         "do_now": "Do now",
         "quick_batch_hint": "Applies to the first {{count}} items in this queue (max {{max}}).",
         "quick_no_leads": "No leads in this queue",
@@ -5470,6 +5851,7 @@
         "quick_title_overdue": "Follow up (overdue queue)",
         "quick_title_candidate_no_next": "Set next step (candidates, no action)",
         "quick_title_candidate_overdue": "Follow up (candidate reminders overdue)",
+        "quick_title_funnel_insight": "Follow up (funnel insight queue)",
         "process_new": "Process batch",
         "process_new_upgrade_hint": "Team plan required to process new leads in batch.",
         "process_new_done": "Succeeded: {{ok}} · Failed: {{fail}} · Attempted: {{attempted}}.",
@@ -5477,7 +5859,8 @@
         "process_new_partial_title": "Batch process finished with errors",
         "process_new_error_title": "Batch process failed",
         "process_new_plan_blocked_title": "Team plan required",
-        "process_new_plan_blocked_desc": "Upgrade in Settings → Billing to run batch Meta processing for new leads."
+        "process_new_plan_blocked_desc": "Upgrade in Settings → Billing to run batch Meta processing for new leads.",
+        "quick_action_failed": "Something went wrong"
       },
       "filters": {
         "status": "Status",
@@ -5536,6 +5919,23 @@
         "followup_title": "Follow-up",
         "stage_update_failed": "Could not update stage",
         "lock_update_failed": "Could not update assignment lock",
+        "ingest_processing": {
+          "title": "Lead processing (from ingest):",
+          "modes": {
+            "manual": "Manual — candidates are not auto-created; operators decide next steps.",
+            "assisted": "Assisted — vacancy and fit in the panel above are suggestions until you run Process.",
+            "automatic": "Automatic — conversion may run without Process when rules, fit, and auto-convert allow it."
+          },
+          "mode_labels": {
+            "manual": "Manual",
+            "assisted": "Assisted",
+            "automatic": "Automatic"
+          },
+          "assisted_link": "Use the qualification panel above for suggested vacancy, fit status, and reasons.",
+          "auto_convert_off": "Auto-convert on fit was off for this lead (tenant or vacancy safeguard). Use Process to continue.",
+          "downgrade_team": "Automatic mode was downgraded for this ingest (Team plan required).",
+          "configured_effective_mismatch": "Admin setting: {configured}. Effective at ingest: {effective}."
+        },
         "source_ingest_title": "Source & ingest",
         "ad_id": "Ad ID",
         "mapped_custom_fields": "Mapped fields (custom)",
@@ -5570,6 +5970,47 @@
         "service_order_create_failed": "Failed to create service order",
         "service_order_created": "Service order created",
         "service_order_created_desc": "Draft service order was created from this lead."
+      },
+      "pipeline_errors": {
+        "LEAD_FIT_NO_MATCH": "Does not meet vacancy criteria — automatic candidate creation was skipped.",
+        "LEAD_FIT_NEEDS_INFO": "Not enough data to verify fit — complete the lead or relax criteria, then Process."
+      },
+      "qualification": {
+        "title_suggested": "Qualification suggestion",
+        "title_blocked": "Automatic conversion blocked",
+        "vacancy_line": "Vacancy",
+        "fit_status_label": "Fit check",
+        "reasons_title": "Why",
+        "process_cta": "Create candidate",
+        "accept_process_cta": "Accept and create candidate",
+        "open_meta_settings": "Lead automation settings",
+        "open_vacancies": "Vacancies & criteria",
+        "footer_hint": "Edit criteria on the vacancy card. Optional: set Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids when there is no ad mapping.",
+        "fit_status": {
+          "fit": "Match",
+          "no_fit": "No match",
+          "needs_info": "Needs more data",
+          "no_criteria": "No criteria (any lead)"
+        },
+        "reasons": {
+          "missing_experience_eu_years": "EU experience (years) missing",
+          "missing_in_poland": "In Poland flag missing",
+          "missing_documents": "Documents list missing or empty",
+          "missing_experience_eu_years_detail": "EU experience (years) missing",
+          "missing_country": "Country missing for vacancy criteria",
+          "country_not_in_allowed": "Country not in allowed list",
+          "country_blocked": "Country is blocked for this vacancy",
+          "missing_nationality": "Nationality missing",
+          "nationality_mismatch": "Nationality does not match requirement",
+          "missing_languages": "Languages missing",
+          "languages_no_overlap": "No required language matched",
+          "missing_geo_country": "Location country (geo) missing for vacancy criteria",
+          "geo_country_not_in_allowed": "Location country not in allowed list",
+          "geo_country_blocked": "Location country is blocked for this vacancy",
+          "documents_module_no_candidate": "Vacancy requires Documents-module checks; link or create a candidate first",
+          "candidate_doc_missing": "Required document not on file",
+          "candidate_doc_status_blocked": "Document present but status not acceptable"
+        }
       },
       "pagination": {
         "shown": "Showing {count} of {total}",
@@ -5752,7 +6193,13 @@
       },
       "conversion_funnel": {
         "title": "Conversion funnel (snapshot)",
-        "hint": "Processed leads by CRM stage (new → contacted → qualified → converted). Arrows show the share still at or past each step that reached at least the next stage. Dwell: days since entering the stage (from audit log, else lead created).",
+        "hint": "Processed leads by conversion root (Lead → Qualified → Active → Final), mapped from your lead funnel stages (§2.12) with legacy fallback for standard CRM codes. Arrows show progression between roots. Dwell: days in current CRM stage, grouped by root.",
+        "roots": {
+          "lead": "Lead (entry)",
+          "qualified": "Qualified",
+          "active": "Active",
+          "final": "Final / won"
+        },
         "new_status": "New (not processed)",
         "lost": "Lost (processed)",
         "dwell_line": "avg {avg} d · p50 {p50} d",
@@ -5770,12 +6217,22 @@
         "lost_from_title": "Lost — prior CRM stage",
         "lost_from_hint": "Distinct leads by previous stage when marked lost (audit log). Counts respect funnel slices.",
         "lost_reason_title": "Lost — reason",
-        "lost_reason_hint": "Distinct lost leads by reason code (from CRM lost transition). Counts respect funnel slices."
+        "lost_reason_hint": "Distinct lost leads by reason code (from CRM lost transition). Counts respect funnel slices.",
+        "lost_from_filter_banner": "Lost from prior CRM stage: {stage}",
+        "lost_from_stage_unknown": "Unknown prior stage"
       },
       "subtitle_services": "Track potential clients from first contact to qualification, service order, and invoicing.",
       "title_services": "Client Leads",
       "workspace": {
-        "distribution_cta": "Auto distribution"
+        "distribution_cta": "Auto distribution",
+        "view_table": "Table",
+        "view_kanban": "Kanban",
+        "view_switch": "Leads workspace view"
+      },
+      "kanban": {
+        "col_inbox": "Inbox (new)",
+        "hint": "Same filters as the table; each column loads up to the limit below.",
+        "view_all": "All in list"
       }
     },
     "common": {
@@ -5874,18 +6331,53 @@
         "actions": "Actions",
         "conditions": "Conditions",
         "enabled": "On",
+        "priority": "Priority",
         "title": "Title",
         "trigger": "Trigger"
       },
       "create": "Create rule",
       "empty": "No rules yet.",
+      "errors": {
+        "lq_vacancy_required": "Choose a target vacancy for lead.qualification rules.",
+        "lq_condition_required": "Set at least a source (e.g. meta) or a normalized field condition.",
+        "lq_recruiter_uuid": "Optional recruiter must be a valid UUID (active user of this workspace).",
+        "lq_in_values_required": "For operator «in», enter at least one value (comma- or semicolon-separated).",
+        "load_failed": "Could not load automation rules",
+        "create_failed": "Could not create automation rule"
+      },
       "fields": {
         "due_in": "Due in (minutes)",
+        "priority": "Priority (higher first)",
         "stage_to": "Stage to (optional)",
         "title": "Reminder title",
         "trigger": "Trigger",
         "stage_to_placeholder": "contacted",
         "risk_band": "Risk band (risk trigger)"
+      },
+      "lq": {
+        "default_title": "Lead routing",
+        "hint": "lead.qualification: runs during lead ingest after ad/vacancy_id mapping fails. Conditions: source; normalized.<field> with operators eq / neq / in / exists / not_exists; implicit AND across fields; advanced JSON may use $and. Actions: set_vacancy_id (required); set_recruiter_id optional. Audit: lead.qualification_rule_matched.",
+        "norm_block_title": "Conditions on normalized lead fields (AND)",
+        "source": "Source (lowercase, e.g. meta)",
+        "vacancy": "Target vacancy",
+        "vacancy_placeholder": "Choose vacancy…",
+        "norm_key": "Field name under normalized (e.g. country)",
+        "norm_op": "Operator",
+        "norm_value": "Compare to / list",
+        "norm_value_placeholder": "e.g. PL",
+        "norm_value_placeholder_in": "PL, DE, UA",
+        "add_row": "+ Add normalized condition",
+        "remove_row": "Remove",
+        "ops": {
+          "eq": "equals (=)",
+          "neq": "not equals (≠)",
+          "in": "one of (list)",
+          "exists": "field exists (non-empty)",
+          "not_exists": "missing or empty"
+        },
+        "note": "Note (optional, stored in actions)",
+        "recruiter": "Recruiter user ID (optional UUID)",
+        "recruiter_placeholder": "00000000-0000-4000-8000-000000000000"
       },
       "list": "Rules",
       "subtitle": "Define simple triggers → create reminder actions.",
@@ -5893,13 +6385,53 @@
       "risk_band_hint": "candidate.risk_band runs only when Tenant.settings.risk_model_v1.automations.enabled is true and the hourly risk job is on. Enable dedupe via automations.dedupe_hours (default 24)."
     },
     "client_portal": {
-      "empty": "Empty",
-      "errors": {
-        "bad_link": "Bad link",
-        "missing_token": "Missing token"
+      "empty": "No shared candidates right now.",
+      "actions": {
+        "accept": "Accept",
+        "reject": "Reject",
+        "request_clarification": "Request clarification",
+        "accept_ok": "Candidate accepted.",
+        "reject_ok": "Decision recorded.",
+        "clarify_ok": "Request sent to the agency."
       },
-      "subtitle": "Subtitle",
-      "title": "Title"
+      "activity": {
+        "status": {
+          "pending_review": "Pending review",
+          "accepted": "Accepted",
+          "rejected": "Rejected",
+          "returned": "Returned to agency"
+        }
+      },
+      "errors": {
+        "bad_link": "Invalid or expired link.",
+        "missing_token": "Missing link token."
+      },
+      "handoff": {
+        "action_required": "Your decision is required",
+        "in_progress": "In progress with your team",
+        "from_agency": "Your agency contact",
+        "from_named": "From {{name}}",
+        "waiting_hours": "Waiting ~{{hours}} h",
+        "waiting_days": "Waiting ~{{days}} d"
+      },
+      "home": {
+        "pending": "Action required",
+        "pending_hint": "Pending decisions on shared candidates",
+        "in_progress": "In progress",
+        "in_progress_hint": "Accepted candidates you are working with",
+        "recent_activity": "Recent activity"
+      },
+      "modal": {
+        "reject_title": "Reject candidate",
+        "clarify_title": "Request clarification",
+        "reject_hint": "Briefly explain why this candidate is not a fit. The agency will be notified.",
+        "clarify_hint": "Describe what you need from the agency. The handoff will return to them.",
+        "reject_placeholder": "Reason…",
+        "clarify_placeholder": "Your message…",
+        "send": "Send"
+      },
+      "subtitle": "Review candidates shared by your agency and record your decision.",
+      "title": "Client portal"
     },
     "communications": {
       "actions": {
@@ -6060,7 +6592,8 @@
           },
           "planner_kinds": {
             "all": "All planner kinds"
-          }
+          },
+          "advanced_panel": "Advanced filters"
         },
         "kinds": {
           "meeting": "Meeting",
@@ -6094,6 +6627,7 @@
         "day": {
           "title": "Day planner: {day}",
           "subtitle": "Meetings, tasks, reminders, and absence context.",
+          "batch_panel": "Batch planner ({selected} selected)",
           "slot_9": "+ 09:00 slot",
           "slot_12": "+ 12:00 slot",
           "slot_15": "+ 15:00 slot",
@@ -6694,6 +7228,9 @@
       "expired_banner": "Expired banner"
     },
     "my_company": {
+      "errors": {
+        "load_failed": "Failed to load company profiles"
+      },
       "card": {
         "business_type": "Business type",
         "email": "Email",
@@ -7336,9 +7873,15 @@
       }
     },
     "start": {
+      "lead_form": {
+        "banner_title": "Lead form",
+        "banner_named": "You are starting an application for: {title}",
+        "banner_slug_only": "Lead form link: {slug}"
+      },
       "errors": {
         "contacts_required": "Provide a phone or email to continue",
-        "create_failed": "Could not create the application"
+        "create_failed": "Could not create the application",
+        "lead_form_not_found": "This lead form link is invalid or no longer active. Contact the recruiter or use the main intake page."
       },
       "header": {
         "back": "← Back to portal",
@@ -8286,8 +8829,52 @@
         "communications": "Communications workspace",
         "feature": "Feature",
         "roles": "Roles & permissions",
-        "title": "Plan comparison at a glance",
-        "users": "Users"
+        "title": "Full plan comparison",
+        "users": "Users",
+        "rows": {
+          "users": {
+            "label": "Users (included)",
+            "starter": "1",
+            "team": "Up to 3",
+            "pro": "Up to 10",
+            "enterprise": "Custom"
+          },
+          "workspaces": {
+            "label": "Workspaces / companies",
+            "starter": "1",
+            "team": "1 (add-ons available)",
+            "pro": "Up to 3 included",
+            "enterprise": "Custom"
+          },
+          "automation": {
+            "label": "Automation & distribution",
+            "starter": "Assisted only",
+            "team": "Rules, auto-distribution",
+            "pro": "Extended rules & workflows",
+            "enterprise": "Custom"
+          },
+          "portals": {
+            "label": "Candidate & client portals",
+            "starter": "Not included",
+            "team": "Included (plan limits)",
+            "pro": "Extended limits + branded basics",
+            "enterprise": "Custom"
+          },
+          "finance": {
+            "label": "Services, orders & invoicing",
+            "starter": "Not included",
+            "team": "Not included",
+            "pro": "Included",
+            "enterprise": "Custom"
+          },
+          "analytics": {
+            "label": "Analytics",
+            "starter": "Basic funnel",
+            "team": "Funnel, sources, team",
+            "pro": "Advanced slices & reporting",
+            "enterprise": "Custom"
+          }
+        }
       },
       "faq": {
         "a1": "Yes. Core onboarding is account -> company -> first client/lead/action. Advanced settings can be done later.",
@@ -8296,29 +8883,173 @@
         "q1": "Can we start without configuring everything?",
         "q2": "Can we invite team later?",
         "q3": "What if we choose wrong plan?",
-        "title": "FAQ"
+        "title": "FAQ",
+        "launch_q": "How long to get started?",
+        "launch_a": "10–30 minutes: workspace, company, first candidate or lead.",
+        "training_q": "Do we need training?",
+        "training_a": "No — the UI is built for daily recruiter work; guidance is embedded in the flow.",
+        "processes_q": "Does it fit different processes?",
+        "processes_a": "Yes — stages, roles, and funnels adapt to how you hire."
       },
       "final_cta": {
-        "button": "Start free trial",
-        "subtitle": "Create workspace now and reach first value in minutes.",
-        "title": "Ready to launch your CRM workflow?"
+        "button": "Create workspace",
+        "subtitle": "First value within minutes",
+        "title": "Start building a managed hiring process"
       },
       "guides": {
         "title": "Explore product guides",
         "subtitle": "Start with the page closest to your current challenge and move to the next linked guide."
       },
-      "hero": {
-        "badge": "CRM for recruitment operations",
-        "primary_cta": "Start free trial",
-        "secondary_cta": "Sign in",
-        "subtitle": "Manage leads, candidates, team workload and communications in one workspace with a fast onboarding.",
-        "title": "Launch your hiring workflow in minutes",
-        "value_list": {
-          "0": "Create workspace and company",
-          "1": "Add first lead or client",
-          "2": "Assign status, note and next task"
+      "benefits": {
+        "badge": "Outcome",
+        "title": "What changes after you implement it",
+        "items": {
+          "0": "A transparent hiring pipeline",
+          "1": "Control over every candidate",
+          "2": "Clear ownership",
+          "3": "Fewer drop-offs",
+          "4": "Faster decisions",
+          "5": "Visible bottlenecks"
         },
-        "value_title": "What you get in the first 5 minutes"
+        "closing": "You run the process instead of firefighting chaos."
+      },
+      "before_after": {
+        "badge": "Contrast",
+        "title": "Before and after HostFlow",
+        "before_title": "Before",
+        "after_badge": "After",
+        "after_title": "After",
+        "before_items": {
+          "0": "Spreadsheets, chats, chaos",
+          "1": "Lost candidates",
+          "2": "Manual control",
+          "3": "Repeated mistakes"
+        },
+        "after_items": {
+          "0": "One system",
+          "1": "Full visibility",
+          "2": "Control at every stage",
+          "3": "Predictable outcomes"
+        }
+      },
+      "conviction": {
+        "badge": "Fast start",
+        "title": "Why it works from day one",
+        "body": "You don't need to redesign your business.",
+        "list_intro": "You simply:",
+        "steps": {
+          "0": "run candidates in one system",
+          "1": "record stages and next steps",
+          "2": "see the real picture"
+        },
+        "closing": "You see impact within the first days."
+      },
+      "how": {
+        "badge": "Flow",
+        "title": "What working in the system looks like",
+        "step_label": "Step {n}",
+        "steps": {
+          "0": {
+            "title": "Add a candidate or capture a lead",
+            "caption": "Candidate create / lead form — a single intake.",
+            "screenshot_src": "/landing/step-lead.svg"
+          },
+          "1": {
+            "title": "Set status and the next step",
+            "caption": "Pipeline stages: what's done and what's next.",
+            "screenshot_src": "/landing/step-pipeline.svg"
+          },
+          "2": {
+            "title": "The system tracks the process and reminds you",
+            "caption": "Tasks & reminders — nothing slips through.",
+            "screenshot_src": "/landing/step-tasks.svg"
+          },
+          "3": {
+            "title": "See who is stuck and where it hurts",
+            "caption": "Overview & analytics: bottlenecks visible.",
+            "screenshot_src": "/landing/step-analytics.svg"
+          }
+        }
+      },
+      "pain": {
+        "badge": "Reality check",
+        "title": "Why hiring breaks and costs you money",
+        "lead": "The problem isn't candidates.\nThe problem is no system.",
+        "items": {
+          "0": "Leads arrive but nobody owns them end-to-end",
+          "1": "Candidates vanish between spreadsheets, WhatsApp, and calls",
+          "2": "The team doesn't know who owns what",
+          "3": "Statuses are manual and always stale",
+          "4": "Documents live in five different places",
+          "5": "Leadership can't see what's actually happening"
+        },
+        "closing": "Every lost candidate is direct financial damage."
+      },
+      "roi": {
+        "badge": "Money",
+        "title": "What you lose without a system",
+        "intro": "If you lose just 3 candidates a month and each costs you €300–1,000 in handling and recruiter time before a hire, that channel alone can cost:",
+        "loss_setup": "",
+        "loss_range": "€900–3,000+ per month",
+        "loss_note": "That's only the obvious leakage — excluding slipped timelines and overloaded teams.",
+        "hidden_title": "Hidden costs:",
+        "hidden_items": {
+          "0": "team time",
+          "1": "re-processing the same leads",
+          "2": "longer time-to-hire",
+          "3": "lost client revenue"
+        },
+        "highlight": "HostFlow pays back in the first month when typical candidate leakage is present.",
+        "pilot_badge": "Pilot benchmarks",
+        "pilot_note": "Draft benchmarks from 6 EU teams (agencies + in-house, 2025–2026) before a single operating rhythm.",
+        "pilot_m1_label": "Inbound leads without a named owner",
+        "pilot_m1_value": "up to 18% → under 5% within 4 weeks once CRM discipline sticks",
+        "pilot_m2_label": "Median days a candidate sits on one stage without a system",
+        "pilot_m2_value": "9–14 business days",
+        "pilot_m3_label": "Share of candidates with no clear “next step” in sheets/chats (estimate)",
+        "pilot_m3_value": "12–25% → target in-system: near 0% on active stages"
+      },
+      "segments": {
+        "badge": "Segments",
+        "title": "Who HostFlow is for",
+        "items": {
+          "0": "Recruitment agencies",
+          "1": "High-volume hiring",
+          "2": "In-house HR teams",
+          "3": "Operations teams"
+        },
+        "footnote": "If you have a steady candidate flow, the system fits."
+      },
+      "shot": {
+        "placeholder_badge": "Product screenshot"
+      },
+      "solution": {
+        "badge": "Solution",
+        "title": "HostFlow turns chaos into a managed process",
+        "body": "Every candidate follows a clear path.",
+        "see_title": "You see:",
+        "see_items": {
+          "0": "where they are",
+          "1": "what happens next",
+          "2": "who owns it"
+        },
+        "footer": "The process can't silently fall apart."
+      },
+      "hero": {
+        "badge": "CRM for hiring operations",
+        "primary_cta": "Create workspace",
+        "secondary_cta": "Already have an account? Sign in",
+        "subtitle": "No lost candidates, chaos, or manual firefighting. Team, process, and documents — in one system.",
+        "title": "Control hiring from first lead to the new hire's start",
+        "bullets": {
+          "0": "No candidate gets dropped",
+          "1": "Clear ownership",
+          "2": "You see where the process stalls",
+          "3": "Documents and stages under control"
+        },
+        "cta_subline": "First candidate in the system — within 2 minutes",
+        "screenshot_caption": "Main screen: pipeline and candidates — control at a glance.",
+        "screenshot_src": "/landing/hero.svg"
       },
       "objections": {
         "0": "Too many settings before work starts.",
@@ -8328,40 +9059,53 @@
       },
       "pricing": {
         "badge": "Pricing",
-        "note": "Payment gateway will be connected in the final launch step.",
-        "pro": {
-          "name": "Pro",
-          "best_for": "Best for scaled operations with advanced workflows",
+        "contact_sales_cta": "Contact sales",
+        "note": "Prices in EUR. Trial before purchase; checkout connects at go-live (see Terms / Billing).",
+        "featured_badge": "Most popular",
+        "enterprise": {
+          "name": "Enterprise",
+          "best_for": "Large programs with procurement and compliance needs",
           "features": {
-            "0": "Advanced analytics and reporting",
-            "1": "Priority support",
-            "2": "Expanded integrations"
+            "0": "Contract pricing, SSO roadmap, custom integrations",
+            "1": "White-label / advanced branding options",
+            "2": "Dedicated onboarding and priority support"
           },
-          "price": "$199/mo",
-          "seats": "Advanced limits"
+          "price": "From €499/mo or custom",
+          "seats": "Custom seats, workspaces, storage, and SLAs"
+        },
+        "pro": {
+          "name": "Business",
+          "best_for": "For scaling up",
+          "features": {
+            "0": "Everything in Team",
+            "1": "Multiple processes and workspaces",
+            "2": "Analytics and deeper reporting"
+          },
+          "price": "€249/mo · €219/mo billed yearly",
+          "seats": "Up to 10 users · up to 3 workspaces"
         },
         "select_cta": "Select plan",
         "starter": {
-          "name": "Starter",
-          "best_for": "Best for solo operators starting CRM operations",
+          "name": "Solo",
+          "best_for": "For a single specialist",
           "features": {
-            "0": "Candidate and client management",
-            "1": "Lead source tracking",
-            "2": "Basic dashboard"
+            "0": "Candidate funnel",
+            "1": "Statuses and tasks",
+            "2": "Baseline control"
           },
-          "price": "$39/mo",
-          "seats": "1 user"
+          "price": "€29/mo · €24/mo billed yearly",
+          "seats": "1 user · 1 workspace"
         },
         "team": {
           "name": "Team",
-          "best_for": "Best for small teams managing shared pipelines",
+          "best_for": "For teams",
           "features": {
-            "0": "Team roles and permissions",
-            "1": "Shared workspace and assignments",
-            "2": "Communications workspace"
+            "0": "Everything in Solo",
+            "1": "Collaboration",
+            "2": "Process control"
           },
-          "price": "$99/mo",
-          "seats": "Up to 5 users"
+          "price": "€129/mo · €109/mo billed yearly",
+          "seats": "Up to 3 users · 1 workspace"
         },
         "title": "Choose a plan that fits your team"
       }
@@ -9115,14 +9859,60 @@
     "integrations_hub": {
       "title": "Integrations",
       "subtitle": "Connect lead sources (Meta, Google, …) and control how raw payloads map to CRM.",
+      "subtitle_v2": "Each channel has its own screen. Open one tile to connect, verify, and see live status.",
+      "tile_inbox_title": "Inbox",
+      "tile_inbox_desc": "Unified messages and email threads — your day-to-day communications workspace.",
+      "email_title": "Email (SMTP)",
+      "email_desc": "Outbound mail, signatures, and deliverability for CRM notifications.",
+      "comms_title": "Communications hub",
+      "comms_desc": "Central switchboard for inbox-related policies (admin).",
+      "status_active": "Connected",
+      "status_setup": "Not connected",
+      "status_unknown": "Check status",
+      "status_hint": "Based on saved Meta credentials in this workspace.",
+      "screen_badge": "Dedicated screen",
       "back_to_hub": "← All integrations",
       "meta_title": "Meta Leads",
       "meta_desc": "Webhook, credentials, ad → vacancy mapping, field mapping, and recent raw payload preview.",
       "google_title": "Google Ads",
       "google_desc": "Lead forms and campaigns — same integrations shell as Meta when available (credentials, mapping, incoming preview).",
       "webhook_title": "Webhook & site forms",
-      "webhook_desc": "Generic HTTP ingest and embedded forms — shared field-mapping model with Meta; not wired yet.",
-      "open": "Open"
+      "webhook_desc": "HTTP JSON ingest — same field mapping and pipeline as Meta (Team+).",
+      "open": "Open",
+      "product_chain_title": "Lead flow in the product",
+      "product_chain_intro": "From ingest to conversion analytics — the same pipeline, linked in one place.",
+      "product_chain_sources": "Sources",
+      "product_chain_field_mapping": "Field mapping (Meta)",
+      "product_chain_funnels": "Funnels & conversion roots",
+      "product_chain_automation": "Automation rules",
+      "product_chain_conversion_analytics": "Conversion funnel analytics",
+      "product_chain_hint": "Google Ads and webhook use the same mapping and processing path as Meta where implemented."
+    },
+    "integrations_webhook": {
+      "title": "Webhook & site forms",
+      "intro": "POST JSON from your site, automation, or form backend to create leads. Uses the same Meta Leads field mapping and processing pipeline (Team-tier plans).",
+      "plan_gate": "Generic inbound webhook is available on Team-tier plans and above.",
+      "upgrade_cta": "View plans & upgrade",
+      "endpoint_title": "Inbound URL",
+      "endpoint_desc": "POST application/json to the URL. Include id or external_id to update the same lead on repeat deliveries.",
+      "status_label": "Status:",
+      "status_on": "configured",
+      "status_off": "not configured yet",
+      "rotate_btn": "Generate new URL",
+      "rotate_hint": "Rotating invalidates the previous URL immediately.",
+      "new_url_title": "New inbound URL — copy now:",
+      "copy_url": "Copy",
+      "secret_once_hint": "Store this URL in a secret manager. Rotate if it leaks.",
+      "mapping_hint": "Configure source → target rules under Meta Leads (Field mapping). The webhook accepts flat JSON keys or Meta-style field_data.",
+      "mapping_cta": "Open Meta Leads →",
+      "load_error": "Could not load webhook settings",
+      "rotate_error": "Could not generate webhook URL",
+      "plan_team_required": "Your plan does not include this integration.",
+      "copy_failed": "Could not copy to clipboard",
+      "recent_title": "Recent webhook payloads",
+      "recent_subtitle": "Last few leads created via the generic inbound URL (same raw payload as in CRM).",
+      "view_all_incoming": "Open full incoming preview (Meta admin → Incoming → Webhook)",
+      "recent_empty": "No webhook leads yet — send a test POST to your inbound URL."
     },
     "integrations_placeholder": {
       "badge": "Coming soon",
@@ -9139,7 +9929,8 @@
         "secret_rotated": "New secret: {secret}",
         "mapping_saved": "Mapping saved",
         "lead_rerouted": "Lead sent for processing",
-        "lead_retried": "Lead processed successfully"
+        "lead_retried": "Lead processed successfully",
+        "unmapped_attached": "Leads attached to vacancy"
       },
       "errors": {
         "load": "Could not load Meta Leads data",
@@ -9168,7 +9959,8 @@
         "mapping": "Ad mapping",
         "field_mapping": "Field mapping",
         "incoming": "Incoming data",
-        "logs": "Lead logs"
+        "logs": "Lead logs",
+        "automation_rules": "Automation rules"
       },
       "prompts": {
         "delete_credential": "Delete this Meta credential?",
@@ -9190,9 +9982,14 @@
         "auto_create": "Enable auto-create candidates",
         "processing_mode_label": "Lead qualification mode",
         "processing_mode_manual": "Manual — route to queue; no automatic candidate creation",
-        "processing_mode_assisted": "Assisted — auto-create when enabled below (default)",
-        "processing_mode_automatic": "Automatic — same as assisted today; Team plan required for full auto (otherwise treated as manual at ingest)",
-        "processing_mode_hint": "Stored in meta lead settings; each ingest stamps leads_processing_mode_v1 on normalized payload. Automatic is downgraded to manual without Team-tier plan.",
+        "processing_mode_assisted": "Assisted — suggest vacancy + fit (stored on the lead); operator confirms via Process — no auto candidate",
+        "processing_mode_automatic": "Automatic — create candidate when mapping + fit pass; blocked to queue if criteria fail or data is missing; Team plan required (otherwise downgraded at ingest)",
+        "processing_mode_hint": "One fit engine: Vacancy.extra.lead_criteria_v1. Optional fallback order: Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids when ad/ID mapping is empty. Automatic is downgraded without Team-tier plan.",
+        "auto_create_automatic_only": "Only applies when the mode is Automatic. Manual and Assisted never auto-create a candidate — use Process (or bulk) on the lead.",
+        "leads_auto_convert_on_fit": "Auto-convert lead → candidate when fit passes (§2.4)",
+        "leads_auto_convert_on_fit_hint": "Extra safeguard on top of Automatic + auto-create: when off, leads stay in the queue with a blocked preview until an operator runs Process. Vacancy card can opt out per job (extra.leads_auto_convert_on_fit_v1 = false).",
+        "automation_stack_title": "How the pieces work together",
+        "automation_stack_body": "1) Mode — Manual / Assisted / Automatic. 2) Auto-create + convert-on-fit — only for Automatic (convert-on-fit can be turned off as a safeguard). 3) Ad → vacancy mapping (and optional ordered_vacancy_ids) picks the job to score. 4) Vacancy lead criteria (fit) gate candidate creation when auto-convert is on.",
         "mask_pii": "Mask PII in UI",
         "default_company": "Default company",
         "default_recruiter": "Default recruiter",
@@ -9206,7 +10003,10 @@
         "save": "Save settings",
         "field_mapping_card_title": "Form field mapping",
         "field_mapping_card_body": "{count} mapping rule(s) configured. Use the Field mapping tab to edit rows (source keys match Meta form field names, lowercased).",
-        "open_field_mapping": "Open field mapping"
+        "open_field_mapping": "Open field mapping",
+        "lead_fit_order_title": "Fallback vacancy order (no ad / vacancy_id map)",
+        "lead_fit_order_hint": "When a lead has no ad mapping and no vacancy_id in the payload, the pipeline tries these vacancies in order until one passes fit (or has no criteria). Same as Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids.",
+        "lead_fit_order_pick": "Select vacancy to append…"
       },
       "field_mapping": {
         "title": "Meta form → normalized fields",
@@ -9238,9 +10038,20 @@
         "status": "Status",
         "webhook_secret": "Webhook secret",
         "access_token": "Access token",
+        "statuses": {
+          "active": "active",
+          "disabled": "disabled",
+          "rotation_pending": "rotation_pending"
+        },
+        "fields": {
+          "ad_account_id": "ad_account_id",
+          "page_id": "page_id"
+        },
         "table": {
           "label": "Label",
           "status": "Status",
+          "ad_id": "ad_id",
+          "page_id": "page_id",
           "signature": "Signature"
         },
         "actions": {
@@ -9254,12 +10065,24 @@
         "save": "Save mapping",
         "search_placeholder": "Search by ad_id or note",
         "created": "Created",
-        "empty": "No mappings"
+        "empty": "No mappings",
+        "fields": {
+          "ad_id": "ad_id",
+          "vacancy_id": "vacancy_id"
+        },
+        "table": {
+          "ad_id": "ad_id",
+          "vacancy_id": "vacancy_id"
+        }
       },
       "incoming": {
-        "title": "Incoming data (Meta)",
-        "subtitle": "Latest Meta leads: raw payload as stored (truncated for safety). Use to verify field mapping and debug ingest.",
-        "empty": "No Meta leads in this workspace yet.",
+        "title": "Incoming data",
+        "subtitle": "Latest leads for the selected source: raw payload as stored (truncated). Use to verify field mapping and debug ingest.",
+        "source_label": "Source",
+        "source_meta": "Meta",
+        "source_webhook": "Webhook",
+        "empty_meta": "No Meta leads in this workspace yet.",
+        "empty_webhook": "No webhook leads in this workspace yet.",
         "payload": "Raw payload",
         "normalized": "Normalized",
         "truncated": "(truncated)",
@@ -9280,7 +10103,42 @@
         "actions": {
           "reroute": "Reroute",
           "retry": "Retry"
+        },
+        "suggestions": {
+          "graph_no_token": {
+            "action": "Credentials",
+            "hint": "No Graph access token for this page_id. Update Credentials and retry."
+          },
+          "vacancy_not_resolved": {
+            "action": "Ad mapping",
+            "hint": "Vacancy could not be resolved. Check ad → vacancy mapping."
+          },
+          "no_contacts": {
+            "action": "Settings",
+            "hint": "Meta did not send email/phone for your mapping. Check Field mapping and Retry."
+          },
+          "company_not_resolved": {
+            "action": "Settings",
+            "hint": "Company could not be resolved. Check default company and mapping."
+          },
+          "generic": {
+            "action": "Settings",
+            "hint": "Review settings and try Retry or Reroute."
+          }
         }
+      },
+      "quick_start": {
+        "title": "Quick start",
+        "subtitle": "Add a credential, map each ad_id to a vacancy, then verify payloads under Incoming."
+      },
+      "other_platforms": "TikTok, YouTube, Google — coming soon",
+      "unmapped": {
+        "title": "Unmapped leads",
+        "subtitle": "Leads with ad_id but no vacancy mapping. Attach to a vacancy and re-run routing.",
+        "leads": "leads",
+        "attach_btn": "Attach to vacancy",
+        "attach_modal_title": "Attach ad_id {adId} to a vacancy",
+        "select_vacancy": "Vacancy"
       }
     },
     "funnels": {
@@ -9344,25 +10202,40 @@
         "code": "Code",
         "label": "Label",
         "system": "System",
+        "conversion_root": "Conv. root",
         "order": "Order",
         "status": "Status",
         "actions": "Actions"
       },
+      "conversion_root": "Conversion funnel root",
+      "conversion_root_auto": "Auto (from stage code)",
+      "conversion_root_lead": "Lead — entry",
+      "conversion_root_qualified": "Qualified",
+      "conversion_root_active": "Active (in progress)",
+      "conversion_root_final": "Final / won",
+      "conversion_root_hint": "Maps this CRM stage to a cross-pipeline bucket used in lead conversion analytics (§2.12). Leave Auto to infer from codes like new / contacted / qualified / converted.",
       "placeholders": {
         "stage_label": "e.g. Initial interview",
         "stage_code": "initial_interview",
         "funnel_name": "e.g. Driver Recruitment"
       },
       "errors": {
-        "unknown": "Unknown error"
+        "unknown": "Unknown error",
+        "load_failed": "Could not load funnels",
+        "save_failed": "Could not save funnel changes",
+        "reorder_failed": "Could not reorder stages"
       }
     },
     "settings": {
       "title": "Workspace control center",
       "subtitle": "Manage your team, permissions, documents, integrations, and audit tools.",
       "actions": {
-        "open": "Open"
+        "open": "Open",
+        "open_area": "Open area",
+        "back_to_areas": "All settings areas"
       },
+      "areas_intro": "Pick an area first — we only show the relevant screens so setup stays focused.",
+      "area_empty": "Nothing to configure here for your role.",
       "email": {
         "title": "Email settings"
       },
@@ -9407,6 +10280,10 @@
           "label": "Custom fields",
           "description": "Manage additional fields for candidates and documents."
         },
+        "lead_forms": {
+          "label": "Lead forms",
+          "description": "Named public intake entry points with optional slugs for attribution."
+        },
         "email": {
           "label": "Email (SMTP)",
           "description": "Configure email sending (RODO, notifications)."
@@ -9444,7 +10321,7 @@
           "description": "Review admin actions and sensitive activity."
         },
         "communications_setup": {
-          "description": "Description"
+          "description": "All integration screens in one place: Meta, Google, webhook, email, and communications admin."
         },
         "company_access": {
           "description": "Description",
@@ -9670,6 +10547,7 @@
     "legal": {
       "title": "Legal documents (RODO, privacy policy)",
       "subtitle": "Configure active RODO clause and privacy policy. Without an active RODO clause you cannot send information to candidates.",
+      "section_candidates": "Candidates",
       "rodo": "RODO clause",
       "privacy": "Privacy policy",
       "active": "Active",
@@ -9679,9 +10557,56 @@
       "set_active": "Set as active",
       "version_id": "Version (e.g. 2025-01-01)",
       "content_url": "Document URL (PDF or page)",
+      "content_html": "HTML body (optional)",
       "add_version": "Add version",
       "created": "Created",
-      "activated": "Set as active"
+      "activated": "Set as active",
+      "billing": {
+        "section_title": "Billing & subscription exhibits",
+        "section_subtitle": "Draft clauses for SSOT §2.16 (trial, downgrade, overage consent, retention, automation/mapping). Review with counsel; use “Load English draft” then adapt and publish.",
+        "missing": "No active published exhibit for this type.",
+        "trial_terms": "Trial terms",
+        "downgrade_cancellation": "Downgrade & cancellation",
+        "overage_autodebit": "Overage & automatic charges (consent)",
+        "data_retention": "Data retention after cancellation",
+        "automation_disclaimer": "Automation disclaimer",
+        "mapping_disclaimer": "Lead mapping & custom fields disclaimer",
+        "load_draft": "Load English draft (§2.16)",
+        "draft_loaded": "Draft loaded into the form",
+        "draft_not_found": "Draft template not found"
+      }
+    },
+    "lead_forms": {
+      "title": "Lead forms",
+      "subtitle": "Intake entry points for the public portal. Set a public slug so candidates open a tracked form from /public/intake.",
+      "new_title": "New form title",
+      "create": "Create form",
+      "empty": "No lead forms yet. Create one to start tracking intake sources.",
+      "read_only_hint": "Only workspace administrators can create or edit lead forms.",
+      "link_billing": "Billing & limits",
+      "fields": {
+        "title": "Title",
+        "public_slug": "Public slug",
+        "active": "Active (counts toward plan limit)"
+      },
+      "placeholders": {
+        "title": "e.g. Facebook campaigns",
+        "slug": "my-campaign"
+      },
+      "slug_hint": "Lowercase letters, digits, hyphens; 2–64 characters. Leave empty to unpublish.",
+      "share_url": "Public intake URL (this host)",
+      "copy": "Copy",
+      "toast": {
+        "created": "Lead form created",
+        "saved": "Saved",
+        "copied": "Copied"
+      },
+      "errors": {
+        "load": "Failed to load lead forms",
+        "create": "Failed to create form",
+        "save": "Failed to save form",
+        "copy": "Could not copy"
+      }
     },
     "tenant_links": {
       "title": "Handoff & contact attempts",
@@ -9728,7 +10653,19 @@
       "due_date": "Due Date",
       "total": "Total",
       "paid": "Paid",
-      "empty": "No invoices found"
+      "empty": "No invoices found",
+      "errors": {
+        "load_failed": "Failed to load invoices",
+        "action_failed": "Invoice action failed",
+        "detail_load_failed": "Failed to load invoice",
+        "companies_load_failed": "Failed to load companies",
+        "client_billing_load_failed": "Failed to load client billing details",
+        "source_invoice_load_failed": "Failed to load source invoice",
+        "issuer_load_failed": "Failed to load issuer company",
+        "edit_invoice_load_failed": "Failed to load invoice for editing",
+        "create_failed": "Failed to create invoice",
+        "update_failed": "Failed to update invoice"
+      }
     },
     "email": {
       "description": "Description",

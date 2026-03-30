@@ -81,6 +81,12 @@ class DocumentPolicy(Base, TimestampMixin):
         index=True,
     )
 
+    own_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36),
+        nullable=True,
+        index=True,
+    )
+
     scope: Mapped[DocumentPolicyScope] = mapped_column(
         SAEnum(DocumentPolicyScope, name="document_policy_scope_enum", native_enum=False),
         nullable=False,

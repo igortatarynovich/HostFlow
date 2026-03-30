@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { useI18n } from '../../i18n'
 import { getSummary } from '../../api/documents'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 
 type SummaryRequired = {
   total: number
@@ -35,33 +38,33 @@ export default function CandidateDocsChecklistMiniPanel({
   alwaysOpen?: boolean
 }) {
   const { t, locale } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [open, setOpen] = useState(alwaysOpen)
   const [loaded, setLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [documentsError, setDocumentsError] = useState<FriendlyErrorInfo | null>(null)
   const [summary, setSummary] = useState<Summary | null>(null)
 
   const load = useCallback(async () => {
     if (!candidateId) return
     setLoading(true)
-    setErrorText(null)
+    setDocumentsError(null)
     try {
       const res = await getSummary(candidateId, { context: ownerContext || null, fillMissing: true })
       const s = (res as any)?.summary as Summary | undefined
       setSummary(s ?? null)
       setLoaded(true)
     } catch (err: any) {
-      setErrorText(
-        err?.response?.data?.detail ??
-          err?.message ??
-          t('common.errors.request_failed', { defaultValue: 'Request failed' }),
-      )
+      const fb = t('common.errors.request_failed', { defaultValue: 'Request failed' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setDocumentsError(getFriendlyErrorInfo(err, fb, t))
+      }
       setSummary(null)
       setLoaded(true)
     } finally {
       setLoading(false)
     }
-  }, [candidateId, ownerContext, t])
+  }, [candidateId, ownerContext, planLimitModal, t])
 
   useEffect(() => {
     if (!open) return
@@ -132,9 +135,14 @@ export default function CandidateDocsChecklistMiniPanel({
       {open ? (
         <div className="mt-3 space-y-3">
           {loading ? <div className="text-xs text-slate-500">{t('common.loading')}</div> : null}
-          {errorText ? <div className="text-xs text-red-600">{errorText}</div> : null}
+          {documentsError ? (
+            <div className="text-xs text-red-600">
+              <div>{documentsError.title}</div>
+              {documentsError.detail ? <div className="mt-0.5 text-[11px] text-red-700/90">{documentsError.detail}</div> : null}
+            </div>
+          ) : null}
 
-          {!loading && !errorText && (
+          {!loading && !documentsError && (
             <>
               {missing.length ? (
                 <div className="rounded-xl border border-rose-200 bg-rose-50 p-2">

@@ -7,6 +7,7 @@ import pytest
 
 from backend.app.api.v1.invoices import crud
 from backend.app.models.company import Company
+from backend.app.models.own_company import OwnCompany
 
 
 TENANT_ID = "11111111-1111-1111-1111-111111111111"
@@ -73,6 +74,64 @@ def _base_payload(*, company_id: str, issuer_company_id: str, status: str = "dra
         ],
         "billing_details": billing,
     }
+
+
+@pytest.mark.anyio
+async def test_create_invoice_uses_own_company_as_issuer_when_no_issuer_company_id(db) -> None:
+    """§2.4 billing: issuer defaults from OwnCompany when payload carries own_company_id."""
+    client = await _create_company(
+        db, role="client", with_bank=False, name="Client Sp. z o.o.", tax_id="PL0987654321"
+    )
+    own = OwnCompany(
+        id=str(uuid4()),
+        tenant_id=TENANT_ID,
+        name="Our Workspace",
+        legal_name="Our Workspace Sp. z o.o.",
+        tax_id="PL1234567890",
+        country="PL",
+        city="Warsaw",
+        address="Issuer Street 1",
+        bank_details={
+            "bank_accounts": [
+                {
+                    "label": "Main",
+                    "is_primary": True,
+                    "iban": "PL10105000997603123456789123",
+                    "bank_name": "PKO BP",
+                    "swift_bic": "PKOPPLPW",
+                    "country": "PL",
+                }
+            ]
+        },
+    )
+    db.add(own)
+    await db.flush()
+
+    issue_date = date.today()
+    payload = {
+        "own_company_id": own.id,
+        "company_id": client.id,
+        "issue_date": issue_date,
+        "due_date": issue_date + timedelta(days=14),
+        "currency": "PLN",
+        "status": "draft",
+        "items": [
+            {
+                "description": "Service",
+                "qty": 1,
+                "unit_price": "100.00",
+                "vat_rate": "23.00",
+            }
+        ],
+        "billing_details": {"invoice_kind": "vat", "tax_mode": "standard_vat"},
+    }
+    invoice = await crud.create_invoice(db, TENANT_ID, payload, created_by=None)
+    bd = dict(invoice.billing_details or {})
+    assert bd.get("issuer_own_company_id") == own.id
+    assert bd.get("issuer_name")
+    assert bd.get("issuer_tax_id") == "PL1234567890"
+    bank = bd.get("issuer_bank_account") or {}
+    assert bank.get("iban") == "PL10105000997603123456789123"
 
 
 @pytest.mark.anyio

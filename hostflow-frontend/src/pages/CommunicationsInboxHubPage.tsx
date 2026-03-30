@@ -21,6 +21,9 @@ import {
 } from '../utils/inboxUrlQuery'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { stashPendingGmailOAuthCode } from '../utils/oauthRedirectBridge'
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { getFriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
 function isActiveThread(th: CommunicationThread): boolean {
   return !th.is_archived && String(th.status || '').toLowerCase() !== 'deleted'
@@ -33,6 +36,7 @@ function canPatchCommunicationsSettings(role: string | undefined): boolean {
 
 export default function CommunicationsInboxHubPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const listQuery = useMemo(() => readInboxListQuery(searchParams), [searchParams])
@@ -57,7 +61,7 @@ export default function CommunicationsInboxHubPage() {
 
   const [threads, setThreads] = useState<CommunicationThread[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [hubFilter, setHubFilter] = useState<InboxHubFilter>('all')
   const [qDraft, setQDraft] = useState(listQuery.q)
   const [oauthRedirectNotice, setOauthRedirectNotice] = useState(false)
@@ -112,13 +116,15 @@ export default function CommunicationsInboxHubPage() {
       } else {
         setServerIncomingEnabled(null)
       }
-    } catch {
+    } catch (err: unknown) {
       setThreads([])
-      setError(t('app.communications_inbox_hub.error'))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications_inbox_hub.error'))) {
+        setError(getFriendlyErrorInfo(err, t('app.communications_inbox_hub.error'), t))
+      }
     } finally {
       setLoading(false)
     }
-  }, [effectiveChannel, hasEmail, hasMessages, listQuery.q, t])
+  }, [effectiveChannel, hasEmail, hasMessages, listQuery.q, planLimitModal, t])
 
   useEffect(() => {
     void load()
@@ -205,7 +211,7 @@ export default function CommunicationsInboxHubPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-slate-50">
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-auto crm-page-inset">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-auto">
         <h1 className="sr-only">{t('app.communications_inbox_hub.title')}</h1>
 
         {oauthRedirectNotice && (
@@ -217,7 +223,7 @@ export default function CommunicationsInboxHubPage() {
               {t('app.communications.email.oauth_redirect_body')}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Link to={`${CRM_APP_PATHS.setupCommunications}#step-2`} className="btn-primary btn-xs">
+              <Link to={CRM_APP_PATHS.settingsEmail} className="btn-primary btn-xs">
                 {t('app.communications.email.oauth_redirect_open_setup')}
               </Link>
               <button type="button" className="btn-secondary btn-xs" onClick={() => setOauthRedirectNotice(false)}>
@@ -231,8 +237,8 @@ export default function CommunicationsInboxHubPage() {
           <div className="max-w-4xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <div className="font-medium">{t('app.communications.setup.banner_incomplete')}</div>
             <div className="mt-2">
-              <Link to={CRM_APP_PATHS.setupCommunications} className="btn-secondary btn-xs">
-                {t('app.nav.items.communications_setup')}
+              <Link to={CRM_APP_PATHS.settingsIntegrations} className="btn-secondary btn-xs">
+                {t('app.nav.items.settings_integrations')}
               </Link>
             </div>
           </div>
@@ -254,8 +260,8 @@ export default function CommunicationsInboxHubPage() {
                     : t('app.communications.email.incoming_enable_cta')}
                 </button>
               )}
-              <Link to={CRM_APP_PATHS.setupCommunications} className="btn-secondary btn-xs">
-                {t('app.nav.items.communications_setup')}
+              <Link to={CRM_APP_PATHS.settingsIntegrations} className="btn-secondary btn-xs">
+                {t('app.nav.items.settings_integrations')}
               </Link>
             </div>
           </div>
@@ -285,7 +291,9 @@ export default function CommunicationsInboxHubPage() {
 
         {!showLoading && error && (
           <div className="max-w-4xl rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-sm text-rose-800">
-            <p>{error}</p>
+            <p className="font-medium">{error.title}</p>
+            {error.detail ? <p className="mt-1 text-xs text-rose-900/90">{error.detail}</p> : null}
+            <p className="mt-2 text-xs text-rose-800/85">{error.hint}</p>
             <button type="button" className="btn-secondary btn-sm mt-3" onClick={() => void load()}>
               {t('app.communications_inbox_hub.retry')}
             </button>

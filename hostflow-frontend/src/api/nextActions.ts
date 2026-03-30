@@ -4,6 +4,14 @@ import { api } from './client'
 export interface NextActionQuery {
   status?: string | null
   stage?: string | null
+  /** §2.12 GET /leads filter: lead | qualified | active | final */
+  conversion_root?: string | null
+  /** §2.12 GET /leads: processed lost + normalized.lead_lost_reason_v1.code */
+  lost_reason_code?: string | null
+  /** §2.12 GET /leads: prior CRM stage on audit transition into lost */
+  lost_from_crm_stage?: string | null
+  /** GET /leads whitelist: LEAD_FIT_NO_MATCH | LEAD_FIT_NEEDS_INFO */
+  pipeline_error?: string | null
   next_action?: string | null
   tab?: string | null
   t_status?: string | null
@@ -22,6 +30,8 @@ export interface NextActionGroup {
   path: string
   locked?: boolean
   required_plan?: string | null
+  /** Optional metrics for i18n titles (funnel insights §2.12). */
+  nba_detail?: Record<string, string | number> | null
 }
 
 export interface LeadNextActionsResponse {
@@ -46,6 +56,10 @@ export function nbaGroupHref(g: Pick<NextActionGroup, 'path' | 'query'>): string
   const pairs: [string, string | null | undefined][] = [
     ['status', q.status],
     ['stage', q.stage],
+    ['conversion_root', q.conversion_root],
+    ['lost_reason_code', q.lost_reason_code],
+    ['lost_from_crm_stage', q.lost_from_crm_stage],
+    ['pipeline_error', q.pipeline_error],
     ['next_action', q.next_action],
     ['tab', q.tab],
     ['t_status', q.t_status],

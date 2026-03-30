@@ -3,6 +3,13 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import {
+  friendlyErrorBannerSecondary,
+  friendlyFormHintError,
+  getFriendlyErrorInfo,
+  type FriendlyErrorInfo,
+} from '../utils/friendlyError'
 import { registerSelfService } from '../api/users'
 import { useAuth } from '../store/useAuth'
 import { useSeoMeta } from '../hooks/useSeoMeta'
@@ -16,6 +23,7 @@ import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
 export default function SignupPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   useSeoMeta({
     title: t('app.seo.signup.title', { defaultValue: 'Create CRM Workspace' }),
     description: t('app.seo.signup.description', {
@@ -36,29 +44,36 @@ export default function SignupPage() {
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
 
   const planLabel = useMemo(() => {
     if (!preselectedPlan) return null
-    if (preselectedPlan === 'starter') return 'Starter'
-    if (preselectedPlan === 'team') return 'Team'
-    if (preselectedPlan === 'pro') return 'Pro'
+    if (preselectedPlan === 'starter') return t('app.signup.plan_labels.solo', { defaultValue: 'Solo' })
+    if (preselectedPlan === 'team') return t('app.signup.plan_labels.team', { defaultValue: 'Team' })
+    if (preselectedPlan === 'pro') return t('app.signup.plan_labels.business', { defaultValue: 'Business' })
     return preselectedPlan
-  }, [preselectedPlan])
+  }, [preselectedPlan, t])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     if (password !== confirm) {
-      setError(t('app.signup.errors.password_mismatch', { defaultValue: 'Passwords do not match' }))
+      setError(friendlyFormHintError(t('app.signup.errors.password_mismatch', { defaultValue: 'Passwords do not match' }), t))
       return
     }
     if (password.length < 8) {
-      setError(t('app.signup.errors.password_short', { defaultValue: 'Password must be at least 8 characters' }))
+      setError(
+        friendlyFormHintError(t('app.signup.errors.password_short', { defaultValue: 'Password must be at least 8 characters' }), t),
+      )
       return
     }
     if (!acceptTerms || !acceptPrivacy) {
-      setError(t('app.signup.errors.consent_required', { defaultValue: 'You must accept Terms and Privacy Policy to continue.' }))
+      setError(
+        friendlyFormHintError(
+          t('app.signup.errors.consent_required', { defaultValue: 'You must accept Terms and Privacy Policy to continue.' }),
+          t,
+        ),
+      )
       return
     }
     setLoading(true)
@@ -95,7 +110,10 @@ export default function SignupPage() {
           // ignore storage errors
         }
       }
-      setError(err?.response?.data?.detail || err?.message || t('app.signup.errors.generic', { defaultValue: 'Registration failed' }))
+      const fb = t('app.signup.errors.generic', { defaultValue: 'Registration failed' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setError(getFriendlyErrorInfo(err, fb, t))
+      }
     } finally {
       setLoading(false)
     }
@@ -178,7 +196,8 @@ export default function SignupPage() {
             </div>
             {error && (
               <ErrorRecoveryBanner
-                info={{ title: error, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+                info={error}
+                {...friendlyErrorBannerSecondary(error, '/login', t('app.login.title', { defaultValue: 'Sign in' }))}
                 compact
               />
             )}

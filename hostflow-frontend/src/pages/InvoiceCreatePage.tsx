@@ -9,6 +9,8 @@ import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
 type InvoiceItemDraft = {
   line_no: number
@@ -177,8 +179,16 @@ function isManagedIssuerCompany(company: Company, userId: string) {
   return [company.owner_user_id, company.manager_user_id].some((value) => String(value || '').trim() === actor)
 }
 
+function invoiceFormBanner(title: string, t: ReturnType<typeof useI18n>['t']): FriendlyErrorInfo {
+  return {
+    title,
+    hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+  }
+}
+
 export default function InvoiceCreatePage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
   const navigate = useNavigate()
   const { id: invoiceId } = useParams<{ id?: string }>()
@@ -191,7 +201,7 @@ export default function InvoiceCreatePage() {
   const [loadingCompanies, setLoadingCompanies] = useState(true)
   const [loadingServices, setLoadingServices] = useState(true)
   const [loadingInvoice, setLoadingInvoice] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [saving, setSaving] = useState(false)
   const [knownInvoiceNumbers, setKnownInvoiceNumbers] = useState<string[]>([])
 
@@ -254,7 +264,10 @@ export default function InvoiceCreatePage() {
       })
       .catch((err: any) => {
         if (!cancelled) {
-          setError(err?.response?.data?.detail || err?.message || 'Failed to load companies')
+          const fb = t('app.invoices.errors.companies_load_failed')
+          if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+            setError(getFriendlyErrorInfo(err, fb, t))
+          }
         }
       })
       .finally(() => {
@@ -263,7 +276,7 @@ export default function InvoiceCreatePage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [planLimitModal, t])
 
   useEffect(() => {
     let cancelled = false
@@ -342,13 +355,16 @@ export default function InvoiceCreatePage() {
       .catch((err: any) => {
         if (!cancelled) {
           setClientCompany(null)
-          setError(err?.response?.data?.detail || err?.message || 'Failed to load client billing details')
+          const fb = t('app.invoices.errors.client_billing_load_failed')
+          if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+            setError(getFriendlyErrorInfo(err, fb, t))
+          }
         }
       })
     return () => {
       cancelled = true
     }
-  }, [companyId])
+  }, [companyId, planLimitModal, t])
 
   useEffect(() => {
     const billing = extractCompanyBillingSnapshot(clientCompany)
@@ -423,7 +439,10 @@ export default function InvoiceCreatePage() {
       .catch((err: any) => {
         if (!cancelled) {
           setSourceInvoice(null)
-          setError(err?.response?.data?.detail || err?.message || 'Failed to load source invoice')
+          const fb = t('app.invoices.errors.source_invoice_load_failed')
+          if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+            setError(getFriendlyErrorInfo(err, fb, t))
+          }
         }
       })
       .finally(() => {
@@ -432,7 +451,7 @@ export default function InvoiceCreatePage() {
     return () => {
       cancelled = true
     }
-  }, [isEditMode, searchParams])
+  }, [isEditMode, planLimitModal, searchParams, t])
 
   useEffect(() => {
     if (!issuerCompanyId) {
@@ -447,13 +466,16 @@ export default function InvoiceCreatePage() {
       .catch((err: any) => {
         if (!cancelled) {
           setIssuerCompany(null)
-          setError(err?.response?.data?.detail || err?.message || 'Failed to load issuer details')
+          const fb = t('app.invoices.errors.issuer_load_failed')
+          if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+            setError(getFriendlyErrorInfo(err, fb, t))
+          }
         }
       })
     return () => {
       cancelled = true
     }
-  }, [issuerCompanyId])
+  }, [issuerCompanyId, planLimitModal, t])
 
   useEffect(() => {
     const accounts = extractBankAccounts(issuerCompany)
@@ -488,7 +510,12 @@ export default function InvoiceCreatePage() {
         if (cancelled) return
         const invoice = data as Invoice
         if (invoice.status !== 'draft') {
-          setError(t('app.invoices.edit_only_draft', { defaultValue: 'Only draft invoices can be edited.' }))
+          setError(
+            invoiceFormBanner(
+              t('app.invoices.edit_only_draft', { defaultValue: 'Only draft invoices can be edited.' }),
+              t,
+            ),
+          )
           return
         }
         setCompanyId(invoice.company_id || '')
@@ -521,7 +548,10 @@ export default function InvoiceCreatePage() {
       })
       .catch((err: any) => {
         if (!cancelled) {
-          setError(err?.response?.data?.detail || err?.message || 'Failed to load invoice')
+          const fb = t('app.invoices.errors.edit_invoice_load_failed')
+          if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+            setError(getFriendlyErrorInfo(err, fb, t))
+          }
         }
       })
       .finally(() => {
@@ -530,7 +560,7 @@ export default function InvoiceCreatePage() {
     return () => {
       cancelled = true
     }
-  }, [invoiceId, t])
+  }, [invoiceId, planLimitModal, t])
 
   const updateItem = (index: number, patch: Partial<InvoiceItemDraft>) => {
     setItems((current) =>
@@ -575,15 +605,18 @@ export default function InvoiceCreatePage() {
     const submitMode = submitter?.value === 'save_and_send' ? 'save_and_send' : 'save_draft'
     setError(null)
     if (!companyId) {
-      setError(t('app.invoices.create_company_required', { defaultValue: 'Client is required.' }))
+      setError(invoiceFormBanner(t('app.invoices.create_company_required', { defaultValue: 'Client is required.' }), t))
       return
     }
     const selectedClient = companies.find((company) => company.id === companyId) || null
     if (selectedClient && isOperatingCompany(selectedClient)) {
       setError(
-        t('app.invoices.client_operating_not_allowed', {
-          defaultValue: 'Recipient must be a client company. Your operating company cannot be selected as invoice client.',
-        }),
+        invoiceFormBanner(
+          t('app.invoices.client_operating_not_allowed', {
+            defaultValue: 'Recipient must be a client company. Your operating company cannot be selected as invoice client.',
+          }),
+          t,
+        ),
       )
       return
     }
@@ -598,15 +631,22 @@ export default function InvoiceCreatePage() {
       .filter((item) => item.description && item.qty > 0)
 
     if (normalizedItems.length === 0) {
-      setError(t('app.invoices.create_items_required', { defaultValue: 'Add at least one valid invoice item.' }))
+      setError(invoiceFormBanner(t('app.invoices.create_items_required', { defaultValue: 'Add at least one valid invoice item.' }), t))
       return
     }
     if (invoiceKind === 'correction' && !correctionOfInvoiceId) {
-      setError(t('app.invoices.correction_original_required', { defaultValue: 'Correction invoice must reference the original invoice.' }))
+      setError(
+        invoiceFormBanner(
+          t('app.invoices.correction_original_required', { defaultValue: 'Correction invoice must reference the original invoice.' }),
+          t,
+        ),
+      )
       return
     }
     if (invoiceKind === 'correction' && !correctionReason.trim()) {
-      setError(t('app.invoices.correction_reason_required', { defaultValue: 'Correction reason is required.' }))
+      setError(
+        invoiceFormBanner(t('app.invoices.correction_reason_required', { defaultValue: 'Correction reason is required.' }), t),
+      )
       return
     }
 
@@ -621,48 +661,64 @@ export default function InvoiceCreatePage() {
       const clientBilling = extractCompanyBillingSnapshot(clientCompany)
 
       if (!issuerCompany?.id) {
-        setError(t('app.invoices.issuer_required', { defaultValue: 'Your own issuer company is required.' }))
+        setError(invoiceFormBanner(t('app.invoices.issuer_required', { defaultValue: 'Your own issuer company is required.' }), t))
         setSaving(false)
         return
       }
       if (!issuerCompany?.tax_id) {
-        setError(t('app.invoices.issuer_tax_id_required', { defaultValue: 'Issuer tax ID/NIP is required for invoices.' }))
+        setError(
+          invoiceFormBanner(t('app.invoices.issuer_tax_id_required', { defaultValue: 'Issuer tax ID/NIP is required for invoices.' }), t),
+        )
         setSaving(false)
         return
       }
       if (!issuerAddress) {
-        setError(t('app.invoices.issuer_address_required', { defaultValue: 'Issuer legal address is required for invoices.' }))
+        setError(
+          invoiceFormBanner(t('app.invoices.issuer_address_required', { defaultValue: 'Issuer legal address is required for invoices.' }), t),
+        )
         setSaving(false)
         return
       }
       if (!selectedIssuerBankAccount?.iban) {
-        setError(t('app.invoices.issuer_bank_required', { defaultValue: 'Issuer bank account is required for invoices.' }))
+        setError(
+          invoiceFormBanner(t('app.invoices.issuer_bank_required', { defaultValue: 'Issuer bank account is required for invoices.' }), t),
+        )
         setSaving(false)
         return
       }
       if (!clientBilling.company_name) {
-        setError(t('app.invoices.client_legal_name_required', { defaultValue: 'Client legal name is required for invoices.' }))
+        setError(
+          invoiceFormBanner(t('app.invoices.client_legal_name_required', { defaultValue: 'Client legal name is required for invoices.' }), t),
+        )
         setSaving(false)
         return
       }
       if (!clientBilling.tax_id) {
-        setError(t('app.invoices.client_tax_id_required', { defaultValue: 'Client tax ID/NIP is required for invoices.' }))
+        setError(
+          invoiceFormBanner(t('app.invoices.client_tax_id_required', { defaultValue: 'Client tax ID/NIP is required for invoices.' }), t),
+        )
         setSaving(false)
         return
       }
       if (!clientBilling.address) {
-        setError(t('app.invoices.client_address_required', { defaultValue: 'Client legal address is required for invoices.' }))
+        setError(
+          invoiceFormBanner(t('app.invoices.client_address_required', { defaultValue: 'Client legal address is required for invoices.' }), t),
+        )
         setSaving(false)
         return
       }
       const normalizedRecipientEmail = String(billingEmail || clientBilling.email || '').trim()
       if (submitMode === 'save_and_send' && !normalizedRecipientEmail) {
-        setError(t('app.invoices.recipient_required_for_send', { defaultValue: 'Recipient email is required to send invoice.' }))
+        setError(
+          invoiceFormBanner(t('app.invoices.recipient_required_for_send', { defaultValue: 'Recipient email is required to send invoice.' }), t),
+        )
         setSaving(false)
         return
       }
       if (submitMode === 'save_and_send' && normalizedRecipientEmail && !isEmailLike(normalizedRecipientEmail)) {
-        setError(t('app.invoices.recipient_invalid_for_send', { defaultValue: 'Recipient email has invalid format.' }))
+        setError(
+          invoiceFormBanner(t('app.invoices.recipient_invalid_for_send', { defaultValue: 'Recipient email has invalid format.' }), t),
+        )
         setSaving(false)
         return
       }
@@ -719,11 +775,10 @@ export default function InvoiceCreatePage() {
         navigate(`${CRM_APP_PATHS.invoices}/${persistedInvoiceId}?send_error=1`)
         return
       }
-      setError(
-        err?.response?.data?.detail ||
-          err?.message ||
-          (isEditMode ? 'Failed to update invoice' : 'Failed to create invoice'),
-      )
+      const fb = isEditMode ? t('app.invoices.errors.update_failed') : t('app.invoices.errors.create_failed')
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setError(getFriendlyErrorInfo(err, fb, t))
+      }
     } finally {
       setSaving(false)
     }
@@ -761,12 +816,14 @@ export default function InvoiceCreatePage() {
 
       {error && (
         <ErrorRecoveryBanner
-          info={{
-            title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
+          info={error}
           onRetry={() => setError(null)}
           retryLabel={t('common.actions.dismiss', { defaultValue: 'Dismiss' })}
+          {...friendlyErrorBannerSecondary(
+            error,
+            CRM_APP_PATHS.invoices,
+            t('app.invoices.title', { defaultValue: 'Invoices' }),
+          )}
         />
       )}
 

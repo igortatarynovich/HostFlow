@@ -5,17 +5,9 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-
-function errorTextFrom(err: any, fallback: string): string {
-  const detail = err?.response?.data?.detail
-  if (typeof detail === 'string' && detail.trim()) return detail
-  if (Array.isArray(detail)) {
-    return detail.map((x) => (typeof x?.msg === 'string' ? x.msg : JSON.stringify(x))).join('; ')
-  }
-  if (detail && typeof detail === 'object') return JSON.stringify(detail)
-  if (typeof err?.message === 'string' && err.message.trim()) return err.message
-  return fallback
-}
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -35,8 +27,9 @@ function formatTimeOffLabel(row: CommunicationTimeOffRequest): string {
 
 export default function TeamAvailabilityPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [loading, setLoading] = useState(true)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [items, setItems] = useState<any[]>([])
   const [labels, setLabels] = useState<Map<string, string>>(new Map())
   const [approvedTimeOff, setApprovedTimeOff] = useState<CommunicationTimeOffRequest[]>([])
@@ -45,7 +38,7 @@ export default function TeamAvailabilityPage() {
     let mounted = true
     ;(async () => {
       setLoading(true)
-      setErrorText(null)
+      setError(null)
       try {
         const [cfg, managers] = await Promise.all([
           getCommunicationsSettings(),
@@ -60,13 +53,30 @@ export default function TeamAvailabilityPage() {
         setLabels(new Map((Array.isArray(managers) ? managers : []).map((m: any) => [String(m.id), String(m.label || m.full_name || m.email || m.id)])))
         setApprovedTimeOff(Array.isArray(timeOffRes.items) ? timeOffRes.items : [])
       } catch (err: any) {
-        if (mounted) setErrorText(errorTextFrom(err, t('app.communications.team_availability.errors.load', { defaultValue: 'Failed to load team availability' })))
+        if (
+          mounted &&
+          planLimitModal?.showPlanLimitIfNeeded(
+            err,
+            t('app.communications.team_availability.errors.load', { defaultValue: 'Failed to load team availability' }),
+          )
+        ) {
+          return
+        }
+        if (mounted) {
+          setError(
+            getFriendlyErrorInfo(
+              err,
+              t('app.communications.team_availability.errors.load', { defaultValue: 'Failed to load team availability' }),
+              t,
+            ),
+          )
+        }
       } finally {
         if (mounted) setLoading(false)
       }
     })()
     return () => { mounted = false }
-  }, [])
+  }, [planLimitModal, t])
 
   const today = todayIso()
   const activeTimeOffByUser = useMemo(() => {
@@ -163,19 +173,22 @@ export default function TeamAvailabilityPage() {
       </div>
       <div className="rounded-lg border border-slate-200 bg-white">
         {loading && <div className="px-4 py-4 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
-        {errorText && (
+        {error && (
           <div className="px-4 py-4">
             <ErrorRecoveryBanner
-              info={{ title: errorText, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+              info={error}
               onRetry={() => window.location.reload()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              secondaryTo={CRM_APP_PATHS.calendar}
-              secondaryLabel={t('app.nav.items.calendar', { defaultValue: 'Calendar' })}
+              {...friendlyErrorBannerSecondary(
+                error,
+                CRM_APP_PATHS.calendar,
+                t('app.nav.items.calendar', { defaultValue: 'Calendar' }),
+              )}
               compact
             />
           </div>
         )}
-        {!loading && !errorText && (
+        {!loading && !error && (
           <div className="divide-y divide-slate-100">
             {items.map((item) => (
               <div key={String(item.managerId)} className="px-4 py-3 text-sm">

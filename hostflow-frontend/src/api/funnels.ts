@@ -16,6 +16,8 @@ export interface FunnelStage {
   system_stage: 'new' | 'in_progress' | 'hired' | 'declined_rejected'
   order: number
   is_terminal: boolean
+  /** Lead funnels: §2.12 root bucket for conversion analytics. */
+  conversion_root_v1?: string | null
   stage_contract?: FunnelStageContractV1 | null
 }
 
@@ -25,6 +27,8 @@ export interface FunnelStageCreate {
   system_stage?: 'new' | 'in_progress' | 'hired' | 'declined_rejected'
   order?: number
   is_terminal?: boolean
+  /** Lead funnels: send `null` on update to clear; omit on create to infer from code. */
+  conversion_root_v1?: string | null
   /** Omit on create if unused; send `null` on update to clear. */
   stage_contract?: FunnelStageContractV1 | null
 }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from uuid import UUID
@@ -13,7 +14,9 @@ from backend.app.core.crypto import decrypt_secret, encrypt_secret, generate_sec
 from backend.app.core.settings import settings
 from backend.app.modules.leads import crud, service
 from backend.app.models.lead import Lead
+from backend.app.models.tenant import Tenant
 from backend.app.services.plan_feature_gates import (
+    ensure_leads_generic_inbound_webhook_allowed,
     ensure_meta_lead_credential_create_allowed,
     ensure_meta_lead_field_mapping_rows_allowed,
     lead_meta_credentials_cap,
@@ -29,6 +32,7 @@ from backend.app.modules.leads.schemas import (
     MetaCredentialOut,
     MetaCredentialRotateResponse,
     MetaCredentialUpdate,
+    GenericInboundWebhookRotateResponse,
     MetaIncomingLeadPreviewItem,
     MetaIncomingLeadsPreviewResponse,
     MetaLeadResponse,
@@ -105,6 +109,25 @@ async def _ensure_settings_schema(db: AsyncSession) -> None:
                 "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS leads_processing_mode_v1 VARCHAR(24)"
             )
         )
+        await db.execute(
+            text(
+                "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS generic_inbound_webhook_secret VARCHAR(128)"
+            )
+        )
+        await db.execute(
+            text(
+                "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS leads_auto_convert_on_fit_v1 BOOLEAN DEFAULT true"
+            )
+        )
+        await db.execute(
+            text(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS ix_meta_lead_settings_generic_inbound_wh_secret
+                ON meta_lead_settings (generic_inbound_webhook_secret)
+                WHERE generic_inbound_webhook_secret IS NOT NULL
+                """
+            )
+        )
         await db.flush()
     except Exception:  # pragma: no cover - best effort for legacy DBs
         try:
@@ -138,6 +161,25 @@ async def _ensure_settings_schema(db: AsyncSession) -> None:
                     "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS leads_processing_mode_v1 TEXT"
                 )
             )
+            await db.execute(
+                text(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS generic_inbound_webhook_secret TEXT"
+                )
+            )
+            await db.execute(
+                text(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN IF NOT EXISTS leads_auto_convert_on_fit_v1 INTEGER DEFAULT 1"
+                )
+            )
+            await db.execute(
+                text(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS ix_meta_lead_settings_generic_inbound_wh_secret
+                    ON meta_lead_settings (generic_inbound_webhook_secret)
+                    WHERE generic_inbound_webhook_secret IS NOT NULL
+                    """
+                )
+            )
             await db.flush()
         except Exception:
             pass
@@ -169,11 +211,15 @@ def _settings_to_schema(entry: crud.MetaLeadSettings) -> MetaLeadSettingsOut:
     else:
         normalized_mapping = []
 
+    gsec = getattr(entry, "generic_inbound_webhook_secret", None)
+    generic_wh_on = bool(str(gsec).strip()) if gsec is not None else False
+
     return MetaLeadSettingsOut(
         tenant_id=_to_uuid(entry.tenant_id) or UUID(entry.tenant_id),
         default_company_id=_to_uuid(entry.default_company_id),
         fallback_recruiter_id=_to_uuid(entry.fallback_recruiter_id),
         auto_create_enabled=bool(entry.auto_create_enabled),
+        leads_auto_convert_on_fit_v1=bool(getattr(entry, "leads_auto_convert_on_fit_v1", True)),
         leads_processing_mode_v1=_meta_leads_processing_mode_v1_out(
             getattr(entry, "leads_processing_mode_v1", None)
         ),
@@ -183,13 +229,60 @@ def _settings_to_schema(entry: crud.MetaLeadSettings) -> MetaLeadSettingsOut:
         field_mapping=normalized_mapping,
         plan_field_mapping_rules_limit=None,
         plan_meta_credentials_limit=None,
+        generic_inbound_webhook_enabled=generic_wh_on,
         webhook_url=entry.webhook_url,
         last_webhook_check_at=entry.last_webhook_check_at,
         last_signature_status=entry.last_signature_status,
         webhook_verify_token=entry.webhook_verify_token,
         created_at=entry.created_at,
         updated_at=entry.updated_at,
+        lead_fit_ordered_vacancy_ids=[],
     )
+
+
+async def _tenant_lead_fit_ordered_vacancy_ids(db: AsyncSession, tenant_id: str) -> List[UUID]:
+    tenant = await db.get(Tenant, tenant_id)
+    if tenant is None or not isinstance(tenant.settings, dict):
+        return []
+    raw = tenant.settings.get("lead_fit_routing_v1")
+    if not isinstance(raw, dict):
+        return []
+    ids = raw.get("ordered_vacancy_ids")
+    if not isinstance(ids, list):
+        return []
+    out: List[UUID] = []
+    for x in ids:
+        s = str(x or "").strip()
+        if not s:
+            continue
+        try:
+            out.append(UUID(s))
+        except ValueError:
+            continue
+    return out
+
+
+async def _persist_lead_fit_ordered_vacancy_ids(
+    db: AsyncSession, tenant_id: str, ids: Optional[List[UUID]]
+) -> None:
+    tenant = await db.get(Tenant, tenant_id)
+    if tenant is None:
+        return
+    st = dict(tenant.settings) if isinstance(tenant.settings, dict) else {}
+    lfr: Dict[str, Any] = {}
+    if isinstance(st.get("lead_fit_routing_v1"), dict):
+        lfr = dict(st["lead_fit_routing_v1"])
+    order: List[str] = []
+    for u in ids or []:
+        if u is None:
+            continue
+        s = str(u).strip()
+        if s:
+            order.append(s)
+    lfr["ordered_vacancy_ids"] = order
+    st["lead_fit_routing_v1"] = lfr
+    tenant.settings = st
+    await db.flush()
 
 
 async def _enrich_meta_settings_plan_limits(
@@ -207,6 +300,8 @@ async def _enrich_meta_settings_plan_limits(
 async def get_settings(db: AsyncSession, tenant_id: str) -> MetaLeadSettingsOut:
     entry = await _ensure_settings(db, tenant_id)
     base = _settings_to_schema(entry)
+    ordered = await _tenant_lead_fit_ordered_vacancy_ids(db, tenant_id)
+    base = base.model_copy(update={"lead_fit_ordered_vacancy_ids": ordered})
     return await _enrich_meta_settings_plan_limits(db, tenant_id, base)
 
 
@@ -220,6 +315,7 @@ async def update_settings(
         updates = payload.model_dump(exclude_unset=True)
     else:  # pragma: no cover - Pydantic v1 fallback
         updates = payload.dict(exclude_unset=True)
+    fit_ordered = updates.pop("lead_fit_ordered_vacancy_ids", None)
     if "webhook_verify_token" in updates:
         token = updates["webhook_verify_token"]
         updates["webhook_verify_token"] = token.strip() or None if token is not None else None
@@ -235,8 +331,28 @@ async def update_settings(
             db, tenant_id, len(updates["field_mapping"])
         )
     await crud.update_meta_settings(db, entry, **updates)
+    if fit_ordered is not None:
+        await _persist_lead_fit_ordered_vacancy_ids(db, tenant_id, fit_ordered)
     base = _settings_to_schema(entry)
+    ordered = await _tenant_lead_fit_ordered_vacancy_ids(db, tenant_id)
+    base = base.model_copy(update={"lead_fit_ordered_vacancy_ids": ordered})
     return await _enrich_meta_settings_plan_limits(db, tenant_id, base)
+
+
+async def rotate_generic_inbound_webhook_secret(
+    db: AsyncSession,
+    tenant_id: str,
+) -> GenericInboundWebhookRotateResponse:
+    """Issue a new path secret for POST /api/v1/public/leads/inbound/{secret} (Team+)."""
+    await ensure_leads_generic_inbound_webhook_allowed(db, tenant_id)
+    await _ensure_settings_schema(db)
+    entry = await _ensure_settings(db, tenant_id)
+    secret = secrets.token_urlsafe(32)
+    await crud.update_meta_settings(db, entry, generic_inbound_webhook_secret=secret)
+    base = (getattr(settings, "public_api_base_url", None) or "").strip().rstrip("/")
+    path = f"/api/v1/public/leads/inbound/{secret}"
+    ingest_url = f"{base}{path}" if base else path
+    return GenericInboundWebhookRotateResponse(secret=secret, ingest_url=ingest_url)
 
 
 def _credential_to_schema(entry) -> MetaCredentialOut:
@@ -660,11 +776,15 @@ async def list_meta_incoming_preview(
     tenant_id: str,
     *,
     limit: int = 25,
+    source: str = "meta",
 ) -> MetaIncomingLeadsPreviewResponse:
     lim = min(max(1, limit), 50)
+    src = (source or "meta").strip().lower()
+    if src not in ("meta", "webhook"):
+        src = "meta"
     stmt = (
         select(Lead)
-        .where(Lead.tenant_id == tenant_id, Lead.source == "meta")
+        .where(Lead.tenant_id == tenant_id, Lead.source == src)
         .order_by(desc(Lead.created_at))
         .limit(lim)
     )

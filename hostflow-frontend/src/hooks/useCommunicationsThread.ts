@@ -15,24 +15,22 @@ import { useI18n } from '../i18n'
 import { isCommunicationThreadUnlinked } from '../utils/communicationThreadUnlinked'
 import { communicationApiTranslatedDetail } from '../utils/communicationApiTranslatedDetail'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyFormHintError, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
-export function errorTextFromThread(err: any, fallback: string): string {
-  const detail = err?.response?.data?.detail
-  if (typeof detail === 'string' && detail.trim()) return detail
-  if (Array.isArray(detail)) {
-    const msg = detail.map((x) => (typeof x?.msg === 'string' ? x.msg : null)).filter(Boolean).join('; ')
-    if (msg) return msg
+function commsErr(
+  err: any,
+  fallbackTitle: string,
+  t: (key: string, options?: { defaultValue?: string; values?: Record<string, string | number> }) => string,
+  secondary?: { to: string; label: string },
+): FriendlyErrorInfo {
+  const translated = communicationApiTranslatedDetail(err, t)
+  const fe = getFriendlyErrorInfo(err, fallbackTitle, t)
+  return {
+    ...fe,
+    title: translated || fe.title,
+    ...(secondary ? { secondaryTo: secondary.to, secondaryLabel: secondary.label } : {}),
   }
-  if (detail && typeof detail === 'object') {
-    if (typeof detail.msg === 'string' && detail.msg.trim()) return detail.msg
-    try {
-      return JSON.stringify(detail)
-    } catch {
-      /* ignore */
-    }
-  }
-  if (typeof err?.message === 'string' && err.message.trim()) return err.message
-  return fallback
 }
 
 export type UseCommunicationsThreadOptions = {
@@ -44,12 +42,11 @@ export type UseCommunicationsThreadOptions = {
 
 export function useCommunicationsThread(threadId: string, opts?: UseCommunicationsThreadOptions) {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [thread, setThread] = useState<CommunicationThread | null>(null)
   const [messages, setMessages] = useState<CommunicationMessage[]>([])
   const [loading, setLoading] = useState(true)
-  const [errorText, setErrorText] = useState<string | null>(null)
-  const [errorSecondaryTo, setErrorSecondaryTo] = useState<string | null>(null)
-  const [errorSecondaryLabel, setErrorSecondaryLabel] = useState<string | null>(null)
+  const [threadError, setThreadError] = useState<FriendlyErrorInfo | null>(null)
   const [busyAction, setBusyAction] = useState<'assign' | 'read' | null>(null)
   const [sending, setSending] = useState(false)
   const [dispatchingQueued, setDispatchingQueued] = useState(false)
@@ -104,9 +101,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
       return
     }
     setLoading(true)
-    setErrorText(null)
-    setErrorSecondaryTo(null)
-    setErrorSecondaryLabel(null)
+    setThreadError(null)
     try {
       const [data, cfg] = await Promise.all([
         getCommunicationThread(threadId, { messagesLimit: 200 }),
@@ -126,11 +121,13 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
       setTemplates(nextTemplates)
       if (!selectedTemplateId && nextTemplates.length) setSelectedTemplateId(nextTemplates[0].id)
     } catch (err: any) {
-      setErrorText(errorTextFromThread(err, t('app.communications.errors.load')))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications.errors.load'))) {
+        setThreadError(getFriendlyErrorInfo(err, t('app.communications.errors.load'), t))
+      }
     } finally {
       setLoading(false)
     }
-  }, [draftSubject, selectedTemplateId, t, threadId])
+  }, [draftSubject, planLimitModal, selectedTemplateId, t, threadId])
 
   useEffect(() => {
     void load()
@@ -176,11 +173,13 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
         ),
       )
     } catch (err: any) {
-      setErrorText(errorTextFromThread(err, t('app.communications.errors.mark_read')))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications.errors.mark_read'))) {
+        setThreadError(getFriendlyErrorInfo(err, t('app.communications.errors.mark_read'), t))
+      }
     } finally {
       setBusyAction(null)
     }
-  }, [t, threadId])
+  }, [planLimitModal, t, threadId])
 
   const handleAutoAssign = useCallback(async () => {
     if (!threadId) return
@@ -189,20 +188,25 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
       const result = await autoAssignCommunicationThread(threadId)
       setThread(result.thread)
       if (!result.assigned) {
-        setErrorText(
-          t('app.communications.queue.auto_assign_failed', {
-            values: { reason: result.reason || 'no_eligible_managers' },
-          }),
+        setThreadError(
+          friendlyFormHintError(
+            t('app.communications.queue.auto_assign_failed', {
+              values: { reason: result.reason || 'no_eligible_managers' },
+            }),
+            t,
+          ),
         )
       } else {
-        setErrorText(null)
+        setThreadError(null)
       }
     } catch (err: any) {
-      setErrorText(errorTextFromThread(err, t('app.communications.errors.auto_assign')))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications.errors.auto_assign'))) {
+        setThreadError(getFriendlyErrorInfo(err, t('app.communications.errors.auto_assign'), t))
+      }
     } finally {
       setBusyAction(null)
     }
-  }, [t, threadId])
+  }, [planLimitModal, t, threadId])
 
   const handleSend = useCallback(
     async (e: FormEvent) => {
@@ -232,8 +236,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
             const dispatched = await dispatchCommunicationMessage(msg.id, { mark_delivered: true })
             finalMsg = dispatched.message
             setThread(dispatched.thread)
-            setErrorSecondaryTo(null)
-            setErrorSecondaryLabel(null)
+            setThreadError(null)
             if (!firstEmailTtvSentRef.current && String(thread.channel || '').toLowerCase() === 'email') {
               firstEmailTtvSentRef.current = true
               void recordTtvStepCompleted({
@@ -243,13 +246,19 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
               })
             }
           } catch (err: any) {
-            setErrorText(
-              communicationApiTranslatedDetail(err, t) ??
-                errorTextFromThread(err, t('app.communications.email.dispatch_failed')),
-            )
-            setErrorSecondaryTo(CRM_APP_PATHS.settingsEmail)
-            setErrorSecondaryLabel(t('app.settings.email.title'))
+            if (
+              !planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications.email.dispatch_failed'))
+            ) {
+              setThreadError(
+                commsErr(err, t('app.communications.email.dispatch_failed'), t, {
+                  to: CRM_APP_PATHS.settingsEmail,
+                  label: t('app.settings.email.title'),
+                }),
+              )
+            }
           }
+        } else {
+          setThreadError(null)
         }
         setMessages((prev) => [...prev, finalMsg])
         setThread((prev) =>
@@ -264,22 +273,16 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
             : prev,
         )
         setDraftText('')
-        if (!errorSecondaryTo) setErrorText(null)
       } catch (err: any) {
-        setErrorText(
-          communicationApiTranslatedDetail(err, t) ??
-            errorTextFromThread(err, t('app.communications.errors.send')),
-        )
-        setErrorSecondaryTo(
-          String(thread?.channel || '').toLowerCase() === 'email'
-            ? CRM_APP_PATHS.settingsEmail
-            : threadListPath,
-        )
-        setErrorSecondaryLabel(
-          String(thread?.channel || '').toLowerCase() === 'email'
-            ? t('app.settings.email.title')
-            : t('app.communications.actions.back_to_hub'),
-        )
+        const emailCh = String(thread?.channel || '').toLowerCase() === 'email'
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications.errors.send'))) {
+          setThreadError(
+            commsErr(err, t('app.communications.errors.send'), t, {
+              to: emailCh ? CRM_APP_PATHS.settingsEmail : threadListPath,
+              label: emailCh ? t('app.settings.email.title') : t('app.communications.actions.back_to_hub'),
+            }),
+          )
+        }
       } finally {
         setSending(false)
       }
@@ -289,8 +292,8 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
       applySignature,
       draftSubject,
       draftText,
-      errorSecondaryTo,
       internalNote,
+      planLimitModal,
       recipientAddress,
       sendImmediately,
       t,
@@ -309,28 +312,21 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
       setMessages((prev) => prev.map((m) => byId.get(m.id) || m))
       const threadItem = result.items.find((x) => x.thread.id === thread.id)?.thread
       if (threadItem) setThread(threadItem)
-      setErrorText(null)
-      setErrorSecondaryTo(null)
-      setErrorSecondaryLabel(null)
+      setThreadError(null)
     } catch (err: any) {
-      setErrorText(
-        communicationApiTranslatedDetail(err, t) ??
-          errorTextFromThread(err, t('app.communications.errors.dispatch_queued')),
-      )
-      setErrorSecondaryTo(
-        String(thread.channel || '').toLowerCase() === 'email'
-          ? CRM_APP_PATHS.settingsEmail
-          : threadListPath,
-      )
-      setErrorSecondaryLabel(
-        String(thread.channel || '').toLowerCase() === 'email'
-          ? t('app.settings.email.title')
-          : t('app.communications.actions.back_to_hub'),
-      )
+      const emailCh = String(thread.channel || '').toLowerCase() === 'email'
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications.errors.dispatch_queued'))) {
+        setThreadError(
+          commsErr(err, t('app.communications.errors.dispatch_queued'), t, {
+            to: emailCh ? CRM_APP_PATHS.settingsEmail : threadListPath,
+            label: emailCh ? t('app.settings.email.title') : t('app.communications.actions.back_to_hub'),
+          }),
+        )
+      }
     } finally {
       setDispatchingQueued(false)
     }
-  }, [t, thread, threadListPath])
+  }, [planLimitModal, t, thread, threadListPath])
 
   const handleDispatchOne = useCallback(
     async (messageId: string) => {
@@ -339,9 +335,7 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
         const result = await dispatchCommunicationMessage(messageId, { mark_delivered: true })
         setMessages((prev) => prev.map((m) => (m.id === messageId ? result.message : m)))
         setThread(result.thread)
-        setErrorText(null)
-        setErrorSecondaryTo(null)
-        setErrorSecondaryLabel(null)
+        setThreadError(null)
         if (!firstEmailTtvSentRef.current && String(result.thread.channel || '').toLowerCase() === 'email') {
           firstEmailTtvSentRef.current = true
           void recordTtvStepCompleted({
@@ -351,34 +345,27 @@ export function useCommunicationsThread(threadId: string, opts?: UseCommunicatio
           })
         }
       } catch (err: any) {
-        setErrorText(
-          communicationApiTranslatedDetail(err, t) ??
-            errorTextFromThread(err, t('app.communications.errors.dispatch_one')),
-        )
-        setErrorSecondaryTo(
-          String(thread?.channel || '').toLowerCase() === 'email'
-            ? CRM_APP_PATHS.settingsEmail
-            : threadListPath,
-        )
-        setErrorSecondaryLabel(
-          String(thread?.channel || '').toLowerCase() === 'email'
-            ? t('app.settings.email.title')
-            : t('app.communications.actions.back_to_hub'),
-        )
+        const emailCh = String(thread?.channel || '').toLowerCase() === 'email'
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications.errors.dispatch_one'))) {
+          setThreadError(
+            commsErr(err, t('app.communications.errors.dispatch_one'), t, {
+              to: emailCh ? CRM_APP_PATHS.settingsEmail : threadListPath,
+              label: emailCh ? t('app.settings.email.title') : t('app.communications.actions.back_to_hub'),
+            }),
+          )
+        }
       } finally {
         setDispatchingMessageId(null)
       }
     },
-    [t, thread, threadListPath],
+    [planLimitModal, t, thread, threadListPath],
   )
 
   return {
     thread,
     messages,
     loading,
-    errorText,
-    errorSecondaryTo,
-    errorSecondaryLabel,
+    threadError,
     busyAction,
     sending,
     dispatchingQueued,

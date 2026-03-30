@@ -1,17 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { ACTIVATION_PATHS } from '../../app/activationRoutes'
 import { CRM_APP_DRILLDOWN_HREFS } from '../../app/crmAppPaths'
 import type { OpsCounters } from '../../api/analytics'
 import { bulkAutoProcessLeadQueue } from '../../api/client'
-import { getBillingSubscription } from '../../api/billing'
 import { useI18n } from '../../i18n'
+import { useTeamTierFeatures } from '../../hooks/useTeamTierFeatures'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../Toast'
-
-/** Aligned with `plan_allows_team_tier_features` (backend). */
-const TEAM_TIER_BLOCKED_PLANS = new Set(['starter', 'trial', 'free', 'solo'])
 
 type DashboardLeadAutoFixCardProps = {
   opsCounters: OpsCounters | null
@@ -22,34 +19,8 @@ export function DashboardLeadAutoFixCard({ opsCounters, onRefreshOps }: Dashboar
   const { t } = useI18n()
   const { notify } = useToast()
   const { can } = usePermissions()
-  const [planCode, setPlanCode] = useState<string | null>(null)
-  const [planLoading, setPlanLoading] = useState(true)
+  const { allowsTeamFeatures, planLoading } = useTeamTierFeatures()
   const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      setPlanLoading(true)
-      try {
-        const sub = await getBillingSubscription()
-        if (!cancelled) {
-          setPlanCode(String(sub?.plan_code || 'starter').toLowerCase())
-        }
-      } catch {
-        if (!cancelled) setPlanCode('starter')
-      } finally {
-        if (!cancelled) setPlanLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const allowsTeamFeatures = useMemo(() => {
-    const p = (planCode || 'starter').trim().toLowerCase()
-    return !TEAM_TIER_BLOCKED_PLANS.has(p)
-  }, [planCode])
 
   const pendingMeta = useMemo(() => {
     const nr = Number(opsCounters?.leads_needs_routing ?? 0)

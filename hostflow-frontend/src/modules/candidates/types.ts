@@ -64,6 +64,10 @@ export type CandidatesListInsights = {
   docs_ready: number
   docs_attention: number
   docs_ordered: number
+  /** Not ready: same idea as quick view docs_incomplete (readiness ≠ ready). */
+  docs_incomplete?: number
+  /** extra.candidate_ops.mode === in_work (best-effort match on JSON text). */
+  ops_in_work?: number
 }
 
 export type ListResp =

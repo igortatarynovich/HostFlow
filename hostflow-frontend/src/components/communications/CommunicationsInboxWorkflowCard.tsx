@@ -13,6 +13,9 @@ import {
   type CommunicationOpsMode,
 } from '../../utils/communicationsOpsMode'
 import { formatThreadDateTime } from './CommunicationsThreadWorkArea'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyFormHintError, getFriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
 const DEFAULT_ESCALATION_ROLE_OPTIONS = ['supervisor', 'admin', 'manager'] as const
 const DEFAULT_ESCALATION_QUEUE_OPTIONS = ['priority', 'manual_review', 'supervisor_desk'] as const
@@ -24,9 +27,10 @@ type Props = {
 
 export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: Props) {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
   const [busy, setBusy] = useState(false)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [workflowError, setWorkflowError] = useState<FriendlyErrorInfo | null>(null)
   const [pauseModalOpen, setPauseModalOpen] = useState(false)
   const [pauseHoursDraft, setPauseHoursDraft] = useState('4')
   const [escalationModalOpen, setEscalationModalOpen] = useState(false)
@@ -160,9 +164,20 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
     return null
   }
 
+  const toWorkflowApiError = (err: unknown): FriendlyErrorInfo => {
+    const line = escalationApiErrorText(err)
+    return line
+      ? friendlyFormHintError(line, t)
+      : getFriendlyErrorInfo(
+          err,
+          t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }),
+          t,
+        )
+  }
+
   const toggleNoReplyNeeded = async () => {
     setBusy(true)
-    setErrorText(null)
+    setWorkflowError(null)
     try {
       const current = noReplyNeededFromThread(thread)
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
@@ -180,8 +195,14 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       })
       await onRefresh()
     } catch (err: unknown) {
-      const fe = escalationApiErrorText(err)
-      setErrorText(fe || t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }),
+        )
+      ) {
+        setWorkflowError(toWorkflowApiError(err))
+      }
     } finally {
       setBusy(false)
     }
@@ -189,7 +210,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
 
   const toggleSlaMuted = async () => {
     setBusy(true)
-    setErrorText(null)
+    setWorkflowError(null)
     try {
       const current = slaMutedFromThread(thread)
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
@@ -206,7 +227,20 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       })
       await onRefresh()
     } catch (err: unknown) {
-      setErrorText(t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }),
+        )
+      ) {
+        setWorkflowError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setBusy(false)
     }
@@ -215,7 +249,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
   const snoozeSla = async (hours: number) => {
     if (noReplyNeededFromThread(thread)) return
     setBusy(true)
-    setErrorText(null)
+    setWorkflowError(null)
     try {
       const until = new Date(Date.now() + Math.max(1, hours) * 60 * 60 * 1000).toISOString()
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
@@ -233,7 +267,20 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       })
       await onRefresh()
     } catch (err: unknown) {
-      setErrorText(t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }),
+        )
+      ) {
+        setWorkflowError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setBusy(false)
     }
@@ -250,7 +297,7 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
     },
   ) => {
     setBusy(true)
-    setErrorText(null)
+    setWorkflowError(null)
     try {
       const threadMeta = (thread.thread_meta || {}) as Record<string, unknown>
       const slaPolicy = (threadMeta.sla_policy || {}) as Record<string, unknown>
@@ -295,8 +342,14 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
       })
       await onRefresh()
     } catch (err: unknown) {
-      const escalationFriendly = escalationApiErrorText(err)
-      setErrorText(escalationFriendly || t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.workflow_error_generic', { defaultValue: 'Update failed.' }),
+        )
+      ) {
+        setWorkflowError(toWorkflowApiError(err))
+      }
     } finally {
       setBusy(false)
     }
@@ -305,7 +358,12 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
   const submitPauseOpsMode = async () => {
     const hours = Number(pauseHoursDraft)
     if (!Number.isFinite(hours) || hours <= 0) {
-      setErrorText(t('app.communications_messages.ops.pause_hours_invalid', { defaultValue: 'Enter a valid number of hours (> 0).' }))
+      setWorkflowError(
+        friendlyFormHintError(
+          t('app.communications_messages.ops.pause_hours_invalid', { defaultValue: 'Enter a valid number of hours (> 0).' }),
+          t,
+        ),
+      )
       return
     }
     const pausedUntil = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString()
@@ -316,12 +374,22 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
   const submitEscalationOpsMode = async () => {
     const reason = escalationReasonDraft.trim()
     if (!reason) {
-      setErrorText(t('app.communications_messages.ops.escalation_reason_required', { defaultValue: 'Escalation reason is required.' }))
+      setWorkflowError(
+        friendlyFormHintError(
+          t('app.communications_messages.ops.escalation_reason_required', { defaultValue: 'Escalation reason is required.' }),
+          t,
+        ),
+      )
       return
     }
     const targetValue = escalationTargetValueDraft.trim()
     if (!targetValue) {
-      setErrorText(t('app.communications_messages.ops.escalation_target_required', { defaultValue: 'Escalation target is required.' }))
+      setWorkflowError(
+        friendlyFormHintError(
+          t('app.communications_messages.ops.escalation_target_required', { defaultValue: 'Escalation target is required.' }),
+          t,
+        ),
+      )
       return
     }
     const escalationTargetRole = escalationTargetTypeDraft === 'role' ? targetValue : ''
@@ -350,7 +418,12 @@ export default function CommunicationsInboxWorkflowCard({ thread, onRefresh }: P
             defaultValue: 'Operational mode, reply requirement, and SLA — same rules as Messages.',
           })}
         </p>
-        {errorText && <p className="mt-2 text-xs text-rose-600">{errorText}</p>}
+        {workflowError ? (
+          <p className="mt-2 text-xs text-rose-600">
+            {workflowError.title}
+            {workflowError.detail ? ` — ${workflowError.detail}` : ''}
+          </p>
+        ) : null}
         <div className="mt-3 space-y-2 text-xs text-slate-600">
           <div className="flex flex-wrap justify-between gap-2">
             <span>{t('app.communications_inbox_center.workflow_current_mode', { defaultValue: 'Mode' })}</span>

@@ -49,6 +49,7 @@ _RULESET_VERSIONS_TABLE = """
 CREATE TABLE document_ruleset_versions (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL,
+    own_company_id TEXT,
     version INTEGER NOT NULL,
     json_data TEXT NOT NULL DEFAULT '{}',
     comment TEXT,
@@ -59,10 +60,14 @@ CREATE TABLE document_ruleset_versions (
     rollback_comment TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE UNIQUE INDEX IF NOT EXISTS uq_document_ruleset_versions_tenant_version
-    ON document_ruleset_versions (tenant_id, version);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_document_ruleset_global_version
+    ON document_ruleset_versions (tenant_id, version) WHERE own_company_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_document_ruleset_scoped_version
+    ON document_ruleset_versions (tenant_id, own_company_id, version) WHERE own_company_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS ix_document_ruleset_versions_tenant
     ON document_ruleset_versions (tenant_id);
+CREATE INDEX IF NOT EXISTS ix_document_ruleset_versions_own_company_id
+    ON document_ruleset_versions (own_company_id);
 """
 
 _RULESET_USAGE_TABLE = """
@@ -178,6 +183,21 @@ def _ensure_sqlite_schema(path: str) -> None:
                 add("ALTER TABLE document_ruleset_versions ADD COLUMN origin_version_id TEXT")
             if "rollback_comment" not in cols_versions:
                 add("ALTER TABLE document_ruleset_versions ADD COLUMN rollback_comment TEXT")
+            if "own_company_id" not in cols_versions:
+                add("ALTER TABLE document_ruleset_versions ADD COLUMN own_company_id TEXT")
+                add("DROP INDEX IF EXISTS uq_document_ruleset_versions_tenant_version")
+                add(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_document_ruleset_global_version "
+                    "ON document_ruleset_versions (tenant_id, version) WHERE own_company_id IS NULL"
+                )
+                add(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_document_ruleset_scoped_version "
+                    "ON document_ruleset_versions (tenant_id, own_company_id, version) WHERE own_company_id IS NOT NULL"
+                )
+                add(
+                    "CREATE INDEX IF NOT EXISTS ix_document_ruleset_versions_own_company_id "
+                    "ON document_ruleset_versions (own_company_id)"
+                )
 
         if _table_exists(cur, "document_ruleset_usage"):
             cur.execute("PRAGMA table_info(document_ruleset_usage)")
@@ -324,6 +344,35 @@ def _ensure_postgres_schema(sync_url: str) -> None:
                     conn.execute(
                         text(
                             "ALTER TABLE document_ruleset_versions ADD COLUMN rollback_comment TEXT"
+                        )
+                    )
+                if "own_company_id" not in versions_cols:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE document_ruleset_versions ADD COLUMN own_company_id VARCHAR(36)"
+                        )
+                    )
+                    conn.execute(
+                        text("DROP INDEX IF EXISTS uq_document_ruleset_versions_tenant_version")
+                    )
+                    conn.execute(
+                        text(
+                            "CREATE UNIQUE INDEX IF NOT EXISTS uq_document_ruleset_global_version "
+                            "ON document_ruleset_versions (tenant_id, version) "
+                            "WHERE own_company_id IS NULL"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "CREATE UNIQUE INDEX IF NOT EXISTS uq_document_ruleset_scoped_version "
+                            "ON document_ruleset_versions (tenant_id, own_company_id, version) "
+                            "WHERE own_company_id IS NOT NULL"
+                        )
+                    )
+                    conn.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS ix_document_ruleset_versions_own_company_id "
+                            "ON document_ruleset_versions (own_company_id)"
                         )
                     )
 

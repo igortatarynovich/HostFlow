@@ -12,6 +12,8 @@ import type { RulesetDiff, RulesetUsageResponse, RulesetVersion } from '../../ap
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 
 function formatDate(value?: string | null): string {
   if (!value) return '—'
@@ -191,6 +193,27 @@ export default function RulesetVersionsPage() {
     }
   }, [diffState])
 
+  const rulesetLoadErrorBanner = useMemo<FriendlyErrorInfo | null>(
+    () =>
+      error
+        ? {
+            title: error,
+            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+          }
+        : null,
+    [error, t],
+  )
+  const rulesetUsageErrorBanner = useMemo<FriendlyErrorInfo | null>(
+    () =>
+      usageError
+        ? {
+            title: usageError,
+            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+          }
+        : null,
+    [usageError, t],
+  )
+
   return (
     <div className="space-y-4">
       <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -220,16 +243,16 @@ export default function RulesetVersionsPage() {
         </div>
       </header>
 
-      {error && (
+      {rulesetLoadErrorBanner && (
         <ErrorRecoveryBanner
-          info={{
-            title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-          }}
+          info={rulesetLoadErrorBanner}
           onRetry={refreshVersions}
           retryLabel={t('app.admin.ruleset.header.refresh.action')}
-          secondaryTo={CRM_APP_PATHS.settingsRuleset}
-          secondaryLabel={t('app.admin.ruleset.header.title')}
+          {...friendlyErrorBannerSecondary(
+            rulesetLoadErrorBanner,
+            CRM_APP_PATHS.settingsRuleset,
+            t('app.admin.ruleset.header.title'),
+          )}
           compact
         />
       )}
@@ -472,17 +495,17 @@ export default function RulesetVersionsPage() {
             {usageLoading ? t('app.admin.ruleset.usage.refresh.loading') : t('app.admin.ruleset.usage.refresh.action')}
           </button>
         </div>
-        {usageError && (
+        {rulesetUsageErrorBanner && (
           <div className="mt-3">
             <ErrorRecoveryBanner
-              info={{
-                title: usageError,
-                hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-              }}
+              info={rulesetUsageErrorBanner}
               onRetry={refreshUsage}
               retryLabel={t('app.admin.ruleset.usage.refresh.action')}
-              secondaryTo={CRM_APP_PATHS.settingsRuleset}
-              secondaryLabel={t('app.admin.ruleset.usage.title')}
+              {...friendlyErrorBannerSecondary(
+                rulesetUsageErrorBanner,
+                CRM_APP_PATHS.settingsRuleset,
+                t('app.admin.ruleset.usage.title'),
+              )}
               compact
             />
           </div>

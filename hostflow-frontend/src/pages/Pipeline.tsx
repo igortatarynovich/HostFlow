@@ -1,14 +1,24 @@
 // src/pages/Pipeline.tsx
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, type ReactNode } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
-import { IconCalendar, IconFileText, IconMapPin, IconPhone, IconUser, IconBriefcase } from '@tabler/icons-react'
+import {
+  IconArrowRight,
+  IconCalendar,
+  IconFileText,
+  IconMail,
+  IconMapPin,
+  IconPhone,
+  IconUser,
+  IconBriefcase,
+} from '@tabler/icons-react'
 import { api } from '../api/client'
 import type { PipelineOut, Vacancy } from '../api/types'
 import StageTag from '../components/StageTag'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { usePermissions } from '../hooks/usePermissions'
+import { useTeamTierFeatures } from '../hooks/useTeamTierFeatures'
 import { useI18n } from '../i18n'
 import { useMetaStages } from '../store/useMeta'
 import {
@@ -17,6 +27,15 @@ import {
   BulkVacancyModal,
 } from '../modules/candidates/components'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+
+function telHrefFromDisplay(display: string | null | undefined): string | undefined {
+  if (!display) return undefined
+  const digits = String(display).replace(/[\s()-]/g, '')
+  return digits ? `tel:${digits}` : undefined
+}
 
 // --- dnd-kit ---
 import {
@@ -45,6 +64,7 @@ import {
   parseJSONMaybe,
   pickMiniFields,
   parseISODateMaybe,
+  summarizePipelineColumnHealth,
 } from '../modules/pipeline/utils'
 import { normalizeSearchValue, textMatches } from '../modules/candidates/candidateUtils'
 
@@ -56,7 +76,7 @@ export default function Pipeline(){
   const [vacancyId, setVacancyId] = useState<string>('')
   const [data, setData] = useState<PipelineOut | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER)
   const [columnStages, setColumnStages] = useState<Record<string, string[]>>(DEFAULT_COLUMN_STAGES)
   const [stageSequence, setStageSequence] = useState<string[]>(DEFAULT_STAGE_SEQUENCE)
@@ -162,10 +182,14 @@ export default function Pipeline(){
   })
   const { can } = usePermissions()
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const navigate = useNavigate()
   const meta = useMetaStages()
   const canManage = can('candidates.manage')
   const canViewPipeline = canManage || can('candidates.pipeline')
+  const canViewTasks = can('notifications.view')
+  const canViewSettings = can('settings.view')
+  const { allowsTeamFeatures, planLoading: planTierLoading } = useTeamTierFeatures()
 
   const parseStageTransitionError = useCallback((rawError: unknown): { kind: 'rodo' | 'handoff_docs' | 'other'; missingTypes: string[] } => {
     const err: any = rawError as any
@@ -617,8 +641,11 @@ export default function Pipeline(){
         const statuses = columnOrder
         const emptyCols = Object.fromEntries((statuses || []).map((s)=>[s, []]))
         setData({ columns: emptyCols, statuses } as any)
+      } else if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidates.pipeline.error_load'))) {
+        setError(null)
+        setData(null)
       } else {
-        setError(t('app.candidates.pipeline.error_load'))
+        setError(getFriendlyErrorInfo(err, t('app.candidates.pipeline.error_load'), t))
         setData(null)
       }
     } finally {
@@ -675,6 +702,7 @@ export default function Pipeline(){
     let rodoBlocked = 0
     let docsBlocked = 0
     const missingByDocs: string[] = []
+    let rejectedResults: PromiseRejectedResult[] = []
     try{
       const results = await Promise.allSettled(
         selectedIds
@@ -687,6 +715,7 @@ export default function Pipeline(){
         })
       )
       const rejected = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      rejectedResults = rejected
       if (rejected.length > 0){
         hadErrors = true
         for (const rej of rejected) {
@@ -703,20 +732,27 @@ export default function Pipeline(){
       clearSelection()
       await load()
       if (hadErrors){
+        const retryHint = t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' })
         if (rodoBlocked > 0) {
-          setError(
-            t('app.candidates.messages.bulk_stage_rodo_blocked', {
+          setError({
+            title: t('app.candidates.messages.bulk_stage_rodo_blocked', {
               values: { rodo: rodoBlocked, total: selectedIds.length },
             }),
-          )
+            hint: retryHint,
+          })
         } else if (missingByDocs.length > 0) {
-          setError(
-            t('app.candidates.messages.bulk_stage_handoff_docs_blocked', {
+          setError({
+            title: t('app.candidates.messages.bulk_stage_handoff_docs_blocked', {
               values: { docs: docsBlocked, total: selectedIds.length, missing: formatMissingDocTypes(missingByDocs) },
             }),
-          )
+            hint: retryHint,
+          })
         } else {
-          setError(t('app.candidates.pipeline.error_update_stages'))
+          const raw = rejectedResults[0]?.reason
+          if (planLimitModal?.showPlanLimitIfNeeded(raw, t('app.candidates.pipeline.error_update_stages'))) {
+            return
+          }
+          setError(getFriendlyErrorInfo(raw, t('app.candidates.pipeline.error_update_stages'), t))
         }
       }
     }
@@ -791,20 +827,27 @@ export default function Pipeline(){
             missingByDocs.push(...parsed.missingTypes)
           }
         }
+        const retryHintBulk = t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' })
         if (rodoBlocked > 0) {
-          setError(
-            t('app.candidates.messages.bulk_stage_rodo_blocked', {
+          setError({
+            title: t('app.candidates.messages.bulk_stage_rodo_blocked', {
               values: { rodo: rodoBlocked, total: selectedIds.length },
             }),
-          )
+            hint: retryHintBulk,
+          })
         } else if (missingByDocs.length > 0) {
-          setError(
-            t('app.candidates.messages.bulk_stage_handoff_docs_blocked', {
+          setError({
+            title: t('app.candidates.messages.bulk_stage_handoff_docs_blocked', {
               values: { docs: docsBlocked, total: selectedIds.length, missing: formatMissingDocTypes(missingByDocs) },
             }),
-          )
+            hint: retryHintBulk,
+          })
         } else {
-          setError(t('app.candidates.pipeline.error_update_stages'))
+          const raw = rejected[0]?.reason
+          if (planLimitModal?.showPlanLimitIfNeeded(raw, t('app.candidates.pipeline.error_update_stages'))) {
+            return
+          }
+          setError(getFriendlyErrorInfo(raw, t('app.candidates.pipeline.error_update_stages'), t))
         }
       }
     } finally {
@@ -887,6 +930,7 @@ export default function Pipeline(){
     setSavingIds(s => ({ ...s, [candidateId]: true }))
     let hadError = false
     let specificErrorSet = false
+    let lastMoveErr: unknown = null
     try{
       if (plan.stages.length){
         for (const stage of plan.stages){
@@ -897,29 +941,36 @@ export default function Pipeline(){
         }
       }
     } catch (e){
+      lastMoveErr = e
       hadError = true
       const parsed = parseStageTransitionError(e)
+      const dndRetryHint = t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' })
       if (parsed.kind === 'rodo') {
         specificErrorSet = true
-        setError(
-          t('app.candidate_card.messages.rodo_stage_blocked', {
+        setError({
+          title: t('app.candidate_card.messages.rodo_stage_blocked', {
             defaultValue: 'RODO must be sent before moving to contact stage.',
           }),
-        )
+          hint: dndRetryHint,
+        })
       } else if (parsed.kind === 'handoff_docs') {
         specificErrorSet = true
-        setError(
-          t('app.candidate_card.messages.handoff_docs_incomplete', {
-            defaultValue: "Cannot move to 'Ready for handoff': required documents checklist is incomplete.",
-          }) + ` ${formatMissingDocTypes(parsed.missingTypes)}`,
-        )
+        setError({
+          title:
+            t('app.candidate_card.messages.handoff_docs_incomplete', {
+              defaultValue: "Cannot move to 'Ready for handoff': required documents checklist is incomplete.",
+            }) + ` ${formatMissingDocTypes(parsed.missingTypes)}`,
+          hint: dndRetryHint,
+        })
       }
       await load()
     } finally {
       setSavingIds(s => ({ ...s, [candidateId]: false }))
       if (hadError){
         if (!specificErrorSet) {
-          setError(t('app.candidates.pipeline.error_update_stage'))
+          if (!planLimitModal?.showPlanLimitIfNeeded(lastMoveErr, t('app.candidates.pipeline.error_update_stage'))) {
+            setError(getFriendlyErrorInfo(lastMoveErr, t('app.candidates.pipeline.error_update_stage'), t))
+          }
         }
       }
     }
@@ -1144,12 +1195,14 @@ export default function Pipeline(){
         <div ref={tableContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
       {error && (
         <ErrorRecoveryBanner
-          info={{
-            title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
+          info={error}
           onRetry={() => void load()}
           retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+          {...friendlyErrorBannerSecondary(
+            error,
+            CRM_APP_PATHS.candidates,
+            t('app.nav.items.candidates', { defaultValue: 'Candidates' }),
+          )}
           compact
         />
       )}
@@ -1175,29 +1228,42 @@ export default function Pipeline(){
       )}
 
       {canManage && selectedIds.length > 0 && (
-        <div className="card p-3 flex flex-wrap items-center gap-3">
-          <div className="text-sm">{t('app.candidates.pipeline.bulk_selected', { values: { count: selectedIds.length } })}</div>
-          <div className="flex items-center gap-2">
-            <label className="label m-0">{t('app.candidates.pipeline.bulk_move_stage_label')}</label>
-            <select className="input" onChange={(e)=>{ const v=e.target.value; if(v) bulkMoveStage(v); e.currentTarget.selectedIndex = 0 }}>
-              <option value="">{t('app.candidates.pipeline.bulk_move_stage_select')}</option>
-              {(columnsOrder || []).map(code => (
-                <option key={code} value={code}>{code}</option>
-              ))}
-            </select>
+        <div className="card space-y-2 p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="text-sm">{t('app.candidates.pipeline.bulk_selected', { values: { count: selectedIds.length } })}</div>
+            <div className="flex items-center gap-2">
+              <label className="label m-0">{t('app.candidates.pipeline.bulk_move_stage_label')}</label>
+              <select className="input" onChange={(e)=>{ const v=e.target.value; if(v) bulkMoveStage(v); e.currentTarget.selectedIndex = 0 }}>
+                <option value="">{t('app.candidates.pipeline.bulk_move_stage_select')}</option>
+                {(columnsOrder || []).map(code => (
+                  <option key={code} value={code}>{code}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="label m-0">{t('app.candidates.pipeline.bulk_assign_manager_label')}</label>
+              <select className="input" onChange={(e)=>{ const v=e.target.value; if(v) bulkAssignManager(v); e.currentTarget.selectedIndex = 0 }}>
+                <option value="">{t('app.candidates.pipeline.bulk_assign_manager_select')}</option>
+                {managers.map(m => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1" />
+            <button className="btn-secondary" onClick={clearSelection}>{t('app.candidates.pipeline.bulk_clear_selection')}</button>
+            <button className="btn" onClick={bulkArchive}>{t('app.candidates.pipeline.bulk_archive')}</button>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="label m-0">{t('app.candidates.pipeline.bulk_assign_manager_label')}</label>
-            <select className="input" onChange={(e)=>{ const v=e.target.value; if(v) bulkAssignManager(v); e.currentTarget.selectedIndex = 0 }}>
-              <option value="">{t('app.candidates.pipeline.bulk_assign_manager_select')}</option>
-              {managers.map(m => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1" />
-          <button className="btn-secondary" onClick={clearSelection}>{t('app.candidates.pipeline.bulk_clear_selection')}</button>
-          <button className="btn" onClick={bulkArchive}>{t('app.candidates.pipeline.bulk_archive')}</button>
+          {!planTierLoading && !allowsTeamFeatures && canViewSettings ? (
+            <p className="border-t border-slate-100 pt-2 text-[11px] leading-snug text-slate-600">
+              {t('app.candidates.pipeline.bulk_plan_hint', {
+                defaultValue:
+                  'Bulk Meta auto-processing and several lead automations need a Team-tier plan — manual moves above still work.',
+              })}{' '}
+              <Link className="font-semibold text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
+                {t('app.candidates.pipeline.bulk_plan_hint_link', { defaultValue: 'Billing' })}
+              </Link>
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -1216,6 +1282,8 @@ export default function Pipeline(){
             const viewInListHref = viewInListParams.toString()
               ? `${CRM_APP_PATHS.candidates}?${viewInListParams.toString()}`
               : CRM_APP_PATHS.candidates
+            const colItems = filteredColumns?.[code] || []
+            const colHealth = summarizePipelineColumnHealth(colItems)
             return (
             <DroppableColumn
               key={code}
@@ -1232,13 +1300,17 @@ export default function Pipeline(){
                   </div>
                 )
               })()}
-              count={filteredColumns?.[code]?.length || 0}
+              count={colItems.length}
               total={data?.columns?.[code]?.length || 0}
+              health={colHealth}
+              healthLabels={{
+                docs: t('app.candidates.pipeline.column_health_docs', { defaultValue: 'Docs' }),
+                newStage: t('app.candidates.pipeline.column_health_new', { defaultValue: 'New' }),
+              }}
               viewInListHref={viewInListHref}
               viewInListLabel={t('app.candidates.pipeline.view_in_list', { defaultValue: 'In list' })}
               headerRight={canManage ? (
                 (() => {
-                  const colItems = (filteredColumns?.[code] || [])
                   const colIds = colItems.map((it:any) => String(it.candidate?.id || it.candidate_id))
                   const selectedInCol = colIds.filter((cid:string) => selectedIds.includes(cid)).length
                   const allInColSelected = colIds.length > 0 && selectedInCol === colIds.length
@@ -1257,7 +1329,7 @@ export default function Pipeline(){
                 })()
               ) : null}
             >
-              {(filteredColumns?.[code] || []).map((item: any) => {
+              {colItems.map((item: any) => {
                 const candidateId = String(item.candidate?.id || item.candidate_id)
                 const dragId = `card:${candidateId}`
                 const rawStage = item?.stage ?? item?.status ?? item?.candidate?.stage ?? item?.candidate?.status
@@ -1290,13 +1362,21 @@ export default function Pipeline(){
                       const vacancyTitle = item?.vacancy?.title || item?.vacancy_title || (vacancies.find(v => v.id === vacancyId) as any)?.title
                       const createdDate = c.created_at || item?.created_at
                       const formattedDate = createdDate ? new Date(createdDate).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) : null
-                      
+                      const emailRaw = String(c.email || item.candidate?.email || item.candidate_email || '').trim()
+                      const telHref = telHrefFromDisplay(meta.phone)
+                      const cardHref = `${CRM_APP_PATHS.candidates}/${candidateId}`
+                      const tasksHref = `${CRM_APP_PATHS.tasks}?tab=tasks&t_status=active&t_entity=candidate&t_q=${encodeURIComponent(
+                        String(item.candidate?.name || item.candidate_name || candidateId).slice(0, 80),
+                      )}`
+                      const actionBtnClass =
+                        'inline-flex items-center gap-0.5 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-800 shadow-sm hover:border-brand-300 hover:bg-brand-50/80'
+
                       return (
                         <div className="mt-1">
                           <div className="font-medium">
                             <Link
                               className="hover:underline"
-                              to={`${CRM_APP_PATHS.candidates}/${candidateId}`}
+                              to={cardHref}
                               onClick={(evt)=>{
                                 if (suppressClickAfterDragRef.current.has(candidateId)){
                                   evt.preventDefault()
@@ -1307,7 +1387,7 @@ export default function Pipeline(){
                               {item.candidate?.name || item.candidate_name || t('app.candidates.pipeline.candidate_no_name')}
                             </Link>
                           </div>
-                          <div className="text-xs text-slate-500 mb-2">{item.candidate?.email || item.candidate_email || '—'}</div>
+                          <div className="text-xs text-slate-500 mb-2">{emailRaw || '—'}</div>
                           <div className="text-xs text-slate-600 space-y-1">
                             {meta.phone && <div className="inline-flex items-center gap-1"><IconPhone size={12} /> {meta.phone}</div>}
                             {meta.citizenship && <div className="inline-flex items-center gap-1"><IconMapPin size={12} /> {meta.citizenship}</div>}
@@ -1316,13 +1396,48 @@ export default function Pipeline(){
                             {formattedDate && <div className="inline-flex items-center gap-1"><IconCalendar size={12} /> {formattedDate}</div>}
                             {meta.docsBadge && <div className="inline-flex items-center gap-1"><IconFileText size={12} /> {t('app.candidates.pipeline.docs_label')}: {meta.docsBadge}</div>}
                           </div>
+                          <div
+                            className="mt-2 flex flex-wrap gap-1 border-t border-slate-100 pt-2"
+                            onPointerDown={(e) => e.stopPropagation()}
+                          >
+                            {telHref ? (
+                              <a href={telHref} className={actionBtnClass}>
+                                <IconPhone size={11} stroke={2} className="shrink-0 text-slate-600" aria-hidden />
+                                {t('app.candidates.pipeline.action_call', { defaultValue: 'Call' })}
+                              </a>
+                            ) : null}
+                            {emailRaw ? (
+                              <a href={`mailto:${emailRaw}`} className={actionBtnClass}>
+                                <IconMail size={11} stroke={2} className="shrink-0 text-slate-600" aria-hidden />
+                                {t('app.candidates.pipeline.action_write', { defaultValue: 'Email' })}
+                              </a>
+                            ) : null}
+                            <Link
+                              to={cardHref}
+                              className={actionBtnClass}
+                              onClick={(evt) => {
+                                if (suppressClickAfterDragRef.current.has(candidateId)) {
+                                  evt.preventDefault()
+                                  evt.stopPropagation()
+                                }
+                              }}
+                            >
+                              <IconArrowRight size={11} stroke={2} className="shrink-0 text-slate-600" aria-hidden />
+                              {t('app.candidates.pipeline.action_open_card', { defaultValue: 'Open' })}
+                            </Link>
+                            {canViewTasks ? (
+                              <Link to={tasksHref} className={actionBtnClass}>
+                                {t('app.candidates.pipeline.action_tasks', { defaultValue: 'Tasks' })}
+                              </Link>
+                            ) : null}
+                          </div>
                         </div>
                       )
                     })()}
                   </DraggableCard>
                 )
               })}
-              {(filteredColumns?.[code] || []).length === 0 && (
+              {colItems.length === 0 && (
                 <div className="py-4">
                   <EmptyStatePanel
                     compact
@@ -1621,10 +1736,36 @@ export default function Pipeline(){
 }
 
 // ----- DnD primitives
-function DroppableColumn({ id, title, subtitle, count, total, children, headerRight, viewInListHref, viewInListLabel }:{
-  id:string; title:React.ReactNode; subtitle?: React.ReactNode; count:number; total?:number; children:React.ReactNode; headerRight?: React.ReactNode; viewInListHref?: string; viewInListLabel?: string
-}){
+function DroppableColumn({
+  id,
+  title,
+  subtitle,
+  count,
+  total,
+  health,
+  healthLabels,
+  children,
+  headerRight,
+  viewInListHref,
+  viewInListLabel,
+}: {
+  id: string
+  title: ReactNode
+  subtitle?: ReactNode
+  count: number
+  total?: number
+  health?: { docsNeedAttention: number; newStage: number }
+  healthLabels?: { docs: string; newStage: string }
+  children: ReactNode
+  headerRight?: ReactNode
+  viewInListHref?: string
+  viewInListLabel?: string
+}) {
   const { setNodeRef, isOver } = useDroppable({ id })
+  const showHealth =
+    health &&
+    healthLabels &&
+    (health.docsNeedAttention > 0 || health.newStage > 0)
   return (
     <div ref={setNodeRef} className={`rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 transition-colors ${isOver ? 'ring-2 ring-brand-300' : ''}`}>
       <div className="mb-2 flex items-start justify-between gap-2">
@@ -1639,6 +1780,23 @@ function DroppableColumn({ id, title, subtitle, count, total, children, headerRi
             </div>
             {headerRight}
           </div>
+          {showHealth ? (
+            <div className="flex max-w-[200px] flex-wrap justify-end gap-1">
+              {health.docsNeedAttention > 0 ? (
+                <span
+                  className="inline-flex items-center rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium text-amber-950"
+                  title={healthLabels.docs}
+                >
+                  ⚠ {health.docsNeedAttention} {healthLabels.docs}
+                </span>
+              ) : null}
+              {health.newStage > 0 ? (
+                <span className="inline-flex items-center rounded bg-sky-100 px-1 py-0.5 text-[10px] font-medium text-sky-950">
+                  {health.newStage} {healthLabels.newStage}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           {viewInListHref && viewInListLabel && (
             <Link to={viewInListHref} className="text-[10px] text-brand-600 hover:underline whitespace-nowrap">
               {viewInListLabel}

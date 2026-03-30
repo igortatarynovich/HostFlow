@@ -21,6 +21,8 @@ import type {
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 
 const ROLE_OPTIONS: { value: SeatRequest['role']; labelKey: string }[] = [
   { value: 'administrator', labelKey: 'app.settings.team.form.roles.administrator' },
@@ -241,16 +243,16 @@ export function TeamManagementPanel({
   }
 
   if (error) {
+    const loadErr: FriendlyErrorInfo = {
+      title: error,
+      hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+    }
     return (
       <ErrorRecoveryBanner
-        info={{
-          title: error,
-          hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-        }}
+        info={loadErr}
         onRetry={() => window.location.reload()}
         retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-        secondaryTo={CRM_APP_PATHS.settingsTeam}
-        secondaryLabel={t('app.settings.team.title')}
+        {...friendlyErrorBannerSecondary(loadErr, CRM_APP_PATHS.settingsTeam, t('app.settings.team.title'))}
         compact
       />
     )
@@ -260,6 +262,19 @@ export function TeamManagementPanel({
   const tenantLabel = isPlatformView
     ? platformSummary?.workspace_label || platformSummary?.name || platformSummary?.slug || null
     : overview?.tenant?.workspace_label || overview?.tenant?.name || overview?.tenant?.slug || null
+
+  const modulesErrBanner: FriendlyErrorInfo | null = modulesError
+    ? {
+        title: modulesError,
+        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+      }
+    : null
+  const seatErrBanner: FriendlyErrorInfo | null = seatError
+    ? {
+        title: seatError,
+        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+      }
+    : null
 
   return (
     <div className={compact ? 'space-y-4' : 'space-y-4'}>
@@ -317,17 +332,17 @@ export function TeamManagementPanel({
           {modulesSaving && <span className="text-xs text-slate-500">{t('common.saving')}</span>}
         </div>
         <p className="text-xs text-slate-500">{t('app.platform.tenants.modules.description')}</p>
-        {modulesError && (
+        {modulesErrBanner && (
           <div className="mt-2">
             <ErrorRecoveryBanner
-              info={{
-                title: modulesError,
-                hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-              }}
+              info={modulesErrBanner}
               onRetry={() => window.location.reload()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-              secondaryTo={CRM_APP_PATHS.settingsTeam}
-              secondaryLabel={t('app.platform.tenants.modules.title')}
+              {...friendlyErrorBannerSecondary(
+                modulesErrBanner,
+                CRM_APP_PATHS.settingsTeam,
+                t('app.platform.tenants.modules.title'),
+              )}
               compact
             />
           </div>
@@ -371,16 +386,16 @@ export function TeamManagementPanel({
             {seatLoading ? t('common.loading') : t('app.platform.tenants.seat_requests.actions.refresh')}
           </button>
         </div>
-        {seatError && (
+        {seatErrBanner && (
           <ErrorRecoveryBanner
-            info={{
-              title: seatError,
-              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-            }}
+            info={seatErrBanner}
             onRetry={() => void loadSeatRequests()}
             retryLabel={t('app.platform.tenants.seat_requests.actions.refresh')}
-            secondaryTo={CRM_APP_PATHS.settingsTeam}
-            secondaryLabel={t('app.platform.tenants.seat_requests.title')}
+            {...friendlyErrorBannerSecondary(
+              seatErrBanner,
+              CRM_APP_PATHS.settingsTeam,
+              t('app.platform.tenants.seat_requests.title'),
+            )}
             compact
           />
         )}

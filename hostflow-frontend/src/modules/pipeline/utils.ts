@@ -58,6 +58,24 @@ export function pickMiniFields(item: any) {
   return { phone, citizenship, docsBadge, docsStats };
 }
 
+/** Per-column signals for §2.14 health badges (client-side from pipeline payload). */
+export type PipelineColumnHealth = { docsNeedAttention: number; newStage: number }
+
+export function summarizePipelineColumnHealth(items: unknown[]): PipelineColumnHealth {
+  let docsNeedAttention = 0
+  let newStage = 0
+  for (const item of items) {
+    const row = item as Record<string, unknown> | null | undefined
+    const raw =
+      row?.stage ?? row?.status ?? (row?.candidate as Record<string, unknown> | undefined)?.stage ?? (row?.candidate as Record<string, unknown> | undefined)?.status
+    const s = String(raw || '').trim().toLowerCase()
+    if (s === 'new' || s.startsWith('new_')) newStage += 1
+    const { docsStats } = pickMiniFields(item)
+    if (docsStats && docsStats.total > 0 && docsStats.done < docsStats.total) docsNeedAttention += 1
+  }
+  return { docsNeedAttention, newStage }
+}
+
 export function parseISODateMaybe(v?: string) {
   if (!v) return null;
   const d = new Date(v);

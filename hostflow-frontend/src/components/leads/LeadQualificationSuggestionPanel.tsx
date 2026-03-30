@@ -1,0 +1,153 @@
+import { Link } from 'react-router-dom'
+
+import type { Lead } from '../../api/types'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { useI18n } from '../../i18n'
+import { formatLeadPipelineError } from '../../utils/leadPipelineErrors'
+
+export type LeadQualificationPreviewV1 = {
+  suggested_vacancy_id?: string | null
+  fit_status?: string | null
+  fit_reasons?: string[]
+  blocked_auto_convert?: boolean
+  evaluated_at?: string | null
+}
+
+function readPreview(normalized: unknown): LeadQualificationPreviewV1 | null {
+  if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) return null
+  const raw = (normalized as Record<string, unknown>).lead_qualification_preview_v1
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const o = raw as Record<string, unknown>
+  const fit_reasons = Array.isArray(o.fit_reasons)
+    ? o.fit_reasons.map((x) => String(x)).filter(Boolean)
+    : []
+  return {
+    suggested_vacancy_id: o.suggested_vacancy_id != null ? String(o.suggested_vacancy_id) : null,
+    fit_status: o.fit_status != null ? String(o.fit_status) : null,
+    fit_reasons,
+    blocked_auto_convert: Boolean(o.blocked_auto_convert),
+    evaluated_at: o.evaluated_at != null ? String(o.evaluated_at) : null,
+  }
+}
+
+function reasonLabel(code: string, t: (k: string) => string): string {
+  const idx = code.indexOf(':')
+  const base = idx === -1 ? code : code.slice(0, idx)
+  const detail = idx === -1 ? '' : code.slice(idx + 1)
+  const key = `app.leads.qualification.reasons.${base}`
+  const translated = t(key)
+  if (translated === key) {
+    return code
+  }
+  return detail ? `${translated} (${detail})` : translated
+}
+
+type Props = {
+  lead: Lead
+  /** Hide for services / client-lead flows */
+  isServicesTenant?: boolean
+  onProcess?: () => void
+  processing?: boolean
+  className?: string
+  /** When the parent already shows Primary Process (e.g. lead detail header). */
+  hideProcessButton?: boolean
+}
+
+/**
+ * §2.10 Assisted: show suggested vacancy + fit from normalized.lead_qualification_preview_v1;
+ * Automatic blocks: LEAD_FIT_* on lead.error.
+ */
+export default function LeadQualificationSuggestionPanel({
+  lead,
+  isServicesTenant = false,
+  onProcess,
+  processing = false,
+  className = '',
+  hideProcessButton = false,
+}: Props) {
+  const { t } = useI18n()
+
+  if (isServicesTenant || lead.candidate_id) return null
+
+  const preview = readPreview(lead.normalized)
+  const err = lead.error?.trim() || ''
+  const isFitBlock = err === 'LEAD_FIT_NO_MATCH' || err === 'LEAD_FIT_NEEDS_INFO'
+  if (!preview && !isFitBlock) return null
+
+  const blocked = Boolean(preview?.blocked_auto_convert) || isFitBlock
+  const processCtaKey =
+    blocked ? 'app.leads.qualification.accept_process_cta' : 'app.leads.qualification.process_cta'
+  const titleKey = blocked ? 'app.leads.qualification.title_blocked' : 'app.leads.qualification.title_suggested'
+  const fitStatus = preview?.fit_status || null
+  const showProcess =
+    !hideProcessButton &&
+    typeof onProcess === 'function' &&
+    String(lead.source || '').toLowerCase() === 'meta' &&
+    !lead.candidate_id &&
+    (lead.status === 'needs_routing' || lead.status === 'new' || lead.status === 'failed')
+
+  return (
+    <div
+      className={`rounded-lg border p-3 text-sm ${
+        blocked ? 'border-amber-200 bg-amber-50/90 text-amber-950' : 'border-brand-200/80 bg-brand-50/40 text-slate-800'
+      } ${className}`.trim()}
+    >
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">{t(titleKey)}</div>
+      {isFitBlock ? (
+        <p className="mt-1 text-sm text-slate-800">{formatLeadPipelineError(err, t)}</p>
+      ) : null}
+      {preview ? (
+        <>
+          <div className="mt-2 space-y-1 text-slate-800">
+            <div>
+              <span className="font-medium text-slate-600">{t('app.leads.qualification.vacancy_line')}: </span>
+              {lead.vacancy_title || lead.vacancy_id || preview.suggested_vacancy_id || '—'}
+            </div>
+            {fitStatus ? (
+              <div>
+                <span className="font-medium text-slate-600">{t('app.leads.qualification.fit_status_label')}: </span>
+                {(() => {
+                  const k = `app.leads.qualification.fit_status.${fitStatus}`
+                  const tr = t(k)
+                  return tr === k ? fitStatus : tr
+                })()}
+              </div>
+            ) : null}
+          </div>
+          {preview.fit_reasons.length > 0 ? (
+            <div className="mt-2">
+              <div className="text-xs font-medium text-slate-600">{t('app.leads.qualification.reasons_title')}</div>
+              <ul className="mt-1 list-inside list-disc text-xs text-slate-700">
+                {preview.fit_reasons.map((r) => (
+                  <li key={r}>{reasonLabel(r, t)}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {showProcess ? (
+          <button
+            type="button"
+            className="btn-primary h-8 rounded-lg px-3 text-xs"
+            disabled={processing}
+            onClick={() => onProcess?.()}
+          >
+            {processing ? t('common.loading') : t(processCtaKey)}
+          </button>
+        ) : null}
+        <Link
+          to={`${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=settings`}
+          className="btn-secondary inline-flex h-8 items-center rounded-lg px-3 text-xs"
+        >
+          {t('app.leads.qualification.open_meta_settings')}
+        </Link>
+        <Link to={CRM_APP_PATHS.vacancies} className="btn-secondary inline-flex h-8 items-center rounded-lg px-3 text-xs">
+          {t('app.leads.qualification.open_vacancies')}
+        </Link>
+      </div>
+      <p className="mt-2 text-[11px] text-slate-600">{t('app.leads.qualification.footer_hint')}</p>
+    </div>
+  )
+}

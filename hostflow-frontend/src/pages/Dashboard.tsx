@@ -1,6 +1,6 @@
 // src/pages/Dashboard.tsx
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { BarChart, Bar, Line, LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import api, {
   createBulkReminders,
@@ -15,8 +15,11 @@ import { useAuth } from '../store/useAuth'
 import { useCurrentTenantId } from '../contexts/CurrentTenant'
 import { useTenantInfo } from '../contexts/TenantInfo'
 import { OnboardingWizard } from '../components/OnboardingWizard'
+import { DashboardAnalyticsHubLinks } from '../components/dashboard/DashboardAnalyticsHubLinks'
 import { DashboardLeadAutoFixCard } from '../components/dashboard/DashboardLeadAutoFixCard'
-import { DashboardNbaSection } from '../components/nba/DashboardNbaSection'
+import { DashboardSectionCollapsible } from '../components/dashboard/DashboardSectionCollapsible'
+
+const AnalyticsLeadConversionFunnelPageLazy = lazy(() => import('./AnalyticsLeadConversionFunnelPage'))
 import {
   getTrialRetentionReport,
   getAnalyticsProfileSummary,
@@ -50,7 +53,10 @@ import {
   type TrialRetentionReport,
 } from '../api/analytics'
 import { listTenantManagers } from '../api/users'
-import { getBillingSubscription } from '../api/billing'
+import {
+  BILLING_SUBSCRIPTION_UPDATED_EVENT,
+  getBillingSubscriptionCached,
+} from '../api/billingSubscriptionCache'
 import { listCandidateStages } from '../api/candidate_stages'
 import { usePermissions } from '../hooks/usePermissions'
 import { listVacancies } from '../api/vacancies'
@@ -382,17 +388,6 @@ export default function Dashboard() {
   const { can, role, isClientTenant } = usePermissions()
   const canServicesOpsWidgets = useMemo(() => can('services.view'), [can])
   const canVacanciesOpenWidget = useMemo(() => can('vacancies.view'), [can])
-  const canWorkHub = useMemo(
-    () =>
-      can('candidates.view') ||
-      can('companies.view') ||
-      can('leads.view') ||
-      can('vacancies.view') ||
-      can('services.view') ||
-      can('documents.manage'),
-    [can],
-  )
-  const canAnalyticsHub = useMemo(() => can('leads.view') || can('admin.users'), [can])
   const tenant = useTenantInfo()
   const currentTenantId = useCurrentTenantId()
   const tenantId = (currentTenantId ?? (me as { tenant_id?: string })?.tenant_id) ?? 'default'
@@ -402,6 +397,20 @@ export default function Dashboard() {
     return r === 'superadmin' || r === 'administrator' || r === 'supervisor'
   }, [(me as { role?: string })?.role])
   const myUserId = useMemo(() => String((me as { sub?: string })?.sub || '').trim(), [(me as { sub?: string })?.sub])
+  const dashUserBase = useMemo(() => {
+    const safe = (myUserId || 'anon').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 80)
+    return `hf:dashboard:${tenantId}:u:${safe || 'anon'}`
+  }, [tenantId, myUserId])
+  const location = useLocation()
+
+  useEffect(() => {
+    const id = location.hash?.replace(/^#/, '').trim()
+    if (id !== 'lead-conversion') return
+    const run = () => document.getElementById('lead-conversion')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const t = window.setTimeout(run, 120)
+    return () => window.clearTimeout(t)
+  }, [location.hash])
+
   const initialRange = calcRange('90d')
   const [dateFrom, setDateFrom] = useState<string>(initialRange.from)
   const [dateTo, setDateTo] = useState<string>(initialRange.to)
@@ -1010,6 +1019,7 @@ export default function Dashboard() {
   const [companyOptions, setCompanyOptions] = useState<{ id: string; label: string }[]>([])
   const [managerFilter, setManagerFilter] = useState<string>('')
   const [managerOptions, setManagerOptions] = useState<{ id: string; label: string }[]>([])
+  const [candidateFilter, setCandidateFilter] = useState<string>('')
   const [stagesFilter, setStagesFilter] = useState<string[]>([])
   const [stageOptions, setStageOptions] = useState<{ code: string; label: string }[]>([])
   const [handoffStats, setHandoffStats] = useState<Awaited<ReturnType<typeof getHandoffStats>> | null>(null)
@@ -1029,9 +1039,9 @@ export default function Dashboard() {
       return
     }
     let cancelled = false
-    ;(async () => {
+    const loadTrialEnd = async () => {
       try {
-        const subscription = await getBillingSubscription()
+        const subscription = await getBillingSubscriptionCached()
         if (!cancelled) {
           setTrialEndsAt(subscription?.trial_ends_at || null)
         }
@@ -1040,9 +1050,15 @@ export default function Dashboard() {
           setTrialEndsAt(null)
         }
       }
-    })()
+    }
+    void loadTrialEnd()
+    const onBillingUpdated = () => {
+      void loadTrialEnd()
+    }
+    window.addEventListener(BILLING_SUBSCRIPTION_UPDATED_EVENT, onBillingUpdated)
     return () => {
       cancelled = true
+      window.removeEventListener(BILLING_SUBSCRIPTION_UPDATED_EVENT, onBillingUpdated)
     }
   }, [canManageBilling, isTrialTenant])
 
@@ -1282,8 +1298,27 @@ export default function Dashboard() {
     })
   }, [retentionNudge, tenantId, trackRetentionEvent])
 
-  const visibleWidgetsKey = useMemo(() => `hf:dashboard:${tenantId}:visibleWidgets`, [tenantId])
-  const visibleFiltersKey = useMemo(() => `hf:dashboard:${tenantId}:visibleFilters`, [tenantId])
+  const visibleWidgetsKey = useMemo(() => `${dashUserBase}:visibleWidgets`, [dashUserBase])
+  const visibleFiltersKey = useMemo(() => `${dashUserBase}:visibleFilters`, [dashUserBase])
+  const dashboardPresetKey = useMemo(() => `${dashUserBase}:preset`, [dashUserBase])
+
+  useEffect(() => {
+    const migrate = (suffix: string) => {
+      const nk = `${dashUserBase}:${suffix}`
+      const ok = `hf:dashboard:${tenantId}:${suffix}`
+      try {
+        if (!localStorage.getItem(nk) && localStorage.getItem(ok)) {
+          localStorage.setItem(nk, localStorage.getItem(ok)!)
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    migrate('visibleWidgets')
+    migrate('visibleFilters')
+    migrate('preset')
+    migrate('sections')
+  }, [dashUserBase, tenantId])
   const loadVisibleWidgets = useCallback((): Set<string> => {
     try {
       const raw = localStorage.getItem(visibleWidgetsKey)
@@ -1313,7 +1348,7 @@ export default function Dashboard() {
   useEffect(() => {
     setVisibleWidgets(loadVisibleWidgets())
     setVisibleFilters(loadVisibleFilters())
-  }, [tenantId, loadVisibleWidgets, loadVisibleFilters])
+  }, [dashUserBase, loadVisibleWidgets, loadVisibleFilters])
   const isWidgetVisible = useCallback(
     (id: DashboardWidgetId) => visibleWidgets.has(id),
     [visibleWidgets],
@@ -1469,8 +1504,6 @@ export default function Dashboard() {
     [t, translateStageLabel, translateReasonLabel, notAvailableLabel],
   )
 
-  const dashboardPresetKey = useMemo(() => `hf:dashboard:${tenantId}:preset`, [tenantId])
-
   const load = async (overrides?: LoadOverrides) => {
     const from = overrides?.from ?? dateFrom
     const to = overrides?.to ?? dateTo
@@ -1481,6 +1514,9 @@ export default function Dashboard() {
       overrides && 'companyId' in overrides ? (overrides.companyId ?? '') : companyFilter
     const managerId =
       overrides && 'managerId' in overrides ? (overrides.managerId ?? '') : managerFilter
+    const candidateIdRaw =
+      overrides && 'candidateId' in overrides ? (overrides.candidateId ?? '') : candidateFilter
+    const candidateId = String(candidateIdRaw || '').trim()
     const stages =
       overrides && 'stages' in overrides ? (overrides.stages ?? []) : stagesFilter
     const doCompare = overrides?.compare ?? compareWithPrevious
@@ -1499,6 +1535,7 @@ export default function Dashboard() {
       if (vacancyId) params.vacancy_id = vacancyId
       if (companyId) params.company_id = companyId
       if (managerId) params.manager_id = managerId
+      if (candidateId) params.candidate_id = candidateId
       if (stages.length > 0) params.stages = stages
       if (scopeTid) params.scope_tenant_id = scopeTid
 
@@ -1690,6 +1727,12 @@ export default function Dashboard() {
     load({ managerId: value })
   }
 
+  const handleCandidateFilterApply = (raw: string) => {
+    const v = raw.trim()
+    setCandidateFilter(v)
+    load({ candidateId: v || null })
+  }
+
   const handleStagesChange = (codes: string[]) => {
     setStagesFilter(codes)
     load({ stages: codes })
@@ -1699,6 +1742,7 @@ export default function Dashboard() {
     setVacancyFilter('')
     setCompanyFilter('')
     setManagerFilter('')
+    setCandidateFilter('')
     setStagesFilter([])
     setCompareWithPrevious(false)
     const next = calcRange('90d')
@@ -1706,7 +1750,16 @@ export default function Dashboard() {
     setDateTo(next.to)
     setActiveRange('90d')
     setDateField('created')
-    load({ from: next.from, to: next.to, vacancyId: null, companyId: null, managerId: null, stages: [], compare: false })
+    load({
+      from: next.from,
+      to: next.to,
+      vacancyId: null,
+      companyId: null,
+      managerId: null,
+      candidateId: null,
+      stages: [],
+      compare: false,
+    })
   }
 
   const handleSavePreset = () => {
@@ -1718,6 +1771,7 @@ export default function Dashboard() {
       vacancyFilter,
       companyFilter,
       managerFilter,
+      candidateFilter,
       stagesFilter: [...stagesFilter],
       compareWithPrevious,
       visibleWidgets: [...visibleWidgets],
@@ -1745,6 +1799,7 @@ export default function Dashboard() {
       setVacancyFilter(preset.vacancyFilter || '')
       setCompanyFilter(preset.companyFilter || '')
       setManagerFilter(preset.managerFilter || '')
+      setCandidateFilter(preset.candidateFilter || '')
       setStagesFilter(Array.isArray(preset.stagesFilter) ? preset.stagesFilter : [])
       setCompareWithPrevious(Boolean(preset.compareWithPrevious))
       if (Array.isArray(preset.visibleWidgets)) {
@@ -1772,6 +1827,7 @@ export default function Dashboard() {
         vacancyId: preset.vacancyFilter || null,
         companyId: preset.companyFilter || null,
         managerId: preset.managerFilter || null,
+        candidateId: preset.candidateFilter || null,
         stages: preset.stagesFilter,
         compare: preset.compareWithPrevious,
       })
@@ -2333,34 +2389,47 @@ export default function Dashboard() {
     <section className="h-full min-h-0 w-full flex flex-col">
       <div className="min-h-0 flex-1 space-y-0 gap-0 overflow-auto px-0 py-0">
         {tenantId && retentionStatus?.onboarding_required === true && <OnboardingWizard tenantId={tenantId} />}
-        <DashboardNbaSection />
         <DashboardLeadAutoFixCard opsCounters={opsCounters} onRefreshOps={loadOpsCounters} />
-        {canWorkHub || canAnalyticsHub ? (
-          <div
-            className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-200 bg-slate-50/90 px-4 py-2.5"
-            role="navigation"
-            aria-label={t('app.dashboard.hubs.aria')}
-          >
-            {canWorkHub ? (
-              <Link
-                to={CRM_APP_PATHS.work}
-                className="text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline"
-                title={t('app.dashboard.hubs.work_aria')}
-              >
-                {t('app.dashboard.hubs.work')} <span className="text-[10px] font-normal text-slate-500">↗</span>
-              </Link>
-            ) : null}
-            {canAnalyticsHub ? (
-              <Link
-                to={CRM_APP_PATHS.analytics}
-                className="text-sm font-medium text-brand-700 hover:text-brand-800 hover:underline"
-                title={t('app.dashboard.hubs.analytics_aria')}
-              >
-                {t('app.dashboard.hubs.analytics')} <span className="text-[10px] font-normal text-slate-500">↗</span>
-              </Link>
-            ) : null}
-          </div>
-        ) : null}
+        {(() => {
+          const slow = stageVelocityRows[0]
+          const showStrip =
+            can('leads.view') || documentBlockerAnalytics.total > 0 || Boolean(slow && slow.avgDays >= 2 && slow.total >= 2)
+          if (!showStrip) return null
+          return (
+            <div className="mb-3 rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-700">
+                <span className="font-semibold text-slate-900">
+                  {t('app.dashboard.insights_strip.title', { defaultValue: 'Signals' })}
+                </span>
+                {can('leads.view') ? (
+                  <a className="text-brand-700 hover:underline" href="#lead-conversion">
+                    {t('app.dashboard.insights_strip.lead_funnel', { defaultValue: 'Lead conversion funnel →' })}
+                  </a>
+                ) : null}
+                {documentBlockerAnalytics.total > 0 ? (
+                  <Link className="text-amber-800 hover:underline" to={documentQuickFilterHref('missing')}>
+                    {t('app.dashboard.insights_strip.docs_blockers', {
+                      defaultValue: '{count} document issues →',
+                      values: { count: documentBlockerAnalytics.total },
+                    })}
+                  </Link>
+                ) : null}
+                {slow && slow.avgDays >= 2 && slow.total >= 2 ? (
+                  <span className="text-slate-600">
+                    {t('app.dashboard.insights_strip.slow_stage', {
+                      defaultValue: 'Avg time in «{stage}»: ~{days} d ({n} candidates)',
+                      values: {
+                        stage: slow.label,
+                        days: Math.round(slow.avgDays * 10) / 10,
+                        n: slow.total,
+                      },
+                    })}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          )
+        })()}
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -3507,8 +3576,11 @@ export default function Dashboard() {
             )}
           </div>
         )}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-xl font-semibold">{t('app.dashboard.title')}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold">{t('app.dashboard.title')}</h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">{t('app.dashboard.page_subtitle')}</p>
+          </div>
           <div className="flex items-center gap-2">
             <button className="btn-secondary" onClick={() => load()} disabled={loading || rangeInvalid}>
               {loading ? t('app.dashboard.refresh.loading') : t('app.dashboard.refresh.action')}
@@ -3589,6 +3661,27 @@ export default function Dashboard() {
                     <option key={opt.id} value={opt.id}>{opt.label}</option>
                   ))}
                 </select>
+              </label>
+            )}
+            {isFilterVisible('candidate') && (
+              <label className="flex flex-col text-xs gap-0.5">
+                <span className="text-slate-500">{t('app.dashboard.filters.candidate')}</span>
+                <input
+                  type="text"
+                  className="input input-sm w-44 font-mono"
+                  value={candidateFilter}
+                  onChange={(e) => setCandidateFilter(e.target.value)}
+                  onBlur={(e) => handleCandidateFilterApply(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleCandidateFilterApply((e.target as HTMLInputElement).value)
+                      ;(e.target as HTMLInputElement).blur()
+                    }
+                  }}
+                  placeholder={t('app.dashboard.filters.candidate_placeholder')}
+                  autoComplete="off"
+                />
               </label>
             )}
             {isFilterVisible('stages') && (
@@ -3693,7 +3786,7 @@ export default function Dashboard() {
                 {t('app.dashboard.filters.configure')}
               </summary>
               <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg py-2 min-w-[180px] max-h-[280px] overflow-y-auto">
-                {(['period', 'dateRange', 'dateField', 'vacancy', 'company', 'manager', 'stages', 'compare', 'presets', 'widgets'] as DashboardFilterId[]).map((fid) => (
+                {(['period', 'dateRange', 'dateField', 'vacancy', 'company', 'manager', 'candidate', 'stages', 'compare', 'presets', 'widgets'] as DashboardFilterId[]).map((fid) => (
                   <label
                     key={fid}
                     className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50 cursor-pointer text-sm"
@@ -3718,9 +3811,50 @@ export default function Dashboard() {
             </span>
             {loading && <span>{t('common.loading')}</span>}
           </div>
+        </div>
+
+        {!can('leads.view') && can('manager.tools') ? (
+          <DashboardSectionCollapsible
+            storagePrefix={dashUserBase}
+            sectionKey="shortcutsHub"
+            title={t('app.dashboard.sections.shortcuts.title')}
+            subtitle={t('app.dashboard.sections.shortcuts.subtitle')}
+            defaultOpen={false}
+          >
+            <div className="p-4">
+              <DashboardAnalyticsHubLinks />
+            </div>
+          </DashboardSectionCollapsible>
+        ) : null}
+
+        {can('leads.view') ? (
+          <DashboardSectionCollapsible
+            id="lead-conversion"
+            storagePrefix={dashUserBase}
+            sectionKey="leadFunnel"
+            title={t('app.dashboard.sections.lead_funnel.title')}
+            subtitle={t('app.dashboard.sections.lead_funnel.subtitle')}
+            defaultOpen
+          >
+            <div className="p-4">
+              <Suspense fallback={<div className="px-2 py-4 text-sm text-slate-500">{t('common.loading')}</div>}>
+                <AnalyticsLeadConversionFunnelPageLazy embedded />
+              </Suspense>
+            </div>
+          </DashboardSectionCollapsible>
+        ) : null}
+
+        <DashboardSectionCollapsible
+          storagePrefix={dashUserBase}
+          sectionKey="workspaceSlices"
+          title={t('app.dashboard.sections.slices.title')}
+          subtitle={t('app.dashboard.sections.slices.subtitle')}
+          defaultOpen
+        >
+          <div className="space-y-4 px-1 pb-2 pt-1 sm:px-2">
 
         {isWidgetVisible('pivot') && (
-        <div className="border-t border-slate-100 pt-4 mt-2">
+        <div className="border-t border-slate-100 pt-4 mt-2 sm:border-0 sm:pt-0">
         <>
           <div className="flex flex-wrap items-end gap-3">
             <div>
@@ -3847,7 +3981,6 @@ export default function Dashboard() {
         </>
         </div>
         )}
-        </div>
 
         {isWidgetVisible('pivotChart') && pivotData.rows.length > 0 && (
         <div className="card min-w-0 p-4 space-y-3">
@@ -4623,6 +4756,8 @@ export default function Dashboard() {
           )}
         </div>
         )}
+          </div>
+        </DashboardSectionCollapsible>
       </div>
     </section>
   )

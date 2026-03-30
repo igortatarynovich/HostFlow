@@ -38,22 +38,34 @@ ASYNC_DATABASE_URL: str = _force_async_driver(settings.ASYNC_DATABASE_URL)
 _db_url_obj: URL = make_url(ASYNC_DATABASE_URL)
 _is_postgres = _db_url_obj.drivername.startswith("postgresql")
 
+_null_pool = os.getenv("HOSTFLOW_SQLALCHEMY_NULL_POOL", "").strip().lower() in ("1", "true", "yes")
+
 if _is_postgres:
-    pool_size = int(os.getenv("DB_POOL_SIZE", "20"))
-    max_overflow = int(os.getenv("DB_POOL_MAX_OVERFLOW", "20"))
-    pool_timeout = int(os.getenv("DB_POOL_TIMEOUT", "30"))
-    pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "1800"))
-    engine = create_async_engine(
-        ASYNC_DATABASE_URL,
-        future=True,
-        echo=False,
-        pool_pre_ping=True,
-        pool_size=pool_size,
-        max_overflow=max_overflow,
-        pool_timeout=pool_timeout,
-        pool_recycle=pool_recycle,
-        pool_use_lifo=True,
-    )
+    if _null_pool:
+        # Pytest / multi-loop: queue pool keeps asyncpg conns tied to a closed loop (GC _cancel warnings).
+        engine = create_async_engine(
+            ASYNC_DATABASE_URL,
+            future=True,
+            echo=False,
+            pool_pre_ping=False,
+            poolclass=NullPool,
+        )
+    else:
+        pool_size = int(os.getenv("DB_POOL_SIZE", "20"))
+        max_overflow = int(os.getenv("DB_POOL_MAX_OVERFLOW", "20"))
+        pool_timeout = int(os.getenv("DB_POOL_TIMEOUT", "30"))
+        pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "1800"))
+        engine = create_async_engine(
+            ASYNC_DATABASE_URL,
+            future=True,
+            echo=False,
+            pool_pre_ping=True,
+            pool_size=pool_size,
+            max_overflow=max_overflow,
+            pool_timeout=pool_timeout,
+            pool_recycle=pool_recycle,
+            pool_use_lifo=True,
+        )
 else:
     engine = create_async_engine(
         ASYNC_DATABASE_URL,

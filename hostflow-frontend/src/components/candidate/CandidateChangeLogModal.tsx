@@ -3,6 +3,9 @@ import { Modal } from '../Modal'
 import { useI18n } from '../../i18n'
 import { formatDateSafe } from '../../modules/candidates/candidateUtils'
 import { getCandidateChangeLog } from '../../api/client'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 
 type ChangeLogItem = {
   at: string
@@ -24,25 +27,29 @@ export default function CandidateChangeLogModal({
   locale: string
 }) {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [loading, setLoading] = useState(false)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<FriendlyErrorInfo | null>(null)
   const [items, setItems] = useState<ChangeLogItem[]>([])
 
   const load = useCallback(async () => {
     if (!candidateId) return
     setLoading(true)
-    setErrorText(null)
+    setLoadError(null)
     try {
       const data = await getCandidateChangeLog(candidateId, { limit: 200 })
       const raw = Array.isArray(data?.items) ? data.items : []
       setItems(raw)
     } catch (err: any) {
-      setErrorText(err?.response?.data?.detail ?? err?.message ?? 'Request failed')
+      const fb = t('app.candidate_card.change_log.load_failed', { defaultValue: 'Failed to load change log' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setLoadError(getFriendlyErrorInfo(err, fb, t))
+      }
       setItems([])
     } finally {
       setLoading(false)
     }
-  }, [candidateId])
+  }, [candidateId, planLimitModal, t])
 
   useEffect(() => {
     if (!open) return
@@ -58,9 +65,14 @@ export default function CandidateChangeLogModal({
     <Modal open={open} onClose={onClose} title={title}>
       <div className="space-y-3">
         {loading ? <div className="text-sm text-slate-500">{t('common.loading')}</div> : null}
-        {errorText ? <div className="text-sm text-red-600">{errorText}</div> : null}
+        {loadError ? (
+          <div className="text-sm text-red-600">
+            <div>{loadError.title}</div>
+            {loadError.detail ? <div className="mt-1 text-xs text-red-700/90">{loadError.detail}</div> : null}
+          </div>
+        ) : null}
 
-        {!loading && !errorText && items.length === 0 ? (
+        {!loading && !loadError && items.length === 0 ? (
           <div className="text-sm text-slate-500">
             {t('app.candidate_card.change_log.empty', { defaultValue: 'No changes yet.' })}
           </div>

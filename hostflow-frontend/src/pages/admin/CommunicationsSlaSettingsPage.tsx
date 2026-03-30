@@ -4,28 +4,18 @@ import { getCommunicationsSettings, patchCommunicationsSettings } from '../../ap
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
 const CHANNEL_OPTIONS = ['telegram', 'whatsapp', 'viber', 'messenger', 'instagram', 'email', 'sms'] as const
 const RESERVED_ESCALATION_TARGETS = new Set(['all', 'none', 'default', 'system', 'auto', 'role', 'queue', 'user'])
 
-function errorTextFrom(err: any, fallback: string) {
-  const d = err?.response?.data?.detail
-  if (typeof d === 'string') return d
-  if (Array.isArray(d)) {
-    const msg = d.map((x) => (typeof x?.msg === 'string' ? x.msg : null)).filter(Boolean).join('; ')
-    if (msg) return msg
-  }
-  if (d && typeof d === 'object') {
-    if (typeof d.msg === 'string') return d.msg
-    try { return JSON.stringify(d) } catch {}
-  }
-  return err?.message || fallback
-}
-
 export default function CommunicationsSlaSettingsPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [loading, setLoading] = useState(true)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
   const [saveBusy, setSaveBusy] = useState(false)
   const [settings, setSettings] = useState<any | null>(null)
@@ -46,13 +36,22 @@ export default function CommunicationsSlaSettingsPage() {
           setNewEscalationTarget('')
         }
       } catch (err: any) {
-        if (mounted) setErrorText(errorTextFrom(err, t('admin.communications_sla.errors.load', { defaultValue: 'Failed to load SLA settings' })))
+        if (mounted) {
+          if (
+            !planLimitModal?.showPlanLimitIfNeeded(
+              err,
+              t('admin.communications_sla.errors.load', { defaultValue: 'Failed to load SLA settings' }),
+            )
+          ) {
+            setError(getFriendlyErrorInfo(err, t('admin.communications_sla.errors.load', { defaultValue: 'Failed to load SLA settings' }), t))
+          }
+        }
       } finally {
         if (mounted) setLoading(false)
       }
     })()
     return () => { mounted = false }
-  }, [])
+  }, [planLimitModal, t])
 
   const sla = settings?.sla || null
 
@@ -68,17 +67,24 @@ export default function CommunicationsSlaSettingsPage() {
   const saveSlaSettings = useCallback(async (nextSla: any) => {
     setSaveBusy(true)
     setSaveNotice(null)
-    setErrorText(null)
+    setError(null)
     try {
       const patched = await patchCommunicationsSettings({ sla: nextSla })
       setSettings(patched)
       setSaveNotice(t('common.saved', { defaultValue: 'Saved' }))
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('admin.communications_sla.errors.save', { defaultValue: 'Failed to save SLA settings' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('admin.communications_sla.errors.save', { defaultValue: 'Failed to save SLA settings' }),
+        )
+      ) {
+        setError(getFriendlyErrorInfo(err, t('admin.communications_sla.errors.save', { defaultValue: 'Failed to save SLA settings' }), t))
+      }
     } finally {
       setSaveBusy(false)
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   const patchSla = useCallback((partial: Record<string, any>) => {
     if (!sla) return
@@ -135,14 +141,19 @@ export default function CommunicationsSlaSettingsPage() {
     if (!normalized) return
     const validationError = validateTargetId(normalized)
     if (validationError) {
-      setErrorText(validationError)
+      setError(friendlyFormHintError(validationError, t))
       return
     }
     if (escalationTargets.includes(normalized)) {
-      setErrorText(t('admin.communications_sla.escalation_targets_error_duplicate', { defaultValue: 'This queue ID already exists.' }))
+      setError(
+        friendlyFormHintError(
+          t('admin.communications_sla.escalation_targets_error_duplicate', { defaultValue: 'This queue ID already exists.' }),
+          t,
+        ),
+      )
       return
     }
-    setErrorText(null)
+    setError(null)
     setEscalationTargets((prev) => (prev.includes(normalized) ? prev : [...prev, normalized]))
     setNewEscalationTarget('')
   }
@@ -154,10 +165,13 @@ export default function CommunicationsSlaSettingsPage() {
   const saveEscalationTargets = () => {
     if (!sla) return
     if (invalidTargets.length > 0) {
-      setErrorText(
-        t('admin.communications_sla.escalation_targets_error_invalid_existing', {
-          defaultValue: 'Remove or fix invalid queue IDs before saving escalation targets.',
-        }),
+      setError(
+        friendlyFormHintError(
+          t('admin.communications_sla.escalation_targets_error_invalid_existing', {
+            defaultValue: 'Remove or fix invalid queue IDs before saving escalation targets.',
+          }),
+          t,
+        ),
       )
       return
     }
@@ -183,16 +197,16 @@ export default function CommunicationsSlaSettingsPage() {
       </div>
 
       {loading && <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
-      {errorText && (
+      {error && (
         <ErrorRecoveryBanner
-          info={{
-            title: errorText,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
+          info={error}
           onRetry={() => window.location.reload()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo={CRM_APP_PATHS.settingsCommunications}
-          secondaryLabel={t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
+          {...friendlyErrorBannerSecondary(
+            error,
+            CRM_APP_PATHS.settingsCommunications,
+            t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' }),
+          )}
           compact
         />
       )}

@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import subprocess
 import uuid
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from typing import Dict
 
@@ -19,6 +21,106 @@ os.environ["JWT_SECRET"] = os.environ.get("JWT_SECRET", "hostflow-dev-secret")
 os.environ["ALLOW_SQLITE_FOR_TESTS"] = "0"
 os.environ["DOCUMENTS_DISABLED"] = "0"
 os.environ.setdefault("DEV_DB_PATH", "/tmp/hostflow-test.db")
+# Avoid communications_scheduler_loop during ASGI lifespan (slow/teardown TimeoutError on dev DB).
+os.environ.setdefault("COMM_SCHEDULER_ENABLED", "0")
+# One connection per checkout: avoids asyncpg pool vs pytest-asyncio loop mismatch (Connection._cancel warnings).
+os.environ.setdefault("HOSTFLOW_SQLALCHEMY_NULL_POOL", "1")
+
+
+def _pytest_localize_postgres_host() -> None:
+    """Compose uses hostname `db`; on the dev host it often does not resolve (gaierror).
+
+    Rewrite ASYNC_DATABASE_URL / SYNC_DATABASE_URL / DATABASE_URL before any backend import
+    that builds the engine. Override with HOSTFLOW_TEST_DB_HOST or PYTEST_DB_HOST if needed.
+    """
+    import re
+    import socket
+    from pathlib import Path
+
+    try:
+        from dotenv import load_dotenv
+
+        _root = Path(__file__).resolve().parents[2]
+        load_dotenv(_root / ".env", override=False)
+        load_dotenv(_root / "backend" / ".env", override=False)
+    except Exception:
+        pass
+
+    keys = ("ASYNC_DATABASE_URL", "SYNC_DATABASE_URL", "DATABASE_URL")
+    override = (os.environ.get("HOSTFLOW_TEST_DB_HOST") or os.environ.get("PYTEST_DB_HOST") or "").strip()
+    if override:
+        for key in keys:
+            val = os.environ.get(key)
+            if val and "@db:" in val:
+                os.environ[key] = re.sub(r"@db:", f"@{override}:", val)
+        return
+
+    try:
+        socket.getaddrinfo("db", 5432, type=socket.SOCK_STREAM)
+        return
+    except OSError:
+        pass
+
+    for key in keys:
+        val = os.environ.get(key)
+        if val and "@db:" in val:
+            os.environ[key] = re.sub(r"@db:", "@127.0.0.1:", val)
+
+
+_pytest_localize_postgres_host()
+
+
+def _alembic_executable(repo_root: Path) -> str | None:
+    for rel in (".venv/bin/alembic", ".venv312/bin/alembic"):
+        p = repo_root / rel
+        if p.is_file():
+            return str(p)
+    import shutil
+
+    return shutil.which("alembic")
+
+
+def _env_with_local_db_host(base: dict[str, str]) -> dict[str, str]:
+    """Subprocess may run before app settings; mirror conftest @db → 127.0.0.1 rewrite."""
+    import re
+
+    out = dict(base)
+    for key in ("ALEMBIC_DATABASE_URL", "SYNC_DATABASE_URL", "DATABASE_URL", "ASYNC_DATABASE_URL"):
+        val = out.get(key)
+        if val and "@db:" in val:
+            out[key] = re.sub(r"@db:", "@127.0.0.1:", val)
+    return out
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Apply Alembic migrations so ORM columns (e.g. FTS tsvector) exist on the test DB."""
+    if os.environ.get("HOSTFLOW_SKIP_ALEMBIC_UPGRADE", "").strip().lower() in ("1", "true", "yes"):
+        return
+    backend_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
+    alembic_ini = backend_root / "alembic.ini"
+    if not alembic_ini.is_file():
+        return
+    url = (
+        os.environ.get("ALEMBIC_DATABASE_URL")
+        or os.environ.get("SYNC_DATABASE_URL")
+        or os.environ.get("DATABASE_URL")
+        or ""
+    )
+    if not url or url.startswith("sqlite:"):
+        return
+    alembic_bin = _alembic_executable(repo_root)
+    if not alembic_bin:
+        raise RuntimeError(
+            "Alembic executable not found (.venv/bin/alembic). Run `make install` or set HOSTFLOW_SKIP_ALEMBIC_UPGRADE=1."
+        )
+    subprocess.run(
+        [alembic_bin, "-c", str(alembic_ini), "upgrade", "head"],
+        cwd=str(backend_root),
+        check=True,
+        env=_env_with_local_db_host(os.environ),
+    )
+
 
 from backend.app.auth.jwt_tools import encode as encode_jwt  # noqa: E402
 from backend.app.core.security import hash_password  # noqa: E402
@@ -429,7 +531,8 @@ def auth_headers(manager_token: str, tenant_id: str) -> Dict[str, str]:
 async def candidate_id() -> str:
     data = await _init_data()
     candidate_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
+    # Candidate.created_at/updated_at are naive UTC columns.
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     async with async_session_maker() as session:
         await _set_tenant(session, data["tenant_id"])
         candidate = Candidate(

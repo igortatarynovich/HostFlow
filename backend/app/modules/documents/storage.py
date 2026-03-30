@@ -17,6 +17,10 @@ from ...models.enums import DocumentProcessType, DocumentStatus
 from backend.app.services.document_catalog import normalize_process_type, normalize_status
 from backend.app.services.document_workflow import auto_status as compute_auto_status
 from backend.app.modules.documents.crud import _as_date
+from backend.app.services.tenant_quota import (
+    ensure_tenant_storage_bytes_fits,
+    sum_file_entries_bytes,
+)
 
 _HERE = Path(__file__).resolve()
 _BACKEND_ROOT = _HERE.parents[3]
@@ -179,6 +183,15 @@ async def register_document_upload(
         files.append(entry)
         _assign_versions(files)
 
+        prev_b = sum_file_entries_bytes(_normalize_files(doc.files))
+        next_b = sum_file_entries_bytes(files)
+        await ensure_tenant_storage_bytes_fits(
+            session,
+            doc.tenant_id,
+            previous_doc_attribution_bytes=prev_b,
+            next_doc_attribution_bytes=next_b,
+        )
+
         doc.files = files
         doc.filename = entry.get("name")
         doc.path = entry.get("url")
@@ -236,6 +249,7 @@ async def register_document_upload(
 
 
 async def ensure_document_files(session: AsyncSession, doc: Document) -> List[Dict[str, Any]]:
+    prev_b = sum_file_entries_bytes(doc.files)
     files = _normalize_files(doc.files)
     root = get_uploads_root()
     doc_dir = root / "documents" / str(doc.id)
@@ -326,6 +340,13 @@ async def ensure_document_files(session: AsyncSession, doc: Document) -> List[Di
     extra["history"] = history
 
     if changed:
+        next_b = sum_file_entries_bytes(files)
+        await ensure_tenant_storage_bytes_fits(
+            session,
+            doc.tenant_id,
+            previous_doc_attribution_bytes=prev_b,
+            next_doc_attribution_bytes=next_b,
+        )
         doc.files = files
         doc.extra = extra
         doc.updated_at = datetime.now(timezone.utc)

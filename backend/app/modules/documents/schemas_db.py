@@ -299,6 +299,7 @@ DocumentListOut = List[DocumentOut]
 class RulesetVersionOut(BaseModel):
     id: str
     tenant_id: str
+    own_company_id: Optional[str] = None
     version: int
     ruleset: Dict[str, Any]
     comment: Optional[str] = None

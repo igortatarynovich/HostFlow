@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import type { TenantRecord, WhoAmI } from '../api/types'
+import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
 import { getCurrentTenant } from '../api/tenants'
 import { getOnboardingStatus, settings, type OnboardingStatus } from '../api/client'
 import { setTenantId } from '../api/http'
@@ -76,6 +77,10 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
       settings.set(id)
       setTenantId(id)
     }
+  }, [me?.tenant_id])
+
+  useEffect(() => {
+    invalidateBillingSubscriptionCache()
   }, [me?.tenant_id])
 
   useEffect(() => {
@@ -177,7 +182,6 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
             items={shellNavItems}
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
-            onLogout={onLogout}
             pendingHandoffsCount={pendingHandoffsCount}
           />
 
@@ -217,7 +221,10 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                 className={
                   isCrmWorkspace
                     ? clsx(
-                        'flex min-h-0 w-full flex-1 flex-col px-0 py-0',
+                        'flex min-h-0 w-full flex-1 flex-col',
+                        isSettingsArea
+                          ? 'px-4 pb-10 pt-1 sm:px-6 lg:px-8'
+                          : 'px-0 py-0',
                         isCandidatesTablePage && 'overflow-hidden',
                       )
                     : 'w-full px-6 py-6 lg:px-10'
@@ -232,6 +239,10 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                     'app-ui min-h-0',
                     isSettingsArea && 'settings-surface',
                     isCrmWorkspace && 'crm-workspace-fill',
+                    isCrmWorkspace &&
+                      !isSettingsArea &&
+                      !isCandidatesTablePage &&
+                      'crm-page-inset',
                     isCandidatesTablePage && 'flex min-h-0 flex-1 flex-col overflow-hidden',
                   )}
                 >

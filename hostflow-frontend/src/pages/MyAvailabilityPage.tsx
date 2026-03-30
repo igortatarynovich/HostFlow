@@ -15,27 +15,16 @@ import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-
-function errorTextFrom(err: any, fallback: string): string {
-  const detail = err?.response?.data?.detail
-  if (typeof detail === 'string' && detail.trim()) return detail
-  if (Array.isArray(detail)) {
-    const msg = detail.map((x) => (typeof x?.msg === 'string' ? x.msg : null)).filter(Boolean).join('; ')
-    if (msg) return msg
-  }
-  if (detail && typeof detail === 'object') {
-    if (typeof detail.msg === 'string' && detail.msg.trim()) return detail.msg
-    try { return JSON.stringify(detail) } catch {}
-  }
-  if (typeof err?.message === 'string' && err.message.trim()) return err.message
-  return fallback
-}
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 
 export default function MyAvailabilityPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
   const [loading, setLoading] = useState(true)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [busy, setBusy] = useState(false)
   const [items, setItems] = useState<CommunicationTimeOffRequest[]>([])
   const [workingHours, setWorkingHours] = useState<WorkingHoursSchedule | null>(null)
@@ -52,7 +41,7 @@ export default function MyAvailabilityPage() {
 
   const loadMine = useCallback(async () => {
     setLoading(true)
-    setErrorText(null)
+    setError(null)
     try {
       const [res, wh] = await Promise.all([
         listCommunicationTimeOffRequests({ mine_only: true, limit: 100 }),
@@ -61,11 +50,24 @@ export default function MyAvailabilityPage() {
       setItems(Array.isArray(res.items) ? res.items : [])
       if (wh) setWorkingHours(wh)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.my_availability.errors.load_requests', { defaultValue: 'Failed to load requests' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.my_availability.errors.load_requests', { defaultValue: 'Failed to load requests' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.communications.my_availability.errors.load_requests', { defaultValue: 'Failed to load requests' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [planLimitModal, t])
   const defaultDays = useMemo<WorkingHoursDay[]>(() => {
     const weekdays = [0, 1, 2, 3, 4]
     return weekdays.map((weekday) => ({
@@ -140,13 +142,26 @@ export default function MyAvailabilityPage() {
     try {
       const saved = await upsertMyWorkingHours(effectiveWorkingHours)
       setWorkingHours(saved)
-      setErrorText(null)
+      setError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.my_availability.errors.save_working_hours', { defaultValue: 'Failed to save working hours' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.my_availability.errors.save_working_hours', { defaultValue: 'Failed to save working hours' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.communications.my_availability.errors.save_working_hours', { defaultValue: 'Failed to save working hours' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setWorkingBusy(false)
     }
-  }, [effectiveWorkingHours])
+  }, [effectiveWorkingHours, planLimitModal, t])
 
   useEffect(() => {
     void loadMine()
@@ -176,26 +191,52 @@ export default function MyAvailabilityPage() {
       })
       setForm((p) => ({ ...p, reason: '' }))
       await loadMine()
-      setErrorText(null)
+      setError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.my_availability.errors.create_request', { defaultValue: 'Failed to create request' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.my_availability.errors.create_request', { defaultValue: 'Failed to create request' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.communications.my_availability.errors.create_request', { defaultValue: 'Failed to create request' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [form, loadMine])
+  }, [form, loadMine, planLimitModal, t])
 
   const handleCancel = useCallback(async (id: string) => {
     setBusy(true)
     try {
       await cancelCommunicationTimeOffRequest(id)
       await loadMine()
-      setErrorText(null)
+      setError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.my_availability.errors.cancel_request', { defaultValue: 'Failed to cancel request' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.my_availability.errors.cancel_request', { defaultValue: 'Failed to cancel request' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.communications.my_availability.errors.cancel_request', { defaultValue: 'Failed to cancel request' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [loadMine])
+  }, [loadMine, planLimitModal, t])
 
   return (
     <div className="space-y-4">
@@ -292,14 +333,17 @@ export default function MyAvailabilityPage() {
           </div>
         </div>
 
-        {errorText && (
+        {error && (
           <div className="mt-2">
             <ErrorRecoveryBanner
-              info={{ title: errorText, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+              info={error}
               onRetry={() => void loadMine()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              secondaryTo={CRM_APP_PATHS.timeOff}
-              secondaryLabel={t('app.communications.ia.timeoff_title', { defaultValue: 'Time-off Requests' })}
+              {...friendlyErrorBannerSecondary(
+                error,
+                CRM_APP_PATHS.timeOff,
+                t('app.communications.ia.timeoff_title', { defaultValue: 'Time-off Requests' }),
+              )}
               compact
             />
           </div>

@@ -198,6 +198,7 @@ async def attach_candidate(
             str(tenant_id),
             str(payload.candidate_id),
             template_id=template_id,
+            own_company_id=str(getattr(vacancy, "own_company_id", None) or "").strip() or None,
         )
 
     return {

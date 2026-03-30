@@ -43,6 +43,17 @@ from backend.app.services.legal_documents import list_active_for_tenant
 from backend.app.services.events import EventAudience, emit_event
 from backend.app.models.user import Role
 from backend.app.services.source_labels import normalize_candidate_source
+from backend.app.services.tenant_quota import (
+    ensure_active_candidate_quota,
+    ensure_tenant_document_quota,
+    ensure_tenant_storage_bytes_fits,
+    sum_file_entries_bytes,
+)
+from backend.app.services.lead_forms_quota import (
+    lead_form_meta_for_intake_state,
+    list_active_lead_forms_with_public_slug,
+    load_active_lead_form_for_public_intake,
+)
 from backend.app.services.candidate_telegram_notifications import (
     send_candidate_documents_progress_telegram,
     sync_candidate_ready_for_handoff_gate,
@@ -185,6 +196,7 @@ class IntakeData(BaseModel):
     experience: IntakeExperience = Field(default_factory=IntakeExperience)
     employments: List[IntakeEmployment] = Field(default_factory=list)
     agreements: IntakeAgreements = Field(default_factory=IntakeAgreements)
+    lead_form: Optional[Dict[str, Any]] = None
 
 
 class PublicIntakeCreateRequest(BaseModel):
@@ -192,6 +204,14 @@ class PublicIntakeCreateRequest(BaseModel):
     vacancy_id: Optional[UUID] = None
     locale: Optional[str] = None
     source: Optional[str] = None
+    lead_form_id: Optional[str] = Field(default=None, max_length=36)
+    lead_form_slug: Optional[str] = Field(default=None, max_length=64)
+
+
+class PublicLeadFormListItem(BaseModel):
+    id: str
+    title: str
+    public_slug: str
 
 
 class PublicIntakeCreateResponse(BaseModel):
@@ -1008,6 +1028,10 @@ async def _save_public_document_upload(
                 current_files.append(dict(entry))
 
     next_version = _next_version(current_files)
+    try:
+        upload_size = int(os.path.getsize(target_path))
+    except OSError:
+        upload_size = 0
     primary_entry = {
         "name": original_name or os.path.basename(rel_path),
         "url": download_url,
@@ -1015,6 +1039,7 @@ async def _save_public_document_upload(
         "source": "public-upload",
         "storage_path": rel_path,
         "version": next_version,
+        "size": upload_size,
         "mime": (
             upload_file.content_type
             if upload_file and upload_file.content_type
@@ -1026,6 +1051,18 @@ async def _save_public_document_upload(
 
     current_files = [entry for entry in current_files if isinstance(entry, dict)]
     current_files.append(primary_entry)
+
+    tid = str(candidate.tenant_id)
+    prev_doc_b = sum_file_entries_bytes(existing.files if existing else [])
+    next_doc_b = sum_file_entries_bytes(current_files)
+    if not existing:
+        await ensure_tenant_document_quota(session, tid)
+    await ensure_tenant_storage_bytes_fits(
+        session,
+        tid,
+        previous_doc_attribution_bytes=prev_doc_b,
+        next_doc_attribution_bytes=next_doc_b,
+    )
 
     meta_payload: Dict[str, Any] = {
         "title": resolved_title,
@@ -1255,12 +1292,15 @@ async def _list_employments(session: AsyncSession, tenant_id: UUID, candidate_id
 
 def _state_to_data(candidate: Candidate, employments: List[CandidateEmployment]) -> IntakeData:
     state = _ensure_intake_state(candidate)
+    lf_raw = state.get("lead_form")
+    lf = lf_raw if isinstance(lf_raw, dict) else None
     return IntakeData(
         contacts=_serialize_contacts(candidate, state),
         personal=_serialize_personal(candidate, state),
         experience=_serialize_experience(state),
         employments=_serialize_employments(employments),
         agreements=_serialize_agreements(state),
+        lead_form=lf,
     )
 
 
@@ -1456,10 +1496,13 @@ async def _build_checklist_and_docs(
     download_token: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     state = _ensure_intake_state(candidate)
+    oc = getattr(candidate, "own_company_id", None)
+    own_company_id = str(oc).strip() if oc else None
     ruleset_version = await ensure_ruleset_seed(
         session,
         str(tenant_id),
         load_default_ruleset(),
+        own_company_id=own_company_id,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     owner_context = _owner_context_from_state(state, candidate.id)
@@ -1472,6 +1515,7 @@ async def _build_checklist_and_docs(
         str(tenant_id),
         candidate.id,
         include_deleted=False,
+        active_own_company_id=own_company_id,
     )
     serialized_docs: List[Dict[str, Any]] = []
     for doc in docs:
@@ -1704,6 +1748,10 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     state["agreements"] = merged_agreements
     new_employments = [_employment_state_payload(entry) for entry in payload.employments]
     state["employments"] = new_employments or existing_employments
+    if payload.lead_form is not None:
+        state["lead_form"] = payload.lead_form
+    elif existing_state.get("lead_form") is not None:
+        state["lead_form"] = existing_state.get("lead_form")
 
     # Обновляем extra - основное хранилище для карточки кандидата
     extra = candidate._get_extra()
@@ -1758,6 +1806,20 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     candidate._set_extra(extra)
 
 
+@router.get("/intake/lead-forms", response_model=list[PublicLeadFormListItem])
+async def list_public_intake_lead_forms(
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> list[PublicLeadFormListItem]:
+    """Active tenant lead forms that have a public slug (for embeds / landing pickers)."""
+    db, tenant_uuid = db_tenant
+    rows = await list_active_lead_forms_with_public_slug(db, str(tenant_uuid))
+    return [
+        PublicLeadFormListItem(id=r.id, title=r.title or "", public_slug=str(r.public_slug or "").strip())
+        for r in rows
+        if (r.public_slug or "").strip()
+    ]
+
+
 @router.post("/intake", response_model=PublicIntakeCreateResponse)
 async def create_public_intake(
     payload: PublicIntakeCreateRequest,
@@ -1767,6 +1829,22 @@ async def create_public_intake(
     if not contacts.has_contact():
         raise HTTPException(status_code=422, detail="phone or email is required")
     db, tenant_id = db_tenant
+
+    lf = await load_active_lead_form_for_public_intake(
+        db,
+        str(tenant_id),
+        lead_form_id=payload.lead_form_id,
+        lead_form_slug=payload.lead_form_slug,
+    )
+    wants_lead_form = bool((payload.lead_form_id or "").strip() or (payload.lead_form_slug or "").strip())
+    if wants_lead_form and lf is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "lead_form_not_found",
+                "message": "Lead form not found, inactive, or slug is not published.",
+            },
+        )
 
     candidate = await _find_candidate_by_contact(
         db,
@@ -1784,6 +1862,8 @@ async def create_public_intake(
         for key, value in contacts.model_dump(exclude_none=True).items():
             stored_contacts[key] = value
         state["contacts"] = stored_contacts
+        if lf is not None:
+            state["lead_form"] = lead_form_meta_for_intake_state(lf)
         candidate.intake_state = state
         if contacts.phone_country_code and not candidate.phone_country_code:
             candidate.phone_country_code = contacts.phone_country_code
@@ -1806,6 +1886,7 @@ async def create_public_intake(
             payload={
                 "contacts": contacts.model_dump(exclude_none=True),
                 "source": normalize_candidate_source(payload.source),
+                **({"lead_form_id": lf.id} if lf is not None else {}),
             },
         )
         await db.commit()
@@ -1817,6 +1898,7 @@ async def create_public_intake(
         )
 
     token = _generate_token()
+    await ensure_active_candidate_quota(db, str(tenant_id))
     intake_source = normalize_candidate_source(payload.source, default="Анкета")
     candidate = Candidate(
         id=str(uuid4()),
@@ -1833,12 +1915,14 @@ async def create_public_intake(
         stage="docs_wait",
         source=intake_source,
     )
-    state = {
+    state: Dict[str, Any] = {
         "contacts": contacts.model_dump(),
         "personal": {},
         "experience": {},
         "agreements": {},
     }
+    if lf is not None:
+        state["lead_form"] = lead_form_meta_for_intake_state(lf)
     candidate.intake_state = state
     _ensure_status_share_token(candidate)
 
@@ -2038,11 +2122,14 @@ async def submit_public_intake(
     user_agent = request.headers.get("user-agent")
 
     employments = await _list_employments(db, tenant_id, candidate.id)
+    oc = getattr(candidate, "own_company_id", None)
+    own_company_id = str(oc).strip() if oc else None
     docs = await list_candidate_documents(
         db,
         str(tenant_id),
         candidate.id,
         include_deleted=False,
+        active_own_company_id=own_company_id,
     )
     checklist, documents = await _build_checklist_and_docs(db, tenant_id, candidate)
     missing_required = [
@@ -2051,12 +2138,14 @@ async def submit_public_intake(
         if not has_ready_document(docs, doc_type)
     ]
     intake_state = _ensure_intake_state(candidate)
+    _lf = intake_state.get("lead_form")
     intake_payload = IntakeData(
         contacts=IntakeContacts(**(intake_state.get("contacts") or {})),
         personal=IntakePersonal(**(intake_state.get("personal") or {})),
         experience=IntakeExperience(**(intake_state.get("experience") or {})),
         employments=intake_state.get("employments") or [],
         agreements=IntakeAgreements(**(intake_state.get("agreements") or {})),
+        lead_form=_lf if isinstance(_lf, dict) else None,
     )
     _update_candidate_from_data(candidate, intake_payload)
     state["employments"] = [_employment_state_payload(entry) for entry in intake_payload.employments] or state.get("employments") or []

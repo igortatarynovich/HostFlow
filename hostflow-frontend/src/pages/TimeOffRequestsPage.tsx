@@ -9,35 +9,24 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-
-function errorTextFrom(err: any, fallback: string): string {
-  const detail = err?.response?.data?.detail
-  if (typeof detail === 'string' && detail.trim()) return detail
-  if (Array.isArray(detail)) {
-    const msg = detail.map((x) => (typeof x?.msg === 'string' ? x.msg : null)).filter(Boolean).join('; ')
-    if (msg) return msg
-  }
-  if (detail && typeof detail === 'object') {
-    if (typeof detail.msg === 'string' && detail.msg.trim()) return detail.msg
-    try { return JSON.stringify(detail) } catch {}
-  }
-  if (typeof err?.message === 'string' && err.message.trim()) return err.message
-  return fallback
-}
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 
 export default function TimeOffRequestsPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [items, setItems] = useState<CommunicationTimeOffRequest[]>([])
   const [statusFilter, setStatusFilter] = useState('')
   const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({})
 
   const loadAll = useCallback(async () => {
     setLoading(true)
-    setErrorText(null)
+    setError(null)
     try {
       const res = await listCommunicationTimeOffRequests({
         limit: 200,
@@ -45,11 +34,24 @@ export default function TimeOffRequestsPage() {
       })
       setItems(Array.isArray(res.items) ? res.items : [])
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.timeoff.errors.load', { defaultValue: 'Failed to load time-off requests' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.timeoff.errors.load', { defaultValue: 'Failed to load time-off requests' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.communications.timeoff.errors.load', { defaultValue: 'Failed to load time-off requests' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [planLimitModal, statusFilter, t])
 
   useEffect(() => {
     void loadAll()
@@ -69,26 +71,52 @@ export default function TimeOffRequestsPage() {
         decision_note: decisionNotes[id] || undefined,
       })
       await loadAll()
-      setErrorText(null)
+      setError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.timeoff.errors.process', { defaultValue: 'Failed to process request' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.timeoff.errors.process', { defaultValue: 'Failed to process request' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.communications.timeoff.errors.process', { defaultValue: 'Failed to process request' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setBusyId(null)
     }
-  }, [decisionNotes, loadAll])
+  }, [decisionNotes, loadAll, planLimitModal, t])
 
   const handleCancel = useCallback(async (id: string) => {
     setBusyId(id)
     try {
       await cancelCommunicationTimeOffRequest(id, { reason: 'Cancelled by manager/admin' })
       await loadAll()
-      setErrorText(null)
+      setError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.timeoff.errors.cancel', { defaultValue: 'Failed to cancel request' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.timeoff.errors.cancel', { defaultValue: 'Failed to cancel request' }),
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('app.communications.timeoff.errors.cancel', { defaultValue: 'Failed to cancel request' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setBusyId(null)
     }
-  }, [loadAll])
+  }, [loadAll, planLimitModal, t])
 
   return (
     <div className="space-y-4">
@@ -121,14 +149,17 @@ export default function TimeOffRequestsPage() {
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
-        {errorText && (
+        {error && (
           <div className="mb-3">
             <ErrorRecoveryBanner
-              info={{ title: errorText, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+              info={error}
               onRetry={() => void loadAll()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              secondaryTo={CRM_APP_PATHS.myAvailability}
-              secondaryLabel={t('app.nav.items.my_availability', { defaultValue: 'My availability' })}
+              {...friendlyErrorBannerSecondary(
+                error,
+                CRM_APP_PATHS.myAvailability,
+                t('app.nav.items.my_availability', { defaultValue: 'My availability' }),
+              )}
               compact
             />
           </div>

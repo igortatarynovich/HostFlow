@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.company import Company
 from backend.app.models.invoice import Invoice, InvoiceItem, Payment, Refund
+from backend.app.models.own_company import OwnCompany
 from backend.app.models.invoice import InvoiceStatus
 
 
@@ -162,6 +163,71 @@ def _merge_issuer_defaults(
     return merged
 
 
+def _build_own_company_legal_address(own: OwnCompany) -> str | None:
+    extra = _as_dict(getattr(own, "extra", {}) or {})
+    billing = _as_dict(extra.get("billing"))
+    billing_address = _as_dict(billing.get("billing_address"))
+    parts = [
+        _normalized_text(
+            billing_address.get("country") or getattr(own, "country", None) or getattr(own, "country_code", None)
+        ),
+        _normalized_text(billing_address.get("city") or getattr(own, "city", None)),
+        _normalized_text(billing_address.get("street") or getattr(own, "address", None)),
+        _normalized_text(billing_address.get("zip")),
+    ]
+    merged = ", ".join(part for part in parts if part)
+    return merged or None
+
+
+def _extract_primary_bank_from_own(own: OwnCompany) -> dict | None:
+    bd = _as_dict(getattr(own, "bank_details", {}) or {})
+    bank_accounts = bd.get("bank_accounts")
+    if isinstance(bank_accounts, list):
+        normalized = [entry for entry in bank_accounts if isinstance(entry, dict)]
+        if normalized:
+            return next((entry for entry in normalized if entry.get("is_primary")), normalized[0])
+    iban = _normalized_text(bd.get("iban"))
+    if iban:
+        return {
+            "bank_name": _normalized_text(bd.get("bank_name")),
+            "iban": iban,
+            "swift_bic": _normalized_text(bd.get("swift_bic") or bd.get("swift")),
+            "country": _normalized_text(bd.get("country")),
+            "label": _normalized_text(bd.get("label")),
+        }
+    return None
+
+
+def _merge_issuer_defaults_from_own_company(
+    *,
+    billing_details: dict,
+    own_company: OwnCompany,
+) -> dict:
+    merged = dict(billing_details or {})
+    merged["issuer_own_company_id"] = str(getattr(own_company, "id", "") or "")
+    merged.setdefault(
+        "issuer_name",
+        _normalized_text(getattr(own_company, "legal_name", None) or getattr(own_company, "name", None)),
+    )
+    merged.setdefault("issuer_tax_id", _normalized_text(getattr(own_company, "tax_id", None)))
+    addr = _build_own_company_legal_address(own_company)
+    if addr:
+        merged.setdefault("issuer_address", addr)
+    issuer_bank = _extract_primary_bank_from_own(own_company)
+    if issuer_bank:
+        merged.setdefault(
+            "issuer_bank_account",
+            {
+                "bank_name": _normalized_text(issuer_bank.get("bank_name")),
+                "iban": _normalized_text(issuer_bank.get("iban")),
+                "swift_bic": _normalized_text(issuer_bank.get("swift_bic") or issuer_bank.get("swift")),
+                "country": _normalized_text(issuer_bank.get("country")),
+                "label": _normalized_text(issuer_bank.get("label")),
+            },
+        )
+    return merged
+
+
 async def _resolve_issuer_company_for_actor(
     session: AsyncSession,
     *,
@@ -274,6 +340,18 @@ def _merge_billing_defaults(
     return merged
 
 
+def _issuer_snapshot_sufficient_for_invoice(billing_details: dict | None) -> bool:
+    """True when issuer block is complete enough to pass invoice billing validation."""
+    details = dict(billing_details or {})
+    bank = _as_dict(details.get("issuer_bank_account"))
+    return bool(
+        _normalized_text(details.get("issuer_name"))
+        and _normalized_text(details.get("issuer_tax_id"))
+        and _normalized_text(details.get("issuer_address"))
+        and _normalized_text(bank.get("iban"))
+    )
+
+
 def _validate_invoice_billing_details(billing_details: dict | None) -> dict:
     details = dict(billing_details or {})
     issuer_bank = _as_dict(details.get("issuer_bank_account"))
@@ -337,19 +415,43 @@ async def create_invoice(
         company_id=_normalized_text(payload.get("company_id")),
     )
     payload_billing = _as_dict(payload.get("billing_details"))
-    issuer_company = await _resolve_issuer_company_for_actor(
-        session,
-        tenant_id=tenant_id_str,
-        issuer_company_id=_normalized_text(payload_billing.get("issuer_company_id")),
-        actor_id=created_by,
+    issuer_explicit = _normalized_text(payload_billing.get("issuer_company_id"))
+    preferred_own_id = _normalized_text(payload.get("own_company_id"))
+
+    own_for_issuer: OwnCompany | None = None
+    if not issuer_explicit and preferred_own_id:
+        oc = await session.get(OwnCompany, preferred_own_id)
+        if (
+            oc
+            and str(getattr(oc, "tenant_id", "")) == tenant_id_str
+            and not bool(getattr(oc, "is_archived", False))
+        ):
+            own_for_issuer = oc
+
+    base_billing = _merge_billing_defaults(
+        billing_details=payload_billing,
+        client_company=client_company,
     )
-    merged_billing_details = _merge_issuer_defaults(
-        billing_details=_merge_billing_defaults(
-            billing_details=payload_billing,
-            client_company=client_company,
-        ),
-        issuer_company=issuer_company,
-    )
+    merged_billing_details: dict
+    if own_for_issuer:
+        merged_billing_details = _merge_issuer_defaults_from_own_company(
+            billing_details=base_billing,
+            own_company=own_for_issuer,
+        )
+        if not _issuer_snapshot_sufficient_for_invoice(merged_billing_details):
+            own_for_issuer = None
+
+    if not own_for_issuer:
+        issuer_company = await _resolve_issuer_company_for_actor(
+            session,
+            tenant_id=tenant_id_str,
+            issuer_company_id=issuer_explicit,
+            actor_id=created_by,
+        )
+        merged_billing_details = _merge_issuer_defaults(
+            billing_details=base_billing,
+            issuer_company=issuer_company,
+        )
     merged_billing_details = await _enforce_correction_contract(
         session,
         tenant_id=tenant_id_str,

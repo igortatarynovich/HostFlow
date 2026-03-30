@@ -4,6 +4,9 @@ import type { ReminderRecord } from '../../api/types/notification'
 export const NBA_QUICK_REMINDER_GROUP_IDS = new Set([
   'leads_no_next_action',
   'leads_next_overdue',
+  /** §2.12 funnel insights → same lead list as chip link; bulk follow-up (Suggested actions v0). */
+  'leads_funnel_weak_step',
+  'leads_funnel_slow_stage',
   'candidates_no_next_action',
   'candidates_next_overdue',
 ])

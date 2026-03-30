@@ -18,6 +18,9 @@ import {
 import { useI18n } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
 type CalendarSourceFilter = 'all' | 'timeoff' | 'reminders' | 'planner'
 type TimeOffStatusFilter = 'approved' | 'pending' | 'all'
@@ -27,23 +30,23 @@ type BatchSelectStatusFilter = '' | 'planned' | 'in_progress' | 'done' | 'cancel
 type WeekSlotMinutes = 15 | 30 | 60
 
 const CALENDAR_BATCH_STORAGE_KEY = 'hf:calendar:batch:v1'
-const CALENDAR_UI_STORAGE_KEY = 'hf:calendar:ui:v1'
+const CALENDAR_UI_STORAGE_KEY = 'hf:calendar:ui:v2'
 
 function readInitialCalendarUi(): { source: CalendarSourceFilter; view: ViewMode } {
-  if (typeof window === 'undefined') return { source: 'reminders', view: 'month' }
+  if (typeof window === 'undefined') return { source: 'all', view: 'month' }
   try {
     const raw = window.localStorage.getItem(CALENDAR_UI_STORAGE_KEY)
-    if (!raw) return { source: 'reminders', view: 'month' }
+    if (!raw) return { source: 'all', view: 'month' }
     const p = JSON.parse(raw) as { sourceFilter?: string; viewMode?: string }
     const source: CalendarSourceFilter =
       p.sourceFilter === 'all' || p.sourceFilter === 'timeoff' || p.sourceFilter === 'reminders' || p.sourceFilter === 'planner'
         ? p.sourceFilter
-        : 'reminders'
+        : 'all'
     const view: ViewMode =
       p.viewMode === 'month' || p.viewMode === 'week' || p.viewMode === 'day' ? p.viewMode : 'month'
     return { source, view }
   } catch {
-    return { source: 'reminders', view: 'month' }
+    return { source: 'all', view: 'month' }
   }
 }
 
@@ -191,17 +194,6 @@ function weekSlotStart(slotIndex: number, slotMinutes: WeekSlotMinutes): { hour:
   return { hour, minute }
 }
 
-function errorTextFrom(err: any, fallback: string): string {
-  const detail = err?.response?.data?.detail
-  if (typeof detail === 'string' && detail.trim()) return detail
-  if (Array.isArray(detail)) {
-    return detail.map((x) => (typeof x?.msg === 'string' ? x.msg : JSON.stringify(x))).join('; ')
-  }
-  if (detail && typeof detail === 'object') return JSON.stringify(detail)
-  if (typeof err?.message === 'string' && err.message.trim()) return err.message
-  return fallback
-}
-
 function sourceBadgeClass(source: UnifiedCalendarEvent['source']): string {
   if (source === 'timeoff') return 'bg-rose-100 text-rose-800'
   if (source === 'reminder') return 'bg-amber-100 text-amber-800'
@@ -242,10 +234,11 @@ function plannerKindTone(kind?: string | null): string {
 export default function CommunicationsCalendarPage() {
   const { t } = useI18n()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
+  const planLimitModal = usePlanLimitModal()
 
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [calendarError, setCalendarError] = useState<FriendlyErrorInfo | null>(null)
   const [infoText, setInfoText] = useState<string | null>(null)
   const [nowTs, setNowTs] = useState<number>(() => Date.now())
 
@@ -302,7 +295,7 @@ export default function CommunicationsCalendarPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
-    setErrorText(null)
+    setCalendarError(null)
     try {
       const needTimeoff = sourceFilter === 'all' || sourceFilter === 'timeoff'
       const needActivities = sourceFilter === 'all' || sourceFilter === 'reminders'
@@ -359,11 +352,18 @@ export default function CommunicationsCalendarPage() {
       setPlannerEvents(Array.isArray(plannerRes?.items) ? plannerRes.items : [])
       if (wh) setWorkingHours(wh)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.load_failed', { defaultValue: 'Failed to load calendar data' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.load_failed', { defaultValue: 'Failed to load calendar data' }),
+        )
+      ) {
+        setCalendarError(getFriendlyErrorInfo(err, t('app.communications.calendar.errors.load_failed', { defaultValue: 'Failed to load calendar data' }), t))
+      }
     } finally {
       setLoading(false)
     }
-  }, [activityTypeFilter, assigneeFilter, monthCursor, selectedDay, sourceFilter, statusFilter, t, viewMode, weekCursor])
+  }, [activityTypeFilter, assigneeFilter, monthCursor, planLimitModal, selectedDay, sourceFilter, statusFilter, t, viewMode, weekCursor])
 
   useEffect(() => {
     void load()
@@ -653,12 +653,12 @@ export default function CommunicationsCalendarPage() {
     if (!plannerForm.title.trim() || !plannerForm.startAt) return
     const startBase = new Date(plannerForm.startAt)
     if (Number.isNaN(startBase.getTime())) {
-      setErrorText('Invalid start datetime')
+      setCalendarError(friendlyFormHintError(t('app.communications.calendar.errors.invalid_start_datetime', { defaultValue: 'Invalid start datetime' }), t))
       return
     }
     const endBase = plannerForm.allDay || !plannerForm.endAt ? null : new Date(plannerForm.endAt)
     if (endBase && Number.isNaN(endBase.getTime())) {
-      setErrorText('Invalid end datetime')
+      setCalendarError(friendlyFormHintError(t('app.communications.calendar.errors.invalid_end_datetime', { defaultValue: 'Invalid end datetime' }), t))
       return
     }
     const safeRepeatCount = Math.min(30, Math.max(1, Number(plannerForm.repeatCount || 1)))
@@ -734,7 +734,9 @@ export default function CommunicationsCalendarPage() {
       }
       setPlannerForm((p) => ({ ...p, title: '', description: '', repeatMode: 'none', repeatCount: 1 }))
       await load()
-      setErrorText(created > 0 ? null : 'No events created')
+      setCalendarError(
+        created > 0 ? null : friendlyFormHintError(t('app.communications.calendar.errors.no_events_created', { defaultValue: 'No events created' }), t),
+      )
       if (skipped > 0) {
         setInfoText(`Created ${created} event(s). Skipped ${skipped} due to conflicts or working hours.`)
       } else if (created > 1) {
@@ -743,11 +745,20 @@ export default function CommunicationsCalendarPage() {
         setInfoText(null)
       }
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to create planner event'))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.create_planner_failed', { defaultValue: 'Failed to create planner event' }),
+        )
+      ) {
+        setCalendarError(
+          getFriendlyErrorInfo(err, t('app.communications.calendar.errors.create_planner_failed', { defaultValue: 'Failed to create planner event' }), t),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [allowOutsideHours, findSchedulingConflict, load, plannerForm, workingHours])
+  }, [allowOutsideHours, findSchedulingConflict, load, planLimitModal, plannerForm, t, workingHours])
 
   const createDayReminder = useCallback(async (e: FormEvent) => {
     e.preventDefault()
@@ -773,26 +784,44 @@ export default function CommunicationsCalendarPage() {
       })
       setReminderForm((p) => ({ ...p, title: '', description: '' }))
       await load()
-      setErrorText(null)
+      setCalendarError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to create activity'))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.create_activity_failed', { defaultValue: 'Failed to create activity' }),
+        )
+      ) {
+        setCalendarError(
+          getFriendlyErrorInfo(err, t('app.communications.calendar.errors.create_activity_failed', { defaultValue: 'Failed to create activity' }), t),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [load, reminderForm, selectedDay])
+  }, [load, planLimitModal, reminderForm, selectedDay, t])
 
   const setPlannerStatus = useCallback(async (plannerId: string, status: string) => {
     setBusy(true)
     try {
       await patchCommunicationPlannerEvent(plannerId, { status })
       await load()
-      setErrorText(null)
+      setCalendarError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, 'Failed to update planner event'))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.update_planner_status_failed', { defaultValue: 'Failed to update planner event' }),
+        )
+      ) {
+        setCalendarError(
+          getFriendlyErrorInfo(err, t('app.communications.calendar.errors.update_planner_status_failed', { defaultValue: 'Failed to update planner event' }), t),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [load])
+  }, [load, planLimitModal, t])
 
   const updatePlannerEvent = useCallback(async (
     event: UnifiedCalendarEvent,
@@ -815,11 +844,14 @@ export default function CommunicationsCalendarPage() {
         ignorePlannerId: event.plannerId,
       })
       if (conflictReason) {
-        setErrorText(
-          t('app.communications.calendar.errors.cannot_reassign', {
-            defaultValue: 'Cannot reassign: {reason}.',
-            values: { reason: conflictReason },
-          }),
+        setCalendarError(
+          friendlyFormHintError(
+            t('app.communications.calendar.errors.cannot_reassign', {
+              defaultValue: 'Cannot reassign: {reason}.',
+              values: { reason: conflictReason },
+            }),
+            t,
+          ),
         )
         return
       }
@@ -828,13 +860,22 @@ export default function CommunicationsCalendarPage() {
     try {
       await patchCommunicationPlannerEvent(event.plannerId, patch)
       await load()
-      setErrorText(null)
+      setCalendarError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.update_planner_failed', { defaultValue: 'Failed to update planner event' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.update_planner_failed', { defaultValue: 'Failed to update planner event' }),
+        )
+      ) {
+        setCalendarError(
+          getFriendlyErrorInfo(err, t('app.communications.calendar.errors.update_planner_failed', { defaultValue: 'Failed to update planner event' }), t),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [findSchedulingConflict, load])
+  }, [findSchedulingConflict, load, planLimitModal, t])
 
   const setPlannerPriorityByEvent = useCallback(async (event: UnifiedCalendarEvent, priority: 'low' | 'normal' | 'high') => {
     await updatePlannerEvent(event, { priority })
@@ -901,7 +942,7 @@ export default function CommunicationsCalendarPage() {
         else skipped += 1
       }
       await load()
-      setErrorText(null)
+      setCalendarError(null)
       setInfoText(
         t('app.communications.calendar.batch.done', {
           defaultValue: 'Batch done: updated {updated}, skipped {skipped}.',
@@ -909,11 +950,18 @@ export default function CommunicationsCalendarPage() {
         }),
       )
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.batch_failed', { defaultValue: 'Batch action failed' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.batch_failed', { defaultValue: 'Batch action failed' }),
+        )
+      ) {
+        setCalendarError(getFriendlyErrorInfo(err, t('app.communications.calendar.errors.batch_failed', { defaultValue: 'Batch action failed' }), t))
+      }
     } finally {
       setBusy(false)
     }
-  }, [load, selectedPlannerEvents])
+  }, [load, planLimitModal, selectedPlannerEvents, t])
 
   const runBatchAssign = useCallback(async () => {
     await applyBatchToSelected(async (event) => {
@@ -933,7 +981,7 @@ export default function CommunicationsCalendarPage() {
       await patchCommunicationPlannerEvent(event.plannerId, { assignee_id: batchAssigneeId || null })
       return 'updated'
     }, t('app.communications.calendar.batch.no_selected', { defaultValue: 'No selected planner events.' }))
-  }, [applyBatchToSelected, batchAssigneeId, findSchedulingConflict])
+  }, [applyBatchToSelected, batchAssigneeId, findSchedulingConflict, t])
 
   const runBatchPriority = useCallback(async (priority: 'low' | 'normal' | 'high') => {
     await applyBatchToSelected(async (event) => {
@@ -941,7 +989,7 @@ export default function CommunicationsCalendarPage() {
       await patchCommunicationPlannerEvent(event.plannerId, { priority })
       return 'updated'
     }, t('app.communications.calendar.batch.no_selected', { defaultValue: 'No selected planner events.' }))
-  }, [applyBatchToSelected])
+  }, [applyBatchToSelected, t])
 
   const runBatchArchive = useCallback(async () => {
     await applyBatchToSelected(async (event) => {
@@ -949,7 +997,7 @@ export default function CommunicationsCalendarPage() {
       await patchCommunicationPlannerEvent(event.plannerId, { status: 'cancelled' })
       return 'updated'
     }, t('app.communications.calendar.batch.no_selected', { defaultValue: 'No selected planner events.' }))
-  }, [applyBatchToSelected])
+  }, [applyBatchToSelected, t])
 
   const runBatchTag = useCallback(async (mode: 'add' | 'remove') => {
     const tag = batchTagValue.trim().replace(/^#/, '')
@@ -1084,11 +1132,14 @@ export default function CommunicationsCalendarPage() {
       ignorePlannerId: event.plannerId || null,
     })
     if (conflictReason) {
-      setErrorText(
-        t('app.communications.calendar.errors.cannot_move', {
-          defaultValue: 'Cannot move: {reason}.',
-          values: { reason: conflictReason },
-        }),
+      setCalendarError(
+        friendlyFormHintError(
+          t('app.communications.calendar.errors.cannot_move', {
+            defaultValue: 'Cannot move: {reason}.',
+            values: { reason: conflictReason },
+          }),
+          t,
+        ),
       )
       return
     }
@@ -1097,13 +1148,20 @@ export default function CommunicationsCalendarPage() {
     try {
       await patchCommunicationPlannerEvent(event.plannerId, patch)
       await load()
-      setErrorText(null)
+      setCalendarError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.move_failed', { defaultValue: 'Failed to move planner event' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.move_failed', { defaultValue: 'Failed to move planner event' }),
+        )
+      ) {
+        setCalendarError(getFriendlyErrorInfo(err, t('app.communications.calendar.errors.move_failed', { defaultValue: 'Failed to move planner event' }), t))
+      }
     } finally {
       setBusy(false)
     }
-  }, [findSchedulingConflict, load])
+  }, [findSchedulingConflict, load, planLimitModal, t])
 
   const duplicatePlannerEvent = useCallback(async (event: UnifiedCalendarEvent) => {
     if (!event.plannerId || !event.at) return
@@ -1120,11 +1178,14 @@ export default function CommunicationsCalendarPage() {
       ignorePlannerId: null,
     })
     if (conflictReason) {
-      setErrorText(
-        t('app.communications.calendar.errors.cannot_duplicate', {
-          defaultValue: 'Cannot duplicate: {reason}.',
-          values: { reason: conflictReason },
-        }),
+      setCalendarError(
+        friendlyFormHintError(
+          t('app.communications.calendar.errors.cannot_duplicate', {
+            defaultValue: 'Cannot duplicate: {reason}.',
+            values: { reason: conflictReason },
+          }),
+          t,
+        ),
       )
       return
     }
@@ -1143,39 +1204,66 @@ export default function CommunicationsCalendarPage() {
         end_at: endShifted?.toISOString() || undefined,
       })
       await load()
-      setErrorText(null)
+      setCalendarError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.duplicate_failed', { defaultValue: 'Failed to duplicate planner event' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.duplicate_failed', { defaultValue: 'Failed to duplicate planner event' }),
+        )
+      ) {
+        setCalendarError(
+          getFriendlyErrorInfo(err, t('app.communications.calendar.errors.duplicate_failed', { defaultValue: 'Failed to duplicate planner event' }), t),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [findSchedulingConflict, load])
+  }, [findSchedulingConflict, load, planLimitModal, t])
 
   const completeDayReminder = useCallback(async (reminderId: string) => {
     setBusy(true)
     try {
       await completeActivity(reminderId)
       await load()
-      setErrorText(null)
+      setCalendarError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.complete_activity_failed', { defaultValue: 'Failed to complete activity' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.complete_activity_failed', { defaultValue: 'Failed to complete activity' }),
+        )
+      ) {
+        setCalendarError(
+          getFriendlyErrorInfo(err, t('app.communications.calendar.errors.complete_activity_failed', { defaultValue: 'Failed to complete activity' }), t),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [load])
+  }, [load, planLimitModal, t])
 
   const snoozeDayReminder = useCallback(async (reminderId: string, minutes: number) => {
     setBusy(true)
     try {
       await snoozeActivity(reminderId, { minutes })
       await load()
-      setErrorText(null)
+      setCalendarError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.snooze_activity_failed', { defaultValue: 'Failed to snooze activity' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.snooze_activity_failed', { defaultValue: 'Failed to snooze activity' }),
+        )
+      ) {
+        setCalendarError(
+          getFriendlyErrorInfo(err, t('app.communications.calendar.errors.snooze_activity_failed', { defaultValue: 'Failed to snooze activity' }), t),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [load])
+  }, [load, planLimitModal, t])
 
   const setPlannerSlot = useCallback((day: string, hour: number, minute = 0) => {
     const base = parseDate(`${day}T00:00:00`)
@@ -1210,11 +1298,14 @@ export default function CommunicationsCalendarPage() {
       ignorePlannerId: event.plannerId,
     })
     if (conflictReason) {
-      setErrorText(
-        t('app.communications.calendar.errors.cannot_move', {
-          defaultValue: 'Cannot move: {reason}.',
-          values: { reason: conflictReason },
-        }),
+      setCalendarError(
+        friendlyFormHintError(
+          t('app.communications.calendar.errors.cannot_move', {
+            defaultValue: 'Cannot move: {reason}.',
+            values: { reason: conflictReason },
+          }),
+          t,
+        ),
       )
       return
     }
@@ -1227,13 +1318,20 @@ export default function CommunicationsCalendarPage() {
       })
       await load()
       if (dayKeyAfterMove) setSelectedDay(dayKeyAfterMove)
-      setErrorText(null)
+      setCalendarError(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.move_failed', { defaultValue: 'Failed to move planner event' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.move_failed', { defaultValue: 'Failed to move planner event' }),
+        )
+      ) {
+        setCalendarError(getFriendlyErrorInfo(err, t('app.communications.calendar.errors.move_failed', { defaultValue: 'Failed to move planner event' }), t))
+      }
     } finally {
       setBusy(false)
     }
-  }, [findSchedulingConflict, load])
+  }, [findSchedulingConflict, load, planLimitModal, t])
 
   const resizePlannerEventToHour = useCallback(async (event: UnifiedCalendarEvent, dayKey: string, endHourExclusive: number) => {
     if (!event.plannerId || !event.at) return
@@ -1257,11 +1355,14 @@ export default function CommunicationsCalendarPage() {
       ignorePlannerId: event.plannerId,
     })
     if (conflictReason) {
-      setErrorText(
-        t('app.communications.calendar.errors.cannot_resize', {
-          defaultValue: 'Cannot resize: {reason}.',
-          values: { reason: conflictReason },
-        }),
+      setCalendarError(
+        friendlyFormHintError(
+          t('app.communications.calendar.errors.cannot_resize', {
+            defaultValue: 'Cannot resize: {reason}.',
+            values: { reason: conflictReason },
+          }),
+          t,
+        ),
       )
       return
     }
@@ -1274,14 +1375,23 @@ export default function CommunicationsCalendarPage() {
       })
       await load()
       setSelectedDay(dayKey)
-      setErrorText(null)
+      setCalendarError(null)
       setResizePlannerEvent(null)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.calendar.errors.resize_failed', { defaultValue: 'Failed to resize planner event' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.calendar.errors.resize_failed', { defaultValue: 'Failed to resize planner event' }),
+        )
+      ) {
+        setCalendarError(
+          getFriendlyErrorInfo(err, t('app.communications.calendar.errors.resize_failed', { defaultValue: 'Failed to resize planner event' }), t),
+        )
+      }
     } finally {
       setBusy(false)
     }
-  }, [findSchedulingConflict, load])
+  }, [findSchedulingConflict, load, planLimitModal, t])
 
   const movePlannerEventToDay = useCallback(async (event: UnifiedCalendarEvent, dayKey: string) => {
     if (!event.at) return
@@ -1369,43 +1479,52 @@ export default function CommunicationsCalendarPage() {
             <option value="planner">{t('app.communications.calendar.filters.sources.planner', { defaultValue: 'Planner' })}</option>
           </select>
 
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TimeOffStatusFilter)} className="input">
-            <option value="approved">{t('app.communications.calendar.filters.timeoff.approved_only', { defaultValue: 'Time-off approved only' })}</option>
-            <option value="pending">{t('app.communications.calendar.filters.timeoff.pending_only', { defaultValue: 'Time-off pending only' })}</option>
-            <option value="all">{t('app.communications.calendar.filters.timeoff.all', { defaultValue: 'Time-off approved + pending' })}</option>
-          </select>
-
-          <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} className="input">
-            <option value="">{t('app.communications.calendar.filters.managers.all', { defaultValue: 'All managers' })}</option>
-            {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
-          <select value={activityTypeFilter} onChange={(e) => setActivityTypeFilter(e.target.value)} className="input">
-            <option value="">{t('app.communications.calendar.filters.activity_types.all', { defaultValue: 'All activity types' })}</option>
-            {Array.from(new Set(reminders.map((r) => String(r?.type || '')).filter(Boolean))).sort().map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-          <select value={plannerKindFilter} onChange={(e) => setPlannerKindFilter(e.target.value)} className="input">
-            <option value="">{t('app.communications.calendar.filters.planner_kinds.all', { defaultValue: 'All planner kinds' })}</option>
-            <option value="meeting">{t('app.communications.calendar.kinds.meeting', { defaultValue: 'Meeting' })}</option>
-            <option value="task">{t('app.communications.calendar.kinds.task', { defaultValue: 'Task' })}</option>
-            <option value="followup">{t('app.communications.calendar.kinds.followup', { defaultValue: 'Follow-up' })}</option>
-            <option value="call">{t('app.communications.calendar.kinds.call', { defaultValue: 'Call' })}</option>
-            <option value="shift">{t('app.communications.calendar.kinds.shift', { defaultValue: 'Shift' })}</option>
-          </select>
-
           <button type="button" onClick={() => void load()} className="btn-secondary">
             {t('common.actions.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
-        {errorText && (
+        <details className="mt-3 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2">
+          <summary className="cursor-pointer text-sm font-medium text-slate-800">
+            {t('app.communications.calendar.filters.advanced_panel', { defaultValue: 'Advanced filters' })}
+          </summary>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TimeOffStatusFilter)} className="input">
+              <option value="approved">{t('app.communications.calendar.filters.timeoff.approved_only', { defaultValue: 'Time-off approved only' })}</option>
+              <option value="pending">{t('app.communications.calendar.filters.timeoff.pending_only', { defaultValue: 'Time-off pending only' })}</option>
+              <option value="all">{t('app.communications.calendar.filters.timeoff.all', { defaultValue: 'Time-off approved + pending' })}</option>
+            </select>
+
+            <select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} className="input">
+              <option value="">{t('app.communications.calendar.filters.managers.all', { defaultValue: 'All managers' })}</option>
+              {managers.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+            <select value={activityTypeFilter} onChange={(e) => setActivityTypeFilter(e.target.value)} className="input">
+              <option value="">{t('app.communications.calendar.filters.activity_types.all', { defaultValue: 'All activity types' })}</option>
+              {Array.from(new Set(reminders.map((r) => String(r?.type || '')).filter(Boolean))).sort().map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            <select value={plannerKindFilter} onChange={(e) => setPlannerKindFilter(e.target.value)} className="input">
+              <option value="">{t('app.communications.calendar.filters.planner_kinds.all', { defaultValue: 'All planner kinds' })}</option>
+              <option value="meeting">{t('app.communications.calendar.kinds.meeting', { defaultValue: 'Meeting' })}</option>
+              <option value="task">{t('app.communications.calendar.kinds.task', { defaultValue: 'Task' })}</option>
+              <option value="followup">{t('app.communications.calendar.kinds.followup', { defaultValue: 'Follow-up' })}</option>
+              <option value="call">{t('app.communications.calendar.kinds.call', { defaultValue: 'Call' })}</option>
+              <option value="shift">{t('app.communications.calendar.kinds.shift', { defaultValue: 'Shift' })}</option>
+            </select>
+          </div>
+        </details>
+        {calendarError && (
           <div className="mt-3">
             <ErrorRecoveryBanner
-              info={{ title: errorText, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+              info={calendarError}
               onRetry={() => void load()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              secondaryTo={CRM_APP_PATHS.setupCommunications}
-              secondaryLabel={t('app.nav.items.setup', { defaultValue: 'Setup' })}
+              {...friendlyErrorBannerSecondary(
+                calendarError,
+                CRM_APP_PATHS.settingsIntegrations,
+                t('app.nav.items.settings_integrations', { defaultValue: 'Integrations' }),
+              )}
               compact
             />
           </div>
@@ -1661,85 +1780,93 @@ export default function CommunicationsCalendarPage() {
                 <button type="button" onClick={() => setPlannerSlot(selectedDay, 15)} className="btn-secondary btn-xs">{t('app.communications.calendar.day.slot_15', { defaultValue: '+ 15:00 slot' })}</button>
                 <button type="button" onClick={() => setPlannerSlot(selectedDay, 18)} className="btn-secondary btn-xs">{t('app.communications.calendar.day.slot_18', { defaultValue: '+ 18:00 slot' })}</button>
               </div>
-              <div className="mb-3 rounded border border-slate-200 p-3">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                    {t('app.communications.calendar.batch.title', {
-                      defaultValue: 'Batch actions for selected planner events ({count})',
-                      values: { count: selectedPlannerEvents.length },
-                    })}
+              <details className="mb-3 rounded border border-slate-200">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-slate-800">
+                  {t('app.communications.calendar.day.batch_panel', {
+                    defaultValue: 'Batch planner ({selected} selected)',
+                    values: { selected: selectedPlannerEvents.length },
+                  })}
+                </summary>
+                <div className="space-y-2 border-t border-slate-200 p-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      {t('app.communications.calendar.batch.title', {
+                        defaultValue: 'Batch actions for selected planner events ({count})',
+                        values: { count: selectedPlannerEvents.length },
+                      })}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      <button type="button" onClick={selectAllVisiblePlanner} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.select_all_visible', { defaultValue: 'Select all visible' })}</button>
+                      <button type="button" onClick={clearPlannerSelection} className="btn-secondary btn-xs">{t('common.clear', { defaultValue: 'Clear' })}</button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    <button type="button" onClick={selectAllVisiblePlanner} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.select_all_visible', { defaultValue: 'Select all visible' })}</button>
-                    <button type="button" onClick={clearPlannerSelection} className="btn-secondary btn-xs">{t('common.clear', { defaultValue: 'Clear' })}</button>
-                  </div>
-                </div>
-                <div className="mb-2 rounded border border-slate-200 p-2">
-                  <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.select_by_filter', { defaultValue: 'Select by filter' })}</div>
-                  <div className="grid gap-1 md:grid-cols-4">
-                    <select value={batchSelectKind} onChange={(e) => setBatchSelectKind(e.target.value)} className="input">
-                      <option value="">{t('app.communications.calendar.batch.any_kind', { defaultValue: 'Any kind' })}</option>
-                      <option value="meeting">{t('app.communications.calendar.kinds.meeting', { defaultValue: 'Meeting' })}</option>
-                      <option value="task">{t('app.communications.calendar.kinds.task', { defaultValue: 'Task' })}</option>
-                      <option value="followup">{t('app.communications.calendar.kinds.followup', { defaultValue: 'Follow-up' })}</option>
-                      <option value="call">{t('app.communications.calendar.kinds.call', { defaultValue: 'Call' })}</option>
-                      <option value="shift">{t('app.communications.calendar.kinds.shift', { defaultValue: 'Shift' })}</option>
-                    </select>
-                    <select value={batchSelectPriority} onChange={(e) => setBatchSelectPriority(e.target.value)} className="input">
-                      <option value="">{t('app.communications.calendar.batch.any_priority', { defaultValue: 'Any priority' })}</option>
-                      <option value="low">{t('app.communications.calendar.priority.low', { defaultValue: 'Low' })}</option>
-                      <option value="normal">{t('app.communications.calendar.priority.normal', { defaultValue: 'Normal' })}</option>
-                      <option value="high">{t('app.communications.calendar.priority.high', { defaultValue: 'High' })}</option>
-                    </select>
-                    <select value={batchSelectStatus} onChange={(e) => setBatchSelectStatus(e.target.value as BatchSelectStatusFilter)} className="input">
-                      <option value="">{t('app.communications.calendar.batch.any_status', { defaultValue: 'Any status' })}</option>
-                      <option value="planned">{t('app.communications.calendar.status.planned', { defaultValue: 'Planned' })}</option>
-                      <option value="in_progress">{t('app.communications.calendar.status.in_progress', { defaultValue: 'In progress' })}</option>
-                      <option value="done">{t('app.communications.calendar.status.done', { defaultValue: 'Done' })}</option>
-                      <option value="cancelled">{t('app.communications.calendar.status.cancelled', { defaultValue: 'Cancelled' })}</option>
-                    </select>
-                    <button type="button" onClick={selectByCurrentBatchFilter} className="btn-secondary btn-xs">
-                      {t('app.communications.calendar.batch.select_by_filter_action', { defaultValue: 'Select by filter' })}
-                    </button>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    <button type="button" onClick={() => applySelectionPreset('meetings')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.meetings', { defaultValue: 'Meetings' })}</button>
-                    <button type="button" onClick={() => applySelectionPreset('high')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.high_priority', { defaultValue: 'High priority' })}</button>
-                    <button type="button" onClick={() => applySelectionPreset('unassigned')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.unassigned', { defaultValue: 'Unassigned' })}</button>
-                    <button type="button" onClick={() => applySelectionPreset('in_progress')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.in_progress', { defaultValue: 'In progress' })}</button>
-                    <button type="button" onClick={() => applySelectionPreset('due_soon')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.due_soon', { defaultValue: 'Due soon (2h)' })}</button>
-                  </div>
-                </div>
-                <div className="grid gap-2 md:grid-cols-2">
-                  <div className="rounded border border-slate-200 p-2">
-                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.assign', { defaultValue: 'Assign' })}</div>
-                    <div className="flex gap-1">
-                      <select value={batchAssigneeId} onChange={(e) => setBatchAssigneeId(e.target.value)} className="w-full input">
-                        <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
-                        {managers.map((m) => <option key={`batch-assignee-${m.id}`} value={m.id}>{m.label}</option>)}
+                  <div className="mb-2 rounded border border-slate-200 p-2">
+                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.select_by_filter', { defaultValue: 'Select by filter' })}</div>
+                    <div className="grid gap-1 md:grid-cols-4">
+                      <select value={batchSelectKind} onChange={(e) => setBatchSelectKind(e.target.value)} className="input">
+                        <option value="">{t('app.communications.calendar.batch.any_kind', { defaultValue: 'Any kind' })}</option>
+                        <option value="meeting">{t('app.communications.calendar.kinds.meeting', { defaultValue: 'Meeting' })}</option>
+                        <option value="task">{t('app.communications.calendar.kinds.task', { defaultValue: 'Task' })}</option>
+                        <option value="followup">{t('app.communications.calendar.kinds.followup', { defaultValue: 'Follow-up' })}</option>
+                        <option value="call">{t('app.communications.calendar.kinds.call', { defaultValue: 'Call' })}</option>
+                        <option value="shift">{t('app.communications.calendar.kinds.shift', { defaultValue: 'Shift' })}</option>
                       </select>
-                      <button type="button" onClick={() => void runBatchAssign()} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.apply', { defaultValue: 'Apply' })}</button>
+                      <select value={batchSelectPriority} onChange={(e) => setBatchSelectPriority(e.target.value)} className="input">
+                        <option value="">{t('app.communications.calendar.batch.any_priority', { defaultValue: 'Any priority' })}</option>
+                        <option value="low">{t('app.communications.calendar.priority.low', { defaultValue: 'Low' })}</option>
+                        <option value="normal">{t('app.communications.calendar.priority.normal', { defaultValue: 'Normal' })}</option>
+                        <option value="high">{t('app.communications.calendar.priority.high', { defaultValue: 'High' })}</option>
+                      </select>
+                      <select value={batchSelectStatus} onChange={(e) => setBatchSelectStatus(e.target.value as BatchSelectStatusFilter)} className="input">
+                        <option value="">{t('app.communications.calendar.batch.any_status', { defaultValue: 'Any status' })}</option>
+                        <option value="planned">{t('app.communications.calendar.status.planned', { defaultValue: 'Planned' })}</option>
+                        <option value="in_progress">{t('app.communications.calendar.status.in_progress', { defaultValue: 'In progress' })}</option>
+                        <option value="done">{t('app.communications.calendar.status.done', { defaultValue: 'Done' })}</option>
+                        <option value="cancelled">{t('app.communications.calendar.status.cancelled', { defaultValue: 'Cancelled' })}</option>
+                      </select>
+                      <button type="button" onClick={selectByCurrentBatchFilter} className="btn-secondary btn-xs">
+                        {t('app.communications.calendar.batch.select_by_filter_action', { defaultValue: 'Select by filter' })}
+                      </button>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      <button type="button" onClick={() => applySelectionPreset('meetings')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.meetings', { defaultValue: 'Meetings' })}</button>
+                      <button type="button" onClick={() => applySelectionPreset('high')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.high_priority', { defaultValue: 'High priority' })}</button>
+                      <button type="button" onClick={() => applySelectionPreset('unassigned')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.unassigned', { defaultValue: 'Unassigned' })}</button>
+                      <button type="button" onClick={() => applySelectionPreset('in_progress')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.in_progress', { defaultValue: 'In progress' })}</button>
+                      <button type="button" onClick={() => applySelectionPreset('due_soon')} className="btn-secondary btn-xs">{t('app.communications.calendar.batch.presets.due_soon', { defaultValue: 'Due soon (2h)' })}</button>
                     </div>
                   </div>
-                  <div className="rounded border border-slate-200 p-2">
-                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.priority', { defaultValue: 'Priority' })}</div>
-                    <div className="flex flex-wrap gap-1">
-                      <button type="button" onClick={() => void runBatchPriority('low')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.priority.low', { defaultValue: 'Low' })}</button>
-                      <button type="button" onClick={() => void runBatchPriority('normal')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.priority.normal', { defaultValue: 'Normal' })}</button>
-                      <button type="button" onClick={() => void runBatchPriority('high')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.priority.high', { defaultValue: 'High' })}</button>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div className="rounded border border-slate-200 p-2">
+                      <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.assign', { defaultValue: 'Assign' })}</div>
+                      <div className="flex gap-1">
+                        <select value={batchAssigneeId} onChange={(e) => setBatchAssigneeId(e.target.value)} className="w-full input">
+                          <option value="">{t('app.communications.calendar.labels.unassigned', { defaultValue: 'Unassigned' })}</option>
+                          {managers.map((m) => <option key={`batch-assignee-${m.id}`} value={m.id}>{m.label}</option>)}
+                        </select>
+                        <button type="button" onClick={() => void runBatchAssign()} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.apply', { defaultValue: 'Apply' })}</button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="rounded border border-slate-200 p-2 md:col-span-2">
-                    <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.tags', { defaultValue: 'Tags' })}</div>
-                    <div className="flex flex-wrap gap-1">
-                      <input value={batchTagValue} onChange={(e) => setBatchTagValue(e.target.value)} placeholder={t('app.communications.calendar.batch.tag_placeholder', { defaultValue: 'tag' })} className="input" />
-                      <button type="button" onClick={() => void runBatchTag('add')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.actions.add', { defaultValue: 'Add' })}</button>
-                      <button type="button" onClick={() => void runBatchTag('remove')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.actions.remove', { defaultValue: 'Remove' })}</button>
-                      <button type="button" onClick={() => void runBatchArchive()} disabled={busy || !selectedPlannerEvents.length} className="ml-auto btn-danger btn-xs disabled:opacity-50">{t('app.communications.calendar.batch.archive_selected', { defaultValue: 'Archive selected' })}</button>
+                    <div className="rounded border border-slate-200 p-2">
+                      <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.priority', { defaultValue: 'Priority' })}</div>
+                      <div className="flex flex-wrap gap-1">
+                        <button type="button" onClick={() => void runBatchPriority('low')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.priority.low', { defaultValue: 'Low' })}</button>
+                        <button type="button" onClick={() => void runBatchPriority('normal')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.priority.normal', { defaultValue: 'Normal' })}</button>
+                        <button type="button" onClick={() => void runBatchPriority('high')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('app.communications.calendar.priority.high', { defaultValue: 'High' })}</button>
+                      </div>
+                    </div>
+                    <div className="rounded border border-slate-200 p-2 md:col-span-2">
+                      <div className="mb-1 text-[10px] font-semibold uppercase text-slate-500">{t('app.communications.calendar.batch.tags', { defaultValue: 'Tags' })}</div>
+                      <div className="flex flex-wrap gap-1">
+                        <input value={batchTagValue} onChange={(e) => setBatchTagValue(e.target.value)} placeholder={t('app.communications.calendar.batch.tag_placeholder', { defaultValue: 'tag' })} className="input" />
+                        <button type="button" onClick={() => void runBatchTag('add')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.actions.add', { defaultValue: 'Add' })}</button>
+                        <button type="button" onClick={() => void runBatchTag('remove')} disabled={busy || !selectedPlannerEvents.length} className="btn-secondary btn-xs disabled:opacity-50">{t('common.actions.remove', { defaultValue: 'Remove' })}</button>
+                        <button type="button" onClick={() => void runBatchArchive()} disabled={busy || !selectedPlannerEvents.length} className="ml-auto btn-danger btn-xs disabled:opacity-50">{t('app.communications.calendar.batch.archive_selected', { defaultValue: 'Archive selected' })}</button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </details>
               <div className="mb-3 rounded border border-slate-200 p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">{t('app.communications.calendar.timeline.title', { defaultValue: 'Timeline drag & drop' })}</div>

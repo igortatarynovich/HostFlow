@@ -129,6 +129,9 @@ class ServiceOrder(Base, TimestampMixin):
         default=_uuid_str,
     )
     tenant_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    own_company_id: Mapped[Optional[str]] = mapped_column(
+        String(36), nullable=True, index=True
+    )
 
     candidate_id: Mapped[Optional[str]] = mapped_column(
         String(36),

@@ -16,6 +16,7 @@ emsdk/
 opencv/
 opencv_contrib/
 .venv/
+.venv312/
 .venv-ci/
 node_modules/
 docs/manual-checklist/_artifacts/

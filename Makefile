@@ -9,10 +9,10 @@ include backend/.env
 endif
 export ASYNC_DATABASE_URL SYNC_DATABASE_URL ALEMBIC_DATABASE_URL DATABASE_URL TENANT_ID
 
-# ---- Paths / tools (prefer .venv if it has alembic, else .venv312) ----
-VENV        := $(if $(wildcard .venv/bin/alembic),.venv,.venv312)
+# ---- Paths / tools (canonical .venv at repo root; legacy .venv312 only if .venv missing) ----
+# Old rule "use .venv312 when .venv has no alembic" picked a broken .venv312 over a fresh .venv.
+VENV        := $(if $(wildcard .venv/bin/python),.venv,$(if $(wildcard .venv312/bin/python),.venv312,.venv))
 PY          := $(VENV)/bin/python
-PIP         := $(VENV)/bin/pip
 UVICORN     := $(VENV)/bin/uvicorn
 ALEMBIC     := $(VENV)/bin/alembic
 
@@ -31,7 +31,9 @@ help:
 	@echo ""
 	@echo "HostFlow commands:"
 	@echo "  make up             - run API (uvicorn --reload)"
-	@echo "  make install        - create venv and install deps"
+	@echo "  make install        - create .venv (or use existing), ensure pip, install backend/requirements.txt (PEP 668)"
+	@echo "  make test           - pytest with project .venv (ARGS=...); DB host db→127.0.0.1 if DNS fails (see tests/conftest.py)"
+	@echo "  make test-search    - shortcut: global search API tests only"
 	@echo "  make upg            - alembic upgrade head"
 	@echo "  make ensure-automation-schema - ensure automation_rules table exists (dev fallback)"
 	@echo "  make mig msg=...    - alembic autogenerate revision"
@@ -47,17 +49,28 @@ help:
 	@echo "  make paths-qa - codegen + SPA literals + frontend route static checks (needs npm in hostflow-frontend)"
 	@echo ""
 
+# ---- Tests (need: make install, DB reachable) ----
+.PHONY: test
+test:
+	@test -x "$(PY)" || (echo "Run 'make install' first (PEP 668: do not use system pip)." && exit 1)
+	@"$(PY)" -m pytest -c backend/pytest.ini backend/$(if $(strip $(ARGS)),$(ARGS),tests/) -v
+
+.PHONY: test-search
+test-search:
+	@$(MAKE) test ARGS=tests/api/test_global_search.py
+
 # ---- Deps ----
 .PHONY: install
 install:
-	@test -x "$(PY)" || python3 -m venv $(VENV)
-	$(PIP) install --upgrade pip
+	@test -x "$(PY)" || python3 -m venv "$(VENV)"
+	@"$(PY)" -m ensurepip --upgrade 2>/dev/null || true
+	@"$(PY)" -m pip install --upgrade pip
 	@if [ -f backend/requirements.txt ]; then \
-		$(PIP) install -r backend/requirements.txt; \
+		"$(PY)" -m pip install -r backend/requirements.txt; \
 	elif [ -f requirements.txt ]; then \
-		$(PIP) install -r requirements.txt; \
+		"$(PY)" -m pip install -r requirements.txt; \
 	else \
-		$(PIP) install "fastapi>=0.110" "uvicorn[standard]" "sqlalchemy>=2.0" \
+		"$(PY)" -m pip install "fastapi>=0.110" "uvicorn[standard]" "sqlalchemy>=2.0" \
 		               asyncpg psycopg2-binary greenlet "pydantic[email]" \
 		               "passlib[bcrypt]" "python-jose[cryptography]" \
 		               email-validator alembic faker; \

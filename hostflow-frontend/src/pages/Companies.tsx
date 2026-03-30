@@ -59,6 +59,8 @@ import { ClientInvoicesBlock } from '../components/companies/ClientInvoicesBlock
 import { CompanyReceivablesOverview } from '../components/companies/CompanyReceivablesOverview'
 import { CompanyServiceOrdersPanel } from '../components/companies/CompanyServiceOrdersPanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { listVacancies } from '../api/vacancies'
 
 // Helper functions used only in this file
@@ -158,6 +160,7 @@ type ClientWorkspaceTab = (typeof CLIENT_WORKSPACE_TABS)[number]
 
 export default function Companies(){
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const location = useLocation()
   const untitledNameRef = useRef(t('app.companies.detail.defaults.untitled'))
   useEffect(() => {
@@ -220,7 +223,7 @@ export default function Companies(){
   const [documentPolicies, setDocumentPolicies] = useState<DocumentPolicy[]>([])
   const [documentTypes, setDocumentTypes] = useState<DocType[]>([])
   const [policiesLoading, setPoliciesLoading] = useState(false)
-  const [policiesError, setPoliciesError] = useState<string | null>(null)
+  const [policiesError, setPoliciesError] = useState<FriendlyErrorInfo | null>(null)
   const [editingPolicy, setEditingPolicy] = useState<DocumentPolicy | null>(null)
   const [newPolicyMode, setNewPolicyMode] = useState(false)
 
@@ -1198,6 +1201,9 @@ export default function Companies(){
       setSaveSuccess(true)
     } catch (err: any) {
       console.error('[Companies] save failed', err)
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.companies.messages.save_error'))) {
+        return
+      }
       const detail = err?.response?.data?.detail
       let message = err?.message || t('app.companies.messages.save_error')
       if (typeof detail === 'string') {
@@ -1217,7 +1223,7 @@ export default function Companies(){
     } finally {
       setSaving(false)
     }
-  }, [currentAny, detailForm, loadOne, t])
+  }, [currentAny, detailForm, loadOne, planLimitModal, t])
 
   const setContactField = useCallback(
     (index: number, patch: Partial<ContactForm>) => {
@@ -1498,11 +1504,14 @@ export default function Companies(){
       setDocumentTypes(types)
     } catch (err: any) {
       console.error('[Companies] failed to load document policies', err)
-      setPoliciesError(err?.message || t('app.companies.errors.policies_load_failed', { defaultValue: 'Failed to load document policies' }))
+      const fb = t('app.companies.errors.policies_load_failed', { defaultValue: 'Failed to load document policies' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setPoliciesError(getFriendlyErrorInfo(err, fb, t))
+      }
     } finally {
       setPoliciesLoading(false)
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   const loadReadiness = useCallback(async (companyId: string) => {
     if (!companyId) return
@@ -1605,6 +1614,7 @@ export default function Companies(){
         navigate(`${listBasePath}/${data.id}`, { replace: true })
       } catch (err) {
         console.error('[Companies] failed to create draft', err)
+        void planLimitModal?.showPlanLimitIfNeeded(err, t('app.companies.messages.save_error'))
       }
     }
     if (id === 'new') {
@@ -1626,7 +1636,7 @@ export default function Companies(){
     return () => {
       cancelled = true
     }
-  }, [id, navigate])
+  }, [id, listBasePath, navigate, planLimitModal, t])
 
   // build detail form whenever current changes
   useEffect(() => {
@@ -3416,7 +3426,14 @@ export default function Companies(){
         >
           {policiesError && (
             <ErrorRecoveryBanner
-              info={{ title: policiesError, hint: 'Повторите действие или обновите страницу.' }}
+              info={policiesError}
+              onRetry={() => void loadDocumentPolicies(current?.id ?? null)}
+              retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+              {...friendlyErrorBannerSecondary(
+                policiesError,
+                CRM_APP_PATHS.documents,
+                t('app.nav.items.documents', { defaultValue: 'Documents' }),
+              )}
               compact
             />
           )}
@@ -3457,7 +3474,10 @@ export default function Companies(){
                       await loadDocumentPolicies(current.id)
                       setNewPolicyMode(false)
                     } catch (err: any) {
-                      setPoliciesError(err?.message || t('app.companies.errors.policy_create_failed', { defaultValue: 'Failed to create policy' }))
+                      const fb = t('app.companies.errors.policy_create_failed', { defaultValue: 'Failed to create policy' })
+                      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+                        setPoliciesError(getFriendlyErrorInfo(err, fb, t))
+                      }
                     }
                   }}
                   onCancel={() => setNewPolicyMode(false)}
@@ -3476,7 +3496,10 @@ export default function Companies(){
                       await loadDocumentPolicies(current.id)
                       setEditingPolicy(null)
                     } catch (err: any) {
-                      setPoliciesError(err?.message || t('app.companies.errors.policy_update_failed', { defaultValue: 'Failed to update policy' }))
+                      const fb = t('app.companies.errors.policy_update_failed', { defaultValue: 'Failed to update policy' })
+                      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+                        setPoliciesError(getFriendlyErrorInfo(err, fb, t))
+                      }
                     }
                   }}
                   onCancel={() => setEditingPolicy(null)}
@@ -3540,7 +3563,10 @@ export default function Companies(){
                                   await deleteDocumentPolicy(policy.id)
                                   await loadDocumentPolicies(current.id)
                                 } catch (err: any) {
-                                  setPoliciesError(err?.message || t('app.companies.errors.policy_delete_failed', { defaultValue: 'Failed to delete policy' }))
+                                  const fb = t('app.companies.errors.policy_delete_failed', { defaultValue: 'Failed to delete policy' })
+                                  if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+                                    setPoliciesError(getFriendlyErrorInfo(err, fb, t))
+                                  }
                                 }
                               }}
                             >
@@ -3638,7 +3664,9 @@ export default function Companies(){
       }
     } catch (err){
       console.error(err)
-      alert(t('app.companies.messages.archive_error'))
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.companies.messages.archive_error'))) {
+        alert(t('app.companies.messages.archive_error'))
+      }
     } finally {
       setLoading(false)
     }

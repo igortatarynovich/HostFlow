@@ -25,6 +25,7 @@ import {
   updatePlatformTenantUserModuleOverrides,
   updateTenantVacancyAccess,
   uploadPlatformTenantLogo,
+  enrollPlatformTenantFounderPricing,
 } from '../../api/tenants'
 import type {
   PlatformTenant,
@@ -47,6 +48,8 @@ import type {
 import { useAuth } from '../../store/useAuth'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 import { STATUS_BADGE, TYPE_BADGE, MODULE_LABELS, SEAT_STATUS_BADGE } from '../../modules/tenants/constants'
 import type { StatusFilter, TypeFilter, CreateTenantForm } from '../../modules/tenants/types'
 import {
@@ -97,6 +100,8 @@ export default function TenantsPage() {
   const [search, setSearch] = useState('')
   const [licenseForm, setLicenseForm] = useState<LicenseFormState>({ ...DEFAULT_LICENSE })
   const [savingLicense, setSavingLicense] = useState(false)
+  const [founderEnrolling, setFounderEnrolling] = useState(false)
+  const [founderBanner, setFounderBanner] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [statusLoading, setStatusLoading] = useState(false)
   const [impersonating, setImpersonating] = useState(false)
@@ -354,6 +359,10 @@ export default function TenantsPage() {
     setAdminMessage(null)
   }, [selected?.id])
 
+  useEffect(() => {
+    setFounderBanner(null)
+  }, [selected?.id])
+
   const handleSelect = (tenant: PlatformTenant) => {
     setSelectedId(tenant.id)
     setLicenseForm(toLicenseForm(tenant.license))
@@ -385,6 +394,28 @@ export default function TenantsPage() {
       setSavingLicense(false)
     }
   }
+
+  const handleEnrollFounder = useCallback(async () => {
+    if (!selected) return
+    setFounderEnrolling(true)
+    setFounderBanner(null)
+    try {
+      const out = await enrollPlatformTenantFounderPricing(selected.id)
+      setFounderBanner({
+        kind: 'ok',
+        text: t('app.platform.tenants.founder.success', {
+          values: { used: String(out.founder_slots_used), max: String(out.founder_slots_max) },
+        }),
+      })
+    } catch (err) {
+      setFounderBanner({
+        kind: 'err',
+        text: formatErrorMessage(err, t('app.platform.tenants.founder.error_fallback')),
+      })
+    } finally {
+      setFounderEnrolling(false)
+    }
+  }, [selected, t])
 
   const handleStatusChange = async (status: TenantStatus) => {
     if (!selected) return
@@ -836,6 +867,17 @@ export default function TenantsPage() {
     }
   }, [selected, isSuperAdmin, t])
 
+  const tenantsListErrorBanner = useMemo<FriendlyErrorInfo | null>(
+    () =>
+      error
+        ? {
+            title: error,
+            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+          }
+        : null,
+    [error, t],
+  )
+
   if (!isSuperAdmin) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
@@ -888,16 +930,16 @@ export default function TenantsPage() {
             </button>
           </div>
         </div>
-        {error && (
+        {tenantsListErrorBanner && (
           <ErrorRecoveryBanner
-            info={{
-              title: error,
-              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-            }}
+            info={tenantsListErrorBanner}
             onRetry={() => void refresh()}
             retryLabel={t('app.platform.tenants.actions.refresh')}
-            secondaryTo={CRM_APP_PATHS.settingsTenants}
-            secondaryLabel={t('app.platform.tenants.title')}
+            {...friendlyErrorBannerSecondary(
+              tenantsListErrorBanner,
+              CRM_APP_PATHS.settingsTenants,
+              t('app.platform.tenants.title'),
+            )}
             compact
           />
         )}
@@ -1236,6 +1278,26 @@ export default function TenantsPage() {
                         </button>
                       </div>
                     </form>
+                  </div>
+
+                  <div className="rounded border border-slate-100 p-3">
+                    <h4 className="text-sm font-semibold text-slate-900">{t('app.platform.tenants.founder.title')}</h4>
+                    <p className="mt-1 text-xs text-slate-500">{t('app.platform.tenants.founder.subtitle')}</p>
+                    {founderBanner && (
+                      <p
+                        className={`mt-2 text-xs ${founderBanner.kind === 'ok' ? 'text-emerald-700' : 'text-red-600'}`}
+                      >
+                        {founderBanner.text}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      className="btn-secondary mt-2"
+                      disabled={!selected || founderEnrolling}
+                      onClick={() => void handleEnrollFounder()}
+                    >
+                      {founderEnrolling ? t('app.platform.tenants.founder.enrolling') : t('app.platform.tenants.founder.enroll')}
+                    </button>
                   </div>
 
                   {isSuperAdmin && (

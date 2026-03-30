@@ -27,6 +27,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.candidate import Candidate
@@ -70,6 +71,12 @@ from .storage import (
     select_file_entry,
 )
 from backend.app.services.document_files import resolve_document_file
+from backend.app.services.own_company_doc_scope import (
+    ensure_candidate_own_company_scope,
+    ensure_document_own_company_matches,
+    resolved_document_own_company_id,
+    tenant_documents_own_company_clause,
+)
 from backend.app.services.tenant_visibility import TenantVisibility, get_tenant_visibility
 
 from .crud import (
@@ -79,8 +86,8 @@ from .crud import (
     ensure_ruleset_seed,
     activate_ruleset_version,
     get_document,
+    get_effective_latest_ruleset_version,
     get_latest_diff_for_version,
-    get_latest_ruleset_version,
     get_last_document_checks_map,
     get_previous_ruleset_version,
     get_ruleset_diff_between,
@@ -91,6 +98,9 @@ from .crud import (
     list_ruleset_versions,
     list_ruleset_usage,
     log_ruleset_usage,
+    ruleset_version_visible_for_scope,
+    ruleset_versions_share_scope,
+    ruleset_write_scope_own_company_id,
     soft_delete_document,
     update_document,
 )
@@ -422,6 +432,7 @@ def _ruleset_to_out(record) -> RulesetVersionOut:
     return RulesetVersionOut(
         id=str(getattr(record, "id")),
         tenant_id=str(getattr(record, "tenant_id")),
+        own_company_id=getattr(record, "own_company_id", None),
         version=int(getattr(record, "version")),
         ruleset=ruleset_payload,
         comment=getattr(record, "comment", None),
@@ -605,10 +616,32 @@ async def _load_candidate_context(
     )
 
 
+async def _maybe_ensure_doc_own_company(
+    session: AsyncSession,
+    doc: Document,
+    candidate_row: Optional[Candidate],
+    active_own_company_id: Optional[str],
+) -> None:
+    cand = candidate_row
+    if not cand and doc.candidate_id:
+        cand = (
+            await session.execute(
+                select(Candidate).where(
+                    Candidate.id == doc.candidate_id,
+                    Candidate.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+    if cand:
+        ensure_document_own_company_matches(doc, cand, active_own_company_id)
+
+
 async def _get_document_with_access(
     session: AsyncSession,
     tenant_id: str,
     document_id: str,
+    *,
+    active_own_company_id: Optional[str] = None,
 ) -> tuple[Optional[Document], str, Optional[Candidate]]:
     visibility = get_tenant_visibility(session, tenant_id)
     doc = await get_document(session, tenant_id, document_id)
@@ -621,6 +654,7 @@ async def _get_document_with_access(
                 )
             )
         ).scalar_one_or_none()
+        await _maybe_ensure_doc_own_company(session, doc, candidate_row, active_own_company_id)
         return doc, str(getattr(doc, "tenant_id", tenant_id)), candidate_row
 
     doc = (
@@ -646,6 +680,7 @@ async def _get_document_with_access(
         return None, tenant_id, None
     if not _candidate_is_visible(candidate_row, tenant_id, visibility):
         return None, tenant_id, None
+    await _maybe_ensure_doc_own_company(session, doc, candidate_row, active_own_company_id)
     return doc, str(getattr(doc, "tenant_id", tenant_id)), candidate_row
 
 
@@ -783,6 +818,7 @@ async def _list_documents_for_candidate(
     offset: Optional[int],
     owner_tenant_id: Optional[str] = None,
     allowed_tenant_ids: Optional[set[str]] = None,
+    active_own_company_id: Optional[str] = None,
 ) -> List[DocumentOut]:
     doc_tenant_id = owner_tenant_id or tenant_id
     tenants_scope = set(allowed_tenant_ids or {doc_tenant_id, tenant_id})
@@ -796,6 +832,7 @@ async def _list_documents_for_candidate(
         limit=limit,
         offset=offset,
         allowed_tenant_ids=tenants_scope,
+        active_own_company_id=active_own_company_id,
     )
     last_checks: Dict[str, Any] = {}
     if include_last_check:
@@ -815,6 +852,7 @@ async def _list_documents_for_candidate(
             session,
             doc_tenant_id,
             load_default_ruleset(),
+            own_company_id=active_own_company_id,
         )
         await session.commit()
         ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
@@ -827,6 +865,7 @@ async def _list_documents_for_candidate(
                 str(candidate_id),
                 include_deleted=False,
                 allowed_tenant_ids=tenants_scope,
+                active_own_company_id=active_own_company_id,
             )
         auto_created = await _ensure_auto_ordered_documents(
             session,
@@ -847,6 +886,7 @@ async def _list_documents_for_candidate(
                 limit=limit,
                 offset=offset,
                 allowed_tenant_ids=tenants_scope,
+                active_own_company_id=active_own_company_id,
             )
             if include_last_check:
                 last_checks = await get_last_document_checks_map(
@@ -972,6 +1012,7 @@ async def api_list_documents_legacy(
         None, ge=0, description="Offset (for pagination)"
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> List[DocumentOut]:
     session, tenant_id = db_dep
     if candidate_id is None:
@@ -980,6 +1021,9 @@ async def api_list_documents_legacy(
             .where(Document.tenant_id == str(tenant_id))
             .order_by(Document.updated_at.desc())
         )
+        scope_t = tenant_documents_own_company_clause(own_company_id)
+        if scope_t is not None:
+            stmt = stmt.where(scope_t)
         if not include_deleted:
             stmt = stmt.where(Document.deleted_at.is_(None))
         if status:
@@ -1009,6 +1053,7 @@ async def api_list_documents_legacy(
         return result
 
     cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
     return await _list_documents_for_candidate(
         session,
         str(tenant_id),
@@ -1024,6 +1069,7 @@ async def api_list_documents_legacy(
         offset=offset,
         owner_tenant_id=cand_ctx.owner_tenant_id,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_company_id,
     )
 
 
@@ -1053,9 +1099,11 @@ async def api_list_candidate_documents(
         None, ge=0, description="Offset (for pagination)"
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> List[DocumentOut]:
     session, tenant_id = db_dep
     cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
     return await _list_documents_for_candidate(
         session,
         str(tenant_id),
@@ -1071,6 +1119,7 @@ async def api_list_candidate_documents(
         offset=offset,
         owner_tenant_id=cand_ctx.owner_tenant_id,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_company_id,
     )
 
 
@@ -1083,10 +1132,12 @@ async def api_create_candidate_document(
     candidate_id: UUID,
     payload: DocumentCreateIn,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> DocumentOut:
     session, tenant_id = db_dep
     logger.info(f"[create_doc] Received request for candidate {candidate_id}, parsed payload: {payload.model_dump()}")
     cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
     try:
         doc_type = payload.effective_doc_type()
     except ValueError as exc:
@@ -1112,6 +1163,7 @@ async def api_create_candidate_document(
         data["meta"] = meta_json_payload
     owner_id = data.get("owner_id") or str(candidate_id)
     data["owner_id"] = owner_id
+    data["own_company_id"] = resolved_document_own_company_id(cand_ctx.candidate, own_company_id)
 
     try:
         doc = await create_document(session, data)
@@ -1134,10 +1186,14 @@ async def api_get_document(
     include_checks: bool = Query(False),
     include_last_check: bool = Query(True),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> DocumentWithChecksOut:
     session, tenant_id = db_dep
     doc, doc_tenant_id, _ = await _get_document_with_access(
-        session, str(tenant_id), str(document_id)
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1170,10 +1226,14 @@ async def api_patch_document(
     document_id: UUID,
     payload: DocumentUpdateIn,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> DocumentOut:
     session, tenant_id = db_dep
     doc, doc_tenant_id, _ = await _get_document_with_access(
-        session, str(tenant_id), str(document_id)
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1204,10 +1264,14 @@ async def api_patch_document(
 async def api_delete_document(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> Response:
     session, tenant_id = db_dep
     doc, doc_tenant_id, _ = await _get_document_with_access(
-        session, str(tenant_id), str(document_id)
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1230,7 +1294,20 @@ async def api_delete_document(
 
 
 @router.post("/documents/{document_id}/presign-upload")
-async def api_presign_upload(document_id: UUID) -> dict[str, Any]:
+async def api_presign_upload(
+    document_id: UUID,
+    db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
+) -> dict[str, Any]:
+    session, tenant_id = db_dep
+    doc, _, _ = await _get_document_with_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
     return presign_upload(str(document_id))
 
 
@@ -1239,10 +1316,14 @@ async def api_get_document_file_url(
     document_id: UUID,
     version: Optional[int] = Query(None),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> dict[str, Any]:
     session, tenant_id = db_dep
     doc, _, _ = await _get_document_with_access(
-        session, str(tenant_id), str(document_id)
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1272,10 +1353,14 @@ async def api_download_document_file(
     document_id: UUID,
     version: Optional[int] = Query(None),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> FileResponse:
     session, tenant_id = db_dep
     doc, _, _ = await _get_document_with_access(
-        session, str(tenant_id), str(document_id)
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1306,10 +1391,14 @@ async def api_download_document_file(
 async def api_list_document_checks(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> List[DocumentCheckOut]:
     session, tenant_id = db_dep
     doc, doc_tenant_id, _ = await _get_document_with_access(
-        session, str(tenant_id), str(document_id)
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1323,10 +1412,14 @@ async def api_check_document(
     body: Dict[str, Any],
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> DocumentOut:
     session, tenant_id = db_dep
     doc, doc_tenant_id, _ = await _get_document_with_access(
-        session, str(tenant_id), str(document_id)
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
     )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -1375,9 +1468,12 @@ async def fetch_candidate_documents_summary_response(
     tenant_id: str,
     candidate_id: UUID,
     owner_context: Optional[str] = None,
+    *,
+    active_own_company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Same payload as GET /candidate/{id}/documents/summary (work-panel bundle, tests, etc.)."""
     cand_ctx = await _load_candidate_context(session, tenant_id, candidate_id)
+    ensure_candidate_own_company_scope(cand_ctx.candidate, active_own_company_id)
     ctx = _owner_context_or_400(
         owner_context,
         candidate_id,
@@ -1389,6 +1485,7 @@ async def fetch_candidate_documents_summary_response(
         str(candidate_id),
         include_deleted=False,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=active_own_company_id,
     )
     ruleset_version = None
     ruleset_payload: Dict[str, Any]
@@ -1397,6 +1494,7 @@ async def fetch_candidate_documents_summary_response(
             session,
             cand_ctx.owner_tenant_id,
             load_default_ruleset(),
+            own_company_id=active_own_company_id,
         )
         await session.commit()
         ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
@@ -1438,6 +1536,7 @@ async def fetch_candidate_documents_summary_response(
             str(candidate_id),
             include_deleted=False,
             allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+            active_own_company_id=active_own_company_id,
         )
         last_checks = await get_last_document_checks_map(
             session,
@@ -1487,10 +1586,15 @@ async def api_candidate_documents_summary(
         description="Optional JSON string with candidate/vacancy context",
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
     return await fetch_candidate_documents_summary_response(
-        session, str(tenant_id), candidate_id, owner_context
+        session,
+        str(tenant_id),
+        candidate_id,
+        owner_context,
+        active_own_company_id=own_company_id,
     )
 
 
@@ -1502,9 +1606,11 @@ async def api_candidate_checklist(
         description="Optional JSON string with candidate/vacancy context",
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
     cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
     ctx = _owner_context_or_400(
         owner_context,
         candidate_id,
@@ -1514,6 +1620,7 @@ async def api_candidate_checklist(
         session,
         cand_ctx.owner_tenant_id,
         load_default_ruleset(),
+        own_company_id=own_company_id,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     checklist = _fill_checklist_defaults(compute_candidate_checklist(ctx, ruleset_payload), ruleset_payload)
@@ -1538,15 +1645,18 @@ async def api_candidate_checklist(
 async def api_export_documents_json(
     candidate_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
     cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
     docs = await list_candidate_documents(
         session,
         cand_ctx.owner_tenant_id,
         str(candidate_id),
         include_deleted=False,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_company_id,
     )
     last_checks = await get_last_document_checks_map(
         session,
@@ -1569,15 +1679,18 @@ async def api_export_documents_json(
 async def api_export_documents_csv(
     candidate_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> StreamingResponse:
     session, tenant_id = db_dep
     cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
     docs = await list_candidate_documents(
         session,
         cand_ctx.owner_tenant_id,
         str(candidate_id),
         include_deleted=False,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_company_id,
     )
     last_checks = await get_last_document_checks_map(
         session,
@@ -1630,15 +1743,18 @@ async def api_export_documents_csv(
 async def api_export_candidate_bundle(
     candidate_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> StreamingResponse:
     session, tenant_id = db_dep
     cand_ctx = await _load_candidate_context(session, str(tenant_id), candidate_id)
+    ensure_candidate_own_company_scope(cand_ctx.candidate, own_company_id)
     docs = await list_candidate_documents(
         session,
         cand_ctx.owner_tenant_id,
         str(candidate_id),
         include_deleted=False,
         allowed_tenant_ids=cand_ctx.allowed_tenant_ids,
+        active_own_company_id=own_company_id,
     )
     last_checks = await get_last_document_checks_map(
         session, cand_ctx.owner_tenant_id, [str(doc.id) for doc in docs]
@@ -1707,9 +1823,15 @@ async def api_export_candidate_bundle(
 async def api_extract_document(
     document_id: UUID,
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
-    doc = await get_document(session, str(tenant_id), str(document_id))
+    doc, _, _ = await _get_document_with_access(
+        session,
+        str(tenant_id),
+        str(document_id),
+        active_own_company_id=own_company_id,
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     files = await ensure_document_files(session, doc)
@@ -1741,6 +1863,7 @@ async def api_mock_upload(
     file: UploadFile = File(...),
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> Dict[str, Any]:
     session, tenant_id = db_dep
     segments = [seg for seg in key.strip().split("/") if seg]
@@ -1750,7 +1873,12 @@ async def api_mock_upload(
             detail="key must follow 'documents/{document_id}/...'",
         )
     document_id = segments[1]
-    doc = await get_document(session, str(tenant_id), document_id)
+    doc, _, _ = await _get_document_with_access(
+        session,
+        str(tenant_id),
+        document_id,
+        active_own_company_id=own_company_id,
+    )
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -1795,14 +1923,18 @@ async def api_mock_upload(
 @router.get("/ruleset", response_model=RulesetVersionOut)
 async def api_get_ruleset(
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
-    ruleset_version = await get_latest_ruleset_version(session, str(tenant_id))
+    ruleset_version = await get_effective_latest_ruleset_version(
+        session, str(tenant_id), own_company_id=own_company_id
+    )
     if not ruleset_version:
         ruleset_version = await ensure_ruleset_seed(
             session,
             str(tenant_id),
             load_default_ruleset(),
+            own_company_id=own_company_id,
         )
     await session.commit()
     return _ruleset_to_out(ruleset_version)
@@ -1820,6 +1952,7 @@ async def api_list_ruleset_versions_route(
         None, ge=0, description="Optional offset for pagination"
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> List[RulesetVersionOut]:
     session, tenant_id = db_dep
     status_norm = None
@@ -1829,9 +1962,13 @@ async def api_list_ruleset_versions_route(
             status_norm = status_lower
         elif status_lower not in {"all", "any"}:
             raise HTTPException(status_code=400, detail="Invalid status filter")
+    list_scope = await ruleset_write_scope_own_company_id(
+        session, str(tenant_id), own_company_id
+    )
     rows = await list_ruleset_versions(
         session,
         str(tenant_id),
+        own_company_id=list_scope,
         status=status_norm,
         limit=limit,
         offset=offset,
@@ -1843,10 +1980,11 @@ async def api_list_ruleset_versions_route(
 async def api_get_ruleset_version(
     version_id: str = Path(..., description="Ruleset version identifier"),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
     record = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
-    if not record:
+    if not record or not ruleset_version_visible_for_scope(record, own_company_id):
         raise HTTPException(status_code=404, detail="Ruleset version not found")
     return _ruleset_to_out(record)
 
@@ -1860,6 +1998,7 @@ async def api_create_ruleset_version(
     payload: Dict[str, Any] = Body(...),
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
     ruleset_data = payload.get("ruleset") or payload.get("json_data")
@@ -1876,6 +2015,7 @@ async def api_create_ruleset_version(
         comment=comment,
         activate=activate,
         origin_version_id=origin_version_id,
+        own_company_id=own_company_id,
     )
     await session.commit()
     return _ruleset_to_out(new_version)
@@ -1889,8 +2029,12 @@ async def api_create_ruleset_version(
 async def api_activate_ruleset_version(
     version_id: str = Path(..., description="Ruleset version identifier"),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
+    pre = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
+    if not pre or not ruleset_version_visible_for_scope(pre, own_company_id):
+        raise HTTPException(status_code=404, detail="Ruleset version not found")
     record = await activate_ruleset_version(session, str(tenant_id), version_id)
     if not record:
         raise HTTPException(status_code=404, detail="Ruleset version not found")
@@ -1908,10 +2052,11 @@ async def api_rollback_ruleset_version(
     payload: Dict[str, Any] = Body(...),
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
     target = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
-    if not target:
+    if not target or not ruleset_version_visible_for_scope(target, own_company_id):
         raise HTTPException(status_code=404, detail="Ruleset version not found")
     rollback_comment = str(payload.get("comment") or payload.get("rollback_comment") or "").strip()
     if len(rollback_comment) < 3:
@@ -1928,6 +2073,7 @@ async def api_rollback_ruleset_version(
         activate=True,
         origin_version_id=str(target.id),
         rollback_comment=rollback_comment,
+        own_company_id=getattr(target, "own_company_id", None),
     )
     await session.commit()
     return _ruleset_to_out(new_version)
@@ -1944,14 +2090,25 @@ async def api_get_ruleset_diff(
         description="Optional version id to compare against; defaults to previous version",
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetDiffOut:
     session, tenant_id = db_dep
     target = await get_ruleset_version_by_id(session, str(tenant_id), version_id)
-    if not target:
+    if not target or not ruleset_version_visible_for_scope(target, own_company_id):
         raise HTTPException(status_code=404, detail="Ruleset version not found")
     compare_id = compare_to
     diff_row = None
     if compare_to:
+        other = await get_ruleset_version_by_id(session, str(tenant_id), compare_to)
+        if not other or not ruleset_version_visible_for_scope(other, own_company_id):
+            raise HTTPException(
+                status_code=404, detail="Compare ruleset version not found"
+            )
+        if not ruleset_versions_share_scope(target, other):
+            raise HTTPException(
+                status_code=400,
+                detail="Compare ruleset version is not in the same workspace scope",
+            )
         diff_row = await get_ruleset_diff_between(session, compare_to, version_id)
     else:
         diff_row = await get_latest_diff_for_version(session, version_id)
@@ -1968,7 +2125,10 @@ async def api_get_ruleset_diff(
     else:
         if not compare_id:
             prev_version = await get_previous_ruleset_version(
-                session, str(tenant_id), target.version
+                session,
+                str(tenant_id),
+                target.version,
+                own_company_id=getattr(target, "own_company_id", None),
             )
             if prev_version:
                 compare_id = str(prev_version.id)
@@ -1979,9 +2139,16 @@ async def api_get_ruleset_diff(
             compare_version = await get_ruleset_version_by_id(
                 session, str(tenant_id), compare_id
             )
-            if not compare_version:
+            if not compare_version or not ruleset_version_visible_for_scope(
+                compare_version, own_company_id
+            ):
                 raise HTTPException(
                     status_code=404, detail="Compare ruleset version not found"
+                )
+            if not ruleset_versions_share_scope(target, compare_version):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Compare ruleset version is not in the same workspace scope",
                 )
             previous_payload = normalize_ruleset_payload(compare_version.json_data)
 
@@ -2018,11 +2185,16 @@ async def api_list_ruleset_usage(
         100, ge=1, le=500, description="Limit number of usage records (default 100)"
     ),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetUsageResponse:
     session, tenant_id = db_dep
+    usage_scope = await ruleset_write_scope_own_company_id(
+        session, str(tenant_id), own_company_id
+    )
     rows = await list_ruleset_usage(
         session,
         str(tenant_id),
+        own_company_id=usage_scope,
         used_in=used_in,
         since=since,
         until=until,
@@ -2054,12 +2226,16 @@ async def api_update_ruleset(
     payload: Dict[str, Any] = Body(...),
     current_user: UserCtx = Depends(get_current_user),
     db_dep=Depends(get_db_with_tenant),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> RulesetVersionOut:
     session, tenant_id = db_dep
     ruleset_data = payload.get("ruleset") or payload.get("json_data")
     if not isinstance(ruleset_data, dict):
         raise HTTPException(status_code=400, detail="ruleset must be an object")
     comment = payload.get("comment")
+    write_scope = await ruleset_write_scope_own_company_id(
+        session, str(tenant_id), own_company_id
+    )
     new_version = await create_ruleset_version(
         session,
         str(tenant_id),
@@ -2067,6 +2243,7 @@ async def api_update_ruleset(
         created_by=getattr(current_user, "sub", None),
         comment=comment,
         activate=True,
+        own_company_id=write_scope,
     )
     await session.commit()
     return _ruleset_to_out(new_version)

@@ -14,10 +14,13 @@ import { listCompanies } from '../api/client'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
 export default function ClientLinkDetailPage() {
   const { linkId } = useParams<{ linkId: string }>()
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { isEmployerTenant, entitySingular } = useBusinessTerminology()
   const { me } = useAuth()
   const { notify } = useToast()
@@ -35,11 +38,13 @@ export default function ClientLinkDetailPage() {
   const [saving, setSaving] = useState(false)
   const [portalLoading, setPortalLoading] = useState(false)
   const [companyId, setCompanyId] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<FriendlyErrorInfo | null>(null)
 
   const load = useCallback(async () => {
     if (!tenantId || !linkId) return
     try {
       setLoading(true)
+      setLoadError(null)
       const data = await listTenantLinks(tenantId)
       const found = data.find((l) => l.id === linkId)
       setLink(found ?? null)
@@ -74,13 +79,15 @@ export default function ClientLinkDetailPage() {
         setCompanyId(null)
       }
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error'
-      notify({ title: msg, variant: 'error' })
+      const fb = t('app.clients.errors.link_load_failed', { defaultValue: 'Failed to load client link' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(e, fb)) {
+        setLoadError(getFriendlyErrorInfo(e, fb, t))
+      }
       setLink(null)
     } finally {
       setLoading(false)
     }
-  }, [tenantId, linkId, notify])
+  }, [linkId, planLimitModal, t, tenantId])
 
   useEffect(() => {
     void load()
@@ -94,8 +101,10 @@ export default function ClientLinkDetailPage() {
       setLink(updated)
       notify({ title: t('common.saved', { defaultValue: 'Сохранено' }), variant: 'success' })
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error'
-      notify({ title: msg, variant: 'error' })
+      const fb = t('app.clients.errors.update_failed', { defaultValue: 'Could not save changes' })
+      if (planLimitModal?.showPlanLimitIfNeeded(e, fb)) return
+      const fe = getFriendlyErrorInfo(e, fb, t)
+      notify({ title: fe.title, variant: 'error' })
     } finally {
       setSaving(false)
     }
@@ -109,8 +118,10 @@ export default function ClientLinkDetailPage() {
       setLink({ ...link, portal_token: out.token })
       notify({ title: t('app.clients.portal_created', { defaultValue: 'Ссылка создана' }), variant: 'success' })
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error'
-      notify({ title: msg, variant: 'error' })
+      const fb = t('app.clients.errors.portal_create_failed', { defaultValue: 'Could not create portal link' })
+      if (planLimitModal?.showPlanLimitIfNeeded(e, fb)) return
+      const fe = getFriendlyErrorInfo(e, fb, t)
+      notify({ title: fe.title, variant: 'error' })
     } finally {
       setPortalLoading(false)
     }
@@ -124,8 +135,10 @@ export default function ClientLinkDetailPage() {
       setLink({ ...link, portal_token: null })
       notify({ title: t('app.clients.portal_revoked', { defaultValue: 'Ссылка отозвана' }), variant: 'success' })
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? 'Error'
-      notify({ title: msg, variant: 'error' })
+      const fb = t('app.clients.errors.portal_revoke_failed', { defaultValue: 'Could not revoke portal link' })
+      if (planLimitModal?.showPlanLimitIfNeeded(e, fb)) return
+      const fe = getFriendlyErrorInfo(e, fb, t)
+      notify({ title: fe.title, variant: 'error' })
     } finally {
       setPortalLoading(false)
     }
@@ -148,6 +161,12 @@ export default function ClientLinkDetailPage() {
   }
 
   if (!link) {
+    const bannerInfo: FriendlyErrorInfo =
+      loadError ??
+      ({
+        title: notFoundTitle,
+        hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+      } satisfies FriendlyErrorInfo)
     return (
       <div className="space-y-4">
         <Link to={CRM_APP_PATHS.agencyClients} className="text-sm text-brand-600 hover:underline">
@@ -155,12 +174,14 @@ export default function ClientLinkDetailPage() {
         </Link>
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <ErrorRecoveryBanner
-            info={{
-              title: notFoundTitle,
-              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-            }}
+            info={bannerInfo}
             onRetry={() => void load()}
             retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+            {...friendlyErrorBannerSecondary(
+              bannerInfo,
+              CRM_APP_PATHS.agencyClients,
+              t('app.clients.title', { defaultValue: 'Clients' }),
+            )}
             compact
           />
         </div>

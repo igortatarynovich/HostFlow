@@ -153,7 +153,7 @@
    * Шкала: 16px → 20px (sm) → 24px (lg). Подключайте вместе с `.crm-page-stack` для gap между блоками.
    */
   .crm-page-inset {
-    @apply px-4 pb-4 pt-4 sm:px-5 sm:pb-5 sm:pt-5 lg:px-6 lg:pb-6 lg:pt-6;
+    @apply px-4 pb-6 pt-4 sm:px-5 sm:pb-7 sm:pt-5 lg:px-8 lg:pb-10 lg:pt-6;
   }
 
   /** Вертикальный ритм между крупными блоками страницы (баннеры, сетка, шапка). */
@@ -208,12 +208,10 @@
     color: rgb(6 95 70);
   }
 
-  /* ===== Unified settings surface ===== */
+  /* ===== Unified settings surface =====
+     Do not zero space-y/gap on all direct children — integration and settings pages rely on Tailwind stack utilities. */
   .settings-surface {
-    @apply space-y-0 gap-0;
-  }
-  .settings-surface > div {
-    @apply space-y-0 gap-0;
+    @apply w-full min-w-0;
   }
   .settings-surface .card {
     @apply rounded-none border-slate-200 shadow-sm;

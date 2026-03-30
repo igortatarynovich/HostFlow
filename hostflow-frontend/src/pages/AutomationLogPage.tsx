@@ -4,14 +4,17 @@ import { listAutomationLog, type AutomationLogEntry } from '../api/automationLog
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { formatDateTime } from '../utils/dateFormat'
 
 export default function AutomationLogPage() {
   const { t, locale } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [items, setItems] = useState<AutomationLogEntry[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
 
   const [targetType, setTargetType] = useState('candidate')
   const [targetId, setTargetId] = useState('')
@@ -40,14 +43,27 @@ export default function AutomationLogPage() {
         setTotal(res.total || 0)
       } catch (err: any) {
         console.error('[AutomationLogPage] load error', err)
-        setError(t('app.automation_log.errors.load', { defaultValue: 'Failed to load automation log' }))
+        if (
+          !planLimitModal?.showPlanLimitIfNeeded(
+            err,
+            t('app.automation_log.errors.load', { defaultValue: 'Failed to load automation log' }),
+          )
+        ) {
+          setError(
+            getFriendlyErrorInfo(
+              err,
+              t('app.automation_log.errors.load', { defaultValue: 'Failed to load automation log' }),
+              t,
+            ),
+          )
+        }
         setItems([])
         setTotal(0)
       } finally {
         setLoading(false)
       }
     },
-    [actionPrefix, dateFrom, dateTo, offset, t, targetId, targetType],
+    [actionPrefix, dateFrom, dateTo, offset, planLimitModal, t, targetId, targetType],
   )
 
   useEffect(() => {
@@ -129,14 +145,14 @@ export default function AutomationLogPage() {
 
         {error && (
           <ErrorRecoveryBanner
-            info={{
-              title: error,
-              hint: t('app.common.retry_hint', { defaultValue: 'Repeat the action or refresh the page.' }),
-            }}
+            info={error}
             onRetry={() => load()}
             retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-            secondaryTo={CRM_APP_PATHS.automationLog}
-            secondaryLabel={t('app.automation_log.title', { defaultValue: 'Automation log' })}
+            {...friendlyErrorBannerSecondary(
+              error,
+              CRM_APP_PATHS.automations,
+              t('app.automations.hub.back', { defaultValue: '← Automations' }),
+            )}
             compact
           />
         )}

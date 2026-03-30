@@ -7,6 +7,8 @@ import type { Company } from '../api/types'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePermissions } from '../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 
@@ -23,6 +25,7 @@ function isManagedByUser(company: Company, userId: string) {
 
 export default function MyCompanyPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { me } = useAuth()
   const { can, role } = usePermissions()
   const canLoadTeamOverview = role === 'administrator' || role === 'supervisor'
@@ -30,7 +33,7 @@ export default function MyCompanyPage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [billing, setBilling] = useState<BillingSummary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [userLabelById, setUserLabelById] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -58,7 +61,10 @@ export default function MyCompanyPage() {
         setUserLabelById(map)
       } catch (err: any) {
         if (!mounted) return
-        setError(err?.response?.data?.detail || err?.message || 'Failed to load company profiles')
+        const fb = t('app.my_company.errors.load_failed')
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setError(getFriendlyErrorInfo(err, fb, t))
+        }
       } finally {
         if (mounted) setLoading(false)
       }
@@ -66,7 +72,7 @@ export default function MyCompanyPage() {
     return () => {
       mounted = false
     }
-  }, [canLoadTeamOverview])
+  }, [canLoadTeamOverview, planLimitModal, t])
 
   const managedOperatingCompanies = useMemo(() => {
     const userId = String((me as any)?.sub || '').trim()
@@ -157,12 +163,14 @@ export default function MyCompanyPage() {
 
       {error && (
         <ErrorRecoveryBanner
-          info={{
-            title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
+          info={error}
           onRetry={() => window.location.reload()}
           retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+          {...friendlyErrorBannerSecondary(
+            error,
+            CRM_APP_PATHS.settingsBilling,
+            t('app.nav.items.settings_billing', { defaultValue: 'Billing & Team' }),
+          )}
         />
       )}
 

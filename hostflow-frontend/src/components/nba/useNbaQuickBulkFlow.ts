@@ -12,6 +12,7 @@ import type { LeadListResponse } from '../../api/types'
 import type { ReminderRecord } from '../../api/types/notification'
 import { useI18n } from '../../i18n'
 import { useToast } from '../Toast'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
 import {
   NBA_CANDIDATE_OVERDUE_REMINDER_STATUSES,
@@ -31,6 +32,7 @@ export function useNbaQuickBulkFlow(options: UseNbaQuickBulkFlowOptions = {}) {
   const { onNbaSuccess, onSelectionSuccess } = options
   const { t } = useI18n()
   const { notify } = useToast()
+  const planLimitModal = usePlanLimitModal()
 
   const [bulkActivitiesOpen, setBulkActivitiesOpen] = useState(false)
   const [bulkActivitiesSource, setBulkActivitiesSource] = useState<'selection' | 'nba'>('selection')
@@ -91,6 +93,23 @@ export function useNbaQuickBulkFlow(options: UseNbaQuickBulkFlowOptions = {}) {
             })
             return
           }
+        } else if (g.id === 'leads_funnel_weak_step' || g.id === 'leads_funnel_slow_stage') {
+          const cr = (g.query.conversion_root || '').trim().toLowerCase()
+          const res = (await listLeads({
+            status: g.query.status || undefined,
+            conversionRoot: cr || undefined,
+            limit: NBA_QUICK_BATCH_LIMIT,
+            offset: 0,
+          })) as LeadListResponse
+          ids = (res.items || []).map((l) => l.id).filter(Boolean)
+          bulkEt = 'lead'
+          if (!ids.length) {
+            notify({
+              title: t('app.leads.nba.quick_no_leads'),
+              variant: 'warning',
+            })
+            return
+          }
         } else if (g.id === 'candidates_no_next_action') {
           const res = (await listCandidatesNoNextAction({
             limit: NBA_QUICK_BATCH_LIMIT,
@@ -138,13 +157,15 @@ export function useNbaQuickBulkFlow(options: UseNbaQuickBulkFlowOptions = {}) {
         setNbaBulkEntityType(bulkEt)
         setNbaBulkEntityIds(ids)
         setBulkActivityTitle(
-          g.id === 'leads_next_overdue'
-            ? t('app.leads.nba.quick_title_overdue')
-            : g.id === 'leads_no_next_action'
-              ? t('app.leads.nba.quick_title_no_next')
-              : g.id === 'candidates_next_overdue'
-                ? t('app.leads.nba.quick_title_candidate_overdue')
-                : t('app.leads.nba.quick_title_candidate_no_next'),
+          g.id === 'leads_funnel_weak_step' || g.id === 'leads_funnel_slow_stage'
+            ? t('app.leads.nba.quick_title_funnel_insight')
+            : g.id === 'leads_next_overdue'
+              ? t('app.leads.nba.quick_title_overdue')
+              : g.id === 'leads_no_next_action'
+                ? t('app.leads.nba.quick_title_no_next')
+                : g.id === 'candidates_next_overdue'
+                  ? t('app.leads.nba.quick_title_candidate_overdue')
+                  : t('app.leads.nba.quick_title_candidate_no_next'),
         )
         setBulkActivityType('follow_up')
         setBulkActivityDueAt(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16))
@@ -156,13 +177,20 @@ export function useNbaQuickBulkFlow(options: UseNbaQuickBulkFlowOptions = {}) {
         )
         setBulkActivitiesOpen(true)
       } catch (err: unknown) {
-        const info = getFriendlyErrorInfo(err, t)
-        notify({ title: info.title, description: info.description, variant: 'error' })
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.nba.quick_action_failed'))) {
+          return
+        }
+        const info = getFriendlyErrorInfo(err, t('app.leads.nba.quick_action_failed'), t)
+        notify({
+          title: info.title,
+          description: [info.detail, info.hint].filter(Boolean).join(' '),
+          variant: 'error',
+        })
       } finally {
         setNbaQuickLoadingGroupId(null)
       }
     },
-    [notify, t],
+    [notify, planLimitModal, t],
   )
 
   const openNbaQuickProcessNewLeads = useCallback(
@@ -196,30 +224,20 @@ export function useNbaQuickBulkFlow(options: UseNbaQuickBulkFlowOptions = {}) {
           })
         }
       } catch (err: unknown) {
-        const ax = err as { response?: { status?: number; data?: { detail?: unknown } } }
-        const st = ax?.response?.status
-        const detail = ax?.response?.data?.detail
-        if (
-          st === 403 &&
-          detail &&
-          typeof detail === 'object' &&
-          !Array.isArray(detail) &&
-          (detail as { code?: string }).code === 'plan_requires_team'
-        ) {
-          notify({
-            title: t('app.leads.nba.process_new_plan_blocked_title'),
-            description: t('app.leads.nba.process_new_plan_blocked_desc'),
-            variant: 'warning',
-          })
-        } else {
-          const info = getFriendlyErrorInfo(err, t)
-          notify({ title: info.title, description: info.description, variant: 'error' })
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.nba.quick_action_failed'))) {
+          return
         }
+        const info = getFriendlyErrorInfo(err, t('app.leads.nba.quick_action_failed'), t)
+        notify({
+          title: info.title,
+          description: [info.detail, info.hint].filter(Boolean).join(' '),
+          variant: 'error',
+        })
       } finally {
         setNbaQuickLoadingGroupId(null)
       }
     },
-    [notify, onNbaSuccess, t],
+    [notify, onNbaSuccess, planLimitModal, t],
   )
 
   const applyBulkActivities = useCallback(
@@ -265,6 +283,9 @@ export function useNbaQuickBulkFlow(options: UseNbaQuickBulkFlowOptions = {}) {
           }
         }
       } catch (err: unknown) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.bulk.activities.failed'))) {
+          return
+        }
         const detail =
           (err as { response?: { data?: { detail?: unknown } }; message?: string })?.response?.data?.detail ??
           (err as { message?: string })?.message ??
@@ -289,6 +310,7 @@ export function useNbaQuickBulkFlow(options: UseNbaQuickBulkFlowOptions = {}) {
       notify,
       onNbaSuccess,
       onSelectionSuccess,
+      planLimitModal,
       t,
     ],
   )

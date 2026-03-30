@@ -1,9 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MutableRefObject } from 'react'
-import { api, withTenant } from '../../../api/client'
+import { api, listCandidatesNoNextAction, withTenant } from '../../../api/client'
 import { recordPerfMeasurement } from '../../../api/analytics'
 import type { CandidatesListInsights, DateRangeFilter, ListResp, UICandidate, CandidateListCacheEntry } from '../types'
-import { formatErrorForDisplay, getErrorInfo } from '../../../utils/errorHandling'
+
+function mapNoNextActionRowToUICandidate(row: Record<string, unknown>): UICandidate {
+  const id = String(row.id ?? '')
+  return {
+    id,
+    first_name: String(row.first_name ?? '').trim() || '—',
+    last_name: String(row.last_name ?? '').trim() || '',
+    stage: row.stage != null ? String(row.stage) : null,
+    manager: row.manager != null ? String(row.manager) : null,
+    short_id: row.short_id != null ? String(row.short_id) : null,
+    company_id: row.company_id != null ? (String(row.company_id) as UICandidate['company_id']) : null,
+    vacancy_id: row.vacancy_id != null ? (String(row.vacancy_id) as UICandidate['vacancy_id']) : null,
+    created_at: row.created_at != null ? String(row.created_at) : null,
+    updated_at: row.updated_at != null ? String(row.updated_at) : null,
+  }
+}
+import { getErrorInfo } from '../../../utils/errorHandling'
+import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../../utils/friendlyError'
+import { usePlanLimitModal } from '../../../contexts/PlanLimitModalContext'
 import { CANDIDATE_CACHE_TTL_MS } from '../constants'
 
 type TFn = (key: string, opts?: any) => string
@@ -49,6 +67,8 @@ function normalizeListInsights(raw: unknown): CandidatesListInsights | null {
     docs_ready: Number(o.docs_ready) || 0,
     docs_attention: Number(o.docs_attention) || 0,
     docs_ordered: Number(o.docs_ordered) || 0,
+    docs_incomplete: Number(o.docs_incomplete) || 0,
+    ops_in_work: Number(o.ops_in_work) || 0,
   }
 }
 
@@ -88,6 +108,9 @@ type UseCandidatesTableDataArgs = {
   // When integrating incrementally, the page may still own `load()` retry logic.
   // Disable internal "apply from last success" + "retry empty batch" effects to avoid double-fetch.
   disableAutoRetryAndPrevLoadingEffects?: boolean
+
+  /** §2.14: operational queue on main list (same shell as table/kanban entry). */
+  operationalQueue?: 'no_next_action' | null
 }
 
 export function useCandidatesTableData({
@@ -118,12 +141,14 @@ export function useCandidatesTableData({
 
   restoredScrollRef,
   disableAutoRetryAndPrevLoadingEffects,
+  operationalQueue = null,
 }: UseCandidatesTableDataArgs) {
+  const planLimitModal = usePlanLimitModal()
   const [items, setItems] = useState<UICandidate[]>([])
   const [total, setTotal] = useState(0)
   const [listInsights, setListInsights] = useState<CandidatesListInsights | null>(null)
   const [loading, setLoading] = useState(false)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [errorText, setErrorText] = useState<FriendlyErrorInfo | null>(null)
 
   const retriedEmptyItemsRef = useRef(false)
   const loadIdRef = useRef(0)
@@ -209,164 +234,236 @@ export function useCandidatesTableData({
       let perfOk = true
 
       try {
-        let nextOffset = 0
-        let accumulated: UICandidate[] = []
-        let totalCount: number | null = null
-
-        // Aggregates from server — only first page
-        let normalizedInsights: CandidatesListInsights | null = null
-
-        while (true) {
-          const params: Record<string, any> = {
-            limit,
-            offset: nextOffset,
-            order_by: 'created_at',
-            desc: true,
-            compact: true,
-            include_risk: true,
-            include_insights: nextOffset === 0,
-            q: q || undefined,
-            stage: stageFilter.length === 1 ? stageFilter[0] : undefined,
-            stages: stageFilter.length > 0 ? stageFilter.join(',') : undefined,
-            status_reason: statusReasonFilter.length > 0 ? statusReasonFilter : undefined,
-            tags: tagsFilter.length > 0 ? tagsFilter : undefined,
-            vacancy_id: vacancyFilter.length > 0 ? vacancyFilter[0] : undefined,
-            vacancy: vacancyFilter.length > 0 ? vacancyFilter.join(',') : undefined,
-            manager_id: managerFilter.length === 1 ? managerFilter[0] : undefined,
-            documents_ordered: docsOrderedFilter.length === 1 ? docsOrderedFilter[0] : undefined,
-            handoff_status: handoffStatusFilter || undefined,
-            contact_attempts: contactAttemptsFilter || undefined,
-            processor_id: processorFilter || undefined,
-          }
-          if (shadowBucketFilter && String(shadowBucketFilter).trim()) {
-            params.shadow_bucket_start = String(shadowBucketFilter).trim()
-            const mb = String(shadowBucketMinBand || 'high').trim().toLowerCase()
-            if (['low', 'medium', 'high', 'critical'].includes(mb)) {
-              params.shadow_bucket_min_band = mb
-            } else {
-              params.shadow_bucket_min_band = 'high'
-            }
-          }
-          if (createdRange.from) params.created_from = createdRange.from
-          if (createdRange.to) params.created_to = createdRange.to
-          if (isFavoriteFilter != null) params.is_favorite = isFavoriteFilter
-
+        if (operationalQueue === 'no_next_action') {
+          let nextOffset = 0
+          let accumulated: UICandidate[] = []
+          let totalCount: number | null = null
           const scopeTid = currentTenantId ?? meTenantId
-          if (scopeTid) params.scope_tenant_id = typeof scopeTid === 'string' ? scopeTid : String(scopeTid)
-          const scopeTidStr = scopeTid != null ? String(scopeTid) : undefined
+          const scopeTenantIdStr = scopeTid != null ? String(scopeTid) : undefined
 
-          const { data } = await getWithFallbacks<ListResp>('/candidates', params, scopeTidStr ?? undefined)
+          while (true) {
+            const res = await listCandidatesNoNextAction({
+              limit,
+              offset: nextOffset,
+              stages: stageFilter.length > 0 ? stageFilter : undefined,
+              managerId: managerFilter.length === 1 ? managerFilter[0] : undefined,
+              scopeTenantId: scopeTenantIdStr,
+            })
+            const dataAny = res as Record<string, unknown>
+            const batchRaw = Array.isArray(dataAny?.items) ? (dataAny.items as Record<string, unknown>[]) : []
+            const batch = batchRaw.map((r) => mapNoNextActionRowToUICandidate(r))
+            if (typeof dataAny?.total === 'number') totalCount = dataAny.total
 
-          const dataAny = data as any
-          let batch: UICandidate[] =
-            Array.isArray(dataAny?.items)
-              ? dataAny.items
-              : Array.isArray(dataAny?.data)
-                ? dataAny.data
-                : Array.isArray((dataAny?.data as any)?.items)
-                  ? (dataAny.data as { items: UICandidate[] }).items
-                  : Array.isArray(dataAny?.results)
-                    ? dataAny.results
-                    : Array.isArray(dataAny)
-                      ? dataAny
-                      : []
+            accumulated = accumulated.concat(batch)
+            nextOffset += batch.length
 
-          if (batch.length === 0 && typeof dataAny?.total === 'number' && dataAny.total > 0 && typeof dataAny?.items === 'string') {
+            if (myLoadId === loadIdRef.current && accumulated.length > 0) {
+              setItems(accumulated)
+              setTotal(totalCount ?? accumulated.length)
+            }
+
+            const reachedEnd =
+              batch.length < limit || (totalCount !== null && accumulated.length >= totalCount) || batch.length === 0
+            if (reachedEnd) break
+          }
+
+          const finalTotal = totalCount ?? accumulated.length
+          const persistOk = finalTotal === 0 || accumulated.length > 0
+
+          if (persistOk) {
+            const cachedEntry: CandidateListCacheEntry = {
+              items: accumulated,
+              total: finalTotal,
+              timestamp: Date.now(),
+            }
+            candidateListCache.set(cacheKey, cachedEntry)
             try {
-              const parsed = JSON.parse(dataAny.items as string) as UICandidate[]
-              if (Array.isArray(parsed)) batch = parsed
+              localStorage.setItem(listStorageKey, JSON.stringify(cachedEntry))
             } catch {
-              /* ignore */
+              /* ignore storage errors */
             }
           }
 
-          const effectiveBatch =
-            limit > 1 && typeof dataAny?.total === 'number' && dataAny.total > 1 && batch.length === 1
-              ? []
-              : batch
-
-          if (nextOffset === 0) {
-            normalizedInsights = normalizeListInsights(dataAny?.insights)
-          }
-
-          accumulated = accumulated.concat(effectiveBatch)
-          if (typeof dataAny?.total === 'number') {
-            totalCount = dataAny.total
-          }
-
-          // advance offset
-          nextOffset += effectiveBatch.length === 0 && batch.length === 1 ? limit : effectiveBatch.length
-
-          // Keep behavior: apply intermediate progress while loading.
-          if (myLoadId === loadIdRef.current && accumulated.length > 0) {
+          if (myLoadId === loadIdRef.current) {
+            setTotal(finalTotal)
             setItems(accumulated)
-            setTotal(totalCount ?? accumulated.length)
+            setListInsights(null)
           }
 
-          // stop condition
-          const ignoredOneItem = effectiveBatch.length === 0 && batch.length === 1
-          const reachedEnd = ignoredOneItem
-            ? false
-            : effectiveBatch.length < limit ||
-              (totalCount !== null && accumulated.length >= totalCount) ||
-              effectiveBatch.length === 0
-
-          if (reachedEnd) break
-        }
-
-        const finalTotal = totalCount ?? accumulated.length
-        const persistOk = finalTotal === 0 || accumulated.length > 0
-
-        if (persistOk) {
-          const cachedEntry: CandidateListCacheEntry = {
-            items: accumulated,
-            total: finalTotal,
-            timestamp: Date.now(),
-            ...(normalizedInsights ? { insights: normalizedInsights } : {}),
+          if (accumulated.length > 0) {
+            lastSuccessfulListRef.current = {
+              items: accumulated,
+              total: finalTotal,
+            }
+            const toApply = accumulated.slice()
+            const tot = finalTotal
+            queueMicrotask(() => {
+              setItems(toApply)
+              setTotal(tot)
+              setListInsights(null)
+            })
           }
-          candidateListCache.set(cacheKey, cachedEntry)
-          try {
-            localStorage.setItem(listStorageKey, JSON.stringify(cachedEntry))
-          } catch {
-            /* ignore storage errors */
+        } else {
+          let nextOffset = 0
+          let accumulated: UICandidate[] = []
+          let totalCount: number | null = null
+
+          // Aggregates from server — only first page
+          let normalizedInsights: CandidatesListInsights | null = null
+
+          while (true) {
+            const params: Record<string, any> = {
+              limit,
+              offset: nextOffset,
+              order_by: 'created_at',
+              desc: true,
+              compact: true,
+              include_risk: true,
+              include_insights: nextOffset === 0,
+              q: q || undefined,
+              stage: stageFilter.length === 1 ? stageFilter[0] : undefined,
+              stages: stageFilter.length > 0 ? stageFilter.join(',') : undefined,
+              status_reason: statusReasonFilter.length > 0 ? statusReasonFilter : undefined,
+              tags: tagsFilter.length > 0 ? tagsFilter : undefined,
+              vacancy_id: vacancyFilter.length > 0 ? vacancyFilter[0] : undefined,
+              vacancy: vacancyFilter.length > 0 ? vacancyFilter.join(',') : undefined,
+              manager_id: managerFilter.length === 1 ? managerFilter[0] : undefined,
+              documents_ordered: docsOrderedFilter.length === 1 ? docsOrderedFilter[0] : undefined,
+              handoff_status: handoffStatusFilter || undefined,
+              contact_attempts: contactAttemptsFilter || undefined,
+              processor_id: processorFilter || undefined,
+            }
+            if (shadowBucketFilter && String(shadowBucketFilter).trim()) {
+              params.shadow_bucket_start = String(shadowBucketFilter).trim()
+              const mb = String(shadowBucketMinBand || 'high').trim().toLowerCase()
+              if (['low', 'medium', 'high', 'critical'].includes(mb)) {
+                params.shadow_bucket_min_band = mb
+              } else {
+                params.shadow_bucket_min_band = 'high'
+              }
+            }
+            if (createdRange.from) params.created_from = createdRange.from
+            if (createdRange.to) params.created_to = createdRange.to
+            if (isFavoriteFilter != null) params.is_favorite = isFavoriteFilter
+
+            const scopeTid = currentTenantId ?? meTenantId
+            if (scopeTid) params.scope_tenant_id = typeof scopeTid === 'string' ? scopeTid : String(scopeTid)
+            const scopeTidStr = scopeTid != null ? String(scopeTid) : undefined
+
+            const { data } = await getWithFallbacks<ListResp>('/candidates', params, scopeTidStr ?? undefined)
+
+            const dataAny = data as any
+            let batch: UICandidate[] =
+              Array.isArray(dataAny?.items)
+                ? dataAny.items
+                : Array.isArray(dataAny?.data)
+                  ? dataAny.data
+                  : Array.isArray((dataAny?.data as any)?.items)
+                    ? (dataAny.data as { items: UICandidate[] }).items
+                    : Array.isArray(dataAny?.results)
+                      ? dataAny.results
+                      : Array.isArray(dataAny)
+                        ? dataAny
+                        : []
+
+            if (batch.length === 0 && typeof dataAny?.total === 'number' && dataAny.total > 0 && typeof dataAny?.items === 'string') {
+              try {
+                const parsed = JSON.parse(dataAny.items as string) as UICandidate[]
+                if (Array.isArray(parsed)) batch = parsed
+              } catch {
+                /* ignore */
+              }
+            }
+
+            const effectiveBatch =
+              limit > 1 && typeof dataAny?.total === 'number' && dataAny.total > 1 && batch.length === 1
+                ? []
+                : batch
+
+            if (nextOffset === 0) {
+              normalizedInsights = normalizeListInsights(dataAny?.insights)
+            }
+
+            accumulated = accumulated.concat(effectiveBatch)
+            if (typeof dataAny?.total === 'number') {
+              totalCount = dataAny.total
+            }
+
+            // advance offset
+            nextOffset += effectiveBatch.length === 0 && batch.length === 1 ? limit : effectiveBatch.length
+
+            // Keep behavior: apply intermediate progress while loading.
+            if (myLoadId === loadIdRef.current && accumulated.length > 0) {
+              setItems(accumulated)
+              setTotal(totalCount ?? accumulated.length)
+            }
+
+            // stop condition
+            const ignoredOneItem = effectiveBatch.length === 0 && batch.length === 1
+            const reachedEnd = ignoredOneItem
+              ? false
+              : effectiveBatch.length < limit ||
+                (totalCount !== null && accumulated.length >= totalCount) ||
+                effectiveBatch.length === 0
+
+            if (reachedEnd) break
           }
-        }
 
-        if (myLoadId === loadIdRef.current) {
-          setTotal(finalTotal)
-          setItems(accumulated)
-          setListInsights(normalizedInsights)
-        }
+          const finalTotal = totalCount ?? accumulated.length
+          const persistOk = finalTotal === 0 || accumulated.length > 0
 
-        if (accumulated.length > 0) {
-          lastSuccessfulListRef.current = {
-            items: accumulated,
-            total: finalTotal,
-            ...(normalizedInsights ? { insights: normalizedInsights } : {}),
+          if (persistOk) {
+            const cachedEntry: CandidateListCacheEntry = {
+              items: accumulated,
+              total: finalTotal,
+              timestamp: Date.now(),
+              ...(normalizedInsights ? { insights: normalizedInsights } : {}),
+            }
+            candidateListCache.set(cacheKey, cachedEntry)
+            try {
+              localStorage.setItem(listStorageKey, JSON.stringify(cachedEntry))
+            } catch {
+              /* ignore storage errors */
+            }
           }
 
-          // keep existing behavior: if later state becomes empty, apply from ref.
-          const toApply = accumulated.slice()
-          const tot = finalTotal
-          const ins = normalizedInsights
-          queueMicrotask(() => {
-            setItems(toApply)
-            setTotal(tot)
-            setListInsights(ins)
-          })
+          if (myLoadId === loadIdRef.current) {
+            setTotal(finalTotal)
+            setItems(accumulated)
+            setListInsights(normalizedInsights)
+          }
+
+          if (accumulated.length > 0) {
+            lastSuccessfulListRef.current = {
+              items: accumulated,
+              total: finalTotal,
+              ...(normalizedInsights ? { insights: normalizedInsights } : {}),
+            }
+
+            // keep existing behavior: if later state becomes empty, apply from ref.
+            const toApply = accumulated.slice()
+            const tot = finalTotal
+            const ins = normalizedInsights
+            queueMicrotask(() => {
+              setItems(toApply)
+              setTotal(tot)
+              setListInsights(ins)
+            })
+          }
         }
       } catch (e: any) {
         perfOk = false
-        const formattedMessage = formatErrorForDisplay(e, {
-          fallback: t('app.candidates.messages.load_failed') || 'Не удалось загрузить список кандидатов',
-          includeStatusCode: true,
-        })
-
         const errorInfo = getErrorInfo(e)
         console.error('[Candidates] Load error:', errorInfo)
         // If current load is the latest, show error and clear list.
         if (myLoadId === loadIdRef.current) {
-          setErrorText(formattedMessage)
+          const loadFailedTitle =
+            t('app.candidates.messages.load_failed') || 'Не удалось загрузить список кандидатов'
+          if (planLimitModal?.showPlanLimitIfNeeded(e, loadFailedTitle)) {
+            setErrorText(null)
+          } else {
+            setErrorText(getFriendlyErrorInfo(e, loadFailedTitle, t))
+          }
           setItems([])
           setTotal(0)
           setListInsights(null)
@@ -383,9 +480,10 @@ export function useCandidatesTableData({
               ok: perfOk,
               limit,
               cache: !willRefetch ? 'fresh' : 'refetch',
-              include_risk: true,
+              include_risk: operationalQueue !== 'no_next_action',
               shadow_cohort: shadowCohort,
               shadow_min_band: shadowCohort ? String(shadowBucketMinBand || 'high').toLowerCase() : undefined,
+              operational_queue: operationalQueue ?? undefined,
             },
           }).catch(() => {})
         }
@@ -418,7 +516,9 @@ export function useCandidatesTableData({
       isFavoriteFilter,
       currentTenantId,
       meTenantId,
+      planLimitModal,
       restoredScrollRef,
+      operationalQueue,
     ],
   )
 

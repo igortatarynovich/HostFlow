@@ -14,6 +14,7 @@ from backend.app.auth.deps import get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.user import Role
+from backend.app.services.plan_feature_gates import ensure_custom_funnel_create_allowed
 
 router = APIRouter(prefix="/funnels", tags=["funnels"])
 
@@ -27,6 +28,50 @@ SYSTEM_STAGES = {
     SYSTEM_STAGE_HIRED,
     SYSTEM_STAGE_DECLINED_OR_REJECTED,
 }
+
+# §2.12 conversion funnel roots (lead funnels only; stored on funnel_stages.conversion_root_v1).
+CONVERSION_ROOT_LEAD_VALUES = frozenset({"lead", "qualified", "active", "final"})
+
+
+def _infer_conversion_root_v1_from_lead_code(code: str) -> Optional[str]:
+    c = (code or "").strip().lower()
+    if c == "new":
+        return "lead"
+    if c == "contacted":
+        return "qualified"
+    if c == "qualified":
+        return "active"
+    if c == "converted":
+        return "final"
+    return None
+
+
+def _resolve_conversion_root_v1_db(
+    funnel_type: str,
+    *,
+    code: str,
+    payload_value: Optional[str],
+    field_was_set: bool,
+) -> Optional[str]:
+    if funnel_type != "lead":
+        if field_was_set and (payload_value is not None and str(payload_value).strip() != ""):
+            raise HTTPException(
+                status_code=422,
+                detail="conversion_root_v1 is only supported for funnels with type=lead",
+            )
+        return None
+    if not field_was_set:
+        return _infer_conversion_root_v1_from_lead_code(code)
+    raw = payload_value
+    if raw is None or not str(raw).strip():
+        return None
+    v = str(raw).strip().lower()
+    if v not in CONVERSION_ROOT_LEAD_VALUES:
+        raise HTTPException(
+            status_code=422,
+            detail="conversion_root_v1 must be one of: lead, qualified, active, final",
+        )
+    return v
 
 
 def _infer_system_stage_from_code(code: str) -> str:
@@ -112,6 +157,10 @@ class FunnelStageIn(BaseModel):
     )
     order: int = Field(0, ge=0)
     is_terminal: bool = False
+    conversion_root_v1: Optional[str] = Field(
+        default=None,
+        description="Lead funnels only: §2.12 root bucket (lead | qualified | active | final). Omit to infer from code.",
+    )
     stage_contract: Optional[StageContractV1] = Field(
         default=None,
         description="Optional pipeline contract (owner_role, required_actions, sla_hours, auto_rules).",
@@ -126,6 +175,7 @@ class FunnelStageOut(BaseModel):
     system_stage: str
     order: int
     is_terminal: bool
+    conversion_root_v1: Optional[str] = None
     stage_contract: Optional[StageContractV1] = None
 
     @classmethod
@@ -137,6 +187,8 @@ class FunnelStageOut(BaseModel):
                 contract = StageContractV1.model_validate(raw)
             except Exception:
                 contract = None
+        cr = getattr(s, "conversion_root_v1", None)
+        cr_out = str(cr).strip() if cr else None
         return cls(
             id=s.id,
             funnel_id=s.funnel_id,
@@ -145,6 +197,7 @@ class FunnelStageOut(BaseModel):
             system_stage=s.system_stage,
             order=s.order,
             is_terminal=s.is_terminal,
+            conversion_root_v1=cr_out,
             stage_contract=contract,
         )
 
@@ -242,6 +295,8 @@ async def create_funnel(
 
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
+
+    await ensure_custom_funnel_create_allowed(db, tenant_str)
 
     if payload.is_default:
         await db.execute(
@@ -346,6 +401,12 @@ async def add_funnel_stage(
         raise HTTPException(status_code=409, detail=f"Stage code '{payload.code}' already exists")
 
     resolved_system_stage = _resolve_system_stage(payload.system_stage, payload.code)
+    cr_db = _resolve_conversion_root_v1_db(
+        str(funnel.type),
+        code=payload.code,
+        payload_value=payload.conversion_root_v1,
+        field_was_set="conversion_root_v1" in payload.model_fields_set,
+    )
     stage_kwargs: dict[str, Any] = dict(
         id=str(uuid.uuid4()),
         funnel_id=funnel_id,
@@ -355,6 +416,7 @@ async def add_funnel_stage(
         order=payload.order,
         is_terminal=payload.is_terminal
         or resolved_system_stage in {SYSTEM_STAGE_HIRED, SYSTEM_STAGE_DECLINED_OR_REJECTED},
+        conversion_root_v1=cr_db,
     )
     if "stage_contract" in payload.model_fields_set:
         stage_kwargs["stage_contract_v1"] = _stage_contract_db_value(payload.stage_contract)
@@ -377,13 +439,15 @@ async def update_funnel_stage(
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
 
-    funnel_result = await db.execute(
-        select(Funnel).where(
-            Funnel.id == funnel_id,
-            Funnel.tenant_id == tenant_str,
+    funnel_row = (
+        await db.execute(
+            select(Funnel).where(
+                Funnel.id == funnel_id,
+                Funnel.tenant_id == tenant_str,
+            )
         )
-    )
-    if not funnel_result.scalar_one_or_none():
+    ).scalar_one_or_none()
+    if not funnel_row:
         raise HTTPException(status_code=404, detail="Funnel not found")
 
     stage_result = await db.execute(
@@ -412,6 +476,13 @@ async def update_funnel_stage(
     stage.system_stage = resolved_system_stage
     stage.order = payload.order
     stage.is_terminal = payload.is_terminal or resolved_system_stage in {SYSTEM_STAGE_HIRED, SYSTEM_STAGE_DECLINED_OR_REJECTED}
+    if "conversion_root_v1" in payload.model_fields_set:
+        stage.conversion_root_v1 = _resolve_conversion_root_v1_db(
+            str(funnel_row.type),
+            code=payload.code,
+            payload_value=payload.conversion_root_v1,
+            field_was_set=True,
+        )
     if "stage_contract" in payload.model_fields_set:
         stage.stage_contract_v1 = _stage_contract_db_value(payload.stage_contract)
     await db.commit()

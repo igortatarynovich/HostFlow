@@ -8,6 +8,7 @@ import {
   type StageOperationalHintKind,
 } from '../../utils/stageOperationalHints'
 import { isPipelineCompletedCanonicalStage } from '../../utils/candidatePipelineCompleted'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 
 function parseTs(value?: string | null): number {
   if (!value) return 0
@@ -34,7 +35,7 @@ function pickNextAction(reminders: ReminderRecord[], nowTs: number): ReminderRec
 export default function CandidateNextActionPanel(props: {
   reminders: ReminderRecord[]
   remindersLoading: boolean
-  remindersError: string | null
+  remindersError: FriendlyErrorInfo | null
   reminderBusy: string | null
   reminderTitle: string
   reminderDueAt: string
@@ -220,7 +221,12 @@ export default function CandidateNextActionPanel(props: {
             ) : null}
           </div>
           {props.remindersError ? (
-            <div className="mt-1 text-xs text-rose-600">{props.remindersError}</div>
+            <div className="mt-1 text-xs text-rose-600">
+              <div>{props.remindersError.title}</div>
+              {props.remindersError.detail ? (
+                <div className="mt-0.5 text-[11px] text-rose-700/90">{props.remindersError.detail}</div>
+              ) : null}
+            </div>
           ) : props.remindersLoading ? (
             <div className="mt-1 text-xs text-slate-500">{t('common.loading')}</div>
           ) : next ? (

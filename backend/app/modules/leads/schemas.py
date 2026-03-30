@@ -181,7 +181,23 @@ class NextActionQueryParams(BaseModel):
 
     status: Optional[str] = None
     stage: Optional[str] = None
+    conversion_root: Optional[str] = Field(
+        default=None,
+        description="§2.12 GET /leads filter: lead | qualified | active | final",
+    )
+    lost_reason_code: Optional[str] = Field(
+        default=None,
+        description="§2.12 GET /leads: processed + lost + normalized.lead_lost_reason_v1.code (conversion_root ignored).",
+    )
+    lost_from_crm_stage: Optional[str] = Field(
+        default=None,
+        description="§2.12 GET /leads: prior CRM stage code on audit transition into lost (or 'unknown').",
+    )
     next_action: Optional[str] = None
+    pipeline_error: Optional[str] = Field(
+        default=None,
+        description="GET /leads: exact Lead.error (whitelist: LEAD_FIT_NO_MATCH, LEAD_FIT_NEEDS_INFO).",
+    )
     tab: Optional[str] = None
     t_status: Optional[str] = None
     t_entity: Optional[str] = None
@@ -206,6 +222,10 @@ class NextActionGroupOut(BaseModel):
     required_plan: Optional[str] = Field(
         default=None,
         description="Minimum plan code to use this bucket (e.g. team, pro).",
+    )
+    nba_detail: Optional[Dict[str, Union[str, int, float]]] = Field(
+        default=None,
+        description="Optional metrics for dashboard i18n (funnel insights §2.12).",
     )
 
 
@@ -237,11 +257,13 @@ class LeadStageHealthResponse(BaseModel):
 
 
 class LeadConversionFunnelStage(BaseModel):
-    """One CRM stage on the win path: exact count + cumulative at-or-beyond (§2.12 v0)."""
+    """One conversion root on the win path (§2.12): exact count + cumulative at-or-beyond."""
 
     model_config = ConfigDict(extra="forbid")
 
-    stage: str
+    stage: str = Field(
+        description="Root funnel bucket: lead | qualified | active | final (from funnel_stage mapping + legacy fallback)."
+    )
     count: int
     at_or_beyond: int
     dwell_avg_days: Optional[float] = Field(
@@ -280,11 +302,29 @@ class LeadConversionFunnelLostReasonRow(BaseModel):
     lead_count: int
 
 
-class LeadConversionFunnelResponse(BaseModel):
-    """MVP conversion snapshot by current lead CRM stage (no per-tenant stage→root mapping yet)."""
+class LeadConversionFunnelCohortWindow(BaseModel):
+    """§2.12 stretch: one cohort time window snapshot (for WoW compare)."""
 
     model_config = ConfigDict(extra="forbid")
 
+    cohort_created_at_min: datetime
+    cohort_created_at_max_exclusive: datetime
+    total_win_path_processed: int
+    lost_processed_count: int
+    status_new_count: int
+    stages: List[LeadConversionFunnelStage] = Field(default_factory=list)
+    edges: List[LeadConversionFunnelEdge] = Field(default_factory=list)
+
+
+class LeadConversionFunnelResponse(BaseModel):
+    """Conversion snapshot using §2.12 root buckets (funnel_stages.conversion_root_v1 + legacy CRM codes)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    aggregation_mode: Literal["conversion_roots"] = Field(
+        default="conversion_roots",
+        description="Stages are cross-pipeline root buckets, not raw CRM codes.",
+    )
     generated_at: datetime
     own_company_id: Optional[str] = None
     filter_source: Optional[str] = Field(default=None, description="Applied slice: lead.source (case-insensitive exact).")
@@ -300,7 +340,7 @@ class LeadConversionFunnelResponse(BaseModel):
     lost_dwell_p50_days: Optional[float] = Field(default=None, description="Median days in lost.")
     lost_dwell_sample_size: int = Field(default=0, description="Processed leads in lost with dwell computed.")
     total_win_path_processed: int = Field(
-        description="Sum of processed leads in stages new|contacted|qualified|converted."
+        description="Processed leads on the win path (non-lost with a resolved conversion root)."
     )
     lost_from_stage: List[LeadConversionFunnelLostFromStage] = Field(
         default_factory=list,
@@ -312,6 +352,18 @@ class LeadConversionFunnelResponse(BaseModel):
     )
     stages: List[LeadConversionFunnelStage] = Field(default_factory=list)
     edges: List[LeadConversionFunnelEdge] = Field(default_factory=list)
+    cohort_created_after: Optional[datetime] = Field(
+        default=None,
+        description="When set: funnel counts include only leads with created_at >= this (inclusive).",
+    )
+    cohort_created_before_exclusive: Optional[datetime] = Field(
+        default=None,
+        description="When set: funnel counts include only leads with created_at < this (exclusive).",
+    )
+    cohort_prior_window: Optional[LeadConversionFunnelCohortWindow] = Field(
+        default=None,
+        description="Previous period of equal length when cohort_compare_prior was requested (Team+).",
+    )
 
 
 class LeadTimelineEventOut(BaseModel):
@@ -368,6 +420,7 @@ MetaFieldMappingFormat = Literal[
     "float",
     "uuid",
     "country",
+    "geo_country",
     "contact_channel",
     "list",
     "csv",
@@ -446,19 +499,33 @@ class MetaCredentialRotateResponse(BaseModel):
 LeadsProcessingModeV1 = Literal["manual", "assisted", "automatic"]
 
 
+class GenericInboundWebhookRotateResponse(BaseModel):
+    """Returned once when rotating the §2.11 generic webhook path secret (full URL for copy/paste)."""
+
+    secret: str
+    ingest_url: str
+
+
 class MetaLeadSettingsOut(BaseModel):
     tenant_id: UUID
     default_company_id: Optional[UUID] = None
     fallback_recruiter_id: Optional[UUID] = None
     auto_create_enabled: bool
+    leads_auto_convert_on_fit_v1: bool = True
     leads_processing_mode_v1: LeadsProcessingModeV1 = "assisted"
     reroute_after_hours: Optional[int] = None
     mask_pii_in_logs: bool
     pull_field_data_from_graph: bool
     field_mapping: List[MetaLeadFieldMappingRule] = Field(default_factory=list)
+    # §2.5 / §2.10: Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids (fallback when no ad/id map).
+    lead_fit_ordered_vacancy_ids: List[UUID] = Field(default_factory=list)
     # §2.11 plan hints for UI (None = no cap on Team+).
     plan_field_mapping_rules_limit: Optional[int] = None
     plan_meta_credentials_limit: Optional[int] = None
+    generic_inbound_webhook_enabled: bool = Field(
+        default=False,
+        description="True when a generic inbound webhook secret is configured (Team+).",
+    )
     webhook_url: Optional[str] = None
     last_webhook_check_at: Optional[datetime] = None
     last_signature_status: Optional[str] = None
@@ -473,6 +540,7 @@ class MetaLeadSettingsUpdate(BaseModel):
     default_company_id: Optional[UUID] = None
     fallback_recruiter_id: Optional[UUID] = None
     auto_create_enabled: Optional[bool] = None
+    leads_auto_convert_on_fit_v1: Optional[bool] = None
     leads_processing_mode_v1: Optional[LeadsProcessingModeV1] = None
     reroute_after_hours: Optional[int] = None
     mask_pii_in_logs: Optional[bool] = None
@@ -480,6 +548,10 @@ class MetaLeadSettingsUpdate(BaseModel):
     webhook_verify_token: Optional[str] = None
     pull_field_data_from_graph: Optional[bool] = None
     field_mapping: Optional[List[MetaLeadFieldMappingRule]] = None
+    lead_fit_ordered_vacancy_ids: Optional[List[UUID]] = Field(
+        default=None,
+        description="Replaces Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids (ordered fallback list).",
+    )
 
 
 class MetaIncomingLeadPreviewItem(BaseModel):

@@ -16,7 +16,12 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { CRM_APP_PATHS } from '../../app/crmAppPaths.generated'
+import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../../utils/friendlyError'
 import {
   listFunnels,
   getFunnel,
@@ -40,11 +45,13 @@ function SortableStageRow({
   onEdit,
   onDelete,
   disabled,
+  showLeadConversionRoot,
 }: {
   stage: FunnelStage
   onEdit: () => void
   onDelete: () => void
   disabled?: boolean
+  showLeadConversionRoot?: boolean
 }) {
   const { t } = useI18n()
   const {
@@ -86,6 +93,17 @@ function SortableStageRow({
           {stage.system_stage}
         </span>
       </td>
+      {showLeadConversionRoot ? (
+        <td className="py-2 pr-2 text-xs text-slate-600">
+          {stage.conversion_root_v1 ? (
+            <span className="rounded-md bg-indigo-50 px-2 py-0.5 font-medium text-indigo-800">
+              {stage.conversion_root_v1}
+            </span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </td>
+      ) : null}
       <td className="py-2 pr-2 text-sm text-slate-500">{stage.order}</td>
       <td className="py-2">
         <span
@@ -124,12 +142,14 @@ function StageCreateEditModal({
   onSave,
   disabled,
   referenceCodes,
+  funnelType,
 }: {
   stage?: FunnelStage | null
   onClose: () => void
   onSave: (data: FunnelStageCreate) => Promise<void>
   disabled?: boolean
   referenceCodes?: string[]
+  funnelType: 'candidate' | 'lead' | 'deal'
 }) {
   const { t } = useI18n()
   const [code, setCode] = useState(stage?.code || '')
@@ -141,6 +161,11 @@ function StageCreateEditModal({
   const [slaHoursStr, setSlaHoursStr] = useState('')
   const [requiredActionsText, setRequiredActionsText] = useState('')
   const [autoRulesJsonStr, setAutoRulesJsonStr] = useState('')
+  const [conversionRoot, setConversionRoot] = useState<string>(() => stage?.conversion_root_v1 ?? '')
+
+  useEffect(() => {
+    setConversionRoot(stage?.conversion_root_v1 ?? '')
+  }, [stage])
 
   useEffect(() => {
     const c = stage?.stage_contract
@@ -195,6 +220,14 @@ function StageCreateEditModal({
       system_stage: systemStage || 'in_progress',
       order: order || 0,
       is_terminal: isTerminal,
+    }
+    if (funnelType === 'lead') {
+      const cr = conversionRoot.trim().toLowerCase()
+      if (stage) {
+        payload.conversion_root_v1 = cr && ['lead', 'qualified', 'active', 'final'].includes(cr) ? cr : null
+      } else if (cr && ['lead', 'qualified', 'active', 'final'].includes(cr)) {
+        payload.conversion_root_v1 = cr
+      }
     }
     if (stage) {
       const contract: FunnelStageContractV1 | null = hasContract
@@ -314,6 +347,26 @@ function StageCreateEditModal({
             {t('admin.funnels.system_stage_hint')}
           </p>
         </div>
+        {funnelType === 'lead' ? (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              {t('admin.funnels.conversion_root')}
+            </label>
+            <select
+              value={conversionRoot}
+              onChange={(e) => setConversionRoot(e.target.value)}
+              className="input w-full"
+              disabled={disabled}
+            >
+              <option value="">{t('admin.funnels.conversion_root_auto')}</option>
+              <option value="lead">{t('admin.funnels.conversion_root_lead')}</option>
+              <option value="qualified">{t('admin.funnels.conversion_root_qualified')}</option>
+              <option value="active">{t('admin.funnels.conversion_root_active')}</option>
+              <option value="final">{t('admin.funnels.conversion_root_final')}</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">{t('admin.funnels.conversion_root_hint')}</p>
+          </div>
+        ) : null}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
             {t('admin.funnels.order_field')}
@@ -499,6 +552,8 @@ function FunnelCreateModal({
 
 export default function FunnelsPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
+  const [pageError, setPageError] = useState<FriendlyErrorInfo | null>(null)
   const [funnelTab, setFunnelTab] = useState<'candidate' | 'lead'>('candidate')
   const [funnels, setFunnels] = useState<Funnel[]>([])
   const [selectedFunnel, setSelectedFunnel] = useState<Funnel | null>(null)
@@ -521,6 +576,7 @@ export default function FunnelsPage() {
 
   const loadFunnels = useCallback(async () => {
     try {
+      setPageError(null)
       const list = await listFunnels({ type: funnelTab })
       setFunnels(list)
       if (list.length > 0) {
@@ -534,13 +590,17 @@ export default function FunnelsPage() {
       }
     } catch (err) {
       console.error('Failed to load funnels', err)
+      const fb = t('admin.funnels.errors.load_failed')
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setPageError(getFriendlyErrorInfo(err, fb, t))
+      }
       setFunnels([])
       setSelectedFunnel(null)
       setStages([])
     } finally {
       setLoading(false)
     }
-  }, [funnelTab])
+  }, [funnelTab, planLimitModal, t])
 
   useEffect(() => {
     setLoading(true)
@@ -569,6 +629,7 @@ export default function FunnelsPage() {
   const handleCreateFunnel = useCallback(
     async (data: FunnelCreate) => {
       setSaving(true)
+      setPageError(null)
       try {
         const created = await createFunnel(data)
         await loadFunnels()
@@ -576,69 +637,59 @@ export default function FunnelsPage() {
         setShowCreateFunnelModal(false)
         refreshMetaStagesCache()
       } catch (err: unknown) {
-        const msg =
-          err &&
-          typeof err === 'object' &&
-          'response' in err &&
-          typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
-            ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : t('admin.funnels.errors.unknown')
-        alert(msg)
+        const fb = t('admin.funnels.errors.save_failed')
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setPageError(getFriendlyErrorInfo(err, fb, t))
+        }
       } finally {
         setSaving(false)
       }
     },
-    [loadFunnels, t]
+    [loadFunnels, planLimitModal, t]
   )
 
   const handleCreateStage = useCallback(
     async (data: FunnelStageCreate) => {
       if (!selectedFunnel) return
       setSaving(true)
+      setPageError(null)
       try {
         await addFunnelStage(selectedFunnel.id, data)
         await refreshSelectedFunnel()
         setShowCreateStageModal(false)
         refreshMetaStagesCache()
       } catch (err: unknown) {
-        const msg =
-          err &&
-          typeof err === 'object' &&
-          'response' in err &&
-          typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
-            ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : t('admin.funnels.errors.unknown')
-        alert(msg)
+        const fb = t('admin.funnels.errors.save_failed')
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setPageError(getFriendlyErrorInfo(err, fb, t))
+        }
       } finally {
         setSaving(false)
       }
     },
-    [selectedFunnel, refreshSelectedFunnel, t]
+    [planLimitModal, selectedFunnel, refreshSelectedFunnel, t]
   )
 
   const handleUpdateStage = useCallback(
     async (data: FunnelStageCreate) => {
       if (!editingStage || !selectedFunnel) return
       setSaving(true)
+      setPageError(null)
       try {
         await updateFunnelStage(selectedFunnel.id, editingStage.id, data)
         await refreshSelectedFunnel()
         setEditingStage(null)
         refreshMetaStagesCache()
       } catch (err: unknown) {
-        const msg =
-          err &&
-          typeof err === 'object' &&
-          'response' in err &&
-          typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
-            ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : t('admin.funnels.errors.unknown')
-        alert(msg)
+        const fb = t('admin.funnels.errors.save_failed')
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setPageError(getFriendlyErrorInfo(err, fb, t))
+        }
       } finally {
         setSaving(false)
       }
     },
-    [editingStage, selectedFunnel, refreshSelectedFunnel, t]
+    [editingStage, planLimitModal, selectedFunnel, refreshSelectedFunnel, t]
   )
 
   const handleDeleteStage = useCallback(
@@ -651,21 +702,18 @@ export default function FunnelsPage() {
       )
         return
       try {
+        setPageError(null)
         await deleteFunnelStage(selectedFunnel.id, stage.id)
         await refreshSelectedFunnel()
         refreshMetaStagesCache()
       } catch (err: unknown) {
-        const msg =
-          err &&
-          typeof err === 'object' &&
-          'response' in err &&
-          typeof (err as { response?: { data?: { detail?: string } } }).response?.data?.detail === 'string'
-            ? (err as { response: { data: { detail: string } } }).response.data.detail
-            : t('admin.funnels.errors.unknown')
-        alert(msg)
+        const fb = t('admin.funnels.errors.save_failed')
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setPageError(getFriendlyErrorInfo(err, fb, t))
+        }
       }
     },
-    [selectedFunnel, refreshSelectedFunnel, t]
+    [planLimitModal, selectedFunnel, refreshSelectedFunnel, t]
   )
 
   const handleDragEnd = useCallback(
@@ -681,6 +729,7 @@ export default function FunnelsPage() {
       setStages(reordered)
 
       try {
+        setPageError(null)
         for (let i = 0; i < reordered.length; i++) {
           const s = reordered[i]
           await updateFunnelStage(selectedFunnel.id, s.id, {
@@ -689,17 +738,34 @@ export default function FunnelsPage() {
             system_stage: s.system_stage,
             order: i,
             is_terminal: s.is_terminal,
+            conversion_root_v1: s.conversion_root_v1 ?? null,
           })
         }
         await refreshSelectedFunnel()
         refreshMetaStagesCache()
       } catch (err) {
         console.error('Failed to reorder stages', err)
-        refreshSelectedFunnel()
+        const fb = t('admin.funnels.errors.reorder_failed')
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setPageError(getFriendlyErrorInfo(err, fb, t))
+        }
+        void refreshSelectedFunnel()
       }
     },
-    [stages, selectedFunnel, refreshSelectedFunnel]
+    [planLimitModal, stages, selectedFunnel, refreshSelectedFunnel, t]
   )
+
+  const errorBanner = pageError ? (
+    <ErrorRecoveryBanner
+      info={pageError}
+      onRetry={() => {
+        setPageError(null)
+        void loadFunnels()
+      }}
+      retryLabel={t('common.actions.refresh')}
+      {...friendlyErrorBannerSecondary(pageError, CRM_APP_PATHS.settingsBilling, t('app.settings.billing.badge'))}
+    />
+  ) : null
 
   if (loading) {
     return (
@@ -714,6 +780,7 @@ export default function FunnelsPage() {
   if (funnels.length === 0) {
     return (
       <div className="space-y-4">
+        {errorBanner}
         <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
           <button
             type="button"
@@ -772,6 +839,7 @@ export default function FunnelsPage() {
 
   return (
     <div className="space-y-4">
+      {errorBanner}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
         <button
           type="button"
@@ -871,6 +939,9 @@ export default function FunnelsPage() {
                   <th className="py-2 px-2">{t('admin.funnels.columns.code')}</th>
                   <th className="py-2 px-2">{t('admin.funnels.columns.label')}</th>
                   <th className="py-2 px-2">{t('admin.funnels.columns.system')}</th>
+                  {funnelTab === 'lead' ? (
+                    <th className="py-2 px-2">{t('admin.funnels.columns.conversion_root')}</th>
+                  ) : null}
                   <th className="py-2 px-2">{t('admin.funnels.columns.order')}</th>
                   <th className="py-2 px-2">{t('admin.funnels.columns.status')}</th>
                   <th className="py-2 px-2 text-right">{t('admin.funnels.columns.actions')}</th>
@@ -888,6 +959,7 @@ export default function FunnelsPage() {
                       onEdit={() => setEditingStage(stage)}
                       onDelete={() => handleDeleteStage(stage)}
                       disabled={saving}
+                      showLeadConversionRoot={funnelTab === 'lead'}
                     />
                   ))}
                 </SortableContext>
@@ -923,6 +995,7 @@ export default function FunnelsPage() {
           onSave={handleCreateStage}
           disabled={saving}
           referenceCodes={referenceStageCodes}
+          funnelType={funnelTab}
         />
       )}
       {editingStage && (
@@ -931,6 +1004,7 @@ export default function FunnelsPage() {
           onClose={() => setEditingStage(null)}
           onSave={handleUpdateStage}
           disabled={saving}
+          funnelType={funnelTab}
         />
       )}
       {showCreateFunnelModal && (

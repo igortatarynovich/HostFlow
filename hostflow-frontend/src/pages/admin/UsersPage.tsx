@@ -33,6 +33,9 @@ import { useAuth } from '../../store/useAuth'
 import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { UserFormCreate } from '../../components/admin/UserFormCreate'
 import { UserFormInvite } from '../../components/admin/UserFormInvite'
 import { useI18n } from '../../i18n'
@@ -220,6 +223,19 @@ function UserDetailCard({
   const statusKey = detail.status === 'active' ? 'active' : detail.status === 'invited' ? 'invited' : 'inactive'
   const isActive = detail.status === 'active' && detail.is_active
 
+  const detailLoadErrorBanner: FriendlyErrorInfo | null = error
+    ? {
+        title: error,
+        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+      }
+    : null
+  const auditTabErrorBanner: FriendlyErrorInfo | null = audit.error
+    ? {
+        title: audit.error,
+        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+      }
+    : null
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-6">
       <div className="flex items-center justify-between gap-4">
@@ -262,17 +278,17 @@ function UserDetailCard({
         </nav>
       </div>
 
-      {error && (
+      {detailLoadErrorBanner && (
         <div className="mt-3">
           <ErrorRecoveryBanner
-            info={{
-              title: error,
-              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-            }}
+            info={detailLoadErrorBanner}
             onRetry={onRefresh}
             retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-            secondaryTo={CRM_APP_PATHS.settingsTeam}
-            secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
+            {...friendlyErrorBannerSecondary(
+              detailLoadErrorBanner,
+              CRM_APP_PATHS.settingsTeam,
+              t('common.navigation.settings', { defaultValue: 'Настройки' }),
+            )}
             compact
           />
         </div>
@@ -498,16 +514,16 @@ function UserDetailCard({
               ? t('app.admin.users.detail.audit.refresh_loading')
               : t('app.admin.users.detail.audit.refresh')}
           </button>
-          {audit.error && (
+          {auditTabErrorBanner && (
             <ErrorRecoveryBanner
-              info={{
-                title: audit.error,
-                hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-              }}
+              info={auditTabErrorBanner}
               onRetry={onRefreshAudit}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-              secondaryTo={CRM_APP_PATHS.settingsTeam}
-              secondaryLabel={t('app.admin.users.detail.audit.title', { defaultValue: 'Аудит' })}
+              {...friendlyErrorBannerSecondary(
+                auditTabErrorBanner,
+                CRM_APP_PATHS.settingsTeam,
+                t('app.admin.users.detail.audit.title', { defaultValue: 'Аудит' }),
+              )}
               compact
             />
           )}
@@ -545,6 +561,7 @@ export default function UsersPage() {
   const { can } = usePermissions()
   const [searchParams, setSearchParams] = useSearchParams()
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const notAvailableLabel = t('common.labels.not_available')
 
   const canViewAdmin = can('admin.users') || can('users.view')
@@ -913,13 +930,16 @@ export default function UsersPage() {
         await loadUsers()
       } catch (err) {
         console.error('[UsersPage] invite error', err)
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.admin.users.errors.invite'))) {
+          return
+        }
         const detail = extractErrorDetail(err)
         setError(formatError('app.admin.users.errors.invite', detail))
       } finally {
         setInviteLoading(false)
       }
     },
-    [formatError, loadUsers, tenantOptions],
+    [formatError, loadUsers, planLimitModal, t, tenantOptions],
   )
 
   const handleCreateUser = useCallback(
@@ -942,13 +962,16 @@ export default function UsersPage() {
         await loadUsers()
       } catch (err) {
         console.error('[UsersPage] create user error', err)
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.admin.users.errors.create'))) {
+          return
+        }
         const detail = extractErrorDetail(err)
         setError(formatError('app.admin.users.errors.create', detail))
       } finally {
         setCreateLoading(false)
       }
     },
-    [formatError, loadUsers, tenantOptions],
+    [formatError, loadUsers, planLimitModal, t, tenantOptions],
   )
 
   const handleUpdateSupervisor = useCallback(
@@ -994,6 +1017,13 @@ export default function UsersPage() {
       </div>
     )
   }
+
+  const usersListErrorBanner: FriendlyErrorInfo | null = error
+    ? {
+        title: error,
+        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+      }
+    : null
 
   return (
     <div className="space-y-4">
@@ -1095,16 +1125,16 @@ export default function UsersPage() {
         </button>
       </header>
 
-      {error && (
+      {usersListErrorBanner && (
         <ErrorRecoveryBanner
-          info={{
-            title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-          }}
+          info={usersListErrorBanner}
           onRetry={() => void loadUsers()}
           retryLabel={t('app.admin.users.page.refresh.action')}
-          secondaryTo={CRM_APP_PATHS.settingsTeam}
-          secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
+          {...friendlyErrorBannerSecondary(
+            usersListErrorBanner,
+            CRM_APP_PATHS.settingsTeam,
+            t('common.navigation.settings', { defaultValue: 'Настройки' }),
+          )}
           compact
         />
       )}

@@ -13,6 +13,8 @@ import {
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
 import { recordTtvStepCompleted } from '../api/analytics'
 import { CANDIDATES_QUICK_VIEW_NAV_PATHS } from '../modules/candidates/constants'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
 type CompanyType = 'agency' | 'employer' | 'services'
 
@@ -45,6 +47,7 @@ type DemoSummary = NonNullable<OwnCompanyRecord['onboarding_demo']>
 
 export default function OnboardingCompanyPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [phase, setPhase] = useState<Phase>('form')
@@ -56,7 +59,7 @@ export default function OnboardingCompanyPage() {
   const [hoursPreset, setHoursPreset] = useState<HoursPresetKey>('weekdays_9_17')
   const [demoSummary, setDemoSummary] = useState<DemoSummary | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [limitReached, setLimitReached] = useState(false)
   const [recommendedExtraSlots, setRecommendedExtraSlots] = useState<number | null>(null)
   const [hasAvailableOperatingSlots, setHasAvailableOperatingSlots] = useState(true)
@@ -254,15 +257,18 @@ export default function OnboardingCompanyPage() {
   const validateForm = useCallback(() => {
     const trimmed = companyName.trim()
     if (!trimmed) {
-      setError(t('app.onboarding.company.errors.name_required'))
+      setLimitReached(false)
+      setError(friendlyFormHintError(t('app.onboarding.company.errors.name_required'), t))
       return false
     }
     if (!industry) {
-      setError(t('app.onboarding.company.errors.industry_required'))
+      setLimitReached(false)
+      setError(friendlyFormHintError(t('app.onboarding.company.errors.industry_required'), t))
       return false
     }
     if (!teamSize) {
-      setError(t('app.onboarding.company.errors.team_size_required'))
+      setLimitReached(false)
+      setError(friendlyFormHintError(t('app.onboarding.company.errors.team_size_required'), t))
       return false
     }
     return true
@@ -271,11 +277,15 @@ export default function OnboardingCompanyPage() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    setLimitReached(false)
     if (!validateForm()) return
     if (!hasAvailableOperatingSlots) {
       setLimitReached(true)
       setRecommendedExtraSlots(precheckRecommendedExtraSlots)
-      setError(t('app.onboarding.company.errors.operating_limit'))
+      setError({
+        title: t('app.onboarding.company.errors.operating_limit'),
+        hint: t('app.onboarding.company.errors.operating_limit_hint'),
+      })
       return
     }
 
@@ -323,18 +333,19 @@ export default function OnboardingCompanyPage() {
             : 0
         setLimitReached(true)
         setRecommendedExtraSlots(rec > 0 ? rec : 1)
-        setError(
-          rec > 0
-            ? t('app.onboarding.company.errors.operating_limit_with_slots', { values: { count: rec } })
-            : t('app.onboarding.company.errors.operating_limit'),
-        )
+        setError({
+          title:
+            rec > 0
+              ? t('app.onboarding.company.errors.operating_limit_with_slots', { values: { count: rec } })
+              : t('app.onboarding.company.errors.operating_limit'),
+          hint: t('app.onboarding.company.errors.operating_limit_hint'),
+        })
       } else {
-        const msg =
-          (typeof detailPayload === 'object' && detailPayload?.message) ||
-          err?.response?.data?.detail ||
-          err?.message ||
-          t('app.onboarding.company.errors.generic')
-        setError(typeof msg === 'string' ? msg : JSON.stringify(msg))
+        setLimitReached(false)
+        const fb = t('app.onboarding.company.errors.generic')
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setError(getFriendlyErrorInfo(err, fb, t))
+        }
       }
     } finally {
       setLoading(false)
@@ -601,20 +612,16 @@ export default function OnboardingCompanyPage() {
 
           {error ? (
             <ErrorRecoveryBanner
-              info={{
-                title: error,
-                hint: limitReached
-                  ? t('app.onboarding.company.errors.operating_limit_hint')
-                  : t('app.onboarding.company.errors.unexpected_retry'),
-              }}
+              info={error}
               onRetry={() => setError(null)}
               retryLabel={t('common.actions.close')}
-              secondaryTo={
+              {...friendlyErrorBannerSecondary(
+                error,
                 limitReached
                   ? `${ACTIVATION_PATHS.billing}?focus=company-slots&recommended_extra_slots=${recommendedExtraSlots ?? 1}`
-                  : undefined
-              }
-              secondaryLabel={t('app.onboarding.company.slot_guard.billing_link')}
+                  : undefined,
+                limitReached ? t('app.onboarding.company.slot_guard.billing_link') : undefined,
+              )}
               compact
             />
           ) : null}

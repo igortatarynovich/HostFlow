@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react'
 import { useLocation } from 'react-router-dom'
+import { invalidateBillingSubscriptionCache } from '../api/billingSubscriptionCache'
 import { api, setToken, settings as tenantSettings } from '../api/client'
 import { getUserMe } from '../api/users'
 import type { UserPreferences, UserSecuritySummary, WhoAmI } from '../api/types'
@@ -191,6 +192,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [refresh])
 
   const logout = useCallback(() => {
+    invalidateBillingSubscriptionCache()
     setToken(null)
     setMe(null)
     setPreferences(null)

@@ -35,6 +35,7 @@ import { usePermissions } from "../../hooks/usePermissions";
 import { docsApi } from "../../api/client";
 import { notifyCandidate } from "../../api/candidates";
 import { useI18n } from "../../i18n";
+import { usePlanLimitModal } from "../../contexts/PlanLimitModalContext";
 import { formatErrorForDisplay } from "../../utils/errorHandling";
 import { getDocumentConfigs, getRequiredDocumentTypeIds, isDefaultProfileWithEmptyDocumentConfig } from "../../utils/profileUtils";
 import { DocumentWorkflow } from "./components/DocumentWorkflow";
@@ -337,6 +338,7 @@ export default function CandidateDocuments({
   // "documents" module cell to be editable — misconfigured matrices blocked recruiters who
   // could still edit candidates. Allow uploads when the user can manage the candidate.
   const canManageDocuments = can("documents.manage") || can("candidates.manage");
+  const planLimitModal = usePlanLimitModal();
 
   const coreFromDocument = useCallback((doc: Document): CoreFields => ({
     number: doc.number ?? "",
@@ -717,12 +719,15 @@ export default function CandidateDocuments({
       });
     } catch (e: any) {
       const fallback = t("admin.documents.errors.load_failed");
+      if (planLimitModal?.showPlanLimitIfNeeded(e, fallback)) {
+        return;
+      }
       const message = e?.response?.data?.detail || e?.message || fallback;
       setError(String(message));
     } finally {
       setLoading(false);
     }
-  }, [candidateId, ownerContext, coreFromDocument, candidateProfile]);
+  }, [candidateId, ownerContext, coreFromDocument, candidateProfile, planLimitModal, t]);
 
   useEffect(() => {
     loadAll();
@@ -1122,6 +1127,11 @@ useEffect(() => {
         );
         await loadAll();
       } catch (e: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.order_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.notifications.order_failed"),
         });
@@ -1130,7 +1140,20 @@ useEffect(() => {
         setOrderingTypes((prev) => ({ ...prev, [typeCode]: false }));
       }
     },
-    [canManageDocuments, candidateId, ownerContext, orderDraftForType, typeByCode, updateDocumentState, loadAll, flash, updateOrderDraftField, getDocTypeLabel]
+    [
+      canManageDocuments,
+      candidateId,
+      ownerContext,
+      orderDraftForType,
+      planLimitModal,
+      typeByCode,
+      updateDocumentState,
+      loadAll,
+      flash,
+      updateOrderDraftField,
+      getDocTypeLabel,
+      t,
+    ]
   );
 
 
@@ -1346,6 +1369,11 @@ useEffect(() => {
     } catch (e: any) {
       if (timer) window.clearInterval(timer);
       setUploadPct(0);
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.upload_failed"))
+      ) {
+        return;
+      }
       const message =
         e?.response?.data?.detail || e?.message || t("admin.documents.notifications.upload_failed");
       setError(String(message));
@@ -1392,6 +1420,11 @@ useEffect(() => {
           : t("admin.documents.notifications.create_success"),
       );
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.create_failed"))
+      ) {
+        return;
+      }
       const message = e?.response?.data?.detail || e?.message || t("admin.documents.notifications.create_failed");
       setError(String(message));
     } finally {
@@ -1410,6 +1443,11 @@ useEffect(() => {
       flash(t("admin.documents.notifications.delete_success"));
       await loadAll();
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.delete_failed"))
+      ) {
+        return;
+      }
       const message =
         e?.response?.data?.detail || e?.message || t("admin.documents.notifications.delete_failed");
       setError(String(message));
@@ -1568,6 +1606,14 @@ useEffect(() => {
         setError(reason);
       }
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t("admin.documents.errors.notify_failed", { defaultValue: "Failed to notify candidate" }),
+        )
+      ) {
+        return;
+      }
       const message = e?.response?.data?.detail || e?.message || t("admin.documents.errors.notify_failed", { defaultValue: "Failed to notify candidate" });
       setError(String(message));
     } finally {
@@ -1591,6 +1637,14 @@ useEffect(() => {
       URL.revokeObjectURL(url);
       flash(t("admin.documents.notifications.profile_downloaded", { defaultValue: "Profile downloaded" }));
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t("admin.documents.errors.download_failed", { defaultValue: "Failed to download profile" }),
+        )
+      ) {
+        return;
+      }
       const message = e?.response?.data?.detail || e?.message || t("admin.documents.errors.download_failed", { defaultValue: "Failed to download profile" });
       setError(String(message));
     } finally {
@@ -1633,6 +1687,11 @@ useEffect(() => {
       await loadAll();
       setOrderModalOpen(false);
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.order_failed"))
+      ) {
+        return;
+      }
       const message = formatErrorForDisplay(e, {
         fallback: t("admin.documents.notifications.order_failed"),
       });
@@ -1640,7 +1699,7 @@ useEffect(() => {
     } finally {
       setOrderingTypes((prev) => ({ ...prev, [orderModalType]: false }));
     }
-  }, [orderModalType, orderModalOrderedAt, orderModalRequestedFrom, candidateId, canManageDocuments, ownerContext, typeByCode, updateDocumentState, loadAll, flash, t, getDocTypeLabel]);
+  }, [orderModalType, orderModalOrderedAt, orderModalRequestedFrom, candidateId, canManageDocuments, ownerContext, planLimitModal, typeByCode, updateDocumentState, loadAll, flash, t, getDocTypeLabel]);
 
   const handleApplyTemplate = async () => {
     if (!candidateId || !selectedTemplateId || !canManageDocuments) return;
@@ -1662,6 +1721,14 @@ useEffect(() => {
       setSelectedTemplateId("");
       await loadAll();
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t("admin.documents.errors.template_apply_failed", { defaultValue: "Failed to apply template" }),
+        )
+      ) {
+        return;
+      }
       const message = e?.response?.data?.detail || e?.message || t("admin.documents.errors.template_apply_failed", { defaultValue: "Failed to apply template" });
       setError(String(message));
     } finally {

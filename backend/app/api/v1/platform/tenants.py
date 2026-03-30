@@ -16,6 +16,7 @@ from backend.app.auth.deps import (
 from backend.app.auth.jwt_tools import encode as encode_jwt
 from backend.app.db.deps import get_db
 from backend.app.api.v1.platform import schemas as platform_schemas
+from backend.app.api.v1.settings.billing import sync_subscription_license_addon_v1
 from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.models.tenant import (
     Tenant,
@@ -163,6 +164,56 @@ async def get_platform_tenant(
         raise HTTPException(status_code=404, detail="Tenant not found")
     tenant, license_entry, usage = tenant_data
     return _serialize_tenant(tenant, license_entry, usage)
+
+
+@router.post(
+    "/{tenant_id}/founder-pricing/enroll",
+    response_model=platform_schemas.PlatformFounderEnrollOut,
+    dependencies=[Depends(require_superadmin())],
+)
+async def platform_enroll_founder_pricing(
+    tenant_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> platform_schemas.PlatformFounderEnrollOut:
+    from backend.app.services import founder_pricing
+
+    tenant = await tenant_service.get_tenant(db, str(tenant_id))
+    if tenant is None:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    license_entry = await tenant_service.get_tenant_license(db, str(tenant_id))
+    raw_plan = str(getattr(license_entry, "plan", None) or "").strip().lower()
+    mapped_plan = founder_pricing.license_plan_for_founder_eligibility(raw_plan)
+    if mapped_plan is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Founder pricing requires a Team/Business-class license plan (internal team/pro or supported legacy plan codes).",
+        )
+
+    st = dict(tenant.settings or {})
+    fp = (st.get("billing") or {}).get("founder_pricing_v1")
+    already = isinstance(fp, dict) and bool(fp.get("enrolled")) and not bool(fp.get("revoked"))
+    if already:
+        used = await founder_pricing.count_active_founder_enrollments(db)
+        return platform_schemas.PlatformFounderEnrollOut(
+            enrolled=True,
+            founder_slots_used=used,
+            founder_slots_max=founder_pricing.FOUNDER_MAX_SLOTS,
+        )
+
+    ok = await founder_pricing.try_enroll_if_slot_available(db, tenant, plan_code=mapped_plan)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot enroll: founder slots full or founder pricing was revoked for this tenant",
+        )
+    await db.commit()
+    await db.refresh(tenant)
+    used = await founder_pricing.count_active_founder_enrollments(db)
+    return platform_schemas.PlatformFounderEnrollOut(
+        enrolled=True,
+        founder_slots_used=used,
+        founder_slots_max=founder_pricing.FOUNDER_MAX_SLOTS,
+    )
 
 
 @router.post(
@@ -608,6 +659,14 @@ async def update_license(
             payload=changes,
             actor_id=ctx.sub,
         )
+        await sync_subscription_license_addon_v1(
+            db,
+            tenant_id=str(tenant_id),
+            license_row=license_entry,
+        )
+        tenant_data = await tenant_service.get_tenant_with_details(db, str(tenant_id))
+        if tenant_data:
+            tenant, license_entry, usage = tenant_data
     return _serialize_tenant(tenant, license_entry, usage)
 
 

@@ -17,6 +17,7 @@ import { listCandidateProfiles, type CandidateProfile } from '../../api/candidat
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { servicesWorkspacePath } from '../../modules/services/utils'
 
 const primaryBtn = 'btn-primary'
@@ -45,6 +46,13 @@ const vacancyFormSchema = z.object({
     .optional()
     .transform((v) => (v === '' || v == null ? undefined : v)),
   criteria_requires_documents: z.string().optional().or(z.literal('')),
+  criteria_requires_candidate_documents_v1: z.string().optional().or(z.literal('')),
+  criteria_candidate_documents_allow_statuses: z.string().optional().or(z.literal('')),
+  /** §2.5: ISO2 lists vs normalized.geo_country / location_country / current_country */
+  criteria_allowed_geo_countries: z.string().optional().or(z.literal('')),
+  criteria_blocked_geo_countries: z.string().optional().or(z.literal('')),
+  /** §2.4: vacancy.extra.leads_auto_convert_on_fit_v1 = false */
+  vacancy_disable_auto_convert_on_fit: z.boolean().optional().default(false),
   headcount_target: z.string().optional().or(z.literal('')),
 })
 
@@ -118,7 +126,18 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     ? (employment as EmploymentType)
     : EMPLOYMENT_TYPES[0]
 
-  const extra = (source?.extra && typeof source.extra === 'object' ? source.extra : {}) as any
+  let extra: any = {}
+  const rawExtra = source?.extra
+  if (typeof rawExtra === 'string') {
+    try {
+      const p = JSON.parse(rawExtra)
+      if (p && typeof p === 'object' && !Array.isArray(p)) extra = p
+    } catch {
+      extra = {}
+    }
+  } else if (rawExtra && typeof rawExtra === 'object') {
+    extra = rawExtra
+  }
   const crit = (extra?.lead_criteria_v1 && typeof extra.lead_criteria_v1 === 'object' ? extra.lead_criteria_v1 : {}) as any
 
   return {
@@ -137,6 +156,19 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     candidate_profile_id: source?.candidate_profile_id ?? '',
     criteria_min_experience_eu_years: crit?.min_experience_eu_years ?? '',
     criteria_requires_documents: Array.isArray(crit?.requires_documents) ? crit.requires_documents.join(', ') : '',
+    criteria_requires_candidate_documents_v1: Array.isArray(crit?.requires_candidate_documents_v1)
+      ? crit.requires_candidate_documents_v1.join(', ')
+      : '',
+    criteria_candidate_documents_allow_statuses: Array.isArray(crit?.candidate_documents_allow_statuses)
+      ? crit.candidate_documents_allow_statuses.join(', ')
+      : '',
+    criteria_allowed_geo_countries: Array.isArray(crit?.allowed_geo_countries)
+      ? crit.allowed_geo_countries.join(', ')
+      : '',
+    criteria_blocked_geo_countries: Array.isArray(crit?.blocked_geo_countries)
+      ? crit.blocked_geo_countries.join(', ')
+      : '',
+    vacancy_disable_auto_convert_on_fit: extra?.leads_auto_convert_on_fit_v1 === false,
     headcount_target:
       source?.headcount_target != null && Number(source.headcount_target) > 0
         ? String(source.headcount_target)
@@ -194,8 +226,10 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
   const { t, locale } = useI18n()
   const dateFnsLocale = DATE_FNS_LOCALES[locale] ?? enUS
   const { can } = usePermissions()
+  const planLimitModal = usePlanLimitModal()
   const leadFieldExperience = 'experience_eu_years'
   const leadFieldDocuments = 'documents[]'
+  const leadFieldGeo = 'geo_country | location_country | current_country'
   const { id: routeId, tab: tabFromRoute } = useParams<{ id: string; tab?: string }>()
   const [searchParams] = useSearchParams()
   const companyFromUrl = searchParams.get('company') || ''
@@ -415,7 +449,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         const mode: 'create' | 'update' = model?.id ? 'update' : 'create'
 
         const payload = buildVacancyPayload(values, model, mode)
-        // Inject lead criteria into extra (MVP)
+        // Inject lead criteria into extra — merge with existing lead_criteria_v1 from extra (API / legacy keys).
         const minRaw: any = (values as any).criteria_min_experience_eu_years
         let minYears: number | undefined = undefined
         if (minRaw !== undefined && minRaw !== null && String(minRaw).trim() !== '') {
@@ -426,11 +460,47 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
           .split(',')
           .map((s) => s.trim())
           .filter(Boolean)
-        const criteria: any = {}
+        const modDocs = String((values as any).criteria_requires_candidate_documents_v1 || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+        const allowSts = String((values as any).criteria_candidate_documents_allow_statuses || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+        const allowedGeo = String((values as any).criteria_allowed_geo_countries || '')
+          .split(',')
+          .map((s) => s.trim().toUpperCase())
+          .filter(Boolean)
+        const blockedGeo = String((values as any).criteria_blocked_geo_countries || '')
+          .split(',')
+          .map((s) => s.trim().toUpperCase())
+          .filter(Boolean)
+        const criteria: Record<string, unknown> = {}
+        const prevExtra = payload?.extra && typeof payload.extra === 'object' && !Array.isArray(payload.extra) ? payload.extra : {}
+        const prevCrit = (prevExtra as any).lead_criteria_v1
+        if (prevCrit && typeof prevCrit === 'object' && !Array.isArray(prevCrit)) {
+          Object.assign(criteria, prevCrit)
+        }
         if (typeof minYears !== 'undefined') criteria.min_experience_eu_years = minYears
+        else delete criteria.min_experience_eu_years
         if (docs.length > 0) criteria.requires_documents = docs
+        else delete criteria.requires_documents
+        if (modDocs.length > 0) criteria.requires_candidate_documents_v1 = modDocs
+        else delete criteria.requires_candidate_documents_v1
+        if (allowSts.length > 0) criteria.candidate_documents_allow_statuses = allowSts
+        else delete criteria.candidate_documents_allow_statuses
+        if (allowedGeo.length > 0) criteria.allowed_geo_countries = allowedGeo
+        else delete criteria.allowed_geo_countries
+        if (blockedGeo.length > 0) criteria.blocked_geo_countries = blockedGeo
+        else delete criteria.blocked_geo_countries
         if (payload?.extra && typeof payload.extra === 'object') {
           ;(payload.extra as any).lead_criteria_v1 = criteria
+          if ((values as any).vacancy_disable_auto_convert_on_fit) {
+            ;(payload.extra as any).leads_auto_convert_on_fit_v1 = false
+          } else {
+            delete (payload.extra as any).leads_auto_convert_on_fit_v1
+          }
         }
 
         const response = mode === 'update'
@@ -445,6 +515,14 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         resetForm(toFormDefaults(ensured))
         setSavedOk(true); setTimeout(() => setSavedOk(false), 2000)
       } catch (err: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(
+            err,
+            t('app.vacancies.form.save_failed', { defaultValue: 'Could not save vacancy' }),
+          )
+        ) {
+          return
+        }
         const r = err?.response?.data
         const detail = (typeof r?.detail === 'string')
           ? r.detail
@@ -455,7 +533,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         setSaving(false)
       }
     },
-    [model, resetForm]
+    [model, planLimitModal, resetForm, t]
   )
 
   const save = useCallback(async () => {
@@ -883,8 +961,12 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                       const crit: any = preset?.criteria || {}
                       const min = crit?.min_experience_eu_years
                       const docs = Array.isArray(crit?.requires_documents) ? crit.requires_documents.join(', ') : ''
+                      const ag = Array.isArray(crit?.allowed_geo_countries) ? crit.allowed_geo_countries.join(', ') : ''
+                      const bg = Array.isArray(crit?.blocked_geo_countries) ? crit.blocked_geo_countries.join(', ') : ''
                       setValue('criteria_min_experience_eu_years' as any, (typeof min !== 'undefined' ? String(min) : '') as any)
                       setValue('criteria_requires_documents' as any, docs as any)
+                      setValue('criteria_allowed_geo_countries' as any, ag as any)
+                      setValue('criteria_blocked_geo_countries' as any, bg as any)
                     }}
                   >
                     Применить пресет
@@ -910,12 +992,84 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                     placeholder={t('app.vacancies.detail.criteria.documents_placeholder', { defaultValue: 'np. karta_pobytu, wp_a' })}
                   />
                 </label>
+                <label className="block md:col-span-2">
+                  <div className="label">
+                    {t('app.vacancies.detail.criteria.candidate_docs_module', {
+                      defaultValue: 'Documents module — required doc types (candidate)',
+                    })}
+                  </div>
+                  <input
+                    className="input font-mono text-xs"
+                    {...register('criteria_requires_candidate_documents_v1')}
+                    placeholder={t('app.vacancies.detail.criteria.candidate_docs_placeholder', {
+                      defaultValue: 'driver_license, passport',
+                    })}
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    {t('app.vacancies.detail.criteria.candidate_docs_hint', {
+                      defaultValue:
+                        'Uses rows in Documents for the linked candidate. If the lead has no candidate yet, fit shows needs_info. Codes follow the same catalog as Settings → Documents.',
+                    })}
+                  </p>
+                </label>
+                <label className="block md:col-span-2">
+                  <div className="label">
+                    {t('app.vacancies.detail.criteria.allow_statuses', {
+                      defaultValue: 'Allowed document statuses (optional override, comma-separated)',
+                    })}
+                  </div>
+                  <input
+                    className="input font-mono text-xs"
+                    {...register('criteria_candidate_documents_allow_statuses')}
+                    placeholder="approved, completed, verified, received, delivered, issued, active, registered"
+                  />
+                </label>
+                <label className="block md:col-span-2">
+                  <div className="label">{t('app.vacancies.detail.criteria.allowed_geo_countries')}</div>
+                  <input
+                    className="input font-mono text-xs"
+                    {...register('criteria_allowed_geo_countries')}
+                    placeholder={t('app.vacancies.detail.criteria.geo_countries_placeholder')}
+                  />
+                  <p className="mt-1 text-xs text-slate-500">{t('app.vacancies.detail.criteria.allowed_geo_hint')}</p>
+                </label>
+                <label className="block md:col-span-2">
+                  <div className="label">{t('app.vacancies.detail.criteria.blocked_geo_countries')}</div>
+                  <input
+                    className="input font-mono text-xs"
+                    {...register('criteria_blocked_geo_countries')}
+                    placeholder={t('app.vacancies.detail.criteria.geo_countries_placeholder')}
+                  />
+                  <p className="mt-1 text-xs text-slate-500">{t('app.vacancies.detail.criteria.blocked_geo_hint')}</p>
+                </label>
               </div>
               <div className="mt-2 text-xs text-slate-500">
                 {t('app.vacancies.detail.criteria.lead_fields', { defaultValue: 'Сейчас проверяем по полям лида:' })}{' '}
                 <span className="font-mono">{leadFieldExperience}</span> {t('common.and', { defaultValue: 'и' })}{' '}
-                <span className="font-mono">{leadFieldDocuments}</span> ({t('common.words.if_available', { defaultValue: 'если есть' })}).
+                <span className="font-mono">{leadFieldDocuments}</span> ({t('common.words.if_available', { defaultValue: 'если есть' })}
+                ); {t('app.vacancies.detail.criteria.lead_fields_geo')}{' '}
+                <span className="font-mono">{leadFieldGeo}</span>.
               </div>
+              <Controller
+                control={control}
+                name="vacancy_disable_auto_convert_on_fit"
+                render={({ field }) => (
+                  <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={!!field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                    />
+                    <span>
+                      <span className="font-medium">{t('app.vacancies.detail.criteria.disable_auto_convert')}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">
+                        {t('app.vacancies.detail.criteria.disable_auto_convert_hint')}
+                      </span>
+                    </span>
+                  </label>
+                )}
+              />
             </div>
               </div>
             </form>

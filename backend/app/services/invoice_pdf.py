@@ -5,23 +5,6 @@ from __future__ import annotations
 
 import io
 import logging
-from datetime import date
-from decimal import Decimal
-from typing import Optional
-from uuid import uuid4
-
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import mm
-from reportlab.pdfgen import canvas
-from reportlab.platypus import (
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
 
 from backend.app.models.invoice import Invoice, InvoiceItem
 
@@ -59,6 +42,24 @@ def generate_invoice_pdf(invoice: Invoice) -> bytes:
     Returns:
         PDF file as bytes
     """
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
+    except ImportError as exc:  # pragma: no cover - minimal test envs
+        raise RuntimeError(
+            "Invoice PDF generation requires reportlab; install backend dependencies "
+            "(e.g. pip install -r backend/requirements.txt in a venv)."
+        ) from exc
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=20 * mm, leftMargin=20 * mm, topMargin=20 * mm, bottomMargin=20 * mm)
     

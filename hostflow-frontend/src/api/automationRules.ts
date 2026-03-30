@@ -5,6 +5,7 @@ export type AutomationRule = {
   tenant_id: string
   enabled: boolean
   trigger: string
+  priority?: number
   title: string | null
   conditions: Record<string, any> | null
   actions: Record<string, any> | null
@@ -20,6 +21,7 @@ export async function listAutomationRules(trigger?: string): Promise<{ items: Au
 export async function createAutomationRule(payload: {
   enabled?: boolean
   trigger: string
+  priority?: number
   title?: string
   conditions?: Record<string, any> | null
   actions?: Record<string, any> | null
@@ -28,7 +30,10 @@ export async function createAutomationRule(payload: {
   return data
 }
 
-export async function patchAutomationRule(id: string, payload: Partial<Pick<AutomationRule, 'enabled' | 'title' | 'conditions' | 'actions'>>) {
+export async function patchAutomationRule(
+  id: string,
+  payload: Partial<Pick<AutomationRule, 'enabled' | 'priority' | 'title' | 'conditions' | 'actions'>>,
+) {
   const { data } = await api.patch(`/automation-rules/${id}`, payload)
   return data as AutomationRule
 }

@@ -149,6 +149,7 @@ async function fetchUnifiedCoreSearch(
   q: string,
   signal: AbortSignal | undefined,
   scopeTenantId: string | undefined,
+  reminderAssigneeScope: 'mine' | 'team',
 ): Promise<GlobalSearchResult[] | null> {
   try {
     const params: Record<string, string | number> = {
@@ -157,6 +158,7 @@ async function fetchUnifiedCoreSearch(
       max_results: MAX_RESULTS,
     }
     if (scopeTenantId) params.scope_tenant_id = scopeTenantId
+    if (reminderAssigneeScope === 'team') params.assignee_scope = 'team'
     const { data } = await api.get<UnifiedSearchResponse>('/search', { params, signal })
     const raw = data?.items
     if (!Array.isArray(raw)) return null
@@ -231,17 +233,26 @@ async function fetchLegacyCoreAndSupplementary(
   return [...results, ...supplementary]
 }
 
+type SupplementaryOnlyOptions = {
+  /** When false, skip listReminders — tasks already come from GET /search. Default true. */
+  includeTasks?: boolean
+}
+
 async function fetchSupplementaryOnly(
   q: string,
   signal: AbortSignal | undefined,
   reminderScope: 'mine' | 'team',
+  options?: SupplementaryOnlyOptions,
 ): Promise<GlobalSearchResult[]> {
   const base = { q, limit: PER_TYPE, offset: 0 }
+  const includeTasks = options?.includeTasks !== false
 
   const [documents, threads, tasks, invoices, serviceOrders] = await Promise.allSettled([
     docsApi.get('/documents', { params: { q, limit: PER_TYPE }, signal }),
     listCommunicationThreads({ q, limit: PER_TYPE, offset: 0, signal }),
-    listReminders({ q, limit: PER_TYPE, assigneeScope: reminderScope, signal }),
+    includeTasks
+      ? listReminders({ q, limit: PER_TYPE, assigneeScope: reminderScope, signal })
+      : Promise.resolve({ items: [] as TaskRow[] }),
     api.get('/invoices', { params: { ...base, q }, signal }),
     api.get('/service-orders', { params: { q }, signal }),
   ])
@@ -362,10 +373,13 @@ export async function searchGlobal(
   const reminderScope = opts?.reminderAssigneeScope === 'team' ? 'team' : 'mine'
   const scopeTenantId = opts?.scopeTenantId?.trim() || undefined
 
-  const unifiedCore = await fetchUnifiedCoreSearch(q, signal, scopeTenantId)
+  const unifiedCore = await fetchUnifiedCoreSearch(q, signal, scopeTenantId, reminderScope)
   if (unifiedCore !== null) {
-    const extra = await fetchSupplementaryOnly(q, signal, reminderScope)
-    return mergeSearchResultsHeuristic([...unifiedCore, ...extra], q, MAX_RESULTS)
+    const extra = await fetchSupplementaryOnly(q, signal, reminderScope, { includeTasks: false })
+    // Core entity hits are returned by GET /search; skip overlapping client slices.
+    const unifiedTypes = new Set(['document', 'invoice', 'service_order', 'conversation', 'task'])
+    const extraDeduped = extra.filter((x) => !unifiedTypes.has(x.type))
+    return mergeSearchResultsHeuristic([...unifiedCore, ...extraDeduped], q, MAX_RESULTS)
   }
 
   const legacy = await fetchLegacyCoreAndSupplementary(q, signal, reminderScope)

@@ -201,6 +201,7 @@ class ServiceOrderOut(ServiceOrderBase):
         json_encoders={Decimal: lambda v: float(v)},
     )
 
+    own_company_id: Optional[str] = None
     id: str
     tenant_id: str
     status: ServiceOrderStatusLiteral

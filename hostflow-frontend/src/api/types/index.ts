@@ -147,6 +147,7 @@ export type {
   Lead,
   LeadListResponse,
   LeadsProcessingModeV1,
+  GenericInboundWebhookRotateResponse,
   MetaCredentialStatus,
   MetaLeadSettings,
   MetaLeadSettingsPatch,

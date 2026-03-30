@@ -84,6 +84,11 @@ export interface MetaLeadFieldMappingRule {
 
 export type LeadsProcessingModeV1 = 'manual' | 'assisted' | 'automatic';
 
+export interface GenericInboundWebhookRotateResponse {
+  secret: string;
+  ingest_url: string;
+}
+
 export interface MetaLeadSettings {
   tenant_id: UUID;
   default_company_id?: UUID | null;
@@ -96,6 +101,7 @@ export interface MetaLeadSettings {
   field_mapping?: MetaLeadFieldMappingRule[];
   plan_field_mapping_rules_limit?: number | null;
   plan_meta_credentials_limit?: number | null;
+  generic_inbound_webhook_enabled?: boolean;
   webhook_url?: string | null;
   last_webhook_check_at?: string | null;
   last_signature_status?: string | null;

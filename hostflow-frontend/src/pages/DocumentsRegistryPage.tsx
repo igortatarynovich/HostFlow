@@ -5,18 +5,23 @@ import { listDocuments } from '../api/documents'
 import { createReminder } from '../api/client'
 import type { Document } from '../api/types'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
 const QUICK_FILTERS = ['missing', 'requested', 'in_progress', 'ready'] as const
 const PAGE_SIZE = 20
 
 export default function DocumentsRegistryPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [searchParams] = useSearchParams()
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<typeof QUICK_FILTERS[number] | null>('missing')
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [docTypeFilter, setDocTypeFilter] = useState('')
   const [ownerKindFilter, setOwnerKindFilter] = useState('')
@@ -42,13 +47,17 @@ export default function DocumentsRegistryPage() {
       .catch((err) => {
         if (controller.signal.aborted) return
         console.error('[DocumentsRegistry] load failed', err)
-        setError(t('admin.documents.registry.error'))
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.documents.registry.error'))) {
+          setError(null)
+        } else {
+          setError(getFriendlyErrorInfo(err, t('admin.documents.registry.error'), t))
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [reloadKey, t])
+  }, [reloadKey, planLimitModal, t])
 
   useEffect(() => {
     // refresh relative time calculations when data changes
@@ -92,6 +101,14 @@ export default function DocumentsRegistryPage() {
       })
       setReminderStatus('Создано')
     } catch (err: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('admin.documents.registry.reminder_error', { defaultValue: 'Could not create reminder' }),
+        )
+      ) {
+        return
+      }
       setReminderStatus('Ошибка создания')
     }
   }
@@ -181,8 +198,8 @@ export default function DocumentsRegistryPage() {
   const currentDocs = filteredDocs.slice(pageStart, pageStart + PAGE_SIZE)
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
-      <section className="relative overflow-hidden rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 p-3 text-white shadow-none">
+    <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-6 lg:gap-8">
+      <section className="relative overflow-hidden rounded-none bg-gradient-to-br from-brand-600 via-brand-500 to-brand-400 px-5 py-6 text-white shadow-none sm:px-6 sm:py-7 lg:px-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-2">
             <p className="text-2xl font-semibold">{t('admin.documents.registry.title')}</p>
@@ -203,7 +220,7 @@ export default function DocumentsRegistryPage() {
         </div>
       </section>
 
-      <section className="app-surface space-y-0 gap-0 border-x-0 border-t-0 p-3">
+      <section className="app-surface flex flex-col gap-6 border-x-0 border-t-0 border-b border-slate-200 px-5 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex flex-1 flex-col gap-2">
             <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -323,12 +340,10 @@ export default function DocumentsRegistryPage() {
 
           {error && (
             <ErrorRecoveryBanner
-              info={{
-                title: error,
-                hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-              }}
+              info={error}
               onRetry={() => setReloadKey((prev) => prev + 1)}
               retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+              {...friendlyErrorBannerSecondary(error, CRM_APP_PATHS.documents, t('app.nav.items.documents', { defaultValue: 'Documents' }))}
               compact
             />
           )}

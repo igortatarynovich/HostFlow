@@ -8,7 +8,8 @@ type UseCandidatesTableColumnsDnDResizeArgs = {
 }
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-  name: 260,
+  /** Room for inline Call / Email / Open / Tasks under the name link (§2.14). */
+  name: 300,
   email: 180,
   phone: 150,
   citizenship: 140,

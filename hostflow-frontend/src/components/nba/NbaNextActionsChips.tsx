@@ -17,6 +17,23 @@ type NbaNextActionsChipsProps = {
   className?: string
 }
 
+function nbaChipTitle(t: (key: string, options?: { defaultValue?: string; values?: Record<string, string | number> }) => string, g: NextActionGroup) {
+  const d = g.nba_detail || {}
+  const rootCode = typeof d.conversion_root === 'string' ? d.conversion_root : ''
+  const rootLabel = rootCode ? t(`app.leads.conversion_funnel.roots.${rootCode}`) : ''
+  const key = `app.leads.nba.groups.${g.id}`
+  const translated = t(key, {
+    defaultValue: '',
+    values: {
+      root: rootLabel || rootCode,
+      pct: d.pct != null ? d.pct : '',
+      days: d.days != null ? d.days : '',
+      count: g.count,
+    },
+  })
+  return translated && translated !== key ? translated : g.title
+}
+
 export function NbaNextActionsChips({
   groups,
   nbaQuickLoadingGroupId,
@@ -31,17 +48,18 @@ export function NbaNextActionsChips({
 
   return (
     <div className={className}>
-      {visible.map((g) =>
-        g.locked ? (
+      {visible.map((g) => {
+        const chipTitle = nbaChipTitle(t, g)
+        return g.locked ? (
           <Link
             key={g.id}
             to={`${ACTIVATION_PATHS.billing}?focus=plan`}
             title={t('app.leads.nba.locked_hint')}
-            aria-label={`${g.title}: ${t('app.leads.nba.locked_hint')}`}
+            aria-label={`${chipTitle}: ${t('app.leads.nba.locked_hint')}`}
             className="inline-flex max-w-full items-center gap-1 rounded-lg border border-slate-300 bg-slate-100/90 px-2.5 py-1 text-left text-xs text-slate-600 hover:bg-slate-200"
           >
             <IconLock size={12} className="shrink-0 text-slate-500" aria-hidden />
-            <span className="font-medium">{g.title}</span>
+            <span className="font-medium">{chipTitle}</span>
             <span className="tabular-nums text-slate-500">({g.count})</span>
             <span className="text-[10px] font-medium uppercase text-slate-500">
               {String(g.required_plan || '').toLowerCase() === 'pro' ? t('app.leads.nba.badge_pro') : t('app.leads.nba.badge_team')}
@@ -57,7 +75,7 @@ export function NbaNextActionsChips({
                   : 'inline-flex max-w-full items-center gap-1 rounded-lg border border-amber-200 bg-amber-50/90 px-2.5 py-1 text-left text-xs text-amber-950 hover:bg-amber-100'
               }
             >
-              <span className="font-medium">{g.title}</span>
+              <span className="font-medium">{chipTitle}</span>
               <span
                 className={g.entity === 'candidate' ? 'tabular-nums text-indigo-800' : 'tabular-nums text-amber-800'}
               >
@@ -100,8 +118,8 @@ export function NbaNextActionsChips({
               )
             ) : null}
           </div>
-        ),
-      )}
+        )
+      })}
     </div>
   )
 }

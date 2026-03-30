@@ -5,7 +5,8 @@
 import { CRM_APP_DRILLDOWN_HREFS } from '../../app/crmAppPaths'
 
 /** Правый work-panel: ширина колонки грида и `max-width` aside (должны совпадать). */
-export const CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX = 440
+/** §2.13: slightly narrower rail so the table stays primary. */
+export const CANDIDATES_WORK_PANEL_RAIL_WIDTH_PX = 380
 
 export const DOC_READINESS_META: Record<string, { labelKey: string; className: string }> = {
   pending: { labelKey: 'app.candidates.docs.readiness.pending', className: 'bg-gray-100 text-gray-600' },
@@ -40,7 +41,7 @@ export const QUICK_DOC_STATUS_SETS: Record<string, string[]> = {
 
 /**
  * Навигационные quick views (не фильтры списка): единый источник для хука и drill-down ссылок.
- * Очередь no-next-action: канонический query на списке → редирект на страницу очереди (`CandidatesListGate` в routes).
+ * Очередь no-next-action: **`/app/candidates?queue=no_next_action`** — тот же экран **`Candidates`**, данные через **`GET /candidates/no-next-action`** (§2.14).
  */
 export const CANDIDATES_QUICK_VIEW_NAV_PATHS = {
   no_next_action: CRM_APP_DRILLDOWN_HREFS.candidatesQueueNoNextAction,

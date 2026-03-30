@@ -13,6 +13,7 @@ import { docsIssuesPresent, docsPipelineBlocksForward } from '../../../utils/can
 import { canonicalStageKey } from '../../../utils/stageLabels'
 import { formatDateSafe } from '../candidateUtils'
 import { buildInboxHubPath } from '../../../utils/inboxDeepLinks'
+import type { FriendlyErrorInfo } from '../../../utils/friendlyError'
 
 type TimelineItem = {
   at: string
@@ -31,7 +32,7 @@ type CandidatesSelectedPanelProps = {
   stageSummaryLabel?: string | null
   previewReminders: any[]
   previewRemindersLoading: boolean
-  previewRemindersError: string | null
+  previewRemindersError: FriendlyErrorInfo | null
   previewReminderBusy: string | null
   previewReminderTitle: string
   previewReminderDueAt: string
@@ -47,7 +48,7 @@ type CandidatesSelectedPanelProps = {
   docsOwnerContext: any
   previewTimelineItems: TimelineItem[]
   previewTimelineLoading: boolean
-  previewTimelineError: string | null
+  previewTimelineError: FriendlyErrorInfo | null
   previewTimelineExpanded: boolean
   previewTimelineCollapsedCount: number
   onClose: () => void
@@ -383,7 +384,12 @@ export function CandidatesSelectedPanel({
           {previewTimelineLoading ? (
             <div className="py-3 text-center text-[11px] text-slate-500">{t('common.loading')}</div>
           ) : previewTimelineError ? (
-            <div className="mt-2 rounded border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700">{previewTimelineError}</div>
+            <div className="mt-2 rounded border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700">
+              <div>{previewTimelineError.title}</div>
+              {previewTimelineError.detail ? (
+                <div className="mt-0.5 text-[10px] text-rose-800/90">{previewTimelineError.detail}</div>
+              ) : null}
+            </div>
           ) : previewTimelineItems.length === 0 ? (
             <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-500">
               {t('app.candidates.preview.timeline_empty', { defaultValue: 'No events yet.' })}

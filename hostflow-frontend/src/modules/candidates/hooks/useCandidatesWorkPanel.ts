@@ -14,8 +14,8 @@ export function useCandidatesWorkPanel({ t, workPanelAssigneeScope = 'mine' }: U
     selectedCandidateIdRef.current = selectedCandidateId
   }, [selectedCandidateId])
 
-  // Persisted open/close state for the side panel shell.
-  const SIDEBAR_STORAGE_KEY = 'hf:candidates:sidebarOpen'
+  // Persisted open/close state for the side panel shell (§2.13: default collapsed; new key resets old “always open” prefs).
+  const SIDEBAR_STORAGE_KEY = 'hf:candidates:workRailShell:v1'
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try {
       return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1'

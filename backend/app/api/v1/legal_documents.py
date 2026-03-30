@@ -7,7 +7,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ from backend.app.auth.deps import Role, get_current_user, require_roles, UserCtx
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.legal_document import LegalDocument
 from backend.app.models.rodo_notification import RodoNotification
+from backend.app.legal.billing_terms_templates_v1 import ALL_LEGAL_DOC_TYPES, default_billing_template_items
 from backend.app.services.legal_documents import get_active_legal_document, list_active_for_tenant
 from backend.app.services.rodo import get_first_rodo_sent, send_rodo_email
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
@@ -35,16 +36,40 @@ class LegalDocumentOut(BaseModel):
 
 
 class LegalDocumentCreate(BaseModel):
-    type: str = Field(..., pattern="^(rodo_clause|privacy_policy)$")
+    type: str
     version_id: str
     content_html: Optional[str] = None
     content_url: Optional[str] = None
     is_active: bool = False
 
+    @field_validator("type")
+    @classmethod
+    def _legal_type_ok(cls, v: str) -> str:
+        s = (v or "").strip()
+        if s not in ALL_LEGAL_DOC_TYPES:
+            raise ValueError("unsupported legal document type")
+        return s
+
 
 class ActiveLegalDocsOut(BaseModel):
     rodo_clause: Optional[LegalDocumentOut] = None
     privacy_policy: Optional[LegalDocumentOut] = None
+    trial_terms: Optional[LegalDocumentOut] = None
+    downgrade_cancellation: Optional[LegalDocumentOut] = None
+    overage_autodebit: Optional[LegalDocumentOut] = None
+    data_retention: Optional[LegalDocumentOut] = None
+    automation_disclaimer: Optional[LegalDocumentOut] = None
+    mapping_disclaimer: Optional[LegalDocumentOut] = None
+
+
+class DefaultBillingTemplateItem(BaseModel):
+    type: str
+    version_id: str
+    content_html: str
+
+
+class DefaultBillingTemplatesOut(BaseModel):
+    items: List[DefaultBillingTemplateItem]
 
 
 class RodoStatusOut(BaseModel):
@@ -114,12 +139,28 @@ async def update_legal_document(
 async def get_active_docs(
     db_tenant=Depends(get_db_with_tenant),
 ):
-    """Get active RODO and privacy policy for current tenant."""
+    """Get active RODO, privacy, and §2.16 billing exhibits for current tenant."""
     db, tenant_id = db_tenant
     docs = await list_active_for_tenant(db, str(tenant_id))
-    return ActiveLegalDocsOut(
-        rodo_clause=LegalDocumentOut.model_validate(docs["rodo_clause"]) if docs["rodo_clause"] else None,
-        privacy_policy=LegalDocumentOut.model_validate(docs["privacy_policy"]) if docs["privacy_policy"] else None,
+    kwargs = {
+        k: LegalDocumentOut.model_validate(v) if v is not None else None
+        for k, v in docs.items()
+    }
+    return ActiveLegalDocsOut(**kwargs)
+
+
+@router.get(
+    "/default-templates/billing-v1",
+    response_model=DefaultBillingTemplatesOut,
+    dependencies=[Depends(require_roles(Role.admin, Role.owner))],
+)
+async def get_default_billing_templates(
+    _db_tenant=Depends(get_db_with_tenant),
+):
+    """Draft HTML for §2.16 checklist (counsel must review before production use)."""
+    raw = default_billing_template_items()
+    return DefaultBillingTemplatesOut(
+        items=[DefaultBillingTemplateItem.model_validate(x) for x in raw],
     )
 
 

@@ -2,6 +2,7 @@ import type { AxiosInstance } from 'axios'
 import http from './http'
 import { withTenant } from './client'
 import type {
+  PlatformFounderEnrollResponse,
   PlatformTenant,
   PlatformTenantCreatePayload,
   PlatformTenantListResponse,
@@ -75,6 +76,13 @@ export async function updatePlatformTenantMetadata(tenantId: string, payload: Pl
 
 export async function updatePlatformTenantLicense(tenantId: string, payload: TenantLicensePatchInput) {
   const { data } = await http.patch<PlatformTenant>(`/platform/tenants/${tenantId}/license`, payload)
+  return data
+}
+
+export async function enrollPlatformTenantFounderPricing(tenantId: string) {
+  const { data } = await http.post<PlatformFounderEnrollResponse>(
+    `/platform/tenants/${tenantId}/founder-pricing/enroll`,
+  )
   return data
 }
 

@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import date, timedelta
 from types import SimpleNamespace
 
+import pytest
+from fastapi import HTTPException
+
 from backend.app.services import billing_restrictions
 
 
@@ -42,11 +45,18 @@ def test_status_case_insensitive() -> None:
     assert billing_restrictions.tenant_billing_blocks_new_leads(t)
 
 
-def test_expired_trial_license_blocks() -> None:
+def test_expired_trial_license_blocks_after_grace() -> None:
     t = _tenant({"billing": {"subscription": {"status": ""}}})
-    lic = _license(plan="trial", expires_at=date.today() - timedelta(days=1))
+    lic = _license(plan="trial", expires_at=date.today() - timedelta(days=10))
     assert billing_restrictions.billing_write_block_reason(t, lic) == "trial_expired"
     assert billing_restrictions.tenant_billing_blocks_new_leads(t, lic)
+
+
+def test_expired_trial_license_in_grace_no_block() -> None:
+    t = _tenant({"billing": {"subscription": {"status": ""}}})
+    lic = _license(plan="trial", expires_at=date.today() - timedelta(days=1))
+    assert billing_restrictions.billing_write_block_reason(t, lic) is None
+    assert not billing_restrictions.tenant_billing_blocks_new_leads(t, lic)
 
 
 def test_trial_license_still_valid_no_block() -> None:
@@ -55,7 +65,22 @@ def test_trial_license_still_valid_no_block() -> None:
     assert billing_restrictions.billing_write_block_reason(t, lic) is None
 
 
-def test_stripe_trial_end_in_past_blocks() -> None:
+def test_stripe_trial_end_in_past_blocks_after_grace() -> None:
+    old = (date.today() - timedelta(days=10)).isoformat()
+    t = _tenant(
+        {
+            "billing": {
+                "subscription": {
+                    "status": "trial",
+                    "trial_ends_at": f"{old}T12:00:00+00:00",
+                }
+            }
+        }
+    )
+    assert billing_restrictions.billing_write_block_reason(t) == "trial_expired"
+
+
+def test_stripe_trial_end_in_grace_no_block() -> None:
     yesterday = (date.today() - timedelta(days=1)).isoformat()
     t = _tenant(
         {
@@ -67,4 +92,17 @@ def test_stripe_trial_end_in_past_blocks() -> None:
             }
         }
     )
-    assert billing_restrictions.billing_write_block_reason(t) == "trial_expired"
+    assert billing_restrictions.billing_write_block_reason(t) is None
+
+
+def test_ensure_billing_allows_side_effects_raises_past_due() -> None:
+    t = _tenant({"billing": {"subscription": {"status": "past_due"}}})
+    with pytest.raises(HTTPException) as ei:
+        billing_restrictions.ensure_billing_allows_side_effects(t, None)
+    assert ei.value.status_code == 403
+    assert ei.value.detail["code"] == "billing_past_due"
+
+
+def test_ensure_billing_allows_side_effects_ok_when_active() -> None:
+    t = _tenant({"billing": {"subscription": {"status": "active"}}})
+    billing_restrictions.ensure_billing_allows_side_effects(t, None)

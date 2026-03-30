@@ -9,6 +9,9 @@ import {
 import { recordPerfMeasurement } from '../../../api/analytics'
 import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
 import type { CandidateDocsRailSummarySnapshot } from '../../../components/candidate/CandidateDocsRailPanel'
+import { usePlanLimitModal } from '../../../contexts/PlanLimitModalContext'
+import type { FriendlyErrorInfo } from '../../../utils/friendlyError'
+import { getFriendlyErrorInfo } from '../../../utils/friendlyError'
 
 /** Relative URLs from `GET .../work-panel` `comms` (snake_case in JSON). */
 export type CandidatesWorkPanelCommsLinks = {
@@ -74,6 +77,7 @@ export function useCandidatesWorkPanelPreview({
   selectedCandidateId,
   workPanelAssigneeScope = 'mine',
 }: UseCandidatesWorkPanelPreviewArgs) {
+  const planLimitModal = usePlanLimitModal()
   const [workPanelBundleLoading, setWorkPanelBundleLoading] = useState(false)
 
   /** Increment to expand next-action details in preview (context menu / shortcuts only — not name cell). */
@@ -83,7 +87,7 @@ export function useCandidatesWorkPanelPreview({
   }, [])
 
   // Reminders (active reminder = next action editor content)
-  const [previewRemindersError, setPreviewRemindersError] = useState<string | null>(null)
+  const [previewRemindersError, setPreviewRemindersError] = useState<FriendlyErrorInfo | null>(null)
   const [previewReminders, setPreviewReminders] = useState<ReminderRecord[]>([])
 
   const [previewReminderTitle, setPreviewReminderTitle] = useState('')
@@ -94,7 +98,7 @@ export function useCandidatesWorkPanelPreview({
   const [previewReminderOffset, setPreviewReminderOffset] = useState<number>(15)
 
   // Timeline
-  const [previewTimelineError, setPreviewTimelineError] = useState<string | null>(null)
+  const [previewTimelineError, setPreviewTimelineError] = useState<FriendlyErrorInfo | null>(null)
   const [previewTimelineExpanded, setPreviewTimelineExpanded] = useState(false)
   const [previewTimelineItems, setPreviewTimelineItems] = useState<
     { at: string; kind: string; source: string; title?: string | null; description?: string | null }[]
@@ -196,9 +200,16 @@ export function useCandidatesWorkPanelPreview({
         meta: { candidateId, assigneeScope: workPanelAssigneeScope },
       })
     } catch (err: any) {
-      const msg = err?.response?.data?.detail ?? err?.message ?? 'Failed to load work panel'
-      setPreviewRemindersError(msg)
-      setPreviewTimelineError(msg)
+      const title = t('app.candidates.work_panel.load_failed', { defaultValue: 'Failed to load work panel' })
+      const planHandled = planLimitModal?.showPlanLimitIfNeeded(err, title)
+      if (planHandled) {
+        setPreviewRemindersError(null)
+        setPreviewTimelineError(null)
+      } else {
+        const info = getFriendlyErrorInfo(err, title, t)
+        setPreviewRemindersError(info)
+        setPreviewTimelineError(info)
+      }
       setPreviewCandidateExtra({ contact_policy_enabled: false, contact_attempt_count: 0 })
       setPreviewReminders([])
       setPreviewTimelineItems([])
@@ -208,7 +219,7 @@ export function useCandidatesWorkPanelPreview({
     } finally {
       setWorkPanelBundleLoading(false)
     }
-  }, [workPanelAssigneeScope])
+  }, [planLimitModal, t, workPanelAssigneeScope])
 
   useEffect(() => {
     if (!selectedCandidateId) {
@@ -269,10 +280,15 @@ export function useCandidatesWorkPanelPreview({
       setPreviewReminderDueAt(new Date(due.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16))
       await loadWorkPanelBundle(selectedCandidateId)
     } catch (err: any) {
-      setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to create reminder')
+      const fb = t('app.candidates.work_panel.reminder_create_failed', { defaultValue: 'Failed to create reminder' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+        setPreviewRemindersError(getFriendlyErrorInfo(err, fb, t))
+      }
     }
   }, [
     loadWorkPanelBundle,
+    planLimitModal,
+    t,
     previewReminderDueAt,
     previewReminderOffset,
     previewReminderTitle,
@@ -292,12 +308,15 @@ export function useCandidatesWorkPanelPreview({
         await completeActivity(id)
         if (selectedCandidateId) await loadWorkPanelBundle(selectedCandidateId)
       } catch (err: any) {
-        setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to complete reminder')
+        const fb = t('app.candidates.work_panel.reminder_complete_failed', { defaultValue: 'Failed to complete reminder' })
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setPreviewRemindersError(getFriendlyErrorInfo(err, fb, t))
+        }
       } finally {
         setPreviewReminderBusy((prev) => (prev === id ? null : prev))
       }
     },
-    [loadWorkPanelBundle, selectedCandidateId],
+    [loadWorkPanelBundle, planLimitModal, selectedCandidateId, t],
   )
 
   const handlePreviewReminderSnooze = useCallback(
@@ -307,12 +326,15 @@ export function useCandidatesWorkPanelPreview({
         await snoozeActivity(id, { minutes })
         if (selectedCandidateId) await loadWorkPanelBundle(selectedCandidateId)
       } catch (err: any) {
-        setPreviewRemindersError(err?.response?.data?.detail ?? err?.message ?? 'Failed to snooze reminder')
+        const fb = t('app.candidates.work_panel.reminder_snooze_failed', { defaultValue: 'Failed to snooze reminder' })
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, fb)) {
+          setPreviewRemindersError(getFriendlyErrorInfo(err, fb, t))
+        }
       } finally {
         setPreviewReminderBusy((prev) => (prev === id ? null : prev))
       }
     },
-    [loadWorkPanelBundle, selectedCandidateId],
+    [loadWorkPanelBundle, planLimitModal, selectedCandidateId, t],
   )
 
   return {

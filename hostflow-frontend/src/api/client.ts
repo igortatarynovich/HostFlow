@@ -742,6 +742,14 @@ export async function listLeads(opts?: {
   status?: string;
   stage?: string;
   nextAction?: string;
+  /** §2.12 root bucket filter (lead | qualified | active | final). */
+  conversionRoot?: string;
+  /** §2.12 processed + lost + normalized lost reason code (server ignores conversion_root). */
+  lostReasonCode?: string;
+  /** §2.12 prior CRM stage when marked lost (audit); server ignores conversion_root. */
+  lostFromCrmStage?: string;
+  /** Exact Lead.error (server whitelist: LEAD_FIT_NO_MATCH, LEAD_FIT_NEEDS_INFO). */
+  pipelineError?: string;
   /** Substring search (server applies when trimmed length ≥ 2). */
   q?: string;
   customFieldKey?: string;
@@ -754,6 +762,14 @@ export async function listLeads(opts?: {
   if (opts?.status) params.status = opts.status;
   if (opts?.stage) params.stage = opts.stage;
   if (opts?.nextAction) params.next_action = opts.nextAction;
+  const cr = (opts?.conversionRoot || '').trim().toLowerCase();
+  if (cr) params.conversion_root = cr;
+  const lrc = (opts?.lostReasonCode || '').trim();
+  if (lrc) params.lost_reason_code = lrc;
+  const lfc = (opts?.lostFromCrmStage || '').trim().toLowerCase();
+  if (lfc) params.lost_from_crm_stage = lfc;
+  const pe = (opts?.pipelineError || '').trim();
+  if (pe) params.pipeline_error = pe;
   const qq = (opts?.q || '').trim();
   if (qq.length >= 2) params.q = qq;
   const cfk = (opts?.customFieldKey || '').trim();

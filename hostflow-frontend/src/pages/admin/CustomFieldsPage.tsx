@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import {
@@ -13,6 +13,8 @@ import {
 } from '../../api/custom_fields'
 import { getDocumentTypes, type DocType } from '../../api/documents/catalog'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 
 // Field components (inline, similar to Companies.tsx)
 function TextField({ label, value, onChange, placeholder, disabled, type }: {
@@ -267,6 +269,17 @@ export default function CustomFieldsPage() {
     ? definitions.filter((d) => d.scope === scopeFilter)
     : definitions
 
+  const customFieldsErrorBanner = useMemo<FriendlyErrorInfo | null>(
+    () =>
+      error
+        ? {
+            title: error,
+            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+          }
+        : null,
+    [error, t],
+  )
+
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
@@ -301,17 +314,17 @@ export default function CustomFieldsPage() {
           />
         </div>
 
-        {error && (
+        {customFieldsErrorBanner && (
           <div className="mb-4">
             <ErrorRecoveryBanner
-              info={{
-                title: error,
-                hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-              }}
+              info={customFieldsErrorBanner}
               onRetry={() => void loadDefinitions()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-              secondaryTo={CRM_APP_PATHS.settingsCustomFields}
-              secondaryLabel={t('common.navigation.settings', { defaultValue: 'Настройки' })}
+              {...friendlyErrorBannerSecondary(
+                customFieldsErrorBanner,
+                CRM_APP_PATHS.settingsCustomFields,
+                t('common.navigation.settings', { defaultValue: 'Настройки' }),
+              )}
               compact
             />
           </div>

@@ -14,16 +14,19 @@ import {
 import type { Lead, LeadStage, LeadStatus } from '../api/types'
 import type { ReminderRecord } from '../api/types/notification'
 import LeadMetaProblemPanel from '../components/leads/LeadMetaProblemPanel'
+import LeadQualificationSuggestionPanel from '../components/leads/LeadQualificationSuggestionPanel'
 import LeadNextActionPlaybook from '../components/leads/LeadNextActionPlaybook'
 import LeadLostReasonReadonly from '../components/leads/LeadLostReasonReadonly'
 import LostReasonForLostStageModal from '../components/leads/LostReasonForLostStageModal'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useToast } from '../components/Toast'
 import { useI18n } from '../i18n'
-import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { CRM_STAGE_VALUES, leadAssignmentLocked } from '../utils/leadCrm'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
+import { formatLeadPipelineError } from '../utils/leadPipelineErrors'
 
 const LOCALE_TO_DATE = {
   en: 'en-US',
@@ -69,10 +72,76 @@ function formatCustomFieldCell(v: unknown): string {
   return String(v)
 }
 
+function leadProcessingModeLabel(t: (key: string) => string, modeKey: string): string {
+  const k = `app.leads.detail.ingest_processing.mode_labels.${modeKey}`
+  const tr = t(k)
+  return tr === k ? modeKey : tr
+}
+
+/**
+ * §2.10 / §2.11: tie Source & ingest to Assisted / Automatic semantics using stamps on normalized.
+ */
+function LeadIngestProcessingCallout({ normalized }: { normalized: Record<string, unknown> }) {
+  const { t } = useI18n()
+  const rawMode = normalized.leads_processing_mode_v1
+  const mode = typeof rawMode === 'string' ? rawMode.trim().toLowerCase() : ''
+  if (mode !== 'manual' && mode !== 'assisted' && mode !== 'automatic') return null
+
+  const rawConfigured = normalized.leads_processing_mode_configured_v1
+  const configured =
+    typeof rawConfigured === 'string' ? rawConfigured.trim().toLowerCase() : ''
+  const modeMismatch =
+    Boolean(configured) &&
+    (configured === 'manual' || configured === 'assisted' || configured === 'automatic') &&
+    configured !== mode
+
+  const downgrade =
+    typeof normalized.leads_processing_mode_downgrade_v1 === 'string'
+      ? normalized.leads_processing_mode_downgrade_v1
+      : null
+
+  const ac = normalized.leads_auto_convert_on_fit_effective_v1
+  const autoconvKnown = ac === true || ac === false
+  const autoconv = ac === true
+
+  const modeLineKey = `app.leads.detail.ingest_processing.modes.${mode}`
+  const modeSentence = t(modeLineKey)
+  const modeBody = modeSentence === modeLineKey ? mode : modeSentence
+
+  return (
+    <div className="mb-4 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+      <p>
+        <span className="font-semibold text-slate-800">{t('app.leads.detail.ingest_processing.title')}</span>{' '}
+        {modeBody}
+      </p>
+      {modeMismatch ? (
+        <p className="mt-1 text-slate-600">
+          {t('app.leads.detail.ingest_processing.configured_effective_mismatch', {
+            values: {
+              configured: leadProcessingModeLabel(t, configured),
+              effective: leadProcessingModeLabel(t, mode),
+            },
+          })}
+        </p>
+      ) : null}
+      {mode === 'assisted' ? (
+        <p className="mt-1 text-slate-600">{t('app.leads.detail.ingest_processing.assisted_link')}</p>
+      ) : null}
+      {mode === 'automatic' && autoconvKnown && !autoconv ? (
+        <p className="mt-1 text-amber-900/90">{t('app.leads.detail.ingest_processing.auto_convert_off')}</p>
+      ) : null}
+      {downgrade === 'team_plan_required' ? (
+        <p className="mt-1 text-amber-900/90">{t('app.leads.detail.ingest_processing.downgrade_team')}</p>
+      ) : null}
+    </div>
+  )
+}
+
 export default function LeadDetailPage() {
   const { leadId } = useParams<{ leadId: string }>()
   const { t, locale } = useI18n()
   const { notify } = useToast()
+  const planLimitModal = usePlanLimitModal()
 
   const [onboardingBusinessType, setOnboardingBusinessType] = useState<string | null>(null)
   const [lead, setLead] = useState<Lead | null>(null)
@@ -136,15 +205,18 @@ export default function LeadDetailPage() {
         if (status === 404) {
           setNotFound(true)
           setLead(null)
+        } else if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.load_failed'))) {
+          setLead(null)
+          setLoadError(null)
         } else {
           setLead(null)
-          setLoadError(getFriendlyErrorInfo(err, t('app.leads.detail.load_failed')))
+          setLoadError(getFriendlyErrorInfo(err, t('app.leads.detail.load_failed'), t))
         }
       } finally {
         if (!silent) setLoading(false)
       }
     },
-    [leadId, t],
+    [leadId, planLimitModal, t],
   )
 
   const loadTimeline = useCallback(async () => {
@@ -164,15 +236,19 @@ export default function LeadDetailPage() {
         })),
       )
     } catch (err: unknown) {
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        (err as Error)?.message ??
-        t('app.leads.detail.timeline_load_failed')
-      setTimelineError(String(detail))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.timeline_load_failed'))) {
+        setTimelineError(null)
+      } else {
+        const detail =
+          (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+          (err as Error)?.message ??
+          t('app.leads.detail.timeline_load_failed')
+        setTimelineError(String(detail))
+      }
     } finally {
       setTimelineLoading(false)
     }
-  }, [leadId, t])
+  }, [leadId, planLimitModal, t])
 
   useEffect(() => {
     void loadLead()
@@ -196,16 +272,20 @@ export default function LeadDetailPage() {
       const list = Array.isArray(res?.items) ? (res.items as ReminderRecord[]) : []
       setReminders(list)
     } catch (err: unknown) {
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        (err as Error)?.message ??
-        t('app.reminders.errors.load')
-      setRemindersError(typeof detail === 'string' ? detail : String(detail))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.load'))) {
+        setRemindersError(null)
+      } else {
+        const detail =
+          (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+          (err as Error)?.message ??
+          t('app.reminders.errors.load')
+        setRemindersError(typeof detail === 'string' ? detail : String(detail))
+      }
       setReminders([])
     } finally {
       setRemindersLoading(false)
     }
-  }, [leadId, t])
+  }, [leadId, planLimitModal, t])
 
   useEffect(() => {
     if (lead?.id) void loadLeadReminders()
@@ -232,13 +312,16 @@ export default function LeadDetailPage() {
       await loadLeadReminders()
       notify({ title: t('app.reminders.messages.created'), variant: 'success' })
     } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.create'))) {
+        return
+      }
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
         (err as Error)?.message ??
         t('app.reminders.errors.create')
       notify({ title: typeof detail === 'string' ? detail : String(detail), variant: 'error' })
     }
-  }, [leadId, loadLeadReminders, notify, reminderDueAt, reminderOffset, reminderTitle, t])
+  }, [leadId, loadLeadReminders, notify, planLimitModal, reminderDueAt, reminderOffset, reminderTitle, t])
 
   const handleCompleteReminder = useCallback(
     async (id: string) => {
@@ -246,6 +329,9 @@ export default function LeadDetailPage() {
         await completeActivity(id)
         await loadLeadReminders()
       } catch (err: unknown) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.complete'))) {
+          return
+        }
         const detail =
           (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
           (err as Error)?.message ??
@@ -253,7 +339,7 @@ export default function LeadDetailPage() {
         notify({ title: typeof detail === 'string' ? detail : String(detail), variant: 'error' })
       }
     },
-    [loadLeadReminders, notify, t],
+    [loadLeadReminders, notify, planLimitModal, t],
   )
 
   const statusLabels = useMemo(
@@ -311,7 +397,7 @@ export default function LeadDetailPage() {
           title: t('app.leads.messages.needs_routing'),
           description:
             typeof result?.error === 'string' && result.error.trim()
-              ? result.error
+              ? formatLeadPipelineError(result.error, t)
               : t('app.leads.messages.needs_routing_desc'),
           variant: 'success',
         })
@@ -332,6 +418,9 @@ export default function LeadDetailPage() {
         })
       }
     } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.messages.process_failed'))) {
+        return
+      }
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
         (err as Error)?.message ??
@@ -340,7 +429,7 @@ export default function LeadDetailPage() {
     } finally {
       setProcessing(false)
     }
-  }, [lead?.id, loadLead, loadTimeline, notify, t])
+  }, [lead?.id, loadLead, loadTimeline, notify, planLimitModal, t])
 
   const handleDetailStageChange = useCallback(
     async (nextRaw: string) => {
@@ -358,16 +447,20 @@ export default function LeadDetailPage() {
         })
         void loadTimeline()
       } catch (err: unknown) {
-        const info = getFriendlyErrorInfo(
-          err,
-          t('app.leads.detail.stage_update_failed'),
-        )
-        notify({ title: info.title, description: info.detail || info.hint, variant: 'error' })
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.stage_update_failed'))) {
+          return
+        }
+        const info = getFriendlyErrorInfo(err, t('app.leads.detail.stage_update_failed'), t)
+        notify({
+          title: info.title,
+          description: [info.detail, info.hint].filter(Boolean).join(' '),
+          variant: 'error',
+        })
       } finally {
         setPatching(false)
       }
     },
-    [lead, loadTimeline, notify, t],
+    [lead, loadTimeline, notify, planLimitModal, t],
   )
 
   const handleDetailStageSelect = useCallback(
@@ -404,13 +497,20 @@ export default function LeadDetailPage() {
         })
         void loadTimeline()
       } catch (err: unknown) {
-        const info = getFriendlyErrorInfo(err, t('app.leads.detail.stage_update_failed'))
-        notify({ title: info.title, description: info.detail || info.hint, variant: 'error' })
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.stage_update_failed'))) {
+          return
+        }
+        const info = getFriendlyErrorInfo(err, t('app.leads.detail.stage_update_failed'), t)
+        notify({
+          title: info.title,
+          description: [info.detail, info.hint].filter(Boolean).join(' '),
+          variant: 'error',
+        })
       } finally {
         setPatching(false)
       }
     },
-    [lead?.id, loadTimeline, notify, t],
+    [lead?.id, loadTimeline, notify, planLimitModal, t],
   )
 
   const handleDetailAssignmentLockToggle = useCallback(
@@ -425,16 +525,20 @@ export default function LeadDetailPage() {
           variant: 'success',
         })
       } catch (err: unknown) {
-        const info = getFriendlyErrorInfo(
-          err,
-          t('app.leads.detail.lock_update_failed'),
-        )
-        notify({ title: info.title, description: info.detail || info.hint, variant: 'error' })
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.lock_update_failed'))) {
+          return
+        }
+        const info = getFriendlyErrorInfo(err, t('app.leads.detail.lock_update_failed'), t)
+        notify({
+          title: info.title,
+          description: [info.detail, info.hint].filter(Boolean).join(' '),
+          variant: 'error',
+        })
       } finally {
         setPatching(false)
       }
     },
-    [lead?.id, notify, t],
+    [lead?.id, notify, planLimitModal, t],
   )
 
   if (!leadId) {
@@ -463,6 +567,11 @@ export default function LeadDetailPage() {
           info={loadError}
           onRetry={() => void loadLead()}
           retryLabel={t('common.retry')}
+          {...friendlyErrorBannerSecondary(
+            loadError,
+            CRM_APP_PATHS.settingsLeads,
+            t('app.leads.states.empty_cta_connect'),
+          )}
         />
       )}
 
@@ -512,6 +621,15 @@ export default function LeadDetailPage() {
               ) : null}
             </div>
           </header>
+
+          <LeadQualificationSuggestionPanel
+            lead={lead}
+            isServicesTenant={isServicesTenant}
+            onProcess={() => void handleProcess()}
+            processing={processing}
+            hideProcessButton
+            className="mb-6"
+          />
 
           <LeadNextActionPlaybook lead={lead} formatDueAt={(iso) => formatDateValue(iso, locale)} className="mb-6" />
 
@@ -593,13 +711,14 @@ export default function LeadDetailPage() {
             {lead.error ? (
               <div className="sm:col-span-2">
                 <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.error')}</dt>
-                <dd className="mt-0.5 text-sm text-red-600">{lead.error}</dd>
+                <dd className="mt-0.5 text-sm text-red-600">{formatLeadPipelineError(lead.error, t)}</dd>
               </div>
             ) : null}
           </dl>
 
           <section className="mb-8 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold text-slate-900">{t('app.leads.detail.source_ingest_title')}</h2>
+            <LeadIngestProcessingCallout normalized={normalized as Record<string, unknown>} />
             <dl className="mb-4 grid gap-3 sm:grid-cols-2">
               <div>
                 <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.source')}</dt>

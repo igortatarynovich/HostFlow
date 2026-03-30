@@ -74,13 +74,14 @@ from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_o
 from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
 
 from backend.app.api.v1.candidates import service as cand_service
+from backend.app.api.v1.tenants import service as tenant_service
 from backend.app.api.v1.candidates import repo as cand_repo
 from backend.app.models.candidate import Candidate
 from backend.app.models.audit import ActivityLog
 from backend.app.models.user import User
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.candidate_handoff import CandidateHandoff
-from backend.app.models.tenant import TenantLink
+from backend.app.models.tenant import Tenant, TenantLicense, TenantLink
 from backend.app.api.v1.candidates.acl import (
     CandidateACL,
     ensure_candidate_access,
@@ -98,6 +99,7 @@ from backend.app.services.handoff import (
     can_client_edit,
 )
 from backend.app.api.public.intake import _ensure_intake_token, _ensure_status_share_token
+from backend.app.services import billing_restrictions, portal_candidate_usage
 from backend.app.core.settings import settings
 from backend.app.core.audit_events import AuditEntityType
 from backend.app.modules.documents import crud as documents_crud
@@ -1796,6 +1798,7 @@ async def get_candidate_work_panel(
     current_user: UserCtx = Depends(get_current_user),
     timeline_limit: int = Query(80, ge=20, le=200),
     assignee_scope: str = Query("mine", pattern="^(mine|team)$"),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CandidateWorkPanelResponse:
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -1823,6 +1826,7 @@ async def get_candidate_work_panel(
         cand_row,
         timeline_limit=timeline_limit,
         assignee_scope=assignee_scope,
+        active_own_company_id=own_company_id,
     )
 
 
@@ -1953,6 +1957,22 @@ async def create_candidate_upload_link(
 
     _ensure_intake_token(candidate)
     _ensure_status_share_token(candidate)
+    tenant_row = await db.get(Tenant, tenant_id_str)
+    if tenant_row is not None:
+        lic_row = await tenant_service.get_tenant_license(db, tenant_id_str)
+        plan_pc = portal_candidate_usage.resolve_plan_code_for_portal_cap(
+            portal_candidate_usage.subscription_dict_from_tenant_settings(tenant_row),
+            lic_row,
+        )
+        portal_candidate_usage.ensure_can_add_portal_candidate_month(
+            tenant_row,
+            str(candidate_id),
+            at_utc=datetime.now(timezone.utc),
+            plan_code=plan_pc,
+        )
+        portal_candidate_usage.record_active_portal_candidate_month(
+            tenant_row, str(candidate_id), at_utc=datetime.now(timezone.utc)
+        )
     await db.commit()
 
     apply_token = getattr(candidate, "intake_token", None) or ""
@@ -2009,6 +2029,22 @@ async def notify_candidate(
         return NotifyCandidateOut(sent=False, reason="no_email")
 
     _ensure_status_share_token(candidate)
+    tenant_row = await db.get(Tenant, tenant_id_str)
+    if tenant_row is not None:
+        lic_row = await tenant_service.get_tenant_license(db, tenant_id_str)
+        plan_pc = portal_candidate_usage.resolve_plan_code_for_portal_cap(
+            portal_candidate_usage.subscription_dict_from_tenant_settings(tenant_row),
+            lic_row,
+        )
+        portal_candidate_usage.ensure_can_add_portal_candidate_month(
+            tenant_row,
+            str(candidate_id),
+            at_utc=datetime.now(timezone.utc),
+            plan_code=plan_pc,
+        )
+        portal_candidate_usage.record_active_portal_candidate_month(
+            tenant_row, str(candidate_id), at_utc=datetime.now(timezone.utc)
+        )
     await db.commit()
 
     docs = await documents_crud.list_candidate_documents(
@@ -2197,6 +2233,26 @@ async def patch_candidate(
     if not data:
         raise HTTPException(status_code=400, detail="No valid fields to update")
 
+    _candidate_patch_side_effect_fields = frozenset(
+        {
+            "stage",
+            "status",
+            "status_reason",
+            "company_id",
+            "vacancy_id",
+            "manager",
+            "manager_id",
+            "override_reason",
+        }
+    )
+    tenant_row = await db.get(Tenant, tenant_id_str)
+    lic_row = (
+        await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id_str).limit(1))
+    ).scalar_one_or_none()
+    if billing_restrictions.tenant_billing_blocks_side_effect_writes(tenant_row, lic_row):
+        if _candidate_patch_side_effect_fields.intersection(data.keys()):
+            billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
+
     current_candidate = await cand_repo.get_candidate(
         db,
         tenant_id_str,
@@ -2299,7 +2355,13 @@ async def delete_candidate(
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
     db, tenant_id = db_tenant
-    await cand_service.delete_candidate_full(db, str(tenant_id), str(candidate_id))
+    tenant_id_str = str(tenant_id)
+    tenant_row = await db.get(Tenant, tenant_id_str)
+    lic_row = (
+        await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id_str).limit(1))
+    ).scalar_one_or_none()
+    billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
+    await cand_service.delete_candidate_full(db, tenant_id_str, str(candidate_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -4,7 +4,6 @@ import type { Permission } from '../hooks/usePermissions'
 import CommunicationsFeatureGate from '../components/communications/CommunicationsFeatureGate'
 import {
   AgencyClientsPage,
-  AnalyticsHubPage,
   AuditLogPage,
   AutomationsHubPage,
   AutomationLogPage,
@@ -13,7 +12,6 @@ import {
   CandidateCard,
   CandidateProfilesPage,
   Candidates,
-  CandidatesNoNextActionPage,
   ClientLinkDetailPage,
   CommunicationsCalendarPage,
   CommunicationsCommandAuditPage,
@@ -24,7 +22,6 @@ import {
   CommunicationsMessagesPage,
   CommunicationsQueueSettingsPage,
   CommunicationsSettingsPage,
-  CommunicationsSetupPage,
   CommunicationsSlaIncidentsPage,
   CommunicationsSlaSettingsPage,
   CommunicationsThreadPage,
@@ -48,8 +45,10 @@ import {
   LeadsDistributionPage,
   LeadsDistributionRulesPage,
   LegalDocumentsPage,
+  LeadFormsSettingsPage,
   IntegrationsHubPage,
   IntegrationsSourcePlaceholderPage,
+  IntegrationsWebhookPage,
   MetaLeadsAdminPage,
   MyAvailabilityPage,
   MyCompanyPage,
@@ -72,6 +71,18 @@ import { CRM_APP_PATHS, crmAppRouteSegment } from './crmAppPaths'
 
 const seg = crmAppRouteSegment
 const CRM = CRM_APP_PATHS
+
+function RedirectSetupCommunicationsToIntegrations() {
+  return <Navigate to={CRM_APP_PATHS.settingsIntegrations} replace />
+}
+
+function RedirectLegacyAnalyticsToInsights() {
+  return <Navigate to={CRM.overview} replace />
+}
+
+function RedirectLeadConversionFunnelToInsights() {
+  return <Navigate to={{ pathname: CRM.overview, hash: 'lead-conversion' }} replace />
+}
 
 export type NavGroup = 'overview' | 'people' | 'workflows' | 'leads' | 'admin' | 'account'
 
@@ -96,14 +107,13 @@ export type NavItem = {
   labelKey: string
   path?: string
   group: NavGroup
-  permission?: Permission
+  permission?: Permission | Permission[]
   action?: 'logout'
   superadminOnly?: boolean
 }
 
 export const NAV_ITEMS: NavItem[] = [
   { key: 'overview', labelKey: 'app.nav.items.overview', path: CRM.overview, group: 'overview' },
-  { key: 'analytics', labelKey: 'app.nav.items.analytics', path: CRM.analytics, group: 'overview' },
   { key: 'work-hub', labelKey: 'app.nav.items.work', path: CRM.work, group: 'people' },
   {
     key: 'candidates',
@@ -162,6 +172,20 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'notifications.view',
   },
   {
+    key: 'automation-rules',
+    labelKey: 'app.nav.items.automation_rules',
+    path: CRM.automationRules,
+    group: 'workflows',
+    permission: 'notifications.view',
+  },
+  {
+    key: 'automation-log',
+    labelKey: 'app.nav.items.automation_log',
+    path: CRM.automationLog,
+    group: 'workflows',
+    permission: 'notifications.view',
+  },
+  {
     key: 'service-orders',
     labelKey: 'app.nav.items.orders',
     path: CRM.orders,
@@ -183,13 +207,6 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'services.view',
   },
   {
-    key: 'communications-setup',
-    labelKey: 'app.nav.items.communications_setup',
-    path: CRM.setupCommunications,
-    group: 'workflows',
-    permission: 'notifications.view',
-  },
-  {
     key: 'inbox',
     labelKey: 'app.nav.items.inbox',
     path: CRM.inbox,
@@ -207,6 +224,27 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'calendar',
     labelKey: 'app.nav.items.calendar',
     path: CRM.calendar,
+    group: 'workflows',
+    permission: 'notifications.view',
+  },
+  {
+    key: 'team-availability',
+    labelKey: 'app.nav.items.team_availability',
+    path: CRM.teamAvailability,
+    group: 'workflows',
+    permission: 'notifications.view',
+  },
+  {
+    key: 'my-availability',
+    labelKey: 'app.nav.items.my_availability',
+    path: CRM.myAvailability,
+    group: 'workflows',
+    permission: 'notifications.view',
+  },
+  {
+    key: 'time-off',
+    labelKey: 'app.nav.items.time_off',
+    path: CRM.timeOff,
     group: 'workflows',
     permission: 'notifications.view',
   },
@@ -235,6 +273,13 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'leads-distribution',
     labelKey: 'app.nav.items.leads_distribution',
     path: CRM.leadsDistribution,
+    group: 'leads',
+    permission: 'leads.view',
+  },
+  {
+    key: 'leads-distribution-rules',
+    labelKey: 'app.nav.items.leads_distribution_rules',
+    path: CRM.leadsDistributionRules,
     group: 'leads',
     permission: 'leads.view',
   },
@@ -296,6 +341,20 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'documents.manage',
   },
   {
+    key: 'settings-candidate-profiles',
+    labelKey: 'app.nav.items.settings_candidate_profiles',
+    path: CRM.settingsCandidateProfiles,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
+    key: 'settings-custom-fields',
+    labelKey: 'app.nav.items.settings_custom_fields',
+    path: CRM.settingsCustomFields,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
     key: 'settings-legal',
     labelKey: 'app.nav.items.settings_legal',
     path: CRM.settingsLegal,
@@ -327,6 +386,27 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'settings-integrations',
     labelKey: 'app.nav.items.settings_integrations',
     path: CRM.settingsIntegrations,
+    group: 'workflows',
+    permission: ['admin.metaLeads', 'admin.users', 'settings.view', 'notifications.view'],
+  },
+  {
+    key: 'integrations-meta',
+    labelKey: 'app.nav.integrations.meta_leads',
+    path: CRM.settingsIntegrationsMeta,
+    group: 'admin',
+    permission: 'admin.metaLeads',
+  },
+  {
+    key: 'integrations-google',
+    labelKey: 'app.nav.integrations.google',
+    path: CRM.settingsIntegrationsGoogle,
+    group: 'admin',
+    permission: 'admin.metaLeads',
+  },
+  {
+    key: 'integrations-webhook',
+    labelKey: 'app.nav.integrations.webhook',
+    path: CRM.settingsIntegrationsWebhook,
     group: 'admin',
     permission: 'admin.metaLeads',
   },
@@ -334,6 +414,27 @@ export const NAV_ITEMS: NavItem[] = [
     key: 'settings-communications',
     labelKey: 'app.nav.items.settings_communications',
     path: CRM.settingsCommunications,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
+    key: 'settings-communications-messengers',
+    labelKey: 'app.nav.items.settings_communications_messengers',
+    path: CRM.settingsCommunicationsMessengers,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
+    key: 'settings-communications-queue',
+    labelKey: 'app.nav.items.settings_communications_queue',
+    path: CRM.settingsCommunicationsQueue,
+    group: 'admin',
+    permission: 'admin.users',
+  },
+  {
+    key: 'settings-communications-sla',
+    labelKey: 'app.nav.items.settings_communications_sla',
+    path: CRM.settingsCommunicationsSla,
     group: 'admin',
     permission: 'admin.users',
   },
@@ -369,18 +470,10 @@ const LegacyCompanyDetailRedirect = () => {
   return <Navigate to={tab ? `../clients/${id}/${tab}` : `../clients/${id}`} replace />
 }
 
-/**
- * Drill-down entry on the main candidates list URL: **`/app/candidates?queue=no_next_action`**
- * (alias **`quick_view=no_next_action`**) → dedicated queue (**`/app/candidates/no-next-action`**). SSOT §2.14.
- */
-const CandidatesListGate = () => {
-  const [searchParams] = useSearchParams()
-  const raw = (searchParams.get('queue') || searchParams.get('quick_view') || '').trim().toLowerCase()
-  if (raw === 'no_next_action') {
-    return <Navigate to={CRM.candidatesNoNextActionPage} replace />
-  }
-  return <Candidates />
-}
+/** Legacy bookmark: **`/app/candidates/no-next-action`** → main list with queue (§2.14). */
+const CandidatesNoNextActionCanonicalRedirect = () => (
+  <Navigate to={`${CRM.candidates}?queue=no_next_action`} replace />
+)
 
 /** Canonical first-class URL for Orders; same shell as Services → Orders (`ServicesPage`). */
 const OrdersStandaloneRedirect = () => {
@@ -417,14 +510,30 @@ export type AppRouteConfig = {
 
 export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'overview', path: seg(CRM.overview), Component: Dashboard },
-  { key: 'analytics', path: seg(CRM.analytics), Component: AnalyticsHubPage },
+  {
+    key: 'analytics',
+    path: seg(CRM.analytics),
+    Component: RedirectLegacyAnalyticsToInsights,
+    permission: 'manager.tools',
+  },
+  {
+    key: 'analytics-lead-conversion',
+    path: seg(CRM.analyticsLeadConversionFunnel),
+    Component: RedirectLeadConversionFunnelToInsights,
+    permission: ['manager.tools', 'leads.view'],
+  },
   /** Rendered under nested `path="work"` + index in `App.tsx` (`WorkAreaLayout` + `<Outlet />`). Kept here for nav/permission scripts. */
   { key: 'work', path: seg(CRM.work), Component: WorkHubPage },
   { key: 'my-company', path: seg(CRM.myCompany), Component: MyCompanyPage, permission: 'companies.view' },
   { key: 'my-company-detail', path: `${seg(CRM.myCompany)}/:id`, Component: Companies, permission: 'companies.view' },
   { key: 'my-company-tab', path: `${seg(CRM.myCompany)}/:id/:tab`, Component: Companies, permission: 'companies.view' },
-  { key: 'candidates', path: seg(CRM.candidates), Component: CandidatesListGate, permission: 'candidates.view' },
-  { key: 'candidates-no-next-action', path: seg(CRM.candidatesNoNextActionPage), Component: CandidatesNoNextActionPage, permission: 'candidates.view' },
+  { key: 'candidates', path: seg(CRM.candidates), Component: Candidates, permission: 'candidates.view' },
+  {
+    key: 'candidates-no-next-action',
+    path: seg(CRM.candidatesNoNextActionPage),
+    Component: CandidatesNoNextActionCanonicalRedirect,
+    permission: 'candidates.view',
+  },
   { key: 'candidate-detail', path: `${seg(CRM.candidates)}/:id`, Component: CandidateCard, permission: 'candidates.view' },
   { key: 'candidate-tab', path: `${seg(CRM.candidates)}/:id/:tab`, Component: CandidateCard, permission: 'candidates.view' },
   { key: 'companies-legacy', path: seg(CRM.companiesLegacy), Component: LegacyCompaniesRedirect, permission: 'companies.view' },
@@ -447,7 +556,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
   { key: 'invoice-create', path: seg(CRM.invoiceNew), Component: InvoiceCreatePage, permission: 'services.view' },
   { key: 'invoice-edit', path: `${seg(CRM.invoices)}/:id/edit`, Component: InvoiceCreatePage, permission: 'services.view' },
   { key: 'invoice-detail', path: `${seg(CRM.invoices)}/:id`, Component: InvoiceDetailPage, permission: 'services.view' },
-  { key: 'communications-setup', path: seg(CRM.setupCommunications), Component: withCommAnyFeature(CommunicationsSetupPage, ['messages', 'email']), permission: 'notifications.view' },
+  {
+    key: 'communications-setup',
+    path: seg(CRM.setupCommunications),
+    Component: withCommAnyFeature(RedirectSetupCommunicationsToIntegrations, ['messages', 'email']),
+    permission: 'notifications.view',
+  },
   {
     key: 'communications-inbox-center',
     path: `${seg(CRM.inboxThreadsBase)}/:threadId`,
@@ -513,13 +627,24 @@ export const APP_ROUTES: AppRouteConfig[] = [
   },
   { key: 'settings-candidate-profiles', path: seg(CRM.settingsCandidateProfiles), Component: CandidateProfilesPage, permission: 'admin.users' },
   { key: 'settings-custom-fields', path: seg(CRM.settingsCustomFields), Component: CustomFieldsPage, permission: 'admin.users' },
+  {
+    key: 'settings-lead-forms',
+    path: seg(CRM.settingsLeadForms),
+    Component: LeadFormsSettingsPage,
+    permission: ['admin.users', 'leads.view'],
+  },
   { key: 'settings-email', path: seg(CRM.settingsEmail), Component: EmailSettingsPage, permission: 'admin.users' },
   { key: 'settings-communications', path: seg(CRM.settingsCommunications), Component: withCommFeature(CommunicationsSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-messengers', path: seg(CRM.settingsCommunicationsMessengers), Component: withCommFeature(CommunicationsMessengerSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-queue', path: seg(CRM.settingsCommunicationsQueue), Component: withCommFeature(CommunicationsQueueSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-sla', path: seg(CRM.settingsCommunicationsSla), Component: withCommFeature(CommunicationsSlaSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-tenant-links', path: seg(CRM.settingsTenantLinks), Component: TenantLinksSettingsPage, permission: 'admin.users' },
-  { key: 'settings-integrations', path: seg(CRM.settingsIntegrations), Component: IntegrationsHubPage, permission: 'admin.metaLeads' },
+  {
+    key: 'settings-integrations',
+    path: seg(CRM.settingsIntegrations),
+    Component: IntegrationsHubPage,
+    permission: ['admin.metaLeads', 'admin.users', 'settings.view', 'notifications.view'],
+  },
   { key: 'settings-integrations-meta', path: seg(CRM.settingsIntegrationsMeta), Component: MetaLeadsAdminPage, permission: 'admin.metaLeads' },
   {
     key: 'settings-integrations-google',
@@ -530,13 +655,13 @@ export const APP_ROUTES: AppRouteConfig[] = [
   {
     key: 'settings-integrations-webhook',
     path: seg(CRM.settingsIntegrationsWebhook),
-    Component: IntegrationsSourcePlaceholderPage,
+    Component: IntegrationsWebhookPage,
     permission: 'admin.metaLeads',
   },
   { key: 'settings-ruleset', path: seg(CRM.settingsRuleset), Component: RulesetVersionsPage, permission: 'admin.ruleset' },
   { key: 'settings-audit', path: seg(CRM.settingsAudit), Component: AuditLogPage, permission: 'admin.deletionQueue' },
   { key: 'settings-company-access', path: seg(CRM.settingsCompanyAccess), Component: CompanyAccessPage, permission: 'admin.companyAcl' },
-  { key: 'settings-ttv-report', path: seg(CRM.settingsTtvReport), Component: TtvReportPage, permission: 'admin.users' },
+  { key: 'settings-ttv-report', path: seg(CRM.settingsTtvReport), Component: TtvReportPage, permission: 'manager.tools' },
   { key: 'profile', path: seg(CRM.profile), Component: ProfilePage },
   { key: 'not-found', path: '*', Component: NotFoundRedirect },
 ]

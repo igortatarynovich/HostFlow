@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" fill="none" aria-hidden="true">
+  <rect width="800" height="500" rx="16" fill="#f8fafc"/>
+  <rect x="100" y="40" width="600" height="420" rx="12" fill="#fff" stroke="#e2e8f0"/>
+  <text x="132" y="80" fill="#0f172a" font-family="system-ui,sans-serif" font-size="13" font-weight="600">Tasks & reminders</text>
+  <g transform="translate(132 108)">
+    <rect width="20" height="20" rx="4" fill="#10b981"/>
+    <path d="M6 10 L9 13 L14 7" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <rect x="36" y="2" width="400" height="14" rx="2" fill="#cbd5e1"/>
+    <rect x="36" y="44" width="20" height="20" rx="4" fill="#e2e8f0" stroke="#94a3b8"/>
+    <rect x="36" y="44" width="360" height="14" rx="2" fill="#e2e8f0"/>
+    <rect x="36" y="86" width="20" height="20" rx="4" fill="#e2e8f0" stroke="#94a3b8"/>
+    <rect x="36" y="86" width="320" height="14" rx="2" fill="#e2e8f0"/>
+    <rect x="0" y="130" width="536" height="1" fill="#e2e8f0"/>
+    <text x="0" y="158" fill="#f59e0b" font-family="system-ui,sans-serif" font-size="10" font-weight="600">Due today</text>
+    <rect x="0" y="172" width="20" height="20" rx="4" fill="#fef3c7" stroke="#f59e0b"/>
+    <rect x="36" y="174" width="280" height="14" rx="2" fill="#cbd5e1"/>
+  </g>
+</svg>

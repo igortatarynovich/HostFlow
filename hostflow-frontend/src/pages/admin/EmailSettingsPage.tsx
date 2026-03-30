@@ -3,13 +3,15 @@ import { useI18n } from '../../i18n'
 import { getEmailConfig, sendTestEmail, upsertEmailConfig, type EmailConfig, type EmailConfigUpdate } from '../../api/emailSettings'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useToast } from '../../components/Toast'
-import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { recordTtvStepCompleted } from '../../api/analytics'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
 export default function EmailSettingsPage() {
   const { t } = useI18n()
   const { notify } = useToast()
+  const planLimitModal = usePlanLimitModal()
   const [config, setConfig] = useState<EmailConfig | null | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -52,16 +54,24 @@ export default function EmailSettingsPage() {
       }
     } catch (err: any) {
       setConfig(null)
-      setPageError(
-        getFriendlyErrorInfo(
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
           err,
           t('admin.email.load_error', { defaultValue: 'Failed to load email settings' }),
-        ),
-      )
+        )
+      ) {
+        setPageError(
+          getFriendlyErrorInfo(
+            err,
+            t('admin.email.load_error', { defaultValue: 'Failed to load email settings' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   useEffect(() => {
     void load()
@@ -98,13 +108,21 @@ export default function EmailSettingsPage() {
         void recordTtvStepCompleted({ event: 'ttv_step', action: 'completed', step_key: 'email_connected' })
       }
     } catch (e: any) {
-      setPageError(
-        getFriendlyErrorInfo(
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
           e,
           t('admin.email.save_error', { defaultValue: 'Failed to save email settings' }),
-        ),
-      )
-      notify({ title: e?.response?.data?.detail ?? 'Error', variant: 'error' })
+        )
+      ) {
+        setPageError(
+          getFriendlyErrorInfo(
+            e,
+            t('admin.email.save_error', { defaultValue: 'Failed to save email settings' }),
+            t,
+          ),
+        )
+        notify({ title: e?.response?.data?.detail ?? 'Error', variant: 'error' })
+      }
     } finally {
       setSaving(false)
     }
@@ -121,13 +139,21 @@ export default function EmailSettingsPage() {
       await sendTestEmail(testTo.trim())
       notify({ title: t('admin.email.test_sent', { defaultValue: 'Testowa wiadomość wysłana' }), variant: 'success' })
     } catch (e: any) {
-      setPageError(
-        getFriendlyErrorInfo(
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
           e,
           t('admin.email.test_error', { defaultValue: 'Failed to send test email' }),
-        ),
-      )
-      notify({ title: e?.response?.data?.detail ?? 'Error', variant: 'error' })
+        )
+      ) {
+        setPageError(
+          getFriendlyErrorInfo(
+            e,
+            t('admin.email.test_error', { defaultValue: 'Failed to send test email' }),
+            t,
+          ),
+        )
+        notify({ title: e?.response?.data?.detail ?? 'Error', variant: 'error' })
+      }
     } finally {
       setTesting(false)
     }
@@ -148,8 +174,11 @@ export default function EmailSettingsPage() {
           info={pageError}
           onRetry={() => void load()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo={CRM_APP_PATHS.settingsTeam}
-          secondaryLabel={t('common.navigation.settings', { defaultValue: 'Settings' })}
+          {...friendlyErrorBannerSecondary(
+            pageError,
+            CRM_APP_PATHS.settingsTeam,
+            t('common.navigation.settings', { defaultValue: 'Settings' }),
+          )}
         />
       )}
 

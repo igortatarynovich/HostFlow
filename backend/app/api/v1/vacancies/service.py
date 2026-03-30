@@ -112,6 +112,10 @@ class VacancyService:
             if payload.headcount_target is not None and int(payload.headcount_target) > 0
             else None,
         }
+        if str(values.get("status") or "open").strip().lower() == "open":
+            from backend.app.services import tenant_quota
+
+            await tenant_quota.ensure_open_vacancy_quota(self.repo.db, tenant_id, extra_open=1)
         obj = await self.repo.create(values)
         # Reload with related data
         row = await self.repo.get(obj.id)
@@ -238,6 +242,16 @@ class VacancyService:
             values["status"] = "open" if open_flag else "closed"
 
         if values:
+            old_open = str(getattr(obj, "status", "") or "").strip().lower() == "open"
+            merged_status = str(values.get("status", getattr(obj, "status", "")) or "").strip().lower()
+            new_open = merged_status == "open"
+            if new_open and not old_open:
+                from backend.app.services import tenant_quota
+
+                await tenant_quota.ensure_open_vacancy_quota(
+                    self.repo.db, self.repo.tenant_id, extra_open=1
+                )
+
             from backend.app.services import uos_auto_activities
 
             was_rec = uos_auto_activities.vacancy_is_recruiting(obj)

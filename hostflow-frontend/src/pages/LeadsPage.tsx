@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { IconExternalLink, IconFilter, IconRefresh, IconSearch, IconTable } from '@tabler/icons-react'
+import {
+  IconArrowRight,
+  IconExternalLink,
+  IconFilter,
+  IconFlame,
+  IconLayoutKanban,
+  IconMail,
+  IconPhone,
+  IconRefresh,
+  IconSearch,
+  IconTable,
+} from '@tabler/icons-react'
 
 import {
   completeActivity,
@@ -19,34 +30,29 @@ import {
 import { retryLeads } from '../api/metaLeads'
 import type { Lead, LeadListResponse, LeadStatus, LeadStage } from '../api/types'
 import type { ReminderRecord } from '../api/types/notification'
-import { recordPerfMeasurement } from '../api/analytics'
+import { getOpsCounters, recordPerfMeasurement, type OpsCounters } from '../api/analytics'
 import { useI18n } from '../i18n'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
-import { NbaNextActionsChips } from '../components/nba/NbaNextActionsChips'
 import { useNbaQuickBulkFlow } from '../components/nba/useNbaQuickBulkFlow'
 import { BulkActivitiesModal } from '../modules/candidates/components'
 import { useToast } from '../components/Toast'
-import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
-import {
-  fetchLeadConversionFunnel,
-  type LeadConversionFunnelResponse,
-  type LeadConversionFunnelSliceQuery,
-} from '../api/leadConversionFunnel'
-import { fetchLeadStageHealth, type LeadStageHealthResponse } from '../api/leadStageHealth'
-import { fetchLeadNextActions, leadsNextActionHref, type LeadNextActionsResponse } from '../api/nextActions'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getLeadErrorSuggestion } from '../utils/leadErrorSuggestion'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
 import { listCustomFieldDefinitions, type CustomFieldDefinition } from '../api/custom_fields'
+import LeadsKanbanBoard from '../components/leads/LeadsKanbanBoard'
 import LeadMetaProblemPanel from '../components/leads/LeadMetaProblemPanel'
 import LeadNextActionPlaybook from '../components/leads/LeadNextActionPlaybook'
+import LeadQualificationSuggestionPanel from '../components/leads/LeadQualificationSuggestionPanel'
 import LeadLostReasonReadonly from '../components/leads/LeadLostReasonReadonly'
 import LostReasonForLostStageModal from '../components/leads/LostReasonForLostStageModal'
-import { ActiveOwnCompanyBadge } from '../components/shell/ActiveOwnCompanyBadge'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
-import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
 import { CRM_STAGE_VALUES, isMetaProblemLead, leadAssignmentLocked } from '../utils/leadCrm'
+import { formatLeadPipelineError } from '../utils/leadPipelineErrors'
 
 const STATUS_FILTERS: Array<'' | LeadStatus> = ['', 'new', 'processed', 'duplicated', 'needs_routing', 'failed']
 const STAGE_FILTERS: Array<'' | LeadStage> = ['', 'new', 'contacted', 'qualified', 'converted', 'lost']
@@ -57,6 +63,24 @@ const NEXT_ACTION_FILTERS: Array<'' | 'no_next_action' | 'overdue' | 'scheduled'
   'scheduled',
   'stuck',
 ]
+
+const PIPELINE_ERROR_QUERY_VALUES = ['LEAD_FIT_NO_MATCH', 'LEAD_FIT_NEEDS_INFO'] as const
+type PipelineErrorFilter = '' | (typeof PIPELINE_ERROR_QUERY_VALUES)[number]
+
+const LEADS_HREF_QUEUE_NEW = `${CRM_APP_PATHS.leads}?status=new`
+const LEADS_HREF_QUEUE_IN_PROGRESS = `${CRM_APP_PATHS.leads}?status=processed&stage=contacted`
+const LEADS_HREF_QUEUE_WAITING = `${CRM_APP_PATHS.leads}?status=processed&next_action=scheduled`
+const LEADS_HREF_QUEUE_OVERDUE = `${CRM_APP_PATHS.leads}?status=processed&next_action=overdue`
+
+function leadOpsNum(n: number | undefined | null): string {
+  if (n == null || Number.isNaN(Number(n))) return '—'
+  return String(Math.max(0, Math.floor(Number(n))))
+}
+
+function parsePipelineErrorParam(raw: string | null | undefined): PipelineErrorFilter {
+  const v = (raw || '').trim()
+  return (PIPELINE_ERROR_QUERY_VALUES as readonly string[]).includes(v) ? (v as PipelineErrorFilter) : ''
+}
 const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   year: 'numeric',
   month: '2-digit',
@@ -84,15 +108,75 @@ function initialLeadSearchFromLocation(): string {
   return leadSearchFromSearchString(window.location.search)
 }
 
+type LeadConversionRootFilter = '' | 'lead' | 'qualified' | 'active' | 'final'
+
+function initialConversionRootFromLocation(): LeadConversionRootFilter {
+  if (typeof window === 'undefined') return ''
+  try {
+    const sp = new URLSearchParams(window.location.search)
+    const v = (sp.get('conversion_root') || '').trim().toLowerCase()
+    if (v === 'lead' || v === 'qualified' || v === 'active' || v === 'final') return v
+  } catch {
+    /* noop */
+  }
+  return ''
+}
+
+function initialLostReasonCodeFromLocation(): string {
+  if (typeof window === 'undefined') return ''
+  try {
+    const v = (new URLSearchParams(window.location.search).get('lost_reason_code') || '').trim()
+    if (/^[A-Za-z0-9_-]{1,64}$/.test(v)) return v
+  } catch {
+    /* noop */
+  }
+  return ''
+}
+
+/** Mirrors GET /leads validation for `lost_from_crm_stage`. */
+function parseLostFromCrmStageParam(raw: string | null | undefined): string {
+  const v = (raw || '').trim().toLowerCase()
+  if (!v) return ''
+  if (v === 'unknown') return 'unknown'
+  if (/^[a-z0-9_-]{1,32}$/.test(v)) return v
+  return ''
+}
+
+function initialLostFromCrmStageFromLocation(): string {
+  if (typeof window === 'undefined') return ''
+  try {
+    return parseLostFromCrmStageParam(new URLSearchParams(window.location.search).get('lost_from_crm_stage'))
+  } catch {
+    /* noop */
+  }
+  return ''
+}
+
+function initialPipelineErrorFromLocation(): PipelineErrorFilter {
+  if (typeof window === 'undefined') return ''
+  try {
+    return parsePipelineErrorParam(new URLSearchParams(window.location.search).get('pipeline_error'))
+  } catch {
+    /* noop */
+  }
+  return ''
+}
+
 export default function LeadsPage() {
   const { t, locale } = useI18n()
   const { notify } = useToast()
+  const planLimitModal = usePlanLimitModal()
   const { entitySingular, openEntityLabel } = useBusinessTerminology()
   const location = useLocation()
   const navigate = useNavigate()
   const [status, setStatus] = useState<'' | LeadStatus>('')
   const [stage, setStage] = useState<'' | LeadStage>('')
   const [nextAction, setNextAction] = useState<'' | 'no_next_action' | 'overdue' | 'scheduled' | 'stuck'>('')
+  const [conversionRoot, setConversionRoot] = useState<LeadConversionRootFilter>(initialConversionRootFromLocation)
+  const [lostReasonCode, setLostReasonCode] = useState(initialLostReasonCodeFromLocation)
+  const [lostFromCrmStage, setLostFromCrmStage] = useState(initialLostFromCrmStageFromLocation)
+  const [pipelineError, setPipelineError] = useState<PipelineErrorFilter>(initialPipelineErrorFromLocation)
+  const [workspaceView, setWorkspaceView] = useState<'table' | 'kanban'>('table')
   const [customFieldKey, setCustomFieldKey] = useState('')
   const [customFieldValue, setCustomFieldValue] = useState('')
   const [leadSearch, setLeadSearch] = useState(initialLeadSearchFromLocation)
@@ -110,8 +194,7 @@ export default function LeadsPage() {
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
   const [patchingLeadId, setPatchingLeadId] = useState<string | null>(null)
 
-  // Lead Inbox side panel (Pipedrive-like: Composer / Focus / History)
-  const [panelTab, setPanelTab] = useState<'composer' | 'fix' | 'focus' | 'history'>('composer')
+  const selectFirstAfterTriageRef = useRef(false)
   const [remindersLoading, setRemindersLoading] = useState(false)
   const [remindersError, setRemindersError] = useState<string | null>(null)
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
@@ -136,18 +219,8 @@ export default function LeadsPage() {
   const [bulkStage, setBulkStage] = useState<'' | LeadStage>('')
   const [bulkStatus, setBulkStatus] = useState<'' | LeadStatus>('')
   const [bulkUpdating, setBulkUpdating] = useState(false)
-  const [leadNba, setLeadNba] = useState<LeadNextActionsResponse | null>(null)
-  const [leadStageHealth, setLeadStageHealth] = useState<LeadStageHealthResponse | null>(null)
-  const [leadConversionFunnel, setLeadConversionFunnel] = useState<LeadConversionFunnelResponse | null>(
-    null,
-  )
-  const [funnelSliceDraft, setFunnelSliceDraft] = useState({
-    source: '',
-    vacancyId: '',
-    funnelId: '',
-    assigneeUserId: '',
-  })
-  const [funnelSliceQuery, setFunnelSliceQuery] = useState<LeadConversionFunnelSliceQuery>({})
+  const [leadOps, setLeadOps] = useState<OpsCounters | null>(null)
+  const [leadOpsLoading, setLeadOpsLoading] = useState(true)
   const [lostStagePrompt, setLostStagePrompt] = useState<{ leadId: string; previousStage: string | null } | null>(
     null,
   )
@@ -159,51 +232,33 @@ export default function LeadsPage() {
     }
   }, [lostStagePrompt, selectedLeadId])
 
-  const applyFunnelSlices = useCallback(() => {
-    const next: LeadConversionFunnelSliceQuery = {}
-    if (funnelSliceDraft.source.trim()) next.source = funnelSliceDraft.source.trim()
-    if (funnelSliceDraft.vacancyId.trim()) next.vacancyId = funnelSliceDraft.vacancyId.trim()
-    if (funnelSliceDraft.funnelId.trim()) next.funnelId = funnelSliceDraft.funnelId.trim()
-    if (funnelSliceDraft.assigneeUserId.trim()) next.assigneeUserId = funnelSliceDraft.assigneeUserId.trim()
-    setFunnelSliceQuery(next)
-  }, [funnelSliceDraft])
-
-  const clearFunnelSlices = useCallback(() => {
-    setFunnelSliceDraft({ source: '', vacancyId: '', funnelId: '', assigneeUserId: '' })
-    setFunnelSliceQuery({})
-  }, [])
-
   const refreshLeadInsights = useCallback(() => {
-    void fetchLeadNextActions()
-      .then((r) => setLeadNba(r))
-      .catch(() => setLeadNba(null))
-    void fetchLeadStageHealth()
-      .then((r) => setLeadStageHealth(r))
-      .catch(() => setLeadStageHealth(null))
-    const hasSlices = Boolean(
-      funnelSliceQuery.source?.trim() ||
-        funnelSliceQuery.vacancyId?.trim() ||
-        funnelSliceQuery.funnelId?.trim() ||
-        funnelSliceQuery.assigneeUserId?.trim(),
-    )
-    void fetchLeadConversionFunnel(hasSlices ? funnelSliceQuery : null)
-      .then((r) => setLeadConversionFunnel(r))
-      .catch((err: any) => {
-        const detail = err?.response?.data?.detail
-        if (detail && typeof detail === 'object' && detail.code === 'plan_requires_team') {
-          notify({
-            title: t('app.leads.conversion_funnel.slices_team_required_title'),
-            description: t('app.leads.conversion_funnel.slices_team_required_desc'),
-            variant: 'error',
-          })
-        }
-        setLeadConversionFunnel(null)
-      })
-  }, [funnelSliceQuery, notify, t])
+    void getOpsCounters()
+      .then((d) => setLeadOps(d))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     refreshLeadInsights()
   }, [refreshLeadInsights])
+
+  useEffect(() => {
+    let cancelled = false
+    setLeadOpsLoading(true)
+    void getOpsCounters()
+      .then((d) => {
+        if (!cancelled) setLeadOps(d)
+      })
+      .catch(() => {
+        if (!cancelled) setLeadOps(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLeadOpsLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -262,13 +317,48 @@ export default function LeadsPage() {
       setNextAction(nextNextAction as any)
       setPage(1)
     }
+    const nextConvRoot = (sp.get('conversion_root') || '').trim().toLowerCase() as LeadConversionRootFilter
+    const convOk =
+      nextConvRoot === 'lead' ||
+      nextConvRoot === 'qualified' ||
+      nextConvRoot === 'active' ||
+      nextConvRoot === 'final'
+    if (convOk && nextConvRoot !== conversionRoot) {
+      setConversionRoot(nextConvRoot)
+      setPage(1)
+    }
+    const nextLrc = (sp.get('lost_reason_code') || '').trim()
+    const lrcOk = /^[A-Za-z0-9_-]{1,64}$/.test(nextLrc)
+    if (lrcOk && nextLrc !== lostReasonCode) {
+      setLostReasonCode(nextLrc)
+      setPage(1)
+    } else if (!sp.has('lost_reason_code') && lostReasonCode) {
+      setLostReasonCode('')
+      setPage(1)
+    }
+    const nextLfCrm = parseLostFromCrmStageParam(sp.get('lost_from_crm_stage'))
+    if (nextLfCrm && nextLfCrm !== lostFromCrmStage) {
+      setLostFromCrmStage(nextLfCrm)
+      setPage(1)
+    } else if (!sp.has('lost_from_crm_stage') && lostFromCrmStage) {
+      setLostFromCrmStage('')
+      setPage(1)
+    }
     if (nextCfKey && hasCfValParam && nextCfVal !== null) {
       if (nextCfKey !== customFieldKey) setCustomFieldKey(nextCfKey)
       if (nextCfVal !== customFieldValue) setCustomFieldValue(nextCfVal)
       setPage(1)
     }
+    const nextPipelineError = parsePipelineErrorParam(sp.get('pipeline_error'))
+    if (nextPipelineError && nextPipelineError !== pipelineError) {
+      setPipelineError(nextPipelineError)
+      setPage(1)
+    } else if (!sp.has('pipeline_error') && pipelineError) {
+      setPipelineError('')
+      setPage(1)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search])
+  }, [location.search, conversionRoot, lostReasonCode, lostFromCrmStage, pipelineError])
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -288,7 +378,15 @@ export default function LeadsPage() {
   }, [leadSearch, location.search, navigate])
 
   const filterBannerVisible = Boolean(
-    status || stage || nextAction || customFieldKey.trim() || leadSearch.trim().length >= 2,
+    status ||
+      stage ||
+      nextAction ||
+      conversionRoot ||
+      lostReasonCode ||
+      lostFromCrmStage ||
+      pipelineError ||
+      customFieldKey.trim() ||
+      leadSearch.trim().length >= 2,
   )
 
   const loadLeads = useCallback(
@@ -302,6 +400,10 @@ export default function LeadsPage() {
           status: status || undefined,
           stage: stage || undefined,
           nextAction: nextAction || undefined,
+          conversionRoot: conversionRoot || undefined,
+          lostReasonCode: lostReasonCode || undefined,
+          lostFromCrmStage: lostFromCrmStage || undefined,
+          pipelineError: pipelineError || undefined,
           q: leadSearch.trim().length >= 2 ? leadSearch.trim() : undefined,
           ...(customFieldKey.trim()
             ? { customFieldKey: customFieldKey.trim(), customFieldValue }
@@ -325,7 +427,11 @@ export default function LeadsPage() {
         setData({ ...(payload as LeadListResponse), items: problemFirstItems })
       } catch (err: any) {
         perfOk = false
-        setError(getFriendlyErrorInfo(err, t('app.leads.messages.load_failed')))
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.messages.load_failed'))) {
+          setError(null)
+        } else {
+          setError(getFriendlyErrorInfo(err, t('app.leads.messages.load_failed'), t))
+        }
       } finally {
         const durationMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - perfT0
         void recordPerfMeasurement({
@@ -339,6 +445,10 @@ export default function LeadsPage() {
             next_action: nextAction || null,
             custom_field_key: customFieldKey.trim() || null,
             q: leadSearch.trim().length >= 2 ? leadSearch.trim() : null,
+            conversion_root: conversionRoot || null,
+            lost_reason_code: lostReasonCode || null,
+            lost_from_crm_stage: lostFromCrmStage || null,
+            pipeline_error: pipelineError || null,
             limit,
             offset: nextOffset,
           },
@@ -346,7 +456,22 @@ export default function LeadsPage() {
         setLoading(false)
       }
     },
-    [customFieldKey, customFieldValue, leadSearch, limit, nextAction, offset, stage, status, t],
+    [
+      conversionRoot,
+      lostReasonCode,
+      lostFromCrmStage,
+      pipelineError,
+      customFieldKey,
+      customFieldValue,
+      leadSearch,
+      limit,
+      nextAction,
+      offset,
+      stage,
+      status,
+      planLimitModal,
+      t,
+    ],
   )
 
   const handleNbaBulkSuccess = useCallback(async () => {
@@ -365,6 +490,10 @@ export default function LeadsPage() {
     setStatus('')
     setStage('')
     setNextAction('')
+    setConversionRoot('')
+    setLostReasonCode('')
+    setLostFromCrmStage('')
+    setPipelineError('')
     setCustomFieldKey('')
     setCustomFieldValue('')
     setLeadSearch('')
@@ -377,6 +506,11 @@ export default function LeadsPage() {
       void loadLeads(0)
     }, 0)
   }, [loadLeads, navigate])
+
+  const startLeadTriage = useCallback(() => {
+    selectFirstAfterTriageRef.current = true
+    navigate(CRM_APP_DRILLDOWN_HREFS.leadsNeedsRouting)
+  }, [navigate])
 
   const runBulkUpdateLeads = useCallback(
     async (lost?: { lost_reason_code: string; lost_reason_note: string }) => {
@@ -408,6 +542,9 @@ export default function LeadsPage() {
         setBulkStatus('')
         setBulkLostModalOpen(false)
       } catch (err: any) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.bulk.update_failed'))) {
+          return
+        }
         const detail = err?.response?.data?.detail ?? err?.message ?? 'Failed'
         notify({
           title: t('app.leads.bulk.update_failed'),
@@ -418,7 +555,7 @@ export default function LeadsPage() {
         setBulkUpdating(false)
       }
     },
-    [allSelectedLeadIds, bulkStage, bulkStatus, loadLeads, notify, offset, refreshLeadInsights, t],
+    [allSelectedLeadIds, bulkStage, bulkStatus, loadLeads, notify, offset, planLimitModal, refreshLeadInsights, t],
   )
 
   const doBulkUpdateLeads = useCallback(() => {
@@ -462,16 +599,19 @@ export default function LeadsPage() {
       await loadLeads(offset)
       setChecked({})
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.retry'))) {
+        return
+      }
       const detail = err?.response?.data?.detail ?? err?.message ?? 'Retry failed'
       notify({
-        title: t('app.admin.meta_leads.errors.retry'),
+        title: t('admin.meta_leads.errors.retry'),
         description: String(detail),
         variant: 'error',
       })
     } finally {
       setBulkRetryingMetaLeads(false)
     }
-  }, [loadLeads, notify, offset, retryLeads, selectedMetaProblemLeadIds, t])
+  }, [loadLeads, notify, offset, planLimitModal, retryLeads, selectedMetaProblemLeadIds, t])
 
   useEffect(() => {
     void loadLeads(offset)
@@ -496,7 +636,6 @@ export default function LeadsPage() {
   const isServicesTenant = businessType === 'services'
   const isEmployerTenant = businessType === 'employer'
   const leadWorkspaceTitle = isServicesTenant ? t('app.leads.title_services') : t('app.leads.title')
-  const leadWorkspaceSubtitle = isServicesTenant ? t('app.leads.subtitle_services') : t('app.leads.subtitle')
   const ownerColumnLabel = isServicesTenant ? t('app.leads.table.client') : t('app.leads.table.candidate')
   const companyColumnLabel = isEmployerTenant ? t('app.dashboard.terms.companies_singular') : entitySingular
   const vacancyColumnLabel = isServicesTenant ? t('app.leads.table.service_order') : t('app.leads.table.vacancy')
@@ -513,6 +652,16 @@ export default function LeadsPage() {
   const canNext = page < totalPages
 
   const items: Lead[] = useMemo(() => (Array.isArray(data.items) ? data.items : []), [data.items])
+
+  useEffect(() => {
+    if (!selectFirstAfterTriageRef.current || loading) return
+    if (items.length === 0) {
+      selectFirstAfterTriageRef.current = false
+      return
+    }
+    selectFirstAfterTriageRef.current = false
+    setSelectedLeadId(items[0].id)
+  }, [loading, items])
 
   useEffect(() => {
     // Drop selection when list changes (filters/paging).
@@ -545,16 +694,30 @@ export default function LeadsPage() {
         await loadLeads(offset)
         refreshLeadInsights()
       } catch (err: unknown) {
-        const info = getFriendlyErrorInfo(
-          err,
-          t('app.leads.detail.stage_update_failed'),
-        )
-        notify({ title: info.title, description: info.detail || info.hint, variant: 'error' })
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.stage_update_failed'))) {
+          return
+        }
+        const info = getFriendlyErrorInfo(err, t('app.leads.detail.stage_update_failed'), t)
+        notify({
+          title: info.title,
+          description: [info.detail, info.hint].filter(Boolean).join(' '),
+          variant: 'error',
+        })
       } finally {
         setPatchingLeadId(null)
       }
     },
-    [applyLeadPatchToList, loadLeads, notify, offset, refreshLeadInsights, selectedLead, selectedLeadId, t],
+    [
+      applyLeadPatchToList,
+      loadLeads,
+      notify,
+      offset,
+      planLimitModal,
+      refreshLeadInsights,
+      selectedLead,
+      selectedLeadId,
+      t,
+    ],
   )
 
   const handleInboxStageSelect = useCallback(
@@ -592,13 +755,20 @@ export default function LeadsPage() {
         await loadLeads(offset)
         refreshLeadInsights()
       } catch (err: unknown) {
-        const info = getFriendlyErrorInfo(err, t('app.leads.detail.stage_update_failed'))
-        notify({ title: info.title, description: info.detail || info.hint, variant: 'error' })
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.stage_update_failed'))) {
+          return
+        }
+        const info = getFriendlyErrorInfo(err, t('app.leads.detail.stage_update_failed'), t)
+        notify({
+          title: info.title,
+          description: [info.detail, info.hint].filter(Boolean).join(' '),
+          variant: 'error',
+        })
       } finally {
         setPatchingLeadId(null)
       }
     },
-    [applyLeadPatchToList, loadLeads, lostStagePrompt, notify, offset, refreshLeadInsights, t],
+    [applyLeadPatchToList, loadLeads, lostStagePrompt, notify, offset, planLimitModal, refreshLeadInsights, t],
   )
 
   const handleInboxAssignmentLockToggle = useCallback(
@@ -613,16 +783,20 @@ export default function LeadsPage() {
           variant: 'success',
         })
       } catch (err: unknown) {
-        const info = getFriendlyErrorInfo(
-          err,
-          t('app.leads.detail.lock_update_failed'),
-        )
-        notify({ title: info.title, description: info.detail || info.hint, variant: 'error' })
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.lock_update_failed'))) {
+          return
+        }
+        const info = getFriendlyErrorInfo(err, t('app.leads.detail.lock_update_failed'), t)
+        notify({
+          title: info.title,
+          description: [info.detail, info.hint].filter(Boolean).join(' '),
+          variant: 'error',
+        })
       } finally {
         setPatchingLeadId(null)
       }
     },
-    [applyLeadPatchToList, notify, selectedLeadId, t],
+    [applyLeadPatchToList, notify, planLimitModal, selectedLeadId, t],
   )
   const selectedIsMetaProblemLead = useMemo(
     () => (selectedLead ? isMetaProblemLead(selectedLead) : false),
@@ -668,6 +842,9 @@ export default function LeadsPage() {
       if (!value) return
       map[value] = t(`app.leads.stages.${value}`)
     })
+    ;(['lead', 'qualified', 'active', 'final'] as const).forEach((value) => {
+      map[value] = t(`app.leads.conversion_funnel.roots.${value}`)
+    })
     return map
   }, [t])
   const statusLabels = useMemo(() => {
@@ -687,13 +864,6 @@ export default function LeadsPage() {
     }
   }, [locale])
 
-  useEffect(() => {
-    if (panelTab === 'history' && selectedLeadId) {
-      void loadLeadTimeline(selectedLeadId)
-    }
-  // Intentionally omit `loadLeadTimeline` to avoid TDZ at render-time.
-  // The callback is executed after component initialization.
-  }, [panelTab, selectedLeadId])
   const formatDateValue = (value?: string) => {
     if (!value) return '—'
     try {
@@ -755,8 +925,10 @@ export default function LeadsPage() {
       setReminderDueAt(new Date(due.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16))
       await loadLeadReminders(selectedLeadId)
       notify({ title: t('app.reminders.messages.created'), variant: 'success' })
-      setPanelTab('focus')
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.create'))) {
+        return
+      }
       const detail =
         err?.response?.data?.detail ??
         err?.message ??
@@ -764,7 +936,7 @@ export default function LeadsPage() {
       setRemindersError(typeof detail === 'string' ? detail : JSON.stringify(detail))
       notify({ title: typeof detail === 'string' ? detail : t('app.reminders.errors.create'), variant: 'error' })
     }
-  }, [loadLeadReminders, notify, panelTab, reminderDueAt, reminderOffset, reminderTitle, selectedLeadId, t])
+  }, [loadLeadReminders, notify, planLimitModal, reminderDueAt, reminderOffset, reminderTitle, selectedLeadId, t])
 
   const handleCompleteReminder = useCallback(
     async (id: string) => {
@@ -808,13 +980,20 @@ export default function LeadsPage() {
     [],
   )
 
+  useEffect(() => {
+    if (!selectedLeadId) {
+      setTimelineItems([])
+      setTimelineError(null)
+      return
+    }
+    void loadLeadTimeline(selectedLeadId)
+  }, [selectedLeadId, loadLeadTimeline])
+
   const onMetaProblemPanelRefreshed = useCallback(async () => {
     await loadLeads(offset)
     refreshLeadInsights()
-    if (panelTab === 'history' && selectedLeadId) {
-      void loadLeadTimeline(selectedLeadId)
-    }
-  }, [loadLeadTimeline, loadLeads, offset, panelTab, refreshLeadInsights, selectedLeadId])
+    if (selectedLeadId) void loadLeadTimeline(selectedLeadId)
+  }, [loadLeadTimeline, loadLeads, offset, refreshLeadInsights, selectedLeadId])
 
   const handleCreateServiceOrder = useCallback(
     async (leadId: string) => {
@@ -828,6 +1007,11 @@ export default function LeadsPage() {
           variant: 'success',
         })
       } catch (err: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.messages.service_order_create_failed'))
+        ) {
+          return
+        }
         const detail =
           err?.response?.data?.detail ??
           err?.message ??
@@ -841,7 +1025,7 @@ export default function LeadsPage() {
         setCreatingOrderLeadId(null)
       }
     },
-    [loadLeads, notify, offset, t],
+    [loadLeads, notify, offset, planLimitModal, t],
   )
 
   const handleProcessLead = useCallback(
@@ -850,9 +1034,7 @@ export default function LeadsPage() {
       try {
         const result = await processLead(leadId)
         await loadLeads(offset)
-        if (panelTab === 'history' && selectedLeadId === leadId) {
-          void loadLeadTimeline(leadId)
-        }
+        if (selectedLeadId === leadId) void loadLeadTimeline(leadId)
         if (result?.status === 'needs_routing') {
           notify({
             title: t('app.leads.messages.needs_routing'),
@@ -885,6 +1067,9 @@ export default function LeadsPage() {
           })
         }
       } catch (err: any) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.messages.process_failed'))) {
+          return
+        }
         const detail =
           err?.response?.data?.detail ??
           err?.message ??
@@ -898,7 +1083,7 @@ export default function LeadsPage() {
         setProcessingLeadId(null)
       }
     },
-    [loadLeadTimeline, loadLeads, notify, offset, panelTab, selectedLeadId, t],
+    [loadLeadTimeline, loadLeads, notify, offset, planLimitModal, selectedLeadId, t],
   )
 
   const handleRetryMetaLead = useCallback(
@@ -925,13 +1110,14 @@ export default function LeadsPage() {
           })
         }
         await loadLeads(offset)
-        if (panelTab === 'history' && selectedLeadId === leadId) {
-          void loadLeadTimeline(leadId)
-        }
+        if (selectedLeadId === leadId) void loadLeadTimeline(leadId)
       } catch (err: any) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.retry'))) {
+          return
+        }
         const detail = err?.response?.data?.detail ?? err?.message ?? 'Retry failed'
         notify({
-          title: t('app.admin.meta_leads.errors.retry'),
+          title: t('admin.meta_leads.errors.retry'),
           description: String(detail),
           variant: 'error',
         })
@@ -939,17 +1125,12 @@ export default function LeadsPage() {
         setRetryingLeadId(null)
       }
     },
-    [loadLeadTimeline, loadLeads, notify, offset, panelTab, selectedLeadId, t],
+    [loadLeadTimeline, loadLeads, notify, offset, planLimitModal, selectedLeadId, t],
   )
 
-  const handleRerouteMetaLeadFromError = useCallback(
-    (leadId: string, _leadCompanyId?: string) => {
-      // No `window.prompt`: we open Fix tab where user can pick vacancy from dropdown.
-      setSelectedLeadId(leadId)
-      setPanelTab('fix')
-    },
-    [],
-  )
+  const handleRerouteMetaLeadFromError = useCallback((leadId: string, _leadCompanyId?: string) => {
+    setSelectedLeadId(leadId)
+  }, [])
 
   const handleCreateInvoice = useCallback(
     async (orderId: string) => {
@@ -964,6 +1145,11 @@ export default function LeadsPage() {
         window.location.assign(CRM_APP_PATHS.invoices)
         return invoice
       } catch (err: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.messages.invoice_create_failed'))
+        ) {
+          return
+        }
         const detail =
           err?.response?.data?.detail ??
           err?.message ??
@@ -977,477 +1163,291 @@ export default function LeadsPage() {
         setCreatingInvoiceOrderId(null)
       }
     },
-    [notify, t],
+    [notify, planLimitModal, t],
   )
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
-      <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-semibold text-slate-900">{leadWorkspaceTitle}</h1>
-              <ActiveOwnCompanyBadge />
-              <Link
-                to={CRM_APP_PATHS.leadsDistribution}
-                className="ml-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-brand-700 hover:bg-slate-50"
-              >
-                {t('app.leads.workspace.distribution_cta')}
-              </Link>
-            </div>
-            <p className="text-xs text-slate-500">{leadWorkspaceSubtitle}</p>
-            {leadNba && leadNba.groups.some((g) => g.count > 0) ? (
-              <NbaNextActionsChips
-                groups={leadNba.groups}
-                nbaQuickLoadingGroupId={nbaBulk.nbaQuickLoadingGroupId}
-                onQuickFollowUp={nbaBulk.openNbaQuickFollowUp}
-                teamTierFeatures={leadNba.nba_tier === 'team'}
-                onQuickProcessNew={nbaBulk.openNbaQuickProcessNewLeads}
-              />
-            ) : null}
-            {leadStageHealth && leadStageHealth.stages.length > 0 ? (
-              <div className="mt-2">
-                <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                  {t('app.leads.stage_health.title')}
-                </div>
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {leadStageHealth.stages.map((row) => (
-                    <div
-                      key={row.stage}
-                      className="min-w-[148px] shrink-0 rounded-lg border border-slate-200 bg-slate-50/80 px-2 py-1.5 text-[11px] text-slate-700"
-                    >
-                      <div className="font-semibold text-slate-900">{stageLabels[row.stage] ?? row.stage}</div>
-                      <div className="mt-1 space-y-0.5 tabular-nums">
-                        <div>
-                          <Link
-                            to={leadsNextActionHref({ status: 'processed', stage: row.stage })}
-                            className="text-brand-700 hover:underline"
-                          >
-                            {t('app.leads.stage_health.processed')}: {row.processed_total}
-                          </Link>
-                        </div>
-                        {row.no_next_action > 0 ? (
-                          <div>
-                            <Link
-                              to={leadsNextActionHref({
-                                status: 'processed',
-                                stage: row.stage,
-                                next_action: 'no_next_action',
-                              })}
-                              className="text-amber-800 hover:underline"
-                            >
-                              {t('app.leads.next_action.no_next_action')}:{' '}
-                              {row.no_next_action}
-                            </Link>
-                          </div>
-                        ) : null}
-                        {row.overdue > 0 ? (
-                          <div>
-                            <Link
-                              to={leadsNextActionHref({
-                                status: 'processed',
-                                stage: row.stage,
-                                next_action: 'overdue',
-                              })}
-                              className="text-rose-800 hover:underline"
-                            >
-                              {t('app.leads.next_action.overdue')}: {row.overdue}
-                            </Link>
-                          </div>
-                        ) : null}
-                        {row.stuck > 0 ? (
-                          <div>
-                            <Link
-                              to={leadsNextActionHref({ stage: row.stage, next_action: 'stuck' })}
-                              className="text-violet-900 hover:underline"
-                            >
-                              {t('app.leads.next_action.stuck')}: {row.stuck}
-                            </Link>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-            {leadConversionFunnel && leadConversionFunnel.stages.length > 0 ? (
-              <div className="mt-2">
-                <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                  {t('app.leads.conversion_funnel.title')}
-                </div>
-                <p className="mb-1.5 max-w-3xl text-[10px] leading-snug text-slate-500">
-                  {t('app.leads.conversion_funnel.hint')}
-                </p>
-                <div className="mb-2 max-w-3xl rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-2 py-1.5">
-                  <div className="mb-1 text-[10px] font-medium text-slate-600">
-                    {t('app.leads.conversion_funnel.slices_title')}
-                  </div>
-                  {leadNba?.nba_tier !== 'team' ? (
-                    <p className="text-[10px] text-slate-500">{t('app.leads.conversion_funnel.slices_team_hint')}</p>
-                  ) : (
-                    <>
-                      <div className="flex flex-wrap gap-2">
-                        <label className="flex min-w-[100px] flex-1 flex-col text-[9px] font-medium text-slate-600">
-                          {t('app.leads.conversion_funnel.slice_source')}
-                          <input
-                            className="input mt-0.5 h-7 rounded border-slate-300 px-1.5 text-[10px]"
-                            value={funnelSliceDraft.source}
-                            onChange={(e) => setFunnelSliceDraft((d) => ({ ...d, source: e.target.value }))}
-                            placeholder="meta"
-                            autoComplete="off"
-                          />
-                        </label>
-                        <label className="flex min-w-[120px] flex-1 flex-col text-[9px] font-medium text-slate-600">
-                          {t('app.leads.conversion_funnel.slice_vacancy_id')}
-                          <input
-                            className="input mt-0.5 h-7 rounded border-slate-300 px-1.5 font-mono text-[10px]"
-                            value={funnelSliceDraft.vacancyId}
-                            onChange={(e) => setFunnelSliceDraft((d) => ({ ...d, vacancyId: e.target.value }))}
-                            placeholder="UUID"
-                            autoComplete="off"
-                          />
-                        </label>
-                        <label className="flex min-w-[120px] flex-1 flex-col text-[9px] font-medium text-slate-600">
-                          {t('app.leads.conversion_funnel.slice_funnel_id')}
-                          <input
-                            className="input mt-0.5 h-7 rounded border-slate-300 px-1.5 font-mono text-[10px]"
-                            value={funnelSliceDraft.funnelId}
-                            onChange={(e) => setFunnelSliceDraft((d) => ({ ...d, funnelId: e.target.value }))}
-                            placeholder="UUID"
-                            autoComplete="off"
-                          />
-                        </label>
-                        <label className="flex min-w-[120px] flex-1 flex-col text-[9px] font-medium text-slate-600">
-                          {t('app.leads.conversion_funnel.slice_assignee')}
-                          <input
-                            className="input mt-0.5 h-7 rounded border-slate-300 px-1.5 font-mono text-[10px]"
-                            value={funnelSliceDraft.assigneeUserId}
-                            onChange={(e) => setFunnelSliceDraft((d) => ({ ...d, assigneeUserId: e.target.value }))}
-                            placeholder="User UUID"
-                            autoComplete="off"
-                          />
-                        </label>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="btn-secondary h-7 rounded px-2 text-[10px]"
-                          onClick={() => applyFunnelSlices()}
-                        >
-                          {t('app.leads.conversion_funnel.slices_apply')}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary h-7 rounded px-2 text-[10px]"
-                          onClick={() => clearFunnelSlices()}
-                        >
-                          {t('app.leads.conversion_funnel.slices_clear')}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                  {leadConversionFunnel &&
-                  (leadConversionFunnel.filter_source ||
-                    leadConversionFunnel.filter_vacancy_id ||
-                    leadConversionFunnel.filter_funnel_id ||
-                    leadConversionFunnel.filter_assignee_user_id) ? (
-                    <div className="mt-1.5 text-[9px] text-slate-600">
-                      <span className="font-medium">{t('app.leads.conversion_funnel.slices_active')}:</span>{' '}
-                      {[
-                        leadConversionFunnel.filter_source
-                          ? `${t('app.leads.conversion_funnel.slice_source')}=${leadConversionFunnel.filter_source}`
-                          : null,
-                        leadConversionFunnel.filter_vacancy_id
-                          ? `${t('app.leads.conversion_funnel.slice_vacancy_id')}=${leadConversionFunnel.filter_vacancy_id}`
-                          : null,
-                        leadConversionFunnel.filter_funnel_id
-                          ? `${t('app.leads.conversion_funnel.slice_funnel_id')}=${leadConversionFunnel.filter_funnel_id}`
-                          : null,
-                        leadConversionFunnel.filter_assignee_user_id
-                          ? `${t('app.leads.conversion_funnel.slice_assignee')}=${leadConversionFunnel.filter_assignee_user_id}`
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="flex flex-wrap items-end gap-1 text-[11px] text-slate-700">
-                  {leadConversionFunnel.status_new_count > 0 ? (
-                    <div className="mb-1 rounded-md border border-amber-200/80 bg-amber-50/90 px-2 py-1 tabular-nums">
-                      <Link to={leadsNextActionHref({ status: 'new' })} className="font-medium text-amber-900 hover:underline">
-                        {t('app.leads.conversion_funnel.new_status')}: {leadConversionFunnel.status_new_count}
-                      </Link>
-                    </div>
-                  ) : null}
-                  {leadConversionFunnel.lost_processed_count > 0 ? (
-                    <div className="mb-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 tabular-nums">
-                      <Link
-                        to={leadsNextActionHref({ status: 'processed', stage: 'lost' })}
-                        className="font-medium text-slate-800 hover:underline"
-                      >
-                        {t('app.leads.conversion_funnel.lost')}: {leadConversionFunnel.lost_processed_count}
-                      </Link>
-                      {(leadConversionFunnel.lost_dwell_sample_size ?? 0) > 0 &&
-                      leadConversionFunnel.lost_dwell_avg_days != null ? (
-                        <div className="mt-0.5 text-[9px] font-normal text-slate-500">
-                          {t('app.leads.conversion_funnel.dwell_line', {
-                            values: {
-                              avg: leadConversionFunnel.lost_dwell_avg_days,
-                              p50: leadConversionFunnel.lost_dwell_p50_days ?? '—',
-                            },
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                  {leadConversionFunnel.lost_from_stage && leadConversionFunnel.lost_from_stage.length > 0 ? (
-                    <div className="mb-1 mt-1 w-full max-w-xl rounded-md border border-slate-200 bg-white px-2 py-1.5">
-                      <div className="text-[9px] font-medium uppercase tracking-wide text-slate-500">
-                        {t('app.leads.conversion_funnel.lost_from_title')}
-                      </div>
-                      <p className="mb-1 text-[9px] text-slate-500">{t('app.leads.conversion_funnel.lost_from_hint')}</p>
-                      <ul className="space-y-0.5 text-[10px] text-slate-700">
-                        {leadConversionFunnel.lost_from_stage.map((row) => (
-                          <li key={row.from_stage} className="flex justify-between gap-2 tabular-nums">
-                            <span>
-                              <span className="font-medium text-slate-800">
-                                {stageLabels[row.from_stage as LeadStage] ?? row.from_stage}
-                              </span>
-                              <span className="text-slate-500"> → {t('app.leads.stages.lost')}</span>
-                            </span>
-                            <Link
-                              to={leadsNextActionHref({ status: 'processed', stage: 'lost' })}
-                              className="shrink-0 text-brand-700 hover:underline"
-                            >
-                              {row.lead_count}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {leadConversionFunnel.lost_reason_breakdown &&
-                  leadConversionFunnel.lost_reason_breakdown.length > 0 ? (
-                    <div className="mb-1 mt-1 w-full max-w-xl rounded-md border border-slate-200 bg-white px-2 py-1.5">
-                      <div className="text-[9px] font-medium uppercase tracking-wide text-slate-500">
-                        {t('app.leads.conversion_funnel.lost_reason_title')}
-                      </div>
-                      <p className="mb-1 text-[9px] text-slate-500">{t('app.leads.conversion_funnel.lost_reason_hint')}</p>
-                      <ul className="space-y-0.5 text-[10px] text-slate-700">
-                        {leadConversionFunnel.lost_reason_breakdown.map((row) => (
-                          <li key={row.reason_code} className="flex justify-between gap-2 tabular-nums">
-                            <span className="font-medium text-slate-800">
-                              {t(`app.leads.lost_reason.codes.${row.reason_code}`)}
-                            </span>
-                            <Link
-                              to={leadsNextActionHref({ status: 'processed', stage: 'lost' })}
-                              className="shrink-0 text-brand-700 hover:underline"
-                            >
-                              {row.lead_count}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="mt-1 flex flex-wrap items-end gap-x-1 gap-y-2">
-                  {(() => {
-                    const maxCount = Math.max(
-                      1,
-                      ...leadConversionFunnel.stages.map((s) => s.count),
-                    )
-                    return leadConversionFunnel.stages.map((s, idx) => {
-                      const barW = Math.max(52, Math.round(52 + (s.count / maxCount) * 76))
-                      const edge = leadConversionFunnel.edges[idx]
-                      return (
-                        <div key={s.stage} className="flex items-end gap-x-0.5">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <div
-                              className="flex min-h-[52px] items-end justify-center rounded-md border border-slate-200 bg-gradient-to-t from-brand-600/90 to-brand-500/80 px-1.5 pb-1 pt-2 shadow-sm"
-                              style={{ width: barW }}
-                            >
-                              <Link
-                                to={leadsNextActionHref({ status: 'processed', stage: s.stage })}
-                                className="w-full text-center text-[10px] font-semibold leading-tight text-white hover:underline"
-                              >
-                                {s.count}
-                              </Link>
-                            </div>
-                            <div className="max-w-[96px] text-center text-[10px] font-medium text-slate-700">
-                              {stageLabels[s.stage as LeadStage] ?? s.stage}
-                            </div>
-                            {(s.dwell_sample_size ?? 0) > 0 && s.dwell_avg_days != null ? (
-                              <div className="max-w-[104px] text-center text-[9px] leading-tight text-slate-500">
-                                {t('app.leads.conversion_funnel.dwell_line', {
-                                  values: { avg: s.dwell_avg_days, p50: s.dwell_p50_days ?? '—' },
-                                })}
-                              </div>
-                            ) : null}
-                          </div>
-                          {edge ? (
-                            <div className="mb-6 px-0.5 text-[9px] font-medium tabular-nums text-slate-500">
-                              →{' '}
-                              {edge.progressed_share != null
-                                ? `${Math.round(edge.progressed_share * 100)}%`
-                                : '—'}
-                            </div>
-                          ) : null}
-                        </div>
-                      )
-                    })
-                  })()}
-                </div>
-              </div>
-            ) : null}
+    <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col gap-5">
+      <header className="space-y-4 rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white py-4 shadow-none">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold text-slate-900">{leadWorkspaceTitle}</h1>
+            <Link
+              to={CRM_APP_PATHS.leadsDistribution}
+              className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-brand-700 hover:bg-slate-50"
+            >
+              {t('app.leads.workspace.distribution_cta')}
+            </Link>
+            <Link
+              to={`${CRM_APP_PATHS.overview}#lead-conversion`}
+              className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+            >
+              {t('app.leads.workspace.funnel_analytics_link', { defaultValue: 'Conversion funnel (analytics)' })}
+            </Link>
           </div>
           <div className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-600">
             <IconTable size={14} />
             <span>{t('app.leads.pagination.shown', { values: { count: items.length, total: data.total } })}</span>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-end gap-2">
-          <label className="min-w-[170px] text-xs font-medium text-slate-600">
-            <span className="mb-1 inline-flex items-center gap-1">
-              <IconFilter size={12} />
-              {t('app.leads.filters.status')}
-            </span>
-            <select
-              className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as '' | LeadStatus)
-                setPage(1)
-              }}
+
+        <section className="space-y-2">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <IconFlame size={16} className="text-rose-500" aria-hidden />
+            {t('app.leads.workspace.block_attention', { defaultValue: 'Needs processing' })}
+          </div>
+          {leadOpsLoading ? (
+            <p className="text-sm text-slate-500">{t('common.loading')}</p>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-rose-200 bg-white px-4 py-3 shadow-sm">
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold tabular-nums text-slate-900">
+                    {leadOpsNum(leadOps?.leads_needs_routing)}
+                  </p>
+                  <p className="text-sm font-medium text-slate-700">
+                    {t('app.leads.workspace.attention_needs_routing', { defaultValue: 'Leads to triage' })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={startLeadTriage}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                >
+                  {t('app.leads.workspace.start_processing', { defaultValue: 'Start processing' })}
+                  <IconArrowRight size={18} stroke={2} aria-hidden />
+                </button>
+              </div>
+              <Link
+                to={LEADS_HREF_QUEUE_OVERDUE}
+                className="flex items-center justify-between gap-3 rounded-2xl border-2 border-amber-200 bg-white px-4 py-3 shadow-sm transition hover:border-amber-300"
+              >
+                <div className="min-w-0">
+                  <p className="text-2xl font-bold tabular-nums text-slate-900">{leadOpsNum(leadOps?.leads_overdue)}</p>
+                  <p className="text-sm font-medium text-slate-700">
+                    {t('app.leads.workspace.attention_overdue', { defaultValue: 'Overdue follow-ups' })}
+                  </p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+                  {t('app.leads.workspace.fix_overdue', { defaultValue: 'Fix now' })}
+                  <IconArrowRight size={18} stroke={2} aria-hidden />
+                </span>
+              </Link>
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('app.leads.workspace.block_queue', { defaultValue: 'Lead queue' })}
+          </div>
+          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-4">
+            <Link
+              to={LEADS_HREF_QUEUE_NEW}
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
             >
-              {statusOptions.map((opt) => (
-                <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="min-w-[170px] text-xs font-medium text-slate-600">
-            <span className="mb-1 inline-flex items-center gap-1">
-              <IconFilter size={12} />
-              {t('app.leads.filters.stage')}
-            </span>
-            <select
-              className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-              value={stage}
-              onChange={(event) => {
-                setStage(event.target.value as '' | LeadStage)
-                setPage(1)
-              }}
+              {t('app.leads.workspace.queue_new', { defaultValue: 'New' })}
+              <IconArrowRight size={16} className="text-slate-400" aria-hidden />
+            </Link>
+            <Link
+              to={LEADS_HREF_QUEUE_IN_PROGRESS}
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
             >
-              {stageOptions.map((opt) => (
-                <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="min-w-[190px] text-xs font-medium text-slate-600">
-            <span className="mb-1 inline-flex items-center gap-1">
-              <IconFilter size={12} />
-              {t('app.leads.filters.next_action')}
-            </span>
-            <select
-              className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-              value={nextAction}
-              onChange={(event) => {
-                setNextAction(event.target.value as any)
-                setPage(1)
-              }}
+              {t('app.leads.workspace.queue_in_progress', { defaultValue: 'In progress' })}
+              <IconArrowRight size={16} className="text-slate-400" aria-hidden />
+            </Link>
+            <Link
+              to={LEADS_HREF_QUEUE_WAITING}
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
             >
-              {nextActionOptions.map((opt) => (
-                <option key={opt.value || 'all'} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="min-w-[200px] flex-1 text-xs font-medium text-slate-600">
-            <span className="mb-1 inline-flex items-center gap-1">
-              <IconSearch size={12} />
-              {t('app.leads.filters.search')}
-            </span>
-            <input
-              type="search"
-              className="input h-9 w-full max-w-xs rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-              value={leadSearch}
-              onChange={(e) => {
-                setLeadSearch(e.target.value)
-                setPage(1)
-              }}
-              placeholder={t('app.leads.filters.search_placeholder')}
-              autoComplete="off"
-            />
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              setPage(1)
-              void loadLeads(0)
-              refreshLeadInsights()
-            }}
-            className="btn-secondary h-9 rounded-lg px-3 text-xs"
-          >
-            <IconRefresh size={14} />
-            {t('app.candidates.actions.refresh')}
-          </button>
-        </div>
-        {leadCustomFieldDefs.length > 0 ? (
-          <div className="mt-2 flex flex-wrap items-end gap-2">
-            <label className="min-w-[200px] text-xs font-medium text-slate-600">
+              {t('app.leads.workspace.queue_waiting', { defaultValue: 'Waiting for reply' })}
+              <IconArrowRight size={16} className="text-slate-400" aria-hidden />
+            </Link>
+            <Link
+              to={LEADS_HREF_QUEUE_OVERDUE}
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+            >
+              {t('app.leads.workspace.queue_overdue', { defaultValue: 'Overdue' })}
+              <IconArrowRight size={16} className="text-slate-400" aria-hidden />
+            </Link>
+          </div>
+        </section>
+
+        <details className="rounded-xl border border-slate-200 bg-slate-50/90 px-3 py-2">
+          <summary className="cursor-pointer select-none text-xs font-semibold text-slate-700">
+            {t('app.leads.workspace.advanced_filters', { defaultValue: 'Advanced filters & view' })}
+          </summary>
+          <div className="mt-3 flex flex-wrap items-end gap-2">
+            <label className="min-w-[170px] text-xs font-medium text-slate-600">
               <span className="mb-1 inline-flex items-center gap-1">
                 <IconFilter size={12} />
-                {t('app.leads.filters.custom_field')}
+                {t('app.leads.filters.status')}
               </span>
               <select
                 className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-                value={customFieldKey}
-                onChange={(e) => {
-                  setCustomFieldKey(e.target.value)
-                  setCustomFieldValue('')
+                value={status}
+                onChange={(event) => {
+                  setStatus(event.target.value as '' | LeadStatus)
                   setPage(1)
                 }}
               >
-                <option value="">{t('app.leads.filters.custom_field_none')}</option>
-                {leadCustomFieldDefs.map((d) => (
-                  <option key={d.id} value={d.key}>
-                    {d.label || d.key}
+                {statusOptions.map((opt) => (
+                  <option key={opt.value || 'all'} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-[170px] text-xs font-medium text-slate-600">
+              <span className="mb-1 inline-flex items-center gap-1">
+                <IconFilter size={12} />
+                {t('app.leads.filters.stage')}
+              </span>
+              <select
+                className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                value={stage}
+                onChange={(event) => {
+                  setStage(event.target.value as '' | LeadStage)
+                  setPage(1)
+                }}
+              >
+                {stageOptions.map((opt) => (
+                  <option key={opt.value || 'all'} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-[190px] text-xs font-medium text-slate-600">
+              <span className="mb-1 inline-flex items-center gap-1">
+                <IconFilter size={12} />
+                {t('app.leads.filters.next_action')}
+              </span>
+              <select
+                className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                value={nextAction}
+                onChange={(event) => {
+                  setNextAction(event.target.value as any)
+                  setPage(1)
+                }}
+              >
+                {nextActionOptions.map((opt) => (
+                  <option key={opt.value || 'all'} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
             </label>
             <label className="min-w-[200px] flex-1 text-xs font-medium text-slate-600">
-              <span className="mb-1 block">{t('app.leads.filters.custom_field_value')}</span>
+              <span className="mb-1 inline-flex items-center gap-1">
+                <IconSearch size={12} />
+                {t('app.leads.filters.search')}
+              </span>
               <input
-                type="text"
+                type="search"
                 className="input h-9 w-full max-w-xs rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-                value={customFieldValue}
+                value={leadSearch}
                 onChange={(e) => {
-                  setCustomFieldValue(e.target.value)
+                  setLeadSearch(e.target.value)
                   setPage(1)
                 }}
-                disabled={!customFieldKey.trim()}
-                placeholder={t('app.leads.filters.custom_field_value_placeholder')}
+                placeholder={t('app.leads.filters.search_placeholder')}
+                autoComplete="off"
               />
             </label>
-            {customFieldKey.trim() ? (
+            <button
+              type="button"
+              onClick={() => {
+                setPage(1)
+                void loadLeads(0)
+                refreshLeadInsights()
+              }}
+              className="btn-secondary h-9 rounded-lg px-3 text-xs"
+            >
+              <IconRefresh size={14} />
+              {t('app.candidates.actions.refresh')}
+            </button>
+            <div
+              className="inline-flex h-9 overflow-hidden rounded-lg border border-slate-300 bg-slate-100 p-0.5"
+              role="group"
+              aria-label={t('app.leads.workspace.view_switch')}
+            >
               <button
                 type="button"
-                className="btn-secondary mb-0.5 h-9 rounded-lg px-2 text-xs"
-                onClick={() => {
-                  setCustomFieldKey('')
-                  setCustomFieldValue('')
-                  setPage(1)
-                }}
+                onClick={() => setWorkspaceView('table')}
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${
+                  workspaceView === 'table' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                {t('app.leads.filters.custom_field_clear')}
+                <IconTable size={14} />
+                {t('app.leads.workspace.view_table')}
               </button>
-            ) : null}
+              <button
+                type="button"
+                onClick={() => setWorkspaceView('kanban')}
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium ${
+                  workspaceView === 'kanban' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <IconLayoutKanban size={14} />
+                {t('app.leads.workspace.view_kanban')}
+              </button>
+            </div>
           </div>
-        ) : null}
+          {leadCustomFieldDefs.length > 0 ? (
+            <div className="mt-2 flex flex-wrap items-end gap-2">
+              <label className="min-w-[200px] text-xs font-medium text-slate-600">
+                <span className="mb-1 inline-flex items-center gap-1">
+                  <IconFilter size={12} />
+                  {t('app.leads.filters.custom_field')}
+                </span>
+                <select
+                  className="input h-9 rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                  value={customFieldKey}
+                  onChange={(e) => {
+                    setCustomFieldKey(e.target.value)
+                    setCustomFieldValue('')
+                    setPage(1)
+                  }}
+                >
+                  <option value="">{t('app.leads.filters.custom_field_none')}</option>
+                  {leadCustomFieldDefs.map((d) => (
+                    <option key={d.id} value={d.key}>
+                      {d.label || d.key}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="min-w-[200px] flex-1 text-xs font-medium text-slate-600">
+                <span className="mb-1 block">{t('app.leads.filters.custom_field_value')}</span>
+                <input
+                  type="text"
+                  className="input h-9 w-full max-w-xs rounded-lg border-slate-300 bg-white px-2.5 py-1.5 text-sm"
+                  value={customFieldValue}
+                  onChange={(e) => {
+                    setCustomFieldValue(e.target.value)
+                    setPage(1)
+                  }}
+                  disabled={!customFieldKey.trim()}
+                  placeholder={t('app.leads.filters.custom_field_value_placeholder')}
+                />
+              </label>
+              {customFieldKey.trim() ? (
+                <button
+                  type="button"
+                  className="btn-secondary mb-0.5 h-9 rounded-lg px-2 text-xs"
+                  onClick={() => {
+                    setCustomFieldKey('')
+                    setCustomFieldValue('')
+                    setPage(1)
+                  }}
+                >
+                  {t('app.leads.filters.custom_field_clear')}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </details>
       </header>
 
       {filterBannerVisible && (
@@ -1458,7 +1458,22 @@ export default function LeadsPage() {
               {[
                 status ? statusLabels[status as LeadStatus] ?? status : null,
                 stage ? stageLabels[stage as LeadStage] ?? stage : null,
+                conversionRoot ? stageLabels[conversionRoot] ?? conversionRoot : null,
+                lostReasonCode
+                  ? `${t('app.leads.conversion_funnel.lost_reason_title')}: ${t(`app.leads.lost_reason.codes.${lostReasonCode}`)}`
+                  : null,
+                lostFromCrmStage
+                  ? t('app.leads.conversion_funnel.lost_from_filter_banner', {
+                      values: {
+                        stage:
+                          lostFromCrmStage === 'unknown'
+                            ? t('app.leads.conversion_funnel.lost_from_stage_unknown')
+                            : stageLabels[lostFromCrmStage as LeadStage] ?? lostFromCrmStage,
+                      },
+                    })
+                  : null,
                 nextAction ? nextActionOptions.find((o) => o.value === nextAction)?.label ?? nextAction : null,
+                pipelineError ? formatLeadPipelineError(pipelineError, t) : null,
                 customFieldKey.trim()
                   ? `${customFieldKey}=${customFieldValue}`
                   : null,
@@ -1482,7 +1497,7 @@ export default function LeadsPage() {
 
       <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          {selectedCount > 0 && (
+          {workspaceView === 'table' && selectedCount > 0 && (
             <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 flex flex-wrap items-center gap-2">
               <div className="font-medium">
                 {t('app.leads.bulk.selected', { values: { count: selectedCount } })}
@@ -1547,6 +1562,8 @@ export default function LeadsPage() {
               </button>
             </div>
           )}
+          {workspaceView === 'table' ? (
+            <>
           <div className="overflow-x-auto">
             <table className="table min-w-full text-sm">
               <thead className="bg-slate-50">
@@ -1568,44 +1585,43 @@ export default function LeadsPage() {
                   <th className="w-[52px]" aria-label={t('app.leads.table.full_page')}>
                     <span className="sr-only">{t('app.leads.table.full_page')}</span>
                   </th>
-                  <th>{t('app.leads.table.created')}</th>
-                  <th>{t('app.leads.table.status')}</th>
-                  <th>{t('app.leads.table.stage')}</th>
-                  <th>{t('app.leads.table.next_action')}</th>
-                  <th>{companyColumnLabel}</th>
-                  <th>{vacancyColumnLabel}</th>
+                  <th>{t('app.leads.workspace.col_name', { defaultValue: 'Name' })}</th>
                   <th>{t('app.leads.table.contact')}</th>
                   <th>{t('app.leads.table.source')}</th>
-                  <th>{t('app.leads.table.fit')}</th>
-                  <th>{ownerColumnLabel}</th>
-                  <th>{t('app.leads.table.error')}</th>
+                  <th>{vacancyColumnLabel}</th>
+                  <th>{t('app.leads.table.status')}</th>
+                  <th>{t('app.leads.table.next_action')}</th>
+                  <th>{t('app.leads.workspace.col_actions', { defaultValue: 'Actions' })}</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr>
-                    <td colSpan={13} className="px-3 py-5 text-center text-slate-500">
+                    <td colSpan={9} className="px-3 py-5 text-center text-slate-500">
                       {t('common.loading')}
                     </td>
                   </tr>
                 )}
                 {error && !loading && (
                   <tr>
-                    <td colSpan={13} className="px-3 py-4">
+                    <td colSpan={9} className="px-3 py-4">
                       <ErrorRecoveryBanner
                         compact
                         info={error}
                         onRetry={() => void loadLeads(offset)}
                         retryLabel={t('common.retry')}
-                        secondaryTo={CRM_APP_PATHS.settingsLeads}
-                        secondaryLabel={t('app.leads.states.empty_cta_connect')}
+                        {...friendlyErrorBannerSecondary(
+                          error,
+                          CRM_APP_PATHS.settingsLeads,
+                          t('app.leads.states.empty_cta_connect'),
+                        )}
                       />
                     </td>
                   </tr>
                 )}
                 {!loading && !error && items.length === 0 && (
                   <tr>
-                    <td colSpan={13} className="px-3 py-6">
+                    <td colSpan={9} className="px-3 py-6">
                       <EmptyStatePanel
                         compact
                         title={emptyTitle}
@@ -1629,7 +1645,6 @@ export default function LeadsPage() {
                     const contactName = normalized.full_name || `${normalized.first_name || ''} ${normalized.last_name || ''}`.trim()
                     const contactEmail = normalized.email
                     const contactPhone = normalized.phone
-                    const contact = [contactName, contactEmail, contactPhone].filter(Boolean).join(' · ')
                     const isSelected = selectedLeadId === lead.id
                     const rowMetaProblem = isMetaProblemLead(lead)
                     const metaErrorCode = (lead.error ?? '').trim()
@@ -1637,24 +1652,6 @@ export default function LeadsPage() {
                     const openCredentialsHref = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=credentials`
                     const openMappingHref = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=mapping`
                     const openSettingsHref = `${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=settings`
-                    const fitStatus = (lead as any).fit_status as string | undefined
-                    const fitReasons = Array.isArray((lead as any).fit_reasons) ? ((lead as any).fit_reasons as string[]) : []
-                    const fitLabel =
-                      fitStatus === 'fit'
-                        ? 'Fit'
-                        : fitStatus === 'no_fit'
-                          ? 'No fit'
-                          : fitStatus === 'needs_info'
-                            ? 'Needs info'
-                            : '—'
-                    const fitClass =
-                      fitStatus === 'fit'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                        : fitStatus === 'no_fit'
-                          ? 'bg-rose-50 text-rose-700 border-rose-200'
-                          : fitStatus === 'needs_info'
-                            ? 'bg-amber-50 text-amber-800 border-amber-200'
-                            : 'bg-slate-50 text-slate-600 border-slate-200'
 
                     return (
                       <tr
@@ -1662,15 +1659,11 @@ export default function LeadsPage() {
                         className={isSelected ? 'bg-brand-50 hover:bg-brand-50' : 'hover:bg-slate-50'}
                         role="button"
                         tabIndex={0}
-                        onClick={() => {
-                          setSelectedLeadId(lead.id)
-                          setPanelTab(rowMetaProblem ? 'fix' : 'composer')
-                        }}
+                        onClick={() => setSelectedLeadId(lead.id)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault()
                             setSelectedLeadId(lead.id)
-                            setPanelTab(rowMetaProblem ? 'fix' : 'composer')
                           }
                         }}
                       >
@@ -1693,20 +1686,25 @@ export default function LeadsPage() {
                             <IconExternalLink size={18} stroke={1.75} />
                           </Link>
                         </td>
-                        <td className="text-slate-600">{formatDateValue(lead.created_at)}</td>
+                        <td className="max-w-[200px] font-medium text-slate-900">
+                          <div className="truncate">{contactName || lead.company_name || '—'}</div>
+                          {lead.stage ? (
+                            <div className="truncate text-[11px] font-normal text-slate-500">
+                              {stageLabels[lead.stage] ?? lead.stage}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="max-w-[180px] text-slate-700">
+                          {contactPhone ? <div className="truncate text-sm">{contactPhone}</div> : null}
+                          {contactEmail ? <div className="truncate text-xs text-slate-500">{contactEmail}</div> : null}
+                          {!contactPhone && !contactEmail ? '—' : null}
+                        </td>
+                        <td className="text-slate-700">{lead.source || '—'}</td>
+                        <td className="max-w-[160px] truncate text-slate-800">{lead.vacancy_title || lead.vacancy_id || '—'}</td>
                         <td>
                           <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                             {statusLabels[lead.status] ?? lead.status}
                           </span>
-                        </td>
-                        <td>
-                          {lead.stage ? (
-                            <span className="inline-flex items-center rounded-md bg-brand-100 px-2 py-0.5 text-[11px] font-medium text-brand-800">
-                              {stageLabels[lead.stage] ?? lead.stage}
-                            </span>
-                          ) : (
-                            '—'
-                          )}
                         </td>
                         <td>
                           {lead.next_action_status === 'overdue' ? (
@@ -1733,19 +1731,7 @@ export default function LeadsPage() {
                             </span>
                           )}
                         </td>
-                        <td className="text-slate-800">{lead.company_name || lead.company_id}</td>
-                        <td className="text-slate-800">{lead.vacancy_title || lead.vacancy_id || '—'}</td>
-                        <td className="text-slate-700">{contact || '—'}</td>
-                        <td className="text-slate-700">{lead.source}</td>
-                        <td className="text-slate-700">
-                          <span
-                            className={['inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold', fitClass].join(' ')}
-                            title={fitReasons.length ? fitReasons.join('\n') : ''}
-                          >
-                            {fitLabel}
-                          </span>
-                        </td>
-                        <td className="text-brand-700">
+                        <td className="max-w-[220px]">
                           {rowMetaProblem ? (
                             <div className="flex flex-col items-start gap-1">
                               <div className="text-xs text-red-500">{metaErrorCode}</div>
@@ -1761,7 +1747,7 @@ export default function LeadsPage() {
                                 >
                                   {retryingLeadId === lead.id
                                     ? t('common.loading')
-                                    : t('app.admin.meta_leads.logs.actions.retry')}
+                                    : t('admin.meta_leads.logs.actions.retry')}
                                 </button>
 
                                 {leadSuggestion?.tab === 'mapping' ? (
@@ -1774,14 +1760,14 @@ export default function LeadsPage() {
                                         void handleRerouteMetaLeadFromError(lead.id, lead.company_id)
                                       }}
                                     >
-                                      {t('app.admin.meta_leads.logs.actions.reroute')}
+                                      {t('admin.meta_leads.logs.actions.reroute')}
                                     </button>
                                     <Link
                                       to={openMappingHref}
                                       className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
                                       onClick={(e) => e.stopPropagation()}
                                     >
-                                      {t('app.admin.meta_leads.tabs.mapping')}
+                                      {t('admin.meta_leads.tabs.mapping')}
                                     </Link>
                                   </>
                                 ) : null}
@@ -1792,7 +1778,7 @@ export default function LeadsPage() {
                                     className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    {t('app.admin.meta_leads.tabs.credentials')}
+                                    {t('admin.meta_leads.tabs.credentials')}
                                   </Link>
                                 ) : null}
 
@@ -1802,7 +1788,7 @@ export default function LeadsPage() {
                                     className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    {t('app.admin.meta_leads.tabs.settings')}
+                                    {t('admin.meta_leads.tabs.settings')}
                                   </Link>
                                 ) : null}
                               </div>
@@ -1885,8 +1871,10 @@ export default function LeadsPage() {
                               ) : null}
                             </div>
                           )}
+                          {lead.error ? (
+                            <div className="mt-1 text-[11px] text-red-600">{formatLeadPipelineError(lead.error, t)}</div>
+                          ) : null}
                         </td>
-                        <td className="text-sm text-red-500">{lead.error || '—'}</td>
                       </tr>
                     )
                   })}
@@ -1915,6 +1903,22 @@ export default function LeadsPage() {
               </button>
             </div>
           </footer>
+            </>
+          ) : (
+            <LeadsKanbanBoard
+              base={{
+                conversionRoot: conversionRoot || undefined,
+                lostReasonCode: lostReasonCode || undefined,
+                lostFromCrmStage: lostFromCrmStage || undefined,
+                pipelineError: pipelineError || undefined,
+                customFieldKey: customFieldKey.trim() || undefined,
+                customFieldValue,
+                q: leadSearch,
+              }}
+              stageLabels={stageLabels}
+              onOpenLead={(id) => setSelectedLeadId(id)}
+            />
+          )}
         </div>
 
         <BulkActivitiesModal
@@ -1958,21 +1962,135 @@ export default function LeadsPage() {
               <div className="border-b border-slate-200 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-slate-900">
+                    <div className="truncate text-base font-semibold text-slate-900">
                       {selectedLead.normalized?.full_name ||
                         `${selectedLead.normalized?.first_name || ''} ${selectedLead.normalized?.last_name || ''}`.trim() ||
                         selectedLead.company_name ||
                         t('app.leads.inbox.lead')}
                     </div>
-                    <div className="mt-0.5 text-xs text-slate-600">
+                    {selectedLead.normalized?.phone ? (
+                      <div className="mt-1 text-sm text-slate-700">{selectedLead.normalized.phone}</div>
+                    ) : null}
+                    {selectedLead.normalized?.email ? (
+                      <div className="mt-0.5 truncate text-xs text-slate-600">{selectedLead.normalized.email}</div>
+                    ) : null}
+                    <div className="mt-2 text-xs text-slate-600">
+                      <span className="font-medium">{t('app.leads.table.source')}:</span> {selectedLead.source || '—'}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-600">
                       <span className="font-medium">{t('app.leads.table.status')}:</span>{' '}
                       {statusLabels[selectedLead.status] ?? selectedLead.status}
+                      {selectedLead.stage ? (
+                        <>
+                          {' · '}
+                          <span className="font-medium">{t('app.leads.table.stage')}:</span>{' '}
+                          {stageLabels[selectedLead.stage] ?? selectedLead.stage}
+                        </>
+                      ) : null}
                     </div>
-                    <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="mt-1 text-xs text-slate-600">
+                      <span className="font-medium">{t('app.leads.table.next_action')}:</span>{' '}
+                      {selectedLead.next_action_status === 'overdue'
+                        ? t('app.leads.next_action.overdue')
+                        : selectedLead.next_action_status === 'scheduled'
+                          ? t('app.leads.next_action.scheduled')
+                          : t('app.leads.next_action.no_next_action')}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-start">
+                    <Link
+                      to={`${CRM_APP_PATHS.leads}/${selectedLead.id}`}
+                      className="btn-secondary inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs"
+                      title={t('app.leads.table.full_page')}
+                    >
+                      <IconExternalLink size={14} stroke={1.75} aria-hidden />
+                      <span className="hidden sm:inline">{t('app.leads.table.full_page')}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      className="btn-secondary h-8 rounded-lg px-2 text-xs"
+                      onClick={() => setSelectedLeadId(null)}
+                    >
+                      {t('common.actions.close')}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedLead.normalized?.phone &&
+                  String(selectedLead.normalized.phone).replace(/\D/g, '').length > 0 ? (
+                    <a
+                      href={`tel:${String(selectedLead.normalized.phone).replace(/\s/g, '')}`}
+                      className="btn-primary inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold sm:flex-none"
+                    >
+                      <IconPhone size={18} stroke={1.75} aria-hidden />
+                      {t('app.leads.inbox.action_call', { defaultValue: 'Call' })}
+                    </a>
+                  ) : null}
+                  {selectedLead.normalized?.email && String(selectedLead.normalized.email).includes('@') ? (
+                    <a
+                      href={`mailto:${encodeURIComponent(selectedLead.normalized.email)}`}
+                      className="btn-secondary inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold sm:flex-none"
+                    >
+                      <IconMail size={18} stroke={1.75} aria-hidden />
+                      {t('app.leads.inbox.action_write', { defaultValue: 'Write' })}
+                    </a>
+                  ) : null}
+                  {String(selectedLead.source || '').toLowerCase() === 'meta' && !selectedLead.candidate_id ? (
+                    <button
+                      type="button"
+                      className="btn-primary inline-flex min-w-[10rem] flex-1 items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold sm:flex-none"
+                      disabled={processingLeadId === selectedLead.id}
+                      onClick={() => void handleProcessLead(selectedLead.id)}
+                    >
+                      {processingLeadId === selectedLead.id
+                        ? t('common.loading')
+                        : t('app.leads.actions.convert_to_candidate', { defaultValue: 'Convert to candidate' })}
+                    </button>
+                  ) : null}
+                  {selectedLead.candidate_id ? (
+                    <Link
+                      to={`${CRM_APP_PATHS.candidates}/${selectedLead.candidate_id}`}
+                      className="btn-secondary inline-flex flex-1 items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold sm:flex-none"
+                    >
+                      {t('app.leads.inbox.open_candidate', { defaultValue: 'Open candidate' })}
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto p-3">
+                <div className="space-y-3">
+                  {selectedIsMetaProblemLead ? (
+                    <div className="space-y-2">
+                      <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
+                      <LeadMetaProblemPanel lead={selectedLead} onRefreshed={onMetaProblemPanelRefreshed} />
+                    </div>
+                  ) : (
+                    <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
+                  )}
+
+                  <details className="rounded-lg border border-slate-200 bg-slate-50/80 p-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                      {t('app.leads.inbox.details.qualification', { defaultValue: 'Fit & suggestions' })}
+                    </summary>
+                    <div className="mt-2">
+                      <LeadQualificationSuggestionPanel
+                        lead={selectedLead}
+                        isServicesTenant={isServicesTenant}
+                        onProcess={() => void handleProcessLead(selectedLead.id)}
+                        processing={processingLeadId === selectedLead.id}
+                      />
+                    </div>
+                  </details>
+
+                  <details className="rounded-lg border border-slate-200 bg-slate-50/80 p-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                      {t('app.leads.inbox.details.crm_fields', { defaultValue: 'Stage & assignment' })}
+                    </summary>
+                    <div className="mt-2 space-y-2">
                       <label className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                        <span className="font-medium shrink-0">
-                          {t('app.leads.table.stage')}
-                        </span>
+                        <span className="font-medium shrink-0">{t('app.leads.table.stage')}</span>
                         <select
                           className="input h-8 min-w-[10rem] rounded-lg border-slate-300 bg-white px-2 text-xs"
                           value={
@@ -2001,132 +2119,63 @@ export default function LeadsPage() {
                         />
                         <span>{t('app.leads.inbox.lock_assignment')}</span>
                       </label>
+                      <LeadLostReasonReadonly
+                        lead={selectedLead}
+                        formatAt={formatDateValue}
+                        className="border-t border-slate-200 pt-2 text-xs text-slate-700"
+                      />
                     </div>
-                    <LeadLostReasonReadonly
-                      lead={selectedLead}
-                      formatAt={formatDateValue}
-                      className="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-700"
-                    />
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-start">
-                    <Link
-                      to={`${CRM_APP_PATHS.leads}/${selectedLead.id}`}
-                      className="btn-secondary inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs"
-                      title={t('app.leads.table.full_page')}
-                    >
-                      <IconExternalLink size={14} stroke={1.75} aria-hidden />
-                      <span className="hidden sm:inline">{t('app.leads.table.full_page')}</span>
-                    </Link>
-                    <button
-                      type="button"
-                      className="btn-secondary h-8 rounded-lg px-2 text-xs"
-                      onClick={() => setSelectedLeadId(null)}
-                    >
-                      {t('common.actions.close')}
-                    </button>
-                  </div>
-                </div>
+                  </details>
 
-                <div className="mt-2 flex gap-2">
-                  {selectedIsMetaProblemLead && (
-                    <button
-                      type="button"
-                      className={panelTab === 'fix' ? 'btn-primary h-8 rounded-lg px-2 text-xs' : 'btn-secondary h-8 rounded-lg px-2 text-xs'}
-                      onClick={() => setPanelTab('fix')}
-                    >
-                      {t('app.leads.inbox.tabs.fix')}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className={panelTab === 'composer' ? 'btn-primary h-8 rounded-lg px-2 text-xs' : 'btn-secondary h-8 rounded-lg px-2 text-xs'}
-                    onClick={() => setPanelTab('composer')}
-                  >
-                    {t('app.leads.inbox.tabs.composer')}
-                  </button>
-                  <button
-                    type="button"
-                    className={panelTab === 'focus' ? 'btn-primary h-8 rounded-lg px-2 text-xs' : 'btn-secondary h-8 rounded-lg px-2 text-xs'}
-                    onClick={() => setPanelTab('focus')}
-                  >
-                    {t('app.leads.inbox.tabs.focus')}
-                  </button>
-                  <button
-                    type="button"
-                    className={panelTab === 'history' ? 'btn-primary h-8 rounded-lg px-2 text-xs' : 'btn-secondary h-8 rounded-lg px-2 text-xs'}
-                    onClick={() => setPanelTab('history')}
-                  >
-                    {t('app.leads.inbox.tabs.history')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-auto p-3">
-                {panelTab === 'fix' && selectedLead && selectedIsMetaProblemLead && (
-                  <div className="space-y-3">
-                    <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
-                    <LeadMetaProblemPanel lead={selectedLead} onRefreshed={onMetaProblemPanelRefreshed} />
-                  </div>
-                )}
-                {panelTab === 'composer' && (
-                  <div className="space-y-3">
-                    <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                      <div className="text-xs font-semibold text-slate-700">
-                        {t('app.leads.inbox.composer.followup')}
+                  <details className="rounded-lg border border-slate-200 bg-slate-50/80 p-2" open>
+                    <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                      {t('app.leads.inbox.composer.followup')}
+                    </summary>
+                    <div className="mt-2 space-y-2">
+                      <input
+                        className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                        value={reminderTitle}
+                        onChange={(e) => setReminderTitle(e.target.value)}
+                        placeholder={t('app.reminders.fields.title')}
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="text-xs font-medium text-slate-600">
+                          <div className="mb-1">{t('app.reminders.fields.due_at')}</div>
+                          <input
+                            type="datetime-local"
+                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                            value={reminderDueAt}
+                            onChange={(e) => setReminderDueAt(e.target.value)}
+                          />
+                        </label>
+                        <label className="text-xs font-medium text-slate-600">
+                          <div className="mb-1">{t('app.reminders.fields.remind_before')}</div>
+                          <input
+                            type="number"
+                            min={0}
+                            className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
+                            value={reminderOffset}
+                            onChange={(e) => setReminderOffset(Number(e.target.value) || 0)}
+                          />
+                        </label>
                       </div>
-                      <div className="mt-2 space-y-2">
-                        <input
-                          className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
-                          value={reminderTitle}
-                          onChange={(e) => setReminderTitle(e.target.value)}
-                          placeholder={t('app.reminders.fields.title')}
-                        />
-                        <div className="grid grid-cols-2 gap-2">
-                          <label className="text-xs font-medium text-slate-600">
-                            <div className="mb-1">{t('app.reminders.fields.due_at')}</div>
-                            <input
-                              type="datetime-local"
-                              className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
-                              value={reminderDueAt}
-                              onChange={(e) => setReminderDueAt(e.target.value)}
-                            />
-                          </label>
-                          <label className="text-xs font-medium text-slate-600">
-                            <div className="mb-1">{t('app.reminders.fields.remind_before')}</div>
-                            <input
-                              type="number"
-                              min={0}
-                              className="input h-9 w-full rounded-lg border-slate-300 bg-white px-2.5 text-sm"
-                              value={reminderOffset}
-                              onChange={(e) => setReminderOffset(Number(e.target.value) || 0)}
-                            />
-                          </label>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn-primary h-9 w-full rounded-lg text-sm disabled:cursor-not-allowed disabled:opacity-60"
-                          disabled={!reminderTitle || !reminderDueAt}
-                          onClick={() => void handleCreateLeadReminder()}
-                        >
-                          {t('app.reminders.actions.create')}
-                        </button>
-                        {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
-                      </div>
+                      <button
+                        type="button"
+                        className="btn-primary h-9 w-full rounded-lg text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!reminderTitle || !reminderDueAt}
+                        onClick={() => void handleCreateLeadReminder()}
+                      >
+                        {t('app.reminders.actions.create')}
+                      </button>
+                      {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
                     </div>
-                    <div className="text-xs text-slate-500">
-                      {t('app.leads.inbox.composer.hint')}
-                    </div>
-                  </div>
-                )}
+                  </details>
 
-                {panelTab === 'focus' && (
-                  <div className="space-y-3">
-                    <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-semibold text-slate-700">
-                        {t('app.reminders.title')}
-                      </div>
+                  <details className="rounded-lg border border-slate-200 bg-slate-50/80 p-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                      {t('app.reminders.title')}
+                    </summary>
+                    <div className="mt-2 space-y-2">
                       <button
                         type="button"
                         className="btn-secondary h-8 rounded-lg px-2 text-xs"
@@ -2134,109 +2183,77 @@ export default function LeadsPage() {
                       >
                         {t('common.actions.refresh')}
                       </button>
-                    </div>
-                    {remindersLoading ? (
-                      <div className="py-4 text-center text-xs text-slate-500">{t('common.loading')}</div>
-                    ) : reminders.length === 0 ? (
-                      <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-500">
-                        {t('app.reminders.states.empty')}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {reminders.slice(0, 20).map((r) => (
-                          <div key={r.id} className="rounded-lg border border-slate-200 bg-white p-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-medium text-slate-900">{r.title || t('app.reminders.item.untitled')}</div>
-                                <div className="mt-0.5 text-xs text-slate-600">
-                                  <span className="font-medium">{t('app.reminders.fields.due_at')}:</span> {formatDateValue(r.due_at)}
+                      {remindersLoading ? (
+                        <div className="py-3 text-center text-xs text-slate-500">{t('common.loading')}</div>
+                      ) : reminders.length === 0 ? (
+                        <div className="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-500">
+                          {t('app.reminders.states.empty')}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {reminders.slice(0, 20).map((r) => (
+                            <div key={r.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-medium text-slate-900">
+                                    {r.title || t('app.reminders.item.untitled')}
+                                  </div>
+                                  <div className="mt-0.5 text-xs text-slate-600">
+                                    <span className="font-medium">{t('app.reminders.fields.due_at')}:</span>{' '}
+                                    {formatDateValue(r.due_at)}
+                                  </div>
                                 </div>
+                                <button
+                                  type="button"
+                                  className="btn-secondary h-8 rounded-lg px-2 text-xs"
+                                  onClick={() => void handleCompleteReminder(r.id)}
+                                >
+                                  {t('app.reminders.actions.complete')}
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                className="btn-secondary h-8 rounded-lg px-2 text-xs"
-                                onClick={() => void handleCompleteReminder(r.id)}
-                              >
-                                {t('app.reminders.actions.complete')}
-                              </button>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
-                  </div>
-                )}
-
-                {panelTab === 'history' && (
-                  <div className="space-y-3 text-xs">
-                    <LeadNextActionPlaybook lead={selectedLead} formatDueAt={formatDateValue} />
-                    <div className="rounded-lg border border-slate-200 bg-white p-3">
-                      <div className="grid grid-cols-1 gap-2">
-                        <div>
-                          <span className="text-slate-500">{t('app.leads.table.created')}:</span>{' '}
-                          <span className="font-medium text-slate-800">{formatDateValue(selectedLead.created_at)}</span>
+                          ))}
                         </div>
-                        <div>
-                          <span className="text-slate-500">{t('app.leads.table.source')}:</span>{' '}
-                          <span className="font-medium text-slate-800">{selectedLead.source}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">{companyColumnLabel}:</span>{' '}
-                          <span className="font-medium text-slate-800">{selectedLead.company_name || selectedLead.company_id}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">{vacancyColumnLabel}:</span>{' '}
-                          <span className="font-medium text-slate-800">{selectedLead.vacancy_title || selectedLead.vacancy_id || '—'}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">{t('app.leads.table.status')}:</span>{' '}
-                          <span className="font-medium text-slate-800">{statusLabels[selectedLead.status] ?? selectedLead.status}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">{t('app.leads.table.stage')}:</span>{' '}
-                          <span className="font-medium text-slate-800">{selectedLead.stage ? stageLabels[selectedLead.stage] ?? selectedLead.stage : '—'}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-500">{t('app.leads.table.contact')}:</span>{' '}
-                          <span className="font-medium text-slate-800">
-                            {[
-                              selectedLead.normalized?.full_name ||
-                                `${selectedLead.normalized?.first_name || ''} ${selectedLead.normalized?.last_name || ''}`.trim(),
-                              selectedLead.normalized?.email,
-                              selectedLead.normalized?.phone,
-                            ]
-                              .filter(Boolean)
-                              .join(' · ') || '—'}
-                          </span>
-                        </div>
-                      </div>
+                      )}
+                      {remindersError ? <div className="text-xs text-red-600">{remindersError}</div> : null}
                     </div>
-                    <div className="rounded-lg border border-slate-200 bg-white p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs font-semibold text-slate-700">
-                          {t('app.leads.inbox.history.timeline_title')}
+                  </details>
+
+                  <details className="rounded-lg border border-slate-200 bg-slate-50/80 p-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-slate-700">
+                      {t('app.leads.inbox.history.timeline_title')}
+                    </summary>
+                    <div className="mt-2 space-y-2 text-xs">
+                      <div className="rounded-lg border border-slate-200 bg-white p-3 text-slate-600">
+                        <div>
+                          {companyColumnLabel}: {selectedLead.company_name || selectedLead.company_id || '—'}
                         </div>
-                        <button
-                          type="button"
-                          className="btn-secondary h-7 rounded-lg px-2 text-[11px]"
-                          onClick={() => selectedLeadId && void loadLeadTimeline(selectedLeadId)}
-                        >
-                          {t('common.actions.refresh')}
-                        </button>
+                        <div>
+                          {vacancyColumnLabel}: {selectedLead.vacancy_title || selectedLead.vacancy_id || '—'}
+                        </div>
+                        <div>
+                          {t('app.leads.table.created')}: {formatDateValue(selectedLead.created_at)}
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        className="btn-secondary h-7 rounded-lg px-2 text-[11px]"
+                        onClick={() => selectedLeadId && void loadLeadTimeline(selectedLeadId)}
+                      >
+                        {t('common.actions.refresh')}
+                      </button>
                       {timelineLoading ? (
                         <div className="py-3 text-center text-[11px] text-slate-500">{t('common.loading')}</div>
                       ) : timelineError ? (
-                        <div className="mt-2 rounded border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700">
+                        <div className="rounded border border-rose-200 bg-rose-50 p-2 text-[11px] text-rose-700">
                           {timelineError}
                         </div>
                       ) : timelineItems.length === 0 ? (
-                        <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-500">
+                        <div className="rounded border border-slate-200 bg-slate-50 p-2 text-[11px] text-slate-500">
                           {t('app.leads.inbox.history.empty')}
                         </div>
                       ) : (
-                        <ul className="mt-2 space-y-1.5">
+                        <ul className="space-y-1.5">
                           {timelineItems.map((ev, idx) => (
                             <li key={`${ev.at}-${ev.kind}-${idx}`} className="flex items-start gap-2">
                               <div className="mt-[3px] h-1.5 w-1.5 rounded-full bg-slate-400" />
@@ -2248,7 +2265,7 @@ export default function LeadsPage() {
                                   <div className="shrink-0 text-[10px] text-slate-500">{formatDateValue(ev.at)}</div>
                                 </div>
                                 {ev.description ? (
-                                  <div className="mt-0.5 text-[11px] text-slate-600 truncate">{ev.description}</div>
+                                  <div className="mt-0.5 truncate text-[11px] text-slate-600">{ev.description}</div>
                                 ) : null}
                               </div>
                             </li>
@@ -2256,8 +2273,8 @@ export default function LeadsPage() {
                         </ul>
                       )}
                     </div>
-                  </div>
-                )}
+                  </details>
+                </div>
               </div>
             </div>
           )}

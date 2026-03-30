@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" fill="none" aria-hidden="true">
+  <rect width="800" height="500" rx="16" fill="#f1f5f9"/>
+  <rect x="32" y="32" width="736" height="436" rx="10" fill="#fff" stroke="#e2e8f0"/>
+  <rect x="56" y="56" width="200" height="10" rx="2" fill="#64748b"/>
+  <g transform="translate(56 100)">
+    <rect width="160" height="320" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="12" y="24" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" font-weight="600">New</text>
+    <rect x="8" y="36" width="144" height="52" rx="4" fill="#fff" stroke="#e2e8f0"/>
+    <rect x="8" y="96" width="144" height="52" rx="4" fill="#fff" stroke="#e2e8f0"/>
+    <rect x="184" y="0" width="160" height="320" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="196" y="24" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" font-weight="600">Screening</text>
+    <rect x="192" y="36" width="144" height="52" rx="4" fill="#dbeafe" stroke="#3b82f6"/>
+    <rect x="368" y="0" width="160" height="320" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="380" y="24" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" font-weight="600">Interview</text>
+    <rect x="376" y="36" width="144" height="52" rx="4" fill="#fff" stroke="#e2e8f0"/>
+    <rect x="552" y="0" width="160" height="320" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="564" y="24" fill="#64748b" font-family="system-ui,sans-serif" font-size="10" font-weight="600">Offer</text>
+    <rect x="560" y="36" width="144" height="52" rx="4" fill="#d1fae5" stroke="#10b981"/>
+  </g>
+</svg>

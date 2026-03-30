@@ -76,11 +76,14 @@ import {
   vacancyPipelineBlocksForward,
 } from '../utils/candidateStageDocPolicy'
 import { useHiringPipelineGates } from '../contexts/HiringPipelineGatesContext'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
 import { useToast } from '../components/Toast'
 import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { getFriendlyErrorInfo } from '../utils/friendlyError'
 import CandidateHeader from '../components/candidate/CandidateHeader'
 import CandidateRemindersSection from '../components/candidate/CandidateRemindersSection'
 import CandidateBasicSection from '../components/candidate/CandidateBasicSection'
@@ -670,6 +673,7 @@ export default function CandidateCard(){
   const canRequestDelete = can('candidates.requestDelete')
   const canDeleteDirect = can('admin.deletionQueue') || can('admin.users')
   const { notify } = useToast()
+  const planLimitModal = usePlanLimitModal()
 
   const meta = useMetaStages()
   const originPath = useMemo(() => {
@@ -809,7 +813,7 @@ export default function CandidateCard(){
   const [employmentError, setEmploymentError] = useState<string | null>(null)
   const [reminders, setReminders] = useState<ReminderRecord[]>([])
   const [remindersLoading, setRemindersLoading] = useState(false)
-  const [remindersError, setRemindersError] = useState<string | null>(null)
+  const [remindersError, setRemindersError] = useState<FriendlyErrorInfo | null>(null)
   const [reminderBusy, setReminderBusy] = useState<string | null>(null)
   const [reminderTitle, setReminderTitle] = useState('')
   const [reminderDueAt, setReminderDueAt] = useState(() => {
@@ -820,7 +824,7 @@ export default function CandidateCard(){
   const [timelineReminders, setTimelineReminders] = useState<ReminderRecord[]>([])
   const [timelineRemindersLoading, setTimelineRemindersLoading] = useState(false)
   const [timelineStageHistoryLoading, setTimelineStageHistoryLoading] = useState(false)
-  const [timelineError, setTimelineError] = useState<string | null>(null)
+  const [timelineError, setTimelineError] = useState<FriendlyErrorInfo | null>(null)
   const [docsBlockers, setDocsBlockers] = useState<{ missing: string[]; problematic: string[]; inProgress: string[] }>({
     missing: [],
     problematic: [],
@@ -1037,12 +1041,16 @@ export default function CandidateCard(){
         profilePendingRef.current.delete(profileId)
       }
     } catch (err) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+        setCandidateProfile(null)
+        return
+      }
       console.error('[CandidateCard] Failed to load vacancy or profile', err)
       setCandidateProfile(null)
     } finally {
       setProfileLoading(false)
     }
-  }, [notify, t])
+  }, [notify, planLimitModal, t, unknownErrorLabel])
   useEffect(() => {
     try {
       window.localStorage.setItem(HEADER_STORAGE_KEY, headerExpanded ? '1' : '0')
@@ -1299,14 +1307,15 @@ export default function CandidateCard(){
         })
         const items = Array.isArray(res?.items) ? res.items : []
         setReminders(items.slice(0, 5))
-      } catch (err: any) {
-        setRemindersError(t('app.reminders.errors.load'))
+      } catch (err: unknown) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.load'))) return
+        setRemindersError(getFriendlyErrorInfo(err, t('app.reminders.errors.load'), t))
       } finally {
         setRemindersLoading(false)
       }
     }
     void loadReminders()
-  }, [model?.id, t])
+  }, [model?.id, planLimitModal, t])
 
   useEffect(() => {
     if (!isNew) return
@@ -1360,8 +1369,13 @@ export default function CandidateCard(){
             throw err
           }
         }
-      } catch {
-        if (!cancelled) outcome = 'error'
+      } catch (loadErr: unknown) {
+        if (!cancelled) {
+          if (!planLimitModal?.showPlanLimitIfNeeded(loadErr, unknownErrorLabel)) {
+            console.error('[CandidateCard] candidate load failed', loadErr)
+          }
+          outcome = 'error'
+        }
       } finally {
         if (cancelled) return
         setLoading(false)
@@ -1384,7 +1398,7 @@ export default function CandidateCard(){
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isNew, loadProfileFromVacancy, nav])
+  }, [id, isNew, loadProfileFromVacancy, nav, planLimitModal, unknownErrorLabel])
 
   // Отслеживаем изменение вакансии и перезагружаем профиль
   useEffect(() => {
@@ -1415,13 +1429,14 @@ export default function CandidateCard(){
       const records = await listCandidateEmployments(candidateId)
       applyEmploymentRecords(records)
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.errors.employment.load_failed'))) return
       console.error('[CandidateCard] employment list error', err)
       const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.errors.employment.load_failed') })
       setEmploymentError(errorMessage)
     } finally {
       if (opts.withSpinner !== false) setEmploymentLoading(false)
     }
-  }, [applyEmploymentRecords, t])
+  }, [applyEmploymentRecords, planLimitModal, t])
 
   const syncEmploymentRows = useCallback(async (candidateId: string) => {
     if (!candidateId) return
@@ -1663,8 +1678,10 @@ export default function CandidateCard(){
             /* ignore */
           }
         } catch (err: any) {
-          const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
-          notify({ title: errorMessage, variant: 'error' })
+          if (!planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+            const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+            notify({ title: errorMessage, variant: 'error' })
+          }
         }
         return
       }
@@ -1690,8 +1707,10 @@ export default function CandidateCard(){
           /* ignore */
         }
       } catch (err: any) {
-        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
-        notify({ title: errorMessage, variant: 'error' })
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+          const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+          notify({ title: errorMessage, variant: 'error' })
+        }
       }
     }, AUTO_SAVE_DELAY_MS)
     return () => {
@@ -1706,6 +1725,7 @@ export default function CandidateCard(){
     id,
     meta?.reason_choices,
     notify,
+    planLimitModal,
     unknownErrorLabel,
     candidateEditPhase,
     candidateOverrideReason,
@@ -1756,12 +1776,13 @@ export default function CandidateCard(){
         }))
         setStageHistory(normalized)
       } catch (err: any) {
-        setTimelineError(err?.response?.data?.detail ?? err?.message ?? unknownErrorLabel)
+        if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) return
+        setTimelineError(getFriendlyErrorInfo(err, unknownErrorLabel, t))
       } finally {
         setTimelineStageHistoryLoading(false)
       }
     },
-    [unknownErrorLabel],
+    [planLimitModal, unknownErrorLabel, t],
   )
 
   const loadTimelineReminders = useCallback(
@@ -1777,13 +1798,17 @@ export default function CandidateCard(){
         const items = Array.isArray(res?.items) ? res.items : []
         setTimelineReminders(items)
       } catch (err: any) {
-        setTimelineError(err?.response?.data?.detail ?? err?.message ?? unknownErrorLabel)
+        if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+          setTimelineReminders([])
+          return
+        }
+        setTimelineError(getFriendlyErrorInfo(err, unknownErrorLabel, t))
         setTimelineReminders([])
       } finally {
         setTimelineRemindersLoading(false)
       }
     },
-    [unknownErrorLabel],
+    [planLimitModal, unknownErrorLabel, t],
   )
 
   const onStageChangePersist = useCallback(
@@ -1832,10 +1857,12 @@ export default function CandidateCard(){
               })
               return
             } catch (retryErr: any) {
-              const retryMessage = formatErrorForDisplay(retryErr, {
-                fallback: t('app.candidate_card.messages.rodo_send_or_retry_failed'),
-              })
-              notify({ title: retryMessage, variant: 'error' })
+              if (!planLimitModal?.showPlanLimitIfNeeded(retryErr, t('app.candidate_card.messages.rodo_send_or_retry_failed'))) {
+                const retryMessage = formatErrorForDisplay(retryErr, {
+                  fallback: t('app.candidate_card.messages.rodo_send_or_retry_failed'),
+                })
+                notify({ title: retryMessage, variant: 'error' })
+              }
               await revertStageOptimistic()
               return
             }
@@ -1920,12 +1947,14 @@ export default function CandidateCard(){
           await revertStageOptimistic()
           return
         }
-        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
-        notify({ title: errorMessage, variant: 'error' })
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+          const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+          notify({ title: errorMessage, variant: 'error' })
+        }
         await revertStageOptimistic()
       }
     },
-    [isNew, model?.id, model, fetchCandidate, notify, unknownErrorLabel, meta?.reason_choices, isRodoStageBlockedError, parseHandoffDocsIncomplete, t]
+    [isNew, model?.id, model, fetchCandidate, notify, planLimitModal, unknownErrorLabel, meta?.reason_choices, isRodoStageBlockedError, parseHandoffDocsIncomplete, t]
   )
 
   const isMetaLead = useMemo(() => {
@@ -1945,13 +1974,16 @@ export default function CandidateCard(){
       setSavedOk(true); setTimeout(()=>setSavedOk(false), 1500)
       notify({ title: t('app.candidate_card.messages.note_added'), variant: 'success' })
     } catch (err:any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+        throw err
+      }
       const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
       notify({ title: t('app.candidate_card.messages.note_add_failed', { values: { detail: errorMessage } }), variant: 'error' })
       throw err
     } finally {
       setNoteSending(false)
     }
-  }, [model?.id, newNote, fetchNotes, t, unknownErrorLabel, notify])
+  }, [model?.id, newNote, fetchNotes, planLimitModal, t, unknownErrorLabel, notify])
   useEffect(() => {
     if (isNew) { setNotes([]); return }
     if (!id || typeof id !== 'string') return
@@ -2077,7 +2109,9 @@ export default function CandidateCard(){
           try {
             await api.patch(`/candidates/${createdId}`, patchAfterCreate)
           } catch (patchErr: unknown) {
-            notifyPartialAfterCreate(patchErr)
+            if (!planLimitModal?.showPlanLimitIfNeeded(patchErr, t('app.candidate_card.messages.partial_save_after_create'))) {
+              notifyPartialAfterCreate(patchErr)
+            }
           }
         }
         setRodoSentTrigger((x) => x + 1)
@@ -2085,7 +2119,9 @@ export default function CandidateCard(){
           try {
             await syncEmploymentRows(String(createdId))
           } catch (empErr: unknown) {
-            notifyPartialAfterCreate(empErr)
+            if (!planLimitModal?.showPlanLimitIfNeeded(empErr, t('app.candidate_card.messages.partial_save_after_create'))) {
+              notifyPartialAfterCreate(empErr)
+            }
           }
         }
         const targetId = createdId || model.id
@@ -2147,6 +2183,10 @@ export default function CandidateCard(){
               }
             : payload)
         } catch (err: any) {
+          if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+            setSaving(false)
+            throw err
+          }
           const detail = err?.response?.data?.detail
           const code = typeof detail === 'object' && detail ? String((detail as any).code || '') : ''
           if (code === 'override_reason_required') {
@@ -2196,6 +2236,9 @@ export default function CandidateCard(){
         }
       }
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+        throw err
+      }
       const handoffDocs = parseHandoffDocsIncomplete(err)
       if (handoffDocs) {
         const missingLabels = handoffDocs.missingTypes.length > 0
@@ -2214,7 +2257,7 @@ export default function CandidateCard(){
     } finally {
       setSaving(false)
     }
-  }, [model, isNew, nav, fetchCandidate, syncEmploymentRows, t, unknownErrorLabel, notify, candidateProfile, extra, candidateEditPhase, candidateOverrideReason, getOverrideFieldLabel, parseHandoffDocsIncomplete])
+  }, [model, isNew, nav, fetchCandidate, syncEmploymentRows, planLimitModal, t, unknownErrorLabel, notify, candidateProfile, extra, candidateEditPhase, candidateOverrideReason, getOverrideFieldLabel, parseHandoffDocsIncomplete])
 
   const downloadBundle = useCallback(async () => {
     if (!model?.id) return
@@ -2229,12 +2272,14 @@ export default function CandidateCard(){
       URL.revokeObjectURL(url)
       notify({ title: t('app.candidate_card.messages.export_success'), variant: 'success' })
     } catch (err: any) {
-      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.export_failed') })
-      notify({ title: errorMessage, variant: 'error' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.export_failed'))) {
+        const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.export_failed') })
+        notify({ title: errorMessage, variant: 'error' })
+      }
     } finally {
       setDownloadingBundle(false)
     }
-  }, [model?.id, t, notify])
+  }, [model?.id, planLimitModal, t, notify])
 
   const generateUploadLink = useCallback(async (opts?: { copyToClipboard?: boolean; notifyOnReady?: boolean }) => {
     if (!model?.id) return
@@ -2258,12 +2303,14 @@ export default function CandidateCard(){
         notify({ title: t('app.candidate_card.actions.upload_link_ready'), description: absoluteUrl, variant: 'info' })
       }
     } catch (err: any) {
-      const detail = err?.response?.data?.detail || err?.message || t('app.candidate_card.messages.upload_link_failed')
-      notify({ title: t('app.candidate_card.messages.upload_link_failed'), description: detail, variant: 'error' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.upload_link_failed'))) {
+        const detail = err?.response?.data?.detail || err?.message || t('app.candidate_card.messages.upload_link_failed')
+        notify({ title: t('app.candidate_card.messages.upload_link_failed'), description: detail, variant: 'error' })
+      }
     } finally {
       setUploadLinkBusy(false)
     }
-  }, [model?.id, notify, t])
+  }, [model?.id, notify, planLimitModal, t])
 
   useEffect(() => {
     if (!model?.phone) return
@@ -2460,13 +2507,14 @@ export default function CandidateCard(){
       await createDeleteRequest(model.id, reason)
       setDeleteRequestMessage(t('app.candidate_card.messages.delete_request_sent'))
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.delete_request_failed'))) return
       console.error('[CandidateCard] delete request error', err)
       const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.delete_request_failed') })
       setDeleteRequestError(errorMessage)
     } finally {
       setDeleteRequestLoading(false)
     }
-  }, [model])
+  }, [model, planLimitModal, t])
 
   const handleCreateReminder = useCallback(async () => {
     if (!model?.id || !reminderTitle || !reminderDueAt) return
@@ -2495,12 +2543,16 @@ export default function CandidateCard(){
       setReminders(items.slice(0, 5))
       void loadTimelineReminders(String(model.id))
       notify({ title: t('app.reminders.messages.created'), variant: 'success' })
-    } catch (err) {
-      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.reminders.errors.create') })
-      setRemindersError(errorMessage)
-      notify({ title: errorMessage, variant: 'error' })
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.create'))) return
+      const info = getFriendlyErrorInfo(err, t('app.reminders.errors.create'), t)
+      setRemindersError(info)
+      notify({
+        title: [info.title, info.detail].filter(Boolean).join(' — ') || info.title,
+        variant: 'error',
+      })
     }
-  }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, t, notify, loadTimelineReminders])
+  }, [model?.id, reminderTitle, reminderDueAt, reminderOffset, planLimitModal, t, notify, loadTimelineReminders])
 
   const handleDocsNextActionCreate = useCallback(() => {
     // Distinguish action by blocker type:
@@ -2627,10 +2679,12 @@ export default function CandidateCard(){
         /* ignore */
       }
     } catch (err: any) {
-      const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
-      notify({ title: t('app.candidate_card.messages.favorite_toggle_failed', { values: { detail: errorMessage } }), variant: 'error' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, unknownErrorLabel)) {
+        const errorMessage = formatErrorForDisplay(err, { fallback: unknownErrorLabel })
+        notify({ title: t('app.candidate_card.messages.favorite_toggle_failed', { values: { detail: errorMessage } }), variant: 'error' })
+      }
     }
-  }, [model?.id, model?.is_favorite, t, unknownErrorLabel, notify])
+  }, [model?.id, model?.is_favorite, planLimitModal, t, unknownErrorLabel, notify])
 
   const handleAttemptCreated = useCallback(async () => {
     if (!model?.id) return
@@ -2693,14 +2747,16 @@ export default function CandidateCard(){
         variant: 'success',
       })
     } catch (e: any) {
-      notify({
-        title: e?.response?.data?.detail || e?.message || t('app.common.messages.unexpected'),
-        variant: 'error',
-      })
+      if (!planLimitModal?.showPlanLimitIfNeeded(e, t('app.candidate_card.handoff.transfer_btn'))) {
+        notify({
+          title: e?.response?.data?.detail || e?.message || t('app.common.messages.unexpected'),
+          variant: 'error',
+        })
+      }
     } finally {
       setHandoffSubmitting(false)
     }
-  }, [handoffClientLinkId, handoffClients, handleAttemptCreated, model?.id, notify, refreshHandoffMeta, t])
+  }, [handoffClientLinkId, handoffClients, handleAttemptCreated, model?.id, notify, planLimitModal, refreshHandoffMeta, t])
 
   const handleReminderComplete = useCallback(async (id: string) => {
     try {
@@ -2715,14 +2771,18 @@ export default function CandidateCard(){
       setReminders(items.slice(0, 5))
       if (model?.id) void loadTimelineReminders(String(model.id))
       notify({ title: t('app.reminders.messages.completed'), variant: 'success' })
-    } catch (err) {
-      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.reminders.errors.complete') })
-      setRemindersError(errorMessage)
-      notify({ title: errorMessage, variant: 'error' })
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.complete'))) return
+      const info = getFriendlyErrorInfo(err, t('app.reminders.errors.complete'), t)
+      setRemindersError(info)
+      notify({
+        title: [info.title, info.detail].filter(Boolean).join(' — ') || info.title,
+        variant: 'error',
+      })
     } finally {
       setReminderBusy((prev) => (prev === id ? null : prev))
     }
-  }, [model?.id, t, notify, loadTimelineReminders])
+  }, [model?.id, planLimitModal, t, notify, loadTimelineReminders])
 
   const handleReminderSnooze = useCallback(async (id: string, minutes: number) => {
     try {
@@ -2737,14 +2797,18 @@ export default function CandidateCard(){
       setReminders(items.slice(0, 5))
       if (model?.id) void loadTimelineReminders(String(model.id))
       notify({ title: t('app.reminders.messages.snoozed'), variant: 'success' })
-    } catch (err) {
-      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.reminders.errors.snooze') })
-      setRemindersError(errorMessage)
-      notify({ title: errorMessage, variant: 'error' })
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.reminders.errors.snooze'))) return
+      const info = getFriendlyErrorInfo(err, t('app.reminders.errors.snooze'), t)
+      setRemindersError(info)
+      notify({
+        title: [info.title, info.detail].filter(Boolean).join(' — ') || info.title,
+        variant: 'error',
+      })
     } finally {
       setReminderBusy((prev) => (prev === id ? null : prev))
     }
-  }, [model?.id, t, notify, loadTimelineReminders])
+  }, [model?.id, planLimitModal, t, notify, loadTimelineReminders])
 
   const handleDelete = useCallback(async () => {
     if (!model?.id) return
@@ -2754,10 +2818,12 @@ export default function CandidateCard(){
       notify({ title: t('app.candidate_card.messages.deleted'), variant: 'success' })
       nav(CRM_APP_PATHS.candidates, { state: { returnFromCandidateId: model?.id } })
     } catch (err: any) {
-      const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.delete_failed') })
-      notify({ title: errorMessage, variant: 'error' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.delete_failed'))) {
+        const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidate_card.messages.delete_failed') })
+        notify({ title: errorMessage, variant: 'error' })
+      }
     }
-  }, [model?.id, nav, t, notify])
+  }, [model?.id, nav, planLimitModal, t, notify])
 
   const handleGenerateShortId = useCallback(async () => {
     if (!model?.id) return
@@ -2768,9 +2834,11 @@ export default function CandidateCard(){
       setTimeout(() => setSavedOk(false), 2000)
       notify({ title: t('app.candidate_card.messages.short_id_generated'), variant: 'success' })
     } catch (err: any) {
-      notify({ title: t('app.candidate_card.messages.short_id_failed'), variant: 'error' })
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.candidate_card.messages.short_id_failed'))) {
+        notify({ title: t('app.candidate_card.messages.short_id_failed'), variant: 'error' })
+      }
     }
-  }, [model, t, notify])
+  }, [model, planLimitModal, t, notify])
 
   const isMasked = model?.masked === true
   // Use the same role source as the rest of the app (memberships[].role can override me.role).
@@ -2802,15 +2870,17 @@ export default function CandidateCard(){
         })
         bumpPipelineAndDocsRefresh()
       } catch (err: any) {
-        notify({
-          title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
-          variant: 'error',
-        })
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('common.errors.request_failed'))) {
+          notify({
+            title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+            variant: 'error',
+          })
+        }
       } finally {
         setPipelineOverrideBusy(false)
       }
     },
-    [model?.id, notify, t, bumpPipelineAndDocsRefresh],
+    [model?.id, notify, planLimitModal, t, bumpPipelineAndDocsRefresh],
   )
 
   const handleApprovePipelineOverride = useCallback(
@@ -2825,15 +2895,17 @@ export default function CandidateCard(){
         })
         bumpPipelineAndDocsRefresh()
       } catch (err: any) {
-        notify({
-          title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
-          variant: 'error',
-        })
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('common.errors.request_failed'))) {
+          notify({
+            title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+            variant: 'error',
+          })
+        }
       } finally {
         setPipelineOverrideBusy(false)
       }
     },
-    [model?.id, notify, t, bumpPipelineAndDocsRefresh],
+    [model?.id, notify, planLimitModal, t, bumpPipelineAndDocsRefresh],
   )
 
   const handleRejectPipelineOverride = useCallback(
@@ -2848,15 +2920,17 @@ export default function CandidateCard(){
         })
         bumpPipelineAndDocsRefresh()
       } catch (err: any) {
-        notify({
-          title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
-          variant: 'error',
-        })
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('common.errors.request_failed'))) {
+          notify({
+            title: formatErrorForDisplay(err, { fallback: t('common.errors.request_failed') }),
+            variant: 'error',
+          })
+        }
       } finally {
         setPipelineOverrideBusy(false)
       }
     },
-    [model?.id, notify, t, bumpPipelineAndDocsRefresh],
+    [model?.id, notify, planLimitModal, t, bumpPipelineAndDocsRefresh],
   )
 
   const candidateDataReadOnly = !isNew && candidateEditPhase !== 'editing'
@@ -2921,14 +2995,17 @@ export default function CandidateCard(){
       try {
         const items = await listCandidatePipelineOverrides(String(model.id))
         if (!cancelled) setPipelineOverrides(items)
-      } catch {
-        if (!cancelled) setPipelineOverrides([])
+      } catch (err: unknown) {
+        if (!cancelled) {
+          void planLimitModal?.showPlanLimitIfNeeded(err, t('common.errors.request_failed'))
+          setPipelineOverrides([])
+        }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [model?.id, model?.masked, docsSummaryRefreshTrigger])
+  }, [model?.id, model?.masked, docsSummaryRefreshTrigger, planLimitModal, t])
 
   const { stageJourneyStages, stageOutcomeStages, stageJourneyDisplayStage, stageJourneyOutcomeStage, stageJourneySignals } = useMemo(() => {
     const codes = profileFunnelStages.length > 0 ? profileFunnelStages.map((s) => s.code) : stageOptions
@@ -3798,7 +3875,7 @@ export default function CandidateCard(){
                 notes={notes}
                 reminders={timelineReminders}
                 loading={timelineStageHistoryLoading || timelineRemindersLoading}
-                errorText={timelineError}
+                timelineError={timelineError}
                 resolveStageLabel={stageLabelIntl}
                 includeStageChanges
                 variant="info"

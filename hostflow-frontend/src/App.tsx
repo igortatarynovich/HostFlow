@@ -74,7 +74,9 @@ export default function App(){
     () =>
       NAV_ITEMS.filter((item) => {
         if (item.superadminOnly && !isSuperAdmin) return false
-        return !item.permission || can(item.permission)
+        if (!item.permission) return true
+        const perms = Array.isArray(item.permission) ? item.permission : [item.permission]
+        return perms.some((p) => can(p))
       }),
     [can, isSuperAdmin]
   )

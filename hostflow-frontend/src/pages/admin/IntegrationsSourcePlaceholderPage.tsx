@@ -22,31 +22,31 @@ export default function IntegrationsSourcePlaceholderPage() {
   if (!source) return <Navigate to={CRM_APP_PATHS.settingsIntegrations} replace />
 
   const titleKey =
-    source === 'google' ? 'app.admin.integrations_hub.google_title' : 'app.admin.integrations_hub.webhook_title'
+    source === 'google' ? 'admin.integrations_hub.google_title' : 'admin.integrations_hub.webhook_title'
   const descKey =
-    source === 'google' ? 'app.admin.integrations_hub.google_desc' : 'app.admin.integrations_hub.webhook_desc'
+    source === 'google' ? 'admin.integrations_hub.google_desc' : 'admin.integrations_hub.webhook_desc'
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-      <div>
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-6 sm:py-8">
+      <header className="space-y-3">
         <Link to={CRM_APP_PATHS.settingsIntegrations} className="text-sm font-medium text-brand-600 hover:underline">
-          {t('app.admin.integrations_hub.back_to_hub')}
+          {t('admin.integrations_hub.back_to_hub')}
         </Link>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold text-slate-900">{t(titleKey)}</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{t(titleKey)}</h1>
           <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
-            {t('app.admin.integrations_placeholder.badge')}
+            {t('admin.integrations_placeholder.badge')}
           </span>
         </div>
-        <p className="mt-2 text-sm text-slate-600">{t(descKey)}</p>
-      </div>
+        <p className="max-w-2xl text-sm leading-relaxed text-slate-600">{t(descKey)}</p>
+      </header>
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
-        <p>{t('app.admin.integrations_placeholder.body')}</p>
-        <p className="mt-3 text-slate-600">{t('app.admin.integrations_placeholder.roadmap')}</p>
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm leading-relaxed text-slate-700 shadow-sm">
+        <p>{t('admin.integrations_placeholder.body')}</p>
+        <p className="mt-3 text-slate-600">{t('admin.integrations_placeholder.roadmap')}</p>
         <p className="mt-4">
           <Link to={CRM_APP_PATHS.settingsIntegrationsMeta} className="font-medium text-brand-600 hover:underline">
-            {t('app.admin.integrations_placeholder.meta_cta')}
+            {t('admin.integrations_placeholder.meta_cta')}
           </Link>
         </p>
       </div>

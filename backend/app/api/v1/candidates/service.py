@@ -40,6 +40,7 @@ from backend.app.api.v1.candidates.helpers import (
     _ensure_short_id,
 )
 from backend.app.services.pipeline_sync import sync_candidate_links
+from backend.app.services.tenant_quota import ensure_active_candidate_quota
 from backend.app.services.recruiter_assignment import (
     AssignmentDecision,
     assign_recruiter as assign_recruiter_service,
@@ -164,14 +165,28 @@ async def _enforce_docs_ready_for_handoff_stage(
         extra=extra,
         personal=personal,
     )
+    oc_row = await db.execute(
+        select(Candidate.own_company_id).where(
+            Candidate.id == candidate_id,
+            Candidate.tenant_id == tenant_id,
+        ).limit(1)
+    )
+    oc = oc_row.scalar_one_or_none()
+    own_company_id = str(oc).strip() if oc else None
     ruleset_version = await documents_crud.ensure_ruleset_seed(
         db,
         tenant_id,
         load_default_ruleset(),
+        own_company_id=own_company_id,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     checklist = compute_candidate_checklist(owner_context, ruleset_payload)
-    existing_docs = await documents_crud.list_candidate_documents(db, tenant_id, candidate_id)
+    existing_docs = await documents_crud.list_candidate_documents(
+        db,
+        tenant_id,
+        candidate_id,
+        active_own_company_id=own_company_id,
+    )
     active_docs = [doc for doc in existing_docs if getattr(doc, "deleted_at", None) is None]
     missing = missing_base_requirements(checklist, active_docs)
     from backend.app.api.v1.candidates.pipeline_overrides_service import (
@@ -322,6 +337,7 @@ async def create_candidate_full(
     acl: CandidateACL | None = None,
 ) -> Candidate:
     payload = dict(payload or {})
+    await ensure_active_candidate_quota(db, tenant_id)
 
     source_update_present = "source" in payload
     origin_update_present = "origin" in payload

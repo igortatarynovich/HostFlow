@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" fill="none" aria-hidden="true">
+  <rect width="800" height="500" rx="16" fill="#f8fafc"/>
+  <rect x="120" y="48" width="560" height="404" rx="12" fill="#fff" stroke="#e2e8f0"/>
+  <text x="160" y="92" fill="#0f172a" font-family="system-ui,sans-serif" font-size="14" font-weight="600">New lead / candidate</text>
+  <rect x="160" y="116" width="480" height="40" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <rect x="160" y="128" width="180" height="16" rx="2" fill="#94a3b8"/>
+  <rect x="160" y="176" width="480" height="40" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <rect x="160" y="232" width="480" height="88" rx="6" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <rect x="160" y="336" width="200" height="44" rx="8" fill="#0ea5e9" opacity="0.9"/>
+  <rect x="380" y="336" width="120" height="44" rx="8" fill="#e2e8f0"/>
+</svg>

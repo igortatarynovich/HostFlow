@@ -10,7 +10,9 @@ import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { serviceOrderWorkspacePath } from '../../modules/services/utils'
 import { isCommunicationThreadUnlinked, uosLinkedServiceOrderId } from '../../utils/communicationThreadUnlinked'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
 type CompanyRow = { id: string; legal_name?: string | null; name?: string | null }
 
@@ -52,13 +54,14 @@ type Props = {
 
 export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPatch, compact, dense }: Props) {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const unlinked = isCommunicationThreadUnlinked(thread)
   const cid = String(thread.linked_candidate_id || '').trim()
   const compId = String(thread.linked_company_id || '').trim()
   const linkedOrderId = uosLinkedServiceOrderId(thread.thread_meta)
 
   const [linkBusy, setLinkBusy] = useState(false)
-  const [linkError, setLinkError] = useState<string | null>(null)
+  const [linkError, setLinkError] = useState<FriendlyErrorInfo | null>(null)
   const [linkOk, setLinkOk] = useState<string | null>(null)
 
   const [candidateQuery, setCandidateQuery] = useState('')
@@ -128,11 +131,19 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
       const firstId = list[0]?.id ? String(list[0].id) : ''
       setCandidatePickId((prev) => (prev && list.some((x) => String(x.id) === prev) ? prev : firstId))
     } catch (err: unknown) {
-      const fe = getFriendlyErrorInfo(
-        err,
-        t('app.communications_inbox_center.link_search_candidate_failed', { defaultValue: 'Candidate search failed.' }),
-      )
-      setLinkError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.link_search_candidate_failed', { defaultValue: 'Candidate search failed.' }),
+        )
+      ) {
+        const fe = getFriendlyErrorInfo(
+          err,
+          t('app.communications_inbox_center.link_search_candidate_failed', { defaultValue: 'Candidate search failed.' }),
+          t,
+        )
+        setLinkError(fe)
+      }
     } finally {
       setCandidateSearching(false)
     }
@@ -164,11 +175,19 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
       )
       await onAfterPatch()
     } catch (err: unknown) {
-      const fe = getFriendlyErrorInfo(
-        err,
-        t('app.communications_inbox_center.link_error_candidate', { defaultValue: 'Could not update candidate link.' }),
-      )
-      setLinkError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.link_error_candidate', { defaultValue: 'Could not update candidate link.' }),
+        )
+      ) {
+        const fe = getFriendlyErrorInfo(
+          err,
+          t('app.communications_inbox_center.link_error_candidate', { defaultValue: 'Could not update candidate link.' }),
+          t,
+        )
+        setLinkError(fe)
+      }
     } finally {
       setLinkBusy(false)
     }
@@ -190,11 +209,19 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
       const firstId = list[0]?.id ? String(list[0].id) : ''
       setCompanyPickId((prev) => (prev && list.some((x) => String(x.id) === prev) ? prev : firstId))
     } catch (err: unknown) {
-      const fe = getFriendlyErrorInfo(
-        err,
-        t('app.communications_inbox_center.link_search_company_failed', { defaultValue: 'Client search failed.' }),
-      )
-      setLinkError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.link_search_company_failed', { defaultValue: 'Client search failed.' }),
+        )
+      ) {
+        const fe = getFriendlyErrorInfo(
+          err,
+          t('app.communications_inbox_center.link_search_company_failed', { defaultValue: 'Client search failed.' }),
+          t,
+        )
+        setLinkError(fe)
+      }
     } finally {
       setCompanySearching(false)
     }
@@ -225,11 +252,19 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
       )
       await onAfterPatch()
     } catch (err: unknown) {
-      const fe = getFriendlyErrorInfo(
-        err,
-        t('app.communications_inbox_center.link_error_company', { defaultValue: 'Could not update client link.' }),
-      )
-      setLinkError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.link_error_company', { defaultValue: 'Could not update client link.' }),
+        )
+      ) {
+        const fe = getFriendlyErrorInfo(
+          err,
+          t('app.communications_inbox_center.link_error_company', { defaultValue: 'Could not update client link.' }),
+          t,
+        )
+        setLinkError(fe)
+      }
     } finally {
       setLinkBusy(false)
     }
@@ -265,11 +300,19 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
       )
       await onAfterPatch()
     } catch (err: unknown) {
-      const fe = getFriendlyErrorInfo(
-        err,
-        t('app.communications_inbox_center.link_error_order', { defaultValue: 'Could not update service order link.' }),
-      )
-      setLinkError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.link_error_order', { defaultValue: 'Could not update service order link.' }),
+        )
+      ) {
+        const fe = getFriendlyErrorInfo(
+          err,
+          t('app.communications_inbox_center.link_error_order', { defaultValue: 'Could not update service order link.' }),
+          t,
+        )
+        setLinkError(fe)
+      }
     } finally {
       setLinkBusy(false)
     }
@@ -296,11 +339,19 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
       setLinkOk(t('app.communications_inbox_center.link_ok_order', { defaultValue: 'Заказ привязан.' }))
       await onAfterPatch()
     } catch (err: unknown) {
-      const fe = getFriendlyErrorInfo(
-        err,
-        t('app.communications_inbox_center.link_order_not_found', { defaultValue: 'Order not found or access denied.' }),
-      )
-      setLinkError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications_inbox_center.link_order_not_found', { defaultValue: 'Order not found or access denied.' }),
+        )
+      ) {
+        const fe = getFriendlyErrorInfo(
+          err,
+          t('app.communications_inbox_center.link_order_not_found', { defaultValue: 'Order not found or access denied.' }),
+          t,
+        )
+        setLinkError(fe)
+      }
     } finally {
       setLinkBusy(false)
     }
@@ -330,7 +381,12 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
           {t('app.communications_inbox_center.unlinked_hint_short', { defaultValue: 'Not linked — use search below.' })}
         </div>
       )}
-      {linkError && <p className={clsx('text-rose-600', dense ? 'mt-1 text-[11px]' : 'mt-2 text-xs')}>{linkError}</p>}
+      {linkError ? (
+        <p className={clsx('text-rose-600', dense ? 'mt-1 text-[11px]' : 'mt-2 text-xs')}>
+          {linkError.title}
+          {linkError.detail ? ` — ${linkError.detail}` : ''}
+        </p>
+      ) : null}
       {linkOk && !linkError && (
         <p className={clsx('text-emerald-700', dense ? 'mt-1 text-[11px]' : 'mt-2 text-xs')}>{linkOk}</p>
       )}

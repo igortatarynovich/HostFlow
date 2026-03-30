@@ -5,6 +5,8 @@ import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 
 type FilterStatus = 'all' | 'pending' | 'approved' | 'rejected'
 
@@ -82,6 +84,13 @@ export default function DeletionRequestsPage() {
     )
   }
 
+  const deletionQueueErrorBanner: FriendlyErrorInfo | null = error
+    ? {
+        title: error,
+        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+      }
+    : null
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -106,16 +115,16 @@ export default function DeletionRequestsPage() {
         </div>
       </header>
 
-      {error && (
+      {deletionQueueErrorBanner && (
         <ErrorRecoveryBanner
-          info={{
-            title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-          }}
+          info={deletionQueueErrorBanner}
           onRetry={() => void loadRequests()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
-          secondaryTo={CRM_APP_PATHS.settingsAudit}
-          secondaryLabel={t('admin.settings.audit.tabs.deletion', { defaultValue: 'Очередь удаления' })}
+          {...friendlyErrorBannerSecondary(
+            deletionQueueErrorBanner,
+            CRM_APP_PATHS.settingsAudit,
+            t('admin.settings.audit.tabs.deletion', { defaultValue: 'Очередь удаления' }),
+          )}
           compact
         />
       )}

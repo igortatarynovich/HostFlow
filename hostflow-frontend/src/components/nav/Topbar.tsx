@@ -1,45 +1,40 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
+  IconAlertTriangle,
   IconBell,
+  IconChecklist,
   IconLayoutSidebarLeftExpand,
   IconLogout,
   IconMail,
   IconMenu2,
   IconMessageCircle,
   IconPlus,
+  IconSettings,
   IconUserCircle,
   IconX,
 } from '@tabler/icons-react'
 import type { TenantSummary, WhoAmI } from '../../api/types'
-import {
-  listNotifications,
-  markNotificationsRead,
-  reconcileNotifications,
-  listOwnCompanies,
-  setActiveOwnCompany,
-  ownCompanySettings,
-} from '../../api/client'
+import { listNotifications, markNotificationsRead, reconcileNotifications } from '../../api/client'
 import type { NotificationItem, NotificationListResponse } from '../../api/types'
+import { getNotificationAttentionTier, getNotificationUosGroup } from '../../utils/notificationUos'
 import {
-  getNotificationAttentionTier,
-  getNotificationUosGroup,
-  type NotificationAttentionTier,
-  type NotificationUosGroup,
-} from '../../utils/notificationUos'
-import { listCommunicationThreads, reconcileCommunicationThreadUnread } from '../../api/communications'
+  listCommunicationThreads,
+  markCommunicationThreadRead,
+  reconcileCommunicationThreadUnread,
+  type CommunicationThread,
+} from '../../api/communications'
 import { useToast } from '../Toast'
 import { useCommunicationsAccess } from '../../hooks/useCommunicationsAccess'
 import { usePermissions } from '../../hooks/usePermissions'
 import { searchGlobal, type GlobalSearchResult } from '../../api/search'
-import { useI18n, type LocaleCode } from '../../i18n'
+import { useI18n } from '../../i18n'
 import { useAuth } from '../../store/useAuth'
-import { TopbarNbaMenu } from '../nba/TopbarNbaMenu'
 import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
-import { communicationsThreadPath } from '../../app/crmAppPaths'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { communicationsThreadPath, CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { buildInboxThreadPath } from '../../utils/inboxDeepLinks'
+import { isEmailThread, threadRecencyMs, threadTitle } from '../communications/InboxUnifiedThreadList'
 import { formatDistanceToNow } from 'date-fns'
 import { enUS, ru, pl } from 'date-fns/locale'
 
@@ -53,7 +48,6 @@ type TopbarProps = {
   compact?: boolean
 }
 
-const SUPPORTED_LOCALES: LocaleCode[] = ['ru', 'en', 'pl']
 const SEARCH_SHORTCUT_HINT = '\u2318K'
 
 const RESULT_LABEL_KEYS: Record<GlobalSearchResult['type'], string> = {
@@ -84,47 +78,6 @@ function humanizeEventType(eventType: string): string {
     .replace(/^\w/, (c) => c.toUpperCase())
 }
 
-function NotificationAttentionTierChip({
-  tier,
-  isRead,
-  label,
-}: {
-  tier: NotificationAttentionTier
-  isRead: boolean
-  label: string
-}) {
-  const base =
-    'shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide'
-  if (tier === 'critical') {
-    return (
-      <span
-        className={`${base} ${isRead ? 'bg-rose-100 text-rose-700' : 'bg-rose-600 text-white'}`}
-        title={label}
-      >
-        {label}
-      </span>
-    )
-  }
-  if (tier === 'high') {
-    return (
-      <span
-        className={`${base} ${isRead ? 'bg-amber-100 text-amber-900' : 'bg-amber-500 text-white'}`}
-        title={label}
-      >
-        {label}
-      </span>
-    )
-  }
-  return (
-    <span
-      className={`${base} ${isRead ? 'bg-slate-100 text-slate-500' : 'bg-slate-200 text-slate-800'}`}
-      title={label}
-    >
-      {label}
-    </span>
-  )
-}
-
 function isBellAttentionNotification(item: NotificationItem): boolean {
   if (item.is_read) return false
   const t = getNotificationAttentionTier(item)
@@ -151,6 +104,78 @@ function notificationThreadChannel(item: NotificationItem): 'messages' | 'email'
   return undefined
 }
 
+/** Target route for a notification row; `null` means hide "Open" (nothing real to open). */
+function resolveNotificationOpenPath(
+  item: NotificationItem,
+  opts: { canInboxDeepLink: boolean },
+): string | null {
+  const { canInboxDeepLink } = opts
+  const eventType = String(item.event_type || '').toLowerCase()
+  const uos = getNotificationUosGroup(item)
+  const payload = (item.payload || {}) as Record<string, any>
+  const threadId = notificationThreadId(item)
+  const threadCh = notificationThreadChannel(item)
+
+  if (eventType === 'handoff_requested' || eventType === 'handoff_accepted') {
+    return CRM_APP_PATHS.procesowani
+  }
+
+  if (
+    uos === 'sla' ||
+    eventType === 'communications_sla_overdue' ||
+    eventType === 'communications_thread_escalated'
+  ) {
+    if (threadId) {
+      if (canInboxDeepLink) {
+        return buildInboxThreadPath(threadId, threadCh ? { channel: threadCh } : undefined)
+      }
+      return communicationsThreadPath(threadId)
+    }
+    return CRM_APP_PATHS.slaIncidents
+  }
+
+  if (uos === 'messages') {
+    if (threadId) {
+      if (canInboxDeepLink) {
+        return buildInboxThreadPath(threadId, threadCh ? { channel: threadCh } : undefined)
+      }
+      return communicationsThreadPath(threadId)
+    }
+    if (canInboxDeepLink) return CRM_APP_PATHS.inboxMessagesScoped
+    return CRM_APP_PATHS.inbox
+  }
+
+  if (uos === 'tasks') {
+    const reminderId = payload?.reminder_id ?? payload?.task_id
+    if (reminderId) return `${CRM_APP_PATHS.tasks}?focus=${encodeURIComponent(String(reminderId))}`
+    return CRM_APP_PATHS.tasks
+  }
+
+  const link = payload?.href ?? payload?.url ?? payload?.deep_link
+  if (typeof link === 'string' && link.startsWith('/')) return link
+  return null
+}
+
+function resolveThreadOpenPath(th: CommunicationThread, canInboxDeepLink: boolean): string | null {
+  const id = String(th.id || '').trim()
+  if (!id) return null
+  if (!canInboxDeepLink) return communicationsThreadPath(id)
+  const ch = isEmailThread(th) ? 'email' : 'messages'
+  return buildInboxThreadPath(id, { channel: ch })
+}
+
+function filterUnreadThreadsForUser(
+  threads: CommunicationThread[],
+  canUseCommunicationsFeature: (feature: 'email' | 'messages') => boolean,
+): CommunicationThread[] {
+  return threads.filter((th) => {
+    if (th.is_archived || String(th.status || '').toLowerCase() === 'deleted') return false
+    if (Number(th.unread_count || 0) <= 0) return false
+    if (isEmailThread(th)) return canUseCommunicationsFeature('email')
+    return canUseCommunicationsFeature('messages')
+  })
+}
+
 function computeBellAttentionCount(items: NotificationItem[], pendingHandoffsCount: number): number {
   const unreadHandoffNotifs = items.filter(
     (i) => !i.is_read && String(i.event_type || '').toLowerCase() === 'handoff_requested',
@@ -173,19 +198,18 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const navigate = useNavigate()
   const { can, isClientTenant } = usePermissions()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
-  const { locale, setLocale, t } = useI18n()
+  const { locale, t } = useI18n()
   const { canReturnToPlatform, restorePlatformSession } = useAuth()
   const { notify } = useToast()
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifItems, setNotifItems] = useState<NotificationItem[]>([])
-  const [notifFeedMode, setNotifFeedMode] = useState<'all' | NotificationUosGroup>('all')
+  const [panelThreads, setPanelThreads] = useState<CommunicationThread[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
   const [notifError, setNotifError] = useState<string | null>(null)
   const notifRef = useRef<HTMLDivElement | null>(null)
   const localeMap = { ru, en: enUS, pl }
 
   const [menuOpen, setMenuOpen] = useState(false)
-  const [langOpen, setLangOpen] = useState(false)
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -193,12 +217,10 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([])
   const [searchError, setSearchError] = useState<string | null>(null)
   const [bellAttentionCount, setBellAttentionCount] = useState(0)
-  const [messagesUnreadCount, setMessagesUnreadCount] = useState(0)
-  const [emailUnreadCount, setEmailUnreadCount] = useState(0)
+  const [bellBadgeCount, setBellBadgeCount] = useState(0)
   const shownNotificationIdsRef = useRef<Set<string>>(new Set())
   const lastUnreadNotificationsRef = useRef<NotificationItem[]>([])
   const menuRef = useRef<HTMLDivElement | null>(null)
-  const langRef = useRef<HTMLDivElement | null>(null)
   const quickCreateRef = useRef<HTMLDivElement | null>(null)
   const pendingHandoffsCount = usePendingHandoffsCount()
   const pendingHandoffsRef = useRef(pendingHandoffsCount)
@@ -212,34 +234,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     [canUseCommunicationsFeature],
   )
   const [commPollKey, setCommPollKey] = useState(0)
-  const [ownCompanies, setOwnCompanies] = useState<Array<{ id: string; name: string }>>([])
-  const [activeOwnCompanyId, setActiveOwnCompanyId] = useState<string | null>(() => ownCompanySettings.get())
-
-  useEffect(() => {
-    let cancelled = false
-    if (!me?.tenant_id) return
-    ;(async () => {
-      try {
-        const res = await listOwnCompanies()
-        const items = Array.isArray((res as any)?.items) ? (res as any).items : []
-        if (cancelled) return
-        setOwnCompanies(items.map((x: any) => ({ id: String(x.id), name: String(x.name || x.id) })))
-        const active = String((res as any)?.active_own_company_id || '').trim() || ownCompanySettings.get()
-        if (active) {
-          setActiveOwnCompanyId(active)
-          ownCompanySettings.set(active)
-        } else if (items.length > 0) {
-          setActiveOwnCompanyId(String(items[0].id))
-          ownCompanySettings.set(String(items[0].id))
-        }
-      } catch {
-        if (!cancelled) setOwnCompanies([])
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [me?.tenant_id])
 
   const notificationRank = (item: NotificationItem): number => {
     if (item.is_read) return 0
@@ -281,12 +275,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
   const isTrialTenant = String(tenant?.status || '').trim().toLowerCase() === 'trial'
   const { entityPlural: clientsNavLabel } = useBusinessTerminology()
-
-  const openLang = () => setLangOpen((v) => !v)
-  const pickLang = (next: LocaleCode) => {
-    setLocale(next)
-    setLangOpen(false)
-  }
 
   const getNotificationTitle = (item: NotificationItem): string => {
     const maybeTranslateKey = (value: string): string => {
@@ -332,19 +320,26 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     return raw
   }
 
-  const unreadByGroup = useMemo(() => {
-    const acc: Record<NotificationUosGroup, number> = { sla: 0, tasks: 0, messages: 0, system: 0 }
-    for (const i of notifItems) {
-      if (i.is_read) continue
-      acc[getNotificationUosGroup(i)] += 1
+  const unifiedPanelRows = useMemo(() => {
+    type Row =
+      | { kind: 'thread'; thread: CommunicationThread; sortAt: number }
+      | { kind: 'notif'; item: NotificationItem; sortAt: number }
+    const threadIds = new Set(panelThreads.map((t) => t.id))
+    const rows: Row[] = panelThreads.map((thread) => ({
+      kind: 'thread' as const,
+      thread,
+      sortAt: threadRecencyMs(thread),
+    }))
+    for (const item of notifItems) {
+      if (item.is_read) continue
+      const tid = notificationThreadId(item)
+      if (tid && threadIds.has(tid)) continue
+      const ms = Date.parse(item.created_at || '') || 0
+      rows.push({ kind: 'notif', item, sortAt: ms })
     }
-    return acc
-  }, [notifItems])
-
-  const visibleNotifItems = useMemo(() => {
-    if (notifFeedMode === 'all') return notifItems
-    return notifItems.filter((i) => getNotificationUosGroup(i) === notifFeedMode)
-  }, [notifFeedMode, notifItems])
+    rows.sort((a, b) => b.sortAt - a.sortAt)
+    return rows
+  }, [panelThreads, notifItems])
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -394,22 +389,20 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
           const items = Array.isArray(data?.items) ? data.items : []
           lastUnreadNotificationsRef.current = items
           setBellAttentionCount(computeBellAttentionCount(items, pendingHandoffsRef.current))
-          const threadItems = Array.isArray((commData as any)?.items)
-            ? (commData as any).items.filter(
-                (th: any) => !th?.is_archived && String(th?.status || '').toLowerCase() !== 'deleted',
+          const threadItemsRaw = Array.isArray((commData as any)?.items)
+            ? ((commData as any).items as CommunicationThread[]).filter(
+                (th) => !th?.is_archived && String(th?.status || '').toLowerCase() !== 'deleted',
               )
             : []
-          /** Badge = conversations with any unread, not sum of per-thread counters (avoids inflated 99+). */
-          const emailUnread = threadItems.filter(
-            (th: any) =>
-              String(th?.channel || '').toLowerCase() === 'email' && Number(th?.unread_count || 0) > 0,
-          ).length
-          const msgUnread = threadItems.filter(
-            (th: any) =>
-              String(th?.channel || '').toLowerCase() !== 'email' && Number(th?.unread_count || 0) > 0,
-          ).length
-          setEmailUnreadCount(emailUnread)
-          setMessagesUnreadCount(msgUnread)
+          const allowedUnreadThreads = filterUnreadThreadsForUser(threadItemsRaw, canUseCommunicationsFeature)
+          const unreadThreadIds = new Set(allowedUnreadThreads.map((th) => String(th.id)))
+          const dedupedUnreadNotifs = items.filter((i) => {
+            if (i.is_read) return false
+            const tid = notificationThreadId(i)
+            if (tid && unreadThreadIds.has(tid)) return false
+            return true
+          })
+          setBellBadgeCount(allowedUnreadThreads.length + dedupedUnreadNotifs.length)
           const toastCandidates = items.filter((item) => {
             if (item.is_read) return false
             if (!item.id) return false
@@ -422,7 +415,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
             const desc = getNotificationDescription(evt) || String(evt.payload?.entity_type || evt.event_type || '')
             notify({ title, description: desc, variant: evt.event_type === 'reminder_overdue' ? 'error' : 'info' })
           })
-          setNotifItems(prioritizeNotifications(items).slice(0, 20))
         }
       } catch (err) {
         if (!cancelled) console.warn('[Topbar] reminders count failed', err)
@@ -439,7 +431,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [can, commPollKey, notify, t])
+  }, [can, canUseCommunicationsFeature, commPollKey, notify, t])
 
   useEffect(() => {
     setBellAttentionCount(
@@ -460,17 +452,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
-      if (!langOpen) return
-      if (langRef.current && !langRef.current.contains(event.target as Node)) {
-        setLangOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [langOpen])
-
-  useEffect(() => {
-    const handler = (event: MouseEvent) => {
       if (!quickCreateOpen) return
       if (quickCreateRef.current && !quickCreateRef.current.contains(event.target as Node)) {
         setQuickCreateOpen(false)
@@ -479,16 +460,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [quickCreateOpen])
-
-  useEffect(() => {
-    const onMessagesUnreadSync = (event: Event) => {
-      const custom = event as CustomEvent<{ unread?: number }>
-      const unread = Math.max(0, Number(custom?.detail?.unread || 0))
-      setMessagesUnreadCount(unread)
-    }
-    window.addEventListener('hf:messages-unread-sync', onMessagesUnreadSync as EventListener)
-    return () => window.removeEventListener('hf:messages-unread-sync', onMessagesUnreadSync as EventListener)
-  }, [])
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -577,51 +548,38 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     return items
   }, [can, canUseCommunicationsFeature])
 
-  const loadNotifications = useMemo(() => {
-    return async () => {
-      if (!can('notifications.view')) return
-      setNotifLoading(true)
-      setNotifError(null)
-      try {
-        try {
-          await reconcileNotifications()
-        } catch {
-          // ignore reconcile errors; regular loading still works
-        }
-        const data = (await listNotifications({ includeRead: true, limit: 20, scope: 'direct' })) as NotificationListResponse
-        const items = Array.isArray(data?.items) ? data.items : []
-        setNotifItems(prioritizeNotifications(items))
-      } catch (err) {
-        setNotifError(t('app.reminders.errors.load'))
-      } finally {
-        setNotifLoading(false)
-      }
-    }
-  }, [can, t])
-
-  const reconcileAndReloadNotifications = async () => {
+  const loadNotificationPanel = useCallback(async () => {
     if (!can('notifications.view')) return
     setNotifLoading(true)
     setNotifError(null)
     try {
-      await reconcileNotifications()
-      const unreadData = (await listNotifications({
-        includeRead: false,
-        limit: 100,
-        scope: 'direct',
-      })) as NotificationListResponse
-      const unreadItems = Array.isArray(unreadData?.items) ? unreadData.items : []
-      lastUnreadNotificationsRef.current = unreadItems
-      setBellAttentionCount(computeBellAttentionCount(unreadItems, pendingHandoffsCount))
-      const data = (await listNotifications({ includeRead: true, limit: 20, scope: 'direct' })) as NotificationListResponse
-      const items = Array.isArray(data?.items) ? data.items : []
-      setNotifItems(prioritizeNotifications(items))
+      try {
+        await reconcileNotifications()
+      } catch {
+        // ignore reconcile errors; regular loading still works
+      }
+      const [notifData, threadsRes] = await Promise.all([
+        listNotifications({ includeRead: false, limit: 100, scope: 'direct' }) as Promise<NotificationListResponse>,
+        listCommunicationThreads({ limit: 200 }).catch(() => ({ items: [] as CommunicationThread[] })),
+      ])
+      const rawItems = Array.isArray(notifData?.items) ? notifData.items : []
+      const threads = Array.isArray(threadsRes.items) ? threadsRes.items : []
+      const activeUnreadThreads = filterUnreadThreadsForUser(threads, canUseCommunicationsFeature)
+      const threadIds = new Set(activeUnreadThreads.map((th) => th.id))
+      const notifFiltered = rawItems.filter((item) => {
+        if (item.is_read) return false
+        const tid = notificationThreadId(item)
+        if (tid && threadIds.has(tid)) return false
+        return true
+      })
+      setPanelThreads([...activeUnreadThreads].sort((a, b) => threadRecencyMs(b) - threadRecencyMs(a)))
+      setNotifItems(prioritizeNotifications(notifFiltered))
     } catch {
       setNotifError(t('app.reminders.errors.load'))
     } finally {
       setNotifLoading(false)
     }
-  }
+  }, [can, canUseCommunicationsFeature, t])
 
   const navigateToResult = (result: GlobalSearchResult) => {
     setSearchOpen(false)
@@ -632,15 +590,42 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const toggleNotifications = () => {
     const next = !notifOpen
     setNotifOpen(next)
-    if (next) void loadNotifications()
+    if (next) void loadNotificationPanel()
   }
 
-  const markAllRead = async () => {
+  const dismissNotif = async (id: string) => {
+    try {
+      await markNotificationsRead({ ids: [id] })
+      setNotifItems((prev) => prev.filter((i) => String(i.id) !== id))
+      lastUnreadNotificationsRef.current = lastUnreadNotificationsRef.current.filter((i) => String(i.id) !== id)
+      setBellAttentionCount(computeBellAttentionCount(lastUnreadNotificationsRef.current, pendingHandoffsCount))
+      setCommPollKey((k) => k + 1)
+    } catch {
+      // ignore
+    }
+  }
+
+  const dismissThread = async (threadId: string) => {
+    try {
+      await markCommunicationThreadRead(threadId)
+      setPanelThreads((prev) => prev.filter((t) => t.id !== threadId))
+      setCommPollKey((k) => k + 1)
+    } catch {
+      // ignore
+    }
+  }
+
+  const clearAllPanelItems = async () => {
+    const threadsSnap = [...panelThreads]
     try {
       await markNotificationsRead({ markAll: true })
+      await Promise.all(threadsSnap.map((th) => markCommunicationThreadRead(th.id).catch(() => {})))
+      setPanelThreads([])
+      setNotifItems([])
       lastUnreadNotificationsRef.current = []
       setBellAttentionCount(computeBellAttentionCount([], pendingHandoffsCount))
-      setNotifItems((prev) => prev.map((i) => ({ ...i, is_read: true })))
+      setBellBadgeCount(0)
+      setCommPollKey((k) => k + 1)
     } catch {
       // ignore
     }
@@ -711,12 +696,24 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
           >
             <IconMenu2 size={20} stroke={1.8} />
           </button>
-          <img
-            src="/logo_hf.svg"
-            alt="HostFlow"
-            className={compact ? 'h-7 w-auto sm:h-8' : 'h-8 w-auto sm:h-9'}
-            loading="lazy"
-          />
+          <a
+            href={CRM_APP_PATHS.work}
+            className="shrink-0 rounded-md outline-none ring-brand-500 transition hover:opacity-90 focus-visible:ring-2"
+            title="HostFlow"
+            aria-label="HostFlow"
+            onClick={(e) => {
+              e.preventDefault()
+              navigate(CRM_APP_PATHS.work)
+            }}
+          >
+            <img
+              src="/logo_hf.svg"
+              alt=""
+              className={compact ? 'h-7 w-auto' : 'h-8 w-auto'}
+              width={120}
+              height={32}
+            />
+          </a>
           {isTrialTenant ? (
             <span
               className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800"
@@ -728,27 +725,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
         </div>
 
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 sm:gap-2">
-          {ownCompanies.length > 0 && (
-            <label className="hidden items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 sm:inline-flex">
-              <span className="text-slate-500">{t('app.topbar.own_company')}</span>
-              <select
-                className="bg-transparent text-xs font-semibold text-slate-800 outline-none"
-                value={activeOwnCompanyId || ''}
-                onChange={(e) => {
-                  const next = e.target.value
-                  setActiveOwnCompanyId(next)
-                  ownCompanySettings.set(next)
-                  void setActiveOwnCompany(next).catch(() => {})
-                }}
-              >
-                {ownCompanies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           {canReturnToPlatform && (
             <button
               type="button"
@@ -761,7 +737,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               <span className="hidden sm:inline">{t('app.topbar.actions.return_to_platform')}</span>
             </button>
           )}
-          <TopbarNbaMenu />
           <button
             type="button"
             className={[
@@ -818,394 +793,197 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
             </div>
           ) : null}
 
-          {/* Кнопка меню кандидатов - показывается только на странице кандидатов */}
-          <CandidatesMenuButton t={t} />
-
-          <div className="relative hidden sm:block" ref={langRef}>
-            <button
-              type="button"
-              className={[
-                'inline-flex items-center rounded-md border border-slate-200 px-3 text-sm font-semibold uppercase text-slate-700 transition hover:bg-slate-50',
-                compact ? 'py-1.5' : 'py-2',
-              ].join(' ')}
-              onClick={openLang}
-              aria-haspopup="menu"
-              aria-expanded={langOpen}
-              title={t('app.topbar.actions.language')}
-            >
-              {locale.toUpperCase()}
-            </button>
-            {langOpen && (
-              <div className="absolute right-0 z-50 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
-                <div className="flex items-center gap-1 bg-slate-50 p-1">
-                  {SUPPORTED_LOCALES.map((code) => (
-                    <button
-                      key={code}
-                      type="button"
-                      className={[
-                        'rounded-lg px-3 py-1.5 text-xs font-semibold uppercase transition',
-                        locale === code ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-200',
-                      ].join(' ')}
-                      onClick={() => pickLang(code)}
-                    >
-                      {code}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
           {can('notifications.view') && (
-            <div className="flex items-center gap-2">
+            <div className="relative" ref={notifRef}>
               <button
                 type="button"
                 className="relative rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50"
-                aria-label={t('app.nav.items.messages_inbox')}
-                onClick={() => navigate(CRM_APP_PATHS.inboxMessagesScoped)}
+                aria-label={
+                  bellAttentionCount > 0
+                    ? t('app.topbar.actions.notifications_with_urgent', {
+                        values: { count: bellAttentionCount },
+                      })
+                    : t('app.topbar.actions.notifications')
+                }
+                onClick={toggleNotifications}
               >
-                <IconMessageCircle size={20} stroke={1.8} />
-                {messagesUnreadCount > 0 && (
-                  <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-sky-500 px-1 text-[11px] font-semibold text-white">
-                    {formatThreadUnreadBadge(messagesUnreadCount)}
+                <IconBell size={20} stroke={1.8} />
+                {bellBadgeCount > 0 && (
+                  <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-semibold text-white">
+                    {formatThreadUnreadBadge(bellBadgeCount)}
                   </span>
                 )}
               </button>
 
-              <button
-                type="button"
-                className="relative hidden rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50 sm:inline-flex"
-                aria-label={t('app.nav.items.email_inbox')}
-                onClick={() => navigate(CRM_APP_PATHS.inboxEmailScoped)}
-              >
-                <IconMail size={20} stroke={1.8} />
-                {emailUnreadCount > 0 && (
-                  <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo-500 px-1 text-[11px] font-semibold text-white">
-                    {formatThreadUnreadBadge(emailUnreadCount)}
-                  </span>
-                )}
-              </button>
-
-              <div className="relative" ref={notifRef}>
-                <button
-                  type="button"
-                  className="relative rounded-full border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-50"
-                  aria-label={
-                    bellAttentionCount > 0
-                      ? t('app.topbar.actions.notifications_with_urgent', {
-                          values: { count: bellAttentionCount },
-                        })
-                      : t('app.topbar.actions.notifications')
-                  }
-                  onClick={toggleNotifications}
-                >
-                  <IconBell size={20} stroke={1.8} />
-                  {bellAttentionCount > 0 && (
-                    <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-semibold text-white">
-                      {bellAttentionCount}
-                    </span>
-                  )}
-                </button>
-
-                {notifOpen && (
-                  <div className="absolute right-0 top-10 z-50 w-[min(96vw,34rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-                    <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {t('app.topbar.notifications.title')}
-                        </p>
-                        <p className="text-xs text-slate-500 break-words">
-                          {notifLoading
-                            ? t('common.loading')
-                            : t('app.topbar.notifications.subtitle', {
-                                values: {
-                                  total: notifItems.length,
-                                  unread: notifItems.filter((i) => !i.is_read).length,
-                                },
-                              })}
-                        </p>
-                        {!notifLoading && (
-                          <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                              {t('app.topbar.notifications.groups.sla')}: {unreadByGroup.sla}
-                            </span>
-                            <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                              {t('app.topbar.notifications.groups.tasks')}: {unreadByGroup.tasks}
-                            </span>
-                            <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">
-                              {t('app.topbar.notifications.groups.messages')}:{' '}
-                              {unreadByGroup.messages}
-                            </span>
-                            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                              {t('app.topbar.notifications.groups.system')}: {unreadByGroup.system}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          className="btn-secondary btn-xs"
-                          onClick={() => void reconcileAndReloadNotifications()}
-                          disabled={notifLoading}
-                        >
-                          {t('app.reminders.actions.sync')}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-secondary btn-xs"
-                          onClick={() => void loadNotifications()}
-                          disabled={notifLoading}
-                        >
-                          {t('app.reminders.actions.refresh')}
-                        </button>
-                        <button type="button" className="btn-secondary btn-xs" onClick={markAllRead}>
-                          {t('app.reminders.actions.mark_all')}
-                        </button>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          className={[
-                            'rounded-md px-2.5 py-1 text-[11px] font-medium',
-                            notifFeedMode === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-                          ].join(' ')}
-                          onClick={() => setNotifFeedMode('all')}
-                        >
-                          {t('app.topbar.notifications.groups.all')} ({notifItems.length})
-                        </button>
-                        <button
-                          type="button"
-                          className={[
-                            'rounded-md px-2.5 py-1 text-[11px] font-medium',
-                            notifFeedMode === 'sla' ? 'bg-rose-600 text-white' : 'bg-rose-100 text-rose-700 hover:bg-rose-200',
-                          ].join(' ')}
-                          onClick={() => setNotifFeedMode('sla')}
-                        >
-                          {t('app.topbar.notifications.groups.sla')} ({unreadByGroup.sla})
-                        </button>
-                        <button
-                          type="button"
-                          className={[
-                            'rounded-md px-2.5 py-1 text-[11px] font-medium',
-                            notifFeedMode === 'tasks' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-800 hover:bg-amber-200',
-                          ].join(' ')}
-                          onClick={() => setNotifFeedMode('tasks')}
-                        >
-                          {t('app.topbar.notifications.groups.tasks')} ({unreadByGroup.tasks})
-                        </button>
-                        <button
-                          type="button"
-                          className={[
-                            'rounded-md px-2.5 py-1 text-[11px] font-medium',
-                            notifFeedMode === 'messages'
-                              ? 'bg-sky-600 text-white'
-                              : 'bg-sky-100 text-sky-800 hover:bg-sky-200',
-                          ].join(' ')}
-                          onClick={() => setNotifFeedMode('messages')}
-                        >
-                          {t('app.topbar.notifications.groups.messages')} ({unreadByGroup.messages})
-                        </button>
-                        <button
-                          type="button"
-                          className={[
-                            'rounded-md px-2.5 py-1 text-[11px] font-medium',
-                            notifFeedMode === 'system' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-                          ].join(' ')}
-                          onClick={() => setNotifFeedMode('system')}
-                        >
-                          {t('app.topbar.notifications.groups.system')} ({unreadByGroup.system})
-                        </button>
-                      </div>
+              {notifOpen && (
+                <div className="absolute right-0 top-10 z-50 w-[min(96vw,34rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{t('app.topbar.notifications.title')}</p>
+                      <p className="text-xs text-slate-500 break-words">
+                        {notifLoading
+                          ? t('common.loading')
+                          : t('app.topbar.notifications.panel_subtitle', {
+                              values: { count: unifiedPanelRows.length },
+                            })}
+                      </p>
                     </div>
-                    <div className="max-h-[min(64vh,36rem)] space-y-2 overflow-auto p-3">
-                      {notifError && <p className="text-xs text-rose-600">{notifError}</p>}
-                      {!notifError && visibleNotifItems.length === 0 && !notifLoading && (
-                        <p className="text-sm text-slate-500">{t('app.reminders.states.empty')}</p>
-                      )}
-                      {visibleNotifItems.map((item) => {
-                        const dateLocale = localeMap[locale as keyof typeof localeMap] || enUS
-                        const when = item.created_at
-                          ? formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: dateLocale })
-                          : ''
-                        const title = getNotificationTitle(item)
-                        const isHandoff = item.event_type === 'handoff_requested' || item.event_type === 'handoff_accepted'
-                        const uosGroup = getNotificationUosGroup(item)
-                        const attentionTier = getNotificationAttentionTier(item)
-                        const attentionTierLabelKey =
-                          attentionTier === 'critical'
-                            ? 'app.topbar.notifications.tier.critical'
-                            : attentionTier === 'high'
-                              ? 'app.topbar.notifications.tier.high'
-                              : 'app.topbar.notifications.tier.normal'
-                        const description = getNotificationDescription(item)
-                        const threadId = notificationThreadId(item)
-                        const threadChannel = notificationThreadChannel(item)
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        className="btn-secondary btn-xs"
+                        onClick={() => void loadNotificationPanel()}
+                        disabled={notifLoading}
+                      >
+                        {t('app.reminders.actions.refresh')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-xs"
+                        onClick={() => void clearAllPanelItems()}
+                        disabled={notifLoading || unifiedPanelRows.length === 0}
+                      >
+                        {t('app.topbar.notifications.clear_all')}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-[min(64vh,36rem)] space-y-2 overflow-auto p-3">
+                    {notifError && <p className="text-xs text-rose-600">{notifError}</p>}
+                    {!notifError && unifiedPanelRows.length === 0 && !notifLoading && (
+                      <p className="text-sm text-slate-500">{t('app.reminders.states.empty')}</p>
+                    )}
+                    {unifiedPanelRows.map((row) => {
+                      const dateLocale = localeMap[locale as keyof typeof localeMap] || enUS
+                      if (row.kind === 'thread') {
+                        const th = row.thread
+                        const when = th.last_message_at
+                          ? formatDistanceToNow(new Date(th.last_message_at), { addSuffix: true, locale: dateLocale })
+                          : th.updated_at
+                            ? formatDistanceToNow(new Date(th.updated_at), { addSuffix: true, locale: dateLocale })
+                            : ''
+                        const openPath = resolveThreadOpenPath(th, canInboxDeepLink)
+                        const preview = String(th.last_message_preview || '').trim()
+                        const TypeIcon = isEmailThread(th) ? IconMail : IconMessageCircle
+                        const iconClass = isEmailThread(th) ? 'text-indigo-600' : 'text-sky-600'
                         return (
                           <div
-                            key={item.id}
-                            className={[
-                              'rounded-xl border border-slate-100 bg-white px-3 py-2 shadow-sm',
-                              item.is_read ? 'opacity-80' : 'border-brand-100',
-                            ].join(' ')}
+                            key={`th-${th.id}`}
+                            className="rounded-xl border border-brand-100 bg-white px-3 py-2 shadow-sm"
                           >
-                            <div className="flex min-w-0 items-start justify-between gap-2">
-                              <div className="min-w-0 space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {uosGroup === 'sla' ? (
-                                    <span className="rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700">
-                                      {t('app.topbar.notifications.groups.sla')}
-                                    </span>
-                                  ) : uosGroup === 'tasks' ? (
-                                    <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                                      {t('app.topbar.notifications.groups.tasks')}
-                                    </span>
-                                  ) : uosGroup === 'messages' ? (
-                                    <span className="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-800">
-                                      {t('app.topbar.notifications.groups.messages')}
-                                    </span>
-                                  ) : (
-                                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                                      {t('app.topbar.notifications.groups.system')}
-                                    </span>
-                                  )}
-                                  <NotificationAttentionTierChip
-                                    tier={attentionTier}
-                                    isRead={Boolean(item.is_read)}
-                                    label={t(attentionTierLabelKey)}
-                                  />
-                                  <p className="max-w-full break-words text-sm font-semibold leading-snug text-slate-900 line-clamp-2">{title}</p>
-                                </div>
-                                {description && (
-                                  <p className="max-w-full break-words text-xs text-slate-600 line-clamp-3">{description}</p>
-                                )}
+                            <div className="flex min-w-0 gap-2">
+                              <span className={`mt-0.5 shrink-0 ${iconClass}`} aria-hidden>
+                                <TypeIcon size={20} stroke={1.8} />
+                              </span>
+                              <div className="min-w-0 flex-1 space-y-1">
+                                <p className="break-words text-sm font-semibold leading-snug text-slate-900 line-clamp-2">
+                                  {threadTitle(th)}
+                                </p>
+                                {preview ? (
+                                  <p className="break-words text-xs text-slate-600 line-clamp-2">{preview}</p>
+                                ) : null}
                                 <p className="text-[11px] uppercase tracking-wide text-slate-400">{when}</p>
-                                {isHandoff && (
+                                <div className="flex flex-wrap gap-2 pt-1">
+                                  {openPath ? (
+                                    <button
+                                      type="button"
+                                      className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+                                      onClick={() => {
+                                        setNotifOpen(false)
+                                        navigate(openPath)
+                                      }}
+                                    >
+                                      {t('app.topbar.notifications.open')}
+                                    </button>
+                                  ) : null}
                                   <button
                                     type="button"
-                                    className="mt-1 text-xs font-medium text-brand-600 hover:text-brand-700"
-                                    onClick={() => {
-                                      setNotifOpen(false)
-                                      navigate(CRM_APP_PATHS.procesowani)
-                                    }}
+                                    className="text-xs font-semibold text-slate-600 hover:text-slate-800"
+                                    onClick={() => void dismissThread(th.id)}
                                   >
-                                    {t('app.notifications.view_handoffs')}
+                                    {t('app.topbar.notifications.clear')}
                                   </button>
-                                )}
-                                {uosGroup === 'sla' && threadId && canInboxDeepLink && (
-                                  <button
-                                    type="button"
-                                    className="mt-1 text-xs font-medium text-brand-700 hover:text-brand-800"
-                                    onClick={() => {
-                                      setNotifOpen(false)
-                                      navigate(buildInboxThreadPath(threadId, threadChannel ? { channel: threadChannel } : undefined))
-                                    }}
-                                  >
-                                    {t('app.topbar.notifications.open_in_inbox')}
-                                  </button>
-                                )}
-                                {uosGroup === 'sla' && (
-                                  <button
-                                    type="button"
-                                    className="mt-1 text-xs font-medium text-rose-700 hover:text-rose-800"
-                                    onClick={() => {
-                                      setNotifOpen(false)
-                                      navigate(CRM_APP_PATHS.slaIncidents)
-                                    }}
-                                  >
-                                    {t('app.notifications.open_sla_incidents')}
-                                  </button>
-                                )}
-                                {uosGroup === 'messages' && threadId && (
-                                  <button
-                                    type="button"
-                                    className="mt-1 text-xs font-medium text-sky-700 hover:text-sky-800"
-                                    onClick={() => {
-                                      setNotifOpen(false)
-                                      if (canInboxDeepLink) {
-                                        navigate(
-                                          buildInboxThreadPath(threadId, threadChannel ? { channel: threadChannel } : undefined),
-                                        )
-                                      } else {
-                                        navigate(communicationsThreadPath(threadId))
-                                      }
-                                    }}
-                                  >
-                                    {t('app.topbar.notifications.open_thread')}
-                                  </button>
-                                )}
-                                {uosGroup === 'tasks' && (
-                                  <button
-                                    type="button"
-                                    className="mt-1 text-xs font-medium text-amber-800 hover:text-amber-900"
-                                    onClick={() => {
-                                      setNotifOpen(false)
-                                      navigate(CRM_APP_PATHS.tasks)
-                                    }}
-                                  >
-                                    {t('app.reminders.actions.open_page')}
-                                  </button>
-                                )}
+                                </div>
                               </div>
                             </div>
                           </div>
                         )
-                      })}
-                    </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 p-3">
-                      {pendingHandoffsCount > 0 && (
-                        <button
-                          type="button"
-                          className="text-sm font-semibold text-brand-700 hover:text-brand-800"
-                          onClick={() => {
-                            setNotifOpen(false)
-                            navigate(CRM_APP_PATHS.procesowani)
-                          }}
+                      }
+                      const item = row.item
+                      const when = item.created_at
+                        ? formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: dateLocale })
+                        : ''
+                      const title = getNotificationTitle(item)
+                      const uosGroup = getNotificationUosGroup(item)
+                      const description = getNotificationDescription(item)
+                      const openPath = resolveNotificationOpenPath(item, { canInboxDeepLink })
+                      const TypeIcon =
+                        uosGroup === 'sla'
+                          ? IconAlertTriangle
+                          : uosGroup === 'tasks'
+                            ? IconChecklist
+                            : uosGroup === 'messages'
+                              ? IconMessageCircle
+                              : IconSettings
+                      const iconClass =
+                        uosGroup === 'sla'
+                          ? 'text-rose-600'
+                          : uosGroup === 'tasks'
+                            ? 'text-amber-700'
+                            : uosGroup === 'messages'
+                              ? 'text-sky-600'
+                              : 'text-slate-500'
+                      return (
+                        <div
+                          key={`nf-${item.id}`}
+                          className="rounded-xl border border-brand-100 bg-white px-3 py-2 shadow-sm"
                         >
-                          {t('app.notifications.view_handoffs')}{' '}
-                          ({pendingHandoffsCount})
-                        </button>
-                      )}
-                      <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-                        {canInboxDeepLink && (
-                          <button
-                            type="button"
-                            className="text-sm font-semibold text-brand-700 hover:text-brand-800"
-                            onClick={() => {
-                              setNotifOpen(false)
-                              navigate(CRM_APP_PATHS.inbox)
-                            }}
-                          >
-                            {t('app.nav.items.inbox')}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="text-sm font-semibold text-rose-700 hover:text-rose-800"
-                          onClick={() => {
-                            setNotifOpen(false)
-                            navigate(CRM_APP_PATHS.slaIncidents)
-                          }}
-                        >
-                          {t('app.notifications.open_sla_incidents')}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-sm font-semibold text-slate-700 hover:text-slate-800"
-                          onClick={() => {
-                            setNotifOpen(false)
-                            navigate(CRM_APP_PATHS.tasks)
-                          }}
-                        >
-                          {t('app.reminders.actions.open_page')}
-                        </button>
-                      </div>
-                    </div>
+                          <div className="flex min-w-0 gap-2">
+                            <span className={`mt-0.5 shrink-0 ${iconClass}`} aria-hidden>
+                              <TypeIcon size={20} stroke={1.8} />
+                            </span>
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <p className="break-words text-sm font-semibold leading-snug text-slate-900 line-clamp-2">
+                                {title}
+                              </p>
+                              {description ? (
+                                <p className="break-words text-xs text-slate-600 line-clamp-3">{description}</p>
+                              ) : null}
+                              <p className="text-[11px] uppercase tracking-wide text-slate-400">{when}</p>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {openPath ? (
+                                  <button
+                                    type="button"
+                                    className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+                                    onClick={() => {
+                                      setNotifOpen(false)
+                                      navigate(openPath)
+                                    }}
+                                  >
+                                    {t('app.topbar.notifications.open')}
+                                  </button>
+                                ) : null}
+                                {item.id ? (
+                                  <button
+                                    type="button"
+                                    className="text-xs font-semibold text-slate-600 hover:text-slate-800"
+                                    onClick={() => void dismissNotif(String(item.id))}
+                                  >
+                                    {t('app.topbar.notifications.clear')}
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
+
+          <CandidatesMenuButton t={t} />
 
           <div className="relative" ref={menuRef}>
             <button
@@ -1219,7 +997,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               <span className="hidden md:inline">{me?.full_name || me?.email || t('app.shell.actions.profile')}</span>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 z-[100] mt-2 w-[min(96vw,320px)] overflow-hidden rounded-xl border border-slate-200 bg-white py-2 text-sm shadow-2xl">
+              <div className="absolute right-0 z-[100] mt-2 max-h-[min(80vh,28rem)] w-[min(96vw,320px)] overflow-y-auto rounded-xl border border-slate-200 bg-white py-2 text-sm shadow-2xl">
                 <div className="border-b border-slate-100 px-4 py-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     {t('app.shell.account.my_account')}
@@ -1236,6 +1014,22 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                     <span>{t('app.shell.actions.profile')}</span>
                   </button>
                 </div>
+
+                {can('settings.view') && (
+                  <div className="border-b border-slate-100 px-4 py-2">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        navigate(CRM_APP_PATHS.settings)
+                      }}
+                    >
+                      <IconSettings size={16} stroke={1.8} />
+                      <span>{t('app.topbar.user_menu.system_settings', { defaultValue: 'System settings' })}</span>
+                    </button>
+                  </div>
+                )}
 
                 <div className="px-4 py-2">
                   <button

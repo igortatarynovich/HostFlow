@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Literal, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
@@ -20,6 +20,7 @@ from backend.app.modules.leads.schemas import (
     MetaCredentialOut,
     MetaCredentialRotateResponse,
     MetaCredentialUpdate,
+    GenericInboundWebhookRotateResponse,
     MetaIncomingLeadsPreviewResponse,
     MetaLeadResponse,
     MetaLeadRetryRequest,
@@ -91,20 +92,41 @@ async def update_settings_endpoint(
     return result
 
 
+@router.post(
+    "/inbound-webhook/rotate",
+    response_model=GenericInboundWebhookRotateResponse,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def rotate_generic_inbound_webhook_endpoint(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+) -> GenericInboundWebhookRotateResponse:
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    result = await admin_service.rotate_generic_inbound_webhook_secret(db, tenant_id)
+    await db.commit()
+    return result
+
+
 @router.get(
     "/meta/incoming-preview",
     response_model=MetaIncomingLeadsPreviewResponse,
     dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
 )
 async def meta_incoming_preview_endpoint(
-    limit: int = Query(default=25, ge=1, le=50, description="Max recent Meta leads to return"),
+    limit: int = Query(default=25, ge=1, le=50, description="Max recent leads to return"),
+    source: Literal["meta", "webhook"] = Query(
+        "meta",
+        description="Lead.source filter: meta (default) or webhook (§2.11 generic inbound)",
+    ),
     ctx: UserCtx = Depends(get_current_user),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ) -> MetaIncomingLeadsPreviewResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     _ensure_tenant(ctx, tenant_id)
-    return await admin_service.list_meta_incoming_preview(db, tenant_id, limit=limit)
+    return await admin_service.list_meta_incoming_preview(db, tenant_id, limit=limit, source=source)
 
 
 @router.get(

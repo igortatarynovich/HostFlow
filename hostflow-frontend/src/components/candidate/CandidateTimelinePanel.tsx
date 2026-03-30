@@ -4,6 +4,7 @@ import type { ReminderRecord } from '../../api/types'
 import type { CandidateNote, StageHistoryEntry } from '../../modules/candidate-card/types'
 import { useI18n } from '../../i18n'
 import { formatDateSafe } from '../../modules/candidates/candidateUtils'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 
 type TimelineFilter = { stage: boolean; notes: boolean; reminders: boolean }
 
@@ -13,7 +14,7 @@ type Props = {
   notes: CandidateNote[]
   reminders: ReminderRecord[]
   loading: boolean
-  errorText: string | null
+  timelineError: FriendlyErrorInfo | null
   resolveStageLabel: (code: string) => string
   onRequestLoad?: () => void
   onOpenStageHistory?: () => void
@@ -43,7 +44,7 @@ export default function CandidateTimelinePanel({
   notes,
   reminders,
   loading,
-  errorText,
+  timelineError,
   resolveStageLabel,
   onRequestLoad,
   onOpenStageHistory,
@@ -176,8 +177,15 @@ export default function CandidateTimelinePanel({
               </button>
             ) : null}
           </div>
-          {errorText ? <div className="mt-1 text-xs text-red-600">{errorText}</div> : null}
-          {!errorText && loading ? <div className="mt-1 text-xs text-slate-500">{t('common.loading')}</div> : null}
+          {timelineError ? (
+            <div className="mt-1 text-xs text-red-600">
+              <div>{timelineError.title}</div>
+              {timelineError.detail ? (
+                <div className="mt-0.5 text-[11px] text-red-700/90">{timelineError.detail}</div>
+              ) : null}
+            </div>
+          ) : null}
+          {!timelineError && loading ? <div className="mt-1 text-xs text-slate-500">{t('common.loading')}</div> : null}
         </div>
 
         {/* Intentionally no extra action buttons in Info block header. */}
@@ -263,7 +271,7 @@ export default function CandidateTimelinePanel({
                 </div>
               ))}
             </div>
-          ) : errorText || loading ? null : (
+          ) : timelineError || loading ? null : (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
               {t('app.candidate_card.timeline.collapsed_hint', { defaultValue: 'No recent activity.' })}
             </div>

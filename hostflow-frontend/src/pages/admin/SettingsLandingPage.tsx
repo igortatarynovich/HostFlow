@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import type { Icon as TablerIcon } from '@tabler/icons-react'
 import {
@@ -6,6 +6,7 @@ import {
   IconBell,
   IconBrandTelegram,
   IconChecklist,
+  IconClipboardList,
   IconCreditCard,
   IconFileText,
   IconFilter,
@@ -24,6 +25,7 @@ import type { TenantModuleSettings } from '../../api/types'
 import { useCommunicationsAccess, type CommunicationsFeatureKey } from '../../hooks/useCommunicationsAccess'
 import { useAuth } from '../../store/useAuth'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { isSettingsAreaKey, settingsAreaHref } from '../../nav/settingsAreaNav'
 
 type SettingsSectionKey =
   | 'workspace'
@@ -62,6 +64,7 @@ const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
   risk_intel: IconAlertTriangle,
   candidate_profiles: IconUsersGroup,
   custom_fields: IconSettings,
+  lead_forms: IconClipboardList,
   company_access: IconShield,
   legal: IconShield,
   tenant_links: IconLink,
@@ -74,6 +77,9 @@ const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
 
 export default function SettingsLandingPage() {
   const { t } = useI18n()
+  const [searchParams] = useSearchParams()
+  const sectionParam = searchParams.get('section')
+  const activeArea = isSettingsAreaKey(sectionParam) ? sectionParam : null
   const { role } = usePermissions()
   const { me } = useAuth()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
@@ -178,9 +184,9 @@ export default function SettingsLandingPage() {
       },
       {
         key: 'communications_setup',
-        label: t('app.nav.items.communications_setup', { defaultValue: 'Comms setup' }),
-        description: t('admin.settings.cards.communications_setup.description', { defaultValue: 'Guided first-run setup: connect channels, verify inbound, prepare queue.' }),
-        target: CRM_APP_PATHS.setupCommunications,
+        label: t('app.nav.items.settings_integrations', { defaultValue: 'Integrations' }),
+        description: t('admin.settings.cards.communications_setup.description', { defaultValue: 'All integration screens in one place: Meta, Google, webhook, email, and communications admin.' }),
+        target: CRM_APP_PATHS.settingsIntegrations,
         roles: ['administrator', 'supervisor', 'client_manager'],
         section: 'integrations',
         requiresModules: ['candidates'],
@@ -285,6 +291,15 @@ export default function SettingsLandingPage() {
         requiresModules: ['candidates'],
       },
       {
+        key: 'lead_forms',
+        label: t('admin.settings.cards.lead_forms.label'),
+        description: t('admin.settings.cards.lead_forms.description'),
+        target: CRM_APP_PATHS.settingsLeadForms,
+        roles: ['administrator', 'supervisor'],
+        section: 'crm_setup',
+        requiresModules: ['leads'],
+      },
+      {
         key: 'billing',
         label: t('admin.settings.cards.billing.label', { defaultValue: 'Billing & subscription' }),
         description: t('admin.settings.cards.billing.description', { defaultValue: 'Plan, payment scenarios and subscription status.' }),
@@ -377,6 +392,23 @@ export default function SettingsLandingPage() {
     [cards, sectionMeta],
   )
 
+  const renderCard = (item: CardDef) => (
+    <li key={item.target} className="rounded-2xl border border-brand-100 bg-brand-50/30 p-4">
+      <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
+        {(() => {
+          const CardIcon = CARD_ICONS[item.key] || DEFAULT_CARD_ICON
+          return <CardIcon size={18} stroke={1.9} />
+        })()}
+        <span>{item.label}</span>
+      </div>
+      <p className="mt-1 text-sm text-slate-500">{item.description}</p>
+      <Link className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline" to={item.target}>
+        <IconLink size={15} stroke={2} />
+        {t('admin.settings.actions.open')}
+      </Link>
+    </li>
+  )
+
   return (
     <div className="space-y-4">
       <section className="card p-6">
@@ -384,34 +416,54 @@ export default function SettingsLandingPage() {
           <h2 className="text-xl font-semibold text-slate-900">{t('admin.settings.title')}</h2>
           <p className="text-sm text-slate-500">{t('admin.settings.subtitle')}</p>
         </header>
-        <div className="space-y-4">
-          {grouped.map((section) => (
-            <section key={section.key} className="space-y-3">
-              <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">{section.label}</h3>
-                <p className="mt-1 text-sm text-slate-500">{section.description}</p>
-              </div>
-              <ul className="grid gap-4 md:grid-cols-2">
-                {section.items.map((item) => (
-                  <li key={item.target} className="rounded-2xl border border-brand-100 bg-brand-50/30 p-4">
-                    <div className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-                      {(() => {
-                        const CardIcon = CARD_ICONS[item.key] || DEFAULT_CARD_ICON
-                        return <CardIcon size={18} stroke={1.9} />
-                      })()}
-                      <span>{item.label}</span>
-                    </div>
-                    <p className="mt-1 text-sm text-slate-500">{item.description}</p>
-                    <Link className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline" to={item.target}>
+
+        {!activeArea ? (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">{t('admin.settings.areas_intro', { defaultValue: 'Choose an area — details stay grouped so the list never overwhelms.' })}</p>
+            <ul className="grid gap-4 sm:grid-cols-2">
+              {grouped.map((section) => (
+                <li key={section.key}>
+                  <Link
+                    to={settingsAreaHref(section.key)}
+                    className="block h-full rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-brand-300 hover:shadow-md"
+                  >
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-800">{section.label}</h3>
+                    <p className="mt-2 text-sm text-slate-600">{section.description}</p>
+                    <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-700">
                       <IconLink size={15} stroke={2} />
-                      {t('admin.settings.actions.open')}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
+                      {t('admin.settings.actions.open_area', { defaultValue: 'Open area' })}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Link
+              to={CRM_APP_PATHS.settings}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline"
+            >
+              <span aria-hidden>←</span>
+              {t('admin.settings.actions.back_to_areas', { defaultValue: 'All settings areas' })}
+            </Link>
+            {(() => {
+              const section = grouped.find((g) => g.key === activeArea)
+              if (!section || section.items.length === 0) {
+                return <p className="text-sm text-slate-500">{t('admin.settings.area_empty', { defaultValue: 'Nothing to configure here for your role.' })}</p>
+              }
+              return (
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">{section.label}</h3>
+                    <p className="mt-1 text-sm text-slate-500">{section.description}</p>
+                  </div>
+                  <ul className="grid gap-4 md:grid-cols-2">{section.items.map((item) => renderCard(item))}</ul>
+                </div>
+              )
+            })()}
+          </div>
+        )}
       </section>
     </div>
   )

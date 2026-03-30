@@ -40,6 +40,10 @@ def ensure_automation_rules_schema() -> None:
             )
         cur.execute("CREATE INDEX IF NOT EXISTS ix_automation_rules_tenant_trigger ON automation_rules(tenant_id, trigger)")
         cur.execute("CREATE INDEX IF NOT EXISTS ix_automation_rules_tenant_enabled ON automation_rules(tenant_id, enabled)")
+        cur.execute("PRAGMA table_info(automation_rules)")
+        cols = {row[1] for row in cur.fetchall()}
+        if "priority" not in cols:
+            cur.execute("ALTER TABLE automation_rules ADD COLUMN priority INTEGER NOT NULL DEFAULT 0")
         conn.commit()
         print("[automation_rules] ensure_automation_rules_schema executed")
 

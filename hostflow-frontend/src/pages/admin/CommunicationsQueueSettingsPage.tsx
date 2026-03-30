@@ -14,25 +14,15 @@ import {
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-
-function errorTextFrom(err: any, fallback: string) {
-  const d = err?.response?.data?.detail
-  if (typeof d === 'string') return d
-  if (Array.isArray(d)) {
-    const msg = d.map((x) => (typeof x?.msg === 'string' ? x.msg : null)).filter(Boolean).join('; ')
-    if (msg) return msg
-  }
-  if (d && typeof d === 'object') {
-    if (typeof d.msg === 'string') return d.msg
-    try { return JSON.stringify(d) } catch {}
-  }
-  return err?.message || fallback
-}
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
 export default function CommunicationsQueueSettingsPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [loading, setLoading] = useState(true)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [saveNotice, setSaveNotice] = useState<string | null>(null)
   const [saveBusy, setSaveBusy] = useState(false)
   const [settings, setSettings] = useState<any | null>(null)
@@ -61,19 +51,27 @@ export default function CommunicationsQueueSettingsPage() {
         }
       } catch (err: any) {
         if (mounted) {
-          setErrorText(
-            errorTextFrom(
+          if (
+            !planLimitModal?.showPlanLimitIfNeeded(
               err,
               t('admin.communications_queue.errors.load_failed', { defaultValue: 'Failed to load queue settings' }),
-            ),
-          )
+            )
+          ) {
+            setError(
+              getFriendlyErrorInfo(
+                err,
+                t('admin.communications_queue.errors.load_failed', { defaultValue: 'Failed to load queue settings' }),
+                t,
+              ),
+            )
+          }
         }
       } finally {
         if (mounted) setLoading(false)
       }
     })()
     return () => { mounted = false }
-  }, [t])
+  }, [planLimitModal, t])
 
   const queue = settings?.managerQueue || null
   const sla = settings?.sla || null
@@ -81,22 +79,30 @@ export default function CommunicationsQueueSettingsPage() {
   const saveQueueSettings = useCallback(async (nextQueue: any) => {
     setSaveBusy(true)
     setSaveNotice(null)
-    setErrorText(null)
+    setError(null)
     try {
       const patched = await patchCommunicationsSettings({ managerQueue: nextQueue })
       setSettings(patched)
       setSaveNotice(t('common.saved', { defaultValue: 'Saved' }))
     } catch (err: any) {
-      setErrorText(
-        errorTextFrom(
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
           err,
           t('admin.communications_queue.errors.save_failed', { defaultValue: 'Failed to save queue settings' }),
-        ),
-      )
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('admin.communications_queue.errors.save_failed', { defaultValue: 'Failed to save queue settings' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setSaveBusy(false)
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   const patchQueue = useCallback((partial: Record<string, any>) => {
     if (!queue) return
@@ -105,7 +111,7 @@ export default function CommunicationsQueueSettingsPage() {
 
   const runAllocatorPreview = useCallback(async () => {
     setAllocatorPreviewBusy(true)
-    setErrorText(null)
+    setError(null)
     try {
       const result = await previewCommunicationAllocation({
         channel: allocatorTestChannel,
@@ -115,20 +121,28 @@ export default function CommunicationsQueueSettingsPage() {
       const audit = await listCommunicationAllocatorAudit({ limit: 20 }).catch(() => ({ items: [] as CommunicationAllocationAudit[] }))
       setAllocatorAudit(Array.isArray(audit?.items) ? audit.items : [])
     } catch (err: any) {
-      setErrorText(
-        errorTextFrom(
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
           err,
           t('admin.communications_queue.errors.preview_failed', { defaultValue: 'Allocator preview failed' }),
-        ),
-      )
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('admin.communications_queue.errors.preview_failed', { defaultValue: 'Allocator preview failed' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setAllocatorPreviewBusy(false)
     }
-  }, [allocatorTestAt, allocatorTestChannel, t])
+  }, [allocatorTestAt, allocatorTestChannel, planLimitModal, t])
 
   const handleSchedulerAction = useCallback(async (mode: 'refresh' | 'run') => {
     setSchedulerBusy(mode)
-    setErrorText(null)
+    setError(null)
     try {
       if (mode === 'run') {
         const resp = await runCommunicationSchedulerNow()
@@ -138,16 +152,24 @@ export default function CommunicationsQueueSettingsPage() {
         setSchedulerStatus(resp)
       }
     } catch (err: any) {
-      setErrorText(
-        errorTextFrom(
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
           err,
           t('admin.communications_queue.errors.scheduler_action_failed', { defaultValue: 'Scheduler action failed' }),
-        ),
-      )
+        )
+      ) {
+        setError(
+          getFriendlyErrorInfo(
+            err,
+            t('admin.communications_queue.errors.scheduler_action_failed', { defaultValue: 'Scheduler action failed' }),
+            t,
+          ),
+        )
+      }
     } finally {
       setSchedulerBusy(null)
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   return (
     <div className="space-y-4">
@@ -173,16 +195,16 @@ export default function CommunicationsQueueSettingsPage() {
       </div>
 
       {loading && <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
-      {errorText && (
+      {error && (
         <ErrorRecoveryBanner
-          info={{
-            title: errorText,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-          }}
+          info={error}
           onRetry={() => window.location.reload()}
           retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          secondaryTo={CRM_APP_PATHS.settingsCommunications}
-          secondaryLabel={t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
+          {...friendlyErrorBannerSecondary(
+            error,
+            CRM_APP_PATHS.settingsCommunications,
+            t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' }),
+          )}
           compact
         />
       )}
@@ -389,16 +411,26 @@ export default function CommunicationsQueueSettingsPage() {
               onClick={() =>
                 void listCommunicationAllocatorAudit({ limit: 20 })
                   .then((r) => setAllocatorAudit(r.items || []))
-                  .catch((e) =>
-                    setErrorText(
-                      errorTextFrom(
+                  .catch((e) => {
+                    if (
+                      !planLimitModal?.showPlanLimitIfNeeded(
                         e,
                         t('admin.communications_queue.errors.audit_reload_failed', {
                           defaultValue: 'Failed to reload allocator audit',
                         }),
-                      ),
-                    ),
-                  )
+                      )
+                    ) {
+                      setError(
+                        getFriendlyErrorInfo(
+                          e,
+                          t('admin.communications_queue.errors.audit_reload_failed', {
+                            defaultValue: 'Failed to reload allocator audit',
+                          }),
+                          t,
+                        ),
+                      )
+                    }
+                  })
               }
               className="btn-secondary btn-sm"
             >

@@ -5,6 +5,8 @@ import type { useCommunicationsThread } from '../../hooks/useCommunicationsThrea
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 
 export function formatThreadDateTime(value?: string | null): string {
   if (!value) return '—'
@@ -31,9 +33,7 @@ type Props = {
 export default function CommunicationsThreadWorkArea({ thread, model, layout }: Props) {
   const { t } = useI18n()
   const {
-    errorText,
-    errorSecondaryTo,
-    errorSecondaryLabel,
+    threadError,
     threadListPath,
     busyAction,
     sending,
@@ -68,6 +68,8 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
     handleDispatchQueued,
     handleDispatchOne,
   } = model
+
+  const threadLoadErrorBanner = threadError
 
   const btn = layout === 'inboxCenter' ? 'btn-secondary btn-sm' : 'btn-secondary'
 
@@ -374,16 +376,12 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
           </div>
           {actionBar}
         </div>
-        {errorText && (
+        {threadLoadErrorBanner && (
           <ErrorRecoveryBanner
-            info={{
-              title: errorText,
-              hint: t('app.common.retry_hint'),
-            }}
+            info={threadLoadErrorBanner}
             onRetry={() => void load()}
             retryLabel={t('common.actions.refresh')}
-            secondaryTo={errorSecondaryTo || threadListPath}
-            secondaryLabel={errorSecondaryLabel || t('app.communications.actions.back_to_hub')}
+            {...friendlyErrorBannerSecondary(threadLoadErrorBanner, threadListPath, t('app.communications.actions.back_to_hub'))}
             compact
           />
         )}
@@ -430,16 +428,12 @@ export default function CommunicationsThreadWorkArea({ thread, model, layout }: 
         </div>
         {actionBar}
       </div>
-      {errorText && (
+      {threadLoadErrorBanner && (
         <ErrorRecoveryBanner
-          info={{
-            title: errorText,
-            hint: t('app.common.retry_hint'),
-          }}
+          info={threadLoadErrorBanner}
           onRetry={() => void load()}
           retryLabel={t('common.actions.refresh')}
-          secondaryTo={errorSecondaryTo || threadListPath}
-          secondaryLabel={errorSecondaryLabel || t('app.communications.actions.back_to_hub')}
+          {...friendlyErrorBannerSecondary(threadLoadErrorBanner, threadListPath, t('app.communications.actions.back_to_hub'))}
           compact
         />
       )}

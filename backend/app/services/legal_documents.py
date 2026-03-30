@@ -1,10 +1,11 @@
-"""Service for legal documents (RODO clause, privacy policy)."""
+"""Service for legal documents (RODO, privacy, §2.16 billing exhibits)."""
 
 from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.legal.billing_terms_templates_v1 import ORDERED_LEGAL_DOC_TYPES
 from backend.app.models.legal_document import LegalDocument
 
 
@@ -30,7 +31,8 @@ async def list_active_for_tenant(
     db: AsyncSession,
     tenant_id: str,
 ) -> dict[str, LegalDocument | None]:
-    """Return active rodo_clause and privacy_policy for tenant."""
-    rodo = await get_active_legal_document(db, tenant_id, "rodo_clause")
-    privacy = await get_active_legal_document(db, tenant_id, "privacy_policy")
-    return {"rodo_clause": rodo, "privacy_policy": privacy}
+    """Return latest active legal document per known type (including §2.16 billing exhibits)."""
+    out: dict[str, LegalDocument | None] = {}
+    for doc_type in ORDERED_LEGAL_DOC_TYPES:
+        out[doc_type] = await get_active_legal_document(db, tenant_id, doc_type)
+    return out

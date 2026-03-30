@@ -228,11 +228,24 @@ def ensure_leads_schema() -> None:
                 cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN last_signature_status TEXT")
             if not _column_exists(cur, "meta_lead_settings", "leads_processing_mode_v1"):
                 cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN leads_processing_mode_v1 TEXT")
+            if not _column_exists(cur, "meta_lead_settings", "leads_auto_convert_on_fit_v1"):
+                cur.execute(
+                    "ALTER TABLE meta_lead_settings ADD COLUMN leads_auto_convert_on_fit_v1 INTEGER NOT NULL DEFAULT 1"
+                )
+            if not _column_exists(cur, "meta_lead_settings", "generic_inbound_webhook_secret"):
+                cur.execute("ALTER TABLE meta_lead_settings ADD COLUMN generic_inbound_webhook_secret TEXT")
 
         cur.execute(
             """
             CREATE INDEX IF NOT EXISTS ix_meta_lead_settings_verify_token
             ON meta_lead_settings(webhook_verify_token)
+            """
+        )
+        cur.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS ix_meta_lead_settings_generic_inbound_wh_secret
+            ON meta_lead_settings(generic_inbound_webhook_secret)
+            WHERE generic_inbound_webhook_secret IS NOT NULL
             """
         )
 

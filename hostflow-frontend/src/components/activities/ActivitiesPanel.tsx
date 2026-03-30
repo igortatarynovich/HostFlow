@@ -5,7 +5,8 @@ import { completeActivity, listActivities } from '../../api/client'
 import type { ReminderListResponse, ReminderRecord } from '../../api/types'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
-import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { buildInboxThreadPath } from '../../utils/inboxDeepLinks'
 
@@ -52,6 +53,7 @@ type ActivitiesPanelProps = {
  */
 export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embedded }: ActivitiesPanelProps) {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [items, setItems] = useState<ReminderRecord[]>([])
   const [state, setState] = useState<LoadState>('idle')
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
@@ -79,10 +81,14 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
       setItems(Array.isArray(data?.items) ? data.items : [])
       setState('idle')
     } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.activities.errors.load'))) {
+        setState('idle')
+        return
+      }
       setState('error')
-      setError(getFriendlyErrorInfo(err, t('app.activities.errors.load')))
+      setError(getFriendlyErrorInfo(err, t('app.activities.errors.load'), t))
     }
-  }, [statusList, t, typeFilter])
+  }, [planLimitModal, statusList, t, typeFilter])
 
   useEffect(() => {
     void load()
@@ -114,12 +120,14 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
         const updated = (await completeActivity(id)) as ReminderRecord
         setItems((prev) => prev.map((r) => (r.id === id ? updated : r)))
       } catch (err: any) {
-        setError(getFriendlyErrorInfo(err, t('app.activities.errors.complete')))
+        if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.activities.errors.complete'))) {
+          setError(getFriendlyErrorInfo(err, t('app.activities.errors.complete'), t))
+        }
       } finally {
         setBusyId(null)
       }
     },
-    [t],
+    [planLimitModal, t],
   )
 
   const pad = embedded ? 'space-y-3' : compact ? 'p-3 space-y-3' : 'p-4 space-y-4'
@@ -179,8 +187,7 @@ export function ActivitiesPanel({ compact, showFullPageLink, refreshToken, embed
           info={error}
           onRetry={() => void load()}
           retryLabel={t('common.retry')}
-          secondaryTo={CRM_APP_PATHS.leads}
-          secondaryLabel={t('app.reminders.states.empty_cta_leads')}
+          {...friendlyErrorBannerSecondary(error, CRM_APP_PATHS.leads, t('app.reminders.states.empty_cta_leads'))}
         />
       )}
 

@@ -45,27 +45,119 @@ def _loads_or_empty(raw: Optional[str]) -> dict:
         return {}
 
 
+_MISSING = object()
+
+
+def _get_at_path(ctx: Any, path: str) -> Any:
+    """Return value at dot path or _MISSING if any segment is absent."""
+    cur: Any = ctx
+    for part in path.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return _MISSING
+    return cur
+
+
+def _source_str_equal(cur: Any, expected: Any) -> bool:
+    return str(cur or "").strip().lower() == str(expected or "").strip().lower()
+
+
+def _scalar_equal_for_path(path: str, cur: Any, expected: Any) -> bool:
+    if path == "source":
+        return _source_str_equal(cur, expected)
+    return str(cur) == str(expected)
+
+
+def _match_operator(path: str, cur: Any, spec: dict, *, missing: bool) -> bool:
+    op = str(spec.get("op") or "").strip().lower()
+    if op in ("eq", "=="):
+        if missing:
+            return False
+        val = spec.get("value", spec.get("v"))
+        return _scalar_equal_for_path(path, cur, val)
+    if op in ("neq", "!=", "<>"):
+        if missing:
+            return True
+        val = spec.get("value", spec.get("v"))
+        return not _scalar_equal_for_path(path, cur, val)
+    if op == "in":
+        if missing:
+            return False
+        raw = spec.get("value", spec.get("values"))
+        if not isinstance(raw, list):
+            return False
+        if path == "source":
+            c = str(cur or "").strip().lower()
+            opts = [str(x or "").strip().lower() for x in raw]
+            return c in opts
+        sc = str(cur)
+        return sc in [str(x) for x in raw]
+    if op == "exists":
+        if missing:
+            return False
+        if cur is None:
+            return False
+        if isinstance(cur, str) and not str(cur).strip():
+            return False
+        return True
+    if op in ("not_exists", "missing"):
+        if missing:
+            return True
+        if cur is None:
+            return True
+        if isinstance(cur, str) and not str(cur).strip():
+            return True
+        return False
+    return False
+
+
+def _match_condition_key(path: str, expected: Any, ctx: dict) -> bool:
+    cur = _get_at_path(ctx, path)
+    missing = cur is _MISSING
+    if isinstance(expected, dict) and str(expected.get("op") or "").strip():
+        return _match_operator(path, cur, expected, missing=missing)
+    if isinstance(expected, dict):
+        eff_cur = None if missing else cur
+        return str(eff_cur) == str(expected)
+    if expected is None:
+        eff = None if missing else cur
+        return eff is None
+    eff_cur = None if missing else cur
+    return _scalar_equal_for_path(path, eff_cur, expected)
+
+
 def _matches_conditions(conditions: dict, ctx: dict) -> bool:
-    """Minimal matcher: equality for top-level keys, supports nested 'ctx.<key>' via dot paths."""
+    """
+    Match rule conditions against context (implicit AND on all clauses).
+
+    - Dot paths: ``normalized.country``, ``stage``, etc.
+    - Legacy: scalar value → equality (``source`` compared case-insensitively).
+    - ``null`` / missing JSON null → value at path must be null / missing.
+    - Operator object: ``{"op": "eq"|"neq"|"in"|"exists"|"not_exists", "value": ...}``
+      (aliases ``==``, ``!=``, ``<>``, ``missing``).
+    - ``$and``: list of nested condition dicts; each must match (recursive).
+    """
     if not conditions:
         return True
+    if not isinstance(conditions, dict):
+        return False
+    and_list = conditions.get("$and")
+    if and_list is not None:
+        if not isinstance(and_list, list):
+            return False
+        for sub in and_list:
+            if not isinstance(sub, dict):
+                return False
+            if not _matches_conditions(sub, ctx):
+                return False
     for key, expected in conditions.items():
+        if key == "$and":
+            continue
         if key is None:
             continue
-        path = str(key)
-        cur: Any = ctx
-        for part in path.split("."):
-            if isinstance(cur, dict) and part in cur:
-                cur = cur[part]
-            else:
-                cur = None
-                break
-        if expected is None:
-            if cur is not None:
-                return False
-        else:
-            if str(cur) != str(expected):
-                return False
+        if not _match_condition_key(str(key), expected, ctx):
+            return False
     return True
 
 
@@ -260,6 +352,9 @@ async def run_rules(
     context: Dict[str, Any],
 ) -> int:
     """Execute enabled rules for trigger. Action v1: create_reminder."""
+    # §2.10: `lead.qualification` is evaluated only inside lead ingest (not here).
+    if trigger == "lead.qualification":
+        return 0
     if trigger not in TRIGGERS:
         return 0
     rows = await db.execute(

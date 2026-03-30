@@ -20,6 +20,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.core.crypto import decrypt_secret, encrypt_secret, generate_secret
 from backend.app.db.deps import get_db, get_db_with_tenant
+from backend.app.api.v1.utils.own_company import (
+    resolve_active_own_company_id,
+    resolve_active_own_company_id_optional,
+)
 from backend.app.models.communication import (
     CommunicationAllocationAudit,
     CommunicationChannelAccount,
@@ -35,6 +39,7 @@ from backend.app.models.vacancy import Vacancy
 from backend.app.models.reminder import Reminder, ReminderStatus
 from backend.app.models.tenant import Tenant, TenantLicense, user_memberships
 from backend.app.models.user import User
+from backend.app.models.own_company import OwnCompany
 from backend.app.constants.stages import LABELS as CANDIDATE_STAGE_LABELS
 from backend.app.services.communications_allocator import allocate_thread, preview_allocation
 from backend.app.services.communications_access import assert_comm_feature_access
@@ -76,10 +81,12 @@ from backend.app.services.communications_viber import (
     viber_get_account_info,
 )
 from backend.app.services import billing_restrictions
+from backend.app.services.plan_feature_gates import ensure_communication_channel_account_create_allowed
 from backend.app.services.tenant_email import send_email_for_tenant
+from backend.app.services.tenant_quota import ensure_active_candidate_quota
 from backend.app.constants.spa_paths import EMAIL_LEGACY
 from backend.app.core.settings import settings
-from backend.app.modules.documents.crud import ensure_ruleset_seed
+from backend.app.modules.documents.crud import ensure_ruleset_seed, list_candidate_documents
 from backend.app.modules.documents.storage import get_uploads_root, sanitize_filename
 from backend.app.modules.documents.owner_summary import compute_owner_summary
 from backend.app.services.document_ruleset import load_default_ruleset
@@ -1416,6 +1423,31 @@ async def _get_thread_or_404(db: AsyncSession, tenant_id: str, thread_id: str) -
     return thread
 
 
+async def _default_own_company_id_for_tenant(db: AsyncSession, tenant_id: str) -> str | None:
+    row = await db.execute(
+        sa.select(OwnCompany.id)
+        .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
+        .order_by(OwnCompany.created_at.asc())
+        .limit(1)
+    )
+    v = row.scalar_one_or_none()
+    return str(v) if v else None
+
+
+def _ensure_thread_matches_own_company_scope(
+    thread: CommunicationThread,
+    *,
+    own_company_id: str | None,
+) -> None:
+    if not own_company_id:
+        return
+    scoped = str(getattr(thread, "own_company_id", None) or "").strip()
+    if not scoped:
+        return
+    if scoped != str(own_company_id).strip():
+        raise HTTPException(status_code=404, detail="Thread not found")
+
+
 async def _get_tenant_or_404(db: AsyncSession, tenant_id: str) -> Tenant:
     tenant = await db.get(Tenant, tenant_id)
     if tenant is None:
@@ -1627,6 +1659,8 @@ async def _ingest_email_outbound_from_mailbox(
     to_address = _clamp_db_str(to_address, 255)
     to_name = _clamp_db_str(to_name, 255)
 
+    default_own_id = await _default_own_company_id_for_tenant(db, tenant_id)
+
     if external_message_ref:
         existing_msg_stmt = sa.select(CommunicationMessage).where(
             CommunicationMessage.tenant_id == tenant_id,
@@ -1655,6 +1689,7 @@ async def _ingest_email_outbound_from_mailbox(
         }
         thread = CommunicationThread(
             tenant_id=tenant_id,
+            own_company_id=default_own_id,
             channel="email",
             channel_account_id=channel_account_id,
             channel_thread_ref=provider_thread_ref,
@@ -1686,11 +1721,14 @@ async def _ingest_email_outbound_from_mailbox(
         thread.participants_json = participants
         if subject and not thread.subject:
             thread.subject = subject
+        if not getattr(thread, "own_company_id", None) and default_own_id:
+            thread.own_company_id = default_own_id
 
     ts = sent_at or _now_utc()
     msg = CommunicationMessage(
         tenant_id=tenant_id,
         thread_id=str(thread.id),
+        own_company_id=getattr(thread, "own_company_id", None),
         channel="email",
         message_type="email",
         direction="outbound",
@@ -2566,6 +2604,7 @@ async def _create_candidate_from_telegram_intake(
     sender_address: str | None,
     contact_phone: str | None,
 ) -> Candidate:
+    await ensure_active_candidate_quota(db, tenant_id)
     first_name, last_name = _telegram_name_parts(sender_label, username)
     phone_digits = _digits_only(contact_phone)
     candidate = Candidate(
@@ -3587,32 +3626,35 @@ async def _telegram_required_docs_snapshot(
     tenant_id: str,
     candidate: Candidate,
 ) -> Dict[str, Any]:
+    oc = getattr(candidate, "own_company_id", None)
+    own_company_id = str(oc).strip() if oc else None
     ruleset_version = await ensure_ruleset_seed(
         db,
         str(tenant_id),
         load_default_ruleset(),
+        own_company_id=own_company_id,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     owner_context = _candidate_owner_context_for_docs(candidate)
 
-    doc_rows = (
-        await db.execute(
-            sa.select(Document.doc_type, Document.status, Document.expire_date)
-            .where(
-                Document.tenant_id == str(tenant_id),
-                Document.candidate_id == str(candidate.id),
-                Document.deleted_at.is_(None),
-            )
-        )
-    ).all()
+    docs = await list_candidate_documents(
+        db,
+        str(tenant_id),
+        str(candidate.id),
+        include_deleted=False,
+        active_own_company_id=own_company_id,
+    )
 
     serialized_docs: list[dict[str, Any]] = []
-    for doc_type, status, expire_date in doc_rows:
-        status_value = status.value if hasattr(status, "value") else str(status or "").strip().lower()
+    for doc in docs:
+        status_value = (
+            doc.status.value if hasattr(doc.status, "value") else str(doc.status or "").strip().lower()
+        )
+        expire_date = getattr(doc, "expire_date", None)
         serialized_docs.append(
             {
-                "type": str(doc_type or "").strip(),
-                "doc_type": str(doc_type or "").strip(),
+                "type": str(doc.doc_type or "").strip(),
+                "doc_type": str(doc.doc_type or "").strip(),
                 "status": status_value,
                 "expires_at": expire_date.isoformat() if expire_date is not None else None,
             }
@@ -4913,6 +4955,7 @@ async def list_threads(
     q: str | None = Query(None),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationThreadListResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -4923,6 +4966,10 @@ async def list_threads(
 
     stmt = sa.select(CommunicationThread).where(CommunicationThread.tenant_id == tenant_id)
     count_stmt = sa.select(sa.func.count()).select_from(CommunicationThread).where(CommunicationThread.tenant_id == tenant_id)
+    if own_company_id:
+        oc = CommunicationThread.own_company_id == str(own_company_id)
+        stmt = stmt.where(oc)
+        count_stmt = count_stmt.where(oc)
 
     filters = []
     if channel:
@@ -4984,12 +5031,14 @@ async def create_thread(
     body: CommunicationThreadCreate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> CommunicationThreadOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     await _require_comm_feature(db, tenant_id=tenant_id, current_user=current_user, feature=_feature_for_channel(body.channel))
     thread = CommunicationThread(
         tenant_id=tenant_id,
+        own_company_id=str(own_company_id),
         channel=body.channel,
         channel_account_id=body.channel_account_id,
         channel_thread_ref=body.channel_thread_ref,
@@ -5028,11 +5077,13 @@ async def get_thread(
     messages_limit: int = Query(50, ge=1, le=500),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationThreadDetailResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     tenant = await _get_tenant_or_404(db, tenant_id)
     thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
     messages_stmt = (
         sa.select(CommunicationMessage)
@@ -5053,11 +5104,13 @@ async def patch_thread(
     body: CommunicationThreadPatch,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationThreadOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     tenant = await _get_tenant_or_404(db, tenant_id)
     thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
     patch = body.model_dump(exclude_unset=True)
     meta_patch = patch.pop("thread_meta", None)
@@ -5293,11 +5346,13 @@ async def list_thread_messages(
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationMessageListResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     tenant = await _get_tenant_or_404(db, tenant_id)
     thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
     count_stmt = sa.select(sa.func.count()).select_from(CommunicationMessage).where(
         CommunicationMessage.tenant_id == tenant_id,
@@ -5324,11 +5379,13 @@ async def create_thread_message(
     body: CommunicationMessageCreate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationMessageOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     tenant = await _get_tenant_or_404(db, tenant_id)
     thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
     license_row = await _load_tenant_license_row(db, tenant_id)
     if body.direction == "outbound" and not body.is_internal_note:
@@ -5337,6 +5394,7 @@ async def create_thread_message(
     msg = CommunicationMessage(
         tenant_id=tenant_id,
         thread_id=thread_id,
+        own_company_id=getattr(thread, "own_company_id", None),
         channel=thread.channel,
         message_type=body.message_type,
         direction=body.direction,
@@ -5387,11 +5445,13 @@ async def upload_thread_message_attachment(
     file: UploadFile = File(...),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationMessageAttachmentUploadOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     tenant = await _get_tenant_or_404(db, tenant_id)
     thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
 
     raw_name = file.filename or "attachment"
@@ -5453,6 +5513,7 @@ async def dispatch_message(
     body: CommunicationDispatchRequest,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationDispatchResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -5460,6 +5521,7 @@ async def dispatch_message(
     if msg is None or str(msg.tenant_id) != tenant_id:
         raise HTTPException(status_code=404, detail="Message not found")
     thread = await _get_thread_or_404(db, tenant_id, str(msg.thread_id))
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
     tenant = await _get_tenant_or_404(db, tenant_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
     license_row = await _load_tenant_license_row(db, tenant_id)
@@ -5571,6 +5633,7 @@ async def dispatch_queued_messages(
     body: CommunicationDispatchQueuedRequest,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationDispatchQueuedResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -5587,6 +5650,7 @@ async def dispatch_queued_messages(
     fetch_limit = max(body.limit, min(body.limit * 4, 800))
     stmt = (
         sa.select(CommunicationMessage)
+        .join(CommunicationThread, CommunicationThread.id == CommunicationMessage.thread_id)
         .where(
             CommunicationMessage.tenant_id == tenant_id,
             CommunicationMessage.direction == "outbound",
@@ -5596,6 +5660,8 @@ async def dispatch_queued_messages(
         .order_by(sa.asc(CommunicationMessage.created_at))
         .limit(fetch_limit)
     )
+    if own_company_id:
+        stmt = stmt.where(CommunicationThread.own_company_id == str(own_company_id))
     if body.channel:
         stmt = stmt.where(CommunicationMessage.channel == body.channel)
     elif body.only_email:
@@ -6193,11 +6259,13 @@ async def mark_thread_read(
     body: CommunicationMarkReadRequest,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationThreadOut:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     tenant = await _get_tenant_or_404(db, tenant_id)
     thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
     now = _now_utc()
     stmt = sa.update(CommunicationMessage).where(
@@ -6223,6 +6291,7 @@ async def reconcile_thread_unread(
     body: CommunicationUnreadReconcileRequest,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationUnreadReconcileResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
@@ -6234,6 +6303,8 @@ async def reconcile_thread_unread(
     threads_stmt = sa.select(CommunicationThread.id, CommunicationThread.unread_count).where(
         CommunicationThread.tenant_id == tenant_id
     )
+    if own_company_id:
+        threads_stmt = threads_stmt.where(CommunicationThread.own_company_id == str(own_company_id))
     if body.channel:
         threads_stmt = threads_stmt.where(CommunicationThread.channel == body.channel)
     if not body.include_archived:
@@ -6303,10 +6374,12 @@ async def auto_assign_thread(
     thread_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ) -> CommunicationAutoAssignResponse:
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     thread = await _get_thread_or_404(db, tenant_id, thread_id)
+    _ensure_thread_matches_own_company_scope(thread, own_company_id=own_company_id)
     tenant = await _get_tenant_or_404(db, tenant_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature=_feature_for_channel(thread.channel))  # type: ignore[arg-type]
     result = await allocate_thread(
@@ -6496,6 +6569,7 @@ async def ingest_email(
     actor_id = str(current_user.sub) if getattr(current_user, "sub", None) else None
     tenant = await _get_tenant_or_404(db, tenant_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature="email")
+    default_own_id = await _default_own_company_id_for_tenant(db, tenant_id)
 
     if body.channel_account_id:
         account = await db.get(CommunicationChannelAccount, body.channel_account_id)
@@ -6540,6 +6614,7 @@ async def ingest_email(
         }
         thread = CommunicationThread(
             tenant_id=tenant_id,
+            own_company_id=default_own_id,
             channel="email",
             channel_account_id=body.channel_account_id,
             channel_thread_ref=body.provider_thread_ref,
@@ -6589,11 +6664,14 @@ async def ingest_email(
             thread.linked_candidate_id = body.linked_candidate_id
         if body.linked_company_id and not thread.linked_company_id:
             thread.linked_company_id = body.linked_company_id
+        if not getattr(thread, "own_company_id", None) and default_own_id:
+            thread.own_company_id = default_own_id
 
     received_at = body.received_at or _now_utc()
     msg = CommunicationMessage(
         tenant_id=tenant_id,
         thread_id=str(thread.id),
+        own_company_id=getattr(thread, "own_company_id", None),
         channel="email",
         message_type="email",
         direction="inbound",
@@ -6664,6 +6742,7 @@ async def ingest_generic_channel(
     actor_id = str(current_user.sub) if getattr(current_user, "sub", None) else None
     tenant = await _get_tenant_or_404(db, tenant_id)
     assert_comm_feature_access(tenant=tenant, current_user=current_user, tenant_id=tenant_id, feature="messages")
+    default_own_id = await _default_own_company_id_for_tenant(db, tenant_id)
     channel_norm = (channel or "").strip().lower()
     if channel_norm in {"", "email"}:
         raise HTTPException(status_code=400, detail="Use /communications/ingest/email for email channel")
@@ -6708,6 +6787,7 @@ async def ingest_generic_channel(
         }
         thread = CommunicationThread(
             tenant_id=tenant_id,
+            own_company_id=default_own_id,
             channel=channel_norm,
             channel_account_id=body.channel_account_id,
             channel_thread_ref=provider_thread_ref,
@@ -6756,11 +6836,14 @@ async def ingest_generic_channel(
             thread.linked_candidate_id = body.linked_candidate_id
         if body.linked_company_id and str(thread.linked_company_id or "").strip() != str(body.linked_company_id).strip():
             thread.linked_company_id = body.linked_company_id
+        if not getattr(thread, "own_company_id", None) and default_own_id:
+            thread.own_company_id = default_own_id
 
     received_at = body.received_at or _now_utc()
     msg = CommunicationMessage(
         tenant_id=tenant_id,
         thread_id=str(thread.id),
+        own_company_id=getattr(thread, "own_company_id", None),
         channel=channel_norm,
         message_type="text" if not body.html else "rich_text",
         direction="inbound",
@@ -7619,6 +7702,7 @@ async def create_channel_account(
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     await _require_comm_feature(db, tenant_id=tenant_id, current_user=current_user, feature=_feature_for_channel(body.channel))
+    await ensure_communication_channel_account_create_allowed(db, tenant_id)
     settings_in = _as_dict(body.settings_json)
     oauth_secret_plain = str(body.oauth_client_secret or "").strip()
     if oauth_secret_plain:

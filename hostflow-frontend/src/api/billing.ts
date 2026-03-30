@@ -11,6 +11,7 @@ export type BillingSubscription = {
   customer_id: string | null
   subscription_id: string | null
   checkout_session_id: string | null
+  billing_interval?: 'month' | 'year' | null
   current_period_start: string | null
   current_period_end: string | null
   activated_at: string | null
@@ -28,6 +29,37 @@ export type BillingCheckoutSession = {
   checkout_url: string
 }
 
+export type BillingPortalPackCheckoutSession = {
+  provider: 'mock' | 'stripe'
+  mode: 'payment'
+  status: string
+  session_id: string
+  checkout_url: string
+  pack_increment: number
+}
+
+export type BillingAddonPackCheckoutSession = {
+  provider: 'mock' | 'stripe'
+  mode: 'payment'
+  status: string
+  session_id: string
+  checkout_url: string
+  sku: string
+  pack_increment: number
+}
+
+export type BillingAddonCheckoutOffer = {
+  sku: string
+  label: string
+  configured: boolean
+  pack_increment: number | null
+  /** Legacy alias of effect_ready */
+  checkout_ready: boolean
+  effect_ready: boolean
+  purchase_allowed: boolean
+  purchase_block_reason: string | null
+}
+
 export type BillingPortalLink = {
   provider: 'mock' | 'stripe'
   url: string
@@ -39,6 +71,35 @@ export type BillingUsage = {
   client_manager_count: number
   viewer_count: number
   storage_used_gb: number
+  leads_created_this_month: number
+  candidates_active_count: number
+  documents_count: number
+  vacancies_open_count: number
+  portal_links_active_count: number
+}
+
+export type BillingUsageCaps = {
+  max_leads_created_per_month: number
+  max_candidates_active: number
+  max_vacancies_active: number
+  max_documents: number
+  max_public_portal_links: number
+}
+
+export type BillingPortalCandidatesUsage = {
+  used_this_month_utc: number
+  cap: number
+  base_cap?: number
+  pack_addon?: number
+  pack_increment_offer?: number
+  /** Legacy: API currently returns false — new portal candidates are blocked at cap (402) on upload-link/notify. */
+  soft_limit: boolean
+  warning_level: 'none' | 'warn_80' | 'warn_100'
+}
+
+export type BillingFounderProgram = {
+  tenant_enrolled: boolean
+  tenant_revoked: boolean
 }
 
 export type BillingLicense = {
@@ -51,6 +112,10 @@ export type BillingLicense = {
   max_viewers: number
   max_storage_gb: number
   max_companies: number
+  max_candidates_active: number
+  max_vacancies_active: number
+  max_documents: number
+  max_public_portal_links: number
   expires_at: string | null
   auto_renew: boolean
   notes: string | null
@@ -61,8 +126,14 @@ export type BillingLicense = {
 export type BillingPlan = {
   code: 'starter' | 'team' | 'pro'
   name: string
+  currency?: string
   monthly_price_usd: number
+  yearly_equivalent_monthly_eur?: number | null
   limits: Record<string, number>
+  /** Stripe monthly price id configured in backend env */
+  stripe_month_configured?: boolean
+  /** Stripe yearly price id configured in backend env */
+  stripe_year_configured?: boolean
 }
 
 export type BillingHistoryItem = {
@@ -97,10 +168,22 @@ export type BillingInvoice = {
   invoice_pdf_url: string | null
 }
 
+export type BillingLeadFormsUsage = {
+  active_count: number
+  cap: number
+  base_cap: number
+  pack_addon: number
+  pack_increment_offer: number
+}
+
 export type BillingSummary = {
   subscription: BillingSubscription
   license: BillingLicense | null
   usage: BillingUsage
+  usage_caps: BillingUsageCaps
+  portal_candidates?: BillingPortalCandidatesUsage | null
+  founder_program?: BillingFounderProgram | null
+  lead_forms?: BillingLeadFormsUsage | null
   company_slots?: {
     included_limit: number
     extra_slots: number
@@ -112,6 +195,7 @@ export type BillingSummary = {
   available_plans: BillingPlan[]
   history: BillingHistoryItem[]
   invoices: BillingInvoice[]
+  addon_checkout_offers?: BillingAddonCheckoutOffer[]
 }
 
 export async function getBillingSubscription() {
@@ -126,10 +210,31 @@ export async function getBillingSummary() {
 
 export async function createBillingCheckoutSession(payload: {
   plan_code: 'starter' | 'team' | 'pro'
+  billing_interval?: 'month' | 'year'
   success_url?: string
   cancel_url?: string
 }) {
   const { data } = await http.post<BillingCheckoutSession>('/settings/billing/checkout-session', payload)
+  return data
+}
+
+export async function createPortalCandidatesPackCheckout(payload?: { success_url?: string; cancel_url?: string }) {
+  const { data } = await http.post<BillingPortalPackCheckoutSession>(
+    '/settings/billing/portal-candidates-pack/checkout',
+    payload ?? {},
+  )
+  return data
+}
+
+export async function createAddonPackCheckout(payload: {
+  sku: string
+  success_url?: string
+  cancel_url?: string
+}) {
+  const { data } = await http.post<BillingAddonPackCheckoutSession>(
+    '/settings/billing/addon-pack/checkout',
+    payload,
+  )
   return data
 }
 
@@ -150,6 +255,7 @@ export async function createBillingPortalLink() {
 
 export async function changeBillingPlan(payload: {
   plan_code: 'starter' | 'team' | 'pro'
+  billing_interval?: 'month' | 'year'
   success_url?: string
   cancel_url?: string
 }) {

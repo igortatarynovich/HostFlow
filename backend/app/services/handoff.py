@@ -395,10 +395,10 @@ async def accept_handoff(
     db: AsyncSession,
     *,
     handoff_id: str,
-    reviewed_by_user_id: str,
+    reviewed_by_user_id: str | None,
     tenant_id: str,
 ) -> tuple[CandidateHandoff | None, str | None]:
-    """Accept handoff. Sets processor if assigned_to was empty."""
+    """Accept handoff. Sets processor if assigned_to was empty and reviewer is known."""
     handoff = await db.get(CandidateHandoff, handoff_id)
     if not handoff:
         return None, "Handoff not found"
@@ -409,7 +409,7 @@ async def accept_handoff(
     handoff.status = "accepted"
     handoff.reviewed_by_user_id = reviewed_by_user_id
     handoff.reviewed_at = now
-    if not handoff.assigned_to_user_id:
+    if not handoff.assigned_to_user_id and reviewed_by_user_id:
         handoff.assigned_to_user_id = reviewed_by_user_id
     await db.flush()
 
@@ -440,7 +440,11 @@ async def accept_handoff(
             db,
             tenant_id=handoff.agency_tenant_id,
             event_type="handoff_accepted",
-            payload={"candidate_id": handoff.candidate_id, "handoff_id": handoff.id},
+            payload={
+                "candidate_id": handoff.candidate_id,
+                "handoff_id": handoff.id,
+                "via_public_portal": reviewed_by_user_id is None,
+            },
             audience=EventAudience(user_ids=notify_ids),
             entity_type="handoff",
             entity_id=handoff.id,
@@ -453,7 +457,7 @@ async def reject_handoff(
     db: AsyncSession,
     *,
     handoff_id: str,
-    reviewed_by_user_id: str,
+    reviewed_by_user_id: str | None,
     rejection_reason: str,
     tenant_id: str,
 ) -> tuple[CandidateHandoff | None, str | None]:
@@ -494,7 +498,12 @@ async def reject_handoff(
             db,
             tenant_id=handoff.agency_tenant_id,
             event_type="handoff_rejected",
-            payload={"candidate_id": handoff.candidate_id, "handoff_id": handoff.id, "reason": reason},
+            payload={
+                "candidate_id": handoff.candidate_id,
+                "handoff_id": handoff.id,
+                "reason": reason,
+                "via_public_portal": reviewed_by_user_id is None,
+            },
             audience=EventAudience(user_ids=notify_ids),
             entity_type="handoff",
             entity_id=handoff.id,
@@ -507,7 +516,7 @@ async def return_handoff(
     db: AsyncSession,
     *,
     handoff_id: str,
-    reviewed_by_user_id: str,
+    reviewed_by_user_id: str | None,
     return_reason: str,
     tenant_id: str,
 ) -> tuple[CandidateHandoff | None, str | None]:
@@ -556,7 +565,12 @@ async def return_handoff(
             db,
             tenant_id=handoff.agency_tenant_id,
             event_type="handoff_returned",
-            payload={"candidate_id": handoff.candidate_id, "handoff_id": handoff.id, "reason": reason},
+            payload={
+                "candidate_id": handoff.candidate_id,
+                "handoff_id": handoff.id,
+                "reason": reason,
+                "via_public_portal": reviewed_by_user_id is None,
+            },
             audience=EventAudience(user_ids=notify_ids),
             entity_type="handoff",
             entity_id=handoff.id,

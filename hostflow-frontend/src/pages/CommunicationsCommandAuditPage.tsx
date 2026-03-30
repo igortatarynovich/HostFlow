@@ -7,20 +7,10 @@ import {
 } from '../api/communications'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
-
-function errorTextFrom(err: any, fallback: string) {
-  const d = err?.response?.data?.detail
-  if (typeof d === 'string') return d
-  if (Array.isArray(d)) {
-    const msg = d.map((x) => (typeof x?.msg === 'string' ? x.msg : null)).filter(Boolean).join('; ')
-    if (msg) return msg
-  }
-  if (d && typeof d === 'object') {
-    if (typeof d.msg === 'string') return d.msg
-    try { return JSON.stringify(d) } catch {}
-  }
-  return err?.message || fallback
-}
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
 function formatDateTime(value?: string | null): string {
   if (!value) return '—'
@@ -37,8 +27,9 @@ function formatDateTime(value?: string | null): string {
 
 export default function CommunicationsCommandAuditPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const [loading, setLoading] = useState(true)
-  const [errorText, setErrorText] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [items, setItems] = useState<CommunicationCommandAudit[]>([])
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
@@ -60,7 +51,7 @@ export default function CommunicationsCommandAuditPage() {
 
   const load = async (nextOffset = offset) => {
     setLoading(true)
-    setErrorText(null)
+    setError(null)
     try {
       const [audit, settings] = await Promise.all([
         listCommunicationCommandAudit({
@@ -79,7 +70,14 @@ export default function CommunicationsCommandAuditPage() {
       const cmds = Array.isArray(settings?.commands?.items) ? settings!.commands.items : []
       setTemplates(cmds)
     } catch (err: any) {
-      setErrorText(errorTextFrom(err, t('app.communications.command_audit.errors.load', { defaultValue: 'Failed to load command audit' })))
+      if (
+        !planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('app.communications.command_audit.errors.load', { defaultValue: 'Failed to load command audit' }),
+        )
+      ) {
+        setError(getFriendlyErrorInfo(err, t('app.communications.command_audit.errors.load', { defaultValue: 'Failed to load command audit' }), t))
+      }
     } finally {
       setLoading(false)
     }
@@ -159,20 +157,22 @@ export default function CommunicationsCommandAuditPage() {
           </div>
         </div>
         {loading && <div className="px-4 py-4 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
-        {errorText && (
+        {error && (
           <div className="p-4">
             <ErrorRecoveryBanner
-              info={{
-                title: errorText,
-                hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
-              }}
+              info={error}
               onRetry={() => void load(offset)}
               retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+              {...friendlyErrorBannerSecondary(
+                error,
+                CRM_APP_PATHS.settingsCommunications,
+                t('app.nav.items.settings_communications', { defaultValue: 'Communications settings' }),
+              )}
               compact
             />
           </div>
         )}
-        {!loading && !errorText && (
+        {!loading && !error && (
           <div className="max-h-[70vh] overflow-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-slate-600">

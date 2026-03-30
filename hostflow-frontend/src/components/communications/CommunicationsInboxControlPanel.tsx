@@ -8,7 +8,9 @@ import type { ManagerOption } from '../../api/types'
 import type { useCommunicationsThread } from '../../hooks/useCommunicationsThread'
 import { useI18n } from '../../i18n'
 import { isCommunicationThreadUnlinked, uosLinkedServiceOrderId } from '../../utils/communicationThreadUnlinked'
-import { getFriendlyErrorInfo } from '../../utils/friendlyError'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyFormHintError, getFriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import CommunicationsInboxThreadContextCard from './CommunicationsInboxThreadContextCard'
 import CommunicationsInboxWorkflowCard from './CommunicationsInboxWorkflowCard'
 import CommunicationsThreadEntityLinkForms from './CommunicationsThreadEntityLinkForms'
@@ -63,6 +65,7 @@ export default function CommunicationsInboxControlPanel({
   onAfterThreadPatch,
 }: Props) {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const { busyAction, handleMarkRead, handleAutoAssign, load } = model
   const unlinked = isCommunicationThreadUnlinked(thread)
   const cid = String(thread.linked_candidate_id || '').trim()
@@ -80,12 +83,12 @@ export default function CommunicationsInboxControlPanel({
   const [taskDescription, setTaskDescription] = useState('')
   const [taskDueLocal, setTaskDueLocal] = useState(defaultDueLocal)
   const [taskBusy, setTaskBusy] = useState(false)
-  const [taskError, setTaskError] = useState<string | null>(null)
+  const [taskError, setTaskError] = useState<FriendlyErrorInfo | null>(null)
   const [taskCreated, setTaskCreated] = useState(false)
 
-  const [linkError, setLinkError] = useState<string | null>(null)
+  const [assigneeSaveError, setAssigneeSaveError] = useState<FriendlyErrorInfo | null>(null)
   const [folderBusy, setFolderBusy] = useState(false)
-  const [folderError, setFolderError] = useState<string | null>(null)
+  const [folderError, setFolderError] = useState<FriendlyErrorInfo | null>(null)
 
   const [managerOptions, setManagerOptions] = useState<ManagerOption[]>([])
   const [assigneeDraft, setAssigneeDraft] = useState(() => String(thread.assignee_id || ''))
@@ -118,7 +121,7 @@ export default function CommunicationsInboxControlPanel({
     setTaskDueLocal(defaultDueLocal())
     setTaskError(null)
     setTaskCreated(false)
-    setLinkError(null)
+    setAssigneeSaveError(null)
     setFolderError(null)
     // Only when switching threads — avoid wiping the form on every thread object refresh.
   }, [thread.id, t])
@@ -126,19 +129,19 @@ export default function CommunicationsInboxControlPanel({
   const saveManualAssignee = async () => {
     setAssigneeBusy(true)
     setAssigneeOk(false)
-    setLinkError(null)
+    setAssigneeSaveError(null)
     try {
       await patchCommunicationThread(thread.id, { assignee_id: assigneeDraft || null })
       await load()
-      setLinkError(null)
+      setAssigneeSaveError(null)
       setAssigneeOk(true)
       await onAfterThreadPatch?.()
     } catch (err: unknown) {
-      const fe = getFriendlyErrorInfo(
-        err,
-        t('app.communications_inbox_center.assignee_save_failed'),
-      )
-      setLinkError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications_inbox_center.assignee_save_failed'))) {
+        setAssigneeSaveError(
+          getFriendlyErrorInfo(err, t('app.communications_inbox_center.assignee_save_failed'), t),
+        )
+      }
     } finally {
       setAssigneeBusy(false)
     }
@@ -153,11 +156,9 @@ export default function CommunicationsInboxControlPanel({
       await onAfterThreadPatch?.()
       if (exitCenter) onAfterArchiveOrDelete?.()
     } catch (err: unknown) {
-      const fe = getFriendlyErrorInfo(
-        err,
-        t('app.communications_inbox_center.folder_error'),
-      )
-      setFolderError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications_inbox_center.folder_error'))) {
+        setFolderError(getFriendlyErrorInfo(err, t('app.communications_inbox_center.folder_error'), t))
+      }
     } finally {
       setFolderBusy(false)
     }
@@ -174,7 +175,7 @@ export default function CommunicationsInboxControlPanel({
     if (!title) return
     const due = parseLocalDue(taskDueLocal)
     if (!due) {
-      setTaskError(t('app.communications_inbox_center.task_error_due'))
+      setTaskError(friendlyFormHintError(t('app.communications_inbox_center.task_error_due'), t))
       return
     }
     const remindAt = new Date(due.getTime() - REMIND_BEFORE_MS)
@@ -213,11 +214,9 @@ export default function CommunicationsInboxControlPanel({
       })
       setTaskCreated(true)
     } catch (err: unknown) {
-      const fe = getFriendlyErrorInfo(
-        err,
-        t('app.communications_inbox_center.task_error_create'),
-      )
-      setTaskError([fe.title, fe.detail].filter(Boolean).join(' — ') || fe.hint)
+      if (!planLimitModal?.showPlanLimitIfNeeded(err, t('app.communications_inbox_center.task_error_create'))) {
+        setTaskError(getFriendlyErrorInfo(err, t('app.communications_inbox_center.task_error_create'), t))
+      }
     } finally {
       setTaskBusy(false)
     }
@@ -295,7 +294,12 @@ export default function CommunicationsInboxControlPanel({
               maxLength={4000}
             />
           </label>
-          {taskError && <p className="text-xs text-rose-600">{taskError}</p>}
+          {taskError ? (
+            <p className="text-xs text-rose-600">
+              {taskError.title}
+              {taskError.detail ? ` — ${taskError.detail}` : ''}
+            </p>
+          ) : null}
           {taskCreated && (
             <p className="text-xs text-emerald-700">
               {t('app.communications_inbox_center.task_created')}{' '}
@@ -349,7 +353,12 @@ export default function CommunicationsInboxControlPanel({
           <div className="text-xs font-medium text-slate-700">
             {t('app.communications_inbox_center.assign_manager_title')}
           </div>
-          {linkError && <p className="text-xs text-rose-600">{linkError}</p>}
+          {assigneeSaveError ? (
+            <p className="text-xs text-rose-600">
+              {assigneeSaveError.title}
+              {assigneeSaveError.detail ? ` — ${assigneeSaveError.detail}` : ''}
+            </p>
+          ) : null}
           <select
             className="input w-full text-sm"
             value={assigneeDraft}
@@ -405,7 +414,12 @@ export default function CommunicationsInboxControlPanel({
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             {t('app.communications_inbox_center.folder_section')}
           </div>
-          {folderError && <p className="mt-2 text-xs text-rose-600">{folderError}</p>}
+          {folderError ? (
+            <p className="mt-2 text-xs text-rose-600">
+              {folderError.title}
+              {folderError.detail ? ` — ${folderError.detail}` : ''}
+            </p>
+          ) : null}
           <div className="mt-2 flex flex-col gap-2">
             {isThreadInboxActive && (
               <>

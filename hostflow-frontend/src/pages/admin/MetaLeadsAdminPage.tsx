@@ -32,10 +32,12 @@ import type {
   MetaLeadSettings,
   MetaLeadSettingsPatch,
 } from '../../api/types'
+import { IconBrandMeta } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
-import { getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getLeadErrorSuggestion } from '../../utils/leadErrorSuggestion'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 
@@ -58,6 +60,7 @@ const META_MAPPING_FORMATS: MetaFieldMappingFormat[] = [
   'float',
   'uuid',
   'country',
+  'geo_country',
   'contact_channel',
   'list',
   'csv',
@@ -74,6 +77,10 @@ const META_MAPPING_TARGET_PRESETS = [
   'phone_country_code',
   'country',
   'country_raw',
+  'geo_country',
+  'geo_country_raw',
+  'location_country',
+  'current_country',
   'preferred_contact',
   'vacancy_id_hint',
   'vacancy_hint',
@@ -311,7 +318,9 @@ const formatDateTime = (value?: string | null) => {
 
 export default function MetaLeadsAdminPage() {
   const { t } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [tab, setTab] = useState<TabKey>('settings')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
@@ -338,6 +347,13 @@ export default function MetaLeadsAdminPage() {
   const [incomingError, setIncomingError] = useState<FriendlyErrorInfo | null>(null)
   const [leadCustomFieldKeys, setLeadCustomFieldKeys] = useState<string[]>([])
   const [creatingLeadFieldKey, setCreatingLeadFieldKey] = useState<string | null>(null)
+  const [fitVacancyPick, setFitVacancyPick] = useState('')
+
+  const leadFitOrderIds = useMemo(() => {
+    const fromDraft = settingsDraft.lead_fit_ordered_vacancy_ids
+    if (fromDraft !== undefined) return fromDraft
+    return settings?.lead_fit_ordered_vacancy_ids ?? []
+  }, [settings?.lead_fit_ordered_vacancy_ids, settingsDraft.lead_fit_ordered_vacancy_ids])
 
   const selectedCompanyId = settingsDraft.default_company_id ?? settings?.default_company_id ?? null
   const selectedCompanyName = useMemo(() => {
@@ -350,6 +366,11 @@ export default function MetaLeadsAdminPage() {
     if (!selectedRecruiterId) return null
     return recruiterOptions.find((option) => option.id === selectedRecruiterId)?.name ?? null
   }, [recruiterOptions, selectedRecruiterId])
+
+  const effectiveProcessingMode = (settingsDraft.leads_processing_mode_v1 ??
+    settings?.leads_processing_mode_v1 ??
+    'assisted') as LeadsProcessingModeV1
+  const autoCreateAppliesToMode = effectiveProcessingMode === 'automatic'
 
   const mappingRulesLimit = settings?.plan_field_mapping_rules_limit ?? null
   const credentialsPlanLimit = settings?.plan_meta_credentials_limit ?? null
@@ -428,7 +449,7 @@ export default function MetaLeadsAdminPage() {
 
       const currentCompanyId = settingsData?.default_company_id ?? null
       if (currentCompanyId && !companyOpts.some((opt) => opt.id === currentCompanyId)) {
-        companyOpts.push({ id: currentCompanyId, name: t('app.admin.meta_leads.placeholders.selected_company') })
+        companyOpts.push({ id: currentCompanyId, name: t('admin.meta_leads.placeholders.selected_company') })
       }
       setCompanyOptions(companyOpts)
 
@@ -436,7 +457,7 @@ export default function MetaLeadsAdminPage() {
         .filter((user) => user.role === 'recruiter')
         .map((user) => ({
           id: user.user_id || (user as any).id || user.email || '',
-          name: user.full_name || user.email || user.short_id || t('app.admin.meta_leads.placeholders.recruiter_fallback'),
+          name: user.full_name || user.email || user.short_id || t('admin.meta_leads.placeholders.recruiter_fallback'),
         }))
         .filter((opt) => typeof opt.id === 'string' && opt.id.length > 0)
 
@@ -447,17 +468,21 @@ export default function MetaLeadsAdminPage() {
         )
         recruiterOpts.push({
           id: currentRecruiterId,
-          name: fallbackUser?.full_name || fallbackUser?.email || fallbackUser?.short_id || t('app.admin.meta_leads.placeholders.selected_recruiter'),
+          name: fallbackUser?.full_name || fallbackUser?.email || fallbackUser?.short_id || t('admin.meta_leads.placeholders.selected_recruiter'),
         })
       }
       setRecruiterOptions(recruiterOpts)
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] refresh failed', err)
-      setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.load')))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.load'))) {
+        setError(null)
+      } else {
+        setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.load'), t))
+      }
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   useEffect(() => {
     // Deep-linking: /app/settings/integrations/meta?tab=settings|credentials|mapping|field_mapping|incoming|logs
@@ -474,18 +499,24 @@ export default function MetaLeadsAdminPage() {
 
   useEffect(() => {
     if (tab !== 'incoming' && tab !== 'field_mapping') return
+    const previewSource: 'meta' | 'webhook' =
+      tab === 'incoming' && searchParams.get('incoming_source') === 'webhook' ? 'webhook' : 'meta'
     let cancelled = false
     setIncomingLoading(true)
     setIncomingError(null)
     ;(async () => {
       try {
-        const res = await getMetaIncomingPreview({ limit: 30 })
+        const res = await getMetaIncomingPreview({ limit: 30, source: previewSource })
         if (!cancelled) setIncomingRows(Array.isArray(res?.items) ? res.items : [])
       } catch (err: any) {
         console.error('[MetaLeadsAdmin] incoming preview failed', err)
         if (!cancelled) {
           setIncomingRows([])
-          setIncomingError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.load_incoming')))
+          if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.load_incoming'))) {
+            setIncomingError(null)
+          } else {
+            setIncomingError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.load_incoming'), t))
+          }
         }
       } finally {
         if (!cancelled) setIncomingLoading(false)
@@ -494,7 +525,7 @@ export default function MetaLeadsAdminPage() {
     return () => {
       cancelled = true
     }
-  }, [tab, t])
+  }, [planLimitModal, tab, searchParams, t])
 
   useEffect(() => {
     if (tab !== 'field_mapping') return
@@ -521,14 +552,55 @@ export default function MetaLeadsAdminPage() {
     setSettingsDraft((prev) => ({ ...prev, [key]: value }))
   }, [])
 
+  const addLeadFitVacancy = useCallback(
+    (vacancyId: string) => {
+      const id = String(vacancyId || '').trim()
+      if (!id) return
+      const cur = [...leadFitOrderIds]
+      if (cur.includes(id)) return
+      cur.push(id)
+      handleSettingsChange('lead_fit_ordered_vacancy_ids', cur as MetaLeadSettingsPatch['lead_fit_ordered_vacancy_ids'])
+    },
+    [handleSettingsChange, leadFitOrderIds],
+  )
+
+  const removeLeadFitVacancy = useCallback(
+    (index: number) => {
+      const cur = [...leadFitOrderIds]
+      cur.splice(index, 1)
+      handleSettingsChange('lead_fit_ordered_vacancy_ids', cur as MetaLeadSettingsPatch['lead_fit_ordered_vacancy_ids'])
+    },
+    [handleSettingsChange, leadFitOrderIds],
+  )
+
+  const moveLeadFitVacancy = useCallback(
+    (index: number, delta: number) => {
+      const cur = [...leadFitOrderIds]
+      const j = index + delta
+      if (j < 0 || j >= cur.length) return
+      const tmp = cur[index]
+      cur[index] = cur[j]
+      cur[j] = tmp
+      handleSettingsChange('lead_fit_ordered_vacancy_ids', cur as MetaLeadSettingsPatch['lead_fit_ordered_vacancy_ids'])
+    },
+    [handleSettingsChange, leadFitOrderIds],
+  )
+
   const handleSettingsSubmit = useCallback(async () => {
     try {
       const payload: MetaLeadSettingsPatch = { ...settingsDraft }
+      const modeForSave = (payload.leads_processing_mode_v1 ??
+        settings?.leads_processing_mode_v1 ??
+        'assisted') as LeadsProcessingModeV1
+      if (modeForSave !== 'automatic') {
+        payload.auto_create_enabled = false
+        payload.leads_auto_convert_on_fit_v1 = false
+      }
       const built = rulesFromRowStates(fieldMappingRows)
       if (built === 'incomplete') {
         setError({
-          title: t('app.admin.meta_leads.errors.field_mapping_row_incomplete'),
-          hint: t('app.admin.meta_leads.errors.field_mapping_row_incomplete_hint'),
+          title: t('admin.meta_leads.errors.field_mapping_row_incomplete'),
+          hint: t('admin.meta_leads.errors.field_mapping_row_incomplete_hint'),
         })
         return
       }
@@ -537,23 +609,15 @@ export default function MetaLeadsAdminPage() {
       setSettings(result)
       setSettingsDraft({})
       setFieldMappingRows((result?.field_mapping ?? []).map((r) => ruleToRowState(r, newMappingRowId())))
-      setNotice(t('app.admin.meta_leads.notices.settings_saved'))
+      setNotice(t('admin.meta_leads.notices.settings_saved'))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] update settings failed', err)
-      const status = err?.response?.status
-      const d = err?.response?.data?.detail
-      if (status === 403 && d && typeof d === 'object' && d.code === 'plan_meta_field_mapping_limit') {
-        const rawLim = Number(d.limit)
-        const lim = Number.isFinite(rawLim) ? rawLim : mappingRulesLimit ?? 25
-        setError({
-          title: t('common.errors.plan_meta_field_mapping_limit', { limit: lim }),
-          hint: t('common.errors.plan_upgrade_team_short'),
-        })
-      } else {
-        setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.settings_update')))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.settings_update'))) {
+        return
       }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.settings_update'), t))
     }
-  }, [fieldMappingRows, mappingRulesLimit, settingsDraft, t])
+  }, [fieldMappingRows, mappingRulesLimit, planLimitModal, settings, settingsDraft, t])
 
   const handleCredentialCreate = useCallback(async () => {
     const payload: MetaCredentialCreatePayload = {
@@ -566,8 +630,8 @@ export default function MetaLeadsAdminPage() {
     }
     if (!payload.label) {
       setError({
-        title: t('app.admin.meta_leads.errors.credential_label'),
-        hint: t('app.admin.meta_leads.errors.credential_label', { defaultValue: 'Fill required fields and retry.' }),
+        title: t('admin.meta_leads.errors.credential_label'),
+        hint: t('admin.meta_leads.errors.credential_label', { defaultValue: 'Fill required fields and retry.' }),
       })
       return
     }
@@ -575,61 +639,59 @@ export default function MetaLeadsAdminPage() {
       const entry = await createMetaLeadCredential(payload)
       setCredentials((prev) => [entry, ...prev])
       setCredentialForm(DEFAULT_CREDENTIAL_FORM)
-      setNotice(t('app.admin.meta_leads.notices.credential_created'))
+      setNotice(t('admin.meta_leads.notices.credential_created'))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] create credential failed', err)
-      const status = err?.response?.status
-      const d = err?.response?.data?.detail
-      if (status === 403 && d && typeof d === 'object' && d.code === 'plan_meta_lead_credentials_limit') {
-        const rawLim = Number(d.limit)
-        const lim = Number.isFinite(rawLim) ? rawLim : credentialsPlanLimit ?? 1
-        setError({
-          title: t('common.errors.plan_meta_lead_credentials_limit', { limit: lim }),
-          hint: t('common.errors.plan_upgrade_team_short'),
-        })
-      } else {
-        setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.credential_create')))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.credential_create'))) {
+        return
       }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.credential_create'), t))
     }
-  }, [credentialForm, credentialsPlanLimit, t])
+  }, [credentialForm, credentialsPlanLimit, planLimitModal, t])
 
   const handleCredentialRotate = useCallback(async (id: string) => {
     try {
       const { secret } = await rotateMetaLeadCredential(id)
-      setNotice(t('app.admin.meta_leads.notices.secret_rotated', { values: { secret } }))
+      setNotice(t('admin.meta_leads.notices.secret_rotated', { values: { secret } }))
       const updated = await listMetaLeadCredentials()
       setCredentials(updated)
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] rotate credential failed', err)
-      setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.secret_rotate')))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.secret_rotate'))) {
+        return
+      }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.secret_rotate'), t))
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   const handleCredentialDelete = useCallback(async (id: string) => {
-    if (!window.confirm(t('app.admin.meta_leads.prompts.delete_credential'))) return
+    if (!window.confirm(t('admin.meta_leads.prompts.delete_credential'))) return
     try {
       await deleteMetaLeadCredential(id)
       setCredentials((prev) => prev.filter((item) => item.id !== id))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] delete credential failed', err)
-      setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.credential_delete')))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.credential_delete'))) {
+        return
+      }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.credential_delete'), t))
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   const handleMappingCreate = useCallback(async () => {
     const adIdRaw = mappingForm.adId.trim()
     const vacancyIdRaw = mappingForm.vacancyId.trim()
     if (!adIdRaw || !vacancyIdRaw) {
       setError({
-        title: t('app.admin.meta_leads.errors.mapping_required'),
-        hint: t('app.admin.meta_leads.errors.mapping_required', { defaultValue: 'Fill required fields and retry.' }),
+        title: t('admin.meta_leads.errors.mapping_required'),
+        hint: t('admin.meta_leads.errors.mapping_required', { defaultValue: 'Fill required fields and retry.' }),
       })
       return
     }
     if (!/^\d+$/.test(adIdRaw)) {
       setError({
-        title: t('app.admin.meta_leads.errors.mapping_ad_id'),
-        hint: t('app.admin.meta_leads.errors.mapping_ad_id', { defaultValue: 'Use numeric ad id and retry.' }),
+        title: t('admin.meta_leads.errors.mapping_ad_id'),
+        hint: t('admin.meta_leads.errors.mapping_ad_id', { defaultValue: 'Use numeric ad id and retry.' }),
       })
       return
     }
@@ -642,23 +704,29 @@ export default function MetaLeadsAdminPage() {
       })
       setMapping((prev) => [entry, ...prev.filter((item) => item.ad_id !== entry.ad_id)])
       setMappingForm(DEFAULT_MAPPING_FORM)
-      setNotice(t('app.admin.meta_leads.notices.mapping_saved'))
+      setNotice(t('admin.meta_leads.notices.mapping_saved'))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] create mapping failed', err)
-      setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.mapping_create')))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.mapping_create'))) {
+        return
+      }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.mapping_create'), t))
     }
-  }, [mappingForm, t])
+  }, [mappingForm, planLimitModal, t])
 
   const handleMappingDelete = useCallback(async (adId: string) => {
-    if (!window.confirm(t('app.admin.meta_leads.prompts.delete_mapping', { values: { adId } }))) return
+    if (!window.confirm(t('admin.meta_leads.prompts.delete_mapping', { values: { adId } }))) return
     try {
       await deleteMetaAdsMap(adId)
       setMapping((prev) => prev.filter((item) => item.ad_id !== adId))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] delete mapping failed', err)
-      setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.mapping_delete')))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.mapping_delete'))) {
+        return
+      }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.mapping_delete'), t))
     }
-  }, [])
+  }, [planLimitModal, t])
 
   const handleAttachUnmapped = useCallback(async () => {
     if (!attachModal || !attachModal.vacancyId.trim()) return
@@ -676,19 +744,22 @@ export default function MetaLeadsAdminPage() {
         })
       }
       setAttachModal(null)
-      setNotice(t('app.admin.meta_leads.notices.unmapped_attached', { defaultValue: 'Лиды привязаны к вакансии' }))
+      setNotice(t('admin.meta_leads.notices.unmapped_attached', { defaultValue: 'Лиды привязаны к вакансии' }))
       await refreshAll()
     } catch (err: any) {
-      setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.reroute')))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.reroute'))) {
+        return
+      }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.reroute'), t))
     } finally {
       setSubmitting(false)
     }
-  }, [attachModal, t, refreshAll])
+  }, [attachModal, planLimitModal, t, refreshAll])
 
   const handleReroute = useCallback(async (lead: Lead) => {
     const vacancyDefault = lead.vacancy_id ?? ''
     const vacancyId = window.prompt(
-      t('app.admin.meta_leads.prompts.reroute_vacancy', { defaultValue: 'Enter vacancy_id (or leave empty to create candidate with company only)' }),
+      t('admin.meta_leads.prompts.reroute_vacancy', { defaultValue: 'Enter vacancy_id (or leave empty to create candidate with company only)' }),
       vacancyDefault || ''
     )
     if (vacancyId === null) return
@@ -697,7 +768,7 @@ export default function MetaLeadsAdminPage() {
     if (lead.company_id) payload.company_id = lead.company_id as any
     try {
       await rerouteMetaLead(lead.id, payload)
-      setNotice(t('app.admin.meta_leads.notices.lead_rerouted'))
+      setNotice(t('admin.meta_leads.notices.lead_rerouted'))
       const [refreshedNeeds, refreshedFailed] = await Promise.all([
         listLeads({ status: 'needs_routing', limit: 100, offset: 0 }),
         listLeads({ status: 'failed', limit: 100, offset: 0 }),
@@ -705,20 +776,23 @@ export default function MetaLeadsAdminPage() {
       setLeads(mergeLeadsForLogs(refreshedNeeds, refreshedFailed))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] reroute failed', err)
-      setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.reroute')))
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.reroute'))) {
+        return
+      }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.reroute'), t))
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   const handleRetry = useCallback(async (lead: Lead) => {
     try {
       const result = await retryLeads({ lead_ids: [String(lead.id)], refresh_graph: true })
       const item = result.items[0]
       if (item?.processed) {
-        setNotice(t('app.admin.meta_leads.notices.lead_retried', { defaultValue: 'Лид успешно обработан' }))
+        setNotice(t('admin.meta_leads.notices.lead_retried', { defaultValue: 'Лид успешно обработан' }))
       } else if (item?.message) {
         setError({
           title: item.message,
-          hint: t('app.admin.meta_leads.errors.retry', { defaultValue: 'Retry failed. Check mapping and try again.' }),
+          hint: t('admin.meta_leads.errors.retry', { defaultValue: 'Retry failed. Check mapping and try again.' }),
         })
       }
       const [refreshedNeeds, refreshedFailed] = await Promise.all([
@@ -728,9 +802,17 @@ export default function MetaLeadsAdminPage() {
       setLeads(mergeLeadsForLogs(refreshedNeeds, refreshedFailed))
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] retry failed', err)
-      setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.retry', { defaultValue: 'Retry failed' })))
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          err,
+          t('admin.meta_leads.errors.retry', { defaultValue: 'Retry failed' }),
+        )
+      ) {
+        return
+      }
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.retry', { defaultValue: 'Retry failed' }), t))
     }
-  }, [t])
+  }, [planLimitModal, t])
 
   // getLeadErrorSuggestion is extracted into shared util.
 
@@ -827,32 +909,32 @@ export default function MetaLeadsAdminPage() {
             },
           ]
         })
-        setNotice(t('app.admin.meta_leads.field_mapping.lead_field_created_notice', { key: k }))
+        setNotice(t('admin.meta_leads.field_mapping.lead_field_created_notice', { values: { key: k } }))
       } catch (err: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(
+            err,
+            t('admin.meta_leads.errors.lead_field_definition_create'),
+          )
+        ) {
+          return
+        }
         const status = err?.response?.status
-        const d = err?.response?.data?.detail
         if (status === 409) {
           setError({
-            title: t('app.admin.meta_leads.errors.lead_field_definition_conflict'),
-            hint: t('app.admin.meta_leads.errors.lead_field_definition_conflict_hint'),
-          })
-        } else if (status === 403 && d && typeof d === 'object' && d.code === 'plan_lead_custom_fields_limit') {
-          setError({
-            title: t('common.errors.plan_lead_custom_fields_limit', {
-              values: { limit: Number(d.limit) || 10 },
-            }),
-            hint: '',
+            title: t('admin.meta_leads.errors.lead_field_definition_conflict'),
+            hint: t('admin.meta_leads.errors.lead_field_definition_conflict_hint'),
           })
         } else {
           setError(
-            getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.lead_field_definition_create')),
+            getFriendlyErrorInfo(err, t('admin.meta_leads.errors.lead_field_definition_create'), t),
           )
         }
       } finally {
         setCreatingLeadFieldKey(null)
       }
     },
-    [fieldMappingRows.length, mappingRowsAtCap, mappingRulesLimit, t],
+    [fieldMappingRows.length, mappingRowsAtCap, mappingRulesLimit, planLimitModal, t],
   )
 
   const fieldMappingRuleCount = useMemo(() => {
@@ -865,14 +947,21 @@ export default function MetaLeadsAdminPage() {
   }, [fieldMappingRows])
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-6xl space-y-6 py-1 sm:py-2">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to={CRM_APP_PATHS.settingsIntegrations} className="text-sm font-medium text-brand-600 hover:underline">
-            {t('app.admin.integrations_hub.back_to_hub')}
+            {t('admin.integrations_hub.back_to_hub')}
           </Link>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">{t('app.admin.meta_leads.title')}</h1>
-          <p className="text-sm text-slate-500">{t('app.admin.meta_leads.subtitle')}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[#0081FB]" aria-hidden>
+              <IconBrandMeta size={22} stroke={1.75} />
+            </span>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">{t('admin.meta_leads.title')}</h1>
+              <p className="text-sm text-slate-500">{t('admin.meta_leads.subtitle')}</p>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -889,10 +978,10 @@ export default function MetaLeadsAdminPage() {
       {credentials.length === 0 && !loading && (
         <div className="rounded border border-brand-200 bg-brand-50 p-4">
           <h3 className="font-semibold text-brand-900">
-            {t('app.admin.meta_leads.quick_start.title', { defaultValue: 'Быстрый старт' })}
+            {t('admin.meta_leads.quick_start.title', { defaultValue: 'Быстрый старт' })}
           </h3>
           <p className="mt-1 text-sm text-brand-800">
-            {t('app.admin.meta_leads.quick_start.subtitle', {
+            {t('admin.meta_leads.quick_start.subtitle', {
               defaultValue: '1) Добавьте Credential (Webhook Secret, Access Token). 2) Настройте маппинг ad_id → вакансия. 3) Проверьте логи входящих лидов.',
             })}
           </p>
@@ -902,14 +991,14 @@ export default function MetaLeadsAdminPage() {
               className="btn-primary"
               onClick={() => setTab('credentials')}
             >
-              {t('app.admin.meta_leads.tabs.credentials')} →
+              {t('admin.meta_leads.tabs.credentials')} →
             </button>
             <button
               type="button"
               className="btn-secondary"
               onClick={() => setTab('mapping')}
             >
-              {t('app.admin.meta_leads.tabs.mapping')} →
+              {t('admin.meta_leads.tabs.mapping')} →
             </button>
           </div>
         </div>
@@ -922,8 +1011,7 @@ export default function MetaLeadsAdminPage() {
               info={error}
               onRetry={() => void refreshAll()}
               retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              secondaryTo={CRM_APP_PATHS.settingsLeads}
-              secondaryLabel={t('app.admin.meta_leads.title')}
+              {...friendlyErrorBannerSecondary(error, CRM_APP_PATHS.settingsLeads, t('admin.meta_leads.title'))}
               compact
             />
           )}
@@ -939,55 +1027,55 @@ export default function MetaLeadsAdminPage() {
           className={`rounded px-3 py-2 text-sm ${tab === 'settings' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
           onClick={() => setTab('settings')}
         >
-          {t('app.admin.meta_leads.tabs.settings')}
+          {t('admin.meta_leads.tabs.settings')}
         </button>
         <button
           type="button"
           className={`rounded px-3 py-2 text-sm ${tab === 'credentials' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
           onClick={() => setTab('credentials')}
         >
-          {t('app.admin.meta_leads.tabs.credentials')}
+          {t('admin.meta_leads.tabs.credentials')}
         </button>
         <button
           type="button"
           className={`rounded px-3 py-2 text-sm ${tab === 'mapping' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
           onClick={() => setTab('mapping')}
         >
-          {t('app.admin.meta_leads.tabs.mapping')}
+          {t('admin.meta_leads.tabs.mapping')}
         </button>
         <button
           type="button"
           className={`rounded px-3 py-2 text-sm ${tab === 'field_mapping' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
           onClick={() => setTab('field_mapping')}
         >
-          {t('app.admin.meta_leads.tabs.field_mapping')}
+          {t('admin.meta_leads.tabs.field_mapping')}
         </button>
         <button
           type="button"
           className={`rounded px-3 py-2 text-sm ${tab === 'incoming' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
           onClick={() => setTab('incoming')}
         >
-          {t('app.admin.meta_leads.tabs.incoming')}
+          {t('admin.meta_leads.tabs.incoming')}
         </button>
         <button
           type="button"
           className={`rounded px-3 py-2 text-sm ${tab === 'logs' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
           onClick={() => setTab('logs')}
         >
-          {t('app.admin.meta_leads.tabs.logs')}
+          {t('admin.meta_leads.tabs.logs')}
         </button>
         <span className="w-full text-xs text-slate-400 sm:ml-auto sm:w-auto">
-          {t('app.admin.meta_leads.other_platforms', { defaultValue: 'TikTok, YouTube, Google — скоро' })}
+          {t('admin.meta_leads.other_platforms', { defaultValue: 'TikTok, YouTube, Google — скоро' })}
         </span>
       </nav>
 
       {unmappedGroups.length > 0 && (
         <section className="rounded border border-amber-200 bg-amber-50 p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-amber-900">
-            {t('app.admin.meta_leads.unmapped.title', { defaultValue: 'Непривязанные лиды' })}
+            {t('admin.meta_leads.unmapped.title', { defaultValue: 'Непривязанные лиды' })}
           </h2>
           <p className="mt-1 text-sm text-amber-800">
-            {t('app.admin.meta_leads.unmapped.subtitle', { defaultValue: 'Лиды с ad_id без маппинга на вакансию. Привяжите к вакансии и перезапустите маршрутизацию.' })}
+            {t('admin.meta_leads.unmapped.subtitle', { defaultValue: 'Лиды с ad_id без маппинга на вакансию. Привяжите к вакансии и перезапустите маршрутизацию.' })}
           </p>
           <div className="mt-3 space-y-2">
             {unmappedGroups.map((group) => (
@@ -997,7 +1085,7 @@ export default function MetaLeadsAdminPage() {
               >
                 <span>
                   ad_id: <strong>{group.ad_id}</strong> — {group.count}{' '}
-                  {t('app.admin.meta_leads.unmapped.leads', { defaultValue: 'лидов' })}
+                  {t('admin.meta_leads.unmapped.leads', { defaultValue: 'лидов' })}
                 </span>
                 <button
                   type="button"
@@ -1005,7 +1093,7 @@ export default function MetaLeadsAdminPage() {
                   onClick={() => setAttachModal({ group, vacancyId: '' })}
                   disabled={submitting}
                 >
-                  {t('app.admin.meta_leads.unmapped.attach_btn', { defaultValue: 'Привязать к вакансии' })}
+                  {t('admin.meta_leads.unmapped.attach_btn', { defaultValue: 'Привязать к вакансии' })}
                 </button>
               </div>
             ))}
@@ -1015,38 +1103,143 @@ export default function MetaLeadsAdminPage() {
 
       {tab === 'settings' && (
         <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">{t('app.admin.meta_leads.settings.title')}</h2>
-          <p className="mt-1 text-sm text-slate-500">{t('app.admin.meta_leads.settings.subtitle')}</p>
+          <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.settings.title')}</h2>
+          <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.settings.subtitle')}</p>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={(settingsDraft.auto_create_enabled ?? settings?.auto_create_enabled ?? true)}
-                onChange={(event) => handleSettingsChange('auto_create_enabled', event.target.checked)}
-              />
-              {t('app.admin.meta_leads.settings.auto_create')}
-            </label>
+          <div className="mt-4 space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50/90 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                {t('admin.meta_leads.settings.automation_stack_title')}
+              </div>
+              <p className="mt-1 text-xs text-slate-600">{t('admin.meta_leads.settings.automation_stack_body')}</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
             <label className="text-sm text-slate-700 md:col-span-2">
               <span className="block font-medium text-slate-800">
-                {t('app.admin.meta_leads.settings.processing_mode_label')}
+                {t('admin.meta_leads.settings.processing_mode_label')}
               </span>
               <select
                 className="input mt-1 w-full max-w-md"
-                value={
-                  (settingsDraft.leads_processing_mode_v1 ??
-                    settings?.leads_processing_mode_v1 ??
-                    'assisted') as LeadsProcessingModeV1
-                }
+                value={effectiveProcessingMode}
                 onChange={(event) =>
                   handleSettingsChange('leads_processing_mode_v1', event.target.value as LeadsProcessingModeV1)
                 }
               >
-                <option value="manual">{t('app.admin.meta_leads.settings.processing_mode_manual')}</option>
-                <option value="assisted">{t('app.admin.meta_leads.settings.processing_mode_assisted')}</option>
-                <option value="automatic">{t('app.admin.meta_leads.settings.processing_mode_automatic')}</option>
+                <option value="manual">{t('admin.meta_leads.settings.processing_mode_manual')}</option>
+                <option value="assisted">{t('admin.meta_leads.settings.processing_mode_assisted')}</option>
+                <option value="automatic">{t('admin.meta_leads.settings.processing_mode_automatic')}</option>
               </select>
-              <p className="mt-1 text-xs text-slate-500">{t('app.admin.meta_leads.settings.processing_mode_hint')}</p>
+              <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.processing_mode_hint')}</p>
+            </label>
+            <div className="md:col-span-2 rounded-lg border border-slate-200 bg-white p-3">
+              <div className="text-sm font-medium text-slate-800">
+                {t('admin.meta_leads.settings.lead_fit_order_title')}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.lead_fit_order_hint')}</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <select
+                  className="input max-w-md"
+                  value={fitVacancyPick}
+                  onChange={(e) => setFitVacancyPick(e.target.value)}
+                >
+                  <option value="">{t('admin.meta_leads.settings.lead_fit_order_pick')}</option>
+                  {vacancyOptions
+                    .filter((v) => !leadFitOrderIds.includes(v.id))
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.title}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => {
+                    if (fitVacancyPick) {
+                      addLeadFitVacancy(fitVacancyPick)
+                      setFitVacancyPick('')
+                    }
+                  }}
+                >
+                  {t('common.actions.add')}
+                </button>
+              </div>
+              <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-800">
+                {leadFitOrderIds.map((id, idx) => (
+                  <li key={`${String(id)}-${idx}`} className="flex flex-wrap items-center gap-2">
+                    <span className="min-w-0 flex-1">
+                      {vacancyOptions.find((v) => v.id === id)?.title ?? String(id)}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-xs"
+                      onClick={() => moveLeadFitVacancy(idx, -1)}
+                      disabled={idx === 0}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-xs"
+                      onClick={() => moveLeadFitVacancy(idx, 1)}
+                      disabled={idx === leadFitOrderIds.length - 1}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-secondary btn-xs text-red-700"
+                      onClick={() => removeLeadFitVacancy(idx)}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <label
+              className={`flex flex-col gap-1 text-sm md:col-span-2 ${autoCreateAppliesToMode ? 'text-slate-700' : 'text-slate-500'}`}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  disabled={!autoCreateAppliesToMode}
+                  checked={
+                    autoCreateAppliesToMode
+                      ? (settingsDraft.auto_create_enabled ?? settings?.auto_create_enabled ?? true)
+                      : false
+                  }
+                  onChange={(event) => handleSettingsChange('auto_create_enabled', event.target.checked)}
+                />
+                {t('admin.meta_leads.settings.auto_create')}
+              </span>
+              <p className={`text-xs pl-6 ${autoCreateAppliesToMode ? 'text-slate-500' : 'text-amber-800'}`}>
+                {t('admin.meta_leads.settings.auto_create_automatic_only')}
+              </p>
+            </label>
+            <label
+              className={`flex flex-col gap-1 text-sm md:col-span-2 ${autoCreateAppliesToMode ? 'text-slate-700' : 'text-slate-500'}`}
+            >
+              <span className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  disabled={!autoCreateAppliesToMode}
+                  checked={
+                    autoCreateAppliesToMode
+                      ? (settingsDraft.leads_auto_convert_on_fit_v1 ??
+                          settings?.leads_auto_convert_on_fit_v1 ??
+                          true)
+                      : false
+                  }
+                  onChange={(event) =>
+                    handleSettingsChange('leads_auto_convert_on_fit_v1', event.target.checked)
+                  }
+                />
+                {t('admin.meta_leads.settings.leads_auto_convert_on_fit')}
+              </span>
+              <p className={`text-xs pl-6 ${autoCreateAppliesToMode ? 'text-slate-500' : 'text-amber-800'}`}>
+                {t('admin.meta_leads.settings.leads_auto_convert_on_fit_hint')}
+              </p>
             </label>
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
@@ -1054,45 +1247,45 @@ export default function MetaLeadsAdminPage() {
                 checked={(settingsDraft.mask_pii_in_logs ?? settings?.mask_pii_in_logs ?? true)}
                 onChange={(event) => handleSettingsChange('mask_pii_in_logs', event.target.checked)}
               />
-              {t('app.admin.meta_leads.settings.mask_pii')}
+              {t('admin.meta_leads.settings.mask_pii')}
             </label>
 
             <label className="text-sm text-slate-700">
-              {t('app.admin.meta_leads.settings.default_company')}
+              {t('admin.meta_leads.settings.default_company')}
               <select
                 className="input mt-1 w-full"
                 value={selectedCompanyId ?? ''}
                 onChange={(event) => handleSettingsChange('default_company_id', event.target.value ? event.target.value : null)}
               >
-                <option value="">{t('app.admin.meta_leads.placeholders.company_none')}</option>
+                <option value="">{t('admin.meta_leads.placeholders.company_none')}</option>
                 {companyOptions.map((company) => (
                   <option key={company.id} value={company.id}>{company.name}</option>
                 ))}
               </select>
               {selectedCompanyName && (
-                <div className="mt-1 text-xs text-slate-500">{t('app.admin.meta_leads.settings.current_company', { values: { name: selectedCompanyName } })}</div>
+                <div className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.current_company', { values: { name: selectedCompanyName } })}</div>
               )}
             </label>
 
             <label className="text-sm text-slate-700">
-              {t('app.admin.meta_leads.settings.default_recruiter')}
+              {t('admin.meta_leads.settings.default_recruiter')}
               <select
                 className="input mt-1 w-full"
                 value={selectedRecruiterId ?? ''}
                 onChange={(event) => handleSettingsChange('fallback_recruiter_id', event.target.value ? event.target.value : null)}
               >
-                <option value="">{t('app.admin.meta_leads.placeholders.recruiter_none')}</option>
+                <option value="">{t('admin.meta_leads.placeholders.recruiter_none')}</option>
                 {recruiterOptions.map((option) => (
                   <option key={option.id} value={option.id}>{option.name}</option>
                 ))}
               </select>
               {selectedRecruiterName && (
-                <div className="mt-1 text-xs text-slate-500">{t('app.admin.meta_leads.settings.current_recruiter', { values: { name: selectedRecruiterName } })}</div>
+                <div className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.current_recruiter', { values: { name: selectedRecruiterName } })}</div>
               )}
             </label>
 
             <label className="text-sm text-slate-700">
-              {t('app.admin.meta_leads.settings.sla_label')}
+              {t('admin.meta_leads.settings.sla_label')}
               <input
                 type="number"
                 min={0}
@@ -1106,7 +1299,7 @@ export default function MetaLeadsAdminPage() {
             </label>
 
             <label className="text-sm text-slate-700">
-              {t('app.admin.meta_leads.settings.webhook_url')}
+              {t('admin.meta_leads.settings.webhook_url')}
               <input
                 type="text"
                 className="input mt-1 w-full"
@@ -1115,7 +1308,7 @@ export default function MetaLeadsAdminPage() {
               />
             </label>
             <label className="text-sm text-slate-700">
-              {t('app.admin.meta_leads.settings.webhook_token')}
+              {t('admin.meta_leads.settings.webhook_token')}
               <input
                 type="text"
                 className="input mt-1 w-full"
@@ -1126,24 +1319,25 @@ export default function MetaLeadsAdminPage() {
 
             <div className="text-sm text-slate-700 md:col-span-2">
               <span className="block font-medium text-slate-800">
-                {t('app.admin.meta_leads.settings.field_mapping_card_title')}
+                {t('admin.meta_leads.settings.field_mapping_card_title')}
               </span>
               <p className="mt-1 text-slate-600">
-                {t('app.admin.meta_leads.settings.field_mapping_card_body', { count: fieldMappingRuleCount })}
+                {t('admin.meta_leads.settings.field_mapping_card_body', { values: { count: fieldMappingRuleCount } })}
               </p>
               <button
                 type="button"
                 className="btn-secondary btn-sm mt-2"
                 onClick={() => setTab('field_mapping')}
               >
-                {t('app.admin.meta_leads.settings.open_field_mapping')}
+                {t('admin.meta_leads.settings.open_field_mapping')}
               </button>
+            </div>
             </div>
           </div>
 
           <div className="mt-4 flex items-center gap-3 text-sm text-slate-500">
-            <div>{t('app.admin.meta_leads.settings.last_signature_check', { values: { date: formatDateTime(settings?.last_webhook_check_at) } })}</div>
-            <div>{t('app.admin.meta_leads.settings.signature_status', { values: { status: settings?.last_signature_status ?? '—' } })}</div>
+            <div>{t('admin.meta_leads.settings.last_signature_check', { values: { date: formatDateTime(settings?.last_webhook_check_at) } })}</div>
+            <div>{t('admin.meta_leads.settings.signature_status', { values: { status: settings?.last_signature_status ?? '—' } })}</div>
           </div>
 
           <button
@@ -1151,7 +1345,7 @@ export default function MetaLeadsAdminPage() {
             onClick={handleSettingsSubmit}
             className="btn-primary mt-4"
           >
-            {t('app.admin.meta_leads.settings.save')}
+            {t('admin.meta_leads.settings.save')}
           </button>
         </section>
       )}
@@ -1159,17 +1353,17 @@ export default function MetaLeadsAdminPage() {
       {tab === 'credentials' && (
         <section className="space-y-4">
           <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">{t('app.admin.meta_leads.credentials.title')}</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.credentials.title')}</h2>
             {credentialsAtCap && (
               <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                {t('app.admin.meta_leads.credentials.plan_limit_reached', {
-                  limit: credentialsPlanLimit ?? 1,
+                {t('admin.meta_leads.credentials.plan_limit_reached', {
+                  values: { limit: credentialsPlanLimit ?? 1 },
                 })}
               </p>
             )}
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               <label className="text-sm text-slate-700">
-                {t('app.admin.meta_leads.credentials.label')}
+                {t('admin.meta_leads.credentials.label')}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1178,19 +1372,19 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                {t('app.admin.meta_leads.credentials.status')}
+                {t('admin.meta_leads.credentials.status')}
                 <select
                   className="input mt-1 w-full"
                   value={credentialForm.status}
                   onChange={(event) => setCredentialForm((prev) => ({ ...prev, status: event.target.value as CredentialFormState['status'] }))}
                 >
-                  <option value="active">{t('app.admin.meta_leads.credentials.statuses.active', { defaultValue: 'active' })}</option>
-                  <option value="disabled">{t('app.admin.meta_leads.credentials.statuses.disabled', { defaultValue: 'disabled' })}</option>
-                  <option value="rotation_pending">{t('app.admin.meta_leads.credentials.statuses.rotation_pending', { defaultValue: 'rotation_pending' })}</option>
+                  <option value="active">{t('admin.meta_leads.credentials.statuses.active', { defaultValue: 'active' })}</option>
+                  <option value="disabled">{t('admin.meta_leads.credentials.statuses.disabled', { defaultValue: 'disabled' })}</option>
+                  <option value="rotation_pending">{t('admin.meta_leads.credentials.statuses.rotation_pending', { defaultValue: 'rotation_pending' })}</option>
                 </select>
               </label>
               <label className="text-sm text-slate-700">
-                {t('app.admin.meta_leads.credentials.webhook_secret')}
+                {t('admin.meta_leads.credentials.webhook_secret')}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1199,7 +1393,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                {t('app.admin.meta_leads.credentials.access_token')}
+                {t('admin.meta_leads.credentials.access_token')}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1208,7 +1402,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                {t('app.admin.meta_leads.credentials.fields.ad_account_id', { defaultValue: 'ad_account_id' })}
+                {t('admin.meta_leads.credentials.fields.ad_account_id', { defaultValue: 'ad_account_id' })}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1217,7 +1411,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                {t('app.admin.meta_leads.credentials.fields.page_id', { defaultValue: 'page_id' })}
+                {t('admin.meta_leads.credentials.fields.page_id', { defaultValue: 'page_id' })}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1240,11 +1434,11 @@ export default function MetaLeadsAdminPage() {
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.label')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.status')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.ad_id', { defaultValue: 'ad_id' })}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.page_id', { defaultValue: 'page_id' })}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.credentials.table.signature')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.label')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.status')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.ad_id', { defaultValue: 'ad_id' })}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.page_id', { defaultValue: 'page_id' })}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.signature')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
                 </tr>
               </thead>
@@ -1256,7 +1450,7 @@ export default function MetaLeadsAdminPage() {
                 )}
                 {!loading && credentials.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-4 text-center text-slate-500">{t('app.admin.meta_leads.credentials.empty')}</td>
+                    <td colSpan={6} className="px-4 py-4 text-center text-slate-500">{t('admin.meta_leads.credentials.empty')}</td>
                   </tr>
                 )}
                 {credentials.map((entry) => (
@@ -1273,7 +1467,7 @@ export default function MetaLeadsAdminPage() {
                           className="btn-secondary btn-xs"
                           onClick={() => void handleCredentialRotate(entry.id)}
                         >
-                          {t('app.admin.meta_leads.credentials.actions.rotate')}
+                          {t('admin.meta_leads.credentials.actions.rotate')}
                         </button>
                         <button
                           type="button"
@@ -1295,10 +1489,10 @@ export default function MetaLeadsAdminPage() {
       {tab === 'mapping' && (
         <section className="space-y-4">
           <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">{t('app.admin.meta_leads.mapping.title')}</h2>
+            <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.mapping.title')}</h2>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               <label className="text-sm text-slate-700">
-                {t('app.admin.meta_leads.mapping.fields.ad_id', { defaultValue: 'ad_id' })}
+                {t('admin.meta_leads.mapping.fields.ad_id', { defaultValue: 'ad_id' })}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1307,7 +1501,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                {t('app.admin.meta_leads.mapping.fields.vacancy_id', { defaultValue: 'vacancy_id' })}
+                {t('admin.meta_leads.mapping.fields.vacancy_id', { defaultValue: 'vacancy_id' })}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1316,7 +1510,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                {t('app.admin.meta_leads.mapping.note')}
+                {t('admin.meta_leads.mapping.note')}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1330,14 +1524,14 @@ export default function MetaLeadsAdminPage() {
               className="btn-primary mt-4"
               onClick={handleMappingCreate}
             >
-              {t('app.admin.meta_leads.mapping.save')}
+              {t('admin.meta_leads.mapping.save')}
             </button>
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <input
               type="text"
-              placeholder={t('app.admin.meta_leads.mapping.search_placeholder')}
+              placeholder={t('admin.meta_leads.mapping.search_placeholder')}
               value={mappingSearch}
               onChange={(event) => setMappingSearch(event.target.value)}
               className="input w-full"
@@ -1348,10 +1542,10 @@ export default function MetaLeadsAdminPage() {
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.mapping.table.ad_id', { defaultValue: 'ad_id' })}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.mapping.table.vacancy_id', { defaultValue: 'vacancy_id' })}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.mapping.note')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.mapping.created')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.table.ad_id', { defaultValue: 'ad_id' })}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.table.vacancy_id', { defaultValue: 'vacancy_id' })}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.note')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.created')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
                 </tr>
               </thead>
@@ -1363,7 +1557,7 @@ export default function MetaLeadsAdminPage() {
                 )}
                 {!loading && filteredMapping.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-4 text-center text-slate-500">{t('app.admin.meta_leads.mapping.empty')}</td>
+                    <td colSpan={5} className="px-4 py-4 text-center text-slate-500">{t('admin.meta_leads.mapping.empty')}</td>
                   </tr>
                 )}
                 {filteredMapping.map((entry) => (
@@ -1378,8 +1572,8 @@ export default function MetaLeadsAdminPage() {
                           type="button"
                           className="btn-secondary btn-xs"
                           onClick={async () => {
-                            const note = window.prompt(t('app.admin.meta_leads.prompts.edit_note'), entry.note ?? '') ?? undefined
-                            const vacancy = window.prompt(t('app.admin.meta_leads.prompts.edit_vacancy'), entry.vacancy_id) ?? undefined
+                            const note = window.prompt(t('admin.meta_leads.prompts.edit_note'), entry.note ?? '') ?? undefined
+                            const vacancy = window.prompt(t('admin.meta_leads.prompts.edit_vacancy'), entry.vacancy_id) ?? undefined
                             if (!vacancy) return
                             try {
                               const updated = await updateMetaAdsMap(entry.ad_id, {
@@ -1389,7 +1583,15 @@ export default function MetaLeadsAdminPage() {
                               setMapping((prev) => prev.map((item) => (item.ad_id === updated.ad_id ? updated : item)))
                             } catch (err: any) {
                               console.error('[MetaLeadsAdmin] update mapping failed', err)
-                              setError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.mapping_update')))
+                              if (
+                                planLimitModal?.showPlanLimitIfNeeded(
+                                  err,
+                                  t('admin.meta_leads.errors.mapping_update'),
+                                )
+                              ) {
+                                return
+                              }
+                              setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.mapping_update'), t))
                             }
                           }}
                         >
@@ -1427,10 +1629,10 @@ export default function MetaLeadsAdminPage() {
           {unknownKeysForLeadField.length > 0 && (
             <div className="rounded border border-indigo-100 bg-indigo-50/90 p-4 text-sm text-slate-800 shadow-sm">
               <h3 className="font-semibold text-indigo-950">
-                {t('app.admin.meta_leads.field_mapping.unknown_fields_title')}
+                {t('admin.meta_leads.field_mapping.unknown_fields_title')}
               </h3>
               <p className="mt-1 text-xs text-indigo-900/90">
-                {t('app.admin.meta_leads.field_mapping.unknown_fields_subtitle')}
+                {t('admin.meta_leads.field_mapping.unknown_fields_subtitle')}
               </p>
               <ul className="mt-3 flex flex-wrap gap-2">
                 {unknownKeysForLeadField.map((k) => (
@@ -1447,47 +1649,46 @@ export default function MetaLeadsAdminPage() {
                     >
                       {creatingLeadFieldKey === k
                         ? t('common.loading')
-                        : t('app.admin.meta_leads.field_mapping.add_lead_field_cta')}
+                        : t('admin.meta_leads.field_mapping.add_lead_field_cta')}
                     </button>
                   </li>
                 ))}
               </ul>
               <p className="mt-3 text-xs text-slate-600">
                 <Link to={CRM_APP_PATHS.settingsCustomFields} className="font-medium text-brand-600 hover:underline">
-                  {t('app.admin.meta_leads.field_mapping.manage_custom_fields_link')}
+                  {t('admin.meta_leads.field_mapping.manage_custom_fields_link')}
                 </Link>
                 <span className="mx-1">·</span>
-                {t('app.admin.meta_leads.field_mapping.save_mapping_reminder')}
+                {t('admin.meta_leads.field_mapping.save_mapping_reminder')}
               </p>
             </div>
           )}
           <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900">{t('app.admin.meta_leads.field_mapping.title')}</h2>
-            <p className="mt-1 text-sm text-slate-500">{t('app.admin.meta_leads.field_mapping.subtitle')}</p>
+            <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.field_mapping.title')}</h2>
+            <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.field_mapping.subtitle')}</p>
             {mappingRulesLimit != null && (
               <p className="mt-2 text-xs text-slate-600">
-                {t('app.admin.meta_leads.field_mapping.plan_limit_status', {
-                  count: fieldMappingRows.length,
-                  limit: mappingRulesLimit,
+                {t('admin.meta_leads.field_mapping.plan_limit_status', {
+                  values: { count: fieldMappingRows.length, limit: mappingRulesLimit },
                 })}
               </p>
             )}
-            <p className="mt-2 text-xs text-slate-500">{t('app.admin.meta_leads.field_mapping.source_hint')}</p>
+            <p className="mt-2 text-xs text-slate-500">{t('admin.meta_leads.field_mapping.source_hint')}</p>
             <div className="mt-4 overflow-x-auto rounded border border-slate-200">
               <table className="min-w-full divide-y divide-slate-200 text-sm">
                 <thead className="bg-slate-50">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-slate-600">
-                      {t('app.admin.meta_leads.field_mapping.col_source')}
+                      {t('admin.meta_leads.field_mapping.col_source')}
                     </th>
                     <th className="px-3 py-2 text-left font-medium text-slate-600">
-                      {t('app.admin.meta_leads.field_mapping.col_target')}
+                      {t('admin.meta_leads.field_mapping.col_target')}
                     </th>
                     <th className="px-3 py-2 text-left font-medium text-slate-600">
-                      {t('app.admin.meta_leads.field_mapping.col_format')}
+                      {t('admin.meta_leads.field_mapping.col_format')}
                     </th>
                     <th className="px-3 py-2 text-left font-medium text-slate-600">
-                      {t('app.admin.meta_leads.field_mapping.col_overwrite')}
+                      {t('admin.meta_leads.field_mapping.col_overwrite')}
                     </th>
                     <th className="px-3 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
                   </tr>
@@ -1496,7 +1697,7 @@ export default function MetaLeadsAdminPage() {
                   {fieldMappingRows.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-3 py-6 text-center text-slate-500">
-                        {t('app.admin.meta_leads.field_mapping.empty')}
+                        {t('admin.meta_leads.field_mapping.empty')}
                       </td>
                     </tr>
                   )}
@@ -1514,8 +1715,8 @@ export default function MetaLeadsAdminPage() {
                               prev.map((r) => (r.id === row.id ? { ...r, sourceText: v } : r)),
                             )
                           }}
-                          placeholder={t('app.admin.meta_leads.field_mapping.source_placeholder')}
-                          aria-label={t('app.admin.meta_leads.field_mapping.col_source')}
+                          placeholder={t('admin.meta_leads.field_mapping.source_placeholder')}
+                          aria-label={t('admin.meta_leads.field_mapping.col_source')}
                         />
                       </td>
                       <td className="px-3 py-2 align-top">
@@ -1530,8 +1731,8 @@ export default function MetaLeadsAdminPage() {
                               prev.map((r) => (r.id === row.id ? { ...r, target: v } : r)),
                             )
                           }}
-                          placeholder={t('app.admin.meta_leads.field_mapping.target_placeholder')}
-                          aria-label={t('app.admin.meta_leads.field_mapping.col_target')}
+                          placeholder={t('admin.meta_leads.field_mapping.target_placeholder')}
+                          aria-label={t('admin.meta_leads.field_mapping.col_target')}
                         />
                       </td>
                       <td className="px-3 py-2 align-top">
@@ -1544,7 +1745,7 @@ export default function MetaLeadsAdminPage() {
                               prev.map((r) => (r.id === row.id ? { ...r, format: v } : r)),
                             )
                           }}
-                          aria-label={t('app.admin.meta_leads.field_mapping.col_format')}
+                          aria-label={t('admin.meta_leads.field_mapping.col_format')}
                         >
                           {META_MAPPING_FORMATS.map((fmt) => (
                             <option key={fmt} value={fmt}>
@@ -1565,7 +1766,7 @@ export default function MetaLeadsAdminPage() {
                               )
                             }}
                           />
-                          {t('app.admin.meta_leads.field_mapping.overwrite_yes')}
+                          {t('admin.meta_leads.field_mapping.overwrite_yes')}
                         </label>
                       </td>
                       <td className="px-3 py-2 align-top">
@@ -1607,18 +1808,18 @@ export default function MetaLeadsAdminPage() {
                   ])
                 }
               >
-                {t('app.admin.meta_leads.field_mapping.add_row')}
+                {t('admin.meta_leads.field_mapping.add_row')}
               </button>
               {suggestedMetaFieldKeys.length > 0 && (
                 <span className="text-xs text-slate-500">
-                  {t('app.admin.meta_leads.field_mapping.suggestions_ready', {
-                    count: suggestedMetaFieldKeys.length,
+                  {t('admin.meta_leads.field_mapping.suggestions_ready', {
+                    values: { count: suggestedMetaFieldKeys.length },
                   })}
                 </span>
               )}
             </div>
             <button type="button" onClick={handleSettingsSubmit} className="btn-primary mt-4">
-              {t('app.admin.meta_leads.field_mapping.save')}
+              {t('admin.meta_leads.field_mapping.save')}
             </button>
           </div>
         </section>
@@ -1626,8 +1827,35 @@ export default function MetaLeadsAdminPage() {
 
       {tab === 'incoming' && (
         <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">{t('app.admin.meta_leads.incoming.title')}</h2>
-          <p className="mt-1 text-sm text-slate-500">{t('app.admin.meta_leads.incoming.subtitle')}</p>
+          <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.incoming.title')}</h2>
+          <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.incoming.subtitle')}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-slate-600">{t('admin.meta_leads.incoming.source_label')}</span>
+            {(['meta', 'webhook'] as const).map((src) => {
+              const active =
+                (searchParams.get('incoming_source') === 'webhook' ? 'webhook' : 'meta') === src
+              return (
+                <button
+                  key={src}
+                  type="button"
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium ${
+                    active ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                  onClick={() => {
+                    const n = new URLSearchParams(searchParams)
+                    n.set('tab', 'incoming')
+                    if (src === 'webhook') n.set('incoming_source', 'webhook')
+                    else n.delete('incoming_source')
+                    setSearchParams(n, { replace: true })
+                  }}
+                >
+                  {src === 'meta'
+                    ? t('admin.meta_leads.incoming.source_meta')
+                    : t('admin.meta_leads.incoming.source_webhook')}
+                </button>
+              )
+            })}
+          </div>
           {incomingError && (
             <div className="mt-3">
               <ErrorRecoveryBanner
@@ -1637,16 +1865,30 @@ export default function MetaLeadsAdminPage() {
                     setIncomingLoading(true)
                     setIncomingError(null)
                     try {
-                      const res = await getMetaIncomingPreview({ limit: 30 })
+                      const previewSource: 'meta' | 'webhook' =
+                        searchParams.get('incoming_source') === 'webhook' ? 'webhook' : 'meta'
+                      const res = await getMetaIncomingPreview({ limit: 30, source: previewSource })
                       setIncomingRows(Array.isArray(res?.items) ? res.items : [])
                     } catch (err: any) {
-                      setIncomingError(getFriendlyErrorInfo(err, t('app.admin.meta_leads.errors.load_incoming')))
+                      if (
+                        planLimitModal?.showPlanLimitIfNeeded(
+                          err,
+                          t('admin.meta_leads.errors.load_incoming'),
+                        )
+                      ) {
+                        setIncomingError(null)
+                      } else {
+                        setIncomingError(
+                          getFriendlyErrorInfo(err, t('admin.meta_leads.errors.load_incoming'), t),
+                        )
+                      }
                     } finally {
                       setIncomingLoading(false)
                     }
                   })()
                 }}
                 retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                {...friendlyErrorBannerSecondary(incomingError, CRM_APP_PATHS.settingsLeads, t('admin.meta_leads.title'))}
                 compact
               />
             </div>
@@ -1656,7 +1898,11 @@ export default function MetaLeadsAdminPage() {
               <p className="text-sm text-slate-500">{t('common.loading')}</p>
             )}
             {!incomingLoading && !incomingError && incomingRows.length === 0 && (
-              <p className="text-sm text-slate-500">{t('app.admin.meta_leads.incoming.empty')}</p>
+              <p className="text-sm text-slate-500">
+                {searchParams.get('incoming_source') === 'webhook'
+                  ? t('admin.meta_leads.incoming.empty_webhook')
+                  : t('admin.meta_leads.incoming.empty_meta')}
+              </p>
             )}
             {incomingRows.map((row) => (
               <details
@@ -1671,22 +1917,22 @@ export default function MetaLeadsAdminPage() {
                     className="ml-2 text-brand-600 hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {t('app.admin.meta_leads.incoming.open_lead')}
+                    {t('admin.meta_leads.incoming.open_lead')}
                   </Link>
                 </summary>
                 <div className="space-y-2 border-t border-slate-200 px-3 py-3 text-xs">
                   <div>
-                    <span className="font-semibold text-slate-700">{t('app.admin.meta_leads.incoming.payload')}</span>
+                    <span className="font-semibold text-slate-700">{t('admin.meta_leads.incoming.payload')}</span>
                     {row.payload_truncated ? (
-                      <span className="ml-2 text-amber-700">{t('app.admin.meta_leads.incoming.truncated')}</span>
+                      <span className="ml-2 text-amber-700">{t('admin.meta_leads.incoming.truncated')}</span>
                     ) : null}
                     <pre className="mt-1 max-h-64 overflow-auto rounded bg-slate-900 p-2 text-slate-100">{row.payload_json_preview}</pre>
                   </div>
                   {row.normalized_json_preview ? (
                     <div>
-                      <span className="font-semibold text-slate-700">{t('app.admin.meta_leads.incoming.normalized')}</span>
+                      <span className="font-semibold text-slate-700">{t('admin.meta_leads.incoming.normalized')}</span>
                       {row.normalized_truncated ? (
-                        <span className="ml-2 text-amber-700">{t('app.admin.meta_leads.incoming.truncated')}</span>
+                        <span className="ml-2 text-amber-700">{t('admin.meta_leads.incoming.truncated')}</span>
                       ) : null}
                       <pre className="mt-1 max-h-48 overflow-auto rounded bg-slate-800 p-2 text-slate-100">
                         {row.normalized_json_preview}
@@ -1702,19 +1948,19 @@ export default function MetaLeadsAdminPage() {
 
       {tab === 'logs' && (
         <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">{t('app.admin.meta_leads.logs.title')}</h2>
-          <p className="mt-1 text-sm text-slate-500">{t('app.admin.meta_leads.logs.subtitle')}</p>
+          <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.logs.title')}</h2>
+          <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.logs.subtitle')}</p>
 
           <div className="mt-4 overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.logs.table.created')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.logs.table.status')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.logs.table.company')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.logs.table.vacancy')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.logs.table.contacts')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('app.admin.meta_leads.logs.table.error')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.logs.table.created')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.logs.table.status')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.logs.table.company')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.logs.table.vacancy')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.logs.table.contacts')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.logs.table.error')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
                 </tr>
               </thead>
@@ -1726,7 +1972,7 @@ export default function MetaLeadsAdminPage() {
                 )}
                 {!loading && leads.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-4 text-center text-slate-500">{t('app.admin.meta_leads.logs.empty')}</td>
+                    <td colSpan={7} className="px-4 py-4 text-center text-slate-500">{t('admin.meta_leads.logs.empty')}</td>
                   </tr>
                 )}
                 {leads.map((lead) => {
@@ -1765,14 +2011,14 @@ export default function MetaLeadsAdminPage() {
                             className="btn-secondary btn-xs"
                             onClick={() => void handleRetry(lead)}
                           >
-                            {t('app.admin.meta_leads.logs.actions.retry', { defaultValue: 'Retry' })}
+                            {t('admin.meta_leads.logs.actions.retry', { defaultValue: 'Retry' })}
                           </button>
                           <button
                             type="button"
                             className="btn-secondary btn-xs"
                             onClick={() => void handleReroute(lead)}
                           >
-                            {t('app.admin.meta_leads.logs.actions.reroute')}
+                            {t('admin.meta_leads.logs.actions.reroute')}
                           </button>
                         </div>
                       </td>
@@ -1795,13 +2041,13 @@ export default function MetaLeadsAdminPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-slate-900">
-              {t('app.admin.meta_leads.unmapped.attach_modal_title', {
+              {t('admin.meta_leads.unmapped.attach_modal_title', {
                 defaultValue: 'Привязать ad_id {adId} к вакансии',
                 values: { adId: attachModal.group.ad_id },
               })}
             </h3>
             <label className="mt-3 block text-sm text-slate-700">
-              {t('app.admin.meta_leads.unmapped.select_vacancy', { defaultValue: 'Вакансия' })}
+              {t('admin.meta_leads.unmapped.select_vacancy', { defaultValue: 'Вакансия' })}
               <select
                 className="input mt-1 w-full"
                 value={attachModal.vacancyId}
@@ -1830,7 +2076,7 @@ export default function MetaLeadsAdminPage() {
                 onClick={() => void handleAttachUnmapped()}
                 disabled={submitting || !attachModal.vacancyId.trim()}
               >
-                {submitting ? t('common.loading') : t('app.admin.meta_leads.unmapped.attach_btn', { defaultValue: 'Привязать' })}
+                {submitting ? t('common.loading') : t('admin.meta_leads.unmapped.attach_btn', { defaultValue: 'Привязать' })}
               </button>
             </div>
           </div>

@@ -756,6 +756,14 @@ async def count_candidates_insights(
         else_=0,
     )
     docs_ordered = case((ordered_exists, 1), else_=0)
+    # Same scope as list quick view `docs_incomplete`: any row whose docs readiness is not `ready`.
+    docs_incomplete = case((readiness_expr != literal("ready"), 1), else_=0)
+    # `extra` is JSON text; match common serializations of candidate_ops.mode = in_work.
+    extra_in_work = or_(
+        Candidate.extra.like('%"mode": "in_work"%'),
+        Candidate.extra.like('%"mode":"in_work"%'),
+    )
+    ops_in_work = case((extra_in_work, 1), else_=0)
 
     stmt = (
         select(
@@ -764,6 +772,8 @@ async def count_candidates_insights(
             func.coalesce(func.sum(docs_ready), 0).label("docs_ready"),
             func.coalesce(func.sum(docs_attention), 0).label("docs_attention"),
             func.coalesce(func.sum(docs_ordered), 0).label("docs_ordered"),
+            func.coalesce(func.sum(docs_incomplete), 0).label("docs_incomplete"),
+            func.coalesce(func.sum(ops_in_work), 0).label("ops_in_work"),
         )
         .select_from(Candidate)
         .where(and_(*conds))
@@ -776,6 +786,8 @@ async def count_candidates_insights(
         "docs_ready": int(r.docs_ready or 0),
         "docs_attention": int(r.docs_attention or 0),
         "docs_ordered": int(r.docs_ordered or 0),
+        "docs_incomplete": int(r.docs_incomplete or 0),
+        "ops_in_work": int(r.ops_in_work or 0),
     }
 
 

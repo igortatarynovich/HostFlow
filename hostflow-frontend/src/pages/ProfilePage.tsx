@@ -713,6 +713,7 @@ export default function ProfilePage() {
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-slate-500">{t('app.profile.preferences.hints.interface_language')}</p>
               </Field>
               <Field label={t('app.profile.preferences.labels.timezone')}>
                 <select className="input" value={uiForm.timezone} onChange={handleUiChange('timezone')}>

@@ -6,6 +6,7 @@ import { useCallback } from "react";
 import type { Document, DocumentStatus } from "../../../api/types";
 import { patchDocument, checkDocument } from "../../../api/documents";
 import { formatErrorForDisplay } from "../../../utils/errorHandling";
+import { usePlanLimitModal } from "../../../contexts/PlanLimitModalContext";
 import { useI18n } from "../../../i18n";
 import { getDocumentFieldsConfig } from "../documentFieldsConfig";
 import type { DocumentPatchPayload, CreateCandidateDocumentPayload } from "../../../api/documents";
@@ -44,6 +45,7 @@ export function useDocumentActions({
   onFieldsApplied,
 }: UseDocumentActionsProps) {
   const { t } = useI18n();
+  const planLimitModal = usePlanLimitModal();
 
   const createDocumentFromChecklist = useCallback(
     async (doc: Document): Promise<Document> => {
@@ -112,6 +114,11 @@ export function useDocumentActions({
         flash(t("admin.documents.notifications.status_updated"));
         await loadAll();
       } catch (e: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.status_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.notifications.status_failed"),
         });
@@ -120,7 +127,17 @@ export function useDocumentActions({
         setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
       }
     },
-    [canManageDocuments, createDocumentFromChecklist, updateDocumentState, loadAll, setError, setStatusUpdating, flash, t]
+    [
+      canManageDocuments,
+      createDocumentFromChecklist,
+      updateDocumentState,
+      loadAll,
+      planLimitModal,
+      setError,
+      setStatusUpdating,
+      flash,
+      t,
+    ]
   );
 
   const approveDocument = useCallback(
@@ -142,6 +159,11 @@ export function useDocumentActions({
         flash(t("admin.documents.notifications.approve_success"));
         await loadAll();
       } catch (e: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.approve_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.notifications.approve_failed"),
         });
@@ -150,7 +172,17 @@ export function useDocumentActions({
         setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
       }
     },
-    [canManageDocuments, createDocumentFromChecklist, updateDocumentState, loadAll, setError, setStatusUpdating, flash, t]
+    [
+      canManageDocuments,
+      createDocumentFromChecklist,
+      updateDocumentState,
+      loadAll,
+      planLimitModal,
+      setError,
+      setStatusUpdating,
+      flash,
+      t,
+    ]
   );
 
   const rejectDocument = useCallback(
@@ -174,6 +206,11 @@ export function useDocumentActions({
         flash(t("admin.documents.notifications.reject_success"));
         await loadAll();
       } catch (e: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.reject_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.notifications.reject_failed"),
         });
@@ -182,7 +219,17 @@ export function useDocumentActions({
         setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
       }
     },
-    [canManageDocuments, createDocumentFromChecklist, updateDocumentState, loadAll, setError, setStatusUpdating, flash, t]
+    [
+      canManageDocuments,
+      createDocumentFromChecklist,
+      updateDocumentState,
+      loadAll,
+      planLimitModal,
+      setError,
+      setStatusUpdating,
+      flash,
+      t,
+    ]
   );
 
   const startWorkflow = useCallback(
@@ -225,6 +272,11 @@ export function useDocumentActions({
         flash(t("admin.documents.notifications.workflow_started"));
         await loadAll();
       } catch (e: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.workflow_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.notifications.workflow_failed"),
         });
@@ -233,7 +285,7 @@ export function useDocumentActions({
         setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
       }
     },
-    [canManageDocuments, updateDocumentState, loadAll, setError, setStatusUpdating, flash, t]
+    [canManageDocuments, updateDocumentState, loadAll, planLimitModal, setError, setStatusUpdating, flash, t]
   );
 
   const completeWorkflowStep = useCallback(
@@ -289,6 +341,11 @@ export function useDocumentActions({
         flash(t("admin.documents.notifications.workflow_step_marked"));
         await loadAll();
       } catch (e: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.workflow_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.notifications.workflow_failed"),
         });
@@ -297,7 +354,7 @@ export function useDocumentActions({
         setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
       }
     },
-    [canManageDocuments, updateDocumentState, loadAll, setError, setStatusUpdating, flash, t]
+    [canManageDocuments, updateDocumentState, loadAll, planLimitModal, setError, setStatusUpdating, flash, t]
   );
 
   const saveCoreFields = useCallback(
@@ -383,6 +440,11 @@ export function useDocumentActions({
         flash(t("admin.documents.notifications.core_saved"));
         await loadAll();
       } catch (e: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.core_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.notifications.core_failed"),
         });
@@ -399,6 +461,7 @@ export function useDocumentActions({
       getFieldValue,
       updateDocumentState,
       loadAll,
+      planLimitModal,
       setError,
       setCoreSaving,
       flash,
@@ -437,6 +500,11 @@ export function useDocumentActions({
         updateDocumentState(updatedWithNoFiles);
         flash(t("admin.documents.notifications.file_deleted", { defaultValue: "File deleted" }));
       } catch (e: any) {
+        if (
+          planLimitModal?.showPlanLimitIfNeeded(e, t("admin.documents.notifications.delete_failed"))
+        ) {
+          return;
+        }
         const message = formatErrorForDisplay(e, {
           fallback: t("admin.documents.notifications.delete_failed"),
         });
@@ -445,7 +513,16 @@ export function useDocumentActions({
         setStatusUpdating((prev) => ({ ...prev, [doc.id]: false }));
       }
     },
-    [canManageDocuments, createDocumentFromChecklist, updateDocumentState, setError, setStatusUpdating, flash, t]
+    [
+      canManageDocuments,
+      createDocumentFromChecklist,
+      updateDocumentState,
+      planLimitModal,
+      setError,
+      setStatusUpdating,
+      flash,
+      t,
+    ]
   );
 
   return {

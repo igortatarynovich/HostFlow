@@ -58,8 +58,10 @@ from backend.app.services.tenant_visibility import TenantVisibility, get_tenant_
 from backend.app.services.source_labels import normalize_candidate_source
 from backend.app.services.audit import log_activity
 from backend.app.api.v1.utils.access import resolve_restricted_acl
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.api.v1.candidates import repo as candidates_repo
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause as repo_scope_clause
+from backend.app.services.additional_services import _service_order_scope_where
 from backend.app.services.risk_intel_v1 import (
     compute_candidate_risk_baseline,
     list_latest_shadow_snapshot,
@@ -1180,21 +1182,27 @@ async def services_overview(
     trend_bucket: str = Query("month", pattern="^(week|month)$"),
     slice_by: str = Query("client", pattern="^(client|item|status|manager)$"),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
-    rows = (
-        await db.execute(
-            select(ServiceOrder)
-            .where(ServiceOrder.tenant_id == tenant_id_str)
-            .options(
-                selectinload(ServiceOrder.items).selectinload(ServiceItem.service),
-                selectinload(ServiceOrder.items).selectinload(ServiceItem.schedules),
-                selectinload(ServiceOrder.items).selectinload(ServiceItem.attachments),
-            )
-            .order_by(ServiceOrder.updated_at.desc())
+    stmt = select(ServiceOrder).where(ServiceOrder.tenant_id == tenant_id_str)
+    scope = _service_order_scope_where(active_own_company_id)
+    if scope is not None:
+        stmt = (
+            stmt.outerjoin(Candidate, ServiceOrder.candidate_id == Candidate.id)
+            .outerjoin(Vacancy, ServiceOrder.vacancy_id == Vacancy.id)
+            .where(scope)
         )
-    ).scalars().all()
+    stmt = (
+        stmt.options(
+            selectinload(ServiceOrder.items).selectinload(ServiceItem.service),
+            selectinload(ServiceOrder.items).selectinload(ServiceItem.schedules),
+            selectinload(ServiceOrder.items).selectinload(ServiceItem.attachments),
+        )
+        .order_by(ServiceOrder.updated_at.desc())
+    )
+    rows = (await db.execute(stmt)).scalars().all()
 
     # Build label lookup maps (avoid placeholder labels in UI).
     company_ids = {str(o.company_id) for o in rows if getattr(o, "company_id", None)}
@@ -2001,6 +2009,11 @@ async def candidate_slices(
         alias="manager_id",
         description="ID менеджера (user_id или manager field, можно несколько).",
     ),
+    candidate_id: Optional[str] = Query(
+        None,
+        alias="candidate_id",
+        description="Один UUID кандидата — сузить срез до этой записи.",
+    ),
     limit: int = Query(
         20,
         ge=5,
@@ -2049,6 +2062,13 @@ async def candidate_slices(
             parts = [p.strip() for p in value.split(",") if p and p.strip()]
             manager_filters.extend(parts)
 
+    cand_one = (candidate_id or "").strip()
+    if cand_one:
+        try:
+            UUID(cand_one)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="invalid candidate_id") from exc
+
     cache_params = {
         "from": date_from,
         "to": date_to,
@@ -2058,6 +2078,7 @@ async def candidate_slices(
         "vacancy_id": ",".join(sorted(vacancy_filters)) if vacancy_filters else "",
         "company_id": ",".join(sorted(company_filters)) if company_filters else "",
         "manager_id": ",".join(sorted(manager_filters)) if manager_filters else "",
+        "candidate_id": cand_one,
         "limit": limit,
     }
     cached = await cache_get("candidate-slices", scope_tenant, cache_params)
@@ -2139,6 +2160,8 @@ async def candidate_slices(
                 Candidate.recruiter_id.in_(manager_filters),
             )
         )
+    if cand_one:
+        stmt = stmt.where(Candidate.id == cand_one)
 
     rows = (await db.execute(stmt)).all()
 

@@ -10,6 +10,7 @@ from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.base import Base
+from backend.app.db.tsvector_compat import TsVector
 from .mixins import TimestampMixin
 
 
@@ -56,6 +57,7 @@ class CommunicationThread(Base, TimestampMixin):
     last_inbound_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_outbound_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_message_preview: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    hostflow_search_tsv: Mapped[Optional[Any]] = mapped_column(TsVector, nullable=True)
     unread_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 

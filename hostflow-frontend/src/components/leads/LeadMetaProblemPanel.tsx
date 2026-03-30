@@ -109,7 +109,7 @@ export default function LeadMetaProblemPanel({ lead, onRefreshed }: Props) {
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? (err as Error)?.message ?? 'Retry failed'
       notify({
-        title: t('app.admin.meta_leads.errors.retry'),
+        title: t('admin.meta_leads.errors.retry'),
         description: String(detail),
         variant: 'error',
       })
@@ -128,14 +128,14 @@ export default function LeadMetaProblemPanel({ lead, onRefreshed }: Props) {
         force_process: true,
       })
       notify({
-        title: t('app.admin.meta_leads.notices.lead_rerouted'),
+        title: t('admin.meta_leads.notices.lead_rerouted'),
         variant: 'success',
       })
       await onRefreshed()
     } catch (err: unknown) {
       const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? (err as Error)?.message ?? 'Reroute failed'
       notify({
-        title: t('app.admin.meta_leads.errors.reroute'),
+        title: t('admin.meta_leads.errors.reroute'),
         description: String(detail),
         variant: 'error',
       })
@@ -167,21 +167,21 @@ export default function LeadMetaProblemPanel({ lead, onRefreshed }: Props) {
           disabled={retrying}
           onClick={() => void handleRetry()}
         >
-          {retrying ? t('common.loading') : t('app.admin.meta_leads.logs.actions.retry')}
+          {retrying ? t('common.loading') : t('admin.meta_leads.logs.actions.retry')}
         </button>
         <Link to={CRM_APP_PATHS.automations} className="text-xs text-slate-500 hover:text-brand-700 hover:underline">
-          {t('app.admin.meta_leads.tabs.automation_rules')}
+          {t('admin.meta_leads.tabs.automation_rules')}
         </Link>
       </div>
 
       {suggestion?.tab === 'mapping' ? (
         <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
           <div className="text-xs font-semibold text-slate-700">
-            {t('app.admin.meta_leads.logs.actions.reroute')}
+            {t('admin.meta_leads.logs.actions.reroute')}
           </div>
           {vacanciesError ? <div className="text-xs text-rose-600">{vacanciesError}</div> : null}
           <label className="block text-xs font-medium text-slate-600">
-            <div className="mb-1">{t('app.admin.meta_leads.logs.table.vacancy')}</div>
+            <div className="mb-1">{t('admin.meta_leads.logs.table.vacancy')}</div>
             <select
               className="input h-9 w-full max-w-md rounded-lg border-slate-300 bg-white px-2.5 text-sm"
               value={rerouteVacancyId}
@@ -189,7 +189,7 @@ export default function LeadMetaProblemPanel({ lead, onRefreshed }: Props) {
               disabled={vacanciesLoading}
             >
               <option value="">
-                {vacanciesLoading ? t('common.loading') : t('app.admin.meta_leads.prompts.reroute_vacancy')}
+                {vacanciesLoading ? t('common.loading') : t('admin.meta_leads.prompts.reroute_vacancy')}
               </option>
               {vacancyOptions.map((v) => (
                 <option key={v.id} value={v.id}>
@@ -209,7 +209,7 @@ export default function LeadMetaProblemPanel({ lead, onRefreshed }: Props) {
             disabled={!rerouteVacancyId.trim() || rerouting || vacanciesLoading}
             onClick={() => void handleReroute()}
           >
-            {rerouting ? t('common.loading') : t('app.admin.meta_leads.logs.actions.reroute')}
+            {rerouting ? t('common.loading') : t('admin.meta_leads.logs.actions.reroute')}
           </button>
         </div>
       ) : null}

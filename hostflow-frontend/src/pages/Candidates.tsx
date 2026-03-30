@@ -5,10 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, forwardRef } from 'r
 import { createPortal } from 'react-dom'
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import {
+  IconArrowRight,
   IconBookmark,
   IconBookmarkFilled,
   IconClipboardList,
   IconListCheck,
+  IconMail,
+  IconPhone,
 } from '@tabler/icons-react'
 import api, {
   completeActivity,
@@ -26,7 +29,6 @@ import type { ReminderRecord } from '../api/types/notification'
 import { Modal } from '../components/Modal'
 import { ActivitiesPanel } from '../components/activities/ActivitiesPanel'
 import EmptyStatePanel from '../components/EmptyStatePanel'
-import { ActiveOwnCompanyBadge } from '../components/shell/ActiveOwnCompanyBadge'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useMetaStages } from '../store/useMeta'
 import { usePermissions } from '../hooks/usePermissions'
@@ -39,6 +41,8 @@ import {
   translateStageLabel,
 } from '../utils/stageLabels'
 import { getRegionDisplayName } from '../utils/catalogLocale'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
+import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import Pipeline from './Pipeline'
 import {
   DOC_READINESS_META,
@@ -402,6 +406,11 @@ export default function Candidates(){
     if (!digestShadowBucket) return null
     return explicit ?? 'high'
   }, [searchParams, digestShadowBucket])
+  /** §2.14: same list shell as main Candidates; data via GET /candidates/no-next-action (see useCandidatesTableData). */
+  const operationalQueue = useMemo<'no_next_action' | null>(() => {
+    const raw = (searchParams.get('queue') || searchParams.get('quick_view') || '').trim().toLowerCase()
+    return raw === 'no_next_action' ? 'no_next_action' : null
+  }, [searchParams])
   const filterStorageKey = useMemo(() => `${FILTER_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
   const visibleColsStorageKey = useMemo(() => `${VISIBLE_COLS_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
   const columnWidthsStorageKey = useMemo(() => `${COLUMN_WIDTHS_STORAGE_KEY}:${tenantScopeKey}`, [tenantScopeKey])
@@ -426,6 +435,7 @@ export default function Candidates(){
       created_from: createdRange.from || '',
       created_to: createdRange.to || '',
       is_favorite: isFavoriteFilter === null ? '' : String(isFavoriteFilter),
+      operational_queue: operationalQueue || '',
     }
     const s = JSON.stringify(p)
     let h = 0
@@ -448,6 +458,7 @@ export default function Candidates(){
     createdRange.from,
     createdRange.to,
     isFavoriteFilter,
+    operationalQueue,
   ])
   const cacheKey = useMemo(
     () => `candidates:list:${tenantScopeKey}:${filterSignature}`,
@@ -1123,6 +1134,7 @@ export default function Candidates(){
   const scrollContainerRef = useRef<HTMLElement | null>(null)
   const outerScrollRef = useRef<HTMLElement | null>(null)
   const { can } = usePermissions()
+  const planLimitModal = usePlanLimitModal()
   const canManage = can('candidates.manage')
   const canViewActivities = can('notifications.view')
   const [recentlyOpenedId, setRecentlyOpenedId] = useState<string | null>(null)
@@ -1179,11 +1191,21 @@ export default function Candidates(){
     currentTenantId,
     meTenantId: me?.tenant_id,
     restoredScrollRef,
+    operationalQueue,
   })
 
   useEffect(() => {
     setViewMode(searchParams.get('view') === 'kanban' ? 'kanban' : 'table')
   }, [searchParams])
+
+  useEffect(() => {
+    if (!operationalQueue) return
+    if (searchParams.get('view') !== 'kanban') return
+    const next = new URLSearchParams(searchParams)
+    next.delete('view')
+    setSearchParams(next, { replace: true })
+    setViewMode('table')
+  }, [operationalQueue, searchParams, setSearchParams])
 
   useEffect(() => {
     let applied = false
@@ -2819,12 +2841,14 @@ export default function Candidates(){
     } catch (e: any) {
       perfOk = false
       const errorInfo = getErrorInfo(e)
-      const formattedMessage = formatErrorForDisplay(e, {
-        fallback: t('app.candidates.messages.load_failed') || 'Не удалось загрузить список кандидатов',
-        includeStatusCode: true,
-      })
       if (myLoadId === loadIdRef.current) {
-        setErrorText(formattedMessage)
+        setErrorText(
+          getFriendlyErrorInfo(
+            e,
+            t('app.candidates.messages.load_failed') || 'Не удалось загрузить список кандидатов',
+            t,
+          ),
+        )
         setItems([])
         setTotal(0)
         setListInsights(null)
@@ -3301,6 +3325,14 @@ export default function Candidates(){
         setChecked({})
       }
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t('app.candidates.messages.bulk_activities_failed', { defaultValue: 'Failed to create activities' }),
+        )
+      ) {
+        return
+      }
       alert(
         formatErrorForDisplay(e, {
           fallback: t('app.candidates.messages.bulk_activities_failed', { defaultValue: 'Failed to create activities' }),
@@ -3463,6 +3495,14 @@ export default function Candidates(){
         await load({ force: true, allowCache: false })
       }
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t('app.candidates.messages.bulk_stage_failed') || 'Не удалось изменить этап кандидатов',
+        )
+      ) {
+        return
+      }
       const errorMessage = formatErrorForDisplay(e, {
         fallback: t('app.candidates.messages.bulk_stage_failed') || 'Не удалось изменить этап кандидатов',
         includeStatusCode: false,
@@ -3535,6 +3575,14 @@ export default function Candidates(){
       }
       await load({ force: true, allowCache: false })
     } catch (e:any){
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t('app.candidates.messages.bulk_manager_failed') || 'Не удалось назначить менеджера',
+        )
+      ) {
+        return
+      }
       const errorMessage = formatErrorForDisplay(e, {
         fallback: t('app.candidates.messages.bulk_manager_failed') || 'Не удалось назначить менеджера',
         includeStatusCode: false,
@@ -3591,6 +3639,14 @@ export default function Candidates(){
       }
       await load({ force: true, allowCache: false })
     } catch (e:any){
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t('app.candidates.messages.bulk_vacancy_failed') || 'Не удалось назначить вакансию',
+        )
+      ) {
+        return
+      }
       const errorMessage = formatErrorForDisplay(e, {
         fallback: t('app.candidates.messages.bulk_vacancy_failed') || 'Не удалось назначить вакансию',
         includeStatusCode: false,
@@ -3632,6 +3688,14 @@ export default function Candidates(){
         await load({ force: true, allowCache: false })
       }
     } catch (e: any) {
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t('app.candidates.modals.handoff.failed', { defaultValue: 'Nie udało się przekazać do klienta' }),
+        )
+      ) {
+        return
+      }
       const errorMessage = formatErrorForDisplay(e, {
         fallback: t('app.candidates.modals.handoff.failed', { defaultValue: 'Nie udało się przekazać do klienta' }),
         includeStatusCode: false,
@@ -3698,6 +3762,14 @@ export default function Candidates(){
       }
       await load({ force: true, allowCache: false })
     } catch (e:any){
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t('app.candidates.messages.bulk_tags_failed') || 'Не удалось обновить теги',
+        )
+      ) {
+        return
+      }
       const errorMessage = formatErrorForDisplay(e, {
         fallback: t('app.candidates.messages.bulk_tags_failed') || 'Не удалось обновить теги',
         includeStatusCode: false,
@@ -3746,6 +3818,14 @@ export default function Candidates(){
       }
       await load({ force: true, allowCache: false })
     } catch (e:any){
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(
+          e,
+          t('app.candidates.messages.bulk_delete_failed') || 'Не удалось удалить кандидатов',
+        )
+      ) {
+        return
+      }
       const errorMessage = formatErrorForDisplay(e, {
         fallback: t('app.candidates.messages.bulk_delete_failed') || 'Не удалось удалить кандидатов',
         includeStatusCode: false,
@@ -3807,12 +3887,14 @@ export default function Candidates(){
     !!contactAttemptsFilter ||
     Boolean(digestShadowBucket) ||
     !!processorFilter ||
+    Boolean(operationalQueue) ||
     isRangeActive(createdRange) ||
     isRangeActive(firstContactRange) ||
     isRangeActive(docsValidRange) ||
     Object.values(textFilters).some((value) => value.trim().length > 0)
 
   const changeView = (mode: 'table' | 'kanban') => {
+    if (mode === 'kanban' && operationalQueue) return
     setViewMode(mode)
     const next = new URLSearchParams(searchParams)
     if (mode === 'kanban') {
@@ -3839,8 +3921,17 @@ export default function Candidates(){
         type="button"
         className={clsx(
           'rounded px-2 py-1 text-xs font-medium transition',
-          isKanban ? 'bg-brand-600 text-white shadow-sm' : 'text-brand-700 hover:bg-brand-50'
+          isKanban ? 'bg-brand-600 text-white shadow-sm' : 'text-brand-700 hover:bg-brand-50',
+          operationalQueue && 'cursor-not-allowed opacity-50',
         )}
+        disabled={Boolean(operationalQueue)}
+        title={
+          operationalQueue
+            ? t('app.candidates.no_next_action.kanban_disabled_hint', {
+                defaultValue: 'Pipeline view is unavailable for this queue. Clear the queue filter to use kanban.',
+              })
+            : undefined
+        }
         onClick={() => changeView('kanban')}
       >
         {t('app.candidates.views.kanban')}
@@ -3918,7 +4009,8 @@ export default function Candidates(){
     hasFilterBadges ||
     isFavoriteFilter === true ||
     isFavoriteFilter === false ||
-    Boolean(quickViewParam)
+    Boolean(quickViewParam) ||
+    Boolean(operationalQueue)
   const showsFilteredCount = total > 0 && visibleCandidatesCount !== total
 
   if (isKanban) {
@@ -3927,8 +4019,6 @@ export default function Candidates(){
 
   const renderCandidateRowTds = (index: number, item: AugmentedCandidate) => {
             const c = item as AugmentedCandidate
-            const phoneDisplay = c.phone || '—'
-            const href = phoneDisplay && phoneDisplay !== '—' ? asTelHref(phoneDisplay) : undefined
             const docsMeta = c.__docsMeta
             const reasonTags = c.__reasonCodes
             const fallbackReasons = c.__reasonFallbackLabels
@@ -3959,17 +4049,27 @@ export default function Candidates(){
                             : t('app.candidates.table.masked_label', { defaultValue: 'Кандидат #{id}', values: { id: (c.id ?? '').slice(0, 8) } }))
                         : `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || t('common.labels.not_available')
                     const isMasked = (c as AugmentedCandidate).masked === true
+                    const cardHref = `${CRM_APP_PATHS.candidates}/${c.id}`
+                    const emailForActions = !isMasked ? String(c.email || '').trim() : ''
+                    const phoneForTel =
+                      !isMasked && c.phone && String(c.phone).trim() !== '' ? asTelHref(c.phone) : undefined
+                    const tasksSearchQ = encodeURIComponent(
+                      String(candidateLabel || c.id || '').slice(0, 80),
+                    )
+                    const tasksHref = `${CRM_APP_PATHS.tasks}?tab=tasks&t_status=active&t_entity=candidate&t_q=${tasksSearchQ}`
+                    const rowActionBtnClass =
+                      'inline-flex items-center gap-0.5 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-800 shadow-sm hover:border-brand-300 hover:bg-brand-50/80'
                     cellContent = (
                       <div className="group/name flex min-w-0 flex-col gap-1">
                         <div className="flex min-w-0 items-center gap-1.5">
                           <div className="min-w-0 flex-1 overflow-hidden">
                             <Link
-                              to={`${CRM_APP_PATHS.candidates}/${c.id}`}
+                              to={cardHref}
                               className="block truncate whitespace-nowrap font-medium text-brand-600 hover:text-brand-700 hover:underline"
                               onClick={(e) => {
                                 e.preventDefault()
                                 handleCandidateOpen(c.id)
-                                navigate(`${CRM_APP_PATHS.candidates}/${c.id}`)
+                                navigate(cardHref)
                               }}
                               title={
                                 t('app.candidates.table.open_card') ||
@@ -4003,6 +4103,37 @@ export default function Candidates(){
                             {c.short_id ? `ID ${c.short_id}` : `ID ${(c.id ?? '').slice(0, 8)}`}
                           </div>
                         ) : null}
+                        <div className="mt-1 flex flex-wrap gap-1 border-t border-slate-100 pt-1.5">
+                          {phoneForTel ? (
+                            <a href={phoneForTel} className={rowActionBtnClass}>
+                              <IconPhone size={11} stroke={2} className="shrink-0 text-slate-600" aria-hidden />
+                              {t('app.candidates.pipeline.action_call', { defaultValue: 'Call' })}
+                            </a>
+                          ) : null}
+                          {emailForActions ? (
+                            <a href={`mailto:${emailForActions}`} className={rowActionBtnClass}>
+                              <IconMail size={11} stroke={2} className="shrink-0 text-slate-600" aria-hidden />
+                              {t('app.candidates.pipeline.action_write', { defaultValue: 'Email' })}
+                            </a>
+                          ) : null}
+                          <Link
+                            to={cardHref}
+                            className={rowActionBtnClass}
+                            onClick={(e) => {
+                              e.preventDefault()
+                              handleCandidateOpen(c.id)
+                              navigate(cardHref)
+                            }}
+                          >
+                            <IconArrowRight size={11} stroke={2} className="shrink-0 text-slate-600" aria-hidden />
+                            {t('app.candidates.pipeline.action_open_card', { defaultValue: 'Open' })}
+                          </Link>
+                          {canViewActivities ? (
+                            <Link to={tasksHref} className={rowActionBtnClass}>
+                              {t('app.candidates.pipeline.action_tasks', { defaultValue: 'Tasks' })}
+                            </Link>
+                          ) : null}
+                        </div>
                       </div>
                     )
                   } else if (columnKey === 'email') {
@@ -4186,6 +4317,14 @@ export default function Candidates(){
                             }
                           } catch (err: any) {
                             console.error('[Candidates] Favorite toggle error:', err)
+                            if (
+                              planLimitModal?.showPlanLimitIfNeeded(
+                                err,
+                                t('app.candidates.messages.favorite_toggle_failed'),
+                              )
+                            ) {
+                              return
+                            }
                             const errorMessage = formatErrorForDisplay(err, { fallback: t('app.candidates.messages.favorite_toggle_failed') })
                             alert(errorMessage)
                           }
@@ -4518,10 +4657,28 @@ export default function Candidates(){
             </div>
           ) : null}
 
-          <div className="mx-4 mb-1.5 shrink-0 rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-2.5 shadow-sm">
-            <div className="mb-2 flex justify-end">
-              <ActiveOwnCompanyBadge />
+          {operationalQueue === 'no_next_action' ? (
+            <div className="mx-4 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-slate-800">
+              <div className="min-w-0">
+                <div className="font-medium text-slate-900">{t('app.candidates.no_next_action.title')}</div>
+                <div className="text-xs text-slate-600">{t('app.candidates.no_next_action.subtitle')}</div>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary btn-sm shrink-0"
+                onClick={() => {
+                  const next = new URLSearchParams(searchParams)
+                  next.delete('queue')
+                  next.delete('quick_view')
+                  setSearchParams(next, { replace: true })
+                }}
+              >
+                {t('app.candidates.no_next_action.clear_queue', { defaultValue: 'Show all candidates' })}
+              </button>
             </div>
+          ) : null}
+
+          <div className="mx-4 mb-1.5 shrink-0 rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/90 px-3 py-2.5 shadow-sm">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
               <input
                 id="candidates-search"
@@ -4552,6 +4709,59 @@ export default function Candidates(){
                   void deleteView(id)
                 }}
               />
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                {t('app.candidates.quick_filters.label', { defaultValue: 'Quick filters' })}
+              </span>
+              <select
+                className="input h-9 max-w-[11rem] py-1 text-xs"
+                aria-label={t('app.candidates.quick_filters.stage', { defaultValue: 'Stage' })}
+                value={stageFilter.length === 1 ? stageFilter[0] : ''}
+                onChange={(e) => {
+                  const v = e.target.value.trim()
+                  setStageFilter(v ? [v] : [])
+                }}
+              >
+                <option value="">{t('app.candidates.quick_filters.all_stages', { defaultValue: 'All stages' })}</option>
+                {stageOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {stageLabelMap[s] ?? s}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="input h-9 max-w-[11rem] py-1 text-xs"
+                aria-label={t('app.candidates.quick_filters.manager', { defaultValue: 'Manager' })}
+                value={managerFilter.length === 1 ? managerFilter[0] : ''}
+                onChange={(e) => {
+                  const v = e.target.value.trim()
+                  setManagerFilter(v ? [v] : [])
+                }}
+              >
+                <option value="">{t('app.candidates.quick_filters.all_managers', { defaultValue: 'All managers' })}</option>
+                {managers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label || m.id}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="input h-9 max-w-[12rem] py-1 text-xs"
+                aria-label={t('app.candidates.quick_filters.vacancy', { defaultValue: 'Vacancy' })}
+                value={vacancyFilter.length === 1 ? vacancyFilter[0] : ''}
+                onChange={(e) => {
+                  const v = e.target.value.trim()
+                  setVacancyFilter(v ? [v] : [])
+                }}
+              >
+                <option value="">{t('app.candidates.quick_filters.all_vacancies', { defaultValue: 'All vacancies' })}</option>
+                {vacancies.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.title || v.id}
+                  </option>
+                ))}
+              </select>
             </div>
             {hasFilterBadges ? (
               <div className="mt-2 border-t border-slate-200/90 pt-2">
@@ -4705,13 +4915,14 @@ export default function Candidates(){
           {errorText && (
             <div className="m-4">
               <ErrorRecoveryBanner
-                info={{
-                  title: t('app.candidates.errors.title') || 'Ошибка загрузки',
-                  detail: errorText,
-                  hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
-                }}
+                info={errorText}
                 onRetry={() => void load({ force: true })}
                 retryLabel={t('app.candidates.errors.retry') || 'Повторить попытку'}
+                {...friendlyErrorBannerSecondary(
+                  errorText,
+                  CRM_APP_PATHS.candidates,
+                  t('app.nav.items.candidates', { defaultValue: 'Candidates' }),
+                )}
               />
             </div>
           )}

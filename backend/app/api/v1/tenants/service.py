@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 import secrets
 import string
@@ -8,11 +9,13 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import sqlalchemy as sa
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.tenant import (
     Tenant,
     TenantLicense,
+    TenantLink,
     TenantSeatRequest,
     TenantSeatRequestStatus,
     TenantStatus,
@@ -23,6 +26,9 @@ from backend.app.models.tenant import (
 from backend.app.models.vacancy import Vacancy
 from backend.app.models.company import Company
 from backend.app.models.user import Role as UserRole, User
+from backend.app.models.lead import Lead
+from backend.app.models.candidate import Candidate
+from backend.app.models.document import Document
 from backend.app.services.audit import log_activity
 
 
@@ -113,6 +119,45 @@ def _usage_from_row(
         "viewer_count": int(viewer or 0),
         "storage_used_gb": float(storage or 0),
     }
+
+
+async def _count_leads_created_this_month(db: AsyncSession, tenant_id: str) -> int:
+    now = datetime.now(timezone.utc)
+    month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    stmt = select(func.count()).select_from(Lead).where(
+        Lead.tenant_id == tenant_id,
+        Lead.created_at >= month_start,
+    )
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+async def _count_candidates_active(db: AsyncSession, tenant_id: str) -> int:
+    stmt = select(func.count()).select_from(Candidate).where(
+        Candidate.tenant_id == tenant_id,
+        Candidate.deleted_at.is_(None),
+    )
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+async def _count_documents_for_tenant(db: AsyncSession, tenant_id: str) -> int:
+    stmt = select(func.count()).select_from(Document).where(Document.tenant_id == tenant_id)
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+async def _count_open_vacancies(db: AsyncSession, tenant_id: str) -> int:
+    stmt = select(func.count()).select_from(Vacancy).where(
+        Vacancy.tenant_id == tenant_id,
+        Vacancy.status == "open",
+    )
+    return int((await db.execute(stmt)).scalar_one() or 0)
+
+
+async def _count_portal_links_active(db: AsyncSession, tenant_id: str) -> int:
+    stmt = select(func.count()).select_from(TenantLink).where(
+        TenantLink.agency_tenant_id == tenant_id,
+        TenantLink.portal_token.is_not(None),
+    )
+    return int((await db.execute(stmt)).scalar_one() or 0)
 
 
 def _normalize_enum_values(values: Sequence[object] | None) -> list[str]:
@@ -572,9 +617,23 @@ async def get_usage_snapshot(db: AsyncSession, tenant_id: str) -> Dict[str, floa
     )
     row = (await db.execute(stmt)).first()
     if not row:
-        return _usage_from_row(0, 0, 0, 0, 0)
-    recruiter, supervisor, client_manager, viewer, storage = row
-    return _usage_from_row(recruiter, supervisor, client_manager, viewer, storage)
+        base = _usage_from_row(0, 0, 0, 0, 0)
+    else:
+        recruiter, supervisor, client_manager, viewer, storage = row
+        base = _usage_from_row(recruiter, supervisor, client_manager, viewer, storage)
+    leads_m, cand, docs, vac_open, portals = await asyncio.gather(
+        _count_leads_created_this_month(db, tenant_id),
+        _count_candidates_active(db, tenant_id),
+        _count_documents_for_tenant(db, tenant_id),
+        _count_open_vacancies(db, tenant_id),
+        _count_portal_links_active(db, tenant_id),
+    )
+    base["leads_created_this_month"] = leads_m
+    base["candidates_active_count"] = cand
+    base["documents_count"] = docs
+    base["vacancies_open_count"] = vac_open
+    base["portal_links_active_count"] = portals
+    return base
 
 
 async def set_tenant_status(

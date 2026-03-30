@@ -11,12 +11,19 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, Response, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, root_validator
-from sqlalchemy import and_, select, update, text
+from sqlalchemy import and_, or_, select, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, require_roles, get_current_user, UserCtx
 from backend.app.core.settings import settings
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
+from backend.app.services.own_company_doc_scope import (
+    documents_scope_clause,
+    ensure_candidate_own_company_scope,
+    ensure_document_own_company_matches,
+    resolved_document_own_company_id,
+)
 from backend.app.models.candidate import Candidate
 from backend.app.models.document import Document
 from backend.app.models.enums import (
@@ -49,6 +56,11 @@ from backend.app.services.document_catalog import (
 )
 from backend.app.modules.documents import crud as documents_crud
 from backend.app.services.document_files import resolve_document_file
+from backend.app.services.tenant_quota import (
+    ensure_tenant_document_quota,
+    ensure_tenant_storage_bytes_fits,
+    sum_file_entries_bytes,
+)
 from backend.app.services.document_workflow import (
     WORKFLOW_DEFINITIONS,
     auto_status as compute_auto_status,
@@ -298,22 +310,27 @@ def _days_left(d: Optional[date]) -> Optional[int]:
 
 
 # --- helper: recalc candidate.docs_progress ---
-async def _recalc_docs_progress(db: AsyncSession, tenant_id: str, candidate_id: str) -> Dict[str, Any]:
+async def _recalc_docs_progress(
+    db: AsyncSession,
+    tenant_id: str,
+    candidate_id: str,
+    own_company_id: Optional[str] = None,
+) -> Dict[str, Any]:
     """Recalculate and persist candidate.docs_progress based on rows in documents.
     uploaded = file physically present (path not null and not empty)
     status counters come from Document.status (fallback to extra['status']).
     """
-    rows = (
-        await db.execute(
-            select(Document).where(
-                and_(
-                    Document.tenant_id == str(tenant_id),
-                    Document.candidate_id == str(candidate_id),
-                    Document.deleted_at.is_(None),
-                )
-            )
-        )
-    ).scalars().all()
+    base = and_(
+        Document.tenant_id == str(tenant_id),
+        Document.candidate_id == str(candidate_id),
+        Document.deleted_at.is_(None),
+    )
+    scope = documents_scope_clause(own_company_id)
+    if scope is not None:
+        stmt = select(Document).join(Candidate, Candidate.id == Document.candidate_id).where(and_(base, scope))
+    else:
+        stmt = select(Document).where(base)
+    rows = (await db.execute(stmt)).scalars().all()
 
     total = len(rows)
     uploaded = 0
@@ -579,6 +596,7 @@ async def list_candidate_documents(
     candidate_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
     q: Optional[str] = Query(
         None, description="Поиск по ключу/названию/номеру/заметке"
     ),
@@ -596,6 +614,7 @@ async def list_candidate_documents(
             return []
 
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+    ensure_candidate_own_company_scope(cand, own_company_id)
     tenant_for_docs = cand.tenant_id
 
     # Если документы принадлежат другому тенанту, временно меняем контекст RLS
@@ -613,19 +632,23 @@ async def list_candidate_documents(
             pass
 
     try:
-        stmt = (
-            select(Document)
-            .where(
-                and_(
-                    Document.tenant_id == str(tenant_for_docs),
-                    Document.owner_type == "candidate",  # type: ignore[attr-defined]
-                    Document.owner_id == str(candidate_id),  # type: ignore[attr-defined]
-                    Document.candidate_id == str(candidate_id),
-                    Document.deleted_at.is_(None),
-                )
-            )
-            .order_by(Document.created_at.desc())
+        base_conds = and_(
+            Document.tenant_id == str(tenant_for_docs),
+            Document.owner_type == "candidate",  # type: ignore[attr-defined]
+            Document.owner_id == str(candidate_id),  # type: ignore[attr-defined]
+            Document.candidate_id == str(candidate_id),
+            Document.deleted_at.is_(None),
         )
+        scope = documents_scope_clause(own_company_id)
+        if scope is not None:
+            stmt = (
+                select(Document)
+                .join(Candidate, Candidate.id == Document.candidate_id)
+                .where(and_(base_conds, scope))
+                .order_by(Document.created_at.desc())
+            )
+        else:
+            stmt = select(Document).where(base_conds).order_by(Document.created_at.desc())
 
         rows = (await db.execute(stmt)).scalars().all()
     finally:
@@ -692,11 +715,13 @@ async def create_candidate_document(
     payload: CandDocCreate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+    ensure_candidate_own_company_scope(cand, own_company_id)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
     await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
@@ -761,9 +786,11 @@ async def create_candidate_document(
     verified_at = _utc_aware() if auto_status_value == DocumentStatus.approved else None
 
     await documents_crud.ensure_document_type(db, str(cand.tenant_id), doc_type)
+    doc_oc = resolved_document_own_company_id(cand, own_company_id)
     m = Document(
         id=str(uuid4()),
         tenant_id=str(cand.tenant_id),
+        own_company_id=doc_oc,
         owner_type="candidate",
         owner_id=str(candidate_id),
         candidate_id=str(candidate_id),
@@ -808,7 +835,7 @@ async def create_candidate_document(
             status_url=status_url,
         )
     await db.commit()
-    await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id))
+    await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id), own_company_id=own_company_id)
     return CandDoc.from_document(m)
 
 
@@ -829,11 +856,13 @@ async def update_candidate_document(
     payload: CandDocUpdate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+    ensure_candidate_own_company_scope(cand, own_company_id)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
     await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
@@ -849,6 +878,7 @@ async def update_candidate_document(
     m = row.scalar_one_or_none()
     if not m:
         raise HTTPException(status_code=404, detail="Document not found")
+    ensure_document_own_company_matches(m, cand, own_company_id)
 
     meta_payload = dict(m.meta) if isinstance(m.meta, dict) else _load_extra(getattr(m, "meta", None))
     meta_payload.setdefault("doc_type", getattr(m, "doc_type", None))
@@ -1074,7 +1104,7 @@ async def update_candidate_document(
             )
     except Exception:
         pass
-    await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id))
+    await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id), own_company_id=own_company_id)
     return CandDoc.from_document(m)
 
 
@@ -1085,6 +1115,7 @@ async def apply_template_to_candidate_impl(
     *,
     template_id: Optional[str] = None,
     template_code: Optional[str] = None,
+    own_company_id: Optional[str] = None,
 ) -> Optional[AppliedTemplateResponse]:
     """Apply a document template to a candidate. No permission checks. Returns None if candidate or template not found."""
     if not template_id and not template_code:
@@ -1099,6 +1130,7 @@ async def apply_template_to_candidate_impl(
     cand = cand_row.scalar_one_or_none()
     if not cand:
         return None
+    ensure_candidate_own_company_scope(cand, own_company_id)
 
     template_query = select(DocumentTemplate).where(DocumentTemplate.tenant_id == tenant_id_str)
     if template_id:
@@ -1113,13 +1145,20 @@ async def apply_template_to_candidate_impl(
     template_docs = prepare_template_documents(template.documents or [])
     keep_types = {entry["doc_type"] for entry in template_docs}
 
-    existing_rows = await db.execute(
-        select(Document).where(
-            Document.candidate_id == candidate_id_str,
-            Document.tenant_id == str(cand.tenant_id),
-            Document.deleted_at.is_(None),
-        )
+    base_existing = and_(
+        Document.candidate_id == candidate_id_str,
+        Document.tenant_id == str(cand.tenant_id),
+        Document.deleted_at.is_(None),
     )
+    scope = documents_scope_clause(own_company_id)
+    if scope is not None:
+        existing_rows = await db.execute(
+            select(Document)
+            .join(Candidate, Candidate.id == Document.candidate_id)
+            .where(and_(base_existing, scope))
+        )
+    else:
+        existing_rows = await db.execute(select(Document).where(base_existing))
     existing_docs = list(existing_rows.scalars())
     existing_by_type: Dict[str, Document] = {}
     for doc in existing_docs:
@@ -1147,6 +1186,9 @@ async def apply_template_to_candidate_impl(
 
         existing = existing_by_type.get(doc_type)
         if existing:
+            ro = resolved_document_own_company_id(cand, own_company_id)
+            if not str(getattr(existing, "own_company_id", None) or "").strip() and ro:
+                existing.own_company_id = ro
             existing.kind = kind
             existing.requested_from = requested_from
             existing.process_type = process_type
@@ -1201,9 +1243,11 @@ async def apply_template_to_candidate_impl(
             )
 
             await documents_crud.ensure_document_type(db, str(cand.tenant_id), doc_type)
+            doc_oc = resolved_document_own_company_id(cand, own_company_id)
             new_doc = Document(
                 id=str(uuid4()),
                 tenant_id=str(cand.tenant_id),
+                own_company_id=doc_oc,
                 owner_type="candidate",
                 owner_id=candidate_id_str,
                 candidate_id=candidate_id_str,
@@ -1240,16 +1284,22 @@ async def apply_template_to_candidate_impl(
 
     await db.commit()
 
-    refreshed_rows = await db.execute(
-        select(Document).where(
-            Document.candidate_id == candidate_id_str,
-            Document.tenant_id == str(cand.tenant_id),
-            Document.deleted_at.is_(None),
-        )
+    base_ref = and_(
+        Document.candidate_id == candidate_id_str,
+        Document.tenant_id == str(cand.tenant_id),
+        Document.deleted_at.is_(None),
     )
+    if scope is not None:
+        refreshed_rows = await db.execute(
+            select(Document)
+            .join(Candidate, Candidate.id == Document.candidate_id)
+            .where(and_(base_ref, scope))
+        )
+    else:
+        refreshed_rows = await db.execute(select(Document).where(base_ref))
     refreshed_docs = [CandDoc.from_document(doc) for doc in refreshed_rows.scalars()]
 
-    await _recalc_docs_progress(db, str(cand.tenant_id), candidate_id_str)
+    await _recalc_docs_progress(db, str(cand.tenant_id), candidate_id_str, own_company_id=own_company_id)
 
     return AppliedTemplateResponse(
         template_id=template.id,
@@ -1274,6 +1324,7 @@ async def apply_document_template(
     payload: ApplyTemplatePayload,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
@@ -1288,6 +1339,7 @@ async def apply_document_template(
         str(candidate_id),
         template_id=str(payload.template_id) if payload.template_id else None,
         template_code=payload.template_code,
+        own_company_id=own_company_id,
     )
     if result is None:
         raise HTTPException(status_code=404, detail="Document template not found")
@@ -1307,11 +1359,13 @@ async def delete_candidate_document(
     doc_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+    ensure_candidate_own_company_scope(cand, own_company_id)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
     await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
@@ -1327,6 +1381,7 @@ async def delete_candidate_document(
     m = row.scalar_one_or_none()
     if not m:
         raise HTTPException(status_code=404, detail="Document not found")
+    ensure_document_own_company_matches(m, cand, own_company_id)
 
     await db.execute(
         update(Document)
@@ -1340,7 +1395,7 @@ async def delete_candidate_document(
         entity_id=str(doc_id),
     )
     await db.commit()
-    await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id))
+    await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id), own_company_id=own_company_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -1359,6 +1414,7 @@ async def upload_candidate_document(
     candidate_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
     file: UploadFile = File(...),
     key: Optional[str] = Form(None),
     title: Optional[str] = Form(None),
@@ -1374,6 +1430,7 @@ async def upload_candidate_document(
     tenant_id_str = str(tenant_id_hint)
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+    ensure_candidate_own_company_scope(cand, own_company_id)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
     await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
@@ -1394,6 +1451,11 @@ async def upload_candidate_document(
             if not chunk:
                 break
             out.write(chunk)
+
+    try:
+        upload_size = int(os.path.getsize(abs_path))
+    except OSError:
+        upload_size = 0
 
     # 2) автоизвлечение
     guessed = auto_fill_from_file(abs_path, hinted_key=key)
@@ -1443,6 +1505,7 @@ async def upload_candidate_document(
             "source": "upload",
             "storage_path": rel_path.replace("\\", "/"),
             "version": 1,
+            "size": upload_size,
             "mime": file.content_type or mimetypes.guess_type(file.filename or safe_name)[0],
             "user_comment": normalized_comment,
         }
@@ -1460,9 +1523,18 @@ async def upload_candidate_document(
     }
 
     await documents_crud.ensure_document_type(db, str(cand.tenant_id), doc_type)
+    await ensure_tenant_document_quota(db, tenant_id_str)
+    await ensure_tenant_storage_bytes_fits(
+        db,
+        tenant_id_str,
+        previous_doc_attribution_bytes=0,
+        next_doc_attribution_bytes=sum_file_entries_bytes(files_list),
+    )
+    doc_oc = resolved_document_own_company_id(cand, own_company_id)
     obj = Document(
         id=doc_id,
         tenant_id=str(cand.tenant_id),
+        own_company_id=doc_oc,
         owner_type="candidate",
         owner_id=str(candidate_id),
         candidate_id=str(candidate_id),
@@ -1492,7 +1564,7 @@ async def upload_candidate_document(
         document=obj,
     )
     await db.commit()
-    await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id))
+    await _recalc_docs_progress(db, str(cand.tenant_id), str(candidate_id), own_company_id=own_company_id)
 
     return CandDoc.from_document(obj)
 
@@ -1511,10 +1583,12 @@ async def get_candidate_document_file(
     doc_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id_hint = db_tenant
     await ensure_candidate_access(db, str(tenant_id_hint), str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
+    ensure_candidate_own_company_scope(cand, own_company_id)
     tenant_for_docs = cand.tenant_id
 
     # Если документы принадлежат другому тенанту, временно меняем контекст RLS
@@ -1552,6 +1626,7 @@ async def get_candidate_document_file(
 
     if not m or not m.path:
         raise HTTPException(status_code=404, detail="File not found")
+    ensure_document_own_company_matches(m, cand, own_company_id)
 
     try:
         file_path, media_type, filename = resolve_document_file(m)

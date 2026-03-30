@@ -16,8 +16,7 @@ from backend.app.core.settings import settings
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_stage_history import CandidateStageHistory
 from backend.app.models.communication import CommunicationChannelAccount
-from backend.app.models.document import Document
-from backend.app.modules.documents.crud import ensure_ruleset_seed
+from backend.app.modules.documents.crud import ensure_ruleset_seed, list_candidate_documents
 from backend.app.modules.documents.owner_summary import compute_owner_summary
 from backend.app.services.candidate_notifications import get_document_display_name
 from backend.app.services.communications_telegram import TelegramBotConfig, send_telegram_text
@@ -269,30 +268,33 @@ async def get_candidate_required_docs_snapshot(
     tenant_id: str,
     candidate: Candidate,
 ) -> Dict[str, Any]:
+    oc = getattr(candidate, "own_company_id", None)
+    own_company_id = str(oc).strip() if oc else None
     ruleset_version = await ensure_ruleset_seed(
         db,
         str(tenant_id),
         load_default_ruleset(),
+        own_company_id=own_company_id,
     )
     ruleset_payload = normalize_ruleset_payload(ruleset_version.json_data)
     owner_context = _candidate_owner_context_for_docs(candidate)
-    rows = (
-        await db.execute(
-            sa.select(Document.doc_type, Document.status, Document.expire_date)
-            .where(
-                Document.tenant_id == str(tenant_id),
-                Document.candidate_id == str(candidate.id),
-                Document.deleted_at.is_(None),
-            )
-        )
-    ).all()
+    docs = await list_candidate_documents(
+        db,
+        str(tenant_id),
+        str(candidate.id),
+        include_deleted=False,
+        active_own_company_id=own_company_id,
+    )
     docs_payload: list[dict[str, Any]] = []
-    for doc_type, status, expire_date in rows:
+    for doc in docs:
+        expire_date = getattr(doc, "expire_date", None)
         docs_payload.append(
             {
-                "type": str(doc_type or "").strip(),
-                "doc_type": str(doc_type or "").strip(),
-                "status": status.value if hasattr(status, "value") else str(status or "").strip().lower(),
+                "type": str(doc.doc_type or "").strip(),
+                "doc_type": str(doc.doc_type or "").strip(),
+                "status": doc.status.value
+                if hasattr(doc.status, "value")
+                else str(doc.status or "").strip().lower(),
                 "expires_at": expire_date.isoformat() if expire_date is not None else None,
             }
         )

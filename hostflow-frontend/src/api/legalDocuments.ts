@@ -10,8 +10,19 @@ export type LegalDocumentOut = {
   published_at: string | null
 }
 
+/** Stored `legal_documents.type` (core + §2.16 billing exhibits). */
+export type LegalDocumentKind =
+  | 'rodo_clause'
+  | 'privacy_policy'
+  | 'trial_terms'
+  | 'downgrade_cancellation'
+  | 'overage_autodebit'
+  | 'data_retention'
+  | 'automation_disclaimer'
+  | 'mapping_disclaimer'
+
 export type LegalDocumentCreate = {
-  type: 'rodo_clause' | 'privacy_policy'
+  type: LegalDocumentKind
   version_id: string
   content_html?: string | null
   content_url?: string | null
@@ -40,9 +51,29 @@ export async function updateLegalDocument(id: string, payload: LegalDocumentUpda
   return data
 }
 
-export async function getActiveLegalDocs(): Promise<{ rodo_clause: LegalDocumentOut | null; privacy_policy: LegalDocumentOut | null }> {
-  const { data } = await api.get<{ rodo_clause: LegalDocumentOut | null; privacy_policy: LegalDocumentOut | null }>('/legal-documents/active')
+export type ActiveLegalDocsResponse = {
+  rodo_clause: LegalDocumentOut | null
+  privacy_policy: LegalDocumentOut | null
+  trial_terms: LegalDocumentOut | null
+  downgrade_cancellation: LegalDocumentOut | null
+  overage_autodebit: LegalDocumentOut | null
+  data_retention: LegalDocumentOut | null
+  automation_disclaimer: LegalDocumentOut | null
+  mapping_disclaimer: LegalDocumentOut | null
+}
+
+export async function getActiveLegalDocs(): Promise<ActiveLegalDocsResponse> {
+  const { data } = await api.get<ActiveLegalDocsResponse>('/legal-documents/active')
   return data
+}
+
+export async function fetchBillingLegalDrafts(): Promise<
+  { type: string; version_id: string; content_html: string }[]
+> {
+  const { data } = await api.get<{ items: { type: string; version_id: string; content_html: string }[] }>(
+    '/legal-documents/default-templates/billing-v1',
+  )
+  return data.items
 }
 
 export type RodoStatusOut = {

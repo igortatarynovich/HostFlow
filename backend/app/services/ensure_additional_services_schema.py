@@ -104,6 +104,7 @@ def ensure_additional_services_schema() -> None:
                 ("requested_by", "TEXT"),
                 ("start_date", "TEXT"),
                 ("end_date", "TEXT"),
+                ("own_company_id", "TEXT"),
             ):
                 if name not in cols:
                     _add_column(cur, "service_orders", f"{name} {coldef}")
@@ -181,4 +182,60 @@ def ensure_additional_services_schema() -> None:
 
         conn.commit()
         print("[additional-services] ensure_additional_services_schema executed")
+
+
+def _postgres_sync_engine_url(raw: str) -> str:
+    """SQLAlchemy sync URL using psycopg3 (``psycopg[binary]``), not psycopg2."""
+    u = (raw or "").strip()
+    if not u:
+        return u
+    if u.startswith("postgresql+asyncpg://"):
+        return "postgresql+psycopg://" + u.split("postgresql+asyncpg://", 1)[1]
+    if u.startswith("postgresql://") and "+" not in u.split("://", 1)[0]:
+        return "postgresql+psycopg://" + u.split("postgresql://", 1)[1]
+    return u
+
+
+def ensure_service_orders_own_company_id_column() -> None:
+    """Ensure ``service_orders.own_company_id`` exists on PostgreSQL (§2.4).
+
+    Dev/test DBs may lag behind Alembic; SQLite is handled in ``ensure_additional_services_schema``.
+    """
+    try:
+        from sqlalchemy import create_engine, inspect, text
+
+        from backend.app.core.settings import settings
+    except Exception:
+        return
+
+    raw = getattr(settings, "ASYNC_DATABASE_URL", None) or getattr(
+        settings, "SYNC_DATABASE_URL", None
+    )
+    url = _postgres_sync_engine_url(str(raw or ""))
+    if not url or "postgresql" not in url:
+        return
+    try:
+        eng = create_engine(url)
+        insp = inspect(eng)
+        if "service_orders" not in insp.get_table_names():
+            return
+        cols = {c["name"] for c in insp.get_columns("service_orders")}
+        if "own_company_id" in cols:
+            return
+        with eng.begin() as conn:
+            conn.execute(
+                text("ALTER TABLE service_orders ADD COLUMN own_company_id VARCHAR(36)")
+            )
+            try:
+                conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS ix_service_orders_own_company_id "
+                        "ON service_orders (own_company_id)"
+                    )
+                )
+            except Exception:
+                pass
+        print("[additional-services] added service_orders.own_company_id (postgres ensure)")
+    except Exception as exc:  # pragma: no cover - best-effort
+        print(f"[additional-services] service_orders.own_company_id ensure skipped: {exc}")
 

@@ -9,6 +9,7 @@ import {
   IconFileText,
   IconHistory,
   IconLayoutGrid,
+  IconRoute,
   IconSettings,
   IconShield,
 } from '@tabler/icons-react'
@@ -30,6 +31,7 @@ export default function AutomationsHubPage() {
   const { t } = useI18n()
   const { can } = usePermissions()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
+  const showLeadsDistribution = can('leads.view')
 
   const policyCards = useMemo((): PolicyCard[] => {
     const out: PolicyCard[] = []
@@ -125,18 +127,15 @@ export default function AutomationsHubPage() {
   }, [can, t])
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col gap-6">
-      <header className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-900 via-brand-900 to-brand-950 px-6 py-8 text-white shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
-          {t('app.automations.hub.kicker', { defaultValue: 'System module' })}
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+    <div className="flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-4 sm:px-6">
+      <header className="border-b border-slate-200 pb-4">
+        <h1 className="text-2xl font-semibold text-slate-900">
           {t('app.automations.hub.title', { defaultValue: 'Automations' })}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/85">
+        <p className="mt-1 max-w-3xl text-sm text-slate-600">
           {t('app.automations.hub.subtitle', {
             defaultValue:
-              'Rules encode operational policy; the log explains what ran. Policy shortcuts below link to the same controls under Settings — one entry point for ops leads.',
+              'Rules, logs, and lead routing — one place to start; details open on their own screens.',
           })}
         </p>
       </header>
@@ -190,11 +189,62 @@ export default function AutomationsHubPage() {
             </div>
           </div>
         </Link>
+
+        {showLeadsDistribution ? (
+          <>
+            <Link
+              to={CRM_APP_PATHS.leadsDistribution}
+              className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
+            >
+              <div className="flex items-start gap-4">
+                <span className="rounded-xl bg-violet-50 p-3 text-violet-700 ring-1 ring-violet-100">
+                  <IconRoute size={28} stroke={1.6} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-semibold text-slate-900 group-hover:text-brand-800">
+                    {t('app.nav.items.leads_distribution', { defaultValue: 'Lead distribution' })}
+                  </h2>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                    {t('app.automations.hub.card_leads_dist_desc', {
+                      defaultValue: 'Team routing, capacity, and assignment — main distribution screen.',
+                    })}
+                  </p>
+                  <span className="mt-3 inline-block text-sm font-medium text-brand-600 group-hover:underline">
+                    {t('app.automations.hub.open', { defaultValue: 'Open' })} →
+                  </span>
+                </div>
+              </div>
+            </Link>
+            <Link
+              to={CRM_APP_PATHS.leadsDistributionRules}
+              className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-brand-300 hover:shadow-md"
+            >
+              <div className="flex items-start gap-4">
+                <span className="rounded-xl bg-slate-50 p-3 text-slate-700 ring-1 ring-slate-200">
+                  <IconRoute size={28} stroke={1.6} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg font-semibold text-slate-900 group-hover:text-brand-800">
+                    {t('app.nav.items.leads_distribution_rules', { defaultValue: 'Distribution rules' })}
+                  </h2>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                    {t('app.automations.hub.card_leads_rules_desc', {
+                      defaultValue: 'Strategy, criteria order, and language routing.',
+                    })}
+                  </p>
+                  <span className="mt-3 inline-block text-sm font-medium text-brand-600 group-hover:underline">
+                    {t('app.automations.hub.open', { defaultValue: 'Open' })} →
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </>
+        ) : null}
       </div>
 
       {opsCards.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          <h2 className="text-sm font-semibold text-slate-800">
             {t('app.automations.hub.ops_section', { defaultValue: 'Fulfillment & billing (execution)' })}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -224,7 +274,7 @@ export default function AutomationsHubPage() {
 
       {policyCards.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          <h2 className="text-sm font-semibold text-slate-800">
             {t('app.automations.hub.policy_section', { defaultValue: 'Policy & enforcement (settings)' })}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

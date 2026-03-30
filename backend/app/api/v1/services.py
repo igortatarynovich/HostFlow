@@ -7,6 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_optional
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.schemas.additional_services import (
@@ -36,6 +37,31 @@ def _svc(db: AsyncSession, tenant_id: UUID) -> AdditionalServicesService:
     return AdditionalServicesService(db, str(tenant_id))
 
 
+async def _list_service_orders_response(
+    db: AsyncSession,
+    tenant_id: UUID,
+    *,
+    candidate_id: Optional[UUID] = None,
+    vacancy_id: Optional[UUID] = None,
+    company_id: Optional[UUID] = None,
+    status: Optional[List[str]] = None,
+    q: Optional[str] = None,
+    active_own_company_id: Optional[str] = None,
+) -> List[ServiceOrderOut]:
+    svc = _svc(db, tenant_id)
+    rows = await svc.list_orders(
+        candidate_id=str(candidate_id) if candidate_id else None,
+        vacancy_id=str(vacancy_id) if vacancy_id else None,
+        company_id=str(company_id) if company_id else None,
+        status=status,
+        q=q,
+        own_company_scope=active_own_company_id,
+    )
+    if q and str(q).strip():
+        rows = rows[:80]
+    return [ServiceOrderOut.model_validate(row, from_attributes=True) for row in rows]
+
+
 def _ensure_single_owner(
     candidate_id: Optional[str],
     vacancy_id: Optional[str],
@@ -58,11 +84,16 @@ async def list_services(
         description="Include per-service order counts and revenue from completed orders",
     ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
     rows = await svc.list_services(include_inactive=include_inactive)
-    metrics_map = await svc.catalog_usage_metrics_map() if include_metrics else None
+    metrics_map = (
+        await svc.catalog_usage_metrics_map(own_company_scope=active_own_company_id)
+        if include_metrics
+        else None
+    )
     out: List[ServiceOut] = []
     for row in rows:
         base = ServiceOut.model_validate(row, from_attributes=True)
@@ -131,19 +162,19 @@ async def list_service_orders(
     status: Optional[List[str]] = Query(None, description="Filter by status values"),
     q: Optional[str] = Query(None, description="Search order id or notes (substring)"),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
-    svc = _svc(db, tenant_id)
-    rows = await svc.list_orders(
-        candidate_id=str(candidate_id) if candidate_id else None,
-        vacancy_id=str(vacancy_id) if vacancy_id else None,
-        company_id=str(company_id) if company_id else None,
+    return await _list_service_orders_response(
+        db,
+        tenant_id,
+        candidate_id=candidate_id,
+        vacancy_id=vacancy_id,
+        company_id=company_id,
         status=status,
         q=q,
+        active_own_company_id=active_own_company_id,
     )
-    if q and str(q).strip():
-        rows = rows[:80]
-    return [ServiceOrderOut.model_validate(row, from_attributes=True) for row in rows]
 
 
 @router.get(
@@ -154,10 +185,12 @@ async def list_service_orders(
 async def get_service_order(
     order_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
     order = await svc.get_order(order_id)
+    await svc.ensure_order_own_company_scope(order, active_own_company_id)
     return ServiceOrderOut.model_validate(order, from_attributes=True)
 
 
@@ -169,13 +202,18 @@ async def get_service_order(
 async def list_candidate_service_orders(
     candidate_id: UUID,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
-    return await list_service_orders(
+    db, tenant_id = db_tenant
+    return await _list_service_orders_response(
+        db,
+        tenant_id,
         candidate_id=candidate_id,
         vacancy_id=None,
         company_id=None,
         status=None,
-        db_tenant=db_tenant,
+        q=None,
+        active_own_company_id=active_own_company_id,
     )
 
 
@@ -188,6 +226,7 @@ async def create_service_order(
     payload: ServiceOrderCreate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
@@ -205,6 +244,14 @@ async def create_service_order(
     order_payload["vacancy_id"] = vacancy_id
     order_payload["company_id"] = company_id
     order_payload["requested_by"] = payload.requested_by or current_user.sub
+    resolved_oc = await svc.resolve_new_order_own_company_id(
+        candidate_id=candidate_id,
+        vacancy_id=vacancy_id,
+        company_id=company_id,
+        active_own_company_id=active_own_company_id,
+    )
+    if resolved_oc:
+        order_payload["own_company_id"] = resolved_oc
 
     items_payload = [item.model_dump(exclude_unset=True) for item in payload.items]
 
@@ -229,10 +276,12 @@ async def patch_service_order(
     order_id: str,
     payload: ServiceOrderUpdate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
     order = await svc.get_order(order_id)
+    await svc.ensure_order_own_company_scope(order, active_own_company_id)
     data = payload.model_dump(exclude_unset=True)
 
     status_value = data.pop("status", None)
@@ -256,10 +305,12 @@ async def add_service_item(
     order_id: str,
     payload: ServiceItemCreate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
     order = await svc.get_order(order_id)
+    await svc.ensure_order_own_company_scope(order, active_own_company_id)
     item = await svc.add_item(order, payload.model_dump(exclude_unset=True))
     await db.commit()
     item = await svc.get_item(item.id)
@@ -275,9 +326,11 @@ async def add_service_schedule(
     item_id: str,
     payload: ServiceScheduleCreate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
+    await svc.ensure_item_branch_scope(str(item_id), active_own_company_id)
     item = await svc.get_item(item_id)
     schedule = await svc.add_schedule(item, payload.model_dump(exclude_unset=True))
     await db.commit()
@@ -294,9 +347,11 @@ async def patch_service_schedule(
     schedule_id: str,
     payload: ServiceScheduleUpdate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
+    await svc.ensure_schedule_branch_scope(str(schedule_id), active_own_company_id)
     schedule = await svc.get_schedule(schedule_id)
     data = payload.model_dump(exclude_unset=True)
     if data:
@@ -315,9 +370,11 @@ async def add_service_attachment(
     item_id: str,
     payload: ServiceAttachmentCreate,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
+    await svc.ensure_item_branch_scope(str(item_id), active_own_company_id)
     item = await svc.get_item(item_id, with_relations=False)
     attachment = await svc.add_attachment(item, payload.model_dump(exclude_unset=True))
     await db.commit()
@@ -334,9 +391,11 @@ async def deliver_service_item(
     item_id: str,
     payload: ServiceItemDeliverPayload = Body(...),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
+    await svc.ensure_item_branch_scope(str(item_id), active_own_company_id)
     item = await svc.get_item(item_id)
     attachments_payload = [att.model_dump(exclude_unset=True) for att in payload.attachments]
     result_document_payload = (
@@ -365,10 +424,12 @@ async def deliver_service_item(
 async def get_service_order_summary(
     order_id: str,
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    active_own_company_id: Optional[str] = Depends(resolve_active_own_company_id_optional),
 ):
     db, tenant_id = db_tenant
     svc = _svc(db, tenant_id)
     order = await svc.get_order(order_id)
+    await svc.ensure_order_own_company_scope(order, active_own_company_id)
     data = await svc.summary_for_order(order)
     order_out = ServiceOrderOut.model_validate(data["order"], from_attributes=True)
     blocking_items = [

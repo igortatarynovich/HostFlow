@@ -17,6 +17,7 @@ from backend.app.models import (
     MetaLeadSettings,
     Vacancy,
 )
+from backend.app.services.lead_quota import ensure_monthly_lead_creation_allowed
 
 
 async def create_lead(
@@ -39,6 +40,7 @@ async def create_lead(
         lt = "candidate"
     if lt == "candidate" and not company_id:
         raise ValueError("company_id is required for candidate leads")
+    await ensure_monthly_lead_creation_allowed(db, tenant_id)
     lead = Lead(
         id=str(uuid.uuid4()),
         tenant_id=tenant_id,
@@ -89,11 +91,18 @@ async def resolve_vacancy_by_id(
     db: AsyncSession,
     tenant_id: str,
     vacancy_id: str,
+    *,
+    scoped_own_company_id: Optional[str] = None,
 ) -> Optional[Vacancy]:
+    oc = str(scoped_own_company_id or "").strip() or None
     stmt = select(Vacancy).where(
         Vacancy.id == vacancy_id,
         Vacancy.tenant_id == tenant_id,
     )
+    if oc:
+        stmt = stmt.where(
+            or_(Vacancy.own_company_id.is_(None), Vacancy.own_company_id == oc)
+        )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
@@ -102,9 +111,12 @@ async def resolve_vacancy_by_ad(
     db: AsyncSession,
     tenant_id: str,
     ad_id: Optional[int],
+    *,
+    scoped_own_company_id: Optional[str] = None,
 ) -> Optional[Vacancy]:
     if not ad_id:
         return None
+    oc = str(scoped_own_company_id or "").strip() or None
     stmt = (
         select(Vacancy)
         .join(MetaAdsMap, MetaAdsMap.vacancy_id == Vacancy.id)
@@ -115,6 +127,10 @@ async def resolve_vacancy_by_ad(
         )
         .limit(1)
     )
+    if oc:
+        stmt = stmt.where(
+            or_(Vacancy.own_company_id.is_(None), Vacancy.own_company_id == oc)
+        )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
@@ -607,6 +623,23 @@ async def get_meta_settings_by_verify_token(
     stmt = (
         select(MetaLeadSettings)
         .where(MetaLeadSettings.webhook_verify_token == verify_token)
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def get_meta_settings_by_generic_inbound_webhook_secret(
+    db: AsyncSession,
+    *,
+    secret: str,
+) -> Optional[MetaLeadSettings]:
+    s = (secret or "").strip()
+    if not s:
+        return None
+    stmt = (
+        select(MetaLeadSettings)
+        .where(MetaLeadSettings.generic_inbound_webhook_secret == s)
         .limit(1)
     )
     result = await db.execute(stmt)

@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
+
+from backend.app.models.tenant import Tenant, TenantLicense
+from backend.app.services import billing_restrictions
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
@@ -65,6 +69,33 @@ async def list_leads_endpoint(
     search_q: str | None = Query(None, alias="q", max_length=200),
     custom_field_key: str | None = Query(None, alias="custom_field_key"),
     custom_field_value: str | None = Query(None, alias="custom_field_value"),
+    conversion_root: str | None = Query(
+        None,
+        alias="conversion_root",
+        max_length=32,
+        description="§2.12 root bucket: lead | qualified | active | final (effective mapping from funnel + legacy).",
+    ),
+    lost_reason_code_param: str | None = Query(
+        None,
+        alias="lost_reason_code",
+        max_length=64,
+        description="§2.12 When set: processed + lost + normalized.lead_lost_reason_v1.code match; conversion_root ignored.",
+    ),
+    lost_from_crm_stage_param: str | None = Query(
+        None,
+        alias="lost_from_crm_stage",
+        max_length=32,
+        description=(
+            "§2.12 When set: processed + lost + ActivityLog lead.stage_changed into lost "
+            "with matching payload.from_stage (or 'unknown' for empty prior stage)."
+        ),
+    ),
+    pipeline_error_param: str | None = Query(
+        None,
+        alias="pipeline_error",
+        max_length=64,
+        description="Exact Lead.error filter (whitelist: LEAD_FIT_NO_MATCH, LEAD_FIT_NEEDS_INFO). Ignored when lost_reason_code or lost_from_crm_stage is set.",
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -96,6 +127,38 @@ async def list_leads_endpoint(
             detail="custom_field_key is required when custom_field_value is set",
         )
 
+    lrc = (lost_reason_code_param or "").strip() or None
+    if lrc:
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", lrc):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="lost_reason_code must match [A-Za-z0-9_-]{1,64}",
+            )
+
+    lf_crm = (lost_from_crm_stage_param or "").strip().lower() or None
+    if lf_crm and lf_crm != "unknown" and not re.fullmatch(r"[a-z0-9_-]{1,32}", lf_crm):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="lost_from_crm_stage must be 'unknown' or match [a-z0-9_-]{1,32}",
+        )
+
+    cr_param = (conversion_root or "").strip().lower() or None
+    if cr_param and cr_param not in ("lead", "qualified", "active", "final"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="conversion_root must be one of: lead, qualified, active, final",
+        )
+    if lrc or lf_crm:
+        cr_param = None
+
+    pe_raw = (pipeline_error_param or "").strip() or None
+    if pe_raw and pe_raw not in service.LEAD_LIST_PIPELINE_ERROR_WHITELIST:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="pipeline_error must be one of: LEAD_FIT_NO_MATCH, LEAD_FIT_NEEDS_INFO",
+        )
+    pipeline_error = None if (lrc or lf_crm) else pe_raw
+
     return await service.list_leads(
         db,
         tenant_id=tid,
@@ -106,6 +169,10 @@ async def list_leads_endpoint(
         search=(search_q or "").strip() or None,
         custom_field_definition_id=cf_def_id,
         custom_field_match_value=cf_match,
+        conversion_root=cr_param,
+        lost_reason_code=lrc,
+        lost_from_crm_stage=lf_crm,
+        pipeline_error=pipeline_error,
         limit=limit,
         offset=offset,
     )
@@ -206,17 +273,68 @@ async def lead_conversion_funnel_endpoint(
     funnel_vacancy_id: str | None = Query(None, alias="vacancy_id", max_length=36),
     funnel_funnel_id: str | None = Query(None, alias="funnel_id", max_length=36),
     funnel_assignee_user_id: str | None = Query(None, alias="assignee_user_id", max_length=36),
+    cohort_window_days: int | None = Query(
+        None,
+        ge=1,
+        le=90,
+        description="§2.12 stretch: only leads with created_at in [now−D, now); Team+.",
+    ),
+    cohort_compare_prior: bool = Query(
+        False,
+        description="With cohort window: also compute prior period of equal length (WoW).",
+    ),
+    cohort_created_after: datetime | None = Query(
+        None,
+        description="Inclusive lower bound for Lead.created_at (alternative to cohort_window_days).",
+    ),
+    cohort_created_before_exclusive: datetime | None = Query(
+        None,
+        alias="cohort_created_before",
+        description="Exclusive upper bound for Lead.created_at.",
+    ),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     own_company_id: str = Depends(resolve_active_own_company_id),
     _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter, Role.viewer)),
 ) -> LeadConversionFunnelResponse:
     db, tenant_uuid = db_tenant
     tid = str(tenant_uuid)
+    if cohort_window_days is not None and (
+        cohort_created_after is not None or cohort_created_before_exclusive is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Use either cohort_window_days or cohort_created_after/cohort_created_before, not both",
+        )
+    cmin: datetime | None = None
+    cmax_excl: datetime | None = None
+    if cohort_window_days is not None:
+        cmax_excl = datetime.now(timezone.utc)
+        cmin = cmax_excl - timedelta(days=int(cohort_window_days))
+    elif cohort_created_after is not None or cohort_created_before_exclusive is not None:
+        if cohort_created_after is None or cohort_created_before_exclusive is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="cohort_created_after and cohort_created_before must be set together",
+            )
+        cmin = cohort_created_after
+        if cmin.tzinfo is None or cohort_created_before_exclusive.tzinfo is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="cohort bounds must be timezone-aware (UTC recommended)",
+            )
+        cmax_excl = cohort_created_before_exclusive
+        if cmax_excl <= cmin:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="cohort_created_before must be after cohort_created_after",
+            )
     sp = service.ConversionFunnelSliceParams.normalize(
         source=funnel_source,
         vacancy_id=funnel_vacancy_id,
         funnel_id=funnel_funnel_id,
         assignee_user_id=funnel_assignee_user_id,
+        cohort_created_at_min=cmin,
+        cohort_created_at_max_exclusive=cmax_excl,
     )
     if sp.any_set():
         plan = await resolve_tenant_plan_code(db, tid)
@@ -247,6 +365,7 @@ async def lead_conversion_funnel_endpoint(
         tenant_id=tid,
         own_company_id=own_company_id,
         slice_params=sp,
+        cohort_compare_prior=bool(cohort_compare_prior),
     )
 
 
@@ -290,9 +409,24 @@ async def update_lead_stage_endpoint(
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
+    prev_stage = getattr(lead, "stage", None)
+    tenant_row = await db.get(Tenant, tenant_id_str)
+    lic_row = (
+        await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id_str).limit(1))
+    ).scalar_one_or_none()
+    will_change_stage = (
+        "stage" in payload.model_fields_set
+        and payload.stage is not None
+        and str(payload.stage or "") != str(prev_stage or "")
+    )
+    touches_assignment_lock = "assignment_locked" in payload.model_fields_set and payload.assignment_locked is not None
+    if billing_restrictions.tenant_billing_blocks_side_effect_writes(tenant_row, lic_row) and (
+        will_change_stage or touches_assignment_lock
+    ):
+        billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
+
     enforcement_mode = await next_action_enforcement.get_next_action_enforcement_mode(db, tenant_id=tenant_id_str)
     actor_for_enforcement = str(current_user.sub or "").strip() or None
-    prev_stage = getattr(lead, "stage", None)
 
     if "assignment_locked" in payload.model_fields_set:
         norm = dict(lead.normalized or {})
@@ -530,6 +664,13 @@ async def bulk_update_leads_endpoint(
     tenant_id_str = str(tenant_id)
     lead_ids = [str(item) for item in payload.lead_ids]
     actor_id = str(current_user.sub or "").strip() or None
+
+    if payload.stage is not None or payload.status is not None:
+        tenant_row = await db.get(Tenant, tenant_id_str)
+        lic_row = (
+            await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id_str).limit(1))
+        ).scalar_one_or_none()
+        billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
 
     stage_transitions: list[tuple[str, Any]] = []
     if payload.stage is not None and lead_ids:

@@ -19,6 +19,7 @@ from backend.app.schemas.user import (
     UserRole,
     UserSupervisorUpdate,
     UserCompaniesUpdate,
+    UserOwnCompanyAccessUpdate,
     UserUpdateRole,
     UserAuditOut,
 )
@@ -277,6 +278,35 @@ async def update_user_companies(
             actor_id=ctx.sub,
             user_id=user_id,
             company_ids=payload.company_ids,
+        )
+        await db.commit()
+    except UserServiceError as exc:
+        await db.rollback()
+        _handle_service_error(exc)
+    return UserDetailOut(**detail)
+
+
+@router.patch(
+    "/{user_id}/own-company-access",
+    response_model=UserDetailOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def update_user_own_company_access(
+    user_id: str,
+    payload: UserOwnCompanyAccessUpdate,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant=Depends(get_db_with_tenant),
+):
+    db, tenant_uuid = db_tenant
+    tenant_id = str(tenant_uuid)
+    _ensure_tenant(ctx, tenant_id)
+    try:
+        detail = await users_service.update_user_own_company_access(
+            db,
+            tenant_id=tenant_id,
+            actor_id=ctx.sub,
+            user_id=user_id,
+            allowed_own_company_ids=payload.allowed_own_company_ids,
         )
         await db.commit()
     except UserServiceError as exc:

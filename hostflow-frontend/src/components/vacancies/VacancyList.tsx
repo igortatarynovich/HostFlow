@@ -9,8 +9,10 @@ import { patchUserMe } from '../../api/users'
 import type { UserSavedView } from '../../api/types'
 import { resolveApiBase, settings as clientSettings, DEFAULT_TENANT } from '../../api/client'
 import ErrorRecoveryBanner from '../ErrorRecoveryBanner'
-import { ActiveOwnCompanyBadge } from '../shell/ActiveOwnCompanyBadge'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../../utils/friendlyError'
+import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 
 // Unify button styles with Candidates page
 const primaryBtn = 'btn-primary'
@@ -78,9 +80,25 @@ async function getJSON<T = any>(path: string, params?: Record<string, any>): Pro
     headers: getAuthHeaders(),
   })
   if (!res.ok) {
-    let detail = await res.text()
-    try { const j = JSON.parse(detail); detail = j.detail || detail } catch {}
-    throw new Error(detail || `HTTP ${res.status}`)
+    const raw = await res.text()
+    let detail: unknown = raw
+    try {
+      const j = JSON.parse(raw)
+      if (j && typeof j === 'object' && 'detail' in j) {
+        detail = (j as { detail: unknown }).detail
+      }
+    } catch {
+      /* keep raw text */
+    }
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : detail && typeof detail === 'object'
+          ? JSON.stringify(detail)
+          : `HTTP ${res.status}`
+    const err = new Error(message) as Error & { response?: { status: number; data: { detail: unknown } } }
+    err.response = { status: res.status, data: { detail } }
+    throw err
   }
   return res.json()
 }
@@ -95,9 +113,25 @@ async function patchJSON<T = any>(path: string, body: Record<string, any>): Prom
     body: JSON.stringify(body),
   })
   if (!res.ok) {
-    let detail = await res.text()
-    try { const j = JSON.parse(detail); detail = (j as any).detail || detail } catch {}
-    throw new Error(detail || `HTTP ${res.status}`)
+    const raw = await res.text()
+    let detail: unknown = raw
+    try {
+      const j = JSON.parse(raw)
+      if (j && typeof j === 'object' && 'detail' in j) {
+        detail = (j as { detail: unknown }).detail
+      }
+    } catch {
+      /* keep raw text */
+    }
+    const message =
+      typeof detail === 'string'
+        ? detail
+        : detail && typeof detail === 'object'
+          ? JSON.stringify(detail)
+          : `HTTP ${res.status}`
+    const err = new Error(message) as Error & { response?: { status: number; data: { detail: unknown } } }
+    err.response = { status: res.status, data: { detail } }
+    throw err
   }
   return res.json()
 }
@@ -190,11 +224,12 @@ export default function VacancyList() {
   const navigate = useNavigate()
   const { preferences, updatePreferences } = useAuth()
   const { t, locale } = useI18n()
+  const planLimitModal = usePlanLimitModal()
   const dateFnsLocale = DATE_FNS_LOCALES[locale] ?? enUS
 
   const [data, setData] = useState<ListResponse>({ items: [], total: 0, limit: 20, offset: 0 })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [refreshTick, setRefreshTick] = useState(0)
   const [selected, setSelected] = useState<string[]>([])
   const statusOptions = useMemo(
@@ -323,17 +358,26 @@ export default function VacancyList() {
       })
       .catch((err: any) => {
         console.error('[vacancies/list] failed', err)
-        setError(
+        const unauthorized =
           err?.message === 'HTTP 401' || /Unauthorized|Missing Authorization/i.test(err?.message || '')
-            ? t('app.vacancies.list.errors.unauthorized')
-            : (err?.message || t('app.vacancies.list.errors.load_failed'))
-        )
+        if (unauthorized) {
+          setError({
+            title: t('app.vacancies.list.errors.unauthorized'),
+            hint: t('app.common.retry_hint'),
+          })
+        } else if (
+          planLimitModal?.showPlanLimitIfNeeded(err, t('app.vacancies.list.errors.load_failed'))
+        ) {
+          setError(null)
+        } else {
+          setError(getFriendlyErrorInfo(err, t('app.vacancies.list.errors.load_failed'), t))
+        }
       })
       .finally(() => {
         setLoading(false)
         setSelected([])
       })
-  }, [params, refreshTick, t])
+  }, [params, refreshTick, planLimitModal, t])
 
 
   // client-side сортировка (fallback)
@@ -575,7 +619,6 @@ export default function VacancyList() {
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-2xl font-semibold">{t('app.nav.items.vacancies')}</p>
-            <ActiveOwnCompanyBadge variant="onBrand" />
           </div>
           <p className="text-sm text-white/80">{t('app.vacancies.list.subtitle')}</p>
         </div>
@@ -735,12 +778,14 @@ export default function VacancyList() {
       {error && (
         <div className="mb-3">
           <ErrorRecoveryBanner
-            info={{
-              title: error,
-              hint: t('app.common.retry_hint'),
-            }}
+            info={error}
             onRetry={() => refresh()}
             retryLabel={t('common.actions.retry')}
+            {...friendlyErrorBannerSecondary(
+              error,
+              CRM_APP_PATHS.vacancies,
+              t('app.nav.items.vacancies', { defaultValue: 'Vacancies' }),
+            )}
             compact
           />
         </div>

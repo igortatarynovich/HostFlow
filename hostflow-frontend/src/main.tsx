@@ -6,6 +6,7 @@ import { CRM_APP_PATHS } from './app/crmAppPaths'
 import { AuthProvider } from './store/auth'
 import { I18nProvider } from './i18n'
 import { ToastProvider } from './components/Toast'
+import { PlanLimitModalProvider } from './contexts/PlanLimitModalContext'
 import { installStaleChunkReloadRecovery } from './utils/staleChunkReload'
 
 import './styles/components.css'
@@ -25,11 +26,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <I18nProvider>
-        <AuthProvider>
-          <ToastProvider>
-            <App />
-          </ToastProvider>
-        </AuthProvider>
+        <PlanLimitModalProvider>
+          <AuthProvider>
+            <ToastProvider>
+              <App />
+            </ToastProvider>
+          </AuthProvider>
+        </PlanLimitModalProvider>
       </I18nProvider>
     </BrowserRouter>
   </StrictMode>

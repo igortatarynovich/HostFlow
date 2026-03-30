@@ -13,14 +13,10 @@ const loadInvoices = () => import('./routeBundles/routeBundleInvoices')
 const loadComms = () => import('./routeBundles/routeBundleComms')
 const loadAdmin = () => import('./routeBundles/routeBundleAdmin')
 
-export const AnalyticsHubPage = lazy(() => loadCrmCore().then((m) => ({ default: m.AnalyticsHubPage })))
 export const WorkHubPage = lazy(() => loadCrmCore().then((m) => ({ default: m.WorkHubPage })))
 export const Dashboard = lazy(() => loadCrmCore().then((m) => ({ default: m.Dashboard })))
 export const Candidates = lazy(() => loadCandidatesList().then((m) => ({ default: m.Candidates })))
 export const CandidateCard = lazy(() => loadCandidateCard().then((m) => ({ default: m.CandidateCard })))
-export const CandidatesNoNextActionPage = lazy(() =>
-  loadCandidatesList().then((m) => ({ default: m.CandidatesNoNextActionPage })),
-)
 export const Companies = lazy(() => loadCrmCore().then((m) => ({ default: m.Companies })))
 export const MyCompanyPage = lazy(() => loadCrmCore().then((m) => ({ default: m.MyCompanyPage })))
 export const Vacancies = lazy(() => loadCrmCore().then((m) => ({ default: m.Vacancies })))
@@ -28,6 +24,9 @@ export const VacancyDetailRoute = lazy(() => loadCrmCore().then((m) => ({ defaul
 export const ServicesPage = lazy(() => loadCrmServices().then((m) => ({ default: m.ServicesPage })))
 export const LeadDetailPage = lazy(() => loadCrmMore().then((m) => ({ default: m.LeadDetailPage })))
 export const LeadsPage = lazy(() => loadCrmMore().then((m) => ({ default: m.LeadsPage })))
+export const AnalyticsLeadConversionFunnelPage = lazy(() =>
+  loadCrmMore().then((m) => ({ default: m.AnalyticsLeadConversionFunnelPage })),
+)
 export const LeadsDistributionPage = lazy(() => loadCrmMore().then((m) => ({ default: m.LeadsDistributionPage })))
 export const LeadsDistributionRulesPage = lazy(() => loadCrmMore().then((m) => ({ default: m.LeadsDistributionRulesPage })))
 export const ProfilePage = lazy(() => loadCrmCore().then((m) => ({ default: m.ProfilePage })))
@@ -69,9 +68,6 @@ export const CommunicationsPlannerPage = lazy(() =>
 export const CommunicationsSlaIncidentsPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsSlaIncidentsPage })),
 )
-export const CommunicationsSetupPage = lazy(() =>
-  loadComms().then((m) => ({ default: m.CommunicationsSetupPage })),
-)
 export const CommunicationsCommandAuditPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsCommandAuditPage })),
 )
@@ -98,6 +94,7 @@ export const IntegrationsHubPage = lazy(() => loadAdmin().then((m) => ({ default
 export const IntegrationsSourcePlaceholderPage = lazy(() =>
   loadAdmin().then((m) => ({ default: m.IntegrationsSourcePlaceholderPage })),
 )
+export const IntegrationsWebhookPage = lazy(() => loadAdmin().then((m) => ({ default: m.IntegrationsWebhookPage })))
 export const MetaLeadsAdminPage = lazy(() => loadAdmin().then((m) => ({ default: m.MetaLeadsAdminPage })))
 export const DeletionRequestsPage = lazy(() => loadAdmin().then((m) => ({ default: m.DeletionRequestsPage })))
 export const AuditLogPage = lazy(() => loadAdmin().then((m) => ({ default: m.AuditLogPage })))
@@ -117,4 +114,5 @@ export const CustomFieldsPage = lazy(() => loadAdmin().then((m) => ({ default: m
 export const BillingWorkspacePage = lazy(() => loadAdmin().then((m) => ({ default: m.BillingWorkspacePage })))
 export const EmailSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.EmailSettingsPage })))
 export const TenantLinksSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.TenantLinksSettingsPage })))
+export const LeadFormsSettingsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LeadFormsSettingsPage })))
 export const LegalDocumentsPage = lazy(() => loadAdmin().then((m) => ({ default: m.LegalDocumentsPage })))

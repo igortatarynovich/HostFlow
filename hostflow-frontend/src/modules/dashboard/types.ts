@@ -61,6 +61,7 @@ export type LoadOverrides = {
   vacancyId?: string | null;
   companyId?: string | null;
   managerId?: string | null;
+  candidateId?: string | null;
   stages?: string[];
   compare?: boolean;
 };
@@ -109,6 +110,7 @@ export type DashboardFilterId =
   | 'vacancy'
   | 'company'
   | 'manager'
+  | 'candidate'
   | 'stages'
   | 'compare'
   | 'presets'
@@ -121,6 +123,7 @@ export const DEFAULT_VISIBLE_FILTERS: DashboardFilterId[] = [
   'vacancy',
   'company',
   'manager',
+  'candidate',
   'compare',
   'presets',
   'widgets',
@@ -135,6 +138,7 @@ export type DashboardPreset = {
   vacancyFilter: string;
   companyFilter: string;
   managerFilter: string;
+  candidateFilter?: string;
   stagesFilter: string[];
   compareWithPrevious: boolean;
   visibleWidgets?: string[];

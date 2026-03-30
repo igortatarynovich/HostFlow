@@ -3,19 +3,35 @@
 from __future__ import annotations
 
 from typing import List, Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
 from backend.app.auth.deps import get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
-from backend.app.models.document_policy import DocumentPolicy, DocumentPolicyScope
+from backend.app.models.document_policy import DocumentPolicy, DocumentPolicyScope, RequirementLevel
 from backend.app.models.user import Role
 
 router = APIRouter(prefix="/document-policies", tags=["document-policies"])
+
+
+def _required_bool(level: RequirementLevel) -> bool:
+    return level in (RequirementLevel.REQUIRED, RequirementLevel.BLOCKING)
+
+
+def _level_from_required(required: bool) -> RequirementLevel:
+    return RequirementLevel.REQUIRED if required else RequirementLevel.OPTIONAL
+
+
+def _policy_scope_filter(active_own_company_id: str):
+    return or_(
+        DocumentPolicy.own_company_id == active_own_company_id,
+        DocumentPolicy.own_company_id.is_(None),
+    )
 
 
 class DocumentPolicyIn(BaseModel):
@@ -36,9 +52,10 @@ class DocumentPolicyOut(BaseModel):
 
     id: str
     tenant_id: str
+    own_company_id: Optional[str] = None
     scope: DocumentPolicyScope
     scope_id: Optional[str]
-    document_type_id: str
+    document_type_id: Optional[str]
     enabled: bool
     required: bool
     alert_days_before_expiry: Optional[int]
@@ -53,11 +70,12 @@ class DocumentPolicyOut(BaseModel):
         return cls(
             id=policy.id,
             tenant_id=policy.tenant_id,
+            own_company_id=getattr(policy, "own_company_id", None),
             scope=policy.scope,
             scope_id=policy.scope_id,
             document_type_id=policy.document_type_id,
             enabled=policy.enabled,
-            required=policy.required,
+            required=_required_bool(policy.required_level),
             alert_days_before_expiry=policy.alert_days_before_expiry,
             owner_user_id=policy.owner_user_id,
             notes=policy.notes,
@@ -75,10 +93,15 @@ async def list_document_policies(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
     _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> List[DocumentPolicyOut]:
-    """List document policies for the tenant."""
+    """List document policies for the tenant (scoped to active own-company + legacy rows)."""
     db, tenant_id = db_tenant
-    stmt = select(DocumentPolicy).where(DocumentPolicy.tenant_id == str(tenant_id))
+    stmt = (
+        select(DocumentPolicy)
+        .where(DocumentPolicy.tenant_id == str(tenant_id))
+        .where(_policy_scope_filter(active_own_company_id))
+    )
 
     if scope:
         stmt = stmt.where(DocumentPolicy.scope == scope)
@@ -98,11 +121,11 @@ async def create_document_policy(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
     _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> DocumentPolicyOut:
     """Create a new document policy."""
     db, tenant_id = db_tenant
 
-    # Validate scope_id based on scope
     if payload.scope == DocumentPolicyScope.TENANT:
         if payload.scope_id is not None:
             raise HTTPException(
@@ -114,28 +137,27 @@ async def create_document_policy(
                 status_code=422, detail=f"scope_id is required for {payload.scope.value} scope"
             )
 
-    # Check if policy already exists
     stmt = (
         select(DocumentPolicy)
         .where(DocumentPolicy.tenant_id == str(tenant_id))
         .where(DocumentPolicy.scope == payload.scope)
         .where(DocumentPolicy.scope_id == payload.scope_id)
         .where(DocumentPolicy.document_type_id == payload.document_type_id)
+        .where(DocumentPolicy.own_company_id == active_own_company_id)
     )
     existing = (await db.execute(stmt)).scalar_one_or_none()
     if existing:
         raise HTTPException(status_code=409, detail="Document policy already exists")
 
-    from uuid import uuid4
-
     policy = DocumentPolicy(
         id=str(uuid4()),
         tenant_id=str(tenant_id),
+        own_company_id=active_own_company_id,
         scope=payload.scope,
         scope_id=payload.scope_id,
         document_type_id=payload.document_type_id,
         enabled=payload.enabled,
-        required=payload.required,
+        required_level=_level_from_required(payload.required),
         alert_days_before_expiry=payload.alert_days_before_expiry,
         owner_user_id=payload.owner_user_id,
         notes=payload.notes,
@@ -153,6 +175,7 @@ async def update_document_policy(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
     _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> DocumentPolicyOut:
     """Update an existing document policy."""
     db, tenant_id = db_tenant
@@ -161,20 +184,21 @@ async def update_document_policy(
         select(DocumentPolicy)
         .where(DocumentPolicy.id == policy_id)
         .where(DocumentPolicy.tenant_id == str(tenant_id))
+        .where(_policy_scope_filter(active_own_company_id))
     )
     policy = (await db.execute(stmt)).scalar_one_or_none()
     if not policy:
         raise HTTPException(status_code=404, detail="Document policy not found")
 
-    # Update fields
     policy.scope = payload.scope
     policy.scope_id = payload.scope_id
     policy.document_type_id = payload.document_type_id
     policy.enabled = payload.enabled
-    policy.required = payload.required
+    policy.required_level = _level_from_required(payload.required)
     policy.alert_days_before_expiry = payload.alert_days_before_expiry
     policy.owner_user_id = payload.owner_user_id
     policy.notes = payload.notes
+    policy.own_company_id = active_own_company_id
 
     await db.commit()
     await db.refresh(policy)
@@ -187,6 +211,7 @@ async def delete_document_policy(
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user=Depends(get_current_user),
     _: None = Depends(require_roles(Role.admin, Role.supervisor)),
+    active_own_company_id: str = Depends(resolve_active_own_company_id),
 ) -> None:
     """Delete a document policy."""
     db, tenant_id = db_tenant
@@ -195,6 +220,7 @@ async def delete_document_policy(
         select(DocumentPolicy)
         .where(DocumentPolicy.id == policy_id)
         .where(DocumentPolicy.tenant_id == str(tenant_id))
+        .where(_policy_scope_filter(active_own_company_id))
     )
     policy = (await db.execute(stmt)).scalar_one_or_none()
     if not policy:
@@ -202,4 +228,3 @@ async def delete_document_policy(
 
     await db.delete(policy)
     await db.commit()
-

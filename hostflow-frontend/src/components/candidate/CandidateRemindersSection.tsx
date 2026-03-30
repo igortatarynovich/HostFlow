@@ -3,12 +3,13 @@ import { formatDistanceToNow } from 'date-fns'
 import { enUS, pl, ru } from 'date-fns/locale'
 import type { ReminderRecord } from '../../api/types'
 import { useI18n } from '../../i18n'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 
 interface CandidateRemindersSectionProps {
   candidateId: string
   reminders: ReminderRecord[]
   remindersLoading: boolean
-  remindersError: string | null
+  remindersError: FriendlyErrorInfo | null
   reminderBusy: string | null
   onReminderCreate: () => void
   onReminderComplete: (id: string) => void
@@ -165,7 +166,14 @@ function CandidateRemindersSection({
   if (embedded) {
     return (
       <section className="w-full min-w-0">
-        {remindersError && <p className="mb-2 text-xs text-rose-600">{remindersError}</p>}
+        {remindersError ? (
+          <div className="mb-2 text-xs text-rose-600">
+            <div>{remindersError.title}</div>
+            {remindersError.detail ? (
+              <div className="mt-0.5 text-[11px] text-rose-700/90">{remindersError.detail}</div>
+            ) : null}
+          </div>
+        ) : null}
         {fullContent}
       </section>
     )
@@ -189,7 +197,14 @@ function CandidateRemindersSection({
           </h3>
         </button>
         <div className="mt-1 text-sm text-slate-600">
-          {remindersError && <p className="text-xs text-rose-600">{remindersError}</p>}
+          {remindersError ? (
+            <div className="text-xs text-rose-600">
+              <div>{remindersError.title}</div>
+              {remindersError.detail ? (
+                <div className="mt-0.5 text-[11px] text-rose-700/90">{remindersError.detail}</div>
+              ) : null}
+            </div>
+          ) : null}
           {!remindersError && (
             <p className="text-xs text-slate-500">
               {reminders.length === 0 && !remindersLoading

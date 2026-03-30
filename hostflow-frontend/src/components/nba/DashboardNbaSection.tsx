@@ -37,13 +37,16 @@ function isLeadsWorkspacePath(path: string | undefined): boolean {
   return p === defaultPath || p.endsWith('/leads')
 }
 
-/** First non-empty lead NBA group: prefer unlocked (same sort as API: unlocked before locked). */
+/** First non-empty unlocked lead NBA group (locked buckets are billing-gated; no playbook preview). */
 function pickPlaybookLeadGroup(groups: NextActionGroup[] | undefined): NextActionGroup | null {
   const candidates = (groups || []).filter(
-    (g) => g.entity === 'lead' && g.count > 0 && isLeadsWorkspacePath(g.path),
+    (g) =>
+      g.entity === 'lead' &&
+      g.count > 0 &&
+      !g.locked &&
+      isLeadsWorkspacePath(g.path),
   )
-  const unlocked = candidates.find((g) => !g.locked)
-  return unlocked ?? candidates[0] ?? null
+  return candidates[0] ?? null
 }
 
 export function DashboardNbaSection() {
@@ -108,6 +111,7 @@ export function DashboardNbaSection() {
           status: group.query.status || undefined,
           stage: group.query.stage || undefined,
           nextAction: group.query.next_action || undefined,
+          conversionRoot: group.query.conversion_root || undefined,
           limit: 1,
           offset: 0,
         })) as LeadListResponse

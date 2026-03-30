@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional, Tuple
 from uuid import UUID
@@ -13,15 +13,27 @@ from sqlalchemy import Text, case, cast, func, literal, or_, select, exists, and
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.v1.candidates.service import create_candidate_full
-from backend.app.constants.spa_paths import CANDIDATES_NO_NEXT_ACTION_PAGE, TASKS
+from backend.app.constants.spa_paths import CANDIDATES_NO_NEXT_ACTION_PAGE, LEADS as SPA_LEADS, TASKS
 from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
 from backend.app.models import Candidate, Company, Lead, OwnCompany, Tenant, User, Vacancy, ActivityLog
+from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.custom_field import CustomFieldEntityType, CustomFieldValue
 from backend.app.models.tenant import TenantLicense
 from backend.app.models.user import Role
 from backend.app.modules.leads import crud, lead_custom_fields, normalizer
+from backend.app.modules.leads.recruiter_validation import validate_tenant_recruiter_id
+from backend.app.modules.leads.lead_candidate_doc_loader import (
+    batch_candidate_document_status_sets,
+    vacancy_extra_requires_candidate_documents_module,
+)
+from backend.app.modules.leads.lead_criteria_eval import (
+    evaluate_lead_criteria_v1,
+    evaluate_vacancy_for_lead,
+    ordered_vacancy_ids_from_tenant_settings,
+)
 from backend.app.modules.leads.lead_stage_contract import batch_lead_stage_contracts
 from backend.app.modules.leads.schemas import (
+    LeadConversionFunnelCohortWindow,
     LeadConversionFunnelEdge,
     LeadConversionFunnelLostFromStage,
     LeadConversionFunnelLostReasonRow,
@@ -406,33 +418,152 @@ async def _validate_recruiter_id(
     tenant_id: str,
     recruiter_id: Optional[str],
 ) -> Optional[str]:
-    if not recruiter_id:
+    return await validate_tenant_recruiter_id(db, tenant_id, recruiter_id)
+
+
+def _rule_recruiter_id_from_normalized(normalized: Dict[str, Any]) -> Optional[str]:
+    raw = normalized.get("lead_qualification_rule_match_v1")
+    if not isinstance(raw, dict):
         return None
-    stmt = select(User.id).where(
-        User.id == recruiter_id,
-        User.is_active.is_(True),
-        or_(User.tenant_id == tenant_id, User.tenant_id.is_(None)),
-    )
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    rid = raw.get("recruiter_id")
+    if rid is None:
+        return None
+    s = str(rid).strip()
+    return s or None
+
+
+def _vacancy_allows_auto_convert_on_fit(vacancy: Optional[Vacancy]) -> bool:
+    """Vacancy.extra.leads_auto_convert_on_fit_v1 == False opts out of tenant automatic conversion (§2.4)."""
+    if vacancy is None:
+        return True
+    raw = getattr(vacancy, "extra", None)
+    if raw is None:
+        return True
+    if isinstance(raw, str):
+        try:
+            obj = json.loads(raw)
+        except Exception:
+            return True
+        if not isinstance(obj, dict):
+            return True
+        data = obj
+    elif isinstance(raw, dict):
+        data = raw
+    else:
+        return True
+    if data.get("leads_auto_convert_on_fit_v1") is False:
+        return False
+    return True
 
 
 async def _resolve_vacancy(
     db: AsyncSession,
     tenant_id: str,
     normalized: Dict[str, Any],
+    *,
+    own_company_id: Optional[str] = None,
 ) -> Optional[Vacancy]:
     vacancy_id = normalized.get("vacancy_id")
     if vacancy_id:
-        vacancy = await crud.resolve_vacancy_by_id(db, tenant_id, vacancy_id)
+        vacancy = await crud.resolve_vacancy_by_id(
+            db, tenant_id, vacancy_id, scoped_own_company_id=own_company_id
+        )
         if vacancy:
             return vacancy
 
-    vacancy = await crud.resolve_vacancy_by_ad(db, tenant_id, normalized.get("ad_id"))
+    vacancy = await crud.resolve_vacancy_by_ad(
+        db, tenant_id, normalized.get("ad_id"), scoped_own_company_id=own_company_id
+    )
     if vacancy:
         return vacancy
 
     return None
+
+
+async def resolve_vacancy_for_lead_processing(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    normalized: Dict[str, Any],
+    tenant_settings: Dict[str, Any],
+    source: str = "",
+    own_company_id: Optional[str] = None,
+) -> Tuple[Optional[Vacancy], Optional[str], List[str]]:
+    """
+    Single routing path for ingest (§2.10):
+    1) Explicit vacancy_id / Meta ad map — always wins; fit is evaluated for that vacancy only.
+    2) Else: AutomationRule trigger `lead.qualification` (priority desc) — set_vacancy_id + fit eval;
+       optional actions.set_recruiter_id (active user of tenant) stamped on match and applied at convert.
+    3) Else: Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids — first vacancy with
+       fit or no_criteria (criteria from Vacancy.extra.lead_criteria_v1).
+    """
+    primary = await _resolve_vacancy(
+        db, tenant_id, normalized, own_company_id=own_company_id
+    )
+    if primary is not None:
+        st, rs = evaluate_vacancy_for_lead(normalized, primary.extra)
+        return primary, st, rs
+    from backend.app.modules.leads.lead_qualification_rules import pick_vacancy_via_qualification_rules
+
+    picked = await pick_vacancy_via_qualification_rules(
+        db,
+        tenant_id=tenant_id,
+        source=source,
+        normalized=normalized,
+        own_company_id=own_company_id,
+    )
+    if picked is not None:
+        v, st, rs = picked
+        return v, st, rs
+    for vid in ordered_vacancy_ids_from_tenant_settings(tenant_settings):
+        v = await crud.resolve_vacancy_by_id(
+            db, tenant_id, vid, scoped_own_company_id=own_company_id
+        )
+        if v is None:
+            continue
+        st, rs = evaluate_vacancy_for_lead(normalized, v.extra)
+        if st in ("fit", "no_criteria"):
+            return v, st, rs
+    return None, None, []
+
+
+def _stamp_lead_qualification_preview_v1(
+    normalized: Dict[str, Any],
+    *,
+    vacancy: Optional[Vacancy],
+    fit_status: Optional[str],
+    fit_reasons: List[str],
+    blocked_auto_convert: bool = False,
+) -> None:
+    normalized["lead_qualification_preview_v1"] = {
+        "suggested_vacancy_id": str(vacancy.id) if vacancy else None,
+        "fit_status": fit_status,
+        "fit_reasons": list(fit_reasons or []),
+        "blocked_auto_convert": bool(blocked_auto_convert),
+        "evaluated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def _audit_lead_qualification_rule_match(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead_id: str,
+    normalized: Dict[str, Any],
+) -> None:
+    raw = normalized.get("lead_qualification_rule_match_v1")
+    if not isinstance(raw, dict) or not raw.get("rule_id"):
+        return
+    from backend.app.services.audit import log_activity
+
+    await log_activity(
+        db,
+        tenant_id=tenant_id,
+        action="lead.qualification_rule_matched",
+        target_type="lead",
+        target_id=str(lead_id),
+        payload={k: v for k, v in raw.items() if v is not None},
+    )
 
 
 def _lead_list_text_search_or(q_norm: str) -> Any:
@@ -457,6 +588,43 @@ def _lead_list_text_search_or(q_norm: str) -> Any:
     )
 
 
+# §2.12 conversion funnel: root buckets (funnel_stages.conversion_root_v1 + legacy CRM codes).
+CONVERSION_ROOT_ORDER: tuple[str, ...] = ("lead", "qualified", "active", "final")
+CONVERSION_ROOTS_SET = frozenset(CONVERSION_ROOT_ORDER)
+
+_LEAD_LEGACY_STAGE_TO_ROOT = {
+    "new": "lead",
+    "contacted": "qualified",
+    "qualified": "active",
+    "converted": "final",
+}
+
+
+# Allowed exact values for GET /leads ?pipeline_error= (NBA drill-down for fit pipeline).
+LEAD_LIST_PIPELINE_ERROR_WHITELIST: frozenset[str] = frozenset({"LEAD_FIT_NO_MATCH", "LEAD_FIT_NEEDS_INFO"})
+
+
+def _sql_effective_lead_conversion_root() -> Any:
+    mapped = (
+        select(FunnelStage.conversion_root_v1)
+        .where(
+            FunnelStage.funnel_id == Lead.funnel_id,
+            func.lower(FunnelStage.code) == func.lower(func.coalesce(Lead.stage, literal(""))),
+        )
+        .limit(1)
+        .scalar_subquery()
+    )
+    lc = func.lower(func.coalesce(Lead.stage, literal("")))
+    legacy = case(
+        (lc == "new", literal("lead")),
+        (lc == "contacted", literal("qualified")),
+        (lc == "qualified", literal("active")),
+        (lc == "converted", literal("final")),
+        else_=None,
+    )
+    return func.coalesce(mapped, legacy)
+
+
 async def _build_lead_list_filters(
     db: AsyncSession,
     *,
@@ -467,14 +635,32 @@ async def _build_lead_list_filters(
     next_action: Optional[str],
     custom_field_definition_id: Optional[str] = None,
     custom_field_match_value: Optional[str] = None,
+    conversion_root: Optional[str] = None,
+    lost_reason_code: Optional[str] = None,
+    lost_from_crm_stage: Optional[str] = None,
+    pipeline_error: Optional[str] = None,
 ) -> Tuple[List[Any], Any, Any, datetime]:
     filters: List[Any] = [Lead.tenant_id == tenant_id]
     if own_company_id:
         filters.append(Lead.own_company_id == own_company_id)
-    if status:
-        filters.append(Lead.status == status)
-    if stage:
-        filters.append(Lead.stage == stage)
+    lrc = (lost_reason_code or "").strip() or None
+    lf_crm = (lost_from_crm_stage or "").strip().lower() or None
+    lost_focus = bool(lrc or lf_crm)
+    eff_status = "processed" if lost_focus else status
+    eff_stage = "lost" if lost_focus else stage
+    eff_cr = None if lost_focus else conversion_root
+    if eff_status:
+        filters.append(Lead.status == eff_status)
+    if eff_stage:
+        filters.append(Lead.stage == eff_stage)
+    if eff_cr:
+        cr = str(eff_cr).strip().lower()
+        if cr not in CONVERSION_ROOTS_SET:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="conversion_root must be one of: lead, qualified, active, final",
+            )
+        filters.append(_sql_effective_lead_conversion_root() == cr)
     active_statuses = (ReminderStatus.pending, ReminderStatus.new, ReminderStatus.overdue)
     now = datetime.now(timezone.utc)
     stuck_stage_subq = None
@@ -549,6 +735,31 @@ async def _build_lead_list_filters(
                 filters.append(func.coalesce(Lead.stage, "new").in_(sorted(active_stages)))
             filters.append(last_changed_at <= cutoff)
 
+    if lrc:
+        lr_code_expr = Lead.normalized["lead_lost_reason_v1"]["code"].as_string()
+        filters.append(lr_code_expr == lrc)
+
+    if lf_crm:
+        fs_log = ActivityLog.payload["from_stage"].as_string()
+        to_lost = ActivityLog.payload["to_stage"].as_string() == "lost"
+        if lf_crm == "unknown":
+            prior_bucket = func.coalesce(func.nullif(fs_log, ""), literal("unknown")) == "unknown"
+        else:
+            prior_bucket = fs_log == lf_crm
+        lost_from_exists = (
+            exists()
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.target_type == "lead",
+                ActivityLog.target_id == Lead.id,
+                ActivityLog.action == "lead.stage_changed",
+                to_lost,
+                prior_bucket,
+            )
+            .correlate(Lead)
+        )
+        filters.append(lost_from_exists)
+
     if custom_field_definition_id and custom_field_match_value is not None:
         did = str(custom_field_definition_id).strip()
         if did:
@@ -566,6 +777,15 @@ async def _build_lead_list_filters(
             )
             filters.append(cf_exists)
 
+    pe = (pipeline_error or "").strip() or None
+    if pe:
+        if pe not in LEAD_LIST_PIPELINE_ERROR_WHITELIST:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="pipeline_error must be one of: LEAD_FIT_NO_MATCH, LEAD_FIT_NEEDS_INFO",
+            )
+        filters.append(Lead.error == pe)
+
     return filters, stuck_stage_subq, stuck_stage_join_on, now
 
 
@@ -579,6 +799,8 @@ async def count_leads(
     next_action: Optional[str] = None,
     custom_field_definition_id: Optional[str] = None,
     custom_field_match_value: Optional[str] = None,
+    conversion_root: Optional[str] = None,
+    pipeline_error: Optional[str] = None,
 ) -> int:
     filters, stuck_stage_subq, stuck_stage_join_on, _now = await _build_lead_list_filters(
         db,
@@ -589,6 +811,10 @@ async def count_leads(
         next_action=next_action,
         custom_field_definition_id=custom_field_definition_id,
         custom_field_match_value=custom_field_match_value,
+        conversion_root=conversion_root,
+        lost_reason_code=None,
+        lost_from_crm_stage=None,
+        pipeline_error=pipeline_error,
     )
     total_stmt = select(func.count()).select_from(Lead)
     if stuck_stage_subq is not None and stuck_stage_join_on is not None:
@@ -764,6 +990,115 @@ def _nba_lead_locked_and_required(
     return False, None
 
 
+NBA_FUNNEL_MIN_TOTAL_WIN = 5
+NBA_FUNNEL_MIN_AT_OR_BEYOND = 6
+NBA_FUNNEL_WEAK_SHARE_MAX = 0.49
+NBA_FUNNEL_SLOW_DWELL_DAYS = 5.0
+NBA_FUNNEL_MIN_DWELL_SAMPLE = 3
+
+
+async def nba_conversion_funnel_insight_groups(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None,
+    plan: str,
+    team_ok: bool,
+) -> List[NextActionGroupOut]:
+    """
+    Deterministic §2.12 funnel signals merged into GET /next-actions (bridge toward NBA).
+    No extra HTTP round-trip on the dashboard.
+    Same paywall as conversion-funnel slices: Team-tier unlocks actionable insight chips (§2.12).
+    """
+    funnel = await lead_conversion_funnel_snapshot(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        slice_params=ConversionFunnelSliceParams(),
+    )
+    if not funnel.stages:
+        return []
+    total_win = int(sum(int(s.count) for s in funnel.stages))
+    if total_win < NBA_FUNNEL_MIN_TOTAL_WIN:
+        return []
+    insight_locked, insight_required_plan = _nba_lead_locked_and_required(
+        "team", plan=plan, team_ok=team_ok
+    )
+    out: List[NextActionGroupOut] = []
+
+    worst_idx: Optional[int] = None
+    worst_share: Optional[float] = None
+    for i, edge in enumerate(funnel.edges):
+        if edge.progressed_share is None:
+            continue
+        at_here = int(funnel.stages[i].at_or_beyond)
+        if at_here < NBA_FUNNEL_MIN_AT_OR_BEYOND:
+            continue
+        sh = float(edge.progressed_share)
+        if worst_share is None or sh < worst_share:
+            worst_share = sh
+            worst_idx = i
+
+    if worst_idx is not None and worst_share is not None and worst_share <= NBA_FUNNEL_WEAK_SHARE_MAX:
+        from_root = str(funnel.stages[worst_idx].stage)
+        at_top = int(funnel.stages[worst_idx].at_or_beyond)
+        at_next = (
+            int(funnel.stages[worst_idx + 1].at_or_beyond) if worst_idx + 1 < len(funnel.stages) else 0
+        )
+        drop = max(0, at_top - at_next)
+        if drop > 0:
+            pct = max(0, min(100, int(round(worst_share * 100))))
+            out.append(
+                NextActionGroupOut(
+                    id="leads_funnel_weak_step",
+                    entity="lead",
+                    reason="funnel_weak_conversion_step",
+                    title="Lead funnel: weak handoff between stages",
+                    count=drop,
+                    priority=17,
+                    query=NextActionQueryParams(status="processed", conversion_root=from_root),
+                    path=SPA_LEADS,
+                    locked=insight_locked,
+                    required_plan=insight_required_plan,
+                    nba_detail={"conversion_root": from_root, "pct": pct},
+                )
+            )
+
+    slow_stage: Optional[str] = None
+    slow_days = 0.0
+    slow_bucket_count = 0
+    for s in funnel.stages:
+        n = int(s.dwell_sample_size or 0)
+        if n < NBA_FUNNEL_MIN_DWELL_SAMPLE:
+            continue
+        if s.dwell_avg_days is None:
+            continue
+        d = float(s.dwell_avg_days)
+        if d >= NBA_FUNNEL_SLOW_DWELL_DAYS and d > slow_days:
+            slow_days = d
+            slow_stage = str(s.stage)
+            slow_bucket_count = int(s.count)
+
+    if slow_stage and slow_bucket_count > 0:
+        out.append(
+            NextActionGroupOut(
+                id="leads_funnel_slow_stage",
+                entity="lead",
+                reason="funnel_slow_stage_dwell",
+                title="Lead funnel: slow stage dwell",
+                count=slow_bucket_count,
+                priority=16,
+                query=NextActionQueryParams(status="processed", conversion_root=slow_stage),
+                path=SPA_LEADS,
+                locked=insight_locked,
+                required_plan=insight_required_plan,
+                nba_detail={"conversion_root": slow_stage, "days": round(slow_days, 1)},
+            )
+        )
+
+    return out
+
+
 async def lead_next_actions_snapshot(
     db: AsyncSession,
     *,
@@ -867,6 +1202,33 @@ async def lead_next_actions_snapshot(
             )
         )
 
+    # §2.10: NBA drill-down for Meta fit gate errors (exact Lead.error, needs_routing).
+    for gid, reason, title, priority, pe in (
+        ("leads_fit_no_match", "lead_fit_no_match", "Leads: no vacancy fit (pipeline)", 92, "LEAD_FIT_NO_MATCH"),
+        ("leads_fit_needs_info", "lead_fit_needs_info", "Leads: need more info (pipeline)", 91, "LEAD_FIT_NEEDS_INFO"),
+    ):
+        cnt_fit = await count_leads(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            status="needs_routing",
+            pipeline_error=pe,
+        )
+        locked_fit, req_fit = _nba_lead_locked_and_required(None, plan=plan, team_ok=team_ok)
+        groups.append(
+            NextActionGroupOut(
+                id=gid,
+                entity="lead",
+                reason=reason,
+                title=title,
+                count=cnt_fit,
+                priority=priority,
+                query=NextActionQueryParams(status="needs_routing", pipeline_error=pe),
+                locked=locked_fit,
+                required_plan=req_fit,
+            )
+        )
+
     aid = (actor_user_id or "").strip()
     if aid:
         c_nna = await count_candidates_no_next_action_for_assignee(
@@ -915,6 +1277,15 @@ async def lead_next_actions_snapshot(
             )
         )
 
+    funnel_groups = await nba_conversion_funnel_insight_groups(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        plan=plan,
+        team_ok=team_ok,
+    )
+    groups.extend(funnel_groups)
+
     groups.sort(key=lambda g: (g.locked, -g.priority, -g.count, g.id))
     return LeadNextActionsResponse(
         generated_at=datetime.now(timezone.utc),
@@ -927,9 +1298,6 @@ async def lead_next_actions_snapshot(
 
 LEAD_CRM_STAGES_FOR_HEALTH: tuple[str, ...] = ("new", "contacted", "qualified", "converted", "lost")
 
-# Win path for §2.12 v0 funnel (snapshot); "lost" is reported separately.
-LEAD_CRM_WIN_PATH_FOR_FUNNEL: tuple[str, ...] = ("new", "contacted", "qualified", "converted")
-
 _DWELL_LOG_CHUNK = 800
 
 
@@ -941,6 +1309,8 @@ class ConversionFunnelSliceParams:
     vacancy_id: Optional[str] = None
     funnel_id: Optional[str] = None
     assignee_user_id: Optional[str] = None
+    cohort_created_at_min: Optional[datetime] = None
+    cohort_created_at_max_exclusive: Optional[datetime] = None
 
     @staticmethod
     def normalize(
@@ -949,6 +1319,8 @@ class ConversionFunnelSliceParams:
         vacancy_id: Optional[str] = None,
         funnel_id: Optional[str] = None,
         assignee_user_id: Optional[str] = None,
+        cohort_created_at_min: Optional[datetime] = None,
+        cohort_created_at_max_exclusive: Optional[datetime] = None,
     ) -> "ConversionFunnelSliceParams":
         def _s(v: Optional[str]) -> Optional[str]:
             if v is None:
@@ -961,10 +1333,22 @@ class ConversionFunnelSliceParams:
             vacancy_id=_s(vacancy_id),
             funnel_id=_s(funnel_id),
             assignee_user_id=_s(assignee_user_id),
+            cohort_created_at_min=cohort_created_at_min,
+            cohort_created_at_max_exclusive=cohort_created_at_max_exclusive,
         )
 
     def any_set(self) -> bool:
-        return bool(self.source or self.vacancy_id or self.funnel_id or self.assignee_user_id)
+        return bool(
+            self.source
+            or self.vacancy_id
+            or self.funnel_id
+            or self.assignee_user_id
+            or self.cohort_created_at_min is not None
+            or self.cohort_created_at_max_exclusive is not None
+        )
+
+    def cohort_active(self) -> bool:
+        return self.cohort_created_at_min is not None and self.cohort_created_at_max_exclusive is not None
 
 
 def _conversion_funnel_slice_predicates(*, tenant_id: str, sp: ConversionFunnelSliceParams) -> List[Any]:
@@ -986,6 +1370,10 @@ def _conversion_funnel_slice_predicates(*, tenant_id: str, sp: ConversionFunnelS
             )
             .correlate(Lead)
         )
+    if sp.cohort_created_at_min is not None:
+        extra.append(Lead.created_at >= sp.cohort_created_at_min)
+    if sp.cohort_created_at_max_exclusive is not None:
+        extra.append(Lead.created_at < sp.cohort_created_at_max_exclusive)
     return extra
 
 
@@ -1007,6 +1395,32 @@ async def _count_leads_for_conversion_funnel(
         next_action=None,
     )
     filters.extend(_conversion_funnel_slice_predicates(tenant_id=tenant_id, sp=slice_params))
+    total_stmt = select(func.count()).select_from(Lead)
+    if stuck_subq is not None and stuck_join is not None:
+        total_stmt = total_stmt.outerjoin(stuck_subq, stuck_join)
+    total_stmt = total_stmt.where(*filters)
+    return int((await db.execute(total_stmt)).scalar_one() or 0)
+
+
+async def _count_leads_for_conversion_root(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None,
+    root: str,
+    slice_params: ConversionFunnelSliceParams,
+) -> int:
+    filters, stuck_subq, stuck_join, _n = await _build_lead_list_filters(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        status="processed",
+        stage=None,
+        next_action=None,
+    )
+    filters.extend(_conversion_funnel_slice_predicates(tenant_id=tenant_id, sp=slice_params))
+    filters.append(func.lower(func.coalesce(Lead.stage, "")) != "lost")
+    filters.append(_sql_effective_lead_conversion_root() == root)
     total_stmt = select(func.count()).select_from(Lead)
     if stuck_subq is not None and stuck_join is not None:
         total_stmt = total_stmt.outerjoin(stuck_subq, stuck_join)
@@ -1120,27 +1534,142 @@ async def _lead_conversion_funnel_dwell_by_stage(
     return out
 
 
-async def lead_conversion_funnel_snapshot(
+async def _load_lead_funnel_root_lookup(
+    db: AsyncSession, *, tenant_id: str
+) -> tuple[set[tuple[str, str]], dict[tuple[str, str], str]]:
+    stmt = (
+        select(FunnelStage.funnel_id, FunnelStage.code, FunnelStage.conversion_root_v1)
+        .join(Funnel, Funnel.id == FunnelStage.funnel_id)
+        .where(Funnel.type == "lead", Funnel.tenant_id.in_([tenant_id, "default"]))
+    )
+    existing: set[tuple[str, str]] = set()
+    override: dict[tuple[str, str], str] = {}
+    for fid, code, root in (await db.execute(stmt)).all():
+        key = (str(fid), str(code or "").strip().lower())
+        existing.add(key)
+        if root:
+            r = str(root).strip().lower()
+            if r in CONVERSION_ROOTS_SET:
+                override[key] = r
+    return existing, override
+
+
+def _python_effective_conversion_root(
+    funnel_id: Optional[str],
+    stage: Optional[str],
+    existing: set[tuple[str, str]],
+    override: dict[tuple[str, str], str],
+) -> Optional[str]:
+    st = (stage or "").strip().lower() or "new"
+    fid = (funnel_id or "").strip()
+    if fid:
+        key = (fid, st)
+        if key in override:
+            return override[key]
+        if key in existing:
+            return _LEAD_LEGACY_STAGE_TO_ROOT.get(st)
+    return _LEAD_LEGACY_STAGE_TO_ROOT.get(st)
+
+
+async def _lead_conversion_funnel_dwell_by_root(
     db: AsyncSession,
     *,
     tenant_id: str,
-    own_company_id: str | None = None,
-    slice_params: ConversionFunnelSliceParams | None = None,
+    own_company_id: str | None,
+    roots: tuple[str, ...],
+    slice_params: ConversionFunnelSliceParams,
+) -> dict[str, tuple[Optional[float], Optional[float], int]]:
+    """Dwell aggregated by §2.12 conversion root (time in current CRM stage, bucketed by mapped root)."""
+    if not roots:
+        return {}
+    existing, override = await _load_lead_funnel_root_lookup(db, tenant_id=tenant_id)
+    filt: List[Any] = [
+        Lead.tenant_id == tenant_id,
+        Lead.status == "processed",
+        func.lower(func.coalesce(Lead.stage, "")) != "lost",
+    ]
+    if own_company_id:
+        filt.append(Lead.own_company_id == own_company_id)
+    filt.extend(_conversion_funnel_slice_predicates(tenant_id=tenant_id, sp=slice_params))
+    lead_rows = (
+        await db.execute(select(Lead.id, Lead.stage, Lead.funnel_id, Lead.created_at).where(*filt))
+    ).all()
+    if not lead_rows:
+        return {r: (None, None, 0) for r in roots}
+
+    lead_stage_created: dict[str, tuple[str, str, Optional[str], datetime]] = {}
+    for lid, st, fid, cat in lead_rows:
+        sid = str(lid)
+        stage_code = str(st or "").strip() or "new"
+        fid_s = str(fid).strip() if fid else ""
+        root = _python_effective_conversion_root(fid_s or None, stage_code, existing, override)
+        if root not in roots:
+            continue
+        lead_stage_created[sid] = (stage_code, fid_s, root, cat)
+
+    ids = list(lead_stage_created.keys())
+    if not ids:
+        return {r: (None, None, 0) for r in roots}
+
+    by_lead_logs: dict[str, List[Tuple[datetime, str]]] = defaultdict(list)
+    for i in range(0, len(ids), _DWELL_LOG_CHUNK):
+        chunk = ids[i : i + _DWELL_LOG_CHUNK]
+        log_stmt = (
+            select(ActivityLog.target_id, ActivityLog.created_at, ActivityLog.payload)
+            .where(
+                ActivityLog.tenant_id == tenant_id,
+                ActivityLog.target_type == "lead",
+                ActivityLog.action == "lead.stage_changed",
+                ActivityLog.target_id.in_(chunk),
+            )
+            .order_by(ActivityLog.created_at.asc())
+        )
+        for tid, cat, payload in (await db.execute(log_stmt)).all():
+            pl = payload if isinstance(payload, dict) else {}
+            to_st = str(pl.get("to_stage") or "").strip()
+            if not to_st:
+                continue
+            by_lead_logs[str(tid)].append((_as_utc(cat) or cat, to_st))
+
+    now = datetime.now(timezone.utc)
+    by_root_days: dict[str, List[float]] = defaultdict(list)
+
+    for lid, (st, _fid, _root, created_at) in lead_stage_created.items():
+        entered: Optional[datetime] = None
+        for at, to_st in by_lead_logs.get(lid, []):
+            if to_st == st:
+                if entered is None or at > entered:
+                    entered = at
+        base = _as_utc(created_at)
+        ref = entered if entered is not None else base
+        if ref is None:
+            continue
+        days = max(0.0, (now - ref).total_seconds() / 86400.0)
+        by_root_days[_root].append(days)
+
+    out: dict[str, tuple[Optional[float], Optional[float], int]] = {}
+    for r in roots:
+        avg, p50, n = _dwell_avg_p50(by_root_days.get(r, []))
+        out[r] = (avg, p50, n)
+    return out
+
+
+async def _compute_lead_conversion_funnel(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None,
+    sp: ConversionFunnelSliceParams,
 ) -> LeadConversionFunnelResponse:
-    """
-    Snapshot counts by current CRM stage for processed leads on the win path, plus progression shares
-    between adjacent stages (at_or_beyond(next) / at_or_beyond(from)).
-    """
-    sp = slice_params or ConversionFunnelSliceParams()
-    win = LEAD_CRM_WIN_PATH_FOR_FUNNEL
+    """Core conversion funnel snapshot for one slice + optional cohort (§2.12)."""
+    win = CONVERSION_ROOT_ORDER
     counts: dict[str, int] = {}
     for s in win:
-        counts[s] = await _count_leads_for_conversion_funnel(
+        counts[s] = await _count_leads_for_conversion_root(
             db,
             tenant_id=tenant_id,
             own_company_id=own_company_id,
-            status="processed",
-            stage=s,
+            root=s,
             slice_params=sp,
         )
     lost_processed = await _count_leads_for_conversion_funnel(
@@ -1160,12 +1689,18 @@ async def lead_conversion_funnel_snapshot(
         slice_params=sp,
     )
     total_win = int(sum(counts[s] for s in win))
-    dwell_stages = tuple(win) + ("lost",)
-    dwell_map = await _lead_conversion_funnel_dwell_by_stage(
+    dwell_map = await _lead_conversion_funnel_dwell_by_root(
         db,
         tenant_id=tenant_id,
         own_company_id=own_company_id,
-        stages=dwell_stages,
+        roots=win,
+        slice_params=sp,
+    )
+    dwell_lost = await _lead_conversion_funnel_dwell_by_stage(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        stages=("lost",),
         slice_params=sp,
     )
     steps: list[LeadConversionFunnelStage] = []
@@ -1190,7 +1725,7 @@ async def lead_conversion_funnel_snapshot(
         edges.append(
             LeadConversionFunnelEdge(from_stage=win[i], to_stage=win[i + 1], progressed_share=share)
         )
-    l_avg, l_p50, l_n = dwell_map.get("lost", (None, None, 0))
+    l_avg, l_p50, l_n = dwell_lost.get("lost", (None, None, 0))
     lost_from = await _lost_from_stage_breakdown(
         db, tenant_id=tenant_id, own_company_id=own_company_id, slice_params=sp
     )
@@ -1215,6 +1750,75 @@ async def lead_conversion_funnel_snapshot(
         stages=steps,
         edges=edges,
     )
+
+
+async def lead_conversion_funnel_snapshot(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: str | None = None,
+    slice_params: ConversionFunnelSliceParams | None = None,
+    cohort_compare_prior: bool = False,
+) -> LeadConversionFunnelResponse:
+    """
+    Snapshot counts by §2.12 conversion root (funnel_stages.conversion_root_v1 + legacy CRM mapping),
+    plus progression shares between adjacent roots. Optional cohort on Lead.created_at + prior window compare.
+    """
+    sp = slice_params or ConversionFunnelSliceParams()
+    main = await _compute_lead_conversion_funnel(db, tenant_id=tenant_id, own_company_id=own_company_id, sp=sp)
+    cmin = sp.cohort_created_at_min
+    cmax = sp.cohort_created_at_max_exclusive
+    if cohort_compare_prior:
+        if cmin is None or cmax is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="cohort_compare_prior requires an active cohort window (cohort_window_days or cohort bounds)",
+            )
+        span = cmax - cmin
+        if span.total_seconds() <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="cohort window must have positive duration",
+            )
+        prior_sp = replace(
+            sp,
+            cohort_created_at_max_exclusive=cmin,
+            cohort_created_at_min=cmin - span,
+        )
+        prior = await _compute_lead_conversion_funnel(
+            db, tenant_id=tenant_id, own_company_id=own_company_id, sp=prior_sp
+        )
+        pcm = prior_sp.cohort_created_at_min
+        pcx = prior_sp.cohort_created_at_max_exclusive
+        if pcm is None or pcx is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="cohort prior window computation failed",
+            )
+        pw = LeadConversionFunnelCohortWindow(
+            cohort_created_at_min=pcm,
+            cohort_created_at_max_exclusive=pcx,
+            total_win_path_processed=prior.total_win_path_processed,
+            lost_processed_count=prior.lost_processed_count,
+            status_new_count=prior.status_new_count,
+            stages=prior.stages,
+            edges=prior.edges,
+        )
+        return main.model_copy(
+            update={
+                "cohort_created_after": cmin,
+                "cohort_created_before_exclusive": cmax,
+                "cohort_prior_window": pw,
+            }
+        )
+    if sp.cohort_active():
+        return main.model_copy(
+            update={
+                "cohort_created_after": cmin,
+                "cohort_created_before_exclusive": cmax,
+            }
+        )
+    return main
 
 
 async def lead_stage_health_snapshot(
@@ -1285,6 +1889,10 @@ async def list_leads(
     next_action: Optional[str] = None,
     custom_field_definition_id: Optional[str] = None,
     custom_field_match_value: Optional[str] = None,
+    conversion_root: Optional[str] = None,
+    lost_reason_code: Optional[str] = None,
+    lost_from_crm_stage: Optional[str] = None,
+    pipeline_error: Optional[str] = None,
     search: Optional[str] = None,
     limit: int = 50,
     offset: int = 0,
@@ -1312,6 +1920,10 @@ async def list_leads(
             next_action=next_action,
             custom_field_definition_id=custom_field_definition_id,
             custom_field_match_value=custom_field_match_value,
+            conversion_root=conversion_root,
+            lost_reason_code=lost_reason_code,
+            lost_from_crm_stage=lost_from_crm_stage,
+            pipeline_error=pipeline_error,
         )
         sq = (search or "").strip().lower()
         text_search_or = _lead_list_text_search_or(sq) if len(sq) >= 2 else None
@@ -1327,6 +1939,10 @@ async def list_leads(
     total_stmt = total_stmt.where(*filters)
     total = (await db.execute(total_stmt)).scalar_one()
 
+    vacancy_scope_join = and_(
+        Vacancy.id == Lead.vacancy_id,
+        or_(Vacancy.own_company_id.is_(None), Vacancy.own_company_id == Lead.own_company_id),
+    )
     stmt = select(
         Lead,
         Company.name.label("company_name"),
@@ -1341,7 +1957,7 @@ async def list_leads(
         stmt = stmt.outerjoin(stuck_stage_subq, stuck_stage_join_on)
     stmt = (
         stmt.join(Company, Company.id == Lead.company_id, isouter=True)
-        .join(Vacancy, Vacancy.id == Lead.vacancy_id, isouter=True)
+        .join(Vacancy, vacancy_scope_join, isouter=True)
         .join(Candidate, Candidate.id == Lead.candidate_id, isouter=True)
         .where(*filters)
         .order_by(Lead.created_at.desc())
@@ -1350,6 +1966,19 @@ async def list_leads(
     )
     rows = await db.execute(stmt)
     raw_rows = rows.all()
+
+    cand_ids_for_module_docs: set[str] = set()
+    for row in raw_rows:
+        _lead, _cn, _vt, vacancy_extra, _cf, _cl, cand_id, _cr = row
+        if cand_id and vacancy_extra_requires_candidate_documents_module(vacancy_extra):
+            cand_ids_for_module_docs.add(str(cand_id))
+    doc_status_by_candidate: dict[str, dict[str, set[str]]] = {}
+    if cand_ids_for_module_docs:
+        doc_status_by_candidate = await batch_candidate_document_status_sets(
+            db,
+            tenant_id=tenant_id,
+            candidate_ids=cand_ids_for_module_docs,
+        )
 
     # Preload next action info in one query for current page items.
     # We compute:
@@ -1446,90 +2075,6 @@ async def list_leads(
         except Exception:
             return {}
 
-    def _evaluate_fit(criteria: Any, normalized: Any) -> tuple[str, list[str]]:
-        """
-        MVP vacancy fit evaluator.
-
-        criteria schema (lead_criteria_v1):
-          - min_experience_eu_years: int
-          - requires_fields: [string]            # normalized keys required to be present (truthy)
-          - in_poland: bool                      # requires normalized.in_poland == True/False
-          - requires_documents: [string]         # requires normalized.documents includes each code
-        """
-        if not isinstance(criteria, dict) or not criteria:
-            return ("no_criteria", [])
-        norm = normalized if isinstance(normalized, dict) else {}
-        reasons: list[str] = []
-        missing_info = False
-        hard_fail = False
-
-        min_years = criteria.get("min_experience_eu_years")
-        if min_years is not None:
-            try:
-                min_years_i = int(min_years)
-            except Exception:
-                min_years_i = 0
-            if min_years_i > 0:
-                value = norm.get("experience_eu_years")
-                if value is None:
-                    missing_info = True
-                    reasons.append("missing_experience_eu_years")
-                else:
-                    try:
-                        years_i = int(value)
-                    except Exception:
-                        years_i = -1
-                    if years_i < min_years_i:
-                        reasons.append(f"experience_eu_years<{min_years_i}")
-                        hard_fail = True
-
-        req_fields = criteria.get("requires_fields")
-        if isinstance(req_fields, list):
-            for key in req_fields:
-                k = str(key or "").strip()
-                if not k:
-                    continue
-                if not norm.get(k):
-                    missing_info = True
-                    reasons.append(f"missing:{k}")
-
-        in_poland_req = criteria.get("in_poland")
-        if isinstance(in_poland_req, bool):
-            value = norm.get("in_poland")
-            if value is None:
-                missing_info = True
-                reasons.append("missing_in_poland")
-            else:
-                if bool(value) is not in_poland_req:
-                    reasons.append(f"in_poland!={str(in_poland_req).lower()}")
-                    hard_fail = True
-
-        req_docs = criteria.get("requires_documents")
-        if isinstance(req_docs, list):
-            docs = norm.get("documents")
-            docs_set = set()
-            if isinstance(docs, list):
-                docs_set = {str(x).strip().lower() for x in docs if str(x or "").strip()}
-            for code in req_docs:
-                c = str(code or "").strip().lower()
-                if not c:
-                    continue
-                if not docs_set:
-                    missing_info = True
-                    reasons.append("missing_documents")
-                    break
-                if c not in docs_set:
-                    reasons.append(f"missing_doc:{c}")
-                    hard_fail = True
-
-        if reasons:
-            if hard_fail:
-                return ("no_fit", reasons)
-            if missing_info:
-                return ("needs_info", reasons)
-            return ("no_fit", reasons)
-        return ("fit", [])
-
     items: List[LeadOut] = []
     for lead, company_name, vacancy_title, vacancy_extra, cand_first, cand_last, cand_id, cand_recruiter in raw_rows:
         candidate_name = None
@@ -1547,7 +2092,17 @@ async def list_leads(
 
         extra_obj = _loads_extra(vacancy_extra)
         criteria = (extra_obj or {}).get("lead_criteria_v1")
-        fit_status, fit_reasons = _evaluate_fit(criteria, lead.normalized)
+        doc_status_payload: Optional[dict[str, set[str]]] = None
+        if vacancy_extra_requires_candidate_documents_module(vacancy_extra):
+            if cand_id:
+                doc_status_payload = doc_status_by_candidate.get(str(cand_id), {})
+            else:
+                doc_status_payload = None
+        fit_status, fit_reasons = evaluate_lead_criteria_v1(
+            lead.normalized,
+            criteria,
+            candidate_document_statuses=doc_status_payload,
+        )
         items.append(
             LeadOut(
                 id=_uuid_or_none(lead.id) or UUID(lead.id),
@@ -1736,6 +2291,12 @@ async def process_normalized_lead(
     normalized = dict(normalized or {})
     business_type: Optional[str] = None
     settings_row = await _load_settings(db, tenant_id)
+    tenant_entity_for_settings = await db.get(Tenant, tenant_id)
+    tenant_settings_for_routing: Dict[str, Any] = {}
+    if tenant_entity_for_settings is not None:
+        ts = getattr(tenant_entity_for_settings, "settings", None)
+        if isinstance(ts, dict):
+            tenant_settings_for_routing = ts
     fallback_company_hint = settings_row.default_company_id
     fallback_recruiter_hint = settings_row.fallback_recruiter_id
     auto_create_enabled = bool(settings_row.auto_create_enabled)
@@ -1746,8 +2307,7 @@ async def process_normalized_lead(
         settings_row=settings_row,
     )
     effective_processing_mode = str(normalized.get("leads_processing_mode_v1") or "assisted").strip().lower()
-    should_auto_create = bool(auto_create_enabled) and effective_processing_mode != "manual"
-
+    # §2.10: only Automatic + auto_create may create candidates without operator (§2.4 tightens below).
     normalized_external_id: Optional[str] = None
     if external_id is not None:
         text = str(external_id).strip()
@@ -1878,7 +2438,30 @@ async def process_normalized_lead(
                 is_new=False,
             )
 
-    vacancy = await _resolve_vacancy(db, tenant_id, normalized)
+    req_oc = str(own_company_id or "").strip() or None
+    lead_oc = (
+        str(getattr(lead, "own_company_id", None) or "").strip() or None
+        if lead is not None
+        else None
+    )
+    scope_for_vacancy_routing = req_oc or lead_oc
+    vacancy, routing_fit_status, routing_fit_reasons = await resolve_vacancy_for_lead_processing(
+        db,
+        tenant_id=tenant_id,
+        normalized=normalized,
+        tenant_settings=tenant_settings_for_routing,
+        source=source,
+        own_company_id=scope_for_vacancy_routing,
+    )
+
+    tenant_autoconv = bool(getattr(settings_row, "leads_auto_convert_on_fit_v1", True))
+    may_auto_convert = (
+        bool(auto_create_enabled)
+        and effective_processing_mode == "automatic"
+        and tenant_autoconv
+        and _vacancy_allows_auto_convert_on_fit(vacancy)
+    )
+    normalized["leads_auto_convert_on_fit_effective_v1"] = bool(may_auto_convert)
 
     resolved_company_id: Optional[str] = None
     if vacancy:
@@ -2080,7 +2663,84 @@ async def process_normalized_lead(
             is_new=created_new,
         )
 
-    if not should_auto_create:
+    if (
+        may_auto_convert
+        and business_type not in (None, "services")
+        and vacancy is not None
+        and routing_fit_status in ("no_fit", "needs_info")
+    ):
+        err_code = "LEAD_FIT_NO_MATCH" if routing_fit_status == "no_fit" else "LEAD_FIT_NEEDS_INFO"
+        _stamp_lead_qualification_preview_v1(
+            normalized,
+            vacancy=vacancy,
+            fit_status=routing_fit_status,
+            fit_reasons=list(routing_fit_reasons or []),
+            blocked_auto_convert=True,
+        )
+        now_marker = datetime.now(timezone.utc)
+        await crud.update_lead(
+            db,
+            lead,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=err_code,
+            last_routed_at=now_marker,
+        )
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.needs_routing",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+        )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        await db.flush()
+        await _audit_lead_qualification_rule_match(
+            db, tenant_id=tenant_id, lead_id=str(lead.id), normalized=normalized
+        )
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=lead.id,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            candidate_id=None,
+            recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=err_code,
+            is_new=created_new,
+        )
+
+    if not may_auto_convert:
+        if business_type not in (None, "services"):
+            if effective_processing_mode == "assisted":
+                _stamp_lead_qualification_preview_v1(
+                    normalized,
+                    vacancy=vacancy,
+                    fit_status=routing_fit_status,
+                    fit_reasons=list(routing_fit_reasons or []),
+                    blocked_auto_convert=False,
+                )
+            elif effective_processing_mode == "automatic" and bool(auto_create_enabled):
+                _stamp_lead_qualification_preview_v1(
+                    normalized,
+                    vacancy=vacancy,
+                    fit_status=routing_fit_status,
+                    fit_reasons=list(routing_fit_reasons or []),
+                    blocked_auto_convert=True,
+                )
         now_marker = datetime.now(timezone.utc)
         await crud.update_lead(
             db,
@@ -2109,6 +2769,9 @@ async def process_normalized_lead(
             normalized=normalized,
         )
         await db.flush()
+        await _audit_lead_qualification_rule_match(
+            db, tenant_id=tenant_id, lead_id=str(lead.id), normalized=normalized
+        )
         await db.commit()
         return MetaLeadResult(
             lead_id=lead.id,
@@ -2175,6 +2838,9 @@ async def process_normalized_lead(
         # Important: commit lead status update before running automation rules.
         # Automation failures previously caused `db.rollback()` to undo the lead update,
         # leaving the UI with stale status/error even though processing returned success.
+        await _audit_lead_qualification_rule_match(
+            db, tenant_id=tenant_id, lead_id=services_lead_id, normalized=normalized
+        )
         await db.commit()
         # Minimal rules builder (R2.2): trigger lead.processed automation rules
         try:
@@ -2257,6 +2923,9 @@ async def process_normalized_lead(
             normalized=normalized,
         )
         await db.flush()
+        await _audit_lead_qualification_rule_match(
+            db, tenant_id=tenant_id, lead_id=needs_routing_lead_id, normalized=normalized
+        )
         await db.commit()
         return MetaLeadResult(
             lead_id=needs_routing_lead_id,
@@ -2359,9 +3028,15 @@ async def process_normalized_lead(
         await db.commit()
         raise
 
+    stamp_rid = _rule_recruiter_id_from_normalized(normalized)
+    rule_rid = await validate_tenant_recruiter_id(db, tenant_id, stamp_rid) if stamp_rid else None
     recruiter_id = getattr(candidate, "recruiter_id", None)
     vacancy_recruiter_id = getattr(vacancy, "recruiter_id", None) if vacancy else None
-    if not recruiter_id and vacancy_recruiter_id:
+    if rule_rid:
+        candidate.recruiter_id = rule_rid
+        recruiter_id = rule_rid
+        await db.flush()
+    elif not recruiter_id and vacancy_recruiter_id:
         candidate.recruiter_id = vacancy_recruiter_id
         recruiter_id = vacancy_recruiter_id
         await db.flush()
@@ -2396,6 +3071,9 @@ async def process_normalized_lead(
     await db.flush()
     # Commit lead status update before automation to avoid losing it on rollback.
     agency_lead_id = str(lead.id)
+    await _audit_lead_qualification_rule_match(
+        db, tenant_id=tenant_id, lead_id=agency_lead_id, normalized=normalized
+    )
     await db.commit()
     supervisor_id = await _load_supervisor_id(db, recruiter_id)
     recipient_ids: List[str] = []
@@ -2591,6 +3269,36 @@ async def process_meta_lead(
     )
 
 
+async def process_generic_inbound_webhook_lead(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: Optional[str] = None,
+    body: Dict[str, Any],
+) -> MetaLeadResult:
+    """
+    §2.11: arbitrary JSON POST → same field_mapping + process_normalized_lead as Meta; source=webhook.
+    """
+    settings_row = await _load_settings(db, tenant_id)
+    coerced = normalizer.coerce_generic_json_to_meta_normalizer_payload(body)
+    normalized = normalizer.normalize_meta_payload(
+        coerced,
+        field_mapping=getattr(settings_row, "field_mapping", None),
+    )
+    raw_lead_id = normalized.get("raw_lead_id")
+    external_id = str(raw_lead_id).strip() if raw_lead_id else None
+    return await process_normalized_lead(
+        db,
+        tenant_id=tenant_id,
+        own_company_id=own_company_id,
+        payload=body,
+        normalized=normalized,
+        source="webhook",
+        external_id=external_id,
+        force_existing=False,
+    )
+
+
 async def retry_meta_leads(
     db: AsyncSession,
     *,
@@ -2780,7 +3488,13 @@ async def reroute_lead_manual(
     target_vacancy: Optional[Vacancy] = None
     vacancy_candidate = vacancy_id or lead.vacancy_id
     if vacancy_candidate:
-        target_vacancy = await crud.resolve_vacancy_by_id(db, tenant_id, str(vacancy_candidate))
+        target_vacancy = await crud.resolve_vacancy_by_id(
+            db,
+            tenant_id,
+            str(vacancy_candidate),
+            scoped_own_company_id=str(getattr(lead, "own_company_id", None) or "").strip()
+            or None,
+        )
 
     normalized = dict(lead.normalized or {})
     normalized["company_id"] = target_company_id
@@ -2993,7 +3707,13 @@ async def reroute_lead_manual(
         # Defensive fallback: candidate primary key must exist.
         raise LeadProcessingError("candidate_id_missing", "CANDIDATE_ID_MISSING_AFTER_CREATE")
 
+    stamp_rid = _rule_recruiter_id_from_normalized(normalized)
+    rule_rid = await validate_tenant_recruiter_id(db, tenant_id, stamp_rid) if stamp_rid else None
     recruiter_id = vacancy_recruiter_id
+    if rule_rid:
+        candidate.recruiter_id = rule_rid
+        recruiter_id = rule_rid
+        await db.flush()
     if not recruiter_id:
         # If we don't have vacancy/recruiter from vacancy, fall back to the tenant-level hint.
         # Avoid reading candidate.recruiter_id here: create_candidate_full() may have expired it.

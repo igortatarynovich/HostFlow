@@ -109,15 +109,48 @@ class Settings(BaseSettings):
     system_from_email: Optional[str] = None
     system_from_name: Optional[str] = None
     frontend_url: Optional[str] = None  # e.g. https://app.hostflow.cc
+    # Optional absolute API origin for inbound webhook URLs shown after rotate (e.g. https://api.hostflow.cc)
+    public_api_base_url: Optional[str] = None
 
     # Stripe billing
     stripe_secret_key: Optional[str] = None
     stripe_publishable_key: Optional[str] = None
     stripe_webhook_secret: Optional[str] = None
     stripe_price_starter: Optional[str] = None
+    stripe_price_starter_yearly: Optional[str] = None
     stripe_price_team: Optional[str] = None
+    stripe_price_team_yearly: Optional[str] = None
     stripe_price_pro: Optional[str] = None
+    stripe_price_pro_yearly: Optional[str] = None
     stripe_price_operating_company_slot: Optional[str] = None
+    stripe_price_operating_company_slot_team: Optional[str] = None
+    stripe_price_operating_company_slot_business: Optional[str] = None
+    stripe_price_portal_candidates_pack: Optional[str] = None
+    portal_candidates_pack_increment: int = 500
+    stripe_price_seat_team: Optional[str] = None
+    stripe_price_seat_business: Optional[str] = None
+    stripe_price_client_portal_account_team: Optional[str] = None
+    stripe_price_client_portal_account_business: Optional[str] = None
+    stripe_price_client_portal_pack_5: Optional[str] = None
+    stripe_price_branded_portal_workspace: Optional[str] = None
+    stripe_price_automation_rules_pack_10: Optional[str] = None
+    stripe_price_automation_rules_pack_25: Optional[str] = None
+    automation_rules_pack_10_increment: int = 10
+    automation_rules_pack_25_increment: int = 25
+    stripe_price_custom_fields_pack_25: Optional[str] = None
+    stripe_price_custom_fields_pack_100: Optional[str] = None
+    custom_fields_pack_25_increment: int = 25
+    custom_fields_pack_100_increment: int = 100
+    stripe_price_lead_source_extra: Optional[str] = None
+    stripe_price_lead_forms_pack_5: Optional[str] = None
+    lead_forms_pack_increment: int = 5
+    stripe_price_communication_channel_extra: Optional[str] = None
+    stripe_price_leads_pack_500: Optional[str] = None
+    leads_pack_500_increment: int = 500
+    stripe_price_active_records_pack_2000: Optional[str] = None
+    active_records_pack_2000_increment: int = 2000
+    stripe_price_storage_pack_50gb: Optional[str] = None
+    storage_pack_50gb_increment_gb: int = 50
     stripe_portal_return_url: Optional[str] = None
 
     if PYDANTIC_V2:

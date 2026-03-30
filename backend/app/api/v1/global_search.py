@@ -27,7 +27,12 @@ GLOBAL_SEARCH_ROLES = (
 
 
 class GlobalSearchItemOut(BaseModel):
-    type: str = Field(description="candidate | company | vacancy | lead")
+    type: str = Field(
+        description=(
+            "candidate | company | vacancy | lead | document | invoice | service_order | "
+            "conversation | task"
+        ),
+    )
     id: str
     title: str
     subtitle: str | None = None
@@ -48,6 +53,11 @@ async def global_search(
         None,
         description="Optional tenant scope override (same semantics as candidates list).",
     ),
+    assignee_scope: str = Query(
+        "mine",
+        pattern="^(mine|team)$",
+        description="Reminder/task slice: mine (default) or team — same as GET /reminders assignee_scope.",
+    ),
     db_tenant: tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
     current_user: UserCtx = Depends(get_current_user),
     own_company_id: str | None = Depends(resolve_active_own_company_id_optional),
@@ -63,5 +73,6 @@ async def global_search(
         q=q,
         limit_per_type=limit,
         max_results=max_results,
+        assignee_scope=assignee_scope,
     )
     return GlobalSearchResponse.model_validate(payload)

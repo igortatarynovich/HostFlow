@@ -19,6 +19,8 @@ export default function ErrorRecoveryBanner({
   secondaryLabel,
   compact = false,
 }: ErrorRecoveryBannerProps) {
+  const linkTo = info.secondaryTo ?? secondaryTo
+  const linkLabel = info.secondaryLabel ?? secondaryLabel
   return (
     <div className={`rounded-xl border border-rose-200 bg-rose-50 text-rose-900 ${compact ? 'p-3' : 'p-4'}`}>
       <div className="flex items-start gap-2">
@@ -27,7 +29,7 @@ export default function ErrorRecoveryBanner({
           <p className="text-sm font-semibold">{info.title}</p>
           {info.detail && <p className="mt-1 text-xs text-rose-800/90">{info.detail}</p>}
           <p className="mt-1 text-xs text-rose-800">{info.hint}</p>
-          {(onRetry || (secondaryTo && secondaryLabel)) && (
+          {(onRetry || (linkTo && linkLabel)) && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {onRetry && (
                 <button
@@ -39,12 +41,12 @@ export default function ErrorRecoveryBanner({
                   {retryLabel}
                 </button>
               )}
-              {secondaryTo && secondaryLabel && (
+              {linkTo && linkLabel && (
                 <Link
-                  to={secondaryTo}
+                  to={linkTo}
                   className="inline-flex items-center rounded-md border border-rose-200 bg-white px-2.5 py-1 text-xs text-rose-700 hover:bg-rose-100"
                 >
-                  {secondaryLabel}
+                  {linkLabel}
                 </Link>
               )}
             </div>

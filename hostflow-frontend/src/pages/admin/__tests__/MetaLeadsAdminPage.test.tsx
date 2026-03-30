@@ -76,6 +76,7 @@ describe('MetaLeadsAdminPage', () => {
     mockGetSettings.mockResolvedValueOnce({
       tenant_id: '11111111-1111-1111-1111-111111111111',
       auto_create_enabled: true,
+      leads_auto_convert_on_fit_v1: true,
       leads_processing_mode_v1: 'assisted',
       mask_pii_in_logs: true,
       reroute_after_hours: 6,

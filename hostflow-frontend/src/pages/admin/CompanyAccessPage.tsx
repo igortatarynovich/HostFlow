@@ -7,6 +7,8 @@ import type { AdminUser, Company, CompanyAccessEntry } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { usePermissions } from '../../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import type { FriendlyErrorInfo } from '../../utils/friendlyError'
+import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 
 interface AccessFormState {
   userId: string
@@ -176,6 +178,13 @@ export default function CompanyAccessPage() {
 
   const selectedCompany = companies.find((company) => company.id === selectedCompanyId)
 
+  const accessPageErrorBanner: FriendlyErrorInfo | null = error
+    ? {
+        title: error,
+        hint: 'Повторите действие или обновите страницу.',
+      }
+    : null
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -198,16 +207,16 @@ export default function CompanyAccessPage() {
         </select>
       </header>
 
-      {error && (
+      {accessPageErrorBanner && (
         <ErrorRecoveryBanner
-          info={{
-            title: error,
-            hint: 'Повторите действие или обновите страницу.',
-          }}
+          info={accessPageErrorBanner}
           onRetry={() => selectedCompanyId && void loadAccess(selectedCompanyId)}
           retryLabel="Обновить"
-          secondaryTo={CRM_APP_PATHS.settingsCompanyAccess}
-          secondaryLabel="Доступ к компаниям"
+          {...friendlyErrorBannerSecondary(
+            accessPageErrorBanner,
+            CRM_APP_PATHS.settingsCompanyAccess,
+            'Доступ к компаниям',
+          )}
           compact
         />
       )}
