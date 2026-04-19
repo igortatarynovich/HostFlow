@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { Modal } from '../../components/Modal'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import {
   cancelBillingSubscription,
@@ -25,6 +26,7 @@ import {
   simulateBillingCheckoutResolution,
   updateBillingCompanySlots,
   type BillingCheckoutSession,
+  type BillingGate,
   type BillingHistoryItem,
   type BillingInvoice,
   type BillingPlan,
@@ -155,6 +157,7 @@ function getStatusMeta(subscription: BillingSubscription | null, t: (key: string
         description: t('app.settings.billing.status.active.description'),
       }
     case 'trial':
+    case 'trialing':
       return {
         label: t('app.settings.billing.status.trial.label'),
         tone: 'info',
@@ -346,7 +349,15 @@ export default function BillingWorkspacePage() {
   }, [t])
 
   const activePlan = getPlanCode(subscription?.plan_code)
-  const isTrial = (subscription?.status || '').trim().toLowerCase() === 'trial'
+  const subStatusNorm = (subscription?.status || '').trim().toLowerCase()
+  const isTrial = subStatusNorm === 'trial'
+  const isTrialing = subStatusNorm === 'trialing'
+  const isTrialLike = isTrial || isTrialing
+  const billingGate: BillingGate | null = subscription?.gate ?? null
+  const showWorkspaceBlocked = Boolean(billingGate?.side_effects_blocked)
+  const showTrialWorkspacePanel = Boolean(
+    billingGate?.trial_active || billingGate?.trial_grace_active || isTrialLike,
+  )
   const isStripe = subscription?.provider === 'stripe'
   const notAvailableLabel = t('app.settings.billing.not_available')
   const statusMeta = getStatusMeta(subscription, t, notAvailableLabel)
@@ -376,6 +387,51 @@ export default function BillingWorkspacePage() {
     if (Number.isNaN(dt.getTime())) return null
     return Math.max(0, Math.ceil((dt.getTime() - Date.now()) / DAY_MS))
   }, [subscription?.trial_ends_at])
+
+  const trialTone = useMemo<'normal' | 'warning' | 'critical'>(() => {
+    if (billingGate?.trial_urgent) return 'critical'
+    if (trialDaysLeft == null) return 'normal'
+    if (trialDaysLeft <= 2) return 'critical'
+    if (trialDaysLeft <= 7) return 'warning'
+    return 'normal'
+  }, [billingGate?.trial_urgent, trialDaysLeft])
+
+  const trialWorkspacePanelClasses = useMemo(() => {
+    if (billingGate?.trial_grace_active) {
+      return {
+        wrap: 'rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-sm',
+        badge: 'text-xs font-semibold uppercase tracking-wide text-amber-800',
+        title: 'text-sm font-semibold text-amber-950',
+        subtitle: 'text-xs text-amber-950/90',
+        urgency: 'mt-1 text-xs font-semibold text-amber-900',
+      }
+    }
+    if (trialTone === 'critical') {
+      return {
+        wrap: 'rounded-xl border border-rose-300 bg-rose-50 p-4 shadow-sm',
+        badge: 'text-xs font-semibold uppercase tracking-wide text-rose-800',
+        title: 'text-sm font-semibold text-rose-950',
+        subtitle: 'text-xs text-rose-900/90',
+        urgency: 'mt-1 text-xs font-semibold text-rose-900',
+      }
+    }
+    if (trialTone === 'warning') {
+      return {
+        wrap: 'rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-sm',
+        badge: 'text-xs font-semibold uppercase tracking-wide text-amber-800',
+        title: 'text-sm font-semibold text-amber-950',
+        subtitle: 'text-xs text-amber-950/90',
+        urgency: 'mt-1 text-xs font-semibold text-amber-900',
+      }
+    }
+    return {
+      wrap: 'rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-sm',
+      badge: 'text-xs font-semibold uppercase tracking-wide text-amber-800',
+      title: 'text-sm font-semibold text-amber-950',
+      subtitle: 'text-xs text-amber-950/90',
+      urgency: 'mt-1 text-xs font-semibold text-amber-900',
+    }
+  }, [billingGate?.trial_grace_active, trialTone])
 
   const plans = useMemo<PlanDef[]>(() => {
     const codes: PlanCode[] = ['starter', 'team', 'pro']
@@ -608,7 +664,7 @@ export default function BillingWorkspacePage() {
   }
 
   const handlePlanAction = async (plan: PlanCode) => {
-    if (isTrial || !subscription?.subscription_id || subscription?.status === 'incomplete') {
+    if (isTrialLike || !subscription?.subscription_id || subscription?.status === 'incomplete') {
       setCheckoutConfirmPlan(plan)
       return
     }
@@ -975,29 +1031,57 @@ export default function BillingWorkspacePage() {
           <IconCreditCard size={18} stroke={1.9} />
           {t('app.settings.billing.badge')}
         </div>
-        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-2">
-            <h1 className="text-2xl font-semibold text-slate-900">
-              {t('app.settings.billing.title')}
-            </h1>
-            <p className="max-w-3xl text-sm text-slate-600">
-              {t('app.settings.billing.subtitle')}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" className="btn-secondary" onClick={() => void reloadSummary()} disabled={isLoading}>
-              <IconRefresh size={15} stroke={1.9} />
-              <span>{t('common.actions.refresh')}</span>
-            </button>
-            <button type="button" className="btn-secondary" onClick={openPortal} disabled={isPortalLoading}>
-              <IconExternalLink size={15} stroke={1.9} />
-              <span>{t('app.settings.billing.portal')}</span>
-            </button>
-          </div>
+        <div className="mt-3">
+          <SettingsSubpageHeader
+            backLabel={t('admin.settings.subpage.back_all')}
+            kicker={t('app.settings.billing.header_kicker')}
+            title={t('app.settings.billing.title')}
+            subtitle={<p className="max-w-3xl">{t('app.settings.billing.subtitle')}</p>}
+            actions={
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn-secondary" onClick={() => void reloadSummary()} disabled={isLoading}>
+                  <IconRefresh size={15} stroke={1.9} />
+                  <span>{t('common.actions.refresh')}</span>
+                </button>
+                <button type="button" className="btn-secondary" onClick={openPortal} disabled={isPortalLoading}>
+                  <IconExternalLink size={15} stroke={1.9} />
+                  <span>{t('app.settings.billing.portal')}</span>
+                </button>
+              </div>
+            }
+          />
         </div>
       </header>
 
-      {!isTrial && subscription?.status === 'past_due' ? (
+      {showWorkspaceBlocked ? (
+        <section className="rounded-xl border border-rose-400 bg-rose-50 p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-900">
+                {t('app.dashboard.billing_gate.badge')}
+              </p>
+              <h2 className="text-sm font-semibold text-rose-950">
+                {t('app.dashboard.billing_gate.blocked_title')}
+              </h2>
+              <p className="text-xs text-rose-900/90">
+                {billingGate?.block_reason === 'past_due'
+                  ? t('app.dashboard.billing_gate.blocked_subtitle_past_due')
+                  : t('app.dashboard.billing_gate.blocked_subtitle_trial_expired')}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className="btn-primary" onClick={() => void openPortal()} disabled={isPortalLoading}>
+                {t('app.settings.billing.past_due.cta')}
+              </button>
+              <button type="button" className="btn-secondary" onClick={() => void reloadSummary()} disabled={isLoading}>
+                {t('app.settings.billing.refresh_status')}
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {!showWorkspaceBlocked && !isTrialLike && subscription?.status === 'past_due' ? (
         <section className="rounded-xl border border-rose-300 bg-rose-50 p-4 shadow-sm text-rose-950">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex gap-3">
@@ -1026,22 +1110,40 @@ export default function BillingWorkspacePage() {
         </section>
       ) : null}
 
-      {isTrial && (
-        <section className="rounded-xl border border-amber-300 bg-amber-50 p-4 shadow-sm">
+      {showTrialWorkspacePanel && !showWorkspaceBlocked ? (
+        <section className={trialWorkspacePanelClasses.wrap}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-                {t('app.settings.billing.trial.badge')}
+              <p className={trialWorkspacePanelClasses.badge}>
+                {billingGate?.trial_grace_active
+                  ? t('app.dashboard.trial_center.badge')
+                  : t('app.settings.billing.trial.badge')}
               </p>
-              <h2 className="text-sm font-semibold text-amber-950">
-                {trialDaysLeft != null
-                  ? t('app.settings.billing.trial.title_with_days', { values: { days: trialDaysLeft },
-                    })
-                  : t('app.settings.billing.trial.title')}
+              <h2 className={trialWorkspacePanelClasses.title}>
+                {billingGate?.trial_grace_active
+                  ? t('app.dashboard.trial_center.grace_title')
+                  : trialDaysLeft != null
+                    ? t('app.dashboard.trial_center.title_with_days', { values: { days: trialDaysLeft } })
+                    : t('app.dashboard.trial_center.title')}
               </h2>
-              <p className="text-xs text-amber-950/90">
-                {t('app.settings.billing.trial.subtitle')}
+              <p className={trialWorkspacePanelClasses.subtitle}>
+                {billingGate?.trial_grace_active
+                  ? t('app.dashboard.trial_center.grace_subtitle', {
+                      values: {
+                        hours:
+                          billingGate.side_effect_grace_hours_remaining != null
+                            ? Math.max(0, Math.ceil(billingGate.side_effect_grace_hours_remaining))
+                            : 0,
+                      },
+                    })
+                  : t('app.dashboard.trial_center.subtitle')}
               </p>
+              {!billingGate?.trial_grace_active && trialTone === 'critical' ? (
+                <span className={trialWorkspacePanelClasses.urgency}>{t('app.dashboard.trial_center.urgency_critical')}</span>
+              ) : null}
+              {!billingGate?.trial_grace_active && trialTone === 'warning' ? (
+                <span className={trialWorkspacePanelClasses.urgency}>{t('app.dashboard.trial_center.urgency_warning')}</span>
+              ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -1057,8 +1159,31 @@ export default function BillingWorkspacePage() {
               </Link>
             </div>
           </div>
+          <p
+            className={`mt-3 text-xs ${
+              billingGate?.trial_grace_active
+                ? 'text-amber-900/80'
+                : trialTone === 'critical'
+                  ? 'text-rose-900/80'
+                  : 'text-amber-950/80'
+            }`}
+          >
+            {t('app.dashboard.trial_center.legal_prefix')}{' '}
+            <a href="/legal/terms.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+              {t('app.dashboard.trial_center.legal_terms')}
+            </a>
+            {', '}
+            <a href="/legal/privacy.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+              {t('app.dashboard.trial_center.legal_privacy')}
+            </a>
+            {', '}
+            <a href="/legal/cookies.html" target="_blank" rel="noopener noreferrer" className="underline hover:no-underline">
+              {t('app.dashboard.trial_center.legal_cookies')}
+            </a>
+            .
+          </p>
         </section>
-      )}
+      ) : null}
 
       {error && (
         <ErrorRecoveryBanner
@@ -1221,13 +1346,13 @@ export default function BillingWorkspacePage() {
                 type="button"
                 className="btn-primary"
                 onClick={() =>
-                  void (isTrial || subscription?.status === 'incomplete'
+                  void (isTrialLike || subscription?.status === 'incomplete'
                     ? setCheckoutConfirmPlan(activePlan)
                     : openPortal())
                 }
                 disabled={isCheckoutLoading || isPortalLoading}
               >
-                {isTrial || subscription?.status === 'incomplete'
+                {isTrialLike || subscription?.status === 'incomplete'
                   ? t('app.settings.billing.subscribe')
                   : subscription?.status === 'past_due'
                     ? t('app.settings.billing.past_due.cta')
@@ -1394,7 +1519,7 @@ export default function BillingWorkspacePage() {
                   ? t('app.settings.billing.apply_billing_interval')
                   : isActive
                     ? t('app.settings.billing.current_plan')
-                    : isTrial || !subscription?.subscription_id || subscription?.status === 'incomplete'
+                    : isTrialLike || !subscription?.subscription_id || subscription?.status === 'incomplete'
                         ? t('app.settings.billing.subscribe_plan')
                         : t('app.settings.billing.choose_plan')}
               </button>

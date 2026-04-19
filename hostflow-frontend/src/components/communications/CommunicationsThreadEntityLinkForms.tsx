@@ -454,7 +454,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
             disabled={linkBusy || candidateSearching || candidateQuery.trim().length < 2}
             onClick={() => void runCandidateSearch()}
           >
-            {candidateSearching ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications_messages.actions.search', { defaultValue: 'Search' })}
+            {candidateSearching ? t('common.loading') : t('app.communications_messages.actions.search', { defaultValue: 'Search' })}
           </button>
         </div>
         {candidateResults.length > 0 && (
@@ -501,7 +501,7 @@ export default function CommunicationsThreadEntityLinkForms({ thread, onAfterPat
             disabled={linkBusy || companySearching || companyQuery.trim().length < 2}
             onClick={() => void runCompanySearch()}
           >
-            {companySearching ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications_messages.actions.search', { defaultValue: 'Search' })}
+            {companySearching ? t('common.loading') : t('app.communications_messages.actions.search', { defaultValue: 'Search' })}
           </button>
         </div>
         {companyResults.length > 0 && (

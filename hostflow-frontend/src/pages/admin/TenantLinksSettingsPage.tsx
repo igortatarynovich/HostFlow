@@ -11,6 +11,7 @@ import {
   type ContactPolicy,
 } from '../../api/tenantLinks'
 import { useToast } from '../../components/Toast'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 
 export default function TenantLinksSettingsPage() {
   const { t } = useI18n()
@@ -132,14 +133,14 @@ export default function TenantLinksSettingsPage() {
   return (
     <div className="space-y-4">
       <section className="card p-6">
-        <header className="mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">
-            {t('admin.tenant_links.title')}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {t('admin.tenant_links.subtitle')}
-          </p>
-        </header>
+        <div className="mb-4">
+          <SettingsSubpageHeader
+            backLabel={t('admin.settings.subpage.back_all')}
+            kicker={t('admin.tenant_links.header_kicker')}
+            title={t('admin.tenant_links.title')}
+            subtitle={t('admin.tenant_links.subtitle')}
+          />
+        </div>
 
         {loading ? (
           <p className="text-sm text-slate-500">{t('common.loading')}</p>

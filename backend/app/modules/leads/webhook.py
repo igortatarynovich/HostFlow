@@ -98,18 +98,22 @@ async def receive(
     signature_owner: Optional[object] = None
     parsed_payload: Optional[dict] = None
 
-    # Attempt tenant resolution via verify token first (no JSON parse needed)
-    token_resolution = await admin_service.resolve_tenant_by_verify_token(db, verify_token)
-    if token_resolution:
-        tenant_id, _settings = token_resolution
+    try:
+        parsed_payload = json.loads(raw_body.decode("utf-8"))
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload") from exc
+
+    # Page-bound credentials first: Graph token + app secret live on the credential row's tenant.
+    # Shared verify_token across tenants would otherwise pick the wrong tenant (e.g. Focus) and yield GRAPH_NO_TOKEN.
+    page_resolution = await admin_service.resolve_tenant_by_page_ids(
+        db, admin_service.extract_page_ids(parsed_payload)
+    )
+    if page_resolution:
+        tenant_id, signature_owner = page_resolution
     else:
-        try:
-            parsed_payload = json.loads(raw_body.decode("utf-8"))
-        except Exception as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload") from exc
-        page_resolution = await admin_service.resolve_tenant_by_page_ids(db, admin_service.extract_page_ids(parsed_payload))
-        if page_resolution:
-            tenant_id, signature_owner = page_resolution
+        token_resolution = await admin_service.resolve_tenant_by_verify_token(db, verify_token)
+        if token_resolution:
+            tenant_id, _settings = token_resolution
         else:
             tenant_hint = request.headers.get("X-Tenant-Id") or request.query_params.get("tenant_id")
             if tenant_hint:
@@ -148,12 +152,6 @@ async def receive(
         await admin_service.mark_credential_verified(db, matched_credential)
     else:
         signature_status = "not_configured"
-
-    if parsed_payload is None:
-        try:
-            parsed_payload = json.loads(raw_body.decode("utf-8"))
-        except Exception as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON payload") from exc
 
     try:
         payload = await pipeline.hydrate_webhook_payload(

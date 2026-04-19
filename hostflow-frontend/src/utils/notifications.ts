@@ -49,7 +49,3 @@ export function isNotificationRelevant(item: NotificationItem, me: WhoAmI | null
 
   return false
 }
-
-export function filterRelevantNotifications(items: NotificationItem[], me: WhoAmI | null, opts: { includeUnassigned?: boolean } = {}) {
-  return items.filter((item) => isNotificationRelevant(item, me, opts))
-}

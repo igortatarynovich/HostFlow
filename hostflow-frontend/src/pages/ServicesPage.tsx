@@ -34,6 +34,7 @@ import { getAnalyticsProfileSummary, getServicesAnalyticsOverview, type Services
 import { createInvoiceFromServiceOrder, createPayment, listInvoices, listInvoicesByServiceOrders, sendInvoice } from '../api/client'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import {
   OPEN_SERVICE_ORDER_STATUSES,
   ORDER_STATUSES,
@@ -909,6 +910,10 @@ export function ServicesPage() {
     <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       {heroSection}
 
+      <div className="px-3 pt-2">
+        <PageBreadcrumb />
+      </div>
+
       {tab === 'overview' && (
         <div className="space-y-0 gap-0">
           <div className="card p-4">
@@ -1331,7 +1336,7 @@ export function ServicesPage() {
 
           <div className="card p-4">
             {billingLoading ? (
-              <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</div>
+              <div className="text-sm text-slate-500">{t('common.loading')}</div>
             ) : billingError ? (
               <div className="text-sm text-red-600">{String(billingError)}</div>
             ) : billingInvoices.length === 0 ? (
@@ -1458,7 +1463,7 @@ export function ServicesPage() {
                               }}
                             >
                               {billingRowAction === `send:${inv.id}`
-                                ? t('common.loading', { defaultValue: 'Loading…' })
+                                ? t('common.loading')
                                 : t('app.services.billing.row.send', { defaultValue: 'Send' })}
                             </button>
                             <button
@@ -1496,7 +1501,7 @@ export function ServicesPage() {
                               }}
                             >
                               {billingRowAction === `paid:${inv.id}`
-                                ? t('common.loading', { defaultValue: 'Loading…' })
+                                ? t('common.loading')
                                 : t('app.services.billing.row.mark_paid', { defaultValue: 'Mark paid' })}
                             </button>
                           </div>
@@ -2586,7 +2591,7 @@ function OrdersTab({
                         }}
                       >
                         {orderBillingAction === 'send'
-                          ? t('common.loading', { defaultValue: 'Loading…' })
+                          ? t('common.loading')
                           : t('app.services.orders.detail.invoice.send', { defaultValue: 'Send' })}
                       </button>
                       <button
@@ -2615,7 +2620,7 @@ function OrdersTab({
                         }}
                       >
                         {orderBillingAction === 'paid'
-                          ? t('common.loading', { defaultValue: 'Loading…' })
+                          ? t('common.loading')
                           : t('app.services.billing.row.mark_paid', { defaultValue: 'Mark paid' })}
                       </button>
                     </>
@@ -2761,7 +2766,7 @@ function OrdersTab({
             invoiceSummary={invoiceMap[String(order.id)] || null}
             canManage={canManage}
             onInvoiceChanged={() => {
-              void refreshOrderInvoices()
+              onRefreshInvoices()
             }}
             onStatusUpdate={onStatusUpdate}
             onScheduleSubmit={onScheduleSubmit}
@@ -3470,7 +3475,7 @@ function OrderDetail({
                   }}
                 >
                   {invoiceActionLoading === 'send'
-                    ? t('common.loading', { defaultValue: 'Loading…' })
+                    ? t('common.loading')
                     : t('app.services.orders.detail.invoice.send', { defaultValue: 'Send' })}
                 </button>
                 <button
@@ -3500,7 +3505,7 @@ function OrderDetail({
                   }}
                 >
                   {invoiceActionLoading === 'paid'
-                    ? t('common.loading', { defaultValue: 'Loading…' })
+                    ? t('common.loading')
                     : t('app.services.orders.detail.invoice.mark_paid', { defaultValue: 'Mark paid' })}
                 </button>
               </>

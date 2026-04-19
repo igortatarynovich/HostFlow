@@ -12,8 +12,9 @@ Responsibilities:
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import json
+import re
 from sqlalchemy import (
     select,
     update,
@@ -453,7 +454,8 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
     is_client = bool(filters.get("is_client_tenant"))
     conds = [Candidate.deleted_at.is_(None), _candidate_scope_clause(tenant_id, visibility, is_client_tenant=is_client)]
 
-    q = (filters.get("q") or "").strip().lower()
+    q_raw = (filters.get("q") or "").strip()
+    q = q_raw.lower()
     if len(q) >= 2:
         like = f"%{q}%"
         full_name = func.lower(
@@ -470,21 +472,46 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
                 func.coalesce(Candidate.first_name, ""),
             )
         )
-        conds.append(
-            or_(
-                func.lower(func.coalesce(Candidate.first_name, "")).like(like),
-                func.lower(func.coalesce(Candidate.last_name, "")).like(like),
-                full_name.like(like),
-                full_name_reverse.like(like),
-                func.lower(func.coalesce(Candidate.email, "")).like(like),
-                func.lower(func.coalesce(Candidate.phone, "")).like(like),
-                func.lower(func.coalesce(Candidate.short_id, "")).like(like),
+        q_clauses = [
+            func.lower(func.coalesce(Candidate.first_name, "")).like(like),
+            func.lower(func.coalesce(Candidate.last_name, "")).like(like),
+            full_name.like(like),
+            full_name_reverse.like(like),
+            func.lower(func.coalesce(Candidate.email, "")).like(like),
+            func.lower(func.coalesce(Candidate.phone, "")).like(like),
+            func.lower(func.coalesce(Candidate.short_id, "")).like(like),
+        ]
+        # WhatsApp / copy-paste: spaces in phone; DB often stores compact — match ignoring whitespace.
+        q_no_ws = re.sub(r"\s+", "", q)
+        if q_no_ws:
+            phone_squash = func.regexp_replace(
+                func.lower(func.coalesce(Candidate.phone, "")),
+                r"\s",
+                "",
+                "g",
             )
-        )
+            q_clauses.append(phone_squash.like(f"%{q_no_ws}%"))
+        # Also compare digit-only strings so "+48 123 …" matches "+48123…" in DB.
+        q_digits = "".join(ch for ch in q_raw if ch.isdigit())
+        if len(q_digits) >= 7:
+            phone_digits = func.regexp_replace(
+                func.coalesce(Candidate.phone, ""),
+                "[^0-9]",
+                "",
+                "g",
+            )
+            q_clauses.append(phone_digits.like(f"%{q_digits}%"))
+
+        conds.append(or_(*q_clauses))
 
     manager = filters.get("manager")
     if manager:
         conds.append(Candidate.manager == manager)
+
+    if filters.get("recruiter_unassigned"):
+        term_sl = func.lower(func.coalesce(Candidate.stage, ""))
+        conds.append(Candidate.recruiter_id.is_(None))
+        conds.append(~term_sl.in_(("employed", "rejected", "declined", "probation_ok")))
 
     # --- stage filters (robust to single value, CSV, or list) ---
     stages_acc: list[str] = []
@@ -663,6 +690,14 @@ def _build_conditions(tenant_id: str, filters: Dict[str, Any], visibility: Tenan
     if own_company_id:
         conds.append(Candidate.own_company_id == own_company_id)
 
+    intake_application_kind = str(filters.get("intake_application_kind") or "").strip().lower()
+    if intake_application_kind in ("client", "candidate"):
+        ak_expr = func.lower(func.coalesce(Candidate.intake_state["application_kind"].as_string(), ""))
+        if intake_application_kind == "client":
+            conds.append(ak_expr == "client")
+        else:
+            conds.append(ak_expr != "client")
+
     ris = filters.get("risk_intel_shadow")
     if isinstance(ris, dict):
         bts = ris.get("bucket_start")
@@ -765,6 +800,52 @@ async def count_candidates_insights(
     )
     ops_in_work = case((extra_in_work, 1), else_=0)
 
+    # --- Work hub / recruiting dashboard (action-first aggregates; same ACL scope) ---
+    now_utc = datetime.now(timezone.utc)
+    start_day_utc = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    thresh_24h = now_utc - timedelta(hours=24)
+
+    bn_no_contact = case((stage_lower.in_(("new", "no_answer")), 1), else_=0)
+    bn_docs_wait = case((stage_lower == literal("docs_wait"), 1), else_=0)
+    bn_interview_pending = case((stage_lower.in_(("contacted", "questionnaire_submitted")), 1), else_=0)
+    term_unassign = stage_lower.in_(("employed", "rejected", "declined", "probation_ok"))
+    unassigned_recruiter = case((and_(Candidate.recruiter_id.is_(None), ~term_unassign), 1), else_=0)
+
+    in_snap_new = stage_lower.in_(("new", "no_answer"))
+    in_snap_docs = stage_lower.in_(("docs_wait", "docs_got"))
+    in_snap_interview = stage_lower.in_(("contacted", "questionnaire_submitted"))
+    snap_terminal = stage_lower.in_(("rejected", "declined", "probation_ok"))
+    snap_new = case((in_snap_new, 1), else_=0)
+    snap_docs = case((in_snap_docs, 1), else_=0)
+    snap_interview = case((in_snap_interview, 1), else_=0)
+    snap_hired = case((stage_lower == literal("employed"), 1), else_=0)
+    snap_onboarding = case(
+        (
+            and_(
+                ~snap_terminal,
+                stage_lower != literal("employed"),
+                ~in_snap_new,
+                ~in_snap_docs,
+                ~in_snap_interview,
+                func.length(func.trim(func.coalesce(Candidate.stage, ""))) > 0,
+            ),
+            1,
+        ),
+        else_=0,
+    )
+
+    created_today_cnt = case((Candidate.created_at >= start_day_utc, 1), else_=0)
+    stale_no_contact_24h = case(
+        (
+            and_(
+                stage_lower.in_(("new", "no_answer")),
+                Candidate.created_at < thresh_24h,
+            ),
+            1,
+        ),
+        else_=0,
+    )
+
     stmt = (
         select(
             func.count().label("total"),
@@ -774,13 +855,42 @@ async def count_candidates_insights(
             func.coalesce(func.sum(docs_ordered), 0).label("docs_ordered"),
             func.coalesce(func.sum(docs_incomplete), 0).label("docs_incomplete"),
             func.coalesce(func.sum(ops_in_work), 0).label("ops_in_work"),
+            func.coalesce(func.sum(bn_no_contact), 0).label("bottleneck_no_contact"),
+            func.coalesce(func.sum(bn_docs_wait), 0).label("bottleneck_docs_wait"),
+            func.coalesce(func.sum(bn_interview_pending), 0).label("bottleneck_interview_pending"),
+            func.coalesce(func.sum(snap_new), 0).label("snap_new"),
+            func.coalesce(func.sum(snap_docs), 0).label("snap_docs"),
+            func.coalesce(func.sum(snap_interview), 0).label("snap_interview"),
+            func.coalesce(func.sum(snap_onboarding), 0).label("snap_onboarding"),
+            func.coalesce(func.sum(snap_hired), 0).label("snap_hired"),
+            func.coalesce(func.sum(created_today_cnt), 0).label("created_today"),
+            func.coalesce(func.sum(stale_no_contact_24h), 0).label("stale_no_contact_24h"),
+            func.coalesce(func.sum(unassigned_recruiter), 0).label("unassigned_recruiter"),
         )
         .select_from(Candidate)
         .where(and_(*conds))
     )
     row = await db.execute(stmt)
     r = row.one()
-    return {
+
+    oldest_lead_days: int | None = None
+    try:
+        funnel_cond = and_(
+            *conds,
+            stage_lower.in_(("new", "no_answer", "docs_wait", "contacted", "questionnaire_submitted")),
+        )
+        min_created_res = await db.execute(select(func.min(Candidate.created_at)).where(funnel_cond))
+        min_created = min_created_res.scalar_one_or_none()
+        if min_created is not None:
+            mc = min_created
+            if getattr(mc, "tzinfo", None) is None:
+                mc = mc.replace(tzinfo=timezone.utc)
+            delta = now_utc - mc
+            oldest_lead_days = max(0, int(delta.total_seconds() // 86400))
+    except Exception:
+        oldest_lead_days = None
+
+    out: dict[str, Any] = {
         "total": int(r.total or 0),
         "new_count": int(r.new_count or 0),
         "docs_ready": int(r.docs_ready or 0),
@@ -788,7 +898,21 @@ async def count_candidates_insights(
         "docs_ordered": int(r.docs_ordered or 0),
         "docs_incomplete": int(r.docs_incomplete or 0),
         "ops_in_work": int(r.ops_in_work or 0),
+        "bottleneck_no_contact": int(r.bottleneck_no_contact or 0),
+        "bottleneck_docs_wait": int(r.bottleneck_docs_wait or 0),
+        "bottleneck_interview_pending": int(r.bottleneck_interview_pending or 0),
+        "snap_new": int(r.snap_new or 0),
+        "snap_docs": int(r.snap_docs or 0),
+        "snap_interview": int(r.snap_interview or 0),
+        "snap_onboarding": int(r.snap_onboarding or 0),
+        "snap_hired": int(r.snap_hired or 0),
+        "created_today": int(r.created_today or 0),
+        "stale_no_contact_24h": int(r.stale_no_contact_24h or 0),
+        "unassigned_recruiter": int(r.unassigned_recruiter or 0),
     }
+    if oldest_lead_days is not None:
+        out["oldest_lead_days"] = oldest_lead_days
+    return out
 
 
 async def fetch_candidates_with_labels(

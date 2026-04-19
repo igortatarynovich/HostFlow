@@ -54,10 +54,3 @@ export function refreshMetaStagesCache() {
   inflight = null
   window.dispatchEvent(new CustomEvent('candidate-stage-updated'))
 }
-
-export function labelForStage(code?: string | null, meta?: MetaStages | null){
-  if (!code) return ''
-  const c = String(code).toLowerCase()
-  // Try lowercase first, then original case, then return code
-  return meta?.labels?.[c] || meta?.labels?.[code] || code
-}

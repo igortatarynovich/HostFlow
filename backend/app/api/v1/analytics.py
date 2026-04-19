@@ -62,6 +62,7 @@ from backend.app.api.v1.utils.own_company import resolve_active_own_company_id_o
 from backend.app.api.v1.candidates import repo as candidates_repo
 from backend.app.api.v1.candidates.repo import _candidate_scope_clause as repo_scope_clause
 from backend.app.services.additional_services import _service_order_scope_where
+from backend.app.services.reminder_ops_counts import count_overdue_reminders_ops_scoped
 from backend.app.services.risk_intel_v1 import (
     compute_candidate_risk_baseline,
     list_latest_shadow_snapshot,
@@ -145,6 +146,8 @@ class OpsCountersOut(BaseModel):
     leads_sla_stuck_stage_reminders: int = 0
     leads_needs_routing: int = 0
     leads_failed: int = 0
+    # New leads (status=new) created more than 24h ago — operational “no first touch” signal.
+    leads_new_untouched_24h: int = 0
     draft_intake_stale: int = 0
     automation_rules_enabled: int = 0
     automation_events_24h: int = 0
@@ -185,17 +188,9 @@ async def ops_counters(
         )
     ).scalar_one() or 0
 
-    overdue_reminders = (
-        await db.execute(
-            select(func.count())
-            .select_from(Reminder)
-            .where(
-                Reminder.tenant_id == tenant_id_str,
-                Reminder.assignee_id == assignee,
-                Reminder.status == ReminderStatus.overdue,
-            )
-        )
-    ).scalar_one() or 0
+    overdue_reminders = await count_overdue_reminders_ops_scoped(
+        db, tenant_id=tenant_id_str, assignee_id=assignee
+    )
 
     # Leads next action (processed leads only)
     # - no_next_action: processed leads with no active reminders
@@ -305,6 +300,19 @@ async def ops_counters(
             select(func.count())
             .select_from(Lead)
             .where(Lead.tenant_id == tenant_id_str, Lead.status == "failed")
+        )
+    ).scalar_one() or 0
+
+    _lead_stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    leads_new_untouched_24h = (
+        await db.execute(
+            select(func.count())
+            .select_from(Lead)
+            .where(
+                Lead.tenant_id == tenant_id_str,
+                Lead.status == "new",
+                Lead.created_at < _lead_stale_cutoff,
+            )
         )
     ).scalar_one() or 0
 
@@ -562,6 +570,7 @@ async def ops_counters(
         leads_sla_stuck_stage_reminders=int(leads_sla_stuck_stage_reminders),
         leads_needs_routing=int(leads_needs_routing),
         leads_failed=int(leads_failed),
+        leads_new_untouched_24h=int(leads_new_untouched_24h),
         draft_intake_stale=int(draft_intake_stale),
         automation_rules_enabled=int(automation_rules_enabled),
         automation_events_24h=int(automation_events_24h),

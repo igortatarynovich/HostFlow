@@ -10,6 +10,7 @@ import {
   type LegalDocumentKind,
 } from '../../api/legalDocuments'
 import { useToast } from '../../components/Toast'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 
 type DocTypeRow = {
   value: LegalDocumentKind
@@ -289,6 +290,15 @@ export default function LegalDocumentsPage() {
 
   return (
     <div className="space-y-4">
+      <SettingsSubpageHeader
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('admin.legal.header_kicker')}
+        title={t('admin.legal.title', { defaultValue: 'Dokumenty prawne (RODO, polityka prywatności)' })}
+        subtitle={t('admin.legal.subtitle', {
+          defaultValue:
+            'Skonfiguruj aktywną klauzulę RODO i politykę prywatności. Bez aktywnej klauzuli RODO nie można wysyłać informacji RODO do kandydatów.',
+        })}
+      />
       {loading ? (
         <section className="card p-6">
           <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Ładowanie...' })}</p>
@@ -296,17 +306,6 @@ export default function LegalDocumentsPage() {
       ) : (
         <>
           <section className="card p-6">
-            <header className="mb-4">
-              <h2 className="text-xl font-semibold text-slate-900">
-                {t('admin.legal.title', { defaultValue: 'Dokumenty prawne (RODO, polityka prywatności)' })}
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {t('admin.legal.subtitle', {
-                  defaultValue:
-                    'Skonfiguruj aktywną klauzulę RODO i politykę prywatności. Bez aktywnej klauzuli RODO nie można wysyłać informacji RODO do kandydatów.',
-                })}
-              </p>
-            </header>
             <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
               {t('admin.legal.section_candidates', { defaultValue: 'Candidates' })}
             </h3>

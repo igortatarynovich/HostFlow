@@ -255,21 +255,42 @@ def evaluate_lead_criteria_v1(
     return ("fit", [])
 
 
-def criteria_from_vacancy_extra(vacancy_extra: Any) -> Any:
-    """Read lead_criteria_v1 from Vacancy.extra (JSON / dict)."""
+def vacancy_extra_as_dict(vacancy_extra: Any) -> dict[str, Any]:
+    """Parse Vacancy.extra (dict or JSON string) into a plain dict."""
     if not vacancy_extra:
-        return None
+        return {}
     if isinstance(vacancy_extra, dict):
-        return vacancy_extra.get("lead_criteria_v1")
+        return vacancy_extra
     try:
         import json
 
         obj = json.loads(str(vacancy_extra))
-        if isinstance(obj, dict):
-            return obj.get("lead_criteria_v1")
+        return obj if isinstance(obj, dict) else {}
     except Exception:
-        pass
-    return None
+        return {}
+
+
+def criteria_from_vacancy_extra(vacancy_extra: Any) -> Any:
+    """Read lead_criteria_v1 from Vacancy.extra (JSON / dict)."""
+    return vacancy_extra_as_dict(vacancy_extra).get("lead_criteria_v1")
+
+
+def lead_fit_evaluation_effective(vacancy_extra: Any) -> bool:
+    """
+    Whether this vacancy should run lead fit (criteria evaluation, autoconvert gating, list previews).
+
+    - If ``lead_fit_evaluation_enabled_v1`` is set: **True** only when it is literally ``True``.
+      ``False`` means criteria in ``lead_criteria_v1`` are stored but must not affect routing.
+    - If unset (legacy rows): **True** when ``lead_criteria_v1`` is a non-empty dict (old behavior).
+    """
+    data = vacancy_extra_as_dict(vacancy_extra)
+    explicit = data.get("lead_fit_evaluation_enabled_v1")
+    if explicit is True:
+        return True
+    if explicit is False:
+        return False
+    crit = data.get("lead_criteria_v1")
+    return isinstance(crit, dict) and bool(crit)
 
 
 def evaluate_vacancy_for_lead(
@@ -279,6 +300,8 @@ def evaluate_vacancy_for_lead(
     candidate_document_statuses: Optional[Mapping[str, Collection[str]]] = None,
 ) -> FitResult:
     """Convenience: extra JSON → criteria → evaluate."""
+    if not lead_fit_evaluation_effective(vacancy_extra):
+        return ("no_criteria", [])
     return evaluate_lead_criteria_v1(
         normalized,
         criteria_from_vacancy_extra(vacancy_extra),

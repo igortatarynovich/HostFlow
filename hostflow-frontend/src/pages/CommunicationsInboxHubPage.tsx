@@ -20,6 +20,7 @@ import {
   type InboxListQuery,
 } from '../utils/inboxUrlQuery'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { stashPendingGmailOAuthCode } from '../utils/oauthRedirectBridge'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { getFriendlyErrorInfo } from '../utils/friendlyError'
@@ -223,7 +224,7 @@ export default function CommunicationsInboxHubPage() {
               {t('app.communications.email.oauth_redirect_body')}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <Link to={CRM_APP_PATHS.settingsEmail} className="btn-primary btn-xs">
+              <Link to={CRM_APP_PATHS.settingsIntegrations} className="btn-primary btn-xs">
                 {t('app.communications.email.oauth_redirect_open_setup')}
               </Link>
               <button type="button" className="btn-secondary btn-xs" onClick={() => setOauthRedirectNotice(false)}>
@@ -266,6 +267,8 @@ export default function CommunicationsInboxHubPage() {
             </div>
           </div>
         )}
+
+        <PageBreadcrumb className="max-w-6xl" />
 
         {hasMessages && hasEmail && anyChannel && (
           <div className="max-w-5xl flex flex-wrap gap-1">

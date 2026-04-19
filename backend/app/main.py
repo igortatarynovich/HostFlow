@@ -266,38 +266,15 @@ else:
     def sanitize_filename(name: Optional[str]) -> str:  # type: ignore[misc]
         return name or "document"
 
-dictConfig({
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "default": {"format": "%(levelname)s:%(name)s:%(message)s"},
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "default",
-        },
-    },
-    "root": {  # базовый уровень для всего
-        "level": "INFO",
-        "handlers": ["console"],
-    },
-    "loggers": {
-        # Наше приложение — подробные логи
-        "backend.app": {"level": "DEBUG", "handlers": ["console"], "propagate": False},
+try:
+    from backend.app.core.observability import init_sentry, logging_dict_config
+    from backend.app.core.rate_limit import register_rate_limit
+except ModuleNotFoundError:  # pragma: no cover - backend package alias
+    from .core.observability import init_sentry, logging_dict_config  # type: ignore[no-redef]
+    from .core.rate_limit import register_rate_limit  # type: ignore[no-redef]
 
-        # Оставим uvicorn как есть
-        "uvicorn": {"level": "INFO", "handlers": ["console"], "propagate": False},
-        "uvicorn.error": {"level": "INFO", "handlers": ["console"], "propagate": False},
-        "uvicorn.access": {"level": "INFO", "handlers": ["console"], "propagate": False},
-
-        # Приглушим болтливых
-        "aiosqlite": {"level": "WARNING"},
-        "passlib": {"level": "WARNING"},
-        "sqlalchemy.engine": {"level": "WARNING"},
-        "sqlalchemy.pool": {"level": "WARNING"},
-    },
-})
+init_sentry()
+dictConfig(logging_dict_config())
 
 # Ensure key models are fully imported and mapped before any routers load
 try:
@@ -507,6 +484,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("[shutdown:communications_scheduler] stop failed (%s)", e)
 
+    # Close the ARQ connection pool if one was created during request handling.
+    try:
+        from backend.app.core.queue import close_arq_pool
+
+        await close_arq_pool()
+    except Exception as e:
+        logger.warning("[shutdown:arq] pool close failed (%s)", e)
+
     # graceful DB disconnect on shutdown
     try:
         dbi = getattr(app.state, "db", None)
@@ -524,6 +509,10 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
+# Register rate-limiting (slowapi + Redis when REDIS_URL set; no-op when disabled).
+# Must run before any public endpoints are decorated with `@limiter.limit(...)`.
+register_rate_limit(app)
+
 # CRITICAL: Register /uploads route FIRST, before any other routes/mounts
 # This ensures it takes precedence over the root StaticFiles mount
 _uploads_dir = os.environ.get("UPLOAD_DIR") or os.path.abspath(
@@ -533,19 +522,48 @@ os.makedirs(_uploads_dir, exist_ok=True)
 
 @app.get("/uploads/{file_path:path}")
 async def serve_upload_file(file_path: str):
-    """Serve uploaded files with correct MIME types."""
-    logger.info(f"[uploads] Serving file: {file_path}")
-    file_full_path = Path(_uploads_dir) / file_path
+    """Serve uploaded files.
+
+    When the active object storage backend is filesystem-based this returns
+    the file directly (unchanged pre-Phase-0 behaviour). When an S3-compatible
+    backend is active and
+    ``settings.object_storage_redirect_uploads_endpoint`` is enabled, we
+    302-redirect to a short-lived presigned URL so legacy clients that still
+    hit ``/uploads/<key>`` keep working without leaking credentials.
+    """
+    from backend.app.core.object_storage import get_object_storage, normalize_key
+    from fastapi.responses import RedirectResponse
+
+    try:
+        key = normalize_key(file_path)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid upload key") from None
+
+    storage = get_object_storage()
+    local_root = storage.local_path("")
+
+    # S3-backed deployment: redirect to a presigned URL and let the bucket /
+    # CDN serve the bytes directly.
+    if local_root is None:
+        if not settings.object_storage_redirect_uploads_endpoint:
+            raise HTTPException(status_code=404, detail="File not found")
+        try:
+            url = storage.presigned_get_url(key)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("[uploads] presign failed for %s: %s", key, exc)
+            raise HTTPException(status_code=500, detail="Storage unavailable") from None
+        return RedirectResponse(url=url, status_code=302)
+
+    # Filesystem backend: serve from disk as before.
+    file_full_path = local_root / key
     if not file_full_path.exists() or not file_full_path.is_file():
         logger.warning(f"[uploads] File not found: {file_full_path}")
         raise HTTPException(status_code=404, detail="File not found")
-    # Ensure file is within uploads directory (security check)
     try:
-        file_full_path.resolve().relative_to(Path(_uploads_dir).resolve())
+        file_full_path.resolve().relative_to(local_root.resolve())
     except ValueError:
         logger.warning(f"[uploads] Access denied: {file_path}")
         raise HTTPException(status_code=403, detail="Access denied")
-    logger.info(f"[uploads] Serving file successfully: {file_path}, size: {file_full_path.stat().st_size}")
     return FileResponse(
         str(file_full_path),
         media_type=None,  # Let FileResponse detect MIME type automatically
@@ -651,6 +669,42 @@ async def _ensure_cross_origin_isolation(request: Request, call_next):
         for header, value in _CROSS_ORIGIN_ISOLATION_HEADERS.items():
             response.headers[header] = value
         response.headers["Content-Security-Policy"] = _FRONTEND_CONTENT_SECURITY_POLICY
+    return response
+
+
+# Attach tenant/user/request context to the Sentry scope and expose X-Request-ID
+@app.middleware("http")
+async def _observability_context(request: Request, call_next):
+    import uuid
+    try:
+        from backend.app.core.observability import bind_request_context
+    except ModuleNotFoundError:  # pragma: no cover
+        from .core.observability import bind_request_context  # type: ignore[no-redef]
+
+    request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
+    tenant_id = (
+        request.headers.get("x-tenant-id")
+        or request.headers.get("X-Tenant-Id")
+    )
+    user_id = (
+        request.headers.get("x-user-id")
+        or request.headers.get("X-User-Id")
+    )
+    try:
+        bind_request_context(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            request_id=request_id,
+            path=request.url.path,
+            method=request.method,
+        )
+    except Exception:
+        pass
+    response = await call_next(request)
+    try:
+        response.headers.setdefault("X-Request-ID", request_id)
+    except Exception:
+        pass
     return response
 
 

@@ -6,6 +6,7 @@ import io
 import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -87,10 +88,80 @@ def _first_present(data: Dict[str, str], *aliases: str) -> Optional[str]:
     return None
 
 
+def _flat_row_needs_meta_coercion(payload: Dict[str, Any]) -> bool:
+    """Same rules as ``service._payload_needs_flat_field_data_coercion`` (avoid import cycles)."""
+    if not isinstance(payload, dict) or not payload:
+        return False
+    entry = payload.get("entry")
+    if isinstance(entry, list) and len(entry) > 0:
+        return False
+    if isinstance(payload.get("field_data"), list):
+        return False
+    return True
+
+
+def _overlay_meta_export_normalization(
+    row: Dict[str, str],
+    *,
+    field_mapping: Optional[Any],
+    base: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Meta Lead Center exports are flat tab/CSV rows with ``ad_id`` = ``ag:…`` in ``field_data`` shape
+    when coerced. The hand-built ``base`` dict omits ``ad_id``, so vacancy routing via
+    ``meta_ads_map`` never runs unless we merge the full normalizer output.
+    """
+    flat: Dict[str, Any] = {k: v for k, v in row.items() if k is not None}
+    if not _flat_row_needs_meta_coercion(flat):
+        return base
+    wrapped = normalizer.coerce_generic_json_to_meta_normalizer_payload(flat)
+    rich = normalizer.normalize_meta_payload(wrapped, field_mapping=field_mapping)
+    out = dict(base)
+    merge_keys = (
+        "ad_id",
+        "phone",
+        "email",
+        "first_name",
+        "last_name",
+        "full_name",
+        "phone_country_code",
+        "preferred_contact",
+        "poland_stay_basis",
+        "poland_stay_basis_raw",
+        "driving_experience_in_europe",
+        "experience_eu_years",
+        "geo_country",
+        "geo_country_raw",
+        "country",
+        "country_raw",
+        "in_poland",
+        "utm",
+        "company_id",
+        "company_name_hint",
+        "vacancy_id",
+        "vacancy_hint",
+        "vacancy_id_hint",
+    )
+    for k in merge_keys:
+        v = rich.get(k)
+        if v is None:
+            continue
+        if isinstance(v, str) and not v.strip():
+            continue
+        out[k] = v
+    if rich.get("raw_field_names"):
+        out["raw_field_names"] = rich["raw_field_names"]
+    if rich.get("company_hints"):
+        out["company_hints"] = rich["company_hints"]
+    return out
+
+
 def _normalize_row(
     tenant_id: str,
     row: Dict[str, str],
     headers: List[str],
+    *,
+    field_mapping: Optional[Any] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
     lower_map = {_normalize_header(k): v for k, v in row.items()}
 
@@ -123,7 +194,14 @@ def _normalize_row(
     if company_name_hint:
         company_hints.append(company_name_hint)
 
-    vacancy_id_hint = lower_map.get("vacancy_id") or None
+    vcol = lower_map.get("vacancy_id")
+    vacancy_id_hint = (str(vcol).strip() if vcol else None) or None
+    vacancy_id_resolved: Optional[str] = None
+    if vacancy_id_hint:
+        try:
+            vacancy_id_resolved = str(UUID(vacancy_id_hint))
+        except ValueError:
+            vacancy_id_resolved = None
 
     if not email and not phone:
         raise LeadImportJobError("ROW_NO_CONTACTS")
@@ -132,8 +210,12 @@ def _normalize_row(
     dedupe_hash = hashlib.sha256(dedupe_seed.encode("utf-8")).hexdigest()
     external_id = f"{IMPORT_SOURCE}:{dedupe_hash}"
 
+    raw_lead_key = (
+        _first_present(lower_map, "id", "leadgen_id", "external_id") or external_id
+    )
+
     normalized: Dict[str, Any] = {
-        "raw_lead_id": row.get("external_id") or external_id,
+        "raw_lead_id": raw_lead_key,
         "first_name": first_name,
         "last_name": last_name,
         "full_name": full_name or f"{first_name} {last_name}".strip(),
@@ -147,8 +229,22 @@ def _normalize_row(
         "company_name_hint": company_name_hint,
         "company_hints": company_hints,
         "vacancy_id_hint": vacancy_id_hint,
+        "vacancy_id": vacancy_id_resolved,
         "raw_field_names": headers,
     }
+
+    ad_raw = _first_present(lower_map, "ad_id", "adset_id", "adgroup_id")
+    parsed_ad = normalizer.parse_meta_export_ad_id(ad_raw) if ad_raw else None
+    if parsed_ad is not None:
+        normalized["ad_id"] = parsed_ad
+
+    # Full Meta Lead Center row: merge routing + criteria fields (same as webhook reprocess).
+    # Require ``ad_id`` — plain CRM CSVs often have ``company_id`` / ``vacancy_id`` only and must
+    # not be passed through the Meta normalizer overlay.
+    if any(_normalize_header(h) == "ad_id" for h in headers):
+        normalized = _overlay_meta_export_normalization(
+            row, field_mapping=field_mapping, base=normalized
+        )
 
     payload = dict(row)
     return normalized, payload, external_id

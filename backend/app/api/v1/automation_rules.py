@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.automation_rule import AutomationRule
+from backend.app.services import billing_restrictions
 from backend.app.services.automation_rules import TRIGGERS
 from backend.app.services.plan_feature_gates import (
     ensure_automation_rules_enabled_count_allows_transition,
@@ -252,6 +253,7 @@ async def create_rule(
     _validate_rule_payload(trigger=body.trigger, conditions=body.conditions, actions=body.actions)
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id)
     await ensure_automation_rules_mutation_allowed(db, tenant_id)
     await ensure_automation_rules_enabled_count_allows_transition(
         db,
@@ -309,6 +311,7 @@ async def patch_rule(
         and body.actions is None
     )
     if not only_disable:
+        await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id)
         await ensure_automation_rules_mutation_allowed(db, tenant_id)
     if body.enabled is not None:
         await ensure_automation_rules_enabled_count_allows_transition(
@@ -359,6 +362,7 @@ async def delete_rule(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id)
     row = await db.execute(select(AutomationRule).where(AutomationRule.tenant_id == tenant_id, AutomationRule.id == rule_id))
     rule = row.scalar_one_or_none()
     if not rule:

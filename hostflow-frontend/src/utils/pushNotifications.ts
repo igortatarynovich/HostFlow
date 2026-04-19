@@ -100,27 +100,20 @@ export async function subscribeToPush(
 
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: key,
+      // PushManager's lib.dom typings expect `BufferSource`; the helper returns
+      // `Uint8Array<ArrayBufferLike>` which TS doesn't accept directly because
+      // the underlying buffer slot is wider than `ArrayBuffer`. Pass the
+      // backing buffer slice to match BufferSource exactly.
+      applicationServerKey: key.buffer.slice(
+        key.byteOffset,
+        key.byteOffset + key.byteLength,
+      ) as ArrayBuffer,
     })
 
     return subscription
   } catch (error) {
     console.error('Failed to subscribe to push:', error)
     throw error
-  }
-}
-
-/**
- * Unsubscribe from push notifications
- */
-export async function unsubscribeFromPush(
-  subscription: PushSubscription
-): Promise<boolean> {
-  try {
-    return await subscription.unsubscribe()
-  } catch (error) {
-    console.error('Failed to unsubscribe from push:', error)
-    return false
   }
 }
 

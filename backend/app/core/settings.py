@@ -98,6 +98,17 @@ class Settings(BaseSettings):
     webhook_timeout: Optional[int] = None
     meta_webhook_secret: Optional[str] = None
     meta_credentials_key: Optional[str] = None
+    # Self-serve Meta onboarding (paid tenants): expose in GET /settings/leads/meta/self-serve-onboarding
+    meta_leads_app_id: Optional[str] = None
+    meta_leads_app_display_name: str = "HostFlow Leads"
+    meta_leads_docs_url: Optional[str] = None
+    meta_graph_api_version: str = "v24.0"
+    # Optional: same App Secret as Meta app (shared app). Shown only to tenant administrators in API.
+    meta_leads_shared_app_secret: Optional[str] = None
+    # Optional override for Facebook Login redirect (must match Meta app «Valid OAuth Redirect URIs»).
+    meta_leads_oauth_redirect_uri: Optional[str] = None
+    # Override Focus default for superadmin+bootstrap Meta remap; use off|disable|none|false|0 to disable (forks).
+    meta_leads_operational_tenant_id: Optional[str] = None
     pull_field_data_from_graph: bool = True
     auth_token_ttl_minutes: int = 720
 
@@ -152,6 +163,72 @@ class Settings(BaseSettings):
     stripe_price_storage_pack_50gb: Optional[str] = None
     storage_pack_50gb_increment_gb: int = 50
     stripe_portal_return_url: Optional[str] = None
+
+    # Observability (Sentry + structured logging)
+    # When sentry_dsn is unset, Sentry is a no-op; the app runs exactly as before.
+    sentry_dsn: Optional[str] = None
+    sentry_environment: Optional[str] = None  # e.g. "production", "staging", "development"
+    sentry_release: Optional[str] = None  # e.g. git SHA; surfaced in Sentry issue
+    sentry_traces_sample_rate: float = 0.1  # 10% performance trace sampling by default
+    sentry_profiles_sample_rate: float = 0.0  # off by default (extra cost)
+    sentry_send_default_pii: bool = False  # never send default PII unless explicitly enabled
+    # Logging format: "text" (default, human-readable for dev) or "json" (structured for aggregators)
+    log_format: str = "text"
+    log_level: str = "INFO"
+
+    # Rate limiting (public endpoints). Backed by Redis when REDIS_URL is set.
+    # Values follow slowapi syntax: "N/period" where period ∈ {second, minute, hour, day}.
+    rate_limit_enabled: bool = True
+    rate_limit_storage_url: Optional[str] = None  # falls back to REDIS_URL then memory://
+    rate_limit_login: str = "10/minute"
+    rate_limit_signup: str = "5/hour"
+    rate_limit_password_reset: str = "5/hour"
+    rate_limit_public_intake: str = "20/hour"
+    rate_limit_magic_link: str = "5/hour"
+    rate_limit_public_default: str = "60/minute"
+
+    # Background job queue (ARQ / Redis). When `job_queue_backend == "inprocess"` (default)
+    # `app.core.queue.enqueue()` keeps firing asyncio.create_task in the request process —
+    # exactly as before. When set to "arq" the same API pushes jobs into ARQ/Redis instead,
+    # and a separate `arq backend.app.core.arq_worker.WorkerSettings` worker drains the queue.
+    # `job_queue_redis_url` defaults to REDIS_URL when unset.
+    job_queue_backend: str = "inprocess"  # "inprocess" | "arq"
+    job_queue_redis_url: Optional[str] = None
+    job_queue_name: str = "hostflow:jobs"
+    job_queue_default_timeout_sec: int = 120
+    job_queue_max_tries: int = 5
+    # When offloading Stripe webhook handlers to ARQ we still return 200 immediately
+    # and let the worker retry — but the signature + idempotency claim still happen
+    # on the request path. Set this to false to force inline processing even with ARQ.
+    job_queue_stripe_webhook_async: bool = True
+
+    # Object storage (Phase 0 #6). "fs" keeps the historical UPLOAD_DIR layout served
+    # via `/uploads/<path>` (default, zero-migration). "s3" routes writes through
+    # `app.core.object_storage` to an S3-compatible bucket (AWS S3, MinIO, Cloudflare R2, …)
+    # and emits presigned URLs for downloads. `object_storage_bucket` is required when
+    # backend=="s3"; other s3_* fields default to MinIO-in-docker-compose values.
+    object_storage_backend: str = "fs"  # "fs" | "s3"
+    object_storage_bucket: Optional[str] = None
+    object_storage_region: str = "us-east-1"
+    object_storage_endpoint_url: Optional[str] = None  # e.g. http://minio:9000 for MinIO
+    object_storage_access_key_id: Optional[str] = None
+    object_storage_secret_access_key: Optional[str] = None
+    object_storage_public_base_url: Optional[str] = None  # optional CDN prefix for public reads
+    # Force path-style addressing (required for MinIO, Ceph RGW, Backblaze, …).
+    object_storage_use_path_style: bool = True
+    # TTL for presigned GET URLs handed to clients (seconds).
+    object_storage_presign_expires_sec: int = 900
+    # When true (default), `/uploads/<key>` handler 302-redirects to a presigned URL
+    # instead of serving the file from disk. Set to false to keep direct file serving
+    # during an intermediate migration window.
+    object_storage_redirect_uploads_endpoint: bool = True
+
+    # Cloudflare Turnstile (CAPTCHA). No-op when turnstile_secret_key is unset.
+    # Sitekey flows to the frontend via a public config endpoint or build-time env.
+    turnstile_enabled: bool = False
+    turnstile_secret_key: Optional[str] = None
+    turnstile_sitekey: Optional[str] = None  # exposed publicly; used by frontend widget
+    turnstile_verify_url: str = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
     if PYDANTIC_V2:
         _model_cfg: dict[str, object] = {

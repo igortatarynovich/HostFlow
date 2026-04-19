@@ -96,6 +96,12 @@ async def list_leads_endpoint(
         max_length=64,
         description="Exact Lead.error filter (whitelist: LEAD_FIT_NO_MATCH, LEAD_FIT_NEEDS_INFO). Ignored when lost_reason_code or lost_from_crm_stage is set.",
     ),
+    created_before_hours: int | None = Query(
+        None,
+        ge=1,
+        le=8760,
+        description="When set, only leads with created_at older than now minus this many hours (e.g. 24 with status=new for stale new leads).",
+    ),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
@@ -173,6 +179,7 @@ async def list_leads_endpoint(
         lost_reason_code=lrc,
         lost_from_crm_stage=lf_crm,
         pipeline_error=pipeline_error,
+        created_before_hours=created_before_hours,
         limit=limit,
         offset=offset,
     )
@@ -551,6 +558,7 @@ async def update_lead_stage_endpoint(
         vacancy_title=None,
         source=lead.source,
         ad_id=lead.ad_id,
+        external_id=getattr(lead, "external_id", None),
         status=lead.status,  # type: ignore[arg-type]
         stage=lead.stage,
         funnel_id=PyUUID(lead.funnel_id) if lead.funnel_id else None,
@@ -571,6 +579,50 @@ async def update_lead_stage_endpoint(
     )
 
 
+@router.delete("/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_lead_endpoint(
+    lead_id: str,
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    own_company_id: str = Depends(resolve_active_own_company_id),
+    _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
+) -> None:
+    """Permanently remove a lead (e.g. test / mistaken ingest). Does not delete linked candidates."""
+    from backend.app.modules.leads import crud
+
+    db, tenant_uuid = db_tenant
+    tenant_id_str = str(tenant_uuid)
+    res = await service.list_leads(
+        db,
+        tenant_id=tenant_id_str,
+        own_company_id=own_company_id,
+        only_lead_id=lead_id,
+        limit=1,
+        offset=0,
+    )
+    if not res.items:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    deleted = await crud.delete_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    actor_id = str(current_user.sub or "").strip() or None
+    try:
+        await log_activity(
+            db,
+            tenant_id=tenant_id_str,
+            actor_id=actor_id,
+            action="lead.delete",
+            target_type="lead",
+            target_id=str(lead_id),
+            payload={"source": res.items[0].source if res.items else None},
+        )
+    except Exception:
+        pass
+    await db.commit()
+
+
 @router.post("/bulk/auto-process-queue", response_model=BulkAutoProcessQueueResponse)
 async def bulk_auto_process_meta_queue_endpoint(
     body: BulkAutoProcessQueueRequest,
@@ -580,8 +632,8 @@ async def bulk_auto_process_meta_queue_endpoint(
     _role: str = Depends(require_roles(Role.admin, Role.manager, Role.recruiter)),
 ) -> BulkAutoProcessQueueResponse:
     """
-    §2.3 Auto-fix: run Meta pipeline for leads in needs_routing / failed (up to max_items).
-    Gated to Team-tier plans (same set as automation / distribution upsell).
+    §2.3 Auto-fix: re-run lead processing for Meta **and csv_import** leads stuck in needs_routing / failed
+    (up to max_items). Same Team-tier gate as other bulk lead automation helpers.
     """
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
@@ -595,11 +647,20 @@ async def bulk_auto_process_meta_queue_endpoint(
                 "plan": plan,
             },
         )
+    tenant_row = await db.get(Tenant, tenant_id_str)
+    lic_row = (
+        await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id_str).limit(1))
+    ).scalar_one_or_none()
+    billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
     raw = await service.bulk_auto_process_meta_lead_queue(
         db,
         tenant_id=tenant_id_str,
         own_company_id=own_company_id or None,
         max_items=body.max_items,
+        only_without_candidate=body.only_without_candidate,
+        error_equals=body.error_equals,
+        concurrency=body.concurrency,
+        force_candidate_conversion=body.force_candidate_conversion,
     )
     items = [BulkAutoProcessQueueItemOut(**row) for row in raw["results"]]
     return BulkAutoProcessQueueResponse(
@@ -634,6 +695,11 @@ async def bulk_process_new_meta_queue_endpoint(
                 "plan": plan,
             },
         )
+    tenant_row = await db.get(Tenant, tenant_id_str)
+    lic_row = (
+        await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id_str).limit(1))
+    ).scalar_one_or_none()
+    billing_restrictions.ensure_billing_allows_side_effects(tenant_row, lic_row)
     raw = await service.bulk_auto_process_meta_lead_queue(
         db,
         tenant_id=tenant_id_str,
@@ -641,6 +707,8 @@ async def bulk_process_new_meta_queue_endpoint(
         max_items=body.max_items,
         statuses=("new",),
         prefer_oldest_first=True,
+        concurrency=body.concurrency,
+        force_candidate_conversion=body.force_candidate_conversion,
     )
     items = [BulkAutoProcessQueueItemOut(**row) for row in raw["results"]]
     return BulkAutoProcessQueueResponse(
@@ -872,17 +940,23 @@ async def process_lead_endpoint(
     """
     Manually process (route/convert) a stored lead.
 
-    Currently supported: Meta leads (source='meta') with stored payload.
+    Supported sources: ``meta``, ``csv_import`` (same pipeline as Meta; source must match the row).
     """
     from backend.app.modules.leads import crud
+
+    _MANUAL_PROCESS_SOURCES = frozenset({"meta", "csv_import"})
 
     db, tenant_id = db_tenant
     tenant_id_str = str(tenant_id)
     lead = await crud.get_lead(db, tenant_id=tenant_id_str, lead_id=lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
-    if str(getattr(lead, "source", "") or "").strip().lower() != "meta":
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lead processing is only available for Meta leads")
+    lead_src = str(getattr(lead, "source", "") or "").strip().lower()
+    if lead_src not in _MANUAL_PROCESS_SOURCES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Lead processing is only available for Meta or CSV-import leads",
+        )
     if not getattr(lead, "payload", None):
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Lead payload is missing")
 
@@ -896,7 +970,7 @@ async def process_lead_endpoint(
             target_id=str(lead.id),
             payload={
                 "lead_id": str(lead.id),
-                "source": "meta",
+                "source": lead_src,
                 "status_before": getattr(lead, "status", None),
                 "stage_before": getattr(lead, "stage", None),
             },
@@ -908,13 +982,24 @@ async def process_lead_endpoint(
     # we must force re-processing. Otherwise the service will skip the pipeline.
     force_existing = bool(getattr(lead, "candidate_id", None) is None) and getattr(lead, "status", None) in {"processed", "duplicated"}
 
+    prior_norm = getattr(lead, "normalized", None)
+    if not isinstance(prior_norm, dict):
+        prior_norm = None
+
     try:
-        result = await service.process_meta_lead(
+        result = await service.reprocess_stored_lead_payload(
             db=db,
             tenant_id=tenant_id_str,
             payload=lead.payload,
             own_company_id=own_company_id,
+            source=lead_src,
             force_existing=force_existing,
+            external_id_hint=(str(lead.external_id).strip() if getattr(lead, "external_id", None) else None),
+            prior_normalized=prior_norm,
+            stored_db_vacancy_id=(str(lead.vacancy_id).strip() if getattr(lead, "vacancy_id", None) else None)
+            or None,
+            stored_db_ad_id=getattr(lead, "ad_id", None),
+            stored_lead_id=str(lead.id),
         )
     except service.LeadProcessingError as exc:
         raise service.lead_processing_error_as_http(exc) from exc

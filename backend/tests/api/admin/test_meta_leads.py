@@ -2,12 +2,15 @@ import hashlib
 import hmac
 import json
 import uuid
+from unittest.mock import AsyncMock
 
 import pytest
 import sqlalchemy as sa
 
 from backend.app.db.session import async_session_maker
 from backend.app.core.settings import settings
+from backend.app.modules.leads import meta_oauth_service as meta_oauth_service_mod
+from backend.tests.conftest import DEFAULT_TENANT_ID, _build_token, _init_data
 
 
 async def _ensure_company(session, tenant_id: str) -> str:
@@ -90,7 +93,8 @@ async def test_meta_leads_settings_patch(client, manager_headers, tenant_id):
                 SET
                     auto_create_enabled = TRUE,
                     mask_pii_in_logs = TRUE,
-                    pull_field_data_from_graph = TRUE
+                    pull_field_data_from_graph = TRUE,
+                    leads_auto_convert_on_fit_v1 = TRUE
                 WHERE tenant_id = :tenant_id
                 """
             ),
@@ -426,3 +430,262 @@ async def test_settings_leads_forbidden_for_supervisor(client, supervisor_header
         json={"auto_create_enabled": False},
     )
     assert resp.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_meta_graph_field_preview_ok(client, manager_headers, monkeypatch):
+    from backend.app.modules.leads import pipeline
+
+    async def fake_fetch(lead_id: str, access_token: str):
+        assert lead_id == "L1"
+        assert access_token == "TOK111"
+        return {
+            "field_data": [
+                {"name": "email", "values": ["a@b.co"]},
+                {"name": "Custom_Question", "values": ["x"]},
+            ],
+            "ad_id": 99,
+            "form_id": "FORM1",
+        }
+
+    monkeypatch.setattr(pipeline, "fetch_meta_lead_field_data_from_graph", fake_fetch)
+
+    cred = await client.post(
+        "/api/v1/settings/leads/credentials",
+        headers=manager_headers,
+        json={"label": "gp", "secret": "sec", "page_id": "PAGE99", "access_token": "TOK111"},
+    )
+    assert cred.status_code == 201, cred.text
+
+    resp = await client.post(
+        "/api/v1/settings/leads/meta/graph-field-preview",
+        headers=manager_headers,
+        json={"leadgen_id": "L1", "page_id": "PAGE99"},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["leadgen_id"] == "L1"
+    assert data["page_id"] == "PAGE99"
+    assert data["form_id"] == "FORM1"
+    assert data["ad_id"] == "99"
+    assert data["field_names"] == ["custom_question", "email"]
+
+
+@pytest.mark.anyio
+async def test_meta_graph_field_preview_requires_ids(client, manager_headers):
+    resp = await client.post(
+        "/api/v1/settings/leads/meta/graph-field-preview",
+        headers=manager_headers,
+        json={},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_meta_graph_field_preview_graph_error(client, manager_headers, monkeypatch):
+    from backend.app.modules.leads import pipeline
+
+    async def boom(_lead_id: str, _token: str):
+        raise pipeline.GraphAPIError("190", "expired")
+
+    monkeypatch.setattr(pipeline, "fetch_meta_lead_field_data_from_graph", boom)
+
+    cred = await client.post(
+        "/api/v1/settings/leads/credentials",
+        headers=manager_headers,
+        json={"label": "gx", "secret": "sec", "page_id": "P2", "access_token": "T2"},
+    )
+    assert cred.status_code == 201, cred.text
+
+    resp = await client.post(
+        "/api/v1/settings/leads/meta/graph-field-preview",
+        headers=manager_headers,
+        json={"leadgen_id": "LX", "page_id": "P2"},
+    )
+    assert resp.status_code == 502
+    detail = resp.json().get("detail")
+    assert isinstance(detail, dict)
+    assert detail.get("code") == "meta_graph_error"
+
+
+@pytest.mark.anyio
+async def test_meta_self_serve_onboarding_admin(client, manager_headers, tenant_id, monkeypatch):
+    monkeypatch.setattr(settings, "meta_leads_app_id", "1102404865044655", raising=False)
+    monkeypatch.setattr(settings, "meta_leads_shared_app_secret", "shared-secret-test", raising=False)
+    monkeypatch.setattr(settings, "public_api_base_url", "https://api.test.example", raising=False)
+    patch_resp = await client.patch(
+        "/api/v1/settings/leads/settings",
+        headers=manager_headers,
+        json={"webhook_verify_token": "verify-tenant-xyz"},
+    )
+    assert patch_resp.status_code == 200, patch_resp.text
+
+    resp = await client.get("/api/v1/settings/leads/meta/self-serve-onboarding", headers=manager_headers)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["meta_app_id"] == "1102404865044655"
+    assert data["shared_meta_app_secret"] == "shared-secret-test"
+    assert data["public_api_base_configured"] is True
+    assert data["webhook_verify_token_configured"] is True
+    url = data.get("webhook_callback_url") or ""
+    assert url.startswith("https://api.test.example/api/v1/leads/meta/webhook")
+    assert "verify-tenant-xyz" in url
+    assert "pages_read_engagement" in data.get("graph_permission_names", [])
+
+
+@pytest.mark.anyio
+async def test_meta_self_serve_onboarding_supervisor_hides_secret(
+    client, manager_headers, supervisor_headers, tenant_id, monkeypatch
+):
+    monkeypatch.setattr(settings, "meta_leads_shared_app_secret", "shared-secret-test", raising=False)
+    await client.patch(
+        "/api/v1/settings/leads/settings",
+        headers=manager_headers,
+        json={"webhook_verify_token": "v1"},
+    )
+    resp = await client.get("/api/v1/settings/leads/meta/self-serve-onboarding", headers=supervisor_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json().get("shared_meta_app_secret") is None
+
+
+@pytest.mark.anyio
+async def test_meta_self_serve_onboarding_includes_oauth_flags(client, manager_headers, tenant_id, monkeypatch):
+    monkeypatch.setattr(settings, "meta_leads_app_id", "1102404865044655", raising=False)
+    monkeypatch.setattr(settings, "meta_leads_shared_app_secret", "sec", raising=False)
+    monkeypatch.setattr(settings, "frontend_url", "https://app.test.example", raising=False)
+    monkeypatch.setattr(settings, "meta_leads_oauth_redirect_uri", None, raising=False)
+    async with async_session_maker() as session:
+        await session.execute(
+            sa.text("UPDATE tenant_licenses SET plan = 'team' WHERE tenant_id = :t"),
+            {"t": tenant_id},
+        )
+        await session.commit()
+    resp = await client.get("/api/v1/settings/leads/meta/self-serve-onboarding", headers=manager_headers)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data.get("oauth_quick_connect_enabled") is True
+    assert data.get("meta_oauth_plan_allowed") is True
+    assert data.get("meta_oauth_server_ready") is True
+    assert "app.test.example/app/settings/integrations/meta" in (data.get("oauth_redirect_uri") or "")
+
+
+@pytest.mark.anyio
+async def test_meta_oauth_start_403_on_starter_plan(client, manager_headers, tenant_id):
+    async with async_session_maker() as session:
+        await session.execute(
+            sa.text("UPDATE tenant_licenses SET plan = 'starter' WHERE tenant_id = :t"),
+            {"t": tenant_id},
+        )
+        await session.commit()
+    resp = await client.post("/api/v1/settings/leads/meta/oauth/start", headers=manager_headers)
+    assert resp.status_code == 403, resp.text
+    assert resp.json().get("detail", {}).get("code") == "plan_meta_leads_oauth"
+
+
+@pytest.mark.anyio
+async def test_meta_oauth_complete_and_finalize_mocked(client, manager_headers, tenant_id, monkeypatch):
+    monkeypatch.setattr(settings, "meta_leads_app_id", "app-id-test", raising=False)
+    monkeypatch.setattr(settings, "meta_leads_shared_app_secret", "app-secret-test", raising=False)
+    monkeypatch.setattr(settings, "frontend_url", "https://app.test.example", raising=False)
+    async with async_session_maker() as session:
+        await session.execute(
+            sa.text("UPDATE tenant_licenses SET plan = 'team' WHERE tenant_id = :t"),
+            {"t": tenant_id},
+        )
+        await session.commit()
+
+    monkeypatch.setattr(
+        meta_oauth_service_mod,
+        "exchange_code_for_short_lived_user_token",
+        AsyncMock(return_value="short_user"),
+    )
+    monkeypatch.setattr(
+        meta_oauth_service_mod,
+        "exchange_for_long_lived_user_token",
+        AsyncMock(return_value="long_user"),
+    )
+    monkeypatch.setattr(
+        meta_oauth_service_mod,
+        "fetch_pages_with_tokens",
+        AsyncMock(
+            return_value=[
+                {"id": "123456789", "name": "Test Page", "access_token": "page-token-xyz"},
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        meta_oauth_service_mod,
+        "subscribe_page_leadgen",
+        AsyncMock(return_value=None),
+    )
+
+    st_resp = await client.post("/api/v1/settings/leads/meta/oauth/start", headers=manager_headers)
+    assert st_resp.status_code == 200, st_resp.text
+    state = st_resp.json()["state"]
+
+    co_resp = await client.post(
+        "/api/v1/settings/leads/meta/oauth/complete",
+        headers=manager_headers,
+        json={"code": "fake-code", "state": state},
+    )
+    assert co_resp.status_code == 200, co_resp.text
+    pending_id = co_resp.json()["pending_id"]
+    assert co_resp.json()["pages"] == [{"id": "123456789", "name": "Test Page"}]
+
+    fin_resp = await client.post(
+        "/api/v1/settings/leads/meta/oauth/finalize",
+        headers=manager_headers,
+        json={
+            "pending_id": pending_id,
+            "page_id": "123456789",
+            "label": "OAuth Page",
+            "subscribe_leadgen": True,
+        },
+    )
+    assert fin_resp.status_code == 200, fin_resp.text
+    body = fin_resp.json()
+    assert body.get("subscribed_leadgen") is True
+    assert body.get("credential", {}).get("label") == "OAuth Page"
+
+
+@pytest.mark.anyio
+async def test_superadmin_bootstrap_meta_uses_operational_tenant(client, monkeypatch):
+    """META_LEADS_OPERATIONAL_TENANT_ID: superadmin on legacy default tenant reads/writes Meta on ops tenant."""
+    op_id = str(uuid.uuid4())
+    op_name = f"Operational Meta {op_id[:8]}"
+    async with async_session_maker() as session:
+        await session.execute(
+            sa.text(
+                """
+                INSERT INTO tenants (id, name, slug, api_key, is_active, type, status)
+                VALUES (:id, :name, :slug, :key, true, 'agency', 'active')
+                ON CONFLICT (id) DO NOTHING
+                """
+            ),
+            {
+                "id": op_id,
+                "name": op_name,
+                "slug": f"op-{op_id[:8]}",
+                "key": uuid.uuid4().hex[:32],
+            },
+        )
+        await session.commit()
+
+    monkeypatch.setattr(settings, "meta_leads_operational_tenant_id", op_id, raising=False)
+
+    data = await _init_data()
+    sa_token = _build_token(data["admin_id"], data["admin_email"], "superadmin", DEFAULT_TENANT_ID)
+    sa_headers = {"Authorization": f"Bearer {sa_token}", "X-Tenant-Id": DEFAULT_TENANT_ID}
+
+    r = await client.get("/api/v1/settings/leads/meta/self-serve-onboarding", headers=sa_headers)
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body.get("meta_leads_context_redirected") is True
+    assert body.get("meta_leads_data_tenant_id") == op_id
+    assert body.get("meta_leads_data_tenant_name") == op_name
+
+    adm_token = _build_token(data["admin_id"], data["admin_email"], "administrator", DEFAULT_TENANT_ID)
+    adm_headers = {"Authorization": f"Bearer {adm_token}", "X-Tenant-Id": DEFAULT_TENANT_ID}
+    r2 = await client.get("/api/v1/settings/leads/meta/self-serve-onboarding", headers=adm_headers)
+    assert r2.status_code == 200, r2.text
+    assert r2.json().get("meta_leads_context_redirected") is False

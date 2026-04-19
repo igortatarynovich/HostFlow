@@ -57,3 +57,24 @@ export interface DocumentEntry {
   files?: File[];
 }
 
+/**
+ * Step keys used by the guided public-apply flow. Mirrors the literal tuple
+ * `STEP_KEYS` declared at the top of `pages/public/PublicApplyPage.tsx` so
+ * page-level usage and module-level helpers stay in sync.
+ */
+export type StepKey =
+  | 'overview'
+  | 'contacts'
+  | 'personal'
+  | 'experience'
+  | 'employment'
+  | 'documents'
+  | 'agreements';
+
+/** Generic option shape for chip-style multi-select fields (trailers, routes). */
+export interface MultiSelectOption {
+  value: string;
+  /** i18n key resolved at render time. */
+  labelKey: string;
+}
+

@@ -1,8 +1,5 @@
 import type { TeamOverviewResponse } from '../api/types'
 
-/** Sidebar item keys / tab keys for orders, services catalog, invoices. */
-export const FINANCE_NAV_ORDER = ['service-orders', 'services', 'invoices'] as const
-
 export type NavPlanTier = 'starter' | 'team' | 'pro' | null
 
 export type BusinessTypeNav = 'agency' | 'employer' | 'services'

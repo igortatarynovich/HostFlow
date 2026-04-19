@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getCommunicationsSettings, patchCommunicationsSettings } from '../../api/communications'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
@@ -94,7 +95,7 @@ export default function CommunicationsSlaSettingsPage() {
   const toggleMutedChannel = (channel: string, enabled: boolean) => {
     if (!sla) return
     const current = Array.isArray(sla.mutedChannels) ? sla.mutedChannels.map((x: any) => String(x).toLowerCase()) : []
-    const next = enabled ? Array.from(new Set([...current, channel])) : current.filter((x) => x !== channel)
+    const next = enabled ? Array.from(new Set([...current, channel])) : current.filter((x: string) => x !== channel)
     patchSla({ mutedChannels: next })
   }
 
@@ -181,27 +182,27 @@ export default function CommunicationsSlaSettingsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('admin.communications_sla.title', { defaultValue: 'SLA settings' })}</h1>
-          <p className="text-sm text-slate-500">{t('admin.communications_sla.subtitle', { defaultValue: 'Escalation policy for overdue communication threads.' })}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to={CRM_APP_PATHS.settingsCommunications} className="btn-secondary">
-            {t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
-          </Link>
+      <SettingsSubpageHeader
+        backHref={CRM_APP_PATHS.settingsCommunications}
+        backLabel={t('admin.communications_sla.actions.all', { defaultValue: 'All communication settings' })}
+        kicker={t('admin.communications_sla.header_kicker')}
+        title={t('admin.communications_sla.title', { defaultValue: 'SLA settings' })}
+        subtitle={t('admin.communications_sla.subtitle', {
+          defaultValue: 'Escalation policy for overdue communication threads.',
+        })}
+        actions={
           <Link to={CRM_APP_PATHS.settingsCommunicationsQueue} className="btn-secondary">
             {t('admin.settings.cards.communications_queue.label', { defaultValue: 'Queue settings' })}
           </Link>
-        </div>
-      </div>
+        }
+      />
 
-      {loading && <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
+      {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
       {error && (
         <ErrorRecoveryBanner
           info={error}
           onRetry={() => window.location.reload()}
-          retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          retryLabel={t('common.actions.refresh')}
           {...friendlyErrorBannerSecondary(
             error,
             CRM_APP_PATHS.settingsCommunications,
@@ -369,7 +370,7 @@ export default function CommunicationsSlaSettingsPage() {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
+          <div className="text-sm text-slate-500">{t('common.loading')}</div>
         )}
       </div>
     </div>

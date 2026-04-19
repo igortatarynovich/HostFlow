@@ -19,7 +19,8 @@ import { usePermissions, type Permission } from '../hooks/usePermissions'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { ACTIVATION_PATHS, getBusinessHomePath, getBusinessNextActionPath } from '../app/activationRoutes'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-
+import { resolveBrandingSetupHref } from '../nav/workspaceQuickSetupNav'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 type OnboardingStepCard = {
   key: string
   done: boolean
@@ -130,6 +131,8 @@ export default function OnboardingGettingStartedPage() {
     [status, businessType, t, can, entitySingular, openEntityLabel],
   )
 
+  const brandingSetupHref = useMemo(() => resolveBrandingSetupHref(can), [can])
+
   const primaryLaunchAction = useMemo(() => {
     if (businessType === 'employer') {
       return {
@@ -203,6 +206,8 @@ export default function OnboardingGettingStartedPage() {
         </div>
       </section>
 
+      <PageBreadcrumb className="max-w-3xl" />
+
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">
           {t('app.onboarding.getting_started.quick_setup_title')}
@@ -213,7 +218,7 @@ export default function OnboardingGettingStartedPage() {
         <ul className="mt-4 space-y-2 text-sm">
           <li>
             <Link
-              to={CRM_APP_PATHS.settingsTenants}
+              to={brandingSetupHref}
               className="flex items-start gap-2 rounded-lg border border-transparent px-2 py-1.5 hover:border-slate-200 hover:bg-slate-50"
             >
               <IconPhoto size={18} stroke={1.8} className="mt-0.5 shrink-0 text-slate-500" />
@@ -291,6 +296,9 @@ export default function OnboardingGettingStartedPage() {
           <p className="text-xs font-medium text-slate-700">
             {t('app.onboarding.getting_started.comms_title')}
           </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {t('app.onboarding.getting_started.comms_subtitle')}
+          </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Link
               to={CRM_APP_PATHS.settingsIntegrations}
@@ -300,14 +308,14 @@ export default function OnboardingGettingStartedPage() {
               {t('app.onboarding.getting_started.comms_telegram')}
             </Link>
             <Link
-              to={CRM_APP_PATHS.settingsEmail}
+              to={CRM_APP_PATHS.settingsIntegrations}
               className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-300"
             >
               <IconMail size={14} stroke={1.8} />
               {t('app.onboarding.getting_started.comms_email')}
             </Link>
             <Link
-              to={CRM_APP_PATHS.settingsCommunications}
+              to={CRM_APP_PATHS.settingsIntegrations}
               className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 hover:border-slate-300"
             >
               <IconBrandWhatsapp size={14} stroke={1.8} />

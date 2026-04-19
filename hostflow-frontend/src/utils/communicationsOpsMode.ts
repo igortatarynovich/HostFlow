@@ -23,14 +23,6 @@ export function slaSnoozedUntilFromThread(thread: CommunicationThread): string |
   return raw || null
 }
 
-export function opsModeLabel(mode: CommunicationOpsMode | null): string {
-  if (mode === 'in_work') return 'In work'
-  if (mode === 'later') return 'Later'
-  if (mode === 'no_reply_needed') return 'No reply needed'
-  if (mode === 'escalated') return 'Escalated'
-  return 'No mode'
-}
-
 export function opsModeFromThread(thread: CommunicationThread): CommunicationOpsMode | null {
   const meta = (thread.thread_meta || {}) as Record<string, any>
   const ops = (meta.ops || {}) as Record<string, any>

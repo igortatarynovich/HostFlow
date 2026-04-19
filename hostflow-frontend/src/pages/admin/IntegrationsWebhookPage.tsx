@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import clsx from 'clsx'
 import { Link } from 'react-router-dom'
 
 import {
@@ -12,6 +13,7 @@ import type {
   MetaLeadSettings,
 } from '../../api/types'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useI18n } from '../../i18n'
 import { useLicenseStatus } from '../../hooks/useLicenseStatus'
 import { ACTIVATION_PATHS } from '../../app/activationRoutes'
@@ -114,15 +116,40 @@ export default function IntegrationsWebhookPage() {
     (import.meta.env.VITE_API_BASE as string | undefined) ||
     ''
 
+  const webhookStepHighlight = useMemo(() => {
+    if (settingsLoading) return 1
+    if (settings?.generic_inbound_webhook_enabled) return previewItems.length > 0 ? 3 : 2
+    return 1
+  }, [previewItems.length, settings?.generic_inbound_webhook_enabled, settingsLoading])
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-6 sm:py-8">
-      <header className="space-y-2">
-        <Link to={CRM_APP_PATHS.settingsIntegrations} className="text-sm font-medium text-brand-600 hover:underline">
-          {t('admin.integrations_hub.back_to_hub')}
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{t('admin.integrations_webhook.title')}</h1>
-        <p className="text-sm leading-relaxed text-slate-600">{t('admin.integrations_webhook.intro')}</p>
-      </header>
+      <SettingsSubpageHeader
+        backHref={CRM_APP_PATHS.settingsIntegrations}
+        backLabel={t('admin.integrations_hub.back_to_hub')}
+        kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
+        title={t('admin.integrations_webhook.title')}
+        subtitle={t('admin.integrations_webhook.intro')}
+      />
+
+      <ol className="grid gap-2 sm:grid-cols-3">
+        {[
+          { n: 1, label: t('admin.integrations_webhook.step_endpoint') },
+          { n: 2, label: t('admin.integrations_webhook.step_verify') },
+          { n: 3, label: t('admin.integrations_webhook.step_mapping') },
+        ].map(({ n, label }) => (
+          <li
+            key={n}
+            className={clsx(
+              'rounded-lg border px-3 py-2 text-center text-sm font-medium',
+              webhookStepHighlight === n ? 'border-brand-500 bg-brand-50 text-brand-900' : 'border-slate-200 text-slate-500',
+            )}
+          >
+            <span className="mr-1 font-normal text-slate-400">{n}.</span>
+            {label}
+          </li>
+        ))}
+      </ol>
 
       {!planLoading && !teamOk ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
@@ -196,14 +223,18 @@ export default function IntegrationsWebhookPage() {
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
-        <p>{t('admin.integrations_webhook.mapping_hint')}</p>
+      <details className="rounded-lg border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          {t('admin.integrations_webhook.advanced_mapping_toggle')}
+        </summary>
+        <p className="mt-3">{t('admin.integrations_webhook.mapping_hint')}</p>
         <p className="mt-3">
           <Link to={CRM_APP_PATHS.settingsIntegrationsMeta} className="font-medium text-brand-600 hover:underline">
             {t('admin.integrations_webhook.mapping_cta')}
           </Link>
         </p>
-        <pre className="mt-4 overflow-x-auto rounded bg-slate-900/90 p-3 text-xs text-slate-100">
+        <p className="mt-3 text-xs font-medium text-slate-600">{t('admin.integrations_webhook.sample_payload_title')}</p>
+        <pre className="mt-2 overflow-x-auto rounded bg-slate-900/90 p-3 text-xs text-slate-100">
           {`POST …/inbound/{secret}
 Content-Type: application/json
 
@@ -214,11 +245,13 @@ Content-Type: application/json
   "id": "crm-form-123"
 }`}
         </pre>
-      </div>
+      </details>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-900">{t('admin.integrations_webhook.recent_title')}</h2>
-        <p className="mt-1 text-sm text-slate-600">{t('admin.integrations_webhook.recent_subtitle')}</p>
+      <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+          {t('admin.integrations_webhook.recent_title')}
+        </summary>
+        <p className="mt-2 text-sm text-slate-600">{t('admin.integrations_webhook.recent_subtitle')}</p>
         <p className="mt-2">
           <Link
             to={`${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=incoming&incoming_source=webhook`}
@@ -246,7 +279,7 @@ Content-Type: application/json
             ))}
           </ul>
         )}
-      </div>
+      </details>
     </div>
   )
 }

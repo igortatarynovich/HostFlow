@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -106,3 +106,48 @@ def test_ensure_billing_allows_side_effects_raises_past_due() -> None:
 def test_ensure_billing_allows_side_effects_ok_when_active() -> None:
     t = _tenant({"billing": {"subscription": {"status": "active"}}})
     billing_restrictions.ensure_billing_allows_side_effects(t, None)
+
+
+def test_trialing_status_respects_trial_ends_at() -> None:
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    t = _tenant(
+        {
+            "billing": {
+                "subscription": {
+                    "status": "trialing",
+                    "trial_ends_at": f"{tomorrow}T12:00:00+00:00",
+                }
+            }
+        }
+    )
+    assert billing_restrictions.billing_write_block_reason(t) is None
+
+
+def test_compute_gate_snapshot_trial_active() -> None:
+    ends = datetime.now(UTC) + timedelta(days=5)
+    t = _tenant(
+        {"billing": {"subscription": {"status": "trial", "trial_ends_at": ends.replace(microsecond=0).isoformat()}}}
+    )
+    snap = billing_restrictions.compute_billing_gate_snapshot(t, None)
+    assert snap.trial_active
+    assert not snap.trial_grace_active
+    assert not snap.side_effects_blocked
+
+
+def test_compute_gate_snapshot_grace_window() -> None:
+    ends = datetime.now(UTC) - timedelta(hours=6)
+    t = _tenant(
+        {"billing": {"subscription": {"status": "trial", "trial_ends_at": ends.replace(microsecond=0).isoformat()}}}
+    )
+    snap = billing_restrictions.compute_billing_gate_snapshot(t, None)
+    assert snap.trial_grace_active
+    assert not snap.trial_active
+    assert not snap.side_effects_blocked
+    assert snap.side_effect_grace_hours_remaining is not None
+
+
+def test_compute_gate_snapshot_blocked_past_due() -> None:
+    t = _tenant({"billing": {"subscription": {"status": "past_due"}}})
+    snap = billing_restrictions.compute_billing_gate_snapshot(t, None)
+    assert snap.side_effects_blocked
+    assert snap.block_reason == "past_due"

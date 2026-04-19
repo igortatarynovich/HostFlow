@@ -67,6 +67,12 @@ export const CRM_APP_PATHS = {
   settingsIntegrations: "/app/settings/integrations",
   settingsIntegrationsMeta: "/app/settings/integrations/meta",
   settingsIntegrationsGoogle: "/app/settings/integrations/google",
+  /** Facebook Messenger channel under Integration hub (URL segment repeats API channel key “messenger”). */
+  settingsIntegrationsMessengerFacebook: "/app/settings/integrations/messenger/messenger",
+  settingsIntegrationsMessengerInstagram: "/app/settings/integrations/messenger/instagram",
+  settingsIntegrationsMessengerTelegram: "/app/settings/integrations/messenger/telegram",
+  settingsIntegrationsMessengerViber: "/app/settings/integrations/messenger/viber",
+  settingsIntegrationsMessengerWhatsapp: "/app/settings/integrations/messenger/whatsapp",
   settingsIntegrationsWebhook: "/app/settings/integrations/webhook",
   settingsAudit: "/app/settings/audit",
   settingsCommunications: "/app/settings/communications",

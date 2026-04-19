@@ -28,10 +28,6 @@ export const ACTIVATION_ALLOWED_PREFIXES = [
   ACTIVATION_PATHS.legal,
 ] as const
 
-export function isActivationRoute(pathname: string): boolean {
-  return ACTIVATION_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
-}
-
 export type ActivationBusinessType = 'agency' | 'employer' | 'services'
 
 export type ActivationStatusLike = {
@@ -53,12 +49,6 @@ export function getBusinessHomePath(businessType: ActivationBusinessType): strin
   if (businessType === 'services') return ACTIVATION_PATHS.clients
   if (businessType === 'employer') return ACTIVATION_PATHS.vacancies
   return ACTIVATION_PATHS.candidates
-}
-
-export function getBusinessPrimaryEntityPath(businessType: ActivationBusinessType): string {
-  if (businessType === 'services') return ACTIVATION_PATHS.clients
-  if (businessType === 'employer') return ACTIVATION_PATHS.vacancies
-  return ACTIVATION_PATHS.clients
 }
 
 export function getBusinessNextActionPath(businessType: ActivationBusinessType): string {

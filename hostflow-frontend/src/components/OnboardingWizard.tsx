@@ -5,6 +5,8 @@ import { useI18n } from '../i18n'
 import { getOnboardingStatus, type OnboardingStatus } from '../api/client'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { ACTIVATION_PATHS, getBusinessHomePath, getBusinessNextActionPath } from '../app/activationRoutes'
+import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { usePermissions } from '../hooks/usePermissions'
 
 type Props = {
   tenantId: string
@@ -12,6 +14,7 @@ type Props = {
 
 export function OnboardingWizard({ tenantId: _tenantId }: Props) {
   const { t } = useI18n()
+  const { can } = usePermissions()
   const { openEntityLabel } = useBusinessTerminology()
   const [status, setStatus] = useState<OnboardingStatus | null>(null)
 
@@ -119,6 +122,23 @@ export function OnboardingWizard({ tenantId: _tenantId }: Props) {
               </li>
             ))}
           </ol>
+          <p className="mt-4 border-t border-brand-100/90 pt-3 text-xs leading-relaxed text-slate-600">
+            {can('settings.view') ? (
+              <>
+                {t('app.onboarding.first_value.footer_settings')}{' '}
+                <Link to={CRM_APP_PATHS.settings} className="font-medium text-brand-800 hover:underline">
+                  {t('app.onboarding.first_value.footer_settings_link')}
+                </Link>
+                <span className="mx-2 text-slate-300" aria-hidden>
+                  |
+                </span>
+              </>
+            ) : null}
+            {t('app.onboarding.first_value.footer_checklist')}{' '}
+            <Link to={CRM_APP_PATHS.onboardingGettingStarted} className="font-medium text-brand-800 hover:underline">
+              {t('app.onboarding.first_value.footer_checklist_link')}
+            </Link>
+          </p>
         </div>
       </div>
     </div>

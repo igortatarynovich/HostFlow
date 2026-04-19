@@ -43,6 +43,7 @@ help:
 	@echo "  make curl-list      - GET /api/v1/candidates (needs TOKEN)"
 	@echo "  make curl-create    - POST /api/v1/candidates (needs TOKEN)"
 	@echo "  make get-token      - print JWT for admin@hostflow.dev / admin"
+	@echo "  make check-meta-oauth-env - verify META_LEADS_* + FRONTEND_URL for Facebook Login (no DB)"
 	@echo "  make check-spa-paths - fail on stray /app/... URL literals in backend/app"
 	@echo "  make codegen-crm-app-paths - regenerate TS/Python from shared/crm_app_paths.json"
 	@echo "  make check-codegen-crm-paths - fail if generated files drift from manifest"
@@ -116,6 +117,10 @@ seed-demo: upg
 	$(PY) backend/scripts/seed_demo.py
 
 # ---- Static checks (no venv deps) ----
+.PHONY: check-meta-oauth-env
+check-meta-oauth-env:
+	@python3 scripts/check_meta_oauth_env.py
+
 .PHONY: check-spa-paths
 check-spa-paths:
 	python3 backend/scripts/check_spa_path_literals.py

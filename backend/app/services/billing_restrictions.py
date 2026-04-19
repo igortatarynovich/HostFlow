@@ -6,10 +6,13 @@ gate until a finer allowlist is implemented — see SSOT §2.16 «Post-trial / p
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from typing import Any, Literal
 
 from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.tenant import Tenant, TenantLicense
 
@@ -72,7 +75,7 @@ def billing_write_block_reason(
     if status == "active":
         return None
     sub = _subscription_payload(tenant)
-    stripe_trial_end = _parse_iso_datetime(sub.get("trial_ends_at")) if status == "trial" else None
+    stripe_trial_end = _parse_iso_datetime(sub.get("trial_ends_at")) if status in ("trial", "trialing") else None
     lic_trial_end: datetime | None = None
     if license_row is not None:
         plan = str(license_row.plan or "").strip().lower()
@@ -123,4 +126,75 @@ def ensure_billing_allows_side_effects(
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail={"code": code, "message": "billing_side_effects_forbidden"},
+    )
+
+
+async def ensure_billing_allows_side_effects_for_tenant_id(db: AsyncSession, tenant_id: str) -> None:
+    tid = (tenant_id or "").strip()
+    if not tid:
+        return
+    tenant_row = await db.get(Tenant, tid)
+    lic_row = (
+        await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tid).limit(1))
+    ).scalar_one_or_none()
+    ensure_billing_allows_side_effects(tenant_row, lic_row)
+
+
+@dataclass(frozen=True)
+class BillingGateSnapshot:
+    side_effects_blocked: bool
+    block_reason: Literal["past_due", "trial_expired"] | None
+    trial_active: bool
+    trial_grace_active: bool
+    trial_hours_remaining: float | None
+    trial_urgent: bool
+    side_effect_grace_hours_remaining: float | None
+
+
+def compute_billing_gate_snapshot(
+    tenant: Tenant | None, license_row: TenantLicense | None = None
+) -> BillingGateSnapshot:
+    """UI + API: trial countdown, post-trial grace, hard blocks (§2.16 / §2.18)."""
+    now = datetime.now(UTC)
+    reason = billing_write_block_reason(tenant, license_row)
+    sub = _subscription_payload(tenant)
+    stripe_status = str(sub.get("status") or "").strip().lower()
+
+    stripe_trial_end: datetime | None = None
+    if stripe_status in ("trial", "trialing"):
+        stripe_trial_end = _parse_iso_datetime(sub.get("trial_ends_at"))
+
+    lic_trial_end: datetime | None = None
+    if license_row is not None:
+        plan = str(license_row.plan or "").strip().lower()
+        exp = license_row.expires_at
+        if plan == "trial" and exp is not None:
+            lic_trial_end = datetime.combine(exp + timedelta(days=1), time.min, tzinfo=UTC)
+
+    trial_end_effective = stripe_trial_end or lic_trial_end
+
+    trial_active = False
+    trial_grace_active = False
+    trial_hours_remaining: float | None = None
+    trial_urgent = False
+    side_effect_grace_hrs: float | None = None
+
+    if trial_end_effective is not None and reason is None:
+        grace_end = trial_end_effective + _TRIAL_SIDE_EFFECT_GRACE
+        if now < trial_end_effective:
+            trial_active = True
+            trial_hours_remaining = round((trial_end_effective - now).total_seconds() / 3600.0, 2)
+            trial_urgent = bool(trial_hours_remaining is not None and trial_hours_remaining <= 48.0)
+        elif now < grace_end:
+            trial_grace_active = True
+            side_effect_grace_hrs = round((grace_end - now).total_seconds() / 3600.0, 2)
+
+    return BillingGateSnapshot(
+        side_effects_blocked=reason is not None,
+        block_reason=reason,
+        trial_active=trial_active,
+        trial_grace_active=trial_grace_active,
+        trial_hours_remaining=trial_hours_remaining,
+        trial_urgent=trial_urgent,
+        side_effect_grace_hours_remaining=side_effect_grace_hrs,
     )

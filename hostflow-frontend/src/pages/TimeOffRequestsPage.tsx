@@ -9,6 +9,7 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
@@ -127,6 +128,8 @@ export default function TimeOffRequestsPage() {
         </p>
       </div>
 
+      <PageBreadcrumb className="max-w-4xl" />
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.timeoff.stats.pending', { defaultValue: 'Pending: {count}', values: { count: summary.pending } })}</div>
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.timeoff.stats.approved', { defaultValue: 'Approved: {count}', values: { count: summary.approved } })}</div>
@@ -146,7 +149,7 @@ export default function TimeOffRequestsPage() {
             <option value="cancelled">{t('app.communications.timeoff.status.cancelled', { defaultValue: 'Cancelled' })}</option>
           </select>
           <button type="button" onClick={() => void loadAll()} className="btn-secondary">
-            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            {t('common.actions.refresh')}
           </button>
         </div>
         {error && (
@@ -154,7 +157,7 @@ export default function TimeOffRequestsPage() {
             <ErrorRecoveryBanner
               info={error}
               onRetry={() => void loadAll()}
-              retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+              retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 error,
                 CRM_APP_PATHS.myAvailability,
@@ -164,7 +167,7 @@ export default function TimeOffRequestsPage() {
             />
           </div>
         )}
-        {loading && <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
+        {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
         {!loading && items.length === 0 && <div className="text-sm text-slate-500">{t('app.communications.states.empty', { defaultValue: 'No activity yet' })}</div>}
         <div className="space-y-3">
           {items.map((row) => (
@@ -193,10 +196,10 @@ export default function TimeOffRequestsPage() {
                     />
                     <div className="flex flex-wrap gap-2">
                       <button type="button" onClick={() => void handleDecision(row.id, 'approved')} disabled={busyId === row.id} className="btn-primary btn-sm disabled:opacity-50">
-                        {busyId === row.id ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.timeoff.actions.approve', { defaultValue: 'Approve' })}
+                        {busyId === row.id ? t('common.loading') : t('app.communications.timeoff.actions.approve', { defaultValue: 'Approve' })}
                       </button>
                       <button type="button" onClick={() => void handleDecision(row.id, 'rejected')} disabled={busyId === row.id} className="btn-danger btn-sm disabled:opacity-50">
-                        {busyId === row.id ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.communications.timeoff.actions.reject', { defaultValue: 'Reject' })}
+                        {busyId === row.id ? t('common.loading') : t('app.communications.timeoff.actions.reject', { defaultValue: 'Reject' })}
                       </button>
                       <button type="button" onClick={() => void handleCancel(row.id)} disabled={busyId === row.id} className="btn-secondary btn-sm disabled:opacity-50">
                         {t('app.communications.timeoff.actions.cancel', { defaultValue: 'Cancel' })}

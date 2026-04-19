@@ -4,13 +4,15 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import {
   IconArrowRight,
+  IconBriefcase,
   IconCalendar,
   IconFileText,
+  IconLayoutSidebarLeftExpand,
   IconMail,
   IconMapPin,
   IconPhone,
   IconUser,
-  IconBriefcase,
+  IconX,
 } from '@tabler/icons-react'
 import { api } from '../api/client'
 import type { PipelineOut, Vacancy } from '../api/types'
@@ -27,6 +29,7 @@ import {
   BulkVacancyModal,
 } from '../modules/candidates/components'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -66,7 +69,7 @@ import {
   parseISODateMaybe,
   summarizePipelineColumnHealth,
 } from '../modules/pipeline/utils'
-import { normalizeSearchValue, textMatches } from '../modules/candidates/candidateUtils'
+import { normalizeSearchValue, phoneTextMatches, textMatches } from '../modules/candidates/candidateUtils'
 
 // Re-export for backward compatibility
 export { TERMINAL_STAGE_CODES, sanitizeStagePath }
@@ -248,33 +251,8 @@ export default function Pipeline(){
     } catch {
       /* ignore */
     }
-    // Отправляем состояние в Topbar (как в Candidates.tsx)
-    window.dispatchEvent(new CustomEvent('candidates-sidebar-state', { detail: { open: sidebarOpen } }))
   }, [sidebarOpen])
 
-  // Слушаем события от Topbar (как в Candidates.tsx)
-  const sidebarOpenRef = useRef(sidebarOpen)
-  useEffect(() => {
-    sidebarOpenRef.current = sidebarOpen
-  }, [sidebarOpen])
-
-  useEffect(() => {
-    const handleToggle = (e: CustomEvent<{ open: boolean }>) => {
-      setSidebarOpen(e.detail.open)
-    }
-
-    const handleRequestState = () => {
-      window.dispatchEvent(new CustomEvent('candidates-sidebar-state', { detail: { open: sidebarOpenRef.current } }))
-    }
-
-    window.addEventListener('candidates-sidebar-toggle', handleToggle as EventListener)
-    window.addEventListener('candidates-sidebar-request-state', handleRequestState)
-
-    return () => {
-      window.removeEventListener('candidates-sidebar-toggle', handleToggle as EventListener)
-      window.removeEventListener('candidates-sidebar-request-state', handleRequestState)
-    }
-  }, [])
   
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; candidateId: string } | null>(null)
@@ -457,7 +435,7 @@ export default function Pipeline(){
 
   // --- load managers for bulk-assign (accept array or {items})
   useEffect(() => {
-    api.get('/catalogs/managers')
+    api.get('/catalogs/managers', { params: { roles: 'recruiter' } })
       .then(({ data }) => {
         const list: any[] = Array.isArray(data) ? data : (data?.items || [])
         const mapped: ManagerItem[] = list.map((it:any) => ({ id: it?.id || it?.user_id || it?.uid, name: it?.name || it?.email || '—' }))
@@ -732,7 +710,7 @@ export default function Pipeline(){
       clearSelection()
       await load()
       if (hadErrors){
-        const retryHint = t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' })
+        const retryHint = t('app.common.retry_hint')
         if (rodoBlocked > 0) {
           setError({
             title: t('app.candidates.messages.bulk_stage_rodo_blocked', {
@@ -749,10 +727,13 @@ export default function Pipeline(){
           })
         } else {
           const raw = rejectedResults[0]?.reason
-          if (planLimitModal?.showPlanLimitIfNeeded(raw, t('app.candidates.pipeline.error_update_stages'))) {
-            return
+          const handledByPlanLimit = planLimitModal?.showPlanLimitIfNeeded(
+            raw,
+            t('app.candidates.pipeline.error_update_stages'),
+          )
+          if (!handledByPlanLimit) {
+            setError(getFriendlyErrorInfo(raw, t('app.candidates.pipeline.error_update_stages'), t))
           }
-          setError(getFriendlyErrorInfo(raw, t('app.candidates.pipeline.error_update_stages'), t))
         }
       }
     }
@@ -827,7 +808,7 @@ export default function Pipeline(){
             missingByDocs.push(...parsed.missingTypes)
           }
         }
-        const retryHintBulk = t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' })
+        const retryHintBulk = t('app.common.retry_hint')
         if (rodoBlocked > 0) {
           setError({
             title: t('app.candidates.messages.bulk_stage_rodo_blocked', {
@@ -944,7 +925,7 @@ export default function Pipeline(){
       lastMoveErr = e
       hadError = true
       const parsed = parseStageTransitionError(e)
-      const dndRetryHint = t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' })
+      const dndRetryHint = t('app.common.retry_hint')
       if (parsed.kind === 'rodo') {
         specificErrorSet = true
         setError({
@@ -1030,7 +1011,9 @@ export default function Pipeline(){
         const email = c.email || item.candidate_email || ''
         const phone = c.phone || item.candidate_phone || ''
         const haystacks = [name, email, phone]
-        const match = haystacks.some((value) => textMatches(value, normalizedQuery))
+        const match = haystacks.some((value, idx) =>
+          idx === 2 ? phoneTextMatches(value, normalizedQuery) : textMatches(value, normalizedQuery),
+        )
         if (!match) return false
       }
       
@@ -1193,6 +1176,28 @@ export default function Pipeline(){
       {/* Основной контент - Kanban */}
       <div className={clsx("flex-1 transition-all duration-300 min-h-0 flex flex-col overflow-hidden", sidebarOpen ? "mr-0 sm:mr-96" : "mr-0")}>
         <div ref={tableContainerRef} className="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
+      <div className="mx-4 mt-2 mb-1 shrink-0 flex items-center justify-between gap-2">
+        <PageBreadcrumb />
+        <button
+          type="button"
+          onClick={() => setSidebarOpen((prev) => !prev)}
+          className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
+          title={sidebarOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
+          aria-label={sidebarOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
+        >
+          {sidebarOpen ? (
+            <>
+              <IconX size={18} stroke={2} />
+              <span className="hidden sm:inline">{t('app.candidates.menu.close')}</span>
+            </>
+          ) : (
+            <>
+              <IconLayoutSidebarLeftExpand size={18} stroke={2} />
+              <span className="hidden sm:inline">{t('app.candidates.menu.open')}</span>
+            </>
+          )}
+        </button>
+      </div>
       {error && (
         <ErrorRecoveryBanner
           info={error}

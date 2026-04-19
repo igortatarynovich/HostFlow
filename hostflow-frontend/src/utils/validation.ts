@@ -36,11 +36,3 @@ export function validatePhone(phone: string | null | undefined): string | null {
   }
   return null
 }
-
-export function validateRequired(value: string | null | undefined, fieldName: string): string | null {
-  if (!value || !value.trim()) {
-    return `${fieldName} is required`
-  }
-  return null
-}
-

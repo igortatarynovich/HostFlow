@@ -7,6 +7,8 @@ import pytest
 from backend.app.modules.leads.lead_criteria_eval import (
     DEFAULT_CANDIDATE_DOCUMENT_OK_STATUSES,
     evaluate_lead_criteria_v1,
+    evaluate_vacancy_for_lead,
+    lead_fit_evaluation_effective,
 )
 
 
@@ -129,3 +131,26 @@ async def test_batch_loader_smoke():
     )
     assert set(out.keys()) == {"c1", "c2"}
     assert out["c1"] == {}
+
+
+def test_lead_fit_evaluation_effective_explicit_off_ignores_criteria():
+    extra = {"lead_fit_evaluation_enabled_v1": False, "lead_criteria_v1": {"min_experience_eu_years": 5}}
+    assert lead_fit_evaluation_effective(extra) is False
+    st, rs = evaluate_vacancy_for_lead({"experience_eu_years": 0}, extra)
+    assert st == "no_criteria"
+    assert rs == []
+
+
+def test_lead_fit_evaluation_effective_explicit_on_empty_criteria():
+    extra = {"lead_fit_evaluation_enabled_v1": True, "lead_criteria_v1": {}}
+    assert lead_fit_evaluation_effective(extra) is True
+    st, _ = evaluate_vacancy_for_lead({}, extra)
+    assert st == "no_criteria"
+
+
+def test_lead_fit_evaluation_effective_legacy_nonempty_criteria():
+    extra = {"lead_criteria_v1": {"min_experience_eu_years": 3}}
+    assert lead_fit_evaluation_effective(extra) is True
+    st, rs = evaluate_vacancy_for_lead({"experience_eu_years": 1}, extra)
+    assert st == "no_fit"
+    assert rs

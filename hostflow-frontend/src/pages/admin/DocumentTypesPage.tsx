@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 
 type DocumentType = {
   code: string
@@ -20,10 +21,14 @@ export default function DocumentTypesPage() {
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <header className="mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">{t('admin.documents.types.title')}</h2>
-          <p className="text-sm text-slate-500">{t('admin.documents.types.description')}</p>
-        </header>
+        <div className="mb-4">
+          <SettingsSubpageHeader
+            backLabel={t('admin.settings.subpage.back_all')}
+            kicker={t('admin.documents.types.header_kicker')}
+            title={t('admin.documents.types.title')}
+            subtitle={t('admin.documents.types.description')}
+          />
+        </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">

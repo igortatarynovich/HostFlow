@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from sqlalchemy import String, and_, cast, func, or_, select
+from sqlalchemy import String, and_, case, cast, delete, func, or_, select
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ from backend.app.models import (
     MetaAdsMap,
     MetaLeadCredential,
     MetaLeadSettings,
+    MetaOAuthPending,
     Vacancy,
 )
 from backend.app.services.lead_quota import ensure_monthly_lead_creation_allowed
@@ -133,6 +134,49 @@ async def resolve_vacancy_by_ad(
         )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def last_resort_first_open_vacancy_for_tenant(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    scoped_own_company_id: Optional[str] = None,
+) -> Optional[Vacancy]:
+    """
+    When ad_map / rules / ordered routing find nothing, pick the oldest active open vacancy
+    so ingest can still attach company + create a candidate (audited via ``vacancy_routing_fallback_v1``).
+    """
+    oc = str(scoped_own_company_id or "").strip() or None
+    base = (
+        select(Vacancy)
+        .where(
+            Vacancy.tenant_id == tenant_id,
+            Vacancy.is_archived.is_(False),
+            Vacancy.is_active.is_(True),
+            Vacancy.status == "open",
+        )
+        .order_by(Vacancy.created_at.asc())
+        .limit(1)
+    )
+    if oc:
+        stmt = base.where(
+            or_(Vacancy.own_company_id.is_(None), Vacancy.own_company_id == oc)
+        )
+        hit = (await db.execute(stmt)).scalar_one_or_none()
+        if hit is not None:
+            return hit
+    stmt_all = (
+        select(Vacancy)
+        .where(
+            Vacancy.tenant_id == tenant_id,
+            Vacancy.is_archived.is_(False),
+            Vacancy.is_active.is_(True),
+            Vacancy.status == "open",
+        )
+        .order_by(Vacancy.created_at.asc())
+        .limit(1)
+    )
+    return (await db.execute(stmt_all)).scalar_one_or_none()
 
 
 async def get_default_company_id(db: AsyncSession, tenant_id: str) -> Optional[str]:
@@ -265,6 +309,20 @@ async def get_lead(
     stmt = select(Lead).where(Lead.id == lead_id, Lead.tenant_id == tenant_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def delete_lead(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    lead_id: str,
+) -> bool:
+    """Hard-delete a lead row. Returns True if a row was removed."""
+    stmt = delete(Lead).where(Lead.tenant_id == tenant_id, Lead.id == lead_id)
+    res = await db.execute(stmt)
+    await db.flush()
+    rc = getattr(res, "rowcount", None)
+    return bool(rc is not None and rc > 0)
 
 
 async def get_lead_by_external_id(
@@ -620,9 +678,15 @@ async def get_meta_settings_by_verify_token(
     *,
     verify_token: str,
 ) -> Optional[MetaLeadSettings]:
+    from backend.app.db.deps import PUBLIC_LEGACY_DEFAULT_TENANT_UUID
+
+    legacy = str(PUBLIC_LEGACY_DEFAULT_TENANT_UUID)
+    # Shared Meta callback URL often reuses one verify_token; deprioritize bootstrap superadmin if duplicated.
+    legacy_last = case((MetaLeadSettings.tenant_id == legacy, 1), else_=0)
     stmt = (
         select(MetaLeadSettings)
         .where(MetaLeadSettings.webhook_verify_token == verify_token)
+        .order_by(legacy_last, MetaLeadSettings.tenant_id)
         .limit(1)
     )
     result = await db.execute(stmt)
@@ -682,4 +746,48 @@ async def touch_signature_status(
         )
     entry.last_signature_status = status
     entry.last_webhook_check_at = checked_at
+    await db.flush()
+
+
+async def delete_expired_meta_oauth_pending(db: AsyncSession) -> None:
+    now = datetime.now(timezone.utc)
+    await db.execute(delete(MetaOAuthPending).where(MetaOAuthPending.expires_at < now))
+    await db.flush()
+
+
+async def create_meta_oauth_pending(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    user_sub: str,
+    encrypted_payload: str,
+    expires_at: datetime,
+) -> MetaOAuthPending:
+    entry = MetaOAuthPending(
+        tenant_id=tenant_id,
+        user_sub=user_sub,
+        encrypted_payload=encrypted_payload,
+        expires_at=expires_at,
+    )
+    db.add(entry)
+    await db.flush()
+    return entry
+
+
+async def get_meta_oauth_pending(
+    db: AsyncSession,
+    *,
+    pending_id: str,
+    tenant_id: str,
+) -> Optional[MetaOAuthPending]:
+    stmt = select(MetaOAuthPending).where(
+        MetaOAuthPending.id == pending_id,
+        MetaOAuthPending.tenant_id == tenant_id,
+    )
+    row = await db.execute(stmt)
+    return row.scalar_one_or_none()
+
+
+async def delete_meta_oauth_pending(db: AsyncSession, entry: MetaOAuthPending) -> None:
+    await db.delete(entry)
     await db.flush()

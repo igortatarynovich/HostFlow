@@ -128,7 +128,7 @@ async def list_notifications(
     current_user: UserCtx = Depends(get_current_user),
 ) -> NotificationListResponse:
     db, tenant_id = db_tenant
-    cleaned = await user_notifications.cleanup_stale_sla_notifications(
+    cleaned = await user_notifications.maybe_cleanup_stale_sla_notifications_for_poll(
         db,
         tenant_id=str(tenant_id),
         user_id=str(current_user.sub),
@@ -191,6 +191,7 @@ async def reconcile_notifications(
     current_user: UserCtx = Depends(get_current_user),
 ) -> NotificationReconcileResponse:
     db, tenant_id = db_tenant
+    # Explicit reconcile: run full cleanup immediately (not throttled like list polling).
     cleaned = await user_notifications.cleanup_stale_sla_notifications(
         db,
         tenant_id=str(tenant_id),

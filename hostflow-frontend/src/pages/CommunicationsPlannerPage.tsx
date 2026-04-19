@@ -13,6 +13,7 @@ import {
 } from '../api/communications'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -173,6 +174,7 @@ export default function CommunicationsPlannerPage() {
   return (
     <div className="space-y-4">
       <WorkspaceTopNav active="calendar" />
+      <PageBreadcrumb className="max-w-4xl" />
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.planner_title', { defaultValue: 'Planner' })}</h1>
         <p className="text-sm text-slate-500">
@@ -195,7 +197,7 @@ export default function CommunicationsPlannerPage() {
               <ErrorRecoveryBanner
                 info={error}
                 onRetry={() => void load()}
-                retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                retryLabel={t('common.actions.refresh')}
                 {...friendlyErrorBannerSecondary(
                   error,
                   CRM_APP_PATHS.calendar,
@@ -239,7 +241,7 @@ export default function CommunicationsPlannerPage() {
             </div>
             <textarea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} className="textarea" placeholder={t('app.communications.planner.form.fields.description', { defaultValue: 'Description' })} />
             <button type="submit" disabled={busy || !form.title.trim() || !form.startAt} className="btn-primary disabled:opacity-50">
-              {busy ? t('common.loading', { defaultValue: 'Loading...' }) : t('common.actions.create', { defaultValue: 'Create' })}
+              {busy ? t('common.loading') : t('common.actions.create', { defaultValue: 'Create' })}
             </button>
           </form>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -270,11 +272,11 @@ export default function CommunicationsPlannerPage() {
               <option value="shift">{t('app.communications.planner.kind.shift', { defaultValue: 'Shift' })}</option>
             </select>
             <button type="button" onClick={() => void load()} className="btn-secondary">
-              {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+              {t('common.actions.refresh')}
             </button>
           </div>
 
-          {loading && <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
+          {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
           {!loading && items.length === 0 && <div className="text-sm text-slate-500">{t('app.communications.states.empty', { defaultValue: 'No activity yet' })}</div>}
           <div className="space-y-2">
             {items.map((row) => (

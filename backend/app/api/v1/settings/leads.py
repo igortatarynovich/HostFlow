@@ -3,13 +3,17 @@ from __future__ import annotations
 from typing import List, Literal, Tuple
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import Role, UserCtx, get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.db.meta_leads_tenant_dep import (
+    ensure_token_matches_header_tenant as _ensure_tenant,
+    get_db_with_meta_leads_effective_tenant,
+)
 from backend.app.modules.leads import admin_service
-from backend.app.api.v1.utils.own_company import resolve_active_own_company_id
+from backend.app.api.v1.utils.own_company import resolve_own_company_id_for_session
 from backend.app.modules.leads.schemas import (
     LeadImportJobListResponse,
     LeadImportJobOut,
@@ -21,25 +25,27 @@ from backend.app.modules.leads.schemas import (
     MetaCredentialRotateResponse,
     MetaCredentialUpdate,
     GenericInboundWebhookRotateResponse,
+    MetaGraphFieldDataPreviewRequest,
+    MetaGraphFieldDataPreviewResponse,
     MetaIncomingLeadsPreviewResponse,
     MetaLeadResponse,
     MetaLeadRetryRequest,
     MetaLeadRetryResponse,
     MetaLeadRerouteRequest,
+    MetaLeadSelfServeOnboardingOut,
     MetaLeadSettingsOut,
     MetaLeadSettingsUpdate,
+    MetaOAuthCompleteIn,
+    MetaOAuthCompleteOut,
+    MetaOAuthFinalizeIn,
+    MetaOAuthFinalizeOut,
+    MetaOAuthStartOut,
     UnmappedLeadsResponse,
 )
 from backend.app.services.imports import leads as import_service
 
 
 router = APIRouter(prefix="/leads", tags=["settings-leads"])
-
-
-def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
-    token_tenant = (ctx.tenant_id or "").strip()
-    if token_tenant and token_tenant != tenant_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden for tenant")
 
 
 def _serialize_job(job) -> LeadImportJobOut:
@@ -66,12 +72,84 @@ def _serialize_job(job) -> LeadImportJobOut:
 )
 async def get_settings_endpoint(
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaLeadSettingsOut:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
-    return await admin_service.get_settings(db, tenant_id)
+    out = await admin_service.get_settings(db, tenant_id)
+    return await admin_service.enrich_meta_leads_tenant_context(db, header_tid, tenant_id, out)
+
+
+@router.get(
+    "/meta/self-serve-onboarding",
+    response_model=MetaLeadSelfServeOnboardingOut,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def meta_self_serve_onboarding_endpoint(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaLeadSelfServeOnboardingOut:
+    """Public app id, webhook URL, permissions — so tenants connect Meta without operator (see env META_LEADS_*)."""
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    include_secret = ctx.role == Role.administrator.value
+    out = await admin_service.get_meta_self_serve_onboarding(
+        db, tenant_id, include_shared_app_secret=include_secret
+    )
+    return await admin_service.enrich_meta_leads_tenant_context(db, header_tid, tenant_id, out)
+
+
+@router.post(
+    "/meta/oauth/start",
+    response_model=MetaOAuthStartOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def meta_oauth_start_endpoint(
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaOAuthStartOut:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    return await admin_service.meta_oauth_start(db, tenant_id, ctx.sub)
+
+
+@router.post(
+    "/meta/oauth/complete",
+    response_model=MetaOAuthCompleteOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def meta_oauth_complete_endpoint(
+    payload: MetaOAuthCompleteIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaOAuthCompleteOut:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    result = await admin_service.meta_oauth_complete(db, tenant_id, ctx.sub, payload)
+    await db.commit()
+    return result
+
+
+@router.post(
+    "/meta/oauth/finalize",
+    response_model=MetaOAuthFinalizeOut,
+    dependencies=[Depends(require_roles(Role.administrator))],
+)
+async def meta_oauth_finalize_endpoint(
+    payload: MetaOAuthFinalizeIn,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaOAuthFinalizeOut:
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    result = await admin_service.meta_oauth_finalize(db, tenant_id, ctx.sub, payload)
+    await db.commit()
+    return result
 
 
 @router.patch(
@@ -82,14 +160,14 @@ async def get_settings_endpoint(
 async def update_settings_endpoint(
     payload: MetaLeadSettingsUpdate,
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaLeadSettingsOut:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     result = await admin_service.update_settings(db, tenant_id, payload)
     await db.commit()
-    return result
+    return await admin_service.enrich_meta_leads_tenant_context(db, header_tid, tenant_id, result)
 
 
 @router.post(
@@ -121,12 +199,29 @@ async def meta_incoming_preview_endpoint(
         description="Lead.source filter: meta (default) or webhook (§2.11 generic inbound)",
     ),
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaIncomingLeadsPreviewResponse:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     return await admin_service.list_meta_incoming_preview(db, tenant_id, limit=limit, source=source)
+
+
+@router.post(
+    "/meta/graph-field-preview",
+    response_model=MetaGraphFieldDataPreviewResponse,
+    dependencies=[Depends(require_roles(Role.administrator, Role.supervisor))],
+)
+async def meta_graph_field_preview_endpoint(
+    payload: MetaGraphFieldDataPreviewRequest,
+    ctx: UserCtx = Depends(get_current_user),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
+) -> MetaGraphFieldDataPreviewResponse:
+    """Fetch real Meta lead field_data from Graph for field-mapping (Page token from credentials)."""
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
+    tenant_id = str(tenant_uuid)
+    return await admin_service.fetch_meta_graph_field_preview(db, tenant_id, payload)
 
 
 @router.get(
@@ -136,11 +231,11 @@ async def meta_incoming_preview_endpoint(
 )
 async def list_credentials_endpoint(
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> list[MetaCredentialOut]:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     return await admin_service.list_credentials(db, tenant_id)
 
 
@@ -153,11 +248,11 @@ async def list_credentials_endpoint(
 async def create_credential_endpoint(
     payload: MetaCredentialCreate,
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaCredentialOut:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     result = await admin_service.create_credential(db, tenant_id, payload)
     await db.commit()
     return result
@@ -172,11 +267,11 @@ async def update_credential_endpoint(
     credential_id: UUID,
     payload: MetaCredentialUpdate,
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaCredentialOut:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     result = await admin_service.update_credential(db, tenant_id, str(credential_id), payload)
     await db.commit()
     return result
@@ -190,11 +285,11 @@ async def update_credential_endpoint(
 async def delete_credential_endpoint(
     credential_id: UUID,
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> Response:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     await admin_service.delete_credential(db, tenant_id, str(credential_id))
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -208,11 +303,11 @@ async def delete_credential_endpoint(
 async def rotate_credential_endpoint(
     credential_id: UUID,
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaCredentialRotateResponse:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     result = await admin_service.rotate_credential(db, tenant_id, str(credential_id))
     await db.commit()
     return result
@@ -227,11 +322,11 @@ async def list_mapping_endpoint(
     search: str | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=500),
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> list[MetaAdsMapEntry]:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     return await admin_service.list_mapping(db, tenant_id, search, limit)
 
 
@@ -244,11 +339,11 @@ async def list_mapping_endpoint(
 async def create_mapping_endpoint(
     payload: MetaAdsMapCreate,
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaAdsMapEntry:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     result = await admin_service.upsert_mapping(db, tenant_id, payload)
     await db.commit()
     return result
@@ -263,11 +358,11 @@ async def update_mapping_endpoint(
     ad_id: int,
     payload: MetaAdsMapUpdate,
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaAdsMapEntry:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     result = await admin_service.upsert_mapping(db, tenant_id, payload, ad_id=ad_id)
     await db.commit()
     return result
@@ -281,11 +376,11 @@ async def update_mapping_endpoint(
 async def delete_mapping_endpoint(
     ad_id: int,
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> Response:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     await admin_service.delete_mapping(db, tenant_id, ad_id)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -300,11 +395,11 @@ async def list_unmapped_leads_endpoint(
     status: str = Query(default="needs_routing", description="Lead status to filter"),
     limit_per_ad: int = Query(default=10, ge=1, le=50, description="Max leads per ad_id group"),
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> UnmappedLeadsResponse:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     return await admin_service.list_unmapped_leads(
         db,
         tenant_id=tenant_id,
@@ -322,11 +417,11 @@ async def reroute_lead_endpoint(
     lead_id: UUID,
     payload: MetaLeadRerouteRequest,
     ctx: UserCtx = Depends(get_current_user),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaLeadResponse:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
     result = await admin_service.reroute_lead(db, tenant_id, str(lead_id), payload)
     return result
 
@@ -339,12 +434,15 @@ async def reroute_lead_endpoint(
 async def retry_leads_endpoint(
     payload: MetaLeadRetryRequest,
     ctx: UserCtx = Depends(get_current_user),
-    own_company_id: str = Depends(resolve_active_own_company_id),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    x_own_company_id: str | None = Header(default=None, alias="X-Own-Company-Id"),
+    db_tenant: Tuple[AsyncSession, UUID, str] = Depends(get_db_with_meta_leads_effective_tenant),
 ) -> MetaLeadRetryResponse:
-    db, tenant_uuid = db_tenant
+    db, tenant_uuid, header_tid = db_tenant
+    _ensure_tenant(ctx, header_tid)
     tenant_id = str(tenant_uuid)
-    _ensure_tenant(ctx, tenant_id)
+    own_company_id = await resolve_own_company_id_for_session(
+        db, tenant_id, ctx, x_own_company_id
+    )
     result = await admin_service.retry_leads(db, tenant_id, own_company_id, payload)
     await db.commit()
     return result

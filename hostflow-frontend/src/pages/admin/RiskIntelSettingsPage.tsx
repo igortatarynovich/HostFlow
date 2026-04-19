@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import { recordPerfMeasurement } from '../../api/analytics'
 import { getRiskModelV1Settings, patchRiskModelV1Settings } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 
 const RISK_BANDS = ['low', 'medium', 'high', 'critical'] as const
 type RiskBand = (typeof RISK_BANDS)[number]
@@ -166,25 +165,16 @@ export default function RiskIntelSettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('admin.risk_intel.settings.kicker', { defaultValue: 'CRM setup' })}
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {t('admin.risk_intel.settings.title', { defaultValue: 'Risk intelligence (v1)' })}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            {t('admin.risk_intel.settings.blurb', {
-              defaultValue:
-                'Tenant overrides for risk_model_v1: hourly job, stage gate, digest email, and risk-band automations. Effective values merge with product defaults.',
-            })}
-          </p>
-        </div>
-        <Link to={CRM_APP_PATHS.settings} className="btn-secondary btn-sm">
-          {t('admin.risk_intel.settings.back', { defaultValue: '← Settings' })}
-        </Link>
-      </div>
+      <SettingsSubpageHeader
+        className="max-w-4xl"
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('admin.settings.subpage.kicker_workspace_setup')}
+        title={t('admin.risk_intel.settings.title', { defaultValue: 'Risk intelligence (v1)' })}
+        subtitle={t('admin.risk_intel.settings.blurb', {
+          defaultValue:
+            'Tenant overrides for risk_model_v1: hourly job, stage gate, digest email, and risk-band automations. Effective values merge with product defaults.',
+        })}
+      />
 
       {loading ? (
         <div className="text-sm text-slate-500">{t('common.loading')}</div>

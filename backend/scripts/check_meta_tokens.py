@@ -52,12 +52,16 @@ async def check_tokens(tenant_id: str) -> None:
         
         for cred in credentials:
             page_id = decrypt_secret(cred.encrypted_page_id) if cred.encrypted_page_id else None
+            ad_account_id = (
+                decrypt_secret(cred.encrypted_ad_account_id) if cred.encrypted_ad_account_id else None
+            )
             has_token = bool(cred.encrypted_access_token)
             
             print(f"📋 {cred.label}")
             print(f"   ID: {cred.id}")
             print(f"   Status: {cred.status}")
             print(f"   Page ID: {page_id or 'НЕ УКАЗАН'}")
+            print(f"   Ad account ID: {ad_account_id or 'НЕ УКАЗАН'}")
             print(f"   Has Access Token: {'✅' if has_token else '❌'}")
             print(f"   Last Verified: {cred.last_verified_at or 'НИКОГДА'}")
             print(f"   Last Rotation: {cred.last_rotation_at or 'НИКОГДА'}")

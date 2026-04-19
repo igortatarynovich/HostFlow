@@ -16,15 +16,12 @@
     "actions": {
       "back": "Back",
       "next": "Next",
-      "update": "Update",
       "edit": "Edit",
       "delete": "Delete",
       "cancel": "Cancel",
       "save": "Zapisz",
       "create": "Create",
       "close": "Close",
-      "copy_link": "Copy link",
-      "show_more": "Show more",
       "more": "Więcej akcji",
       "clear": "Clear",
       "reset": "Resetuj",
@@ -39,13 +36,10 @@
       "open": "Otwórz",
       "actions": "Działania",
       "advanced": "Zaawansowane",
-      "check": "Sprawdź",
       "dismiss": "Odrzuć",
-      "hide": "Ukryj",
       "insert": "Wstaw",
       "prev": "Poprzednia",
       "remove": "Usuń",
-      "show": "Pokaż",
       "title": "Tytuł"
     },
     "errors": {
@@ -53,7 +47,6 @@
       "request_failed": "Żądanie nie powiodło się",
       "plan_lead_custom_fields_limit": "Twój plan pozwala na maks. {{limit}} aktywnych pól niestandardowych leada. Ulepsz do planu Team, aby dodać więcej.",
       "plan_meta_field_mapping_limit": "Twój plan pozwala na maks. {{limit}} reguł mapowania pól Meta. Ulepsz do planu Team, aby powiększyć tabelę.",
-      "plan_meta_lead_credentials_limit": "Twój plan pozwala na {{limit}} credential Meta (integracja). Ulepsz do planu Team, aby dodać kolejne.",
       "plan_upgrade_team_short": "Zmiana planu: Ustawienia → Billing."
     },
     "candidate_card": {
@@ -95,71 +88,6 @@
           "scandi": "Skandynawia",
           "local": "Trasy lokalne"
         }
-      },
-      "select": {
-        "empty": "— wybierz —",
-        "search": "Szukaj…",
-        "search_country": "Szukaj kraju/kodu…",
-        "no_results": "Brak wyników",
-        "multi_none": "Nie wybrano",
-        "multi_selected": "Wybrano: {count}"
-      },
-      "errors": {
-        "employment": {
-          "missing_employer": "Podaj pracodawcę w każdej pozycji doświadczenia.",
-          "missing_start": "Podaj datę rozpoczęcia w każdej pozycji doświadczenia.",
-          "end_before_start": "Data zakończenia nie może być wcześniejsza niż data rozpoczęcia.",
-          "load_failed": "Nie udało się wczytać historii zatrudnienia."
-        }
-      },
-      "labels": {
-        "current_vacancy": "Bieżąca oferta"
-      }
-    },
-    "leads": {
-      "title": "Leady",
-      "subtitle": "Nowe zgłoszenia z Meta Ads i innych źródeł",
-      "filters": {
-        "status": "Status",
-        "status_all": "Wszystkie statusy",
-        "stage": "Etap",
-        "stage_all": "Wszystkie etapy"
-      },
-      "statuses": {
-        "new": "Nowy",
-        "processed": "Utworzono kandydata",
-        "duplicated": "Duplikat",
-        "needs_routing": "Wymaga przekierowania",
-        "failed": "Błąd"
-      },
-      "stages": {
-        "new": "Nowy",
-        "contacted": "Skontaktowano",
-        "qualified": "Kwalifikowany",
-        "converted": "Przekonwertowano",
-        "lost": "Utracono"
-      },
-      "table": {
-        "created": "Utworzono",
-        "status": "Status",
-        "stage": "Etap",
-        "company": "Firma",
-        "vacancy": "Oferta",
-        "contact": "Kontakt",
-        "source": "Źródło",
-        "candidate": "Kandydat",
-        "error": "Błąd"
-      },
-      "states": {
-        "empty": "Brak leadów."
-      },
-      "messages": {
-        "load_failed": "Nie udało się pobrać leadów."
-      },
-      "pagination": {
-        "shown": "Wyświetlono {count} z {total}",
-        "prev": "Wstecz",
-        "next": "Dalej"
       }
     },
     "words": {
@@ -221,17 +149,11 @@
     "requirements": "Wymagania dla dokumentu",
     "metadata_required": "Najpierw uzupełnij te pola",
     "actions": {
-      "upload": "Prześlij dokument",
-      "scan_mobile": "Skanuj telefonem",
-      "scan_mobile_hint": "Otwórz skaner w telefonie przez kod QR lub link.",
-      "scanner_stub": "Skaner (wkrótce)",
-      "order": "Zamów dokument"
+      "upload": "Prześlij dokument"
     },
     "labels": {
       "requested_from": "Dostarczone przez",
       "requested_from_driver": "Kandydat",
-      "requested_from_employer": "Pracodawca",
-      "requested_from_agency": "Agencja",
       "preset": "Szablon: {preset}"
     },
     "status": {
@@ -247,9 +169,6 @@
       "overdue": "po terminie",
       "rejected": "wymaga ponownego przesłania",
       "default": "oczekuje"
-    },
-    "questions": {
-      "have_document": "Czy masz ten dokument?"
     },
     "work_permit": {
       "ordered": "Ten dokument zostanie zamówiony przez agencję po weryfikacji plików."
@@ -269,10 +188,6 @@
       "title": "Tytuł",
       "description": "Opis",
       "issued_for": "Wydano dla"
-    },
-    "form": {
-      "type_label": "Typ dokumentu",
-      "file_label": "Plik"
     }
   },
   "app": {
@@ -338,6 +253,8 @@
         "meta_field_mapping_hint": "Ulepsz plan w Ustawienia → Billing, aby powiększyć tabelę mapowania na planach Team.",
         "meta_lead_credentials_title": "Osiągnięto limit integracji Meta Lead",
         "meta_lead_credentials_hint": "Ulepsz plan w Ustawienia → Billing, aby podłączyć dodatkowe źródła Meta.",
+        "meta_leads_oauth_title": "Szybkie połączenie Meta wymaga planu Team",
+        "meta_leads_oauth_hint": "Ulepsz plan w Ustawienia → Billing, aby użyć logowania Facebook dla Meta Leads.",
         "lead_custom_fields_title": "Osiągnięto limit pól niestandardowych leada",
         "lead_custom_fields_hint": "Zarchiwizuj nieużywane pola lub ulepsz plan w Ustawienia → Billing."
       }
@@ -355,7 +272,6 @@
         "pipeline": "Lejek",
         "users": "Użytkownicy",
         "company_access": "Dostęp firm",
-        "meta_leads": "Leady Meta",
         "deletion_requests": "Żądania usunięcia",
         "ruleset": "Zestaw reguł"
       },
@@ -418,10 +334,10 @@
         "settings_company_access": "Dostęp do firm",
         "settings_email": "Ustawienia e-mail",
         "settings_tenant_links": "Połączenia tenantów",
-        "settings_integrations": "Integracje",
+        "settings_integrations": "Hub integracji",
         "settings_ruleset": "Wersje Ruleset",
         "settings_audit": "Dziennik audytu",
-        "settings_communications": "Ustawienia komunikacji",
+        "settings_communications": "Administracja komunikacji",
         "settings_communications_messengers": "Komunikatory",
         "settings_communications_queue": "Kolejka i routing",
         "settings_communications_sla": "SLA komunikacji",
@@ -462,7 +378,39 @@
         "section_core": "Proces i rekordy",
         "empty": "Brak włączonych obszarów dla Twojej roli.",
         "operational_title": "Praca",
+        "page_kicker": "Wszystko, co wymaga uwagi teraz",
+        "hero_need_action": "{count} kandydatów wymaga działania",
+        "hero_need_action_title": "Kandydaci wymagają działania",
+        "hero_all_ok": "Wszystko pod kontrolą",
+        "hero_calm_body": "Żaden kandydat nie czeka teraz na Twoje działanie",
+        "hero_new_today": "Nowe leady dziś: {count}",
+        "hero_sub_most_stuck": "Największy zator: {stage}",
+        "hero_sub_oldest": "Najdłużej w wczesnym lejku: {days} dni",
+        "load_error": "Nie udało się wczytać panelu pracy",
+        "reload": "Odśwież",
+        "block_critical": "Wymaga uwagi",
+        "row_open": "Otwórz",
+        "cta_open_candidates": "Otwórz kandydatów",
+        "cta_create_candidate": "Utwórz kandydata",
+        "cta_open_leads": "Otwórz leady",
+        "cta_open_tasks": "Otwórz zadania",
+        "crit_leads_stale": "leadów bez pierwszego kontaktu ponad 24 godziny",
+        "crit_tasks_overdue": "przeterminowanych zadań",
+        "crit_no_next": "kandydatów bez następnego kroku",
+        "crit_unassigned": "kandydatów bez przypisanego rekrutera",
+        "crit_leads_route": "nowych leadów do rozpatrzenia",
+        "block_bottlenecks": "Wąskie gardła",
+        "bn_docs_wait": "Czekamy na dokumenty",
+        "bn_docs_hint": "Lista z filtrem etapu dokumentów",
+        "bn_no_contact": "Brak pierwszego kontaktu",
+        "bn_interview": "Brak zaplanowanej rozmowy",
+        "bn_waiting_reply": "Czekają na odpowiedź",
+        "qa_process_new": "Obsłuż nowych leadów",
+        "qa_request_docs": "Poproś o dokumenty",
+        "qa_schedule_interviews": "Umów rozmowy",
         "operational_subtitle": "Co wymaga uwagi teraz — nie katalog modułów.",
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, inbox, rekordów i ustawień",
         "plan_upgrade_strip_title": "Automatyzacja zespołu",
         "plan_upgrade_strip_body": "Masowe przetwarzanie leadów Meta, akcje w lejku i część automatyzacji wymaga planu Team. Solo/Starter nadal obsługuje listy i kroki ręczne.",
         "plan_upgrade_strip_cta": "Billing i upgrade",
@@ -505,10 +453,6 @@
         "metric_leads_routing_label": "leadów do rozdzielenia",
         "footer_entities": "Pasek pod górnym menu: skrót do {clients}, ofert i finansów."
       },
-      "context_tabs": {
-        "aria": "Nawigacja obszaru pracy",
-        "finance_group_aria": "Finanse — zlecenia, usługi i faktury"
-      },
       "context_strip": {
         "aria": "Sekcje operacyjne"
       }
@@ -535,6 +479,8 @@
         "back_hub": "← Hub analityki",
         "configure_funnels": "Konfiguruj etapy lejka",
         "open_leads_workspace": "Otwórz obszar leadów",
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, kandydatów, listy leadów, zadań i ustawień",
         "empty": "Brak etapów lejka. Zmapuj etapy CRM na korzenie konwersji w ustawieniach lejków.",
         "at_or_beyond": "Na tym etapie lub dalej: {n}",
         "drop_off": "Odpad przed następnym: {n}",
@@ -580,10 +526,6 @@
     },
     "clients": {
       "title": "Klienci",
-      "subtitle": "Klienci agencji i ustawienia dostępu.",
-      "add_client": "Dodaj klienta",
-      "empty": "Brak klientów. Dodaj pierwszego.",
-      "created": "Klient został dodany",
       "portal_created": "Link został utworzony",
       "portal_revoked": "Link został cofnięty",
       "copy_failed": "Nie udało się skopiować",
@@ -599,14 +541,12 @@
       "see_vacancies_label": "Widzieć wakaty",
       "see_reduced_label": "Profile skrócone",
       "search_placeholder": "Szukaj po nazwie lub domenie...",
-      "display_name": "Nazwa klienta",
       "display_name_placeholder": "np. Northwind Logistics",
       "link_existing": "Lub powiąż z istniejącą firmą",
       "linked_to": "Powiąż z",
       "settings": "Ustawienia dostępu",
       "back_to_list": "← Do listy klientów",
       "crm_directory_link": "Otwórz katalog CRM klientów",
-      "not_found": "Nie znaleziono klienta",
       "errors": {
         "name_or_link": "Wpisz nazwę lub powiąż z firmą.",
         "link_load_failed": "Nie udało się wczytać powiązania klienta",
@@ -681,10 +621,12 @@
           "load_failed": "Nie udało się załadować wakatów"
         }
       },
-      "actions": {
-        "create": "Utwórz"
+      "form": {
+        "save_failed": "Nie udało się zapisać oferty"
       },
       "detail": {
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, kandydatów, leadów, listy ofert, zadań i ustawień",
         "documents": {
           "hint": "Wskazówka"
         },
@@ -734,10 +676,11 @@
           "blocked_geo_hint": "Jeśli kraj geo leada jest na liście — no_fit. Puste — wyłącza regułę.",
           "lead_fields_geo": "dla „gdzie jest teraz” vs obywatelstwo użyj",
           "disable_auto_convert": "Wyłącz autokonwersję lead → kandydat dla tej oferty (§2.4)",
-          "disable_auto_convert_hint": "Przy trybie Automatic leady na tę ofertę nie utworzą kandydata automatycznie nawet przy fit — wymagany Process. W extra: leads_auto_convert_on_fit_v1 = false."
+          "disable_auto_convert_hint": "Przy trybie Automatic leady na tę ofertę nie utworzą kandydata automatycznie nawet przy fit — wymagany Process. W extra: leads_auto_convert_on_fit_v1 = false.",
+          "enable_fit_evaluation": "Włącz dopasowanie leadów do kryteriów",
+          "enable_fit_evaluation_hint": "Wyłączone: pola poniżej możesz edytować jako szkic — nie wpływają na routing ani autokonwersję. Włączone bez reguł: fit nie blokuje (jak brak kryteriów). W extra: lead_fit_evaluation_enabled_v1."
         }
-      },
-      "load_failed": "Ładowanie nie powiodło się"
+      }
     },
     "handoff": {
       "do_procesowania": "Procesowani",
@@ -767,10 +710,6 @@
         "all": "Wszyscy",
         "to_process": "Do procesowania",
         "in_process": "W procesie"
-      },
-      "range": {
-        "30d": "Ostatnie 30 dni",
-        "all": "Cały okres"
       },
       "status": {
         "pending": "Oczekuje",
@@ -817,16 +756,6 @@
         "declined": "Rezygnacja",
         "returned": "Zwrócony"
       },
-      "sort": {
-        "requested": "Data przekazania",
-        "decision": "Data decyzji",
-        "candidate": "Imię kandydata",
-        "status": "Status",
-        "stage": "Etap",
-        "created": "Data utworzenia"
-      },
-      "export_csv": "Eksport CSV",
-      "page": "Strona {page}",
       "select_all": "Zaznacz wszystkie",
       "bulk_done": "Gotowe: {ok} z {total}",
       "return_bulk_title": "Zwróć {count} przekazań",
@@ -839,8 +768,16 @@
       "handoff_accepted_title": "Kandydat przekazany",
       "communications_sla_overdue_title": "SLA przekroczone: wymagana odpowiedź w dialogu",
       "communications_thread_escalated_title": "Wątek eskalowany — wymagane działanie",
-      "view_handoffs": "Przejdź do przetworzonych",
-      "open_sla_incidents": "Otwórz incydenty SLA"
+      "lead_public_intake_client_title": "Nowy lead klienta z publicznego intake",
+      "lead_public_intake_client_desc": "Zapytanie od {name}. Otwórz lead, aby kontynuować.",
+      "intake_client_lead_skipped_no_company_title": "Intake klienta: lead nie utworzony",
+      "intake_client_lead_skipped_no_company_desc": "{name} wysłał(a) zapytanie klienta, ale nie udało się przypisać firmy. Ustaw firmę domyślną (Meta leads) lub powiąż ofertę/klienta.",
+      "reminder_popup": {
+        "due_label": "Termin",
+        "open_candidate": "Otwórz kandydata",
+        "all_reminders": "Wszystkie przypomnienia",
+        "later": "Później"
+      }
     },
     "sla_incidents": {
       "title": "Incydenty SLA",
@@ -849,7 +786,6 @@
       "total": "Łącznie",
       "search": "Szukaj incydentów…",
       "include_read": "Pokaż przeczytane",
-      "empty": "Brak incydentów SLA.",
       "errors": {
         "load": "Nie udało się wczytać incydentów SLA"
       },
@@ -882,7 +818,6 @@
     },
     "communications_inbox_center": {
       "back_all_threads": "← Wszystkie wątki",
-      "hub_link": "← Strona skrzynki",
       "control_title": "Sterowanie wątkiem",
       "control_subtitle": "Powiązane rekordy, SLA i szybkie linki.",
       "unlinked_hint": "Wątek nie jest powiązany z kandydatem, klientem ani zamówieniem usługi. Powiąż poniżej lub w Wiadomościach / E-mailu.",
@@ -890,7 +825,6 @@
       "assignee_save_failed": "Nie udało się zaktualizować osoby przypisanej.",
       "assign_manager_title": "Przypisz menedżera",
       "assignee_saved": "Przypisanie zaktualizowane.",
-      "link_panel_hint": "Wyszukaj i powiąż kandydata, klienta lub zamówienie usługi bez opuszczania skrzynki.",
       "link_search_candidate_failed": "Wyszukiwanie kandydatów nie powiodło się.",
       "link_search_company_failed": "Wyszukiwanie klienta nie powiodło się.",
       "link_error_candidate": "Nie udało się zaktualizować powiązania z kandydatem.",
@@ -929,22 +863,11 @@
     },
     "communications_inbox_hub": {
       "title": "Skrzynka",
-      "subtitle": "Wszystkie kanały na jednej liście: zakres (Wszystkie / Wiadomości / E-mail), wyszukiwanie i Centrum komunikacji. W zakresie e-mail — foldery i synchronizacja; stare /app/messages i /app/email przekierowują tutaj.",
-      "messages_title": "Wiadomości",
-      "messages_body": "WhatsApp, Telegram i inne dialogi poza e-mailem.",
-      "email_title": "E-mail",
-      "email_body": "Wątki z poczty IMAP w workspace.",
-      "unread_badge": "{count} nieprzeczytanych",
-      "unlinked_badge": "{count} niepowiązanych",
-      "empty_counts": "Brak nieprzeczytanych w załadowanej liście.",
-      "cta_messages": "Otwórz Wiadomości",
-      "cta_email": "Otwórz e-mail",
       "cta_sla": "Incydenty SLA",
       "loading": "Ładowanie liczników…",
       "error": "Nie udało się wczytać wątków.",
       "retry": "Spróbuj ponownie",
       "unified_section_title": "Ostatnie we wszystkich kanałach",
-      "unified_section_subtitle": "Sortowanie wg ostatniej aktywności (przypięte na górze). Wiersz otwiera Centrum komunikacji.",
       "unified_filter_all": "Wszystkie",
       "unified_filter_unread": "Nieprzeczytane",
       "unified_filter_unlinked": "Bez powiązań",
@@ -960,11 +883,9 @@
       "sort_last_activity": "Ostatnia aktywność",
       "sort_sla_due": "Termin SLA",
       "unified_empty": "Brak wątków dla tego filtra.",
-      "unified_none_enabled": "Włącz Wiadomości lub E-mail w konfiguracji komunikacji, aby zobaczyć wątki.",
+      "unified_none_enabled": "Włącz Wiadomości lub E-mail w Ustawienia → Hub integracji lub w administracji komunikacji, aby zobaczyć wątki.",
       "scoped_candidate_hint": "Widoczne tylko wątki powiązane z tym kandydatem.",
-      "scoped_candidate_clear": "Pokaż wszystkie wątki",
-      "channel_badge_email": "E-mail",
-      "channel_badge_messages": "Wiadomości"
+      "scoped_candidate_clear": "Pokaż wszystkie wątki"
     },
     "communications_api": {
       "thread_unlinked_outbound_blocked": "Powiąż wątek z kandydatem, firmą klienta lub zamówieniem UOS przed wysłaniem (polityka operacji)."
@@ -975,10 +896,6 @@
         "search": "Szukaj",
         "send": "Wyślij"
       },
-      "search": {
-        "placeholder": "Szukaj dialogu..."
-      },
-      "candidate_filter": "Filtr kandydata",
       "action_groups": {
         "context": "Kontekst",
         "workflow": "Praca",
@@ -1037,40 +954,6 @@
         "order_linked_short": "zamówienie",
         "order_missing_short": "brak zamówienia"
       },
-      "timeline": {
-        "empty": "Brak wiadomości."
-      },
-      "compose": {
-        "recipient_placeholder": "Odbiorca (opcjonalne nadpisanie)",
-        "message_placeholder": "Napisz wiadomość"
-      },
-      "task": {
-        "button": "Zadanie",
-        "modal_title": "Utwórz zadanie z dialogu",
-        "title_placeholder": "Tytuł zadania"
-      },
-      "tags": {
-        "label": "Tagi",
-        "manager": "Menedżer tagów",
-        "manager_hint": "Twórz, zmieniaj kolor, archiwizuj i zmieniaj nazwy osobistych tagów wiadomości.",
-        "select": "Wybierz tag",
-        "review_later": "Sprawdź później",
-        "ad_hoc": "Tag ad hoc",
-        "quick_add": "Szybkie dodanie",
-        "manage": "Zarządzaj tagami",
-        "empty": "Brak osobistych tagów.",
-        "create_new": "Utwórz nowy",
-        "name_placeholder": "Nazwa tagu",
-        "create": "Utwórz tag",
-        "active": "Aktywny",
-        "archived": "Zarchiwizowany",
-        "columns": {
-          "name": "Imię",
-          "color": "Kolor",
-          "state": "Stan"
-        },
-        "remove_from_dialog": "Kliknij, aby usunąć z dialogu"
-      },
       "ops": {
         "all_modes": "Wszystkie tryby",
         "menu_label": "Status",
@@ -1127,6 +1010,13 @@
         "section_automations": "Automatyzacje",
         "section_integrations": "Integracje",
         "section_team": "Zespół",
+        "section_pipeline": "Rekrutacja",
+        "section_tasks_calendar": "Zadania i kalendarz",
+        "section_processing": "Obsługa",
+        "section_documents": "Dokumenty",
+        "section_organization": "Organizacja",
+        "section_personal": "Osobiste",
+        "section_menu": "Menu",
         "work": "Praca",
         "business": "Biznes",
         "communications_workspace": "Obszar roboczy komunikacji",
@@ -1137,12 +1027,6 @@
       "actions": {
         "logout": "Wyloguj",
         "profile": "Profil"
-      },
-      "account": {
-        "my_account": "Moje konto"
-      },
-      "active_own_company": {
-        "badge_title": "Aktywna jednostka prawna (own company): {{name}}"
       }
     },
     "topbar": {
@@ -1155,42 +1039,12 @@
         "return_to_platform": "Wróć do panelu platformy",
         "language": "Język"
       },
-      "user_menu": {
-        "settings_heading": "Ustawienia workspace",
-        "settings_home": "Wszystkie ustawienia",
-        "system_settings": "Ustawienia systemu",
-        "manager_tools": "Narzędzia menedżerskie"
-      },
-      "nba": {
-        "button": "Działania",
-        "button_title": "Następne najlepsze działania",
-        "panel_title": "Następne najlepsze działania",
-        "panel_hint": "Przejdź do kolejki lub utwórz przypomnienia zbiorczo.",
-        "open_leads": "Obszar leadów",
-        "open_dashboard": "Panel",
-        "empty": "Brak otwartych kolejek dla Twojego konta."
-      },
       "notifications": {
         "title": "Powiadomienia",
-        "subtitle": "{unread} nieprzeczytanych · {total} w liście",
         "panel_subtitle": "Nieprzeczytane: {count}",
         "open": "Otwórz",
         "clear": "Wyczyść",
-        "clear_all": "Wyczyść wszystko",
-        "open_thread": "Otwórz wątek",
-        "open_in_inbox": "Otwórz w skrzynce",
-        "groups": {
-          "all": "Wszystkie",
-          "sla": "Pilne (SLA)",
-          "tasks": "Zadania",
-          "messages": "Wiadomości",
-          "system": "System"
-        },
-        "tier": {
-          "critical": "Krytyczne",
-          "high": "Wysokie",
-          "normal": "Zwykłe"
-        }
+        "clear_all": "Wyczyść wszystko"
       },
       "search": {
         "open": "Szukaj",
@@ -1225,18 +1079,7 @@
       "own_company_plan_limit_402": "Limit przestrzeni dla planu został wykorzystany.",
       "own_company_open_billing": "Otwórz rozliczenia",
       "trial_badge": "Trial",
-      "trial_badge_hint": "Workspace próbny. Plan i rozliczenia: Ustawienia → Billing.",
-      "quick_create": {
-        "button": "Utwórz",
-        "menu_label": "Szybkie tworzenie",
-        "candidate": "Nowy kandydat",
-        "client": "Nowy klient",
-        "vacancy": "Nowa rekrutacja",
-        "order": "Nowe zlecenie serwisowe",
-        "task": "Nowe zadanie",
-        "meeting": "Nowe spotkanie (kalendarz)",
-        "invoice": "Nowa faktura"
-      }
+      "trial_badge_hint": "Workspace próbny. Plan i rozliczenia: Ustawienia → Billing."
     },
     "trial_banner": {
       "badge": "Status trial",
@@ -1270,7 +1113,9 @@
       },
       "public_intake": {
         "title": "Portal formularza kandydata",
-        "description": "Rozpocznij formularz kandydata, podaj dane kontaktowe i bezpiecznie kontynuuj zgłoszenie."
+        "description": "Rozpocznij formularz kandydata, podaj dane kontaktowe i bezpiecznie kontynuuj zgłoszenie.",
+        "client_title": "Zapytanie klienta — HostFlow",
+        "client_description": "Rozpocznij zapytanie klienta. Po wysłaniu pełnej ankiety zespół może otrzymać lead CRM."
       },
       "public_portal": {
         "title": "Portal kandydata",
@@ -1295,8 +1140,8 @@
           "description": "Skonfiguruj język, strefę czasową, formaty oraz zapisane widoki list."
         },
         "notifications": {
-          "title": "Powiadomienia e-mail",
-          "description": "Wybierz zdarzenia i częstotliwość. Obecnie obsługujemy tylko e-mail."
+          "title": "Powiadomienia",
+          "description": "Wybierz zdarzenia i częstotliwość. Dotyczy alertów w aplikacji; e-mail tylko tam, gdzie jest dostawa dla danego zdarzenia."
         },
         "security": {
           "title": "Dostęp i rola",
@@ -1392,6 +1237,14 @@
           "mentions_direct": {
             "title": "@wzmianki",
             "description": "Wiadomości, w których wspomniano mnie bezpośrednio."
+          },
+          "lead_public_intake_client": {
+            "title": "Publiczny intake: nowy lead klienta",
+            "description": "Powiadomienie w aplikacji, gdy zapytanie klienta z formularza publicznego utworzy lead CRM."
+          },
+          "intake_client_lead_skipped_no_company": {
+            "title": "Publiczny intake: lead nie utworzony",
+            "description": "Powiadomienie w aplikacji, gdy zapytanie klienta nie utworzyło leada (brak przypisanej firmy klienta)."
           }
         }
       },
@@ -1446,16 +1299,6 @@
         "timezone": "Strefa czasowa",
         "user": "Użytkownik"
       }
-    },
-    "setup_rail": {
-      "title": "Postęp konfiguracji",
-      "logo": "Prześlij logo",
-      "hours": "Ustaw godziny pracy",
-      "team": "Zaproś zespół",
-      "telegram": "Połącz Telegram",
-      "clear_demo": "Usuń dane demo",
-      "clear_demo_hint": "Usuwa demo leady i kandydatów utworzonych podczas onboardingu.",
-      "footer": "Opcjonalne — nie blokuje workspace'u."
     },
     "signup": {
       "accept_terms_prefix": "Akceptuję",
@@ -1559,6 +1402,7 @@
       "tenants": {
         "title": "Tenanci platformy",
         "subtitle": "Twórz tenantów, zarządzaj limitami licencji i przełączaj się w ich kontekst z jednego panelu.",
+        "header_kicker": "Tylko superadmin: workspace, licencje, moduły i personifikacja.",
         "filters": {
           "search": "Szukaj tenanta…",
           "status": {
@@ -1858,6 +1702,7 @@
       },
       "billing": {
         "badge": "Subskrypcja i płatności",
+        "header_kicker": "Plan, miejsca, metoda płatności i limity tego workspace.",
         "title": "Zarządzanie subskrypcją",
         "subtitle": "Tutaj ma być od razu jasne, czy plan jest opłacony, który plan jest aktywny, kiedy kończy się okres i co można zrobić dalej.",
         "portal": "Otwórz ustawienia płatności",
@@ -2286,21 +2131,25 @@
             "custom": "Niestandardowy"
           },
           "prompts": {
-            "delete": "Usunąć etap?"
+            "delete": "Usunąć etap?",
+            "delete_named": "Usunąć etap „{name}”?"
           }
         }
       },
       "chrome": {
+        "automations": "Automatyzacje",
         "billing": "Rozliczenia",
         "crm_setup": "Konfiguracja CRM",
         "integrations": "Integracje",
         "overview": "Przegląd",
         "personal": "Osobiste",
-        "security": "Bezpieczeństwo",
-        "subtitle": "Podtytuł",
+        "security": "Audyt i bezpieczeństwo",
+        "subtitle": "Te same obszary co strona główna Ustawień: workspace, CRM, zespół, automatyzacje, integracje, rozliczenia, profil.",
         "team": "Zespół",
-        "title": "Tytuł",
-        "workspace": "Obszar roboczy"
+        "title": "Ustawienia",
+        "workspace": "Obszar roboczy",
+        "wayfinding_title": "Obszary pracy w CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, rekordów, zadań i strony głównej ustawień"
       },
       "email": {
         "title": "Tytuł"
@@ -2472,6 +2321,7 @@
           "supervisor_current": "Aktualny nadzorca"
         },
         "page": {
+          "header_kicker": "Kto może się zalogować i co wolno robić w tym workspace.",
           "title": "Użytkownicy i role",
           "subtitle": "Zapraszaj członków zespołu, przypisuj role i zarządzaj dostępem.",
           "refresh": {
@@ -2529,6 +2379,7 @@
       },
       "ruleset": {
         "header": {
+          "kicker": "Reguły walidacji dokumentów — publikuj nowe wersje rozważnie.",
           "title": "Zestaw reguł dokumentów",
           "subtitle": "Publikuj i utrzymuj wersje reguł dokumentów.",
           "refresh": {
@@ -2651,278 +2502,6 @@
           "empty": "Brak próśb.",
           "pending_hint": "Czekają na decyzję: {count}"
         }
-      },
-      "meta_leads": {
-        "title": "Admin Meta Leads",
-        "subtitle": "Zarządzaj webhookiem Meta Ads, mapowaniem ogłoszeń i ręcznym routowaniem leadów.",
-        "tabs": {
-          "settings": "Ustawienia",
-          "credentials": "Połączenia",
-          "mapping": "Mapowanie ogłoszeń",
-          "logs": "Logi leadów",
-          "automation_rules": "Zasady automatyzacji"
-        },
-        "notices": {
-          "settings_saved": "Ustawienia Meta Leads zapisane",
-          "credential_created": "Połączenie zapisane",
-          "secret_rotated": "Nowy sekret: {secret}",
-          "mapping_saved": "Mapowanie zapisane",
-          "lead_rerouted": "Lead wysłany do obsługi",
-          "lead_retried": "Lead przetworzony pomyślnie",
-          "unmapped_attached": "W załączeniu niemapowane"
-        },
-        "errors": {
-          "load": "Nie udało się wczytać danych Meta Leads",
-          "settings_update": "Nie udało się zaktualizować ustawień",
-          "credential_label": "Podaj nazwę połączenia",
-          "credential_create": "Nie udało się utworzyć połączenia",
-          "secret_rotate": "Nie udało się odświeżyć sekretu",
-          "credential_delete": "Nie udało się usunąć połączenia",
-          "mapping_required": "Podaj ad_id i vacancy_id",
-          "mapping_ad_id": "ad_id musi zawierać tylko cyfry",
-          "mapping_create": "Nie udało się zapisać mapowania",
-          "mapping_update": "Nie udało się zaktualizować wpisu",
-          "mapping_delete": "Nie udało się usunąć mapowania",
-          "reroute": "Nie udało się przekierować leada",
-          "retry": "Ponowienie nie powiodło się"
-        },
-        "prompts": {
-          "delete_credential": "Usunąć to połączenie Meta?",
-          "delete_mapping": "Usunąć mapowanie dla ogłoszenia {adId}?",
-          "reroute_vacancy": "Wybierz rekrutację",
-          "edit_note": "Nowa notatka",
-          "edit_vacancy": "Nowe vacancy_id"
-        },
-        "placeholders": {
-          "company_none": "— nie wybrano —",
-          "selected_company": "Aktualna: {name}",
-          "recruiter_none": "— nie przypisuj —",
-          "recruiter_fallback": "Rekruter",
-          "selected_recruiter": "Aktualny: {name}"
-        },
-        "settings": {
-          "title": "Połączenie Meta",
-          "subtitle": "Zarządzaj webhookiem i autokreacją kandydatów.",
-          "auto_create": "Włącz autokreację kandydatów",
-          "mask_pii": "Maskuj PII w interfejsie",
-          "default_company": "Domyślna firma",
-          "default_recruiter": "Domyślny rekruter",
-          "current_company": "Aktualna: {name}",
-          "current_recruiter": "Aktualny: {name}",
-          "sla_label": "SLA (godziny do sygnału)",
-          "webhook_url": "Webhook URL",
-          "webhook_token": "Verify token",
-          "last_signature_check": "Ostatnia weryfikacja podpisu: {date}",
-          "signature_status": "Status: {status}",
-          "save": "Zapisz ustawienia",
-          "field_mapping": "Mapowanie pola",
-          "field_mapping_hint": "Wskazówka dotycząca mapowania pola",
-          "field_mapping_placeholder": "[{\"source\":\"phone_number\",\"target\":\"phone\",\"format\":\"phone\",\"overwrite\":true}]"
-        },
-        "credentials": {
-          "title": "Dodaj połączenie",
-          "label": "Etykieta",
-          "status": "Status",
-          "webhook_secret": "Sekret webhooka",
-          "access_token": "Access token",
-          "table": {
-            "label": "Etykieta",
-            "status": "Status",
-            "signature": "Podpis",
-            "ad_id": "ad_id",
-            "page_id": "page_id"
-          },
-          "actions": {
-            "rotate": "Odśwież sekret"
-          },
-          "empty": "Brak zapisanych połączeń",
-          "statuses": {
-            "active": "active",
-            "disabled": "disabled",
-            "rotation_pending": "rotation_pending"
-          },
-          "fields": {
-            "ad_account_id": "ad_account_id",
-            "page_id": "page_id"
-          }
-        },
-        "mapping": {
-          "title": "Mapowanie ogłoszenia na ofertę",
-          "note": "Notatka",
-          "save": "Zapisz mapowanie",
-          "search_placeholder": "Szukaj po ad_id lub notatce",
-          "created": "Utworzono",
-          "empty": "Brak wpisów",
-          "fields": {
-            "ad_id": "ad_id",
-            "vacancy_id": "vacancy_id"
-          },
-          "table": {
-            "ad_id": "ad_id",
-            "vacancy_id": "vacancy_id"
-          }
-        },
-        "logs": {
-          "title": "Logi leadów",
-          "subtitle": "Leady z błędami i problemami routingu. Użyj Retry/Reroute i podpowiedzi poniżej.",
-          "table": {
-            "created": "Utworzono",
-            "status": "Status",
-            "company": "Firma",
-            "vacancy": "Oferta",
-            "contacts": "Kontakty",
-            "error": "Błąd"
-          },
-          "empty": "Brak leadów z błędami",
-          "actions": {
-            "reroute": "Przekieruj",
-            "retry": "Ponów"
-          },
-          "suggestions": {
-            "company_not_resolved": {
-              "action": "Akcja",
-              "hint": "Wskazówka"
-            },
-            "generic": {
-              "action": "Akcja",
-              "hint": "Wskazówka"
-            },
-            "graph_no_token": {
-              "action": "Akcja",
-              "hint": "Wskazówka"
-            },
-            "no_contacts": {
-              "action": "Akcja",
-              "hint": "Wskazówka"
-            },
-            "vacancy_not_resolved": {
-              "action": "Akcja",
-              "hint": "Wskazówka"
-            }
-          }
-        },
-        "other_platforms": "Inne platformy",
-        "quick_start": {
-          "subtitle": "Podtytuł",
-          "title": "Tytuł"
-        },
-        "unmapped": {
-          "attach_btn": "Dołącz btn",
-          "attach_modal_title": "Dołącz tytuł modalny",
-          "leads": "Prowadzi",
-          "select_vacancy": "Wybierz wakat",
-          "subtitle": "Podtytuł",
-          "title": "Tytuł"
-        }
-      },
-      "docs": {
-        "mock": {
-          "passport": "Paszport",
-          "license": "Prawo jazdy",
-          "insurance": "Ubezpieczenie"
-        }
-      },
-      "candidate_profiles": {
-        "actions": {
-          "export_json": "Eksportuj profil do JSON"
-        },
-        "form": {
-          "code_placeholder": "driver_ce",
-          "name_placeholder": "Kierowca CE"
-        }
-      }
-    },
-    "ruleset": {
-      "header": {
-        "title": "Wersjonowanie Ruleset",
-        "subtitle": "Zarządzaj wersjami reguł kompletności dokumentów. Tylko administrator może publikować zmiany.",
-        "refresh": {
-          "loading": "Odświeżamy…",
-          "action": "Odśwież"
-        },
-        "usage_refresh": {
-          "loading": "Dziennik…",
-          "action": "Odśwież dziennik"
-        }
-      },
-      "create": {
-        "title": "Utwórz nową wersję",
-        "description": "Edytuj JSON reguł i dodaj komentarz. Możesz zostawić jako szkic i aktywować później.",
-        "json_label": "JSON reguł",
-        "comment_label": "Komentarz",
-        "comment_placeholder": "Krótki opis zmian",
-        "activate_toggle": "Aktywuj od razu",
-        "save": "Zapisz wersję",
-        "copy_active": "Skopiuj aktywną wersję do edytora"
-      },
-      "history": {
-        "title": "Historia wersji",
-        "columns": {
-          "version": "Wersja",
-          "status": "Status",
-          "comment": "Komentarz",
-          "signature": "Podpis",
-          "author": "Autor",
-          "created": "Utworzono",
-          "actions": "Akcje"
-        },
-        "status": {
-          "active": "Aktywna",
-          "draft": "Szkic"
-        },
-        "actions": {
-          "use_as_draft": "Do edytora",
-          "diff": "Diff",
-          "activate": "Aktywuj",
-          "rollback": "Wycofaj"
-        },
-        "empty": "Nie utworzono jeszcze wersji ruleset."
-      },
-      "diff": {
-        "title": "Diff dla wersji {version}",
-        "subtitle_engine": "Silnik: {engine}",
-        "subtitle_previous": "Porównanie z poprzednią wersją",
-        "loading": "Ładujemy diff…",
-        "summary": {
-          "added": "Dodano: {count}",
-          "removed": "Usunięto: {count}",
-          "changed": "Zmieniono: {count}"
-        },
-        "lists": {
-          "added": "Dodano",
-          "removed": "Usunięto",
-          "changed": "Zmieniono"
-        },
-        "list_empty": "—"
-      },
-      "usage": {
-        "title": "Dziennik użycia",
-        "refresh": {
-          "loading": "Ładujemy…",
-          "action": "Odśwież"
-        },
-        "summary_title": "Podsumowanie",
-        "summary_empty": "Brak wpisów.",
-        "events_title": "Ostatnie zdarzenia",
-        "events_empty": "Nie ma jeszcze zapisów.",
-        "event_ref": "ref: {ref}"
-      },
-      "actions": {
-        "confirm_activate": "Ustawić wersję {version} jako aktywną?",
-        "rollback_prompt": "Wycofanie do wersji {version}. Podaj powód:",
-        "rollback_default_comment": "Rollback via UI"
-      },
-      "errors": {
-        "unknown": "Nieznany błąd",
-        "request_failed": "Wystąpił błąd podczas żądania",
-        "comment_short": "Komentarz musi mieć co najmniej 3 znaki"
-      }
-    },
-    "docs": {
-      "mock": {
-        "passport": "Paszport",
-        "license": "Prawo jazdy",
-        "insurance": "Ubezpieczenie"
       }
     },
     "services": {
@@ -3427,7 +3006,7 @@
     },
     "dashboard": {
       "title": "Analityka",
-      "page_subtitle": "Jeden widok na sygnały, lejek leadów i wycinki kandydatów. Zwijaj sekcje, ustaw filtry i „Zapisz wycinek” — układ jest zapisywany dla Twojego konta na tym urządzeniu.",
+      "page_subtitle": "Odpowiedzi na pytania biznesowe: gdzie tracimy ludzi, co hamuje, które źródła się zwracają, co zrobić dziś. Filtry działają na całość; presety zapisują się na tym urządzeniu.",
       "sections": {
         "shortcuts": {
           "title": "Szybkie linki",
@@ -3438,22 +3017,58 @@
           "subtitle": "Etapy, kohorty i podpowiedzi kolejnych kroków dla obszaru leadów."
         },
         "slices": {
-          "title": "Analityka i rozbicia kandydatów",
-          "subtitle": "Tabela przestawna, KPI operacji, pipeline oraz widoki geo/menedżerów dla filtrów powyżej."
+          "title": "Szczegóły — pivot i widżety (legacy)",
+          "subtitle": "Tabela krzyżowa i opcjonalne stare wykresy/tabele. Włącz widżety w „Konfiguruj” → „Widżety”, jeśli nadal są potrzebne."
         }
       },
-      "nba": {
-        "title": "Następne najlepsze działania",
-        "subtitle": "Te same kolejki co na leadach — otwórz listę lub szybki zbiorczy follow-up.",
-        "playbook_hint_before": "SLA etapu i playbook dla leada:",
-        "playbook_hint_link": "Otwórz leady",
-        "playbook_hint_after": " — wybierz wiersz: pełna strona lub panel (Composer, Focus, Historia).",
-        "open_leads": "Otwórz obszar leadów",
-        "loading": "Ładowanie następnych działań…",
-        "playbook_loading": "Ładowanie podglądu playbook etapu…",
-        "all_clear_title": "Żadna kolejka leadów nie wymaga uwagi",
-        "all_clear_subtitle": "Wszystkie grupy następnych działań są puste dla Twojego konta. Otwórz leady, aby zobaczyć pełne listy, lub odśwież po nowej aktywności.",
-        "load_error": "Nie udało się załadować następnych działań. Spróbuj odświeżyć."
+      "analytics": {
+        "executive": {
+          "badge": "Executive",
+          "hint": "Najważniejsze wyniki dla bieżącego wycinka. „SLA proxy” to 100% minus obciążenie przeterminowanymi przypomnieniami; „brak odpowiedzi” to proxy z limitu prób kontaktu, gdy risk analytics jest wyłączone.",
+          "leads": "Kandydaci w okresie",
+          "hired": "Zatrudnieni",
+          "avg_days_employ": "Śr. dni (etapy zatrudnienia)",
+          "no_reply_proxy": "% limit prób (proxy)",
+          "no_next_queue": "Kolejka bez next / pipeline",
+          "sla_proxy": "SLA (proxy)",
+          "lead_cost": "Koszt / lead",
+          "lead_cost_na": "Nie skonfigurowano"
+        },
+        "analysis": {
+          "title": "Analiza",
+          "subtitle": "Lejek, segmentacja i kolejki działań. Każda liczba prowadzi do listy do pracy."
+        },
+        "funnel": {
+          "badge": "Lejek pipeline",
+          "hint": "Etapy w kolejności pipeline. Konwersja kroku to stosunek do poprzedniego wiersza tej tabeli.",
+          "empty": "Brak etapów dla tego wycinka.",
+          "col_stage": "Etap",
+          "col_count": "Liczba",
+          "col_step_conv": "Konw. vs poprz.",
+          "col_avg_days": "Śr. dni"
+        },
+        "breakdown": {
+          "badge": "Segmentacja",
+          "hint": "Wybierz grupowanie i metrykę. Wiersze prowadzą do listy kandydatów z filtrem.",
+          "group": "Grupuj po",
+          "metric": "Metryka",
+          "metric_count": "Wolumen",
+          "metric_conversion": "Konwersja do zatrudnienia",
+          "metric_time": "Śr. dni od aktualizacji (w toku)",
+          "metric_dropoff": "% odrzucone / rezygnacje",
+          "empty": "Brak danych dla tej kohorty.",
+          "col_segment": "Segment",
+          "col_value": "Wartość"
+        },
+        "problems": {
+          "badge": "Zrób teraz",
+          "hint": "Kolejki o największym wpływie — otwórz listę i usuń wąskie gardło.",
+          "overdue_tasks": "Przeterminowane przypomnienia",
+          "no_next_candidate": "Kandydaci — brak next action",
+          "stuck_leads": "Zablokowane leady (SLA)",
+          "sla_leads": "Przypomnienia SLA leadów",
+          "docs_missing": "Brak dokumentów / wymagane"
+        }
       },
       "lead_autofix": {
         "title": "Leady Meta wymagają przetworzenia",
@@ -3467,12 +3082,6 @@
         "plan_blocked_title": "Wymagany plan Team",
         "plan_blocked_desc": "Team lub Pro — aby uruchamiać masowe przetwarzanie Meta z panelu.",
         "error_title": "Auto-naprawa nie powiodła się"
-      },
-      "insights_strip": {
-        "title": "Sygnały",
-        "lead_funnel": "Lejek konwersji leadów →",
-        "docs_blockers": "{count} problemów z dokumentami →",
-        "slow_stage": "Śr. czas na «{stage}»: ~{days} d ({n} kandydatów)"
       },
       "refresh": {
         "action": "Odśwież",
@@ -3676,16 +3285,6 @@
           "subtitle": "Podstawowa konfiguracja gotowa. Korzystaj dalej z workspace i przygotuj billing przed końcem trialu."
         }
       },
-      "hero": {
-        "title": "Centrum kontroli rekrutacji",
-        "subtitle": "Monitoruj lejek, dokumenty i oferty w jednym interfejsie.",
-        "stats": {
-          "total": "Kandydatów w widoku",
-          "vacancies": "Aktywne oferty",
-          "stages": "Etapy pipeline'u",
-          "vs_previous": "do poprz. okresu:"
-        }
-      },
       "errors": {
         "range_invalid": "Data początkowa musi być wcześniejsza niż końcowa.",
         "load_failed": "Nie udało się wczytać danych panelu"
@@ -3758,12 +3357,6 @@
         },
         "empty": "Brak danych o źródłach."
       },
-      "citizenship": {
-        "title": "Obywatelstwo"
-      },
-      "country": {
-        "title": "Kraj zamieszkania"
-      },
       "docs_risk": {
         "title": "Gotowość dokumentów",
         "subtitle": "Kandydaci na etapach wymagających dokumentów",
@@ -3795,26 +3388,6 @@
         "subtitle": "Najczęstsze kraje w próbce",
         "count_label": "{count} kandydatów",
         "empty": "Brak danych o krajach."
-      },
-      "top_cards": {
-        "companies": {
-          "title": "Top firmy",
-          "subtitle": "Najbardziej aktywne pipeline'y klientów"
-        },
-        "vacancies": {
-          "title": "Top wakaty",
-          "subtitle": "Największe obciążenie kandydatami"
-        },
-        "docs": {
-          "title": "Kandydaci na dokumentach",
-          "subtitle": "Monitoruj etapy dokumentowe"
-        },
-        "total": "Razem {count}",
-        "hired": "Zatrudnieni",
-        "empty": "Brak danych."
-      },
-      "messages": {
-        "no_data": "Brak danych."
       },
       "pivot": {
         "title": "Elastyczny przekrój analityczny",
@@ -3852,12 +3425,6 @@
         },
         "type_label": "Typ"
       },
-      "goals": {
-        "copy_share": "Kopiuj link do udostępnienia",
-        "empty": "Brak danych celów.",
-        "subtitle": "Zgodność z metrykami aktywności i next action.",
-        "title": "Cele (operacyjne)"
-      },
       "ops": {
         "automation_24h": "Zdarzenia automatyzacji (24h)",
         "automation_rules": "Włączone reguły automatyzacji",
@@ -3881,24 +3448,6 @@
         "subtitle": "Szybki drill-down do codziennej pracy.",
         "title": "Widgety operacyjne"
       },
-      "hubs": {
-        "aria": "Szybkie linki do hubów obszaru roboczego",
-        "work": "Hub Work",
-        "work_aria": "Otwórz hub Work — pipeline i narzędzia codzienne w jednym miejscu",
-        "analytics": "Hub Analytics",
-        "analytics_aria": "Otwórz hub Analytics — raporty i skróty"
-      },
-      "perf": {
-        "budget": "Budżet p95 (ms)",
-        "empty": "Brak pomiarów.",
-        "metric": "Metryka",
-        "p50": "p50 (ms)",
-        "p95": "p95 (ms)",
-        "range": "min–max (ms)",
-        "samples": "Próbki",
-        "subtitle": "Z rzeczywistych działań użytkowników (ostatnie 14 dni).",
-        "title": "Baza wydajności (p50/p95)"
-      },
       "stage_metrics": {
         "empty": "Brak danych.",
         "readiness": "Gotowość",
@@ -3907,6 +3456,13 @@
         "title": "Metryki etapów",
         "transitions": "Top przejść",
         "start_stage": "Start"
+      },
+      "billing_gate": {
+        "badge": "Billing",
+        "blocked_title": "Konto ograniczone",
+        "blocked_subtitle_past_due": "Nie udało się pobrać płatności. Zaktualizuj metodę płatności w Billing, aby przywrócić automatyzację, zmiany lejków i inne działania procesowe.",
+        "blocked_subtitle_trial_expired": "Okres karencji po trialu minął. Wybierz plan w Billing, aby dalej korzystać z automatyzacji, edycji lejków, nowych linków portalu itp.",
+        "cta": "Otwórz billing"
       },
       "trial_center": {
         "badge": "Trial Center",
@@ -3931,6 +3487,8 @@
           "summary": "Wyświetlenia: {impression}, kliknięcia: {click}, dismiss: {dismiss}, CTR: {ctr}%",
           "title": "Zdarzenia retention (30 dni)"
         },
+        "grace_subtitle": "Trial się zakończył; zostało ok. {hours} godz. zanim ograniczymy działania procesowe. Wybierz plan w Billing.",
+        "grace_title": "Koniec trialu — okres karencji",
         "subtitle": "Sprawdź billing i dokumenty prawne wcześniej, aby uniknąć przerwy po trialu.",
         "title": "Okres próbny aktywny",
         "title_with_days": "Okres próbny aktywny: pozostało {days} dni",
@@ -4111,12 +3669,6 @@
           "menu": "Akcje"
         }
       },
-      "operations": {
-        "title": "Operacje",
-        "description": "Szybkie działania i kontrola procesu.",
-        "handoff": "Przekazanie",
-        "reminders": "Przypomnienia"
-      },
       "reminders": {
         "title": "Przypomnienia kandydata",
         "subtitle": "Szybkie przypomnienie: tytuł, termin, przesunięcie (min).",
@@ -4295,6 +3847,8 @@
       "labels": {
         "current_vacancy": "Aktualny wakat",
         "short_id_badge": "ID kandydata: {id}",
+        "client_intake_badge": "Zapytanie klienta",
+        "client_intake_badge_hint": "Publiczny intake w trybie klienta (B2B); po wysłaniu mógł powstać lead CRM.",
         "no_profile": "Brak profilu",
         "no_profile_short": "Brak krótkiego profilu",
         "stage_days": "Dni sceniczne"
@@ -4380,18 +3934,6 @@
         "pipeline_completed_body": "Kandydat na etapie końcowym (zatrudniony, odrzucony, rezygnacja lub zakończony okres próbny) — dalsze kroki w procesie nie dotyczą.",
         "title": "Następne działanie"
       },
-      "override": {
-        "title": "Ochrona danych podanych przez kandydata",
-        "description": "Pola danych osobowych, kontaktów i doświadczenia są domyślnie tylko do odczytu. Włączaj override tylko wtedy, gdy świadomie poprawiasz dane kandydata.",
-        "edit": "Edytuj",
-        "done": "Gotowe",
-        "enable": "Włącz override",
-        "disable": "Wyłącz override",
-        "reason_label": "Powód override",
-        "reason_placeholder": "Dlaczego nadpisujesz dane podane przez kandydata?",
-        "protected_fields_label": "Chronione pola kandydata",
-        "protected_fields_loading": "Ładowanie kontraktu pól…"
-      },
       "validation": {
         "poland_basis_required": "Podaj podstawę pobytu przy pobycie w Polsce",
         "email_invalid_format": "Nieprawidłowy format adresu e-mail.",
@@ -4399,16 +3941,6 @@
         "phone_too_short": "Numer telefonu jest zbyt krótki.",
         "phone_too_long": "Numer telefonu jest zbyt długi.",
         "stage_not_in_profile": "Aktualny etap \"{stage}\" nie należy do profilu \"{profile}\". Wybierz etap z profilu lub zmień profil wakatu."
-      },
-      "nav": {
-        "intake": "Formularz",
-        "basic": "Podstawy",
-        "personal": "Dane osobowe",
-        "status": "Status",
-        "experience": "Doświadczenie",
-        "employer": "Pracodawca",
-        "notes": "Notatki",
-        "custom_fields": "Pola niestandardowe"
       },
       "notes": {
         "placeholder": "Dodaj notatkę wewnętrzną…",
@@ -4508,11 +4040,6 @@
           "items": "Pozycje",
           "total": "Razem"
         }
-      },
-      "tabs": {
-        "personal": "Profil",
-        "docs": "Dokumenty",
-        "services": "Usługi"
       },
       "activity_feed": {
         "title": "Aktywność"
@@ -4642,6 +4169,8 @@
     },
     "companies": {
       "detail": {
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, kandydatów, leadów, zadań i ustawień",
         "defaults": {
           "untitled": "Firma bez nazwy"
         },
@@ -5044,6 +4573,8 @@
       },
       "list": {
         "title": "Firmy",
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, listy klientów, kandydatów, leadów i ustawień",
         "search_label": "Szukaj",
         "search_placeholder": "Nazwa, nazwa prawna, miasto…",
         "sort_label": "Sortowanie",
@@ -5146,10 +4677,6 @@
       },
       "labels": {
         "untitled": "Bez nazwy"
-      },
-      "header": {
-        "title": "Kandydaci",
-        "subtitle": "Wizualny pipeline wg ofert"
       },
       "quick_filters": {
         "label": "Szybkie filtry",
@@ -5319,6 +4846,10 @@
         "contact_some": "1–2 próby",
         "contact_limit": "3+ (limit)",
         "contact_attempts_badge": "Próby: {value}",
+        "intake_kind_menu": "Publiczny intake",
+        "intake_kind_client": "Tylko zapytanie klienta (B2B)",
+        "intake_kind_candidate": "Bez zapytania klienta",
+        "intake_kind_badge": "Intake: {value}",
         "handoff_rejected": "Przekazanie odrzucone"
       },
       "table": {
@@ -5347,8 +4878,10 @@
           "docs_ordered": "Data zamówienia",
           "docs_valid": "Ważne od",
           "docs_files": "Pliki",
-          "risk": "Ryzyko"
+          "risk": "Ryzyko",
+          "intake_kind": "Intake"
         },
+        "intake_kind_standard": "Standardowy",
         "experience_years": "lat",
         "documents_count": "dok.",
         "documents": {
@@ -5429,11 +4962,6 @@
           "title": "Tytuł"
         }
       },
-      "row_actions": {
-        "change_stage": "Zmień etap…",
-        "assign_manager": "Przypisz opiekuna…",
-        "assign_vacancy": "Przypisz ofertę…"
-      },
       "context": {
         "open_card": "Otwórz kartę",
         "preview_next_action": "Podgląd z boku — następna akcja",
@@ -5446,6 +4974,7 @@
         "archive": "Archiwizuj"
       },
       "pipeline": {
+        "title": "Tytuł",
         "access_denied": "Brak dostępu do lejka kandydatów. Skontaktuj się z administratorem lub przełożonym w celu uzyskania uprawnień.",
         "vacancy_label": "Oferta",
         "vacancy_untitled": "Bez nazwy",
@@ -5498,7 +5027,6 @@
         "empty_cta_leads": "Puste leady CTA",
         "empty_desc": "Pusty opis",
         "empty_title": "Pusty tytuł",
-        "title": "Tytuł",
         "view_in_list": "Zobacz na liście"
       },
       "menu": {
@@ -5648,8 +5176,21 @@
         "timeline_title": "Tytuł osi czasu",
         "stage_scope_hint": "Zmiana etapu, journey i bramki zgodności — w pełnej karcie.",
         "reminders_assignee_scope": "Zakres przypomnień dla tego kandydata",
+        "reminders_button": "Przypomnienia",
+        "reminders_modal_title": "Przypomnienia dla tego kandydata",
+        "reminders_modal_hint": "Ustaw termin, zapisz i wróć do listy — bez przewijania podglądu.",
         "comms_title": "Komunikacja",
         "open_unified_inbox": "Skrzynka (wszystkie kanały)"
+      },
+      "preview_modal": {
+        "shell_title": "Podgląd kandydata"
+      },
+      "task_modal": {
+        "title": "Nowe zadanie dla kandydata",
+        "subtitle": "Tworzy przypomnienie powiązane z kandydatem. Wszystkie zadania — na stronie zadań.",
+        "open_tasks_list": "Otwórz listę zadań",
+        "create_failed": "Nie udało się utworzyć zadania",
+        "invalid_due": "Nieprawidłowa data terminu"
       }
     },
     "tasks": {
@@ -5658,7 +5199,6 @@
     },
     "reminders": {
       "title": "Przypomnienia",
-      "inbox_title": "Skrzynka: przypomnienia i powiadomienia",
       "subtitle": "Pokazujemy {scope}: {total}, nieprzeczytane: {unread}",
       "header": {
         "create_task": "Utwórz zadanie"
@@ -5800,15 +5340,9 @@
         "document_requested": "Zażądano dokumentu",
         "service_order_created": "Utworzono zlecenie usługi",
         "communications_sla_overdue": "SLA przekroczone: wymagana odpowiedź w dialogu",
+        "lead_public_intake_client": "Nowy lead klienta z publicznego intake",
+        "intake_client_lead_skipped_no_company": "Intake klienta: lead nie utworzony (brak firmy)",
         "unknown": "{event}"
-      },
-      "payload": {
-        "candidate": "Kandydat",
-        "vacancy": "Wakansja",
-        "company": "Firma",
-        "manager": "Menadżer",
-        "recruiter": "Rekruter",
-        "stage": "Etap"
       },
       "fields": {
         "due_at": "Termin",
@@ -5825,14 +5359,10 @@
       },
       "status": {
         "overdue": "Zaległy"
-      },
-      "tabs": {
-        "events": "Wydarzenia"
       }
     },
     "leads": {
       "title": "Leady",
-      "subtitle": "Nowe zgłoszenia z Meta Ads i innych źródeł",
       "nba": {
         "locked_hint": "Ulepsz plan, aby otworzyć tę kolejkę w aplikacji.",
         "badge_team": "Team",
@@ -5907,6 +5437,8 @@
         "full_page": "Pełna strona"
       },
       "detail": {
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, kandydatów, listy leadów, zadań i ustawień",
         "back_to_list": "Powrót do leadów",
         "title": "Lead",
         "not_found": "Nie znaleziono leada",
@@ -5944,6 +5476,11 @@
         "field_value": "Wartość",
         "normalized_json": "Znormalizowane (JSON)",
         "raw_payload": "Surowy payload (JSON)",
+        "public_intake_hint": "Utworzony z publicznego intake klienta; powiązany kandydat jest w payloadzie.",
+        "delete_lead": "Usuń lead",
+        "delete_confirm": "Trwale usunąć ten lead? Nie cofnie tego. Rekord kandydata (jeśli jest) pozostaje.",
+        "delete_success": "Lead usunięty",
+        "delete_failed": "Nie udało się usunąć leada",
         "lost_reason_title": "Powód utraty"
       },
       "states": {
@@ -6106,6 +5643,8 @@
         "back": "Leady",
         "title": "Autopodział leadów",
         "subtitle": "Kto dostanie następny lead i dlaczego — przejrzyście, bez „czarnej skrzynki”.",
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, listy leadów, kandydatów, zadań i ustawień",
         "solo": {
           "title": "Tryb ręczny aktywny",
           "body": "Ulepsz plan, aby włączyć auto-przypisanie, balans obciążenia i mniej utraconych leadów.",
@@ -6155,6 +5694,8 @@
           "not_configured": "Brak kalendarza godzin pracy w profilu"
         },
         "rules": {
+          "wayfinding_title": "Inne obszary CRM",
+          "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, listy leadów, autopodziału, kandydatów, zadań i ustawień",
           "back": "Autodystrybucja",
           "title": "Edycja reguł",
           "locked": "Edycja reguł wymaga planu Team.",
@@ -6187,10 +5728,6 @@
         "scheduled": "Zaplanowane",
         "stuck": "Utknąłem"
       },
-      "stage_health": {
-        "title": "Lejek wg etapów",
-        "processed": "W etapie"
-      },
       "conversion_funnel": {
         "title": "Lejek konwersji (migawka)",
         "hint": "Przetworzone leady wg korzeni konwersji (Lead → Qualified → Active → Final), mapowanych z lejka leadów (§2.12) z rezerwowym dopasowaniem standardowych kodów CRM. Strzałki — przejścia między korzeniami. Czas — dni w bieżącym etapie CRM, pogrupowane po korzeniu.",
@@ -6221,7 +5758,6 @@
         "lost_from_filter_banner": "Utrata z etapu CRM: {stage}",
         "lost_from_stage_unknown": "Nieznany poprzedni etap"
       },
-      "subtitle_services": "Od pierwszego kontaktu przez kwalifikację, zlecenie usługi po fakturę.",
       "title_services": "Leady klientów",
       "workspace": {
         "distribution_cta": "Autodystrybucja",
@@ -6274,6 +5810,7 @@
     "automations": {
       "hub": {
         "kicker": "Moduł systemowy",
+        "header_kicker": "Reguły, playbook routingu i skróty do ustawień związanych z automatyzacją.",
         "title": "Automatyzacje",
         "subtitle": "Reguły opisują politykę operacyjną; dziennik pokazuje, co się wykonało. Skróty poniżej otwierają te same ekrany Ustawień — jeden hub dla operacji zanim powstanie jeden scalony UI.",
         "card_rules_title": "Reguły automatyzacji",
@@ -6294,15 +5831,28 @@
         "policy_comms_sla_title": "SLA komunikacji",
         "policy_comms_sla_desc": "Eskalacja i polityka przeterminowanych wątków (automatyzacja operacji).",
         "policy_settings_title": "Wszystkie ustawienia",
-        "policy_settings_desc": "Pełny indeks ustawień — integracje, e-mail, użytkownicy, rozliczenia i więcej.",
+        "policy_settings_desc": "Pełny indeks ustawień — hub integracji dla kanałów (Meta, e-mail, komunikatory, webhook) oraz użytkownicy, rozliczenia i więcej.",
+        "wayfinding_title": "Obszary pracy w CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, rekordów i ustawień",
         "ops_section": "Realizacja i rozliczenia (wykonanie)",
         "ops_orders_title": "Zlecenia serwisowe",
         "ops_orders_desc": "Zakładka Zlecenia — kolejne kroki, blokady i powiązania z fakturami.",
         "ops_invoices_title": "Faktury",
-        "ops_invoices_desc": "Saldo, kolejki przeterminowań i ścieżki korekt."
+        "ops_invoices_desc": "Saldo, kolejki przeterminowań i ścieżki korekt.",
+        "meta_leads_fit_title": "Leady Meta / CSV — routing warunkowy i dopasowanie (fit)",
+        "meta_leads_fit_intro": "Użyj tej listy, gdy potrzebujesz więcej niż „mapowanie reklamy → oferta → kandydat”. Kryteria na ofercie, reguły automatyzacji i ustawienia Meta działają razem — poniżej jeden playbook.",
+        "meta_leads_fit_step_vacancy": "Karta oferty: w razie potrzeby włącz „fit”, uzupełnij Vacancy.extra.lead_criteria_v1 (albo zostaw tylko mapowanie bez fit).",
+        "meta_leads_fit_step_meta": "Ustawienia → Hub integracji → Meta Leads → tryb Automatic + włącz autotworzenie kandydatów dla prostego scenariusza.",
+        "meta_leads_fit_step_rules": "Reguły automatyzacji → trigger lead.qualification, gdy brakuje mapowania ad/vacancy_id (warunki na normalized + docelowa oferta).",
+        "meta_leads_fit_link_meta": "Hub integracji → Meta Leads",
+        "meta_leads_fit_link_rules": "Reguły automatyzacji",
+        "meta_leads_fit_link_vacancies": "Oferty pracy"
       }
     },
     "automation_log": {
+      "header_kicker": "Jakie działania automatyzacji wykonano, dla jakiego rekordu i kiedy.",
+      "title": "Dziennik automatyzacji",
+      "subtitle": "Dlaczego coś się stało? Filtruj działania po obiekcie, dacie i prefiksie.",
       "empty": "Pusty",
       "errors": {
         "load": "Załaduj"
@@ -6317,14 +5867,12 @@
         "action_prefix_placeholder": "automation."
       },
       "pagination": "Paginacja",
-      "subtitle": "Podtytuł",
       "table": {
         "action": "Akcja",
         "payload": "Ładunek",
         "target": "Cel",
         "when": "Kiedy"
-      },
-      "title": "Tytuł"
+      }
     },
     "automation_rules": {
       "columns": {
@@ -6356,7 +5904,7 @@
       },
       "lq": {
         "default_title": "Routing leada",
-        "hint": "lead.qualification: przy imporcie leada, gdy brak mapowania ad/vacancy_id. Warunki: source; normalized.<pole> z operatorami eq / neq / in / exists / not_exists; niejawne AND po polach; w JSON można $and. Akcje: set_vacancy_id (wymagane); set_recruiter_id opcjonalnie. Audyt: lead.qualification_rule_matched.",
+        "hint": "lead.qualification: przy imporcie leada, gdy brak mapowania ad/vacancy_id. Warunki: source; normalized.<pole> z operatorami eq / neq / in / exists / not_exists; niejawne AND po polach; w JSON można $and. Akcje: set_vacancy_id (wymagane); set_recruiter_id opcjonalnie. Audyt: lead.qualification_rule_matched. Pełny playbook: Automatyzacje → sekcja „Meta / CSV”.",
         "norm_block_title": "Warunki na polach normalized (AND)",
         "source": "Źródło (małe litery, np. meta)",
         "vacancy": "Docelowa oferta",
@@ -6379,6 +5927,7 @@
         "recruiter": "ID użytkownika-rekrutera (opcjonalnie, UUID)",
         "recruiter_placeholder": "00000000-0000-4000-8000-000000000000"
       },
+      "header_kicker": "Zdarzenia CRM → przypomnienia, zmiana etapu i routing leadów (prosty kreator).",
       "list": "Reguły",
       "subtitle": "Proste wyzwalacze → akcja utworzenia przypomnienia.",
       "title": "Reguły automatyzacji (prosty kreator)",
@@ -6444,15 +5993,12 @@
         "refresh": "Odśwież"
       },
       "errors": {
-        "load": "Nie udało się wczytać danych komunikacji",
-        "mark_read": "Nie udało się oznaczyć wątku jako przeczytany",
-        "auto_assign": "Nie udało się automatycznie przypisać wątku",
-        "send": "Nie udało się wysłać wiadomości",
-        "dispatch_queued": "Nie udało się wysłać wiadomości z kolejki",
-        "dispatch_one": "Nie udało się wysłać wiadomości"
+        "load": "Załaduj"
       },
       "command_audit": {
         "subtitle": "Dziennik wykonania szablonów poleceń w obszarze roboczym.",
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, jednej skrzynki, zadań, rekordów i ustawień",
         "filters": {
           "actor_user_id": "ID użytkownika wykonującego",
           "all": "Wszystkie",
@@ -6482,6 +6028,8 @@
         }
       },
       "calendar": {
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, jednej skrzynki, zadań, rekordów i ustawień",
         "navigation": {
           "next": "Dalej",
           "prev": "Wstecz"
@@ -6686,6 +6234,8 @@
         }
       },
       "timeoff": {
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, katalogu firm, kandydatów i ustawień",
         "stats": {
           "approved": "Zaakceptowane: {count}",
           "pending": "Oczekujące: {count}",
@@ -6714,6 +6264,8 @@
         }
       },
       "my_availability": {
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, katalogu firm, kandydatów i ustawień",
         "request_type": {
           "day_off": "Dzień wolny",
           "other": "Inne",
@@ -6734,6 +6286,8 @@
         }
       },
       "team_availability": {
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, katalogu firm, kandydatów i ustawień",
         "timeoff_today": "Dzisiaj przerwa",
         "upcoming_timeoff": "Zbliżająca się przerwa"
       },
@@ -6759,13 +6313,13 @@
           "loading": "Ładowanie",
           "more_accounts": "Więcej kont",
           "new_threads": "Nowe wątki",
-          "reconnect_oauth_hint": "Uwierzytelnianie skrzynki nie powiodło się (np. 401). Połącz konto ponownie w ustawieniach komunikacji lub uruchom diagnostykę.",
-          "reconnect_email_setup": "Połącz e-mail ponownie (setup)",
+          "reconnect_oauth_hint": "Uwierzytelnianie skrzynki nie powiodło się (np. 401). Połącz ponownie przez Ustawienia → Hub integracji → E-mail (SMTP), z administracji komunikacji lub uruchom diagnostykę.",
+          "reconnect_email_setup": "Połącz e-mail ponownie (przez hub)",
           "skipped": "Pominięte",
           "summary": "Podsumowanie"
         },
-        "oauth_redirect_body": "Otwórz konfigurację komunikacji, krok «Połącz e-mail», i kliknij «OAuth complete», aby wymienić kod na tokeny. Kod uzupełni się automatycznie po wejściu w setup.",
-        "oauth_redirect_open_setup": "Otwórz setup poczty",
+        "oauth_redirect_body": "Otwórz Ustawienia → Hub integracji → E-mail (SMTP), krok «Połącz e-mail», potem «OAuth complete», aby wymienić kod na tokeny. Kod uzupełni się automatycznie po wejściu na ekran konfiguracji.",
+        "oauth_redirect_open_setup": "Otwórz hub integracji",
         "oauth_redirect_title": "Otrzymano kod autoryzacji Gmail",
         "signature": {
           "apply": "Dodaj podpis"
@@ -6857,9 +6411,6 @@
         },
         "subtitle": "Podtytuł"
       },
-      "errors": {
-        "load": "Załaduj"
-      },
       "ia": {
         "calendar_subtitle": "Widok czasowy zadań i aktywności (te same dane co Zadania). Opcjonalnie planer i urlopy. Kolejkę wykonania prowadź w Zadaniach.",
         "calendar_title": "Kalendarz",
@@ -6919,9 +6470,9 @@
         "oauth_token_required_intro": "Google akceptuje tylko żądania z ważnym tokenem dostępu OAuth. Token otrzymujesz po zalogowaniu do Google i wymianie jednorazowego kodu autoryzacji.",
         "oauth_token_required_step_complete": "Albo wklej wartość „code” z paska adresu przeglądarki do pola poniżej, potem «OAuth complete».",
         "oauth_token_required_step_consent": "Kliknij «OAuth start», potem «Open consent URL» i zaloguj się kontem Google tej skrzynki.",
-        "oauth_token_required_step_redirect": "Po przekierowaniu z Google (zwykle na /app/email) kod zapisuje się automatycznie — wróć tutaj i kliknij «OAuth complete».",
+        "oauth_token_required_step_redirect": "Po przekierowaniu z Google na E-mail (SMTP) (/app/settings/email; w razie potrzeby wejdź przez Ustawienia → Hub integracji) kod zapisuje się automatycznie — wróć tutaj i kliknij «OAuth complete».",
         "oauth_token_required_title": "Sam Client ID i Secret nie wystarczą do Gmaila",
-        "banner_incomplete": "Konfiguracja komunikacji nie jest jeszcze ukończona.",
+        "banner_incomplete": "Konfiguracja komunikacji nie jest jeszcze ukończona — kontynuuj od Ustawienia → Hub integracji.",
         "incomplete": "Niekompletny",
         "next_step": "Następny krok",
         "next_title": "Następny tytuł",
@@ -6967,6 +6518,8 @@
         "workflow_actions": "Przepływ pracy"
       },
       "planner": {
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, kalendarza, zadań, rekordów i ustawień",
         "actions": {
           "start": "Zacznij"
         },
@@ -7160,7 +6713,6 @@
       "notes": "Notatki",
       "number": "Numer",
       "open_client": "Otwórz klienta",
-      "open_reminders": "Otwórz przypomnienia",
       "open_service_order": "Otwórz zlecenie serwisowe",
       "original": "Oryginał",
       "original_total": "Oryginalna suma",
@@ -7270,6 +6822,8 @@
     },
     "onboarding": {
       "company": {
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, katalogu firm, kandydatów i ustawień",
         "select_placeholder": "Wybierz…",
         "industry_label": "Branża",
         "team_size_label": "Wielkość zespołu",
@@ -7392,6 +6946,10 @@
         "badge": "Lista pierwszej wartości",
         "open": "Otwórz",
         "progress": "Postęp: {done}/{total}",
+        "footer_settings": "Doprecyzuj CRM w dowolnym momencie w",
+        "footer_settings_link": "Ustawieniach",
+        "footer_checklist": "Dłuższy przewodnik:",
+        "footer_checklist_link": "Otwórz „Od czego zacząć”",
         "step_client": "Utwórz pierwszego klienta",
         "step_company": "Firma utworzona",
         "step_next_action": "Utwórz następne działanie (zadanie/przypomnienie)",
@@ -7414,12 +6972,13 @@
         "deferred_legal_desc": "Nazwa prawna, VAT/NIP, adres, bank — potrzebne do faktur; dodasz w ustawieniach Legal.",
         "deferred_legal_link": "Otwórz ustawienia prawne",
         "comms_title": "Komunikacja (opcjonalnie)",
+        "comms_subtitle": "Najpierw otwórz hub integracji, potem kafelek E-mail (SMTP), Komunikatory lub administrację komunikacji.",
         "comms_telegram": "Telegram",
         "comms_email": "E-mail",
         "comms_whatsapp": "WhatsApp",
         "checklist": {
-          "logo": "Dodaj logo",
-          "logo_desc": "Branding tenant / workspace.",
+          "logo": "Logo i branding",
+          "logo_desc": "Moja firma → Branding (albo „Tenanty platformy”, jeśli obsługujesz wiele workspace’ów).",
           "hours": "Ustaw godziny pracy",
           "hours_desc": "Doprecyzuj dostępność do routingu i planowania.",
           "team": "Zaproś zespół",
@@ -7463,8 +7022,10 @@
           "desc": "W trybie usług rdzeniem jest klient. Leady z reklam to potencjalni klienci i też pierwsza wartość.",
           "title": "Pierwszy klient lub lead"
         },
-        "subtitle": "Na razie bez zaawansowanych ustawień. Utwórz pierwsze rekordy i zyskaj wartość od razu.",
-        "title": "Trzy kroki do pracy"
+        "subtitle": "Najpierw trzy kroki poniżej — dopracujesz w Ustawieniach później. „Szybka konfiguracja” nie blokuje dostępu.",
+        "title": "Trzy kroki do pracy",
+        "wayfinding_title": "Gdzie pracować w CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, rekordów i ustawień"
       }
     },
     "reset_password": {
@@ -7780,11 +7341,6 @@
         "redeem_action": "Nie udało się zalogować przy pomocy linku.",
         "access_code_required": "Wpisz kod dostępu z wiadomości e-mail."
       },
-      "notifications": {
-        "magic_sent": "Link wysłany. Sprawdź skrzynkę lub komunikator.",
-        "magic_send_failed": "Nie udało się wysłać linku. Spróbuj ponownie później.",
-        "magic_missing_contacts": "Dodaj adres e-mail lub telefon, aby otrzymać nowy link."
-      },
       "loaders": {
         "verifying": "Sprawdzamy link…"
       },
@@ -7801,7 +7357,10 @@
           "presign": "Bezpieczne przesyłanie bez logowania",
           "hints": "Podpowiedzi do dokumentów i statusów",
           "return": "Zawsze możesz wrócić tym samym linkiem"
-        }
+        },
+        "client_inquiry_prefix": "Zapytanie od klienta biznesowego lub partnera?",
+        "client_inquiry_link_label": "Rozpocznij zapytanie klienta",
+        "client_inquiry_suffix": "— ten sam bezpieczny formularz. Po wysłaniu zespół może otrzymać lead CRM, jeśli uda się przypisać firmę klienta."
       },
       "cards": {
         "new": {
@@ -7873,6 +7432,9 @@
       }
     },
     "start": {
+      "client": {
+        "banner": "Rozpoczynasz zapytanie klienta (B2B). Po wypełnieniu i wysłaniu pełnej ankiety w przestrzeni kontaktu może powstać lead CRM, jeśli uda się ustalić firmę klienta."
+      },
       "lead_form": {
         "banner_title": "Formularz leadów",
         "banner_named": "Rozpoczynasz zgłoszenie: {title}",
@@ -7881,12 +7443,15 @@
       "errors": {
         "contacts_required": "Podaj telefon lub e-mail, aby kontynuować",
         "create_failed": "Nie udało się utworzyć zgłoszenia",
-        "lead_form_not_found": "Ten link formularza leadów jest nieprawidłowy lub nieaktywny. Skontaktuj się z rekruterem lub użyj głównej strony zgłoszenia."
+        "lead_form_not_found": "Ten link formularza leadów jest nieprawidłowy lub nieaktywny. Skontaktuj się z rekruterem lub użyj głównej strony zgłoszenia.",
+        "intake_vacancy_not_found": "Ten link do oferty jest nieprawidłowy lub niedostępny w tym obszarze roboczym. Skontaktuj się z rekruterem lub otwórz zgłoszenie bez powiązania z ofertą."
       },
       "header": {
         "back": "← Wróć do portalu",
         "title": "Prześlij dokumenty i wypełnij ankietę",
-        "subtitle": "Podziel się kontaktem, a wygenerujemy link do formularza oraz przesyłania plików. Możesz wrócić w dowolnym momencie."
+        "subtitle": "Podziel się kontaktem, a wygenerujemy link do formularza oraz przesyłania plików. Możesz wrócić w dowolnym momencie.",
+        "title_client": "Zapytanie klienta — zacznij tutaj",
+        "subtitle_client": "Zostaw kontakt — otworzy się ten sam bezpieczny formularz; po ukończeniu i wysłaniu zespół partnera może otrzymać lead CRM, jeśli uda się przypisać firmę klienta."
       },
       "form": {
         "email": "E-mail",
@@ -7910,6 +7475,7 @@
     },
     "intake": {
       "title": "Ankieta i dokumenty",
+      "client_mode_banner": "Tryb zapytania klienta. Po wysłaniu utworzymy lead CRM, jeśli da się ustalić firmę klienta (z oferty, kandydata lub firmy domyślnej w ustawieniach Meta leads).",
       "autosave_hint": "Szkic zapisuje się automatycznie",
       "steps": {
         "overview": "Przegląd",
@@ -8038,28 +7604,6 @@
         "next": "Następny krok",
         "progress_label": "Postęp całościowy",
         "step_hint": "Krok {index} z {total}"
-      },
-      "scan": {
-        "modal_label": "Mobile scanner",
-        "modal_subtitle": "Open the link on your phone to scan and upload this document.",
-        "session_id": "Session token",
-        "status_title": "Status",
-        "status": {
-          "pending": "Waiting for upload",
-          "completed": "Uploaded",
-          "expired": "Expired",
-          "cancelled": "Cancelled"
-        },
-        "expires_at": "Expires at {time}",
-        "share_link": "Link for phone",
-        "copy_link": "Copy link",
-        "copied": "Copied!",
-        "open_mobile": "Open on this device",
-        "instructions": "Scan the QR code or copy the link to continue on your phone. The session lasts 15 minutes.",
-        "qr_label": "Scan from desktop",
-        "qr_hint": "Point your phone camera at the code to open the scanner.",
-        "error_generic": "Could not start the scanner. Please try again.",
-        "untitled_doc": "Document"
       },
       "timeline": {
         "title": "Status weryfikacji",
@@ -8248,14 +7792,6 @@
       },
       "placeholder": {
         "resume_hint": "Poproś o nowy link"
-      },
-      "hints": {
-        "steady": "Trzymaj telefon stabilnie przez 2 sekundy.",
-        "frame": "Umieść cały dokument w ramce.",
-        "front_light": "Unikaj odblasków na przedniej stronie.",
-        "front_text": "Upewnij się, że tekst jest czytelny.",
-        "back_stamp": "Zrób zdjęcie pieczątek i kodów QR w całości.",
-        "spread": "Połóż paszport płasko i zrób zdjęcie obu stron."
       },
       "guided": {
         "next_step": "Następny krok",
@@ -8554,265 +8090,8 @@
         "progress": "Gotowe {ready}/{total}"
       },
       "progress": {
-        "label": "Etykieta"
+        "label": "Ogólny postęp"
       }
-    },
-    "scan": {
-      "breadcrumb": "Mobile scanner",
-      "title": "Scan documents with your phone",
-      "subtitle": "Capture crisp copies with your camera and upload them directly to HostFlow.",
-      "heading": "Document scanner",
-      "instructions": "Place the document inside the frame and avoid glare or blur.",
-      "page_label": "Page: {page}",
-      "session_id": "Session token",
-      "doc_fallback": "Document",
-      "doc_type_label": "Document: {type}",
-      "doc_preset": "Preset: {preset}",
-      "pages": {
-        "front": "Front side",
-        "back": "Back side",
-        "spread": "Passport spread",
-        "registration": "Registration stamp",
-        "page_1": "Page 1",
-        "page_2": "Page 2",
-        "page_3": "Page 3",
-        "page_4": "Page 4",
-        "full": "Full page"
-      },
-      "camera": {
-        "title": "Use camera",
-        "subtitle": "Open the rear camera to capture pages without leaving this page.",
-        "unsupported": "Camera access is not available in this browser.",
-        "permission": "Could not access the camera. Allow camera permissions and try again.",
-        "frame_hint": "Align document within the frame",
-        "stop": "Stop camera"
-      },
-      "overlay": {
-        "title": "Skaner pełnoekranowy",
-        "actions": {
-          "open": "Otwórz skaner",
-          "close": "Zamknij skaner",
-          "fullscreen": "Skanuj na pełnym ekranie",
-          "keep": "Użyj tego skanu",
-          "retake": "Wykonaj ponownie"
-        },
-        "status": {
-          "preparing": "Uruchamiamy aparat…",
-          "capturing": "Przetwarzamy skan…",
-          "auto_ready": "Świetnie — auto-zdjęcie zaraz się wykona",
-          "auto_wait": "Trzymaj stabilnie, wyrównujemy kadr…"
-        },
-        "step_label": "Krok {current} z {total}",
-        "current_step": "Bieżący krok",
-        "mobile_hint": "Otwórz skaner pełnoekranowy, aby korzystać z podpowiedzi i kontroli jakości.",
-        "inline_busy": "Skaner pełnoekranowy jest aktywny.",
-        "force_hint": "Zakończ prowadzone skanowanie lub włącz ręczne przesyłanie, aby zamknąć skaner.",
-        "force_confirm": "Nie wszystkie strony zostały zeskanowane. Czy mimo to zamknąć skaner?",
-        "preview_title": "Podgląd",
-        "preview_hint": "Sprawdź skan przed zatwierdzeniem — powtórz, jeśli czegoś brakuje.",
-        "guide": {
-          "align": "Ustaw dokument tak, aby wszystkie krawędzie dotykały ramki.",
-          "light": "Trzymaj telefon równolegle, aby uniknąć odblasków i cieni.",
-          "hold": "Przytrzymaj stabilnie — zrobimy zdjęcie, gdy ramka będzie wypełniona."
-        },
-        "side_status": {
-          "done": "Gotowe",
-          "current": "Trwa",
-          "todo": "Oczekuje"
-        },
-        "hints": {
-          "default": "Postępuj zgodnie z podpowiedziami w skanerze, aby uchwycić cały dokument.",
-          "align": "Wyśrodkuj dokument w ramce",
-          "distance": "Przybliż telefon, aby dokument wypełnił kadr",
-          "lighting": "Popraw oświetlenie, by zmniejszyć odblaski",
-          "lighting_dark": "Dodaj światło — dokument jest zbyt ciemny",
-          "lighting_bright": "Zredukuj odblaski — kadr jest prześwietlony",
-          "sharpness": "Przytrzymaj stabilnie — obraz wciąż rozmyty",
-          "hold": "Trzymaj stabilnie — wykonamy zdjęcie automatycznie"
-        },
-        "manual_hint": "Auto nie reaguje? Kliknij \"Zrób stronę\" i wykonaj zdjęcie ręcznie.",
-        "filters": {
-          "title": "Filtry",
-          "auto": "Auto",
-          "mono": "B/W",
-          "contrast": "Wysoki kontrast",
-          "clean": "Czyste tło",
-          "boost": "Wzmocniony kolor",
-          "loading": "Generowanie podglądu…",
-          "applying": "Nakładanie filtra…"
-        },
-        "quality": {
-          "ready": "Wygląda dobrze",
-          "issues": "Wymaga poprawy",
-          "retake_hint": "Jakość poniżej wymaganego progu — najlepiej wykonać ponownie."
-        }
-      },
-      "status": {
-        "title": "Session status",
-        "pending": "Waiting for upload",
-        "uploaded": "Uploaded",
-        "processing": "Processing",
-        "ok": "Ready",
-        "needs_review": "Needs review",
-        "rejected": "Rejected",
-        "error": "Error",
-        "completed": "Uploaded",
-        "expired": "Expired",
-        "unknown": "Unknown",
-        "expires_at": "Expires at {time}"
-      },
-      "errors": {
-        "title": "Something went wrong",
-        "unexpected": "Unable to start scanner, please reopen the link.",
-        "invalid_session": "Session link is invalid or expired.",
-        "expired": "This scan session has expired. Request a new QR code from the recruiter.",
-        "no_pages": "Add at least one page before uploading.",
-        "pages_missing": "Add at least {count} page(s) before uploading.",
-        "upload_failed": "Upload failed. Try again.",
-        "capture_failed": "Could not capture the frame. Try again.",
-        "step_missing": "Capture the pending side ({step}) before uploading.",
-        "quality_pending": "Wait until the quality check finishes.",
-        "quality_failed": "At least one page does not meet the quality bar. Retake the highlighted page.",
-        "steps_completed": "All sides are already captured. Use “Retake” to replace a side.",
-        "manual_disabled": "Finish the guided scan or enable manual upload to add files.",
-        "unsupported_file": "Only image files (JPEG/PNG/HEIC) are supported.",
-        "presets_failed": "Unable to load scanner presets.",
-        "missing_token": "Link is missing required token.",
-        "missing_doc": "Document type is required.",
-        "start_failed": "Failed to start scanner.",
-        "process_failed": "Processing failed, please retry."
-      },
-      "messages": {
-        "upload_success": "Files uploaded successfully.",
-        "completed_note": "Upload completed. You can close this page.",
-        "expired_note": "Session expired - request a new link on the desktop portal."
-      },
-      "notifications": {
-        "page_uploaded": "Page sent for processing",
-        "processed": "Processing complete"
-      },
-      "actions": {
-        "back_home": "Back to portal",
-        "upload": "Send files",
-        "use_camera": "Start camera",
-        "capture": "Capture page",
-        "clear_draft": "Clear draft"
-      },
-      "storage": {
-        "saved": "Draft saved locally. Files stay in this browser until you upload or clear them.",
-        "restored": "Draft restored from this device."
-      },
-      "capture": {
-        "title": "Capture or add files",
-        "subtitle": "Use the camera or choose scans from Files.",
-        "instructions": "Tips for a clear shot",
-        "add_page": "Add photos or scans",
-        "hint": "Use daylight, keep the document flat, avoid glare.",
-        "permission": "Camera blocked. Upload a photo instead.",
-        "permission_help": "If camera access is blocked, you can upload a photo instead.",
-        "use_camera": "Use camera",
-        "use_upload": "Upload from device",
-        "switch_camera_front": "Use front camera",
-        "switch_camera_back": "Use back camera",
-        "step_label": "Step for {page}",
-        "preview_title": "Preview your photo",
-        "preview_subtitle": "Make sure the document is sharp and fully visible.",
-        "remove": "Remove",
-        "comment": "Comment for recruiter",
-        "comment_placeholder": "Notes about this scan (optional)",
-        "steps_title": "Document sides",
-        "side": {
-          "front": "Front side",
-          "back": "Back side"
-        },
-        "side_instruction": {
-          "front": "Capture the front side first.",
-          "back": "Now capture the back side.",
-          "generic": "Capture each side in order."
-        },
-        "page_instruction": "Capture page {number}",
-        "page_label": "Page {number}",
-        "free_instruction": "Capture the document page by page.",
-        "sides_completed": "All sides captured. Use “Retake” if needed.",
-        "steps_ready": "Captured",
-        "steps_missing": "Waiting for capture",
-        "waiting_step": "Next in queue",
-        "retake": "Retake",
-        "retake_pending": "Retake in progress",
-        "preview_use": "Use this photo",
-        "preview_retake": "Retake",
-        "uploading": "Uploading…",
-        "issue_hint": "Quality below threshold - retake recommended.",
-        "quality_block": {
-          "title": "Najpierw popraw zaznaczone strony",
-          "body": "Co najmniej jedna strona nie spełnia wymagań jakości. Wykonaj ją ponownie lub usuń, aby kontynuować."
-        },
-        "progress_title": "Capture progress",
-        "progress_paged": "Pages captured: {current}/{target}",
-        "existing_scan": {
-          "title": "Masz już skany?",
-          "body": "Włącz ręczne przesyłanie, aby dodać gotowe skany zamiast używać aparatu.",
-          "cta": "Prześlij gotowy skan",
-          "enabled": "Ręczne przesyłanie włączone. Użyj przycisku poniżej, aby wybrać pliki."
-        }
-      },
-      "steps": {
-        "title": "How it works",
-        "prepare": "Prepare the document on a contrasting background.",
-        "align": "Align the frame, keep the phone parallel, avoid glare.",
-        "review": "Review every page before sending and retake if needed.",
-        "submit": "Tap \"Send files\" to upload - the desktop view updates automatically.",
-        "pages_title": "Pages to capture",
-        "pages_progress": "Step {current} of {total}",
-        "optional": "Optional"
-      },
-      "quality": {
-        "title": "Quality tips",
-        "light": "Use daylight or a lamp with no harsh shadows.",
-        "contrast": "Remove covers and keep only the document in frame.",
-        "edges": "Capture the full document, including all corners.",
-        "status": {
-          "ok": "Quality OK",
-          "warn": "Needs attention",
-          "pending": "Analyzing…"
-        },
-        "warnings": "Issues",
-        "metrics": {
-          "sharpness": "Sharpness",
-          "glare": "Glare",
-          "fill": "Fill",
-          "contrast": "Contrast"
-        },
-        "flags": {
-          "sharpness": "Retake: too blurry",
-          "glare": "Reduce glare",
-          "fill": "Move closer to fill the frame",
-          "contrast": "Increase contrast / lighting"
-        }
-      },
-      "review": {
-        "title": "Review & process",
-        "subtitle": "Check each page and start processing when ready.",
-        "step": "Step {current} of {total}",
-        "placeholder": "Waiting for upload",
-        "hint": "Make sure the entire page is visible without glare.",
-        "reshoot": "Reshoot",
-        "process": "Submit document",
-        "processing": "Processing…",
-        "processing_hint": "Processing photos…",
-        "processing_subtitle": "This may take a few seconds. Please keep the tab open.",
-        "ready": "Processing finished",
-        "ready_hint": "You can close this window and continue in the application."
-      },
-      "summary": {
-        "title": "Summary",
-        "subtitle": "All pages are captured. HR will review them shortly."
-      },
-      "loading": "Connecting to scanner...",
-      "footer_hint": "Need a new session? Ask the recruiter to show the QR again."
-    },
-    "api": {
-      "status_load_failed": "Could not load status"
     },
     "crm_landing": {
       "audience": {
@@ -9111,17 +8390,17 @@
       }
     },
     "documents_upload": {
-      "contact_required": "Wymagany kontakt",
-      "description": "Opis",
-      "no_docs": "Brak dokumentów",
-      "open_upload": "Otwórz przesyłanie",
-      "ready": "Gotowy",
-      "required_list": "Wymagana lista",
-      "title": "Tytuł",
-      "verified": "Zweryfikowano",
-      "verify_button": "Przycisk Sprawdź",
+      "contact_required": "Podaj telefon lub e-mail, aby kontynuować",
+      "description": "Najpierw podaj numer telefonu lub adres e-mail. Po weryfikacji otworzymy przesyłanie plików bez ponownego wypełniania ankiety.",
+      "no_docs": "Na liście nie ma jeszcze dokumentów do przesłania.",
+      "open_upload": "Przejdź do przesyłania dokumentów",
+      "ready": "Dostęp przyznany",
+      "required_list": "Wymagane dokumenty",
+      "title": "Prześlij wymagane dokumenty",
+      "verified": "Tożsamość potwierdzona. Możesz przesłać dokumenty.",
+      "verify_button": "Zweryfikuj i otwórz przesyłanie",
       "verify_failed": "Weryfikacja nie powiodła się",
-      "verifying": "Weryfikacja"
+      "verifying": "Weryfikacja…"
     },
     "not_found": {
       "badge": "Odznaka",
@@ -9191,24 +8470,11 @@
         "get_link": "Pobierz link"
       }
     },
-    "scanner": {
-      "camera": {
-        "capture": "Zrób zdjęcie",
-        "upload_photo": "Prześlij zdjęcie dokumentu"
-      }
-    },
     "locale_switcher": {
       "label": "Język"
     }
   },
   "admin": {
-    "docs": {
-      "mock": {
-        "passport": "Paszport",
-        "license": "Prawo jazdy",
-        "insurance": "Ubezpieczenie"
-      }
-    },
     "risk_intel": {
       "settings": {
         "load_error": "Nie udało się wczytać ustawień ryzyka operacyjnego",
@@ -9308,6 +8574,7 @@
         "insurance": "Ubezpieczenie"
       },
       "types": {
+        "header_kicker": "Lista rodzajów dokumentów używana w checklistach i zgodności.",
         "title": "Katalog typów dokumentów",
         "description": "Wkrótce pojawi się tu konfiguracja typów i wymagań. Na razie pokazujemy dane demo.",
         "table": {
@@ -9420,13 +8687,6 @@
         "ordering": "Zamawianie",
         "sending": "Przesyłka"
       },
-      "simple": {
-        "upload_title": "Przesyłanie dokumentów",
-        "upload_hint": "Wybierz wymagany dokument i prześlij plik. Prośby i weryfikacje są w sekcji Zaawansowane.",
-        "upload_action": "Prześlij",
-        "advanced": "Zaawansowane",
-        "has_file": "Plik dodany"
-      },
       "filters": {
         "group": "Grupa",
         "status": "Status",
@@ -9455,15 +8715,6 @@
         "expires_in_days": "wygasa za {days} dni",
         "expired": "wygasł",
         "step_due": "Etap „{step}” do"
-      },
-      "summary": {
-        "required_ready": "Gotowe {ready} z {total}",
-        "expiring": "Wkrótce wygasają: {list}",
-        "stats": "Gotowe {ready}/{total} · w toku {attention} · problemy {negative}",
-        "required_for_vacancy": "Wymagane dla oferty",
-        "required_counts": "Łącznie {total} · Gotowe {ready} · W toku {in_progress} · Problemy {problems} · Brak {missing}",
-        "required_empty": "Wpis na liście nie ma wymaganych dokumentów",
-        "required_none": "Brak wymaganych dokumentów"
       },
       "workflow": {
         "title": "Proces",
@@ -9557,11 +8808,10 @@
         "ready_badge": "Gotowe",
         "items_count": "{count} elementów"
       },
-      "modals": {
-        "close": "Zamknij"
-      },
       "registry": {
         "title": "Rejestr dokumentów",
+        "wayfinding_title": "Inne obszary CRM",
+        "wayfinding_nav_label": "Skrót do pulpitu, centrum pracy, inbox, kandydatów, zadań i ustawień",
         "hero": "Monitoruj wysyłki, zamówienia i terminy wszystkich kandydatów. Filtry aktualizują listę natychmiast.",
         "note": "Użyj szybkich filtrów statusów i właścicieli, aby skupić się na kluczowych zadaniach.",
         "search_label": "Wyszukaj",
@@ -9597,80 +8847,6 @@
           "action": "Otwórz automatyzacje"
         }
       },
-      "settings": {
-        "title": "Centrum zarządzania administracją",
-        "subtitle": "Wybierz sekcję z menu bocznego lub z listy poniżej.",
-        "actions": {
-          "open": "Otwórz →"
-        },
-        "cards": {
-          "users": {
-            "label": "Użytkownicy i role",
-            "description": "Zapraszaj użytkowników, zmieniaj role i zarządzaj dostępem."
-          },
-          "billing": {
-            "label": "Billing i zespół",
-            "description": "Zużycie miejsc, moduły i prośby o dodatkowe licencje."
-          },
-          "tenants": {
-            "label": "Dostęp firm / tenantów",
-            "description": "Listy ACL firm oraz uprawnienia kont zewnętrznych."
-          },
-          "documents": {
-            "label": "Katalog dokumentów",
-            "description": "Typy dokumentów i wymagania przesyłania."
-          },
-          "ruleset": {
-            "label": "Zestaw reguł",
-            "description": "Zasady zgodności i wersje automatyzacji."
-          },
-          "email": {
-            "label": "Poczta (SMTP)",
-            "description": "Konfiguracja wysyłki maili do kandydatów (RODO, powiadomienia)."
-          },
-          "integrations": {
-            "label": "Integracje",
-            "description": "Meta Leads i połączenia webhook."
-          },
-          "audit": {
-            "label": "Dziennik audytu",
-            "description": "Kolejka usunięć i zdarzenia audytowe."
-          }
-        },
-        "audit": {
-          "tabs": {
-            "audit": "Dziennik audytu",
-            "deletion": "Kolejka usunięć"
-          },
-          "refresh": "Odśwież",
-          "refreshing": "Ładowanie…",
-          "errors": {
-            "load": "Nie udało się wczytać audytu"
-          },
-          "filters": {
-            "user_id": "Użytkownik (ID)",
-            "action": "Akcja",
-            "from": "Od",
-            "to": "Do"
-          },
-          "apply": "Zastosuj",
-          "table": {
-            "when": "Kiedy",
-            "actor": "Kto",
-            "action": "Akcja",
-            "subject": "Obiekt",
-            "details": "Szczegóły"
-          },
-          "loading": "Ładowanie…",
-          "empty": "Brak wpisów audytu",
-          "details": "Więcej",
-          "pagination": "Wyświetlono {from}–{to} z {total}"
-        }
-      },
-      "aria": {
-        "collapse_document": "Zwiń dokument",
-        "expand_document": "Rozwiń dokument"
-      },
       "badges": {
         "approved": "Zatwierdzony",
         "draft": "Szkic",
@@ -9694,12 +8870,6 @@
         "required_sources": "Źródła: {sources}",
         "reviewer": "Weryfikujący: {reviewer}",
         "valid_from": "Ważny od"
-      },
-      "messages": {
-        "checklist_placeholder": "Dokument jest zdefiniowany na liście wymagań."
-      },
-      "order_panel": {
-        "no_data": "Brak danych o zamówieniu — wypełnij formularz poniżej"
       },
       "prompts": {
         "reject_reason": "Podaj powód odrzucenia",
@@ -9731,162 +8901,37 @@
         "select": "Wybierać"
       }
     },
-    "ruleset": {
-      "header": {
-        "title": "Zestaw reguł dokumentów",
-        "subtitle": "Publikuj i utrzymuj wersje reguł dokumentów.",
-        "refresh": {
-          "action": "Odśwież",
-          "loading": "Odświeżamy…"
-        },
-        "usage_refresh": {
-          "action": "Odśwież użycie",
-          "loading": "Odświeżamy…"
-        }
-      },
-      "create": {
-        "title": "Utwórz szkic",
-        "description": "Edytuj JSON i opublikuj nową wersję reguł.",
-        "json_label": "JSON reguł",
-        "comment_label": "Komentarz",
-        "comment_placeholder": "Co się zmieniło? (opcjonalnie)",
-        "activate_toggle": "Aktywuj po zapisaniu",
-        "save": "Zapisz szkic",
-        "copy_active": "Skopiuj aktywną wersję"
-      },
-      "history": {
-        "title": "Historia wersji",
-        "columns": {
-          "version": "Wersja",
-          "status": "Status",
-          "comment": "Komentarz",
-          "signature": "Podpis",
-          "author": "Autor",
-          "created": "Utworzono",
-          "actions": "Akcje"
-        },
-        "status": {
-          "active": "Aktywna",
-          "draft": "Szkic"
-        },
-        "actions": {
-          "use_as_draft": "Użyj jako szkic",
-          "diff": "Porównaj",
-          "activate": "Aktywuj",
-          "rollback": "Przywróć"
-        },
-        "empty": "Brak wersji."
-      },
-      "diff": {
-        "title": "Zmiany v{version}",
-        "subtitle_previous": "Porównanie z poprzednią aktywną wersją.",
-        "subtitle_engine": "Policzono silnikiem {engine}.",
-        "loading": "Ładujemy diff…",
-        "summary": {
-          "added": "Dodano: {count}",
-          "removed": "Usunięto: {count}",
-          "changed": "Zmieniono: {count}"
-        },
-        "lists": {
-          "added": "Dodane",
-          "removed": "Usunięte",
-          "changed": "Zmienione"
-        },
-        "list_empty": "Brak zmian"
-      },
-      "usage": {
-        "title": "Użycie",
-        "refresh": {
-          "action": "Odśwież użycie",
-          "loading": "Odświeżamy…"
-        },
-        "summary_title": "Podsumowanie wywołań",
-        "summary_empty": "Brak wywołań.",
-        "events_title": "Zdarzenia użycia",
-        "event_ref": "Żądanie #{ref}",
-        "events_empty": "Brak zdarzeń."
-      },
-      "actions": {
-        "confirm_activate": "Aktywować wersję {version}?",
-        "rollback_prompt": "Użyć wersji {version} jako szkicu? Dodaj komentarz",
-        "rollback_default_comment": "Przywróć"
-      },
-      "errors": {
-        "unknown": "Nieznany błąd",
-        "request_failed": "Nie udało się wykonać żądania",
-        "comment_short": "Komentarz jest za krótki"
-      }
-    },
-    "deletion_requests": {
-      "title": "Prośby o usunięcie kandydatów",
-      "subtitle": "Zatwierdzaj lub odrzucaj prośby rekruterów o usunięcie profili.",
-      "filters": {
-        "pending": "Czekają na decyzję",
-        "approved": "Zatwierdzone",
-        "rejected": "Odrzucone",
-        "all": "Wszystkie"
-      },
-      "status": {
-        "pending": "Oczekuje",
-        "approved": "Zatwierdzone",
-        "rejected": "Odrzucone"
-      },
-      "labels": {
-        "candidate": "Kandydat",
-        "recruiter": "Rekruter",
-        "supervisor": "Supervisor",
-        "reason": "Powód",
-        "resolution": "Decyzja"
-      },
-      "actions": {
-        "approve": "Zatwierdź",
-        "reject": "Odrzuć"
-      },
-      "errors": {
-        "load": "Nie udało się wczytać próśb o usunięcie",
-        "reject": "Nie udało się odrzucić prośby",
-        "approve": "Nie udało się zatwierdzić prośby"
-      },
-      "prompts": {
-        "reject_reason": "Podaj powód odrzucenia (opcjonalnie)"
-      },
-      "messages": {
-        "no_access": "Brak dostępu do kolejki usunięć.",
-        "empty": "Brak próśb.",
-        "pending_hint": "Czekają na decyzję: {count}"
-      }
-    },
     "integrations_hub": {
-      "title": "Integracje",
-      "subtitle": "Podłączaj źródła leadów (Meta, Google, …) i steruj mapowaniem surowych danych do CRM.",
-      "subtitle_v2": "Każdy kanał ma osobny ekran. Otwórz kafelek, aby połączyć, zweryfikować i zobaczyć status.",
-      "tile_inbox_title": "Skrzynka",
-      "tile_inbox_desc": "Wątki z komunikatorów i poczty w jednym miejscu — codzienna praca z wiadomościami.",
+      "title": "Hub integracji",
+      "subtitle_v3": "Najpierw podłącz kanały tutaj. Inbox i administracja komunikacji są poniżej — to praca z już podłączonym, a nie drugi kreator połączenia.",
+      "section_connections": "Połączenia",
+      "section_operations": "Korzystanie z integracji",
+      "meta_desc_short": "Facebook Lead Ads: połącz stronę i zbieraj leady w HostFlow.",
+      "email_desc_short": "Wychodzący SMTP dla powiadomień CRM i podpisów.",
+      "webhook_desc_short": "POST JSON ze strony lub stosu — ten sam potok leadów co Meta, tam gdzie skonfigurowano.",
+      "ops_inbox_title": "Skrzynka",
+      "ops_inbox_desc": "Codzienne wątki z komunikatorów i poczty.",
+      "ops_comms_title": "Administracja komunikacji",
+      "ops_comms_desc": "Przegląd, kolejka i SLA — nie do dodawania nowych połączeń (użyj kafelków powyżej).",
+      "ops_intro": "Te ekrany zakładają już podłączone integracje; to nie zduplikowane kreatory konfiguracji.",
+      "ops_policies_hint": "Kolejka, SLA i powiązane zasady są też w sekcji Automatyzacje w Ustawieniach.",
+      "ops_policies_link": "Otwórz Ustawienia → Automatyzacje",
       "email_title": "E-mail (SMTP)",
-      "email_desc": "Poczta wychodząca, podpisy i dostarczalność powiadomień CRM.",
-      "comms_title": "Centrum komunikacji",
-      "comms_desc": "Główny panel polityk inboxu (admin).",
       "status_active": "Połączone",
       "status_setup": "Nie połączone",
       "status_unknown": "Sprawdź status",
       "status_hint": "Na podstawie zapisanych danych Meta w tym workspace.",
       "screen_badge": "Osobny ekran",
       "back_to_hub": "← Wszystkie integracje",
+      "integration_kicker": "integracja",
+      "messenger_channel_controls_kicker": "Połączenie i przełączniki kanału",
+      "messenger_templates_relocated": "Szablony wiadomości, szablony poleceń i audyt poleceń są wspólne dla wszystkich komunikatorów. Zarządzaj nimi na łączonym ekranie komunikatorów.",
       "meta_title": "Meta Leads",
-      "meta_desc": "Webhook, połączenia, mapowanie ad → oferta, field mapping i podgląd ostatnich surowych payloadów.",
       "google_title": "Google Ads",
       "google_desc": "Formularze i kampanie leadów — ten sam szkielet integracji co Meta, gdy będzie gotowe (dane logowania, mapowanie, podgląd przychodzących).",
       "webhook_title": "Webhook i formularze www",
       "webhook_desc": "Ingest HTTP JSON — ten sam field mapping i potok co Meta (Team+).",
-      "open": "Otwórz",
-      "product_chain_title": "Ścieżka leada w produkcie",
-      "product_chain_intro": "Od ingestu do analityki konwersji — jeden pipeline zebrane w linkach.",
-      "product_chain_sources": "Źródła",
-      "product_chain_field_mapping": "Mapowanie pól (Meta)",
-      "product_chain_funnels": "Lejki i korzenie konwersji",
-      "product_chain_automation": "Reguły automatyzacji",
-      "product_chain_conversion_analytics": "Analityka lejka konwersji",
-      "product_chain_hint": "Google Ads i webhook korzystają z tego samego mapowania i przetwarzania co Meta, tam gdzie jest to zaimplementowane."
+      "open": "Otwórz"
     },
     "integrations_webhook": {
       "title": "Webhook i formularze www",
@@ -9904,7 +8949,7 @@
       "copy_url": "Kopiuj",
       "secret_once_hint": "Trzymaj URL w menedżerze sekretów. Przy wycieku — zrób rotację.",
       "mapping_hint": "Mapowanie pól jak w Meta Leads (zakładka Field mapping). Treść: płaski JSON albo field_data w stylu Meta.",
-      "mapping_cta": "Otwórz Meta Leads →",
+      "mapping_cta": "Hub integracji → Meta Leads →",
       "load_error": "Nie udało się wczytać ustawień webhooka",
       "rotate_error": "Nie udało się wygenerować URL",
       "plan_team_required": "Plan nie obejmuje tej integracji.",
@@ -9912,23 +8957,83 @@
       "recent_title": "Ostatnie payloady webhook",
       "recent_subtitle": "Kilka ostatnich leadów z publicznego URL (ten sam surowy payload co w CRM).",
       "view_all_incoming": "Pełny podgląd przychodzących (Meta admin → Dane przychodzące → Webhook)",
-      "recent_empty": "Brak leadów z webhooka — wyślij testowy POST na swój inbound URL."
+      "recent_empty": "Brak leadów z webhooka — wyślij testowy POST na swój inbound URL.",
+      "step_endpoint": "Endpoint",
+      "step_verify": "Weryfikacja i monitoring",
+      "step_mapping": "Mapowanie pól",
+      "sample_payload_title": "Przykładowe JSON",
+      "advanced_mapping_toggle": "Format payload i wskazówki mapowania"
     },
     "integrations_placeholder": {
       "badge": "Wkrótce",
       "body": "To źródło nie jest jeszcze podłączone. Dane stąd nie są przyjmowane.",
       "roadmap": "Plan: dane logowania, mapowanie pól, podgląd surowego payloadu, potem ten sam potok leadów co Meta.",
-      "meta_cta": "Meta Leads działa już teraz →"
+      "meta_cta": "Hub integracji → Meta Leads →"
     },
     "meta_leads": {
+      "oauth_strip": {
+        "region_label": "Opcje połączenia Meta",
+        "paths_intro": "Dwa sposoby na powiązanie strony Facebook — wybierz wygodniejszy.",
+        "badge_recommended": "Wydajniej",
+        "title": "Facebook Login (OAuth)",
+        "body_when_enabled": "Logowanie przez Facebook — bez ręcznego kopiowania tokena strony z Graph API.",
+        "body_recommended_locked": "Zalecane w Team+: logowanie przez Facebook bez ręcznego tokena. Na obecnym planie przycisk jest podglądem — po ulepszeniu stanie się aktywny.",
+        "body_server_not_configured": "Twój plan pozwala na szybkie logowanie przez Facebook, ale ta instalacja HostFlow nie ma skonfigurowanej wspólnej aplikacji Meta (id, sekret, redirect URI). Poproś operatora wdrożenia o ustawienie zmiennych środowiskowych.",
+        "server_env_hint": "Na serwerze potrzebne są: META_LEADS_APP_ID, META_LEADS_SHARED_APP_SECRET oraz poprawny redirect OAuth (META_LEADS_OAUTH_REDIRECT_URI lub FRONTEND_URL).",
+        "ask_operator_oauth_env": "Twój plan obsługuje szybkie logowanie Meta, ale na tym serwerze jest wyłączone — skontaktuj się z zespołem utrzymującym HostFlow.",
+        "upgrade_plan_cta": "Plany i ulepszenie",
+        "ask_admin_upgrade": "Szybkie logowanie Meta wymaga Team+ — poproś administratora obszaru o zmianę planu.",
+        "manual_title": "Ręcznie (każdy plan)",
+        "manual_body": "Wklej token strony i App Secret w zakładce Połączenia — więcej kroków, bez zmiany planu.",
+        "open_credentials": "Otwórz Połączenia",
+        "at_credential_cap": "Osiągnięto limit credentiali Meta — usuń zbędne lub ulepsz plan.",
+        "admin_only": "Szybkie połączenie z Meta mogą uruchomić tylko administratorzy obszaru."
+      },
       "title": "Admin Meta Leads",
       "subtitle": "Zarządzaj webhookiem Meta Ads, mapowaniem ogłoszeń i ręcznym routowaniem leadów.",
+      "simple_wizard": {
+        "step2_kicker": "Krok 2 z 2",
+        "select_page_hint": "Wybierz stronę Facebook, na którą trafiają leady.",
+        "connect_title": "Połącz Meta Lead Ads",
+        "connect_body": "Automatycznie importuj leady z formularzy Facebook Lead Ads do HostFlow.",
+        "connect_cta": "Kontynuuj z Facebook",
+        "footnote": "~2 min · bez technicznej konfiguracji",
+        "expert_link": "Ręczna / zaawansowana konfiguracja",
+        "back_simple": "← Wróć do prostego kreatora",
+        "done_title": "Połączono. Nowe leady pojawią się w Leads.",
+        "done_cta": "Skonfiguruj przetwarzanie leadów"
+      },
+      "overview": {
+        "title": "Przegląd",
+        "status_connected": "Status: połączono",
+        "pages": "Połączone strony / połączenia: {count}",
+        "last_lead": "Ostatnia aktywność leada Meta: {time}",
+        "last_lead_none": "Brak niedawnych leadów Meta w kolejce routingu.",
+        "reconnect": "Połącz ponownie z Facebook",
+        "open_leads": "Otwórz Leady",
+        "manage_advanced": "Zarządzaj połączeniami",
+        "disconnect_hint": "Aby całkowicie odłączyć, usuń dane Meta na zakładce Zaawansowane."
+      },
+      "processing": {
+        "title": "Przetwarzanie leadów"
+      },
+      "advanced": {
+        "ingest_title": "Webhook, SLA i dopasowanie oferty",
+        "ingest_subtitle": "Narzędzia operatora: weryfikacja webhooka, opóźnienia routingu i kolejność „fitu” ofert.",
+        "save_technical": "Zapisz ustawienia zaawansowane"
+      },
       "tabs": {
+        "overview": "Przegląd",
+        "processing": "Przetwarzanie leadów",
+        "debug": "Debug",
+        "advanced": "Zaawansowane",
+        "nav_aria": "Sekcje integracji Meta",
         "settings": "Ustawienia",
         "credentials": "Połączenia",
         "mapping": "Mapowanie ogłoszeń",
         "field_mapping": "Mapowanie pól",
         "incoming": "Dane przychodzące",
+        "csv_import": "Import CSV",
         "logs": "Logi leadów",
         "automation_rules": "Reguły automatyzacji"
       },
@@ -9955,6 +9060,7 @@
         "mapping_delete": "Nie udało się usunąć mapowania",
         "reroute": "Nie udało się przekierować leada",
         "retry": "Ponowienie nie powiodło się",
+        "retry_hint": "Ponowienie nie powiodło się. Sprawdź mapowanie i spróbuj ponownie.",
         "load_incoming": "Nie udało się wczytać podglądu przychodzących payloadów",
         "field_mapping_row_incomplete": "Każda reguła musi mieć źródło i cel",
         "field_mapping_row_incomplete_hint": "Usuń puste wiersze lub uzupełnij źródło i cel dla każdej reguły.",
@@ -9962,10 +9068,15 @@
         "lead_field_definition_conflict": "Pole leada z tym kluczem już istnieje",
         "lead_field_definition_conflict_hint": "Otwórz ustawienia pól niestandardowych i edytuj je albo wybierz inny klucz."
       },
+      "hints": {
+        "fill_fields_retry": "Uzupełnij wymagane pola i spróbuj ponownie.",
+        "ad_id_numeric_retry": "Użyj numerycznego ad_id i spróbuj ponownie."
+      },
       "prompts": {
         "delete_credential": "Usunąć to połączenie Meta?",
         "delete_mapping": "Usunąć mapowanie dla ogłoszenia {adId}?",
         "reroute_vacancy": "Wybierz rekrutację",
+        "reroute_vacancy_id": "Podaj vacancy_id (lub zostaw puste — kandydat tylko z firmą)",
         "edit_note": "Nowa notatka",
         "edit_vacancy": "Nowe vacancy_id"
       },
@@ -9978,20 +9089,28 @@
       },
       "settings": {
         "title": "Połączenie Meta",
-        "subtitle": "Zarządzaj webhookiem i autokreacją kandydatów.",
+        "subtitle": "Webhook, mapowanie i główne przełączniki autokreacji. Warunkowy fit, kolejność rezerwowa ofert i dodatkowe zabezpieczenia — w „Zaawansowane” poniżej lub w Automatyzacjach.",
+        "simple_path_title": "Zacznij tutaj: prosta autokreacja",
+        "simple_path_body": "Wybierz tryb Automatic i włącz „autokreację kandydatów”. Ta ścieżka tworzy kandydatów z mapowania Meta/CSV bez wcześniejszej konfiguracji fit na ofercie. Gdy na ofercie włączony jest „fit”, jego kryteria biorą udział w autokonwersji — ustawiasz je na karcie oferty.",
+        "simple_path_automations_prefix": "Routing bez mapowania reklamy, wybór oferty po kraju i pełna instrukcja — w",
+        "simple_path_automations_link": "Automatyzacjach",
+        "simple_path_automations_suffix": " (playbook u góry strony).",
+        "advanced_ingest_title": "Zaawansowane: kolejność rezerwowa ofert i zabezpieczenie konwersji przy fit",
+        "advanced_ingest_intro": "Otwieraj, gdy już używasz Automatic + autokreacji i potrzebujesz dodatkowych opcji. Częsty powód „nic się nie dzieje” — zbędne przełączniki tutaj.",
         "auto_create": "Włącz autokreację kandydatów",
         "processing_mode_label": "Tryb kwalifikacji leadów",
         "processing_mode_manual": "Ręcznie — do kolejki routingu, bez autotworzenia kandydata",
         "processing_mode_assisted": "Wspomagany — propozycja oferty i fit (w danych leada); kandydat dopiero po ręcznym Process",
         "processing_mode_automatic": "Automatyczny — utwórz kandydata, gdy mapowanie i fit przejdą; w przeciwnym razie kolejka (LEAD_FIT_*); plan Team (bez niego przy ingest — manual)",
-        "processing_mode_hint": "Jeden silnik fit: Vacancy.extra.lead_criteria_v1. Opcjonalna kolejność ofert: Tenant.settings.lead_fit_routing_v1.ordered_vacancy_ids bez mapowania ad/ID. Bez Team „automatic” → manual.",
-        "auto_create_automatic_only": "Ma znaczenie tylko przy trybie Automatic. W Manual i Assisted kandydat powstaje dopiero po Process (lub bulk).",
+        "processing_mode_hint": "Bez planu Team tryb Automatic jest obniżany przy imporcie. Fit na ofercie i opcjonalne reguły lead.qualification opisane są w Automatyzacjach → playbook.",
+        "auto_create_automatic_only": "Tylko przy trybie Automatic. W Manual/Assisted — Process. Ten przełącznik nie zastępuje fit na ofercie ani reguł automatyzacji — zob. hub Automatyzacje.",
         "leads_auto_convert_on_fit": "Autokonwersja lead → kandydat przy pozytywnym fit (§2.4)",
         "leads_auto_convert_on_fit_hint": "Dodatkowy bezpiecznik przy Automatic + auto-create: wyłączone = leady w kolejce ze zablokowanym podglądem do Process. Na ofercie można wyłączyć punktowo (extra.leads_auto_convert_on_fit_v1 = false).",
         "automation_stack_title": "Jak to się składa",
         "automation_stack_body": "1) Tryb — Manual / Assisted / Automatic. 2) Auto-create + konwersja przy fit — tylko Automatic (konwersję przy fit można wyłączyć). 3) Mapowanie ad → oferta i ordered_vacancy_ids wybierają ofertę do fitu. 4) Kryteria na ofercie blokują autokonwersję przy braku fitu.",
         "mask_pii": "Maskuj PII w interfejsie",
         "default_company": "Domyślna firma",
+        "default_company_public_client_intake_hint": "Używane też przy publicznym intake klienta, gdy oferta lub kandydat nie mają przypisanej firmy — ustaw wartość, aby mógł powstać lead CRM.",
         "default_recruiter": "Domyślny rekruter",
         "current_company": "Aktualna: {name}",
         "current_recruiter": "Aktualny: {name}",
@@ -10012,7 +9131,7 @@
         "title": "Pola formularza Meta → znormalizowany payload",
         "subtitle": "Mapuj nazwy pól formularza leadów Meta na klucze znormalizowanego payloadu przed utworzeniem leada. Wiele źródeł — rozdziel przecinkiem (np. phone_number, mobile_phone).",
         "plan_limit_status": "Limit planu: {count} / {limit} wierszy mapowania. Usuń wiersze lub ulepsz plan, aby dodać więcej.",
-        "source_hint": "Podpowiedzi: nazwy pól formularza Meta, dodatkowe klucze payload (np. ad_id), pierwszy poziom i zagnieżdżone ścieżki normalized (np. utm.source) oraz raw_field_names — te same próbki co „Dane przychodzące”.",
+        "source_hint": "Podpowiedzi: rzeczywiste nazwy z field_data w zapisanym webhooku, klucze payload jak ad_id/form_id, raw_field_names z normalized oraz pola z przycisku „Pobierz z Meta”. Nie używaj kluczy normalized (np. first_name) jako źródła — w formularzu Meta mają inne nazwy.",
         "unknown_fields_title": "Pola z ostatnich danych bez niestandardowego pola leada",
         "unknown_fields_subtitle": "Utwórz definicję (zakres LEAD) i wiersz mapowania źródło → ten sam klucz, aby wartość trafiła do normalized i zsynchronizowała się z custom_field_values przy ingest.",
         "add_lead_field_cta": "Dodaj pole leada",
@@ -10029,7 +9148,21 @@
         "empty": "Brak reguł. Dodaj wiersz lub zostaw puste — tylko wartości domyślne.",
         "add_row": "Dodaj regułę",
         "save": "Zapisz mapowanie",
-        "suggestions_ready": "Dostępnych podpowiedzi z ostatnich payloadów: {count}."
+        "suggestions_ready": "Podpowiedzi nazw pól: {count} (z ostatnich leadów i/lub Graph).",
+        "graph_fetch_title": "Rzeczywiste pola z Meta (Graph API)",
+        "graph_fetch_body": "Wybierz ostatni lead Meta (podgląd przychodzących plus leady z zakładki Logi: needs routing / failed) lub wpisz leadgen_id i page_id. Ten sam token Page i wywołanie Graph co przy webhooku — podpowiedzi Źródło zgodne z formularzem.",
+        "graph_pick_lead": "Ostatni lead Meta",
+        "graph_pick_lead_placeholder": "Brak — wpisz ręcznie poniżej",
+        "graph_leadgen_id": "Lead ID (Meta / leadgen_id)",
+        "graph_leadgen_placeholder": "z webhooka lub Ads",
+        "graph_page_id": "Page ID (Facebook)",
+        "graph_page_placeholder": "jak w credentialach",
+        "graph_fetch_cta": "Pobierz z Meta",
+        "graph_fetch_footer": "Wymagany zapisany Page access token w credentialu Meta dla tego page_id. Odpowiedź odświeża podpowiedzi w kolumnie Źródło.",
+        "graph_fetch_notice": "Z Graph: {count} pól. form_id: {form_id}.",
+        "graph_fetch_validation_title": "Brak danych",
+        "graph_fetch_validation_hint": "Wybierz ostatni lead lub podaj leadgen_id i page_id.",
+        "graph_fetch_error_title": "Żądanie do Meta nie powiodło się"
       },
       "credentials": {
         "title": "Dodaj połączenie",
@@ -10088,6 +9221,26 @@
         "truncated": "(obcięto)",
         "open_lead": "Otwórz lead"
       },
+      "csv_import": {
+        "title": "Import leadów z CSV",
+        "subtitle": "Prześlij eksport (np. z Meta Lead Center). Plik musi zawierać kolumny z e-mailem i/lub telefonem. Leady przechodzą ten sam potok co webhook Meta; bez mapowania ogłoszeń na oferty trafią do needs_routing — to oczekiwane.",
+        "toast_done": "Import CSV zakończony: sukces {ok}, duplikaty {dup}, błędy {fail}",
+        "error": "Import CSV nie powiódł się",
+        "admin_only": "Import CSV jest dostępny tylko dla administratorów obszaru roboczego.",
+        "file_label": "Plik .csv",
+        "uploading": "Import…",
+        "upload_btn": "Prześlij i przetwórz",
+        "last_job": "Ostatnie uruchomienie",
+        "last_job_status": "Status",
+        "rows_ok": "sukces",
+        "rows_dup": "duplikaty",
+        "rows_fail": "błędy",
+        "recent": "Ostatnie importy",
+        "col_file": "Plik",
+        "col_counts": "Sukces / duplikaty / błędy",
+        "no_jobs": "Brak importów",
+        "open_leads": "Otwórz listę leadów"
+      },
       "logs": {
         "title": "Logi leadów",
         "subtitle": "Leady z błędami i problemami routingu. Użyj Retry/Reroute i podpowiedzi poniżej.",
@@ -10127,10 +9280,64 @@
           }
         }
       },
-      "quick_start": {
-        "title": "Szybki start",
-        "subtitle": "Dodaj połączenie, zmapuj każdy ad_id na ofertę, potem sprawdź payloady w Dane przychodzące."
+      "self_serve": {
+        "title": "Połączenie Meta (samoobsługa)",
+        "intro": "Użyj App ID i adresu webhook poniżej w Meta Developer Console. Wygeneruj verify token, aby zobaczyć pełny callback URL z parametrem.",
+        "warn_api_base": "Nie skonfigurowano publicznego bazowego URL API — nie da się zbudować callback. Poproś operatora HostFlow o ustawienie PUBLIC_API_BASE_URL lub FRONTEND_URL.",
+        "warn_no_verify": "Zapisz verify token (przycisk poniżej), aby HostFlow pokazał dokładny URL webhooka do wklejenia w Meta.",
+        "label_app_id": "Meta App ID",
+        "label_callback": "URL webhooka (callback)",
+        "label_permissions": "Uprawnienia Graph API",
+        "label_secret": "App Secret (współdzielony)",
+        "secret_hint": "Widoczny tylko dla administratorów obszaru roboczego, gdy wdrożenie używa współdzielonego sekretu aplikacji Meta.",
+        "copy": "Kopiuj",
+        "copied": "Skopiowano do schowka",
+        "copy_failed": "Nie udało się skopiować",
+        "generate_verify": "Wygeneruj verify token",
+        "verify_generated": "Verify token zapisany — skopiuj callback URL do Meta.",
+        "link_developers": "Konsola deweloperska Meta",
+        "link_explorer": "Graph API Explorer",
+        "link_docs": "Dokumentacja",
+        "step_invite": "Jeśli używacie wspólnej aplikacji HostFlow w Meta, uzyskajcie dostęp deweloperski/biznesowy (zaproszenie lub role w aplikacji) zgodnie z ustaleniami z HostFlow.",
+        "step_webhook": "W aplikacji Meta → Webhooks ustaw callback URL i ten sam verify token co tutaj; zasubskrybuj stronę do leadgen.",
+        "step_token": "Utwórz długotrwały token dostępu strony z wymienionymi uprawnieniami i dodaj go w Połączeniach.",
+        "oauth_team_plan_hint": "Szybkie połączenie przez Facebook Login jest dostępne od planu Team w górę (jak zaawansowane integracje leadów).",
+        "oauth_server_env_hint": "Facebook Login jest dozwolony w Twoim planie, ale tu jest wyłączony: operator musi skonfigurować na serwerze META_LEADS_APP_ID, META_LEADS_SHARED_APP_SECRET i redirect OAuth.",
+        "oauth_redirect_label": "OAuth redirect URI (dodaj w aplikacji Meta)",
+        "oauth_connect": "Połącz z Meta",
+        "oauth_connect_hint": "Zaloguj się przez Facebook, wybierz stronę i zapisz połączenie — konfiguracja webhooka powyżej nadal jest potrzebna.",
+        "oauth_pick_title": "Wybierz stronę i etykietę",
+        "oauth_pick_page": "Strona Facebook",
+        "oauth_pick_label": "Etykieta połączenia",
+        "oauth_subscribe_leadgen": "Subskrybuj stronę do leadgen (zalecane)",
+        "oauth_confirm": "Zapisz połączenie",
+        "oauth_pages_ready": "Sesja Facebook potwierdzona — wybierz stronę i zapisz.",
+        "oauth_done": "Zapisano połączenie Meta.",
+        "oauth_error_title": "Błąd OAuth Meta",
+        "oauth_warning": "Uwaga: {{message}}"
       },
+      "guided": {
+        "title_setup": "Podłącz Meta w 3 krokach",
+        "title_blocked": "Konfiguracja Meta wymaga administratora HostFlow",
+        "subtitle": "Najpierw wykonaj wyróżniony krok. Pozostałe zakładki otwieraj dopiero, gdy karta na to wskaże.",
+        "operator_hint": "Brak publicznego URL webhooków po stronie serwera. Poproś operatora HostFlow o PUBLIC_API_BASE_URL lub FRONTEND_URL, potem odśwież stronę.",
+        "step_verify_title": "Krok 1 — Token weryfikacji webhooka",
+        "step_verify_hint": "Kliknij przycisk. Potem rozwiń poniżej „Szczegóły techniczne…”, skopiuj URL webhooka i wklej w aplikacji Meta (Webhooks).",
+        "step_verify_cta": "Wygeneruj verify token",
+        "step_cred_title": "Krok 2 — Połączenie strony Facebook",
+        "step_cred_hint": "Zapisz stronę, aby HostFlow mógł odczytywać leady. Logowanie jednym przyciskiem — od planu Team+. Inaczej zakładka Połączenia: token strony + App Secret.",
+        "step_cred_cta_oauth": "Połącz z Meta (szybko)",
+        "step_cred_cta_manual": "Inna metoda — zakładka Połączenia",
+        "step_cred_cta_credentials_tab": "Przejdź do Połączeń",
+        "step_cred_locked": "Najpierw krok 1 — bez URL webhooka w Meta leady nie dotrą.",
+        "step_map_title": "Krok 3 — Powiąż reklamy z ofertami",
+        "step_map_hint": "Każdy ad_id w Meta powinien wskazywać ofertę w HostFlow, aby lead trafił we właściwe miejsce.",
+        "step_map_cta": "Otwórz „Mapowanie ogłoszeń”",
+        "step_map_locked": "Najpierw dodaj połączenie strony (krok 2).",
+        "badge_done": "Gotowe",
+        "advanced_summary": "Szczegóły techniczne dla Meta (App ID, URL, uprawnienia, kopiowanie)"
+      },
+      "context_redirect_banner": "Jesteś w przestrzeni platformowej, ale Meta Leads (webhook, połączenia, mapowanie) jest zapisane pod „{name}”. Leady i oferty dotyczą tego obszaru roboczego.",
       "other_platforms": "TikTok, YouTube, Google — wkrótce",
       "unmapped": {
         "title": "Niezmapowane leady",
@@ -10138,7 +9345,8 @@
         "leads": "leadów",
         "attach_btn": "Przypisz do oferty",
         "attach_modal_title": "Przypisz ad_id {adId} do oferty",
-        "select_vacancy": "Oferta"
+        "select_vacancy": "Oferta",
+        "attach_submit": "Przypisz"
       }
     },
     "funnels": {
@@ -10148,17 +9356,12 @@
       "subtitle_leads": "Etapy CRM dla leadów. Tablica leadów i automatyzacje korzystają z tego lejka.",
       "tab_candidates": "Kandydaci",
       "tab_leads": "Leady",
-      "custom_stages": "Etapy niestandardowe",
       "add_stage": "Dodaj etap",
-      "no_custom_stages": "Brak etapów niestandardowych. Dodaj pierwszy etap lub użyj domyślnych.",
-      "system_stages": "Etapy systemowe (tylko odczyt)",
-      "system_stages_help": "Domyślne etapy systemowe. Etapy niestandardowe są łączone z nimi w Pipeline i Dashboard.",
       "edit_stage": "Edytuj etap",
       "create_stage": "Utwórz etap",
       "label_field": "Etykieta",
       "code_field": "Kod",
       "order_field": "Kolejność",
-      "active_field": "Aktywny",
       "code_readonly": "Kodu nie można zmienić",
       "create": "Utwórz",
       "validation_stage": "Kod i etykieta są wymagane",
@@ -10169,6 +9372,7 @@
       "default_funnel_leads": "Domyślny lejek dla leadów",
       "funnel_name": "Nazwa lejka",
       "new_funnel": "Nowy lejek",
+      "header_kicker": "Etapy lejków dla kandydatów i leadów — używane na tablicach i w automatyzacjach.",
       "no_funnels": "Brak lejków kandydatów. Utwórz pierwszy, aby zarządzać etapami.",
       "no_funnels_leads": "Brak lejków leadów. Utwórz lejek, aby zsynchronizować etapy z pipeline leadów.",
       "no_stages": "Brak etapów. Dodaj pierwszy etap.",
@@ -10227,18 +9431,35 @@
       }
     },
     "settings": {
+      "subpage": {
+        "back_all": "← Wszystkie ustawienia",
+        "kicker_workspace_setup": "Konfiguracja workspace"
+      },
       "title": "Panel zarządzania workspace'em",
-      "subtitle": "Zarządzaj zespołem, licencją, dokumentami, integracjami i audytem.",
+      "subtitle": "Skonfiguruj CRM samodzielnie, potem pracuj z Pulpitu, Work i Inbox. Sekcje są pogrupowane tak, by dało się obejść się bez pomocy z zewnątrz.",
       "actions": {
         "open": "Otwórz",
         "open_area": "Otwórz obszar",
         "back_to_areas": "Wszystkie obszary ustawień"
       },
-      "areas_intro": "Najpierw wybierz obszar — pokazujemy tylko powiązane ekrany, żeby nie przeładować listy.",
-      "area_empty": "Dla Twojej roli nie ma tu nic do konfiguracji.",
-      "email": {
-        "title": "Ustawienia poczty"
+      "areas_intro": "Każda karta to inna rola: Zespół — ludzie i dostęp; Integracje — kanały i hub integracji; Konfiguracja CRM — lejki i model danych; Automatyzacje — routing, SLA i alerty zadań — to nie inbox ani SMTP.",
+      "crm_contours": {
+        "title": "Gdzie pracować po konfiguracji",
+        "intro": "Te skróty odpowiadają lewemu menu: szybki powrót do codziennej pracy. Do ustawień możesz wrócić w każdej chwili.",
+        "checklist_prompt": "Nowy workspace?",
+        "checklist_link": "Otwórz prowadzony checklist",
+        "desc": {
+          "overview": "Puls workspace: KPI, kolejki i to, co wymaga uwagi.",
+          "work": "Centrum operacyjne: zadania, przekazania i praca międzyzespołowa w jednym miejscu.",
+          "inbox": "Wiadomości i wątki e-mail w jednym strumieniu.",
+          "clients": "Firmy, z którymi pracujesz, i ich kontekst.",
+          "candidates": "Lejek, profile i rekordy kandydatów.",
+          "leads": "Leady przychodzące, dystrybucja i konwersja.",
+          "tasks": "Przypomnienia i terminy (osobno od SLA w inboxie).",
+          "processing": "Kolejki po przekazaniu i dalsza obróbka przekazanej pracy."
+        }
       },
+      "area_empty": "Dla Twojej roli nie ma tu nic do konfiguracji.",
       "cards": {
         "users": {
           "label": "Użytkownicy i role",
@@ -10246,11 +9467,18 @@
         },
         "billing": {
           "label": "Billing i zespół",
-          "description": "Sprawdzaj plan, wykorzystanie miejsc i prośby o dodatkowe licencje."
+          "description": "Plan, miejsca, moduły i limity płatności obszaru roboczego — ten sam ekran co „Billing i zespół” w głównym menu."
         },
         "tenants": {
           "label": "Tenanty platformy",
           "description": "Tworzenie i obsługa przestrzeni klientów."
+        },
+        "my_company": {
+          "description": "Profil agencji, branding i dane na poziomie firmy (poza drzewem ustawień)."
+        },
+        "integrations_hub": {
+          "label": "Hub integracji",
+          "description": "Jedno wejście do połączeń: Meta, e-mail, komunikatory, webhook, Google. Inbox i administracja komunikacji z huba, gdy potrzebujesz codziennej pracy."
         },
         "funnels": {
           "label": "Lejki i etapy",
@@ -10285,8 +9513,8 @@
           "description": "Nazwane punkty wejścia do publicznego intake z opcjonalnym slugiem dla atrybucji."
         },
         "email": {
-          "label": "Poczta (SMTP)",
-          "description": "Konfiguracja wysyłania maili (RODO, powiadomienia)."
+          "label": "Poczta wychodząca (SMTP)",
+          "description": "Serwer, nadawca i dostarczalność wychodzącej poczty CRM — to nie zunifikowany inbox ani kanały komunikatorów."
         },
         "tenant_links": {
           "label": "Przekazanie i próby kontaktu",
@@ -10296,120 +9524,128 @@
           "label": "RODO i polityka prywatności",
           "description": "Klauzula RODO i polityka prywatności dla wysyłki do kandydatów."
         },
-        "integrations": {
-          "label": "Integracje",
-          "description": "Meta Leads oraz zewnętrzne serwisy."
+        "meta_lead_source": {
+          "label": "Meta Lead Ads",
+          "description": "Skrót do konfiguracji Meta (webhook, mapowanie, podgląd). Pozostałe źródła — w hubie integracji."
         },
         "communications": {
-          "label": "Ustawienia komunikacji",
-          "description": "Główne menu ustawień komunikacji z podziałem na domeny."
+          "label": "Administracja komunikacji (przegląd)",
+          "description": "Spis tylko dla admina inbox (komunikatory, kolejka, SLA). Źródła leadów i SMTP są w hubie integracji — najpierw hub, jeśli konfigurujesz Meta/webhook lub pocztę wychodzącą."
         },
         "communications_messengers": {
-          "label": "Ustawienia komunikatorów",
-          "description": "Kanały Telegram/WhatsApp, szablony i presety komend."
+          "label": "Kanały komunikatorów",
+          "description": "Telegram/WhatsApp itd.: konta, szablony, presety poleceń — nie zastępuje huba dla Meta/webhook i leadów."
         },
         "communications_queue": {
-          "label": "Ustawienia kolejki",
-          "description": "Strategia routingu i zarządzanie kolejką managerów."
+          "label": "Kolejka inbox i routing",
+          "description": "Kto dostaje które wątki i jak rozdzielana jest praca (polityka operacyjna)."
         },
         "communications_sla": {
-          "label": "Ustawienia SLA",
-          "description": "Polityka eskalacji dla przeterminowanych dialogów."
+          "label": "SLA komunikacji",
+          "description": "Eskalacja, gdy na wątki zbyt długo nie ma odpowiedzi."
         },
         "audit": {
           "label": "Dziennik audytu",
           "description": "Przeglądaj działania administratorów."
         },
-        "communications_setup": {
-          "description": "Wszystkie ekrany integracji w jednym miejscu: Meta, Google, webhook, e-mail i administracja komunikacji."
-        },
         "company_access": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Steruj widocznością firm dla wybranych użytkowników tenantu.",
+          "label": "Dostęp do firm"
         },
         "notifications": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Terminy, przypomnienia i alerty zadań — otwiera obszar Zadań (nie SMTP ani routing inbox).",
+          "label": "Zadania i przypomnienia"
         },
         "profile": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Profil osobisty, język, bezpieczeństwo i preferencje lokalne.",
+          "label": "Mój profil"
         }
       },
       "audit": {
+        "header_kicker": "Kto co zmieniał w workspace i kolejka zatwierdzania usunięć kandydatów.",
+        "page_title": "Audyt i bezpieczeństwo",
+        "page_subtitle": "Dziennik audytu workspace i kolejka próśb o usunięcie.",
         "apply": "Zastosuj",
         "details": "Szczegóły",
-        "empty": "Pusty",
+        "details_toggle": "Pokaż szczegóły",
+        "empty": "Brak wpisów audytu",
         "errors": {
-          "load": "Załaduj"
+          "load": "Nie udało się wczytać dziennika audytu"
         },
         "filters": {
           "action": "Akcja",
           "from": "Od",
           "to": "Do",
-          "user_id": "Identyfikator użytkownika",
+          "user_id": "Użytkownik (ID)",
           "user_id_placeholder": "UUID",
           "action_placeholder": "action"
         },
-        "loading": "Ładowanie",
-        "pagination": "Paginacja",
+        "loading": "Ładowanie…",
+        "pagination": "Wyświetlono {from}–{to} z {total}",
         "refresh": "Odśwież",
-        "refreshing": "Orzeźwiający",
+        "refreshing": "Ładowanie…",
         "table": {
           "action": "Akcja",
-          "actor": "Aktor",
+          "actor": "Kto",
           "details": "Szczegóły",
-          "subject": "Temat",
+          "subject": "Obiekt",
           "when": "Kiedy"
         },
         "tabs": {
-          "audit": "Audyt",
-          "deletion": "Usunięcie"
+          "audit": "Dziennik audytu",
+          "deletion": "Kolejka usunięć"
         }
       },
       "sections": {
         "automations": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Reguły, ruleset dokumentów, kolejka/SLA inbox i przypomnienia po stronie zadań — automatyzacja procesów, nie źródła leadów.",
+          "label": "Automatyzacje"
         },
         "billing": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Subskrypcja, plan i cykl płatności.",
+          "label": "Rozliczenia"
         },
         "crm_setup": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Lejki, statusy, profile i pola potrzebne do pracy CRM.",
+          "label": "Konfiguracja CRM"
         },
         "integrations": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Przyjmowanie leadów, SMTP i administracja komunikacji — najpierw hub, potem dedykowany ekran.",
+          "label": "Integracje"
         },
         "personal": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Profil i preferencje osobiste bez wpływu na innych użytkowników.",
+          "label": "Osobiste"
         },
         "team": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Użytkownicy, role i reguły dostępu do firm i tenantu.",
+          "label": "Zespół"
         },
         "workspace": {
-          "description": "Opis",
-          "label": "Etykieta"
+          "description": "Profil firmy, tożsamość workspace i zakres dostępu na wysokim poziomie.",
+          "label": "Przestrzeń robocza"
         }
       }
     },
     "communications_settings": {
-      "subtitle": "Ustawienia są podzielone na domeny: poczta, komunikatory, kolejka i SLA są zarządzane osobno.",
-      "open_messengers": "Otwórz ustawienia komunikatorów",
-      "open_email": "Otwórz ustawienia poczty",
-      "open_queue": "Otwórz ustawienia kolejki",
-      "open_sla": "Otwórz ustawienia SLA"
+      "page_title": "Administracja komunikacji",
+      "subtitle": "Polityki wokół inboxu: komunikatory, wychodzący SMTP (poczta CRM), przydział wątków i SLA. Źródła leadów (Meta, webhook) — Ustawienia → Hub integracji.",
+      "back_all_settings": "← Wszystkie ustawienia",
+      "header_kicker": "administracja inbox",
+      "open_integrations_hub": "Hub integracji",
+      "card_messengers_desc": "Każdy komunikator ma osobną kafelkę w hubie. Wspólne szablony wiadomości i poleceń — na łączonym ekranie komunikatorów.",
+      "messengers_hub_cta": "Otwórz hub integracji",
+      "messengers_templates_cta": "Szablony i wszystkie konta",
+      "open_email": "Wychodzący SMTP",
+      "open_queue": "Kolejka inbox i routing",
+      "open_sla": "SLA komunikacji"
     },
     "communications_messengers": {
-      "title": "Ustawienia komunikatorów",
-      "subtitle": "Kompaktowa konfiguracja kanałów: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.",
+      "title": "Kanały komunikatorów",
+      "subtitle": "Telegram, WhatsApp, Viber, Facebook Messenger i Instagram dla wątków w jednej skrzynce — nie Meta Lead Ads (to w hubie integracji).",
       "actions": {
-        "all_settings": "Wszystkie ustawienia komunikacji",
+        "all_settings": "← Administracja komunikacji",
+        "all_messengers": "Wszystkie komunikatory i wspólne szablony",
         "open_messages": "Otwórz wiadomości"
       },
       "channel_summary": "{total} kont(a) · {active} aktywnych · {connected} połączonych",
@@ -10462,6 +9698,44 @@
           "connect": "Połącz Instagram"
         }
       },
+      "integration_wizard": {
+        "connection_status": "Status połączenia",
+        "connect": "Połącz",
+        "disconnect": "Odłącz",
+        "verify_connection": "Zweryfikuj połączenie",
+        "step_credentials": "Dane dostępu",
+        "step_verify": "Weryfikacja",
+        "step_active": "Aktywne",
+        "step_credentials_heading": "Krok 1 — dane u dostawcy",
+        "step_verify_heading": "Krok 2 — weryfikacja i dokończenie u dostawcy",
+        "step_active_done": "Komunikator jest podłączony i włączony w tym workspace.",
+        "hint_meta_verify": "Uruchom weryfikację, aby pobrać webhook URL i verify token, a następnie wklej je w ustawieniach webhook w Meta.",
+        "hint_telegram_webhook": "Ustaw webhook, aby Telegram mógł dotrzeć do HostFlow, potem uruchom weryfikację.",
+        "summary": {
+          "needs_account": "Brak zapisanych danych — uzupełnij krok 1.",
+          "disabled": "Połączenie jest wyłączone. Włącz je, aby używać kanału w skrzynce.",
+          "pending": "Włączone — uruchom weryfikację i dokończ webhook u dostawcy, jeśli trzeba.",
+          "error": "Ostatnia weryfikacja nie powiodła się — sprawdź dane lub webhook i spróbuj ponownie.",
+          "live": "Włączone, ostatnia weryfikacja zakończona powodzeniem."
+        },
+        "tech_status": {
+          "none": "Nieskonfigurowane",
+          "not_tested": "Jeszcze niezweryfikowane",
+          "ok": "OK",
+          "connected": "Połączone",
+          "error": "Błąd",
+          "failed": "Niepowodzenie",
+          "disabled": "Nieaktywne"
+        },
+        "credentials_saved": "Dane zapisane dla „{name}”. Poniżej możesz zweryfikować połączenie lub odłączyć kanał.",
+        "notices": {
+          "connected": "Połączono i włączono",
+          "enabled": "Integracja włączona",
+          "disconnected": "Integracja odłączona"
+        },
+        "multiple_accounts_hint_before": "Ten kanał ma więcej niż jedno konto — dodatkowe zarządzasz na",
+        "multiple_accounts_hint_after": "."
+      },
       "account": {
         "id": "id",
         "active": "Aktywne",
@@ -10508,15 +9782,77 @@
         "verify_token_copied": "Verify token skopiowany"
       }
     },
+    "communications_queue": {
+      "title": "Kolejka inbox i routing",
+      "subtitle": "Jak wątki trafiają do managerów i jak działa alokator — osobno od wychodzącego SMTP i od zaciągania leadów.",
+      "header_kicker": "routing",
+      "errors": {
+        "load_failed": "Nie udało się wczytać ustawień kolejki",
+        "save_failed": "Nie udało się zapisać ustawień kolejki",
+        "preview_failed": "Podgląd alokatora nie powiódł się",
+        "scheduler_action_failed": "Akcja schedulera nie powiodła się",
+        "audit_reload_failed": "Nie udało się odświeżyć audytu alokatora"
+      },
+      "actions": {
+        "all_settings": "← Administracja komunikacji",
+        "open_messages": "Otwórz wiadomości",
+        "run_preview": "Uruchom podgląd"
+      },
+      "sections": {
+        "queue_allocation": "Kolejka i przydział",
+        "sla_policy": "Podsumowanie SLA (edycja na ekranie SLA)",
+        "preview": "Podgląd kolejki (dry-run)",
+        "scheduler_status": "Status schedulera",
+        "allocator_audit": "Audyt alokatora (ostatnie)"
+      },
+      "strategy_options": {
+        "manual": "manual",
+        "round_robin": "round_robin",
+        "weighted_round_robin": "weighted_round_robin",
+        "least_busy": "least_busy"
+      },
+      "labels": {
+        "recipient_mode": "Tryb odbiorcy",
+        "in_app_notifications": "Powiadomienia in-app",
+        "reminder_tasks": "Zadania-przypomnienia",
+        "enabled": "enabled",
+        "active": "active",
+        "tick_seconds": "tick",
+        "last_tick": "lastTick"
+      },
+      "states": {
+        "on": "wł",
+        "off": "wył",
+        "assigned": "przydzielono",
+        "not_assigned": "nie przydzielono"
+      },
+      "channels": {
+        "email": "email",
+        "telegram": "telegram",
+        "whatsapp": "whatsapp",
+        "viber": "viber",
+        "messenger": "messenger",
+        "instagram": "instagram",
+        "sms": "sms"
+      },
+      "table": {
+        "at": "Czas",
+        "mode": "Tryb",
+        "channel": "Kanał",
+        "assigned": "Przydzielono",
+        "assignee": "Osoba"
+      }
+    },
     "communications_sla": {
-      "title": "Ustawienia SLA",
-      "subtitle": "Polityka eskalacji dla przeterminowanych wątków komunikacji.",
+      "title": "SLA komunikacji",
+      "subtitle": "Eskalacje, gdy na wątki w inboxie zbyt długo nie ma odpowiedzi — to nie przypomnienia zadań z ekranu Zadań.",
+      "header_kicker": "eskalacje",
       "policy_title": "Polityka eskalacji SLA",
       "recipient_mode": "Tryb odbiorcy",
       "recipient_mode_help": "Określa, kto otrzymuje zdarzenia `communications_sla_overdue`.",
       "muted_channels": "Wyciszone kanały dla SLA",
       "actions": {
-        "all": "Wszystkie ustawienia komunikacji"
+        "all": "← Administracja komunikacji"
       },
       "toggles": {
         "enabled": "Włącz eskalacje SLA",
@@ -10545,6 +9881,7 @@
       }
     },
     "legal": {
+      "header_kicker": "Teksty prawne dla kandydatów i załączniki billingowe w tym workspace.",
       "title": "Dokumenty prawne (RODO, polityka prywatności)",
       "subtitle": "Skonfiguruj aktywną klauzulę RODO i politykę prywatności. Bez aktywnej klauzuli RODO nie można wysyłać informacji do kandydatów.",
       "section_candidates": "Kandydaci",
@@ -10577,6 +9914,7 @@
       }
     },
     "lead_forms": {
+      "header_kicker": "Publiczne linki do formularzy; każdy formularz jest liczony osobno.",
       "title": "Formularze leadów",
       "subtitle": "Punkty wejścia do publicznego intake. Ustaw publiczny slug, aby kandydaci otwierali formularz przez /public/intake.",
       "new_title": "Tytuł nowego formularza",
@@ -10595,7 +9933,10 @@
       },
       "slug_hint": "Małe litery, cyfry, myślniki; 2–64 znaki. Zostaw puste, aby cofnąć publikację.",
       "share_url": "Publiczny URL intake (ten host)",
+      "share_url_client": "URL zapytania klienta (B2B)",
+      "share_url_client_hint": "Ten sam formularz; po wysłaniu w obszarze roboczym może powstać lead CRM klienta, jeśli uda się przypisać firmę.",
       "copy": "Kopiuj",
+      "copy_client": "Kopiuj link klienta",
       "toast": {
         "created": "Utworzono formularz leadów",
         "saved": "Zapisano",
@@ -10609,6 +9950,7 @@
       }
     },
     "tenant_links": {
+      "header_kicker": "Powiązanie workspace z organizacjami klientów i zasady przekazania.",
       "title": "Przekazanie i próby kontaktu",
       "subtitle": "Włącz przekazanie kandydatów i politykę prób kontaktu dla każdego powiązanego klienta.",
       "no_links": "Brak powiązań z klientami. Skontaktuj się z administratorem platformy.",
@@ -10635,61 +9977,149 @@
         "tenant_uuid": "517319d0-b53e-493d-9ac8-40f23091a35d"
       }
     },
-    "invoices": {
-      "title": "Faktury",
-      "create": "Utwórz fakturę",
-      "filter_status": "Status",
-      "all_statuses": "Wszystkie statusy",
-      "status": {
-        "draft": "Szkic",
-        "issued": "Wystawiona",
-        "sent": "Wysłana",
-        "paid": "Opłacona",
-        "overdue": "Przeterminowana",
-        "cancelled": "Anulowana"
+    "candidate_profiles_page": {
+      "header_kicker": "Szablony pól, etapów lejka i dokumentów używane przez wakaty.",
+      "title": "Profile kandydatów",
+      "subtitle": "Twórz i utrzymuj szablony profili, z których korzystają wakaty przy intake i pipeline.",
+      "fix_orphan_vacancies": "Przypisz wakaty bez profilu",
+      "import": "Import",
+      "bulk_update": "Masowa zmiana",
+      "create_profile": "Utwórz profil",
+      "search_placeholder": "Szukaj po nazwie lub kodzie…",
+      "filter_all": "Wszystkie",
+      "filter_active": "Aktywne",
+      "filter_inactive": "Nieaktywne",
+      "sort_name": "Sortowanie: nazwa",
+      "sort_code": "Sortowanie: kod",
+      "sort_created": "Sortowanie: data utworzenia",
+      "sort_fields": "Sortowanie: liczba pól",
+      "sort_stages": "Sortowanie: liczba etapów",
+      "sort_usage": "Sortowanie: użycie",
+      "sort_asc": "Rosnąco",
+      "sort_desc": "Malejąco",
+      "found_count": "Znaleziono: {filtered} z {total} profili",
+      "loading_list": "Ładowanie…",
+      "empty_create_hint": "Brak profili. Kliknij „Utwórz profil”.",
+      "empty_filtered": "Brak wyników — zmień wyszukiwanie lub filtry.",
+      "badge_inactive": "Nieaktywny",
+      "badge_system": "Systemowy",
+      "badge_default": "Domyślny",
+      "usage_in_vacancies": "Używany w {count} ofertach",
+      "stats_fields": "{count} pól",
+      "stats_required": "({count} wymaganych)",
+      "stats_funnel": "Lejek",
+      "stats_stages": "{count} etapów",
+      "stats_documents": "{count} dokumentów",
+      "action_preview": "Podgląd",
+      "action_preview_title": "Podgląd profilu",
+      "action_stats": "Statystyki",
+      "action_stats_title": "Statystyki użycia profilu",
+      "action_history": "Historia",
+      "action_history_title": "Historia zmian profilu",
+      "action_duplicate_edit": "Duplikuj profil do edycji",
+      "action_apply_vacancies": "Zastosuj do ofert",
+      "action_export": "Eksport",
+      "action_duplicate": "Duplikuj",
+      "action_edit": "Edytuj",
+      "action_delete": "Usuń",
+      "edit_blocked_title": "Profil jest używany w ofertach. Utwórz nowy profil, aby wprowadzić zmiany.",
+      "delete_blocked_title": "Profil jest używany w ofertach — nie można usunąć.",
+      "alerts": {
+        "fix_orphan_ok": "Przypisano ofert: {count}",
+        "fix_orphan_none": "Brak ofert bez profilu lub z brakującym profilem.",
+        "error_generic": "Błąd"
       },
-      "number": "Numer",
-      "issue_date": "Data wystawienia",
-      "due_date": "Termin płatności",
-      "total": "Suma",
-      "paid": "Opłacono",
-      "empty": "Nie znaleziono faktur",
+      "confirm_delete": "Usunąć ten profil?",
       "errors": {
-        "load_failed": "Nie udało się wczytać faktur",
-        "action_failed": "Operacja na fakturze nie powiodła się",
-        "detail_load_failed": "Nie udało się wczytać faktury",
-        "companies_load_failed": "Nie udało się wczytać firm",
-        "client_billing_load_failed": "Nie udało się wczytać danych rozliczeniowych klienta",
-        "source_invoice_load_failed": "Nie udało się wczytać faktury źródłowej",
-        "issuer_load_failed": "Nie udało się wczytać danych firmy wystawiającej",
-        "edit_invoice_load_failed": "Nie udało się wczytać faktury do edycji",
-        "create_failed": "Nie udało się utworzyć faktury",
-        "update_failed": "Nie udało się zaktualizować faktury"
+        "load": "Nie udało się wczytać profili",
+        "create": "Nie udało się utworzyć profilu",
+        "update": "Nie udało się zaktualizować profilu",
+        "delete": "Nie udało się usunąć profilu",
+        "copy": "Nie udało się zduplikować profilu",
+        "export": "Nie udało się wyeksportować profilu",
+        "import_json": "Nieprawidłowy plik JSON",
+        "import": "Nie udało się zaimportować profilu",
+        "import_missing_profile": "Nieprawidłowy plik: brak obiektu „profile”",
+        "import_missing_code_name": "Nieprawidłowy plik: brak wymaganych pól „code” lub „name”"
+      },
+      "validation": {
+        "code_required": "Kod profilu jest wymagany",
+        "name_required": "Nazwa profilu jest wymagana",
+        "code_exists": "Profil z kodem „{code}” już istnieje",
+        "code_format": "Kod może zawierać tylko litery łacińskie, cyfry i podkreślenia",
+        "code_inline_required": "Kod jest wymagany",
+        "name_inline_required": "Nazwa jest wymagana",
+        "code_inline_format": "Kod może zawierać tylko litery łacińskie, cyfry i podkreślenia",
+        "code_inline_taken": "Profil z kodem „{code}” już istnieje"
+      },
+      "warnings": {
+        "no_fields": "Profil nie ma skonfigurowanych pól",
+        "no_funnel_stages": "Brak lejka i etapów (wybierz lejek lub dodaj etapy)",
+        "no_documents": "Profil nie ma skonfigurowanych dokumentów",
+        "no_funnel_selected": "Nie wybrano lejka (wybierz poniżej)",
+        "save_prompt_title": "Ostrzeżenie:",
+        "save_prompt_footer": "Kontynuować zapis?"
+      },
+      "import_suffix_name": " (zaimportowany)",
+      "copy_suffix_name": " (kopia)",
+      "form": {
+        "title_create": "Utwórz profil",
+        "title_edit": "Edytuj profil",
+        "code": "Kod (unikalny identyfikator)",
+        "code_placeholder": "driver_ce",
+        "code_hint": "Tylko litery łacińskie, cyfry i podkreślenia (np. driver_ce)",
+        "name": "Nazwa",
+        "name_placeholder": "Kierowca CE",
+        "description": "Opis",
+        "description_placeholder": "Opis profilu…",
+        "notes": "Notatki",
+        "notes_placeholder": "Notatki wewnętrzne…",
+        "section_fields": "Konstruktor pól profilu",
+        "section_funnel": "Lejek (etapy) profilu",
+        "section_documents": "Dokumenty profilu",
+        "cancel": "Anuluj",
+        "save": "Zapisz",
+        "saving": "Zapisywanie…"
+      },
+      "defaults": {
+        "first_name": "Imię",
+        "last_name": "Nazwisko",
+        "email": "E-mail",
+        "phone": "Telefon"
       }
     },
     "email": {
-      "description": "Opis",
-      "from_email": "Z e-maila",
-      "from_name": "Od imienia",
-      "is_active": "Jest aktywny",
-      "load_error": "Błąd ładowania",
-      "password_hint": "Wskazówka dotycząca hasła",
-      "save_error": "Zapisz błąd",
-      "saved": "Zapisano",
+      "title": "E-mail (SMTP)",
+      "description_short": "Wychodzący SMTP dla powiadomień CRM. Google Workspace: smtp.gmail.com, port 587, hasło aplikacji.",
+      "integration_wizard": {
+        "connection_status": "Status poczty wychodzącej",
+        "step_smtp": "SMTP i nadawca",
+        "step_test": "Wiadomość testowa",
+        "status_no_config": "Jeszcze nie zapisano",
+        "status_paused": "Zapisano — wysyłka wyłączona",
+        "status_live": "Zapisano — wysyłka włączona",
+        "test_locked": "Najpierw zapisz ustawienia SMTP, potem wyślij test."
+      },
+      "from_email": "Adres nadawcy",
+      "from_name": "Nazwa nadawcy",
+      "is_active": "Włącz wysyłkę e-maili",
+      "load_error": "Nie udało się wczytać ustawień poczty",
+      "password_hint": "Pozostaw puste, aby zachować obecne hasło",
+      "save_error": "Nie udało się zapisać ustawień",
+      "saved": "Ustawienia zapisane",
       "send_test": "Wyślij test",
-      "smtp_host": "Host smtp",
-      "smtp_password": "Hasło smtp",
-      "smtp_port": "Port SMTP",
-      "smtp_user": "Użytkownik smtp",
-      "test_error": "Błąd testowy",
-      "test_sent": "Test wysłany",
-      "test_title": "Tytuł testu",
-      "title": "Tytuł",
-      "use_tls": "Użyj tls",
+      "smtp_host": "Serwer SMTP",
+      "smtp_password": "Hasło (App Password)",
+      "smtp_port": "Port",
+      "smtp_user": "Użytkownik SMTP",
+      "test_error": "Nie udało się wysłać wiadomości testowej",
+      "test_sent": "Wiadomość testowa wysłana",
+      "test_title": "Wyślij wiadomość testową",
+      "use_tls": "Użyj TLS (port 587)",
       "validation": {
-        "from_required": "Od wymagane",
-        "host_required": "Wymagany gospodarz",
-        "test_to_required": "Test wymagany"
+        "from_required": "Podaj adres nadawcy",
+        "host_required": "Podaj serwer SMTP",
+        "test_to_required": "Podaj adres odbiorcy testu"
       },
       "placeholders": {
         "smtp_user": "email@example.com",
@@ -10715,13 +10145,78 @@
         "plan_selected": "Wybrano plan / rozpoczęto checkout",
         "signup": "Rejestracja zakończona"
       },
+      "header_kicker": "Jak szybko nowe workspace osiągają kluczowe etapy konfiguracji.",
       "subtitle": "Mediana i p90 czasu między rejestracją a kluczowymi krokami.",
       "title": "Time To Value (ścieżka North Star)",
       "step_label": "Krok",
       "load_error": "Nie udało się załadować raportu TTV"
     },
     "custom_fields": {
+      "confirm_delete": "Usunąć to pole niestandardowe?",
+      "page": {
+        "header_kicker": "Dodatkowe pola u kandydatów, leadów i dokumentów — w formularzach i API.",
+        "title": "Pola niestandardowe",
+        "subtitle": "Dodatkowe pola dla kandydatów, leadów i dokumentów. Dla leadów klucz powinien odpowiadać ścieżce w normalized (w tym kropki dla zagnieżdżenia); wartości uzupełniają się przy ingest i są widoczne w API jako custom_fields.",
+        "create_field": "Utwórz pole",
+        "filter_scope": "Filtruj wg zakresu",
+        "filter_all": "Wszystkie",
+        "loading": "Ładowanie…"
+      },
+      "scopes": {
+        "CANDIDATE": "Kandydat",
+        "LEAD": "Lead",
+        "DOCUMENT": "Dokument"
+      },
+      "field_types": {
+        "TEXT": "Tekst",
+        "TEXTAREA": "Tekst wieloliniowy",
+        "NUMBER": "Liczba",
+        "DATE": "Data",
+        "CHECKBOX": "Pole wyboru",
+        "SELECT": "Wybór (jeden)",
+        "MULTISELECT": "Wybór (wiele)"
+      },
+      "list": {
+        "empty": "Brak definicji pól. Kliknij „Utwórz pole”.",
+        "badge_required": "Wymagane",
+        "badge_inactive": "Nieaktywne",
+        "badge_system": "Systemowe",
+        "document_type": "Typ dokumentu: {name}",
+        "options": "Opcje: {list}",
+        "edit": "Edytuj",
+        "delete": "Usuń"
+      },
+      "errors": {
+        "load_definitions": "Nie udało się wczytać definicji pól",
+        "create_failed": "Nie udało się utworzyć definicji",
+        "update_failed": "Nie udało się zaktualizować definicji",
+        "delete_failed": "Nie udało się usunąć definicji",
+        "save_failed": "Nie udało się zapisać definicji"
+      },
+      "validation": {
+        "key_label_required": "Klucz i etykieta są wymagane",
+        "document_type_required": "Dla pól dokumentów wymagany jest typ dokumentu",
+        "select_options_required": "Dla SELECT/MULTISELECT potrzebna jest co najmniej jedna opcja"
+      },
       "form": {
+        "add_option": "Dodaj",
+        "title_create": "Utwórz definicję pola",
+        "title_edit": "Edytuj definicję pola",
+        "scope": "Zakres",
+        "document_type": "Typ dokumentu",
+        "key": "Klucz (unikalny identyfikator)",
+        "label": "Etykieta",
+        "label_placeholder": "Etykieta pola",
+        "field_type": "Typ pola",
+        "options": "Opcje wyboru",
+        "required": "Pole wymagane",
+        "help": "Podpowiedź",
+        "help_placeholder": "Tekst pomocy dla użytkowników…",
+        "active": "Aktywne",
+        "order": "Kolejność wyświetlania",
+        "cancel": "Anuluj",
+        "save": "Zapisz",
+        "saving": "Zapisywanie…",
         "key_placeholder": "custom_field_key",
         "option_placeholder": "Wpisz opcję i naciśnij Enter"
       }

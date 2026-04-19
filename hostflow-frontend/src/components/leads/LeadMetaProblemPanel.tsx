@@ -74,14 +74,14 @@ export default function LeadMetaProblemPanel({ lead, onRefreshed }: Props) {
   }, [notify, t])
 
   useEffect(() => {
-    if (!show || suggestion?.tab !== 'mapping') return
+    if (!show || suggestion?.tab !== 'field_mapping') return
     if (vacancyOptions.length > 0) return
     if (vacanciesLoading) return
     void loadVacancies()
   }, [loadVacancies, show, suggestion?.tab, vacanciesLoading, vacancyOptions.length])
 
   useEffect(() => {
-    if (!show || suggestion?.tab !== 'mapping') return
+    if (!show || suggestion?.tab !== 'field_mapping') return
     const pre = lead.vacancy_id ? String(lead.vacancy_id) : ''
     setRerouteVacancyId(pre)
   }, [lead.id, lead.vacancy_id, show, suggestion?.tab])
@@ -174,7 +174,7 @@ export default function LeadMetaProblemPanel({ lead, onRefreshed }: Props) {
         </Link>
       </div>
 
-      {suggestion?.tab === 'mapping' ? (
+      {suggestion?.tab === 'field_mapping' ? (
         <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4">
           <div className="text-xs font-semibold text-slate-700">
             {t('admin.meta_leads.logs.actions.reroute')}
@@ -216,17 +216,17 @@ export default function LeadMetaProblemPanel({ lead, onRefreshed }: Props) {
 
       {suggestion ? (
         <div className="flex flex-wrap items-center gap-2">
-          {suggestion.tab === 'credentials' ? (
+          {suggestion.tab === 'advanced' ? (
             <Link to={openCredentialsHref} className="text-xs text-slate-500 hover:text-brand-700 hover:underline">
               {suggestion.actionLabel}
             </Link>
           ) : null}
-          {suggestion.tab === 'mapping' ? (
+          {suggestion.tab === 'field_mapping' ? (
             <Link to={openMappingHref} className="text-xs text-slate-500 hover:text-brand-700 hover:underline">
               {suggestion.actionLabel}
             </Link>
           ) : null}
-          {suggestion.tab === 'settings' ? (
+          {suggestion.tab === 'processing' ? (
             <Link to={openSettingsHref} className="text-xs text-slate-500 hover:text-brand-700 hover:underline">
               {suggestion.actionLabel}
             </Link>

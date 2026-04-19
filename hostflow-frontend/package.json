@@ -21,6 +21,9 @@
     "permissions:report": "node scripts/check-permission-matrix.mjs --report-file ../docs/manual-checklist/f3-permission-role-matrix-static.md",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "coverage:check": "node scripts/check-coverage.mjs",
+    "bundle:check": "node scripts/check-bundle-size.mjs",
     "qa:static": "python3 ../scripts/codegen/generate_crm_app_paths.py --check && npm run routes:check && npm run activation:check && npm run comm:gates:check && npm run module:permissions:check && npm run permissions:check && npm run i18n:check && npm run build",
     "generate:sitemap": "node scripts/generate-sitemap.mjs"
   },
@@ -29,6 +32,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.6.1",
+    "@sentry/react": "^8.55.0",
     "@tabler/icons-react": "^3.40.0",
     "axios": "^1.7.7",
     "clsx": "^2.1.1",
@@ -61,6 +65,7 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.46.1",
     "vite": "^7.2.2",
-    "vitest": "^4.0.10"
+    "vitest": "^4.0.10",
+    "@vitest/coverage-v8": "^4.0.10"
   }
 }

@@ -13,6 +13,12 @@ export type DocType = {
   metadata_schema?: Record<string, any> | null;
   required_files?: Record<string, any> | null;
   orderable?: boolean | null;
+  // Catalog fields surfaced when the API loads the full document-type record
+  // (used for synthetic placeholders + workflow defaults in CandidateDocuments).
+  kind?: DocumentKind | string | null;
+  requested_from?: DocumentRequestedFrom | string | null;
+  process_type?: DocumentProcessType | string | null;
+  default_expire_in_days?: number | null;
 };
 
 export type OrderDraft = {

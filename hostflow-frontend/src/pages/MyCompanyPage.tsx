@@ -11,7 +11,7 @@ import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePermissions } from '../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 function isOperatingCompany(company: Company) {
   const role = String((company.extra as Record<string, any> | undefined)?.company_role || '').trim().toLowerCase()
   return role === 'operating'
@@ -161,6 +161,8 @@ export default function MyCompanyPage() {
         ) : null}
       </section>
 
+      <PageBreadcrumb className="max-w-4xl" />
+
       {error && (
         <ErrorRecoveryBanner
           info={error}
@@ -176,7 +178,7 @@ export default function MyCompanyPage() {
 
       {loading ? (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
-          {t('common.loading', { defaultValue: 'Loading...' })}
+          {t('common.loading')}
         </div>
       ) : managedOperatingCompanies.length > 0 ? (
         <section className="app-surface space-y-3 p-6">

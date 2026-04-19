@@ -114,6 +114,8 @@ export const DEFAULT_VISIBLE_COLS: Record<string, boolean> = {
   docsOrdered: false,
   docsValid: false,
   docsFiles: false,
+  /** Public intake: client (B2B) vs standard — optional column. */
+  intakeKind: false,
 };
 
 // Порядок колонок по умолчанию (только видимые)
@@ -123,6 +125,7 @@ export const DEFAULT_COLUMN_ORDER: string[] = [
   'stage',
   'docsStatus',
   'reasons',
+  'intakeKind',
   'vacancy',
   'manager',
   'risk',

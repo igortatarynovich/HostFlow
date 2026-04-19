@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import clsx from 'clsx'
 import CandidateDocsRailPanel, {
@@ -7,6 +7,8 @@ import CandidateDocsRailPanel, {
 import type { CandidatesWorkPanelCommsLinks } from '../hooks/useCandidatesWorkPanelPreview'
 import CandidateHandoffSection from '../../../components/candidate/CandidateHandoffSection'
 import CandidateNextActionPanel from '../../../components/candidate/CandidateNextActionPanel'
+import CandidateRemindersSection from '../../../components/candidate/CandidateRemindersSection'
+import { Modal } from '../../../components/Modal'
 import { isPipelineCompletedCanonicalStage } from '../../../utils/candidatePipelineCompleted'
 import StageTag from '../../../components/StageTag'
 import { docsIssuesPresent, docsPipelineBlocksForward } from '../../../utils/candidateStageDocPolicy'
@@ -113,6 +115,11 @@ export function CandidatesSelectedPanel({
   onTimelineExpandedChange,
 }: CandidatesSelectedPanelProps) {
   const navigate = useNavigate()
+  const [reminderModalOpen, setReminderModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (nextActionDetailsOpenTrigger > 0) setReminderModalOpen(true)
+  }, [nextActionDetailsOpenTrigger])
 
   const stageCode = selectedCandidate
     ? String(selectedCandidate?.stage || '').trim() || null
@@ -222,6 +229,13 @@ export function CandidatesSelectedPanel({
         <button type="button" className="btn-secondary btn-xs" onClick={() => onOpenDocuments(String(selectedCandidate.id))}>
           {t('app.nav.items.documents', { defaultValue: 'Documents' })}
         </button>
+        <button
+          type="button"
+          className="btn-secondary btn-xs border-brand-200 bg-brand-50/80 font-semibold text-brand-900 hover:bg-brand-100"
+          onClick={() => setReminderModalOpen(true)}
+        >
+          {t('app.candidates.preview.reminders_button', { defaultValue: 'Reminders' })}
+        </button>
       </div>
 
       {!isPipelineCompletedCanonicalStage(canonicalStageForOps) && typeof (selectedCandidate as any).risk_score === 'number' ? (
@@ -296,6 +310,8 @@ export function CandidatesSelectedPanel({
           reminderDueAt={previewReminderDueAt}
           reminderOffset={previewReminderOffset}
           detailsOpenTrigger={nextActionDetailsOpenTrigger}
+          reminderEditorInModal
+          onReminderModalOpenChange={setReminderModalOpen}
           onReminderTitleChange={onReminderTitleChange}
           onReminderDueAtChange={onReminderDueAtChange}
           onReminderOffsetChange={onReminderOffsetChange}
@@ -365,7 +381,7 @@ export function CandidatesSelectedPanel({
                 className="btn-secondary h-7 rounded-lg px-2 text-[11px]"
                 onClick={() => selectedCandidateId && onTimelineRefresh(selectedCandidateId)}
               >
-                {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+                {t('common.actions.refresh')}
               </button>
               {previewTimelineItems.length > previewTimelineCollapsedCount ? (
                 <button
@@ -416,6 +432,38 @@ export function CandidatesSelectedPanel({
       </div>
 
       <CandidateHandoffSection candidateId={String(selectedCandidate.id)} />
+
+      <Modal
+        open={reminderModalOpen}
+        onClose={() => setReminderModalOpen(false)}
+        title={t('app.candidates.preview.reminders_modal_title', {
+          defaultValue: 'Reminders for this candidate',
+        })}
+        size="lg"
+      >
+        <p className="mb-4 text-sm text-slate-600">
+          {t('app.candidates.preview.reminders_modal_hint', {
+            defaultValue: 'Set a due time, save, and return to the list — without scrolling the preview.',
+          })}
+        </p>
+        <CandidateRemindersSection
+          candidateId={cid}
+          reminders={previewReminders}
+          remindersLoading={previewRemindersLoading}
+          remindersError={previewRemindersError}
+          reminderBusy={previewReminderBusy}
+          reminderTitle={previewReminderTitle}
+          reminderDueAt={previewReminderDueAt}
+          reminderOffset={previewReminderOffset}
+          onReminderTitleChange={onReminderTitleChange}
+          onReminderDueAtChange={onReminderDueAtChange}
+          onReminderOffsetChange={onReminderOffsetChange}
+          onReminderCreate={onReminderCreate}
+          onReminderComplete={onReminderComplete}
+          onReminderSnooze={onReminderSnooze}
+          embedded
+        />
+      </Modal>
     </section>
   )
 }

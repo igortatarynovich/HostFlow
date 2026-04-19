@@ -567,6 +567,7 @@ async def deliver_due_reminders(db: AsyncSession, *, tenant_id: str) -> int:
             "title": reminder.title,
             "description": reminder.description,
             "type": event_type,
+            "reminder_id": str(reminder.id),
             "entity_type": reminder.entity_type,
             "entity_id": reminder.entity_id,
             "due_at": reminder.due_at.isoformat() if reminder.due_at else None,

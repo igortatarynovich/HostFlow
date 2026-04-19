@@ -18,6 +18,7 @@ import {
 import { useI18n } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -338,7 +339,7 @@ export default function CommunicationsCalendarPage() {
             }).catch(() => ({ items: [] }))
           : Promise.resolve({ items: [] } as any),
         needPlanner
-          ? listCommunicationPlannerEvents({ limit: 500 }).catch(() => ({ items: [] }))
+          ? listCommunicationPlannerEvents({ limit: 200 }).catch(() => ({ items: [] }))
           : Promise.resolve({ items: [] } as any),
         listManagers().catch(() => []),
         getMyWorkingHours().catch(() => null),
@@ -1406,6 +1407,7 @@ export default function CommunicationsCalendarPage() {
   return (
     <div className="space-y-4">
       <WorkspaceTopNav active="calendar" />
+      <PageBreadcrumb className="max-w-4xl" />
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">{t('app.communications.ia.calendar_title', { defaultValue: 'Calendar' })}</h1>
         <p className="text-sm text-slate-500">
@@ -1480,7 +1482,7 @@ export default function CommunicationsCalendarPage() {
           </select>
 
           <button type="button" onClick={() => void load()} className="btn-secondary">
-            {t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            {t('common.actions.refresh')}
           </button>
         </div>
         <details className="mt-3 rounded-lg border border-slate-100 bg-slate-50/70 px-3 py-2">
@@ -1519,7 +1521,7 @@ export default function CommunicationsCalendarPage() {
             <ErrorRecoveryBanner
               info={calendarError}
               onRetry={() => void load()}
-              retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+              retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 calendarError,
                 CRM_APP_PATHS.settingsIntegrations,
@@ -1530,7 +1532,7 @@ export default function CommunicationsCalendarPage() {
           </div>
         )}
         {infoText && <div className="mt-3 alert-info text-sm">{infoText}</div>}
-        {loading && <div className="mt-3 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
+        {loading && <div className="mt-3 text-sm text-slate-500">{t('common.loading')}</div>}
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
@@ -2172,7 +2174,7 @@ export default function CommunicationsCalendarPage() {
               </div>
               <textarea rows={3} value={plannerForm.description} onChange={(e) => setPlannerForm((p) => ({ ...p, description: e.target.value }))} className="w-full textarea" placeholder={t('app.communications.calendar.forms.description', { defaultValue: 'Description' })} />
               <button type="submit" disabled={busy || !plannerForm.title.trim() || !plannerForm.startAt} className="btn-primary disabled:opacity-50">
-                {busy ? t('common.loading', { defaultValue: 'Loading...' }) : t('common.actions.create', { defaultValue: 'Create' })}
+                {busy ? t('common.loading') : t('common.actions.create', { defaultValue: 'Create' })}
               </button>
             </form>
           </section>
@@ -2241,7 +2243,7 @@ export default function CommunicationsCalendarPage() {
               </div>
               <textarea rows={3} value={reminderForm.description} onChange={(e) => setReminderForm((p) => ({ ...p, description: e.target.value }))} className="w-full textarea" placeholder={t('app.communications.calendar.forms.description', { defaultValue: 'Description' })} />
               <button type="submit" disabled={busy || !reminderForm.title.trim() || !reminderForm.dueAt} className="btn-primary disabled:opacity-50">
-                {busy ? t('common.loading', { defaultValue: 'Loading...' }) : t('common.actions.create', { defaultValue: 'Create' })}
+                {busy ? t('common.loading') : t('common.actions.create', { defaultValue: 'Create' })}
               </button>
             </form>
           </section>

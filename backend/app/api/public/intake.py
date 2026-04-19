@@ -7,16 +7,31 @@ import copy
 import logging
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Sequence
+from typing import Any, Dict, List, Literal, Optional, Tuple, Sequence
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile, File, Form, Request, Response, Query
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, TypeAdapter, ValidationError, field_validator, model_validator
 from sqlalchemy import delete, select, func, literal, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db.deps import get_db_with_tenant
+from backend.app.constants import spa_paths
+from backend.app.core.rate_limit import enforce_rate_limit, rate_limits
+from backend.app.core.turnstile import require_turnstile
+from backend.app.db.deps import bind_tenant_context_to_session, get_db
+from backend.app.api.public.intake_tenant_bind import (
+    public_intake_apply_session,
+    public_intake_magic_link_redeem_session,
+    public_intake_status_session,
+    public_intake_storage_upload_session,
+    resolve_intake_token_tenant_id,
+    resolve_lead_form_tenant_and_id_by_form_id,
+    resolve_lead_form_tenant_and_id_by_slug,
+    resolve_tenant_uuid_for_public_intake_create,
+)
+from backend.app.models.tenant_lead_form import TenantLeadForm
+from backend.app.models.vacancy import Vacancy
 from backend.app.models.candidate import Candidate
 from backend.app.models.candidate_consent import CandidateConsent
 from backend.app.models.candidate_employment import CandidateEmployment
@@ -75,6 +90,224 @@ CONSENT_VERSION_DEFAULTS = {
     "cookies": "2025-02-01",
 }
 logger = logging.getLogger(__name__)
+
+
+def _coerce_intake_application_kind(value: Optional[str]) -> str:
+    s = str(value or "candidate").strip().lower()
+    return "client" if s == "client" else "candidate"
+
+
+def _candidate_public_display_name(candidate: Candidate) -> str:
+    full = " ".join(part for part in [candidate.first_name, candidate.last_name] if part).strip()
+    state = _ensure_intake_state(candidate)
+    personal = dict(state.get("personal") or {})
+    from_intake = str(personal.get("full_name") or "").strip()
+    if from_intake:
+        return from_intake
+    return full or candidate.first_name or candidate.last_name or candidate.id
+
+
+async def _maybe_create_client_lead_from_public_intake(
+    db: AsyncSession,
+    tenant_id: str,
+    candidate: Candidate,
+    *,
+    client_ip: Optional[str] = None,
+    user_agent: Optional[str] = None,
+) -> None:
+    """When intake was started as **client**, create one CRM Lead row on submit (deduped by candidate id)."""
+    state = _ensure_intake_state(candidate)
+    if _coerce_intake_application_kind(str(state.get("application_kind"))) != "client":
+        return
+
+    from backend.app.modules.leads import crud as leads_crud
+
+    external_id = f"public-intake:{candidate.id}"
+    existing = await leads_crud.get_lead_by_external_id(
+        db, tenant_id=tenant_id, source="public-intake", external_id=external_id
+    )
+    if existing is not None:
+        return
+
+    vac: Optional[Vacancy] = None
+    if candidate.vacancy_id:
+        vac = await db.get(Vacancy, str(candidate.vacancy_id))
+
+    company_id: Optional[str] = None
+    if candidate.company_id:
+        company_id = str(candidate.company_id).strip() or None
+    if not company_id and vac is not None and vac.company_id:
+        company_id = str(vac.company_id).strip() or None
+    if not company_id:
+        settings_row = await leads_crud.get_meta_settings(db, tenant_id=tenant_id)
+        if settings_row is not None and settings_row.default_company_id:
+            company_id = str(settings_row.default_company_id).strip() or None
+
+    if not company_id:
+        logger.info(
+            "[public-intake] skip client Lead: no company_id (tenant=%s candidate=%s)",
+            tenant_id,
+            candidate.id,
+        )
+        cname = _candidate_public_display_name(candidate)
+        await emit_event(
+            db,
+            tenant_id=tenant_id,
+            event_type="intake_client_lead_skipped_no_company",
+            payload={
+                "candidate_id": candidate.id,
+                "candidate_name": cname,
+                "href": spa_paths.spa_candidate(candidate.id),
+            },
+            audience=EventAudience(roles=(Role.manager, Role.recruiter)),
+            entity_type="candidate",
+            entity_id=candidate.id,
+        )
+        await log_public_event(
+            db,
+            tenant_id=tenant_id,
+            action="client_intake_no_company_for_lead",
+            target_id=candidate.id,
+            payload={"candidate_id": candidate.id},
+            ip=client_ip,
+            ua=user_agent,
+        )
+        return
+
+    own_company_id: Optional[str] = None
+    oc = getattr(candidate, "own_company_id", None)
+    if oc:
+        own_company_id = str(oc).strip() or None
+    if not own_company_id and vac is not None and getattr(vac, "own_company_id", None):
+        own_company_id = str(vac.own_company_id).strip() or None
+
+    contacts = dict(state.get("contacts") or {})
+    personal = dict(state.get("personal") or {})
+    full_name = str(personal.get("full_name") or "").strip()
+    email = (candidate.email or contacts.get("email") or None)
+    if email is not None:
+        email = str(email).strip() or None
+    phone = candidate.phone or contacts.get("phone")
+    if phone is not None:
+        phone = str(phone).strip() or None
+
+    normalized: Dict[str, Any] = {
+        "email": email,
+        "phone": phone,
+        "full_name": full_name or None,
+        "intake_application_kind": "client",
+        "source_candidate_id": candidate.id,
+    }
+    normalized = {k: v for k, v in normalized.items() if v}
+
+    pl: Dict[str, Any] = {
+        "intake": True,
+        "candidate_id": candidate.id,
+        "contacts": contacts,
+        "personal": personal,
+    }
+    vacancy_id = str(candidate.vacancy_id) if candidate.vacancy_id else None
+
+    try:
+        lead = await leads_crud.create_lead(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=own_company_id,
+            company_id=company_id,
+            vacancy_id=vacancy_id,
+            payload=pl,
+            normalized=normalized or None,
+            source="public-intake",
+            ad_id=None,
+            external_id=external_id,
+            lead_type="client",
+        )
+    except Exception as exc:
+        logger.warning(
+            "[public-intake] client Lead create failed tenant=%s candidate=%s: %s",
+            tenant_id,
+            candidate.id,
+            exc,
+        )
+        return
+
+    lead.candidate_id = candidate.id
+    await db.flush()
+
+    cname = _candidate_public_display_name(candidate)
+    await emit_event(
+        db,
+        tenant_id=tenant_id,
+        event_type="lead_public_intake_client",
+        payload={
+            "lead_id": str(lead.id),
+            "candidate_id": candidate.id,
+            "candidate_name": cname,
+            "href": spa_paths.spa_lead(str(lead.id)),
+        },
+        audience=EventAudience(roles=(Role.manager, Role.recruiter)),
+        entity_type="lead",
+        entity_id=str(lead.id),
+    )
+    await log_public_event(
+        db,
+        tenant_id=tenant_id,
+        action="client_lead_from_public_intake",
+        target_id=str(lead.id),
+        payload={"lead_id": str(lead.id), "candidate_id": candidate.id},
+        ip=client_ip,
+        ua=user_agent,
+    )
+
+
+async def _resolve_public_intake_vacancy_id(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    vacancy_uuid: Optional[UUID],
+) -> Optional[str]:
+    """When the public UI sends vacancy_id, attach only if the vacancy belongs to the resolved tenant."""
+    if vacancy_uuid is None:
+        return None
+    vid = str(vacancy_uuid)
+    row = await db.get(Vacancy, vid)
+    if row is None or str(row.tenant_id).strip() != str(tenant_id).strip():
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "intake_vacancy_not_found",
+                "message": "Vacancy not found in this workspace.",
+            },
+        )
+    return vid
+
+
+_email_str_adapter = TypeAdapter(EmailStr)
+
+
+def _coerce_optional_email(value: Any) -> Optional[str]:
+    """Avoid 500 when CRM/imports store non-RFC emails on the candidate row."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    try:
+        return str(_email_str_adapter.validate_python(s))
+    except ValidationError:
+        return None
+
+
+def _coerce_iso3166_alpha2(value: Any) -> Optional[str]:
+    """Intake models require exactly two letters; legacy rows may hold 3-letter codes or garbage."""
+    if value is None:
+        return None
+    s = str(value).strip().upper()
+    if len(s) == 2 and s.isalpha():
+        return s
+    return None
+
+
 EU_COUNTRIES = {
     "AT",
     "BE",
@@ -197,15 +430,55 @@ class IntakeData(BaseModel):
     employments: List[IntakeEmployment] = Field(default_factory=list)
     agreements: IntakeAgreements = Field(default_factory=IntakeAgreements)
     lead_form: Optional[Dict[str, Any]] = None
+    application_kind: Optional[Literal["candidate", "client"]] = Field(
+        default=None,
+        description="candidate (default): hiring intake only. client: B2B client inquiry — may create CRM Lead on submit when company_id is known.",
+    )
 
 
 class PublicIntakeCreateRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "description": (
+                "Start or resume a public candidate intake. "
+                "Workspace (tenant) routing: send **lead_form_slug** or **lead_form_id** (globally resolves the form owner), "
+                "or a non-demo **X-Tenant-Id** when using a tenant-default form without a published slug. "
+                "Do not send both **lead_form_id** and **lead_form_slug**."
+            ),
+        }
+    )
+
     contacts: IntakeContacts
-    vacancy_id: Optional[UUID] = None
+    vacancy_id: Optional[UUID] = Field(
+        default=None,
+        description="Optional vacancy for this application link; must belong to the resolved workspace. Sets Candidate.vacancy_id (does not create a CRM Lead row).",
+    )
     locale: Optional[str] = None
     source: Optional[str] = None
-    lead_form_id: Optional[str] = Field(default=None, max_length=36)
-    lead_form_slug: Optional[str] = Field(default=None, max_length=64)
+    lead_form_id: Optional[str] = Field(
+        default=None,
+        max_length=36,
+        description="Active tenant lead form UUID; resolves the owning workspace without relying on X-Tenant-Id.",
+    )
+    lead_form_slug: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="Globally unique published slug for an active form; resolves the owning workspace.",
+    )
+    application_kind: Optional[Literal["candidate", "client"]] = Field(
+        default=None,
+        description=(
+            "Optional. **client** = B2B client application: same Candidate intake flow, but on successful **submit** "
+            "the API may create a CRM **Lead** (`lead_type=client`, `source=public-intake`) when **company_id** can be "
+            "resolved (candidate row, vacancy, or **Meta/lead settings** `default_company_id`). "
+            "Omit or **candidate** = hiring-only (no CRM Lead row)."
+        ),
+    )
+    turnstile_token: Optional[str] = Field(
+        default=None,
+        max_length=2048,
+        description="Cloudflare Turnstile token; required only when Turnstile is enabled server-side.",
+    )
 
 
 class PublicLeadFormListItem(BaseModel):
@@ -260,9 +533,48 @@ class PublicStatusState(BaseModel):
 
 
 class PublicMagicLinkRequest(BaseModel):
-    email: Optional[EmailStr] = None
-    phone_country_code: Optional[str] = None
-    phone: Optional[str] = None
+    model_config = ConfigDict(
+        json_schema_extra={
+            "description": (
+                "Request a magic link for an existing draft candidate (same contact as stored). "
+                "Tenant resolution order: **intake_token** (recommended on `/public/apply/...`) if present; "
+                "else **lead_form_slug** or **lead_form_id**; else non-demo **X-Tenant-Id**. "
+                "Do not send both **lead_form_id** and **lead_form_slug**. "
+                "Response is always 200 with limits metadata; a link is created only if the contact matches a candidate in the resolved tenant."
+            ),
+        }
+    )
+
+    email: Optional[EmailStr] = Field(
+        default=None,
+        description="Candidate email; required unless **phone** (+ **phone_country_code**) is sent.",
+    )
+    phone_country_code: Optional[str] = Field(
+        default=None,
+        description="E.164-style country prefix (e.g. +48); use with **phone** when not using **email**.",
+    )
+    phone: Optional[str] = Field(
+        default=None,
+        description="National/significant number; use with **phone_country_code** when not using **email**.",
+    )
+    intake_token: Optional[str] = Field(
+        default=None,
+        max_length=128,
+        description=(
+            "Current public intake session token from `/public/apply/{token}`. "
+            "When set, the workspace is derived from this token so **X-Tenant-Id** can be wrong or absent."
+        ),
+    )
+    lead_form_id: Optional[str] = Field(
+        default=None,
+        max_length=36,
+        description="Same as **POST /public/intake** — resolve tenant from this active form id (no **intake_token**).",
+    )
+    lead_form_slug: Optional[str] = Field(
+        default=None,
+        max_length=64,
+        description="Same as **POST /public/intake** — resolve tenant from this globally unique published slug.",
+    )
 
     @model_validator(mode="after")
     def _ensure_contact(cls, data: "PublicMagicLinkRequest") -> "PublicMagicLinkRequest":
@@ -272,9 +584,18 @@ class PublicMagicLinkRequest(BaseModel):
 
 
 class PublicMagicLinkRequestResponse(BaseModel):
-    status: str = "ok"
-    cooldown_seconds: int = MIN_MAGIC_LINK_INTERVAL_SECONDS
-    daily_limit: int = MAX_MAGIC_LINKS_PER_DAY
+    status: str = Field(
+        default="ok",
+        description="Always `ok` when the request is accepted (including when no candidate matched — no email is sent in this API).",
+    )
+    cooldown_seconds: int = Field(
+        default=MIN_MAGIC_LINK_INTERVAL_SECONDS,
+        description="Minimum seconds between magic-link requests for the same contact in the same tenant.",
+    )
+    daily_limit: int = Field(
+        default=MAX_MAGIC_LINKS_PER_DAY,
+        description="Maximum magic-link requests per contact per rolling day in the same tenant.",
+    )
 
 
 class PublicMagicLinkRedeemResponse(BaseModel):
@@ -373,6 +694,29 @@ def _auto_residency_status(citizenship: Optional[str], provided: Optional[str]) 
         if citizen in EU_COUNTRIES:
             return "eu_citizen"
     return provided
+
+
+async def _load_candidate_for_storage_upload(
+    session: AsyncSession,
+    tenant_id: UUID,
+    token: str,
+) -> Candidate:
+    """Resolve candidate for PUT /uploads/{token}/… (intake or status share token)."""
+    stmt_intake = (
+        select(Candidate)
+        .where(
+            Candidate.tenant_id == str(tenant_id),
+            Candidate.intake_token == token,
+            Candidate.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    c = await session.scalar(stmt_intake)
+    if c is not None:
+        if c.intake_token_expires_at and c.intake_token_expires_at < _now():
+            raise HTTPException(status_code=410, detail="Intake link expired")
+        return c
+    return await _load_candidate_by_status_token(session, tenant_id, token)
 
 
 async def _load_candidate_by_token(
@@ -1135,7 +1479,7 @@ def _serialize_contacts(candidate: Candidate, state: Dict[str, Any]) -> IntakeCo
     data = IntakeContacts(
         phone_country_code=candidate.phone_country_code or contacts.get("phone_country_code"),
         phone=candidate.phone or contacts.get("phone"),
-        email=candidate.email or contacts.get("email"),
+        email=_coerce_optional_email(candidate.email or contacts.get("email")),
         preferred_messenger=contacts.get("preferred_messenger"),
     )
     return data
@@ -1148,9 +1492,10 @@ def _serialize_personal(candidate: Candidate, state: Dict[str, Any]) -> IntakePe
         full_name = f"{candidate.first_name} {candidate.last_name}".strip()
     # Также проверяем extra для обратной совместимости
     extra = candidate._get_extra()
+    citizenship_raw = personal_data.get("citizenship") or extra.get("citizenship")
     return IntakePersonal(
         full_name=full_name.strip(),
-        citizenship=personal_data.get("citizenship") or extra.get("citizenship"),
+        citizenship=_coerce_iso3166_alpha2(citizenship_raw),
         residency_status=personal_data.get("residency_status"),
         in_poland=personal_data.get("in_poland") if personal_data.get("in_poland") is not None else extra.get("in_poland"),
         birth_date=personal_data.get("birth_date") or extra.get("birth_date"),
@@ -1177,7 +1522,7 @@ def _serialize_employments(rows: List[CandidateEmployment]) -> List[IntakeEmploy
             IntakeEmployment(
                 id=row.id,
                 employer_name=row.employer_name,
-                country=row.country,
+                country=_coerce_iso3166_alpha2(row.country),
                 position=row.position,
                 start_date=row.start_date,
                 end_date=row.end_date,
@@ -1294,6 +1639,7 @@ def _state_to_data(candidate: Candidate, employments: List[CandidateEmployment])
     state = _ensure_intake_state(candidate)
     lf_raw = state.get("lead_form")
     lf = lf_raw if isinstance(lf_raw, dict) else None
+    ak = _coerce_intake_application_kind(str(state.get("application_kind")))
     return IntakeData(
         contacts=_serialize_contacts(candidate, state),
         personal=_serialize_personal(candidate, state),
@@ -1301,6 +1647,7 @@ def _state_to_data(candidate: Candidate, employments: List[CandidateEmployment])
         employments=_serialize_employments(employments),
         agreements=_serialize_agreements(state),
         lead_form=lf,
+        application_kind=ak,
     )
 
 
@@ -1753,6 +2100,14 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     elif existing_state.get("lead_form") is not None:
         state["lead_form"] = existing_state.get("lead_form")
 
+    if payload.application_kind is not None:
+        ak = str(payload.application_kind).strip().lower()
+        state["application_kind"] = ak if ak in ("candidate", "client") else "candidate"
+    elif existing_state.get("application_kind"):
+        state["application_kind"] = existing_state["application_kind"]
+    else:
+        state["application_kind"] = "candidate"
+
     # Обновляем extra - основное хранилище для карточки кандидата
     extra = candidate._get_extra()
     
@@ -1806,12 +2161,102 @@ def _update_candidate_from_data(candidate: Candidate, payload: IntakeData) -> No
     candidate._set_extra(extra)
 
 
-@router.get("/intake/lead-forms", response_model=list[PublicLeadFormListItem])
+@router.get(
+    "/intake/lead-forms",
+    response_model=list[PublicLeadFormListItem],
+    summary="List active public lead forms",
+    description=(
+        "Returns forms that have a published slug. "
+        "Pass **public_slug** or **lead_form_id** to resolve the tenant without **X-Tenant-Id**; "
+        "otherwise send **X-Tenant-Id** to list all published forms for that workspace."
+    ),
+    responses={
+        422: {"description": "Both **public_slug** and **lead_form_id** query parameters were sent."},
+    },
+)
 async def list_public_intake_lead_forms(
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    public_slug: Optional[str] = Query(
+        default=None,
+        description="Globally unique published slug; resolves the form owner's tenant (no **X-Tenant-Id** needed).",
+    ),
+    lead_form_id: Optional[str] = Query(
+        default=None,
+        description="Active lead form id; resolves the owner's tenant when **public_slug** is omitted.",
+    ),
+    tenant_id_header: Optional[str] = Header(
+        default=None,
+        alias="X-Tenant-Id",
+        description="Workspace UUID when listing by tenant without **public_slug** / **lead_form_id**.",
+    ),
+    db: AsyncSession = Depends(get_db),
 ) -> list[PublicLeadFormListItem]:
-    """Active tenant lead forms that have a public slug (for embeds / landing pickers)."""
-    db, tenant_uuid = db_tenant
+    """Active tenant lead forms with a public slug. Pass public_slug to resolve tenant; else X-Tenant-Id for one tenant's list."""
+    slug_q = (public_slug or "").strip()
+    fid_q = (lead_form_id or "").strip()
+    if slug_q and fid_q:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "lead_form_reference_ambiguous",
+                "message": "Send only one of public_slug or lead_form_id query parameters.",
+            },
+        )
+    if slug_q:
+        pair = await resolve_lead_form_tenant_and_id_by_slug(db, slug_q)
+        if not pair:
+            return []
+        await bind_tenant_context_to_session(db, UUID(pair[0]))
+        row = (
+            await db.execute(
+                select(TenantLeadForm).where(
+                    TenantLeadForm.tenant_id == pair[0],
+                    TenantLeadForm.id == pair[1],
+                    TenantLeadForm.is_active.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None or not (row.public_slug or "").strip():
+            return []
+        return [
+            PublicLeadFormListItem(
+                id=row.id,
+                title=row.title or "",
+                public_slug=str(row.public_slug or "").strip(),
+            )
+        ]
+
+    if fid_q:
+        pair = await resolve_lead_form_tenant_and_id_by_form_id(db, fid_q)
+        if not pair:
+            return []
+        await bind_tenant_context_to_session(db, UUID(pair[0]))
+        row = (
+            await db.execute(
+                select(TenantLeadForm).where(
+                    TenantLeadForm.tenant_id == pair[0],
+                    TenantLeadForm.id == pair[1],
+                    TenantLeadForm.is_active.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
+        if row is None:
+            return []
+        return [
+            PublicLeadFormListItem(
+                id=row.id,
+                title=row.title or "",
+                public_slug=str(row.public_slug or "").strip() if row.public_slug else "",
+            )
+        ]
+
+    raw = (tenant_id_header or "").strip()
+    if not raw:
+        return []
+    try:
+        tenant_uuid = UUID(raw)
+    except Exception:
+        return []
+    await bind_tenant_context_to_session(db, tenant_uuid)
     rows = await list_active_lead_forms_with_public_slug(db, str(tenant_uuid))
     return [
         PublicLeadFormListItem(id=r.id, title=r.title or "", public_slug=str(r.public_slug or "").strip())
@@ -1820,15 +2265,44 @@ async def list_public_intake_lead_forms(
     ]
 
 
-@router.post("/intake", response_model=PublicIntakeCreateResponse)
+@router.post(
+    "/intake",
+    response_model=PublicIntakeCreateResponse,
+    summary="Create or reuse public intake session",
+    description=(
+        "Creates a draft candidate (or reuses by contact) in the workspace resolved from **lead_form_slug** / **lead_form_id** "
+        "or from **X-Tenant-Id** (non-demo). Returns an **apply** token and URLs."
+    ),
+    responses={
+        400: {
+            "description": "Tenant routing: `intake_tenant_required` or `intake_default_tenant_forbidden` (see response JSON `detail.code`)."
+        },
+        404: {
+            "description": "Referenced lead form missing, inactive, or slug not published (`lead_form_not_found`)."
+        },
+        422: {
+            "description": "Invalid body: contacts missing, both lead form references set, or invalid `lead_form_slug` format."
+        },
+    },
+)
 async def create_public_intake(
     payload: PublicIntakeCreateRequest,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ) -> PublicIntakeCreateResponse:
+    await enforce_rate_limit(request, rate_limits().public_intake, scope="public:intake")
+    await require_turnstile(request, token=payload.turnstile_token)
     contacts = payload.contacts
     if not contacts.has_contact():
         raise HTTPException(status_code=422, detail="phone or email is required")
-    db, tenant_id = db_tenant
+    tenant_uuid = await resolve_tenant_uuid_for_public_intake_create(
+        db,
+        x_tenant_id_header=request.headers.get("X-Tenant-Id"),
+        lead_form_id=payload.lead_form_id,
+        lead_form_slug=payload.lead_form_slug,
+    )
+    await bind_tenant_context_to_session(db, tenant_uuid)
+    tenant_id = tenant_uuid
 
     lf = await load_active_lead_form_for_public_intake(
         db,
@@ -1846,6 +2320,12 @@ async def create_public_intake(
             },
         )
 
+    resolved_vacancy_id = await _resolve_public_intake_vacancy_id(
+        db,
+        tenant_id=str(tenant_id),
+        vacancy_uuid=payload.vacancy_id,
+    )
+
     candidate = await _find_candidate_by_contact(
         db,
         tenant_id,
@@ -1858,6 +2338,8 @@ async def create_public_intake(
 
     if candidate:
         state = _ensure_intake_state(candidate)
+        if payload.application_kind is not None:
+            state["application_kind"] = _coerce_intake_application_kind(str(payload.application_kind))
         stored_contacts = dict(state.get("contacts") or {})
         for key, value in contacts.model_dump(exclude_none=True).items():
             stored_contacts[key] = value
@@ -1878,6 +2360,8 @@ async def create_public_intake(
         candidate.intake_token_created_at = now
         candidate.intake_token_expires_at = expires_at
         _ensure_status_share_token(candidate)
+        if resolved_vacancy_id is not None:
+            candidate.vacancy_id = resolved_vacancy_id
         await log_public_event(
             db,
             tenant_id=str(tenant_id),
@@ -1887,6 +2371,7 @@ async def create_public_intake(
                 "contacts": contacts.model_dump(exclude_none=True),
                 "source": normalize_candidate_source(payload.source),
                 **({"lead_form_id": lf.id} if lf is not None else {}),
+                **({"vacancy_id": resolved_vacancy_id} if resolved_vacancy_id else {}),
             },
         )
         await db.commit()
@@ -1908,6 +2393,7 @@ async def create_public_intake(
         phone_country_code=contacts.phone_country_code,
         phone=contacts.phone,
         email=contacts.email,
+        vacancy_id=resolved_vacancy_id,
         intake_token=token,
         intake_token_created_at=now,
         intake_token_expires_at=expires_at,
@@ -1915,11 +2401,13 @@ async def create_public_intake(
         stage="docs_wait",
         source=intake_source,
     )
+    ak = _coerce_intake_application_kind(str(payload.application_kind) if payload.application_kind is not None else None)
     state: Dict[str, Any] = {
         "contacts": contacts.model_dump(),
         "personal": {},
         "experience": {},
         "agreements": {},
+        "application_kind": ak,
     }
     if lf is not None:
         state["lead_form"] = lead_form_meta_for_intake_state(lf)
@@ -1940,7 +2428,7 @@ async def create_public_intake(
 @router.get("/apply/{token}", response_model=PublicIntakeState)
 async def get_public_intake(
     token: str,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_token(db, tenant_id, token)
@@ -1951,13 +2439,47 @@ async def get_public_intake(
     return _response_payload(candidate, employments, checklist, documents)
 
 
-@router.post("/magic-link/request", response_model=PublicMagicLinkRequestResponse)
+@router.post(
+    "/magic-link/request",
+    response_model=PublicMagicLinkRequestResponse,
+    summary="Request magic link for public intake",
+    description=(
+        "If a candidate with the same **email** or **phone** exists in the resolved tenant, creates a short-lived magic link "
+        "(redeem via **GET /public/magic-link/{token}**). "
+        "Prefer **intake_token** when the user is already on `/public/apply/{token}` so the correct workspace is used regardless of **X-Tenant-Id**."
+    ),
+    responses={
+        400: {
+            "description": "Tenant routing: `intake_tenant_required` or `intake_default_tenant_forbidden` (when **intake_token** is omitted)."
+        },
+        404: {"description": "Unknown **intake_token** (only evaluated when **intake_token** is sent)."},
+        422: {
+            "description": "Validation error: missing contact, or both **lead_form_id** and **lead_form_slug**, or invalid slug."
+        },
+        429: {"description": "Cooldown or daily cap for this contact in the tenant."},
+    },
+)
 async def request_public_magic_link(
     payload: PublicMagicLinkRequest,
     request: Request,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db: AsyncSession = Depends(get_db),
 ) -> PublicMagicLinkRequestResponse:
-    db, tenant_id = db_tenant
+    await enforce_rate_limit(request, rate_limits().magic_link, scope="public:magic_link")
+    it = (payload.intake_token or "").strip()
+    if it:
+        tid_str = await resolve_intake_token_tenant_id(db, it)
+        if not tid_str:
+            raise HTTPException(status_code=404, detail="Invalid intake token")
+        tenant_id = UUID(tid_str)
+        await bind_tenant_context_to_session(db, tenant_id)
+    else:
+        tenant_id = await resolve_tenant_uuid_for_public_intake_create(
+            db,
+            x_tenant_id_header=request.headers.get("X-Tenant-Id"),
+            lead_form_id=payload.lead_form_id,
+            lead_form_slug=payload.lead_form_slug,
+        )
+        await bind_tenant_context_to_session(db, tenant_id)
     candidate = await _find_candidate_by_contact(
         db,
         tenant_id,
@@ -2014,7 +2536,7 @@ async def request_public_magic_link(
 @router.get("/magic-link/{token}", response_model=PublicMagicLinkRedeemResponse)
 async def redeem_public_magic_link(
     token: str,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_magic_link_redeem_session),
 ) -> PublicMagicLinkRedeemResponse:
     db, tenant_id = db_tenant
     link = await _load_magic_link(db, tenant_id, token)
@@ -2050,7 +2572,7 @@ async def redeem_public_magic_link(
 @router.get("/status/{share_token}", response_model=PublicStatusState)
 async def get_public_status(
     share_token: str,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_status_session),
 ) -> PublicStatusState:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_status_token(db, tenant_id, share_token)
@@ -2068,7 +2590,7 @@ async def get_public_status(
 @router.post("/status/{share_token}/rotate", response_model=PublicStatusRotateResponse)
 async def rotate_public_status_token(
     share_token: str,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_status_session),
 ) -> PublicStatusRotateResponse:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_status_token(db, tenant_id, share_token)
@@ -2085,7 +2607,7 @@ async def rotate_public_status_token(
 async def update_public_intake(
     token: str,
     payload: PublicIntakeUpdateRequest,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_token(db, tenant_id, token)
@@ -2105,7 +2627,7 @@ async def submit_public_intake(
     token: str,
     payload: PublicIntakeSubmitRequest,
     request: Request,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> PublicIntakeState:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_token(db, tenant_id, token)
@@ -2139,6 +2661,7 @@ async def submit_public_intake(
     ]
     intake_state = _ensure_intake_state(candidate)
     _lf = intake_state.get("lead_form")
+    _ak = _coerce_intake_application_kind(str(intake_state.get("application_kind")))
     intake_payload = IntakeData(
         contacts=IntakeContacts(**(intake_state.get("contacts") or {})),
         personal=IntakePersonal(**(intake_state.get("personal") or {})),
@@ -2146,6 +2669,7 @@ async def submit_public_intake(
         employments=intake_state.get("employments") or [],
         agreements=IntakeAgreements(**(intake_state.get("agreements") or {})),
         lead_form=_lf if isinstance(_lf, dict) else None,
+        application_kind=_ak,
     )
     _update_candidate_from_data(candidate, intake_payload)
     state["employments"] = [_employment_state_payload(entry) for entry in intake_payload.employments] or state.get("employments") or []
@@ -2186,6 +2710,9 @@ async def submit_public_intake(
         entity_type="candidate",
         entity_id=candidate.id,
     )
+    await _maybe_create_client_lead_from_public_intake(
+        db, str(tenant_id), candidate, client_ip=client_ip, user_agent=user_agent
+    )
     await db.commit()
 
     checklist, documents = await _build_checklist_and_docs(db, tenant_id, candidate)
@@ -2196,7 +2723,7 @@ async def submit_public_intake(
 async def presign_public_document_upload(
     token: str,
     payload: PublicPresignRequest,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> PublicPresignResponse:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_token(db, tenant_id, token)
@@ -2216,7 +2743,7 @@ async def presign_public_document_upload(
 async def get_public_documents_access(
     share_token: str,
     payload: PublicStatusDocumentsAccessRequest,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_status_session),
 ) -> PublicStatusDocumentsAccessResponse:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_status_token(db, tenant_id, share_token)
@@ -2242,7 +2769,7 @@ async def get_public_documents_access(
 async def presign_status_document_upload(
     share_token: str,
     payload: PublicStatusPresignRequest,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_status_session),
 ) -> PublicPresignResponse:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_status_token(db, tenant_id, share_token)
@@ -2272,7 +2799,7 @@ async def upload_public_document(
     file: Optional[UploadFile] = File(None),
     storage_key: Optional[str] = Form(None),
     user_comment: Optional[str] = Form(None),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> PublicIntakeState:
     if not doc_type.strip():
         raise HTTPException(status_code=422, detail="doc_type is required")
@@ -2331,7 +2858,7 @@ async def upload_status_document(
     file: Optional[UploadFile] = File(None),
     storage_key: Optional[str] = Form(None),
     user_comment: Optional[str] = Form(None),
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_status_session),
 ) -> PublicStatusState:
     if not doc_type.strip():
         raise HTTPException(status_code=422, detail="doc_type is required")
@@ -2373,7 +2900,7 @@ async def upload_status_document(
 async def download_public_document_file(
     token: str,
     doc_id: UUID,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_apply_session),
 ) -> FileResponse:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_token(db, tenant_id, token)
@@ -2401,7 +2928,7 @@ async def download_public_document_file(
 async def download_status_document_file(
     share_token: str,
     doc_id: UUID,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_status_session),
 ) -> FileResponse:
     db, tenant_id = db_tenant
     candidate = await _load_candidate_by_status_token(db, tenant_id, share_token)
@@ -2430,10 +2957,10 @@ async def upload_public_storage_object(
     token: str,
     storage_key: str,
     request: Request,
-    db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
+    db_tenant: Tuple[AsyncSession, UUID] = Depends(public_intake_storage_upload_session),
 ) -> Response:
     db, tenant_id = db_tenant
-    candidate = await _load_candidate_by_token(db, tenant_id, token)
+    candidate = await _load_candidate_for_storage_upload(db, tenant_id, token)
     allowed_prefix = f"{candidate.tenant_id}/candidates/{candidate.id}/"
     normalized_key = storage_key.strip().lstrip("/\\")
     if not normalized_key.startswith(allowed_prefix):

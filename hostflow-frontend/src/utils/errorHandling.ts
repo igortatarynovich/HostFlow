@@ -117,14 +117,6 @@ export function getErrorInfo(error: unknown): ErrorInfo {
 }
 
 /**
- * Checks if error is a 404 (Not Found)
- */
-export function isNotFoundError(error: unknown): boolean {
-  const axiosError = error as any
-  return !!(axiosError?.response?.status === 404)
-}
-
-/**
  * Checks if error is a network error (no response)
  */
 export function isNetworkError(error: unknown): boolean {

@@ -25,7 +25,7 @@ import type {
   DocumentRequestedFrom,
   DocumentProcessType,
   DocumentCheck,
-  DocumentWorkflow,
+  DocumentWorkflow as DocumentWorkflowState,
   DocumentWorkflowStep,
   DocumentReminder,
   CandidateDocumentsSummaryResponse,
@@ -64,6 +64,7 @@ import {
   CORE_METADATA_FIELDS,
   METADATA_LABEL_NS,
   DRIVER_DEFAULT_ENRICHMENT_CODES,
+  MAX_FILE_MB,
 } from "./constants";
 import { getDocumentFieldsConfig } from "./documentFieldsConfig";
 import {
@@ -590,6 +591,8 @@ export default function CandidateDocuments({
       
       // Объединяем реальные документы и синтетические из summary
       // summaryDocs содержит все документы включая синтетические (missing) с fillMissing: true
+      // Важно: реальные документы ключуются по id (UUID), а синтетические из summary — по synthetic::<type>.
+      // Без проверки типа получается дубль: один и тот же тип показывается и как реальный файл, и как synthetic.
       const allDocsMap = new Map<string, Document>();
       const existingTypeCodes = new Set<string>();
       
@@ -601,24 +604,32 @@ export default function CandidateDocuments({
         }
       });
       
-      // Затем добавляем синтетические документы из summary, если их еще нет
+      // Затем добавляем записи из summary: синтетические — только если нет реального документа этого типа
       summaryDocs.forEach((doc) => {
-        // Для синтетических документов используем type_code как ключ
-        const key = doc.id.startsWith("synthetic::") 
-          ? `synthetic::${doc.type_code || doc.doc_type}`
-          : doc.id;
-        if (!allDocsMap.has(key)) {
-          allDocsMap.set(key, doc);
-          if (doc.type_code || doc.doc_type) {
-            existingTypeCodes.add(normalizeDocTypeCode(doc.type_code || doc.doc_type));
+        const typeNorm = normalizeDocTypeCode(doc.type_code || doc.doc_type);
+        const isSynthetic = doc.id.startsWith("synthetic::");
+        if (isSynthetic) {
+          if (typeNorm && existingTypeCodes.has(typeNorm)) {
+            return;
           }
+          const key = typeNorm
+            ? `synthetic::${typeNorm}`
+            : `synthetic::${doc.type_code || doc.doc_type || "unknown"}`;
+          if (!allDocsMap.has(key)) {
+            allDocsMap.set(key, doc);
+            if (typeNorm) existingTypeCodes.add(typeNorm);
+          }
+        } else if (!allDocsMap.has(doc.id)) {
+          allDocsMap.set(doc.id, doc);
+          if (typeNorm) existingTypeCodes.add(typeNorm);
         }
       });
       
       // Создаем синтетические документы для всех типов из docTypes, которых еще нет
       filteredTypes.forEach((type) => {
         const typeCode = type.code;
-        if (!existingTypeCodes.has(typeCode)) {
+        const typeCodeNorm = normalizeDocTypeCode(typeCode);
+        if (!existingTypeCodes.has(typeCodeNorm)) {
           const syntheticId = `synthetic::${typeCode}::${candidateId}`;
           const syntheticDoc: Document = {
             id: syntheticId,
@@ -672,6 +683,7 @@ export default function CandidateDocuments({
             note: null,
           };
           allDocsMap.set(syntheticId, syntheticDoc);
+          existingTypeCodes.add(typeCodeNorm);
         }
       });
       

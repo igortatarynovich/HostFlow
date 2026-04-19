@@ -15,6 +15,7 @@ import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
@@ -247,6 +248,7 @@ export default function MyAvailabilityPage() {
           {t('app.communications.ia.my_availability_subtitle', { defaultValue: 'Personal work schedule, availability status, breaks, and leave requests. Employee-facing self-service.' })}
         </p>
       </div>
+      <PageBreadcrumb className="max-w-4xl" />
       <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
         <div>{t('app.profile.labels.user', { defaultValue: 'User' })}: <strong>{me?.full_name || me?.email || me?.id || '—'}</strong></div>
         <div className="mt-2 text-xs text-slate-500">Pending requests: {pendingCount}</div>
@@ -338,7 +340,7 @@ export default function MyAvailabilityPage() {
             <ErrorRecoveryBanner
               info={error}
               onRetry={() => void loadMine()}
-              retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+              retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 error,
                 CRM_APP_PATHS.timeOff,
@@ -380,13 +382,13 @@ export default function MyAvailabilityPage() {
             placeholder={t('app.communications.my_availability.reason_placeholder', { defaultValue: 'Reason / comment' })}
           />
           <button type="submit" disabled={busy || !form.startDate || !form.endDate} className="btn-primary disabled:opacity-50">
-            {busy ? t('common.loading', { defaultValue: 'Loading...' }) : t('common.actions.create', { defaultValue: 'Create' })}
+            {busy ? t('common.loading') : t('common.actions.create', { defaultValue: 'Create' })}
           </button>
         </form>
         <div className="mt-4">
           <div className="mb-2 text-sm font-semibold text-slate-900">{t('app.communications.ia.my_requests', { defaultValue: 'My requests' })}</div>
           <div className="space-y-2">
-            {loading && <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
+            {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
             {!loading && items.length === 0 && <div className="text-sm text-slate-500">{t('app.communications.states.empty', { defaultValue: 'No activity yet' })}</div>}
             {items.map((row) => (
               <div key={row.id} className="rounded border border-slate-200 px-3 py-2">

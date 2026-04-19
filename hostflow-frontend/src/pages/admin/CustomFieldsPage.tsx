@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import {
   listCustomFieldDefinitions,
   createCustomFieldDefinition,
@@ -61,18 +62,20 @@ function TextareaField({ label, value, onChange, placeholder, rows = 3 }: {
   )
 }
 
-function SelectField({ label, value, onChange, options, allowEmpty = true }: {
+function SelectField({ label, value, onChange, options, allowEmpty = true, emptyLabel, disabled }: {
   label: string
   value: string
   onChange: (value: string) => void
   options: Array<{ value: string; label: string }>
   allowEmpty?: boolean
+  emptyLabel?: string
+  disabled?: boolean
 }) {
   return (
     <label className="block">
       <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-      <select className="input w-full" value={value} onChange={(e) => onChange(e.target.value)}>
-        {allowEmpty && <option value="">— не выбран —</option>}
+      <select className="input w-full" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
+        {allowEmpty && <option value="">{emptyLabel ?? '—'}</option>}
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
@@ -101,11 +104,12 @@ function CheckboxField({ label, checked, onChange }: {
   )
 }
 
-function ArrayInputField({ label, value, onChange, placeholder }: {
+function ArrayInputField({ label, value, onChange, placeholder, addButtonLabel }: {
   label: string
   value: string[]
   onChange: (value: string[]) => void
   placeholder?: string
+  addButtonLabel: string
 }) {
   const [inputValue, setInputValue] = useState('')
 
@@ -138,7 +142,7 @@ function ArrayInputField({ label, value, onChange, placeholder }: {
           placeholder={placeholder}
         />
         <button className="btn-secondary" type="button" onClick={handleAdd}>
-          Добавить
+          {addButtonLabel}
         </button>
       </div>
       {value.length > 0 && (
@@ -185,11 +189,11 @@ export default function CustomFieldsPage() {
       setDefinitions(defsData)
       setDocumentTypes(typesData || [])
     } catch (err: any) {
-      setError(err?.message || 'Не удалось загрузить определения полей')
+      setError(err?.message || t('admin.custom_fields.errors.load_definitions'))
     } finally {
       setLoading(false)
     }
-  }, [scopeFilter])
+  }, [scopeFilter, t])
 
   useEffect(() => {
     void loadDefinitions()
@@ -214,7 +218,7 @@ export default function CustomFieldsPage() {
           (typeof d === 'object' && d && typeof d.message === 'string' && d.message) ||
           (typeof d === 'string' && d) ||
           err?.message ||
-          'Не удалось создать определение поля'
+          t('admin.custom_fields.errors.create_failed')
         setError(msg)
       }
       throw err
@@ -228,37 +232,41 @@ export default function CustomFieldsPage() {
       await loadDefinitions()
       setEditingDefinition(null)
     } catch (err: any) {
-      setError(err?.message || 'Не удалось обновить определение поля')
+      setError(err?.message || t('admin.custom_fields.errors.update_failed'))
       throw err
     }
   }
 
   const handleDelete = async (definitionId: string) => {
-    if (!confirm('Удалить это определение поля?')) return
+    if (!confirm(t('admin.custom_fields.confirm_delete'))) return
     try {
       setError(null)
       await deleteCustomFieldDefinition(definitionId)
       await loadDefinitions()
     } catch (err: any) {
-      setError(err?.message || 'Не удалось удалить определение поля')
+      setError(err?.message || t('admin.custom_fields.errors.delete_failed'))
     }
   }
 
-  const scopeOptions: Array<{ value: CustomFieldScope; label: string }> = [
-    { value: 'CANDIDATE', label: 'Кандидат' },
-    { value: 'LEAD', label: 'Лид' },
-    { value: 'DOCUMENT', label: 'Документ' },
-  ]
+  const scopeOptions: Array<{ value: CustomFieldScope; label: string }> = useMemo(
+    () => [
+      { value: 'CANDIDATE', label: t('admin.custom_fields.scopes.CANDIDATE') },
+      { value: 'LEAD', label: t('admin.custom_fields.scopes.LEAD') },
+      { value: 'DOCUMENT', label: t('admin.custom_fields.scopes.DOCUMENT') },
+    ],
+    [t],
+  )
 
-  const fieldTypeOptions: Array<{ value: CustomFieldType; label: string }> = [
-    { value: 'TEXT', label: 'Текст' },
-    { value: 'TEXTAREA', label: 'Многострочный текст' },
-    { value: 'NUMBER', label: 'Число' },
-    { value: 'DATE', label: 'Дата' },
-    { value: 'CHECKBOX', label: 'Чекбокс' },
-    { value: 'SELECT', label: 'Выбор (один)' },
-    { value: 'MULTISELECT', label: 'Выбор (несколько)' },
-  ]
+  const fieldTypeOptions: Array<{ value: CustomFieldType; label: string }> = useMemo(
+    () =>
+      (['TEXT', 'TEXTAREA', 'NUMBER', 'DATE', 'CHECKBOX', 'SELECT', 'MULTISELECT'] as CustomFieldType[]).map(
+        (value) => ({
+          value,
+          label: t(`admin.custom_fields.field_types.${value}`),
+        }),
+      ),
+    [t],
+  )
 
   const documentTypeOptions = documentTypes.map((dt) => ({
     value: dt.id || dt.code || '',
@@ -274,7 +282,7 @@ export default function CustomFieldsPage() {
       error
         ? {
             title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+            hint: t('app.common.retry_hint'),
           }
         : null,
     [error, t],
@@ -283,33 +291,33 @@ export default function CustomFieldsPage() {
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <header className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">Кастомные поля</h2>
-            <p className="text-sm text-slate-500">
-              Дополнительные поля для кандидатов, лидов и документов. Для лидов ключ должен совпадать с путём в
-              normalized (в т.ч. точки для вложенности); значения подтягиваются при ingest и отдаются в API как{' '}
-              <code className="rounded bg-slate-100 px-1">custom_fields</code>.
-            </p>
-          </div>
-          <button
-            className="btn-primary"
-            type="button"
-            onClick={() => {
-              setNewDefinitionMode(true)
-              setEditingDefinition(null)
-            }}
-          >
-            Создать поле
-          </button>
-        </header>
+        <div className="mb-4">
+          <SettingsSubpageHeader
+            backLabel={t('admin.settings.subpage.back_all')}
+            kicker={t('admin.custom_fields.page.header_kicker')}
+            title={t('admin.custom_fields.page.title')}
+            subtitle={t('admin.custom_fields.page.subtitle')}
+            actions={
+              <button
+                className="btn-primary"
+                type="button"
+                onClick={() => {
+                  setNewDefinitionMode(true)
+                  setEditingDefinition(null)
+                }}
+              >
+                {t('admin.custom_fields.page.create_field')}
+              </button>
+            }
+          />
+        </div>
 
         <div className="mb-4">
           <SelectField
-            label="Фильтр по области"
+            label={t('admin.custom_fields.page.filter_scope')}
             value={scopeFilter}
             onChange={(value) => setScopeFilter(value as CustomFieldScope | '')}
-            options={[{ value: '', label: 'Все' }, ...scopeOptions]}
+            options={[{ value: '', label: t('admin.custom_fields.page.filter_all') }, ...scopeOptions]}
             allowEmpty={false}
           />
         </div>
@@ -319,11 +327,11 @@ export default function CustomFieldsPage() {
             <ErrorRecoveryBanner
               info={customFieldsErrorBanner}
               onRetry={() => void loadDefinitions()}
-              retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+              retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 customFieldsErrorBanner,
                 CRM_APP_PATHS.settingsCustomFields,
-                t('common.navigation.settings', { defaultValue: 'Настройки' }),
+                t('common.navigation.settings'),
               )}
               compact
             />
@@ -331,7 +339,7 @@ export default function CustomFieldsPage() {
         )}
 
         {loading ? (
-          <div className="text-sm text-slate-500">Загрузка...</div>
+          <div className="text-sm text-slate-500">{t('admin.custom_fields.page.loading')}</div>
         ) : (
           <div className="space-y-4">
             {newDefinitionMode && (
@@ -356,9 +364,7 @@ export default function CustomFieldsPage() {
               />
             )}
             {!newDefinitionMode && !editingDefinition && filteredDefinitions.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Определения полей не созданы. Нажмите "Создать поле" для создания.
-              </p>
+              <p className="text-sm text-slate-500">{t('admin.custom_fields.list.empty')}</p>
             ) : null}
             {!newDefinitionMode && !editingDefinition && filteredDefinitions.length > 0 ? (
               <div className="space-y-3">
@@ -374,40 +380,38 @@ export default function CustomFieldsPage() {
                               {def.key}
                             </span>
                             <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                              {def.scope === 'CANDIDATE'
-                                ? 'Кандидат'
-                                : def.scope === 'LEAD'
-                                  ? 'Лид'
-                                  : 'Документ'}
+                              {scopeOptions.find((o) => o.value === def.scope)?.label ?? def.scope}
                             </span>
                             <span className="rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
                               {fieldTypeOptions.find((opt) => opt.value === def.field_type)?.label || def.field_type}
                             </span>
                             {def.required && (
                               <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                                Обязательно
+                                {t('admin.custom_fields.list.badge_required')}
                               </span>
                             )}
                             {!def.is_active && (
                               <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                Неактивно
+                                {t('admin.custom_fields.list.badge_inactive')}
                               </span>
                             )}
                             {def.is_system && (
                               <span className="rounded-md bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
-                                System
+                                {t('admin.custom_fields.list.badge_system')}
                               </span>
                             )}
                           </div>
                           {def.help_text && <p className="text-sm text-slate-600">{def.help_text}</p>}
                           {def.scope === 'DOCUMENT' && def.document_type_id && (
                             <p className="text-xs text-slate-500">
-                              Тип документа: {docType?.name || docType?.code || def.document_type_id}
+                              {t('admin.custom_fields.list.document_type', {
+                                values: { name: docType?.name || docType?.code || def.document_type_id },
+                              })}
                             </p>
                           )}
                           {def.options && def.options.length > 0 && (
                             <p className="text-xs text-slate-500">
-                              Варианты: {def.options.join(', ')}
+                              {t('admin.custom_fields.list.options', { values: { list: def.options.join(', ') } })}
                             </p>
                           )}
                         </div>
@@ -418,7 +422,7 @@ export default function CustomFieldsPage() {
                             onClick={() => setEditingDefinition(def)}
                             disabled={def.is_system}
                           >
-                            Редактировать
+                            {t('admin.custom_fields.list.edit')}
                           </button>
                           <button
                             className="btn-danger btn-sm"
@@ -426,7 +430,7 @@ export default function CustomFieldsPage() {
                             onClick={() => handleDelete(def.id)}
                             disabled={def.is_system}
                           >
-                            Удалить
+                            {t('admin.custom_fields.list.delete')}
                           </button>
                         </div>
                       </div>
@@ -474,17 +478,17 @@ function DefinitionForm({
 
   const handleSubmit = async () => {
     if (!key.trim() || !label.trim()) {
-      setFormError('Ключ и название обязательны')
+      setFormError(t('admin.custom_fields.validation.key_label_required'))
       return
     }
 
     if (scope === 'DOCUMENT' && !documentTypeId) {
-      setFormError('Тип документа обязателен для полей документов')
+      setFormError(t('admin.custom_fields.validation.document_type_required'))
       return
     }
 
     if ((fieldType === 'SELECT' || fieldType === 'MULTISELECT') && (!options || options.length === 0)) {
-      setFormError('Варианты выбора обязательны для полей типа SELECT/MULTISELECT')
+      setFormError(t('admin.custom_fields.validation.select_options_required'))
       return
     }
 
@@ -504,7 +508,7 @@ function DefinitionForm({
         order,
       })
     } catch (err: any) {
-      setFormError(err?.message || 'Не удалось сохранить определение поля')
+      setFormError(err?.message || t('admin.custom_fields.errors.save_failed'))
     } finally {
       setSaving(false)
     }
@@ -515,11 +519,11 @@ function DefinitionForm({
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
       <h3 className="mb-3 text-base font-semibold text-blue-800">
-        {definition ? 'Редактировать определение поля' : 'Создать определение поля'}
+        {definition ? t('admin.custom_fields.form.title_edit') : t('admin.custom_fields.form.title_create')}
       </h3>
       <div className="space-y-3">
         <SelectField
-          label="Область"
+          label={t('admin.custom_fields.form.scope')}
           value={scope}
           onChange={(value) => {
             setScope(value as CustomFieldScope)
@@ -533,7 +537,7 @@ function DefinitionForm({
         />
         {scope === 'DOCUMENT' && (
           <SelectField
-            label="Тип документа"
+            label={t('admin.custom_fields.form.document_type')}
             value={documentTypeId}
             onChange={setDocumentTypeId}
             options={documentTypes}
@@ -542,20 +546,20 @@ function DefinitionForm({
           />
         )}
         <TextField
-          label="Ключ (уникальный идентификатор)"
+          label={t('admin.custom_fields.form.key')}
           value={key}
           onChange={setKey}
           disabled={!!definition}
-          placeholder={t('admin.custom_fields.form.key_placeholder', { defaultValue: 'custom_field_key' })}
+          placeholder={t('admin.custom_fields.form.key_placeholder')}
         />
         <TextField
-          label="Название"
+          label={t('admin.custom_fields.form.label')}
           value={label}
           onChange={setLabel}
-          placeholder="Название поля"
+          placeholder={t('admin.custom_fields.form.label_placeholder')}
         />
         <SelectField
-          label="Тип поля"
+          label={t('admin.custom_fields.form.field_type')}
           value={fieldType}
           onChange={(value) => {
             setFieldType(value as CustomFieldType)
@@ -568,31 +572,32 @@ function DefinitionForm({
         />
         {needsOptions && (
           <ArrayInputField
-            label="Варианты выбора"
+            label={t('admin.custom_fields.form.options')}
             value={options}
             onChange={setOptions}
-            placeholder={t('admin.custom_fields.form.option_placeholder', { defaultValue: 'Введите вариант и нажмите Enter' })}
+            placeholder={t('admin.custom_fields.form.option_placeholder')}
+            addButtonLabel={t('admin.custom_fields.form.add_option')}
           />
         )}
         <CheckboxField
-          label="Обязательное поле"
+          label={t('admin.custom_fields.form.required')}
           checked={required}
           onChange={setRequired}
         />
         <TextareaField
-          label="Подсказка"
+          label={t('admin.custom_fields.form.help')}
           value={helpText}
           onChange={setHelpText}
           rows={2}
-          placeholder="Текст подсказки для пользователя..."
+          placeholder={t('admin.custom_fields.form.help_placeholder')}
         />
         <CheckboxField
-          label="Активно"
+          label={t('admin.custom_fields.form.active')}
           checked={isActive}
           onChange={setIsActive}
         />
         <TextField
-          label="Порядок отображения"
+          label={t('admin.custom_fields.form.order')}
           value={order.toString()}
           onChange={(value) => setOrder(parseInt(value, 10) || 0)}
           type="number"
@@ -600,10 +605,10 @@ function DefinitionForm({
         {formError && <div className="text-sm text-rose-700">{formError}</div>}
         <div className="flex gap-2 justify-end">
           <button className="btn-secondary" type="button" onClick={onCancel} disabled={saving}>
-            Отмена
+            {t('admin.custom_fields.form.cancel')}
           </button>
           <button className="btn-primary" type="button" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            {saving ? t('admin.custom_fields.form.saving') : t('admin.custom_fields.form.save')}
           </button>
         </div>
       </div>

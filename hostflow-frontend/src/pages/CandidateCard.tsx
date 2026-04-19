@@ -80,6 +80,7 @@ import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { getRegionDisplayName, getLanguageDisplayName } from '../utils/catalogLocale'
 import { getCachedCandidate, setCachedCandidate } from '../api/candidateCache'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { useToast } from '../components/Toast'
 import { formatErrorForDisplay, getErrorMessage } from '../utils/errorHandling'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
@@ -1184,7 +1185,7 @@ export default function CandidateCard(){
           api.get('/catalogs/countries'),
           api.get('/catalogs/languages'),
           api.get('/catalogs/dial-codes'),
-          api.get('/catalogs/managers').catch(()=>({ data: [] })),
+          api.get('/catalogs/managers', { params: { roles: 'recruiter' } }).catch(()=>({ data: [] })),
           api.get('/vacancies/').catch(()=>({ data: [] })),
         ])
 
@@ -1341,6 +1342,7 @@ export default function CandidateCard(){
           const defaultStage = meta?.order?.[0] || meta?.codes?.[0] || 'new'
           setModel(createEmptyCandidate(defaultStage))
         } else {
+          if (!id) return
           const cached = getCachedCandidate(id)
           if (cached) {
             setModel(normalizeCandidate(cached, model))
@@ -3007,36 +3009,44 @@ export default function CandidateCard(){
     }
   }, [model?.id, model?.masked, docsSummaryRefreshTrigger, planLimitModal, t])
 
-  const { stageJourneyStages, stageOutcomeStages, stageJourneyDisplayStage, stageJourneyOutcomeStage, stageJourneySignals } = useMemo(() => {
-    const codes = profileFunnelStages.length > 0 ? profileFunnelStages.map((s) => s.code) : stageOptions
-    const uniq = Array.from(new Set((codes || []).filter(Boolean)))
-    const main: Array<{ code: string; label: string }> = []
+  const {
+    stageJourneyStagesPipeline,
+    stageJourneyStagesDisplay,
+    stageOutcomeStages,
+    stageJourneyDisplayStage,
+    stageJourneyOutcomeStage,
+    stageJourneySignals,
+  } = useMemo(() => {
+    const codesForDisplay = profileFunnelStages.length > 0 ? profileFunnelStages.map((s) => s.code) : stageOptions
+    const codesForPipeline = isClientTenant
+      ? stageOptions
+      : profileFunnelStages.length > 0
+        ? profileFunnelStages.map((s) => s.code)
+        : profileStageCodes
+
+    const uniqDisplay = Array.from(new Set((codesForDisplay || []).filter(Boolean)))
     const journeyOrder = ['processing_by_client', 'docs_submitted_permit', 'permit_received', 'employed', 'on_trip']
     const allowedJourneyStages = new Set(journeyOrder)
     const journeyOrderRank = new Map(journeyOrder.map((code, idx) => [code, idx] as const))
 
-    uniq.forEach((raw) => {
-      const code = String(raw)
-      const label = stageLabelIntl(code)
-      const canonical = canonicalStageKey(code, label) || ''
+    function buildOrderedStages(codesInput: string[], narrowForClientFacingStrip: boolean) {
+      const uniq = Array.from(new Set((codesInput || []).filter(Boolean)))
+      const main: Array<{ code: string; label: string }> = []
+      uniq.forEach((raw) => {
+        const code = String(raw)
+        const label = stageLabelIntl(code)
+        const canonical = canonicalStageKey(code, label) || ''
 
-      // "Brak kontaktu" / "no_answer" is a sub-stage (no reply), not a pipeline stage.
-      if (canonical === 'no_answer') return
-
-      // "kwestionariusz wysłany" / "questionnaire_submitted" is a signal (intake submitted), not a pipeline step.
-      if (canonical === 'questionnaire_submitted') return
-
-      // Return/reject/decline are decision outcomes and must not appear in stage timeline.
-      if (canonical === 'handoff_returned' || canonical === 'rejected' || canonical === 'declined') {
-        return
-      }
-      // Client card should show only client-facing stages in the journey.
-      if (isClientJourneyView && !allowedJourneyStages.has(canonical)) return
-      main.push({ code, label })
-    })
-
-    const orderedMain = isClientJourneyView
-      ? [...main].sort((a, b) => {
+        if (canonical === 'no_answer') return
+        if (canonical === 'questionnaire_submitted') return
+        if (canonical === 'handoff_returned' || canonical === 'rejected' || canonical === 'declined') {
+          return
+        }
+        if (narrowForClientFacingStrip && isClientJourneyView && !allowedJourneyStages.has(canonical)) return
+        main.push({ code, label })
+      })
+      if (narrowForClientFacingStrip && isClientJourneyView) {
+        return [...main].sort((a, b) => {
           const aCanonical = canonicalStageKey(a.code, a.label) || ''
           const bCanonical = canonicalStageKey(b.code, b.label) || ''
           const aRank = journeyOrderRank.get(aCanonical)
@@ -3046,7 +3056,12 @@ export default function CandidateCard(){
           if (bRank === undefined) return -1
           return aRank - bRank
         })
-      : main
+      }
+      return main
+    }
+
+    const orderedPipeline = buildOrderedStages(codesForPipeline, false)
+    const orderedDisplay = buildOrderedStages(codesForDisplay, true)
 
     const currentCode = String(model?.stage || '')
     const currentCanonical = canonicalStageKey(currentCode, null) || ''
@@ -3060,23 +3075,35 @@ export default function CandidateCard(){
       journeySignals.push({ key: 'questionnaire_submitted', label: translateStageLabel(t, 'questionnaire_submitted', 'questionnaire_submitted') })
     }
 
-    // Display stage for journey: map sub-stages/signals to their parent stage.
     let displayStage = currentCode || null
     if (currentCanonical === 'no_answer' || currentCanonical === 'questionnaire_submitted') {
-      const contacted = uniq.find((c) => (canonicalStageKey(String(c), null) || '') === 'contacted') || 'contacted'
+      const contacted =
+        uniqDisplay.find((c) => (canonicalStageKey(String(c), null) || '') === 'contacted') || 'contacted'
       displayStage = String(contacted)
     }
 
     const outcomeStage = null
 
     return {
-      stageJourneyStages: orderedMain,
+      stageJourneyStagesPipeline: orderedPipeline,
+      stageJourneyStagesDisplay: orderedDisplay,
       stageOutcomeStages: [],
       stageJourneyDisplayStage: displayStage,
       stageJourneyOutcomeStage: outcomeStage,
       stageJourneySignals: journeySignals,
     }
-  }, [profileFunnelStages, stageLabelIntl, stageOptions, model?.stage, (model as any)?.intake_status, (model as any)?.intake_submitted_at, t, isClientJourneyView])
+  }, [
+    profileFunnelStages,
+    profileStageCodes,
+    stageLabelIntl,
+    stageOptions,
+    model?.stage,
+    (model as any)?.intake_status,
+    (model as any)?.intake_submitted_at,
+    t,
+    isClientJourneyView,
+    isClientTenant,
+  ])
 
   /** Align doc policy with journey display (e.g. no_answer maps to contacted for gating). */
   const effectiveStageForDocPolicy = useMemo(() => {
@@ -3228,9 +3255,9 @@ export default function CandidateCard(){
     return canonicalStageKey(raw, null) || raw.toLowerCase()
   }, [stageJourneyDisplayStage, model?.stage])
 
-  /** Same ordering as `CandidateStageDecisionPanel` — for resolved operational hints. */
+  /** Same ordering as `CandidateStageDecisionPanel` pipeline list — for resolved operational hints. */
   const nextPipelineStageCodeForOps = useMemo(() => {
-    const main = stageJourneyStages || []
+    const main = stageJourneyStagesPipeline || []
     const outcomes = stageOutcomeStages || []
     const pipelineSteps = [...main, ...outcomes]
     const candidates = [model?.stage, stageJourneyDisplayStage, stageJourneyOutcomeStage].filter(Boolean).map(String)
@@ -3240,7 +3267,7 @@ export default function CandidateCard(){
     const idx = pipelineSteps.findIndex((s) => s.code === currentCode)
     if (idx < 0 || idx >= pipelineSteps.length - 1) return null
     return pipelineSteps[idx + 1]?.code ?? null
-  }, [stageJourneyStages, stageOutcomeStages, stageJourneyDisplayStage, stageJourneyOutcomeStage, model?.stage])
+  }, [stageJourneyStagesPipeline, stageOutcomeStages, stageJourneyDisplayStage, stageJourneyOutcomeStage, model?.stage])
 
   const pipelineWaiverBadgeCounts = useMemo(() => {
     let pending = 0
@@ -3264,8 +3291,8 @@ export default function CandidateCard(){
 
   const handleStageJourneyChange = useCallback(async (nextStage: string) => {
     // Documents + data gates: blockers stop forward movement in the current journey order.
-    if (Array.isArray(stageJourneyStages)) {
-      const steps = [...(stageJourneyStages || []), ...(stageOutcomeStages || [])]
+    if (Array.isArray(stageJourneyStagesPipeline)) {
+      const steps = [...(stageJourneyStagesPipeline || []), ...(stageOutcomeStages || [])]
       const curCode = stageJourneyDisplayStage || model?.stage
       const curIdx = steps.findIndex((s) => s.code === curCode)
       const nextIdx = steps.findIndex((s) => s.code === nextStage)
@@ -3323,7 +3350,7 @@ export default function CandidateCard(){
     effectiveDocsBlockersForPipeline.missing,
     effectiveDocsBlockersForPipeline.problematic,
     effectiveDocsBlockersForPipeline.inProgress,
-    stageJourneyStages,
+    stageJourneyStagesPipeline,
     stageOutcomeStages,
     stageJourneyDisplayStage,
     notify,
@@ -3342,8 +3369,8 @@ export default function CandidateCard(){
           /* ignore */
         }
       }
-      if (Array.isArray(stageJourneyStages) && stageJourneyStages.length > 0) {
-        const steps = [...(stageJourneyStages || []), ...(stageOutcomeStages || [])]
+      if (Array.isArray(stageJourneyStagesPipeline) && stageJourneyStagesPipeline.length > 0) {
+        const steps = [...(stageJourneyStagesPipeline || []), ...(stageOutcomeStages || [])]
         const curCode = model?.stage
         const curIdx = steps.findIndex((s) => s.code === curCode)
         const nextIdx = steps.findIndex((s) => s.code === nextStage)
@@ -3390,7 +3417,7 @@ export default function CandidateCard(){
       model?.id,
       model?.stage,
       model,
-      stageJourneyStages,
+      stageJourneyStagesPipeline,
       stageOutcomeStages,
       docsPipelineBlockingValue,
       contactAttemptPipelineBlockingValue,
@@ -3452,7 +3479,8 @@ export default function CandidateCard(){
             <CandidateStageDecisionPanel
               locale={locale}
               stageSinceAt={stageSinceAt}
-              stageJourneyStages={stageJourneyStages}
+              stageJourneyStages={stageJourneyStagesPipeline}
+              journeyPanelStages={stageJourneyStagesDisplay}
               stageOutcomeStages={stageOutcomeStages}
               stageJourneyDisplayStage={stageJourneyDisplayStage}
               stageJourneyOutcomeStage={stageJourneyOutcomeStage}
@@ -3473,6 +3501,10 @@ export default function CandidateCard(){
         ) : null}
       />
 
+      <div className="border-b border-slate-200 bg-slate-50/90 px-3 py-2">
+        <PageBreadcrumb />
+      </div>
+
       <div className="card p-3">
         <div className="space-y-4">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(280px,3fr)] lg:items-start lg:justify-between">
@@ -3487,14 +3519,14 @@ export default function CandidateCard(){
                       basicRef={basicRef}
                       stageOptions={stageOptions}
                       profileStageCodes={profileStageCodes}
-                      meta={meta}
+                      meta={meta ?? undefined}
                       dialCodes={dialCodes}
                       managers={managers}
                       preferredContactOptions={preferredContactOptions}
                       selectTexts={selectTexts}
                       createdAtDisplay={createdAtDisplay}
                       isMetaLead={isMetaLead}
-                      onModelChange={setModel}
+                      onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
                       onExtraChange={setExtra}
                       onPhoneInputChange={handlePhoneInputChange}
                       onGenerateShortId={handleGenerateShortId}
@@ -3515,7 +3547,7 @@ export default function CandidateCard(){
                       countries={countries}
                       languages={languages}
                       selectTexts={selectTexts}
-                      onModelChange={setModel}
+                      onModelChange={(updater) => setModel((prev) => (prev ? updater(prev) : prev))}
                       onExtraChange={setExtra}
                       onAddressFieldChange={setAddressField}
                       candidateProfile={candidateProfile}

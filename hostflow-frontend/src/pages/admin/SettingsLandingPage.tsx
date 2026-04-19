@@ -4,15 +4,13 @@ import type { Icon as TablerIcon } from '@tabler/icons-react'
 import {
   IconAlertTriangle,
   IconBell,
-  IconBrandTelegram,
   IconChecklist,
   IconClipboardList,
   IconCreditCard,
   IconFileText,
   IconFilter,
+  IconHome,
   IconLink,
-  IconMail,
-  IconMessage2Cog,
   IconPlugConnected,
   IconSettings,
   IconShield,
@@ -25,7 +23,10 @@ import type { TenantModuleSettings } from '../../api/types'
 import { useCommunicationsAccess, type CommunicationsFeatureKey } from '../../hooks/useCommunicationsAccess'
 import { useAuth } from '../../store/useAuth'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { CRM_CONTOUR_NAV_ITEMS } from '../../nav/crmContourNav'
+import { PageBreadcrumb } from '../../components/nav/PageBreadcrumb'
 import { isSettingsAreaKey, settingsAreaHref } from '../../nav/settingsAreaNav'
+import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 
 type SettingsSectionKey =
   | 'workspace'
@@ -46,18 +47,17 @@ type CardDef = {
   requiresModules?: Array<keyof TenantModuleSettings>
   requiresCommFeatures?: CommunicationsFeatureKey[]
   superadminOnly?: boolean
+  requiresCompaniesView?: boolean
+  /** Single entry to `/settings/integrations` (connections); duplicate per-integration cards live only in the hub. */
+  integrationsHubEntry?: boolean
 }
 const DEFAULT_CARD_ICON: TablerIcon = IconSettings
 const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
   team: IconUsersGroup,
   tenants: IconShield,
   notifications: IconBell,
-  communications_setup: IconChecklist,
-  communications: IconMessage2Cog,
-  communications_messengers: IconBrandTelegram,
   communications_queue: IconFilter,
   communications_sla: IconBell,
-  email: IconMail,
   documents: IconFileText,
   funnels: IconFilter,
   'settings-hiring-gates': IconChecklist,
@@ -68,8 +68,9 @@ const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
   company_access: IconShield,
   legal: IconShield,
   tenant_links: IconLink,
+  my_company: IconHome,
   billing: IconCreditCard,
-  integrations: IconPlugConnected,
+  integrations_hub: IconPlugConnected,
   ruleset: IconSettings,
   audit: IconShield,
   profile: IconUsersGroup,
@@ -77,10 +78,11 @@ const CARD_ICONS: Partial<Record<string, TablerIcon>> = {
 
 export default function SettingsLandingPage() {
   const { t } = useI18n()
+  const { entityPlural: clientsNavLabel } = useBusinessTerminology()
   const [searchParams] = useSearchParams()
   const sectionParam = searchParams.get('section')
   const activeArea = isSettingsAreaKey(sectionParam) ? sectionParam : null
-  const { role } = usePermissions()
+  const { role, can } = usePermissions()
   const { me } = useAuth()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const isSuperAdmin = useMemo(() => {
@@ -166,6 +168,15 @@ export default function SettingsLandingPage() {
         superadminOnly: true,
       },
       {
+        key: 'my_company',
+        label: t('app.nav.items.my_company'),
+        description: t('admin.settings.cards.my_company.description'),
+        target: CRM_APP_PATHS.myCompany,
+        roles: ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'viewer'],
+        section: 'workspace',
+        requiresCompaniesView: true,
+      },
+      {
         key: 'company_access',
         label: t('admin.settings.cards.company_access.label', { defaultValue: 'Company access' }),
         description: t('admin.settings.cards.company_access.description', { defaultValue: 'Control which companies are visible for selected tenant users.' }),
@@ -175,40 +186,21 @@ export default function SettingsLandingPage() {
       },
       {
         key: 'notifications',
-        label: t('admin.settings.cards.notifications.label', { defaultValue: 'Notifications' }),
-        description: t('admin.settings.cards.notifications.description', { defaultValue: 'Reminder and notification behavior.' }),
+        label: t('admin.settings.cards.notifications.label'),
+        description: t('admin.settings.cards.notifications.description'),
         target: CRM_APP_PATHS.tasks,
         roles: ['administrator', 'supervisor', 'client_manager'],
         section: 'automations',
         requiresModules: ['candidates'],
       },
       {
-        key: 'communications_setup',
-        label: t('app.nav.items.settings_integrations', { defaultValue: 'Integrations' }),
-        description: t('admin.settings.cards.communications_setup.description', { defaultValue: 'All integration screens in one place: Meta, Google, webhook, email, and communications admin.' }),
+        key: 'integrations_hub',
+        label: t('admin.settings.cards.integrations_hub.label'),
+        description: t('admin.settings.cards.integrations_hub.description'),
         target: CRM_APP_PATHS.settingsIntegrations,
         roles: ['administrator', 'supervisor', 'client_manager'],
         section: 'integrations',
-        requiresModules: ['candidates'],
-        requiresCommFeatures: ['messages', 'email'],
-      },
-      {
-        key: 'communications',
-        label: t('app.nav.items.settings_communications', { defaultValue: 'Communications settings' }),
-        description: t('admin.settings.cards.communications.description', { defaultValue: 'Main communication settings menu with separated domains.' }),
-        target: CRM_APP_PATHS.settingsCommunications,
-        roles: ['administrator', 'supervisor'],
-        section: 'integrations',
-        requiresCommFeatures: ['communicationsAdmin'],
-      },
-      {
-        key: 'communications_messengers',
-        label: t('admin.settings.cards.communications_messengers.label', { defaultValue: 'Messenger settings' }),
-        description: t('admin.settings.cards.communications_messengers.description', { defaultValue: 'Telegram/WhatsApp channels, templates and command presets.' }),
-        target: CRM_APP_PATHS.settingsCommunicationsMessengers,
-        roles: ['administrator', 'supervisor'],
-        section: 'integrations',
-        requiresCommFeatures: ['communicationsAdmin'],
+        integrationsHubEntry: true,
       },
       {
         key: 'communications_queue',
@@ -227,14 +219,6 @@ export default function SettingsLandingPage() {
         roles: ['administrator', 'supervisor'],
         section: 'automations',
         requiresCommFeatures: ['communicationsAdmin'],
-      },
-      {
-        key: 'email',
-        label: t('admin.settings.cards.email.label'),
-        description: t('admin.settings.cards.email.description'),
-        target: CRM_APP_PATHS.settingsEmail,
-        roles: ['administrator'],
-        section: 'integrations',
       },
       {
         key: 'documents',
@@ -301,8 +285,8 @@ export default function SettingsLandingPage() {
       },
       {
         key: 'billing',
-        label: t('admin.settings.cards.billing.label', { defaultValue: 'Billing & subscription' }),
-        description: t('admin.settings.cards.billing.description', { defaultValue: 'Plan, payment scenarios and subscription status.' }),
+        label: t('app.nav.items.settings_billing'),
+        description: t('admin.settings.cards.billing.description'),
         target: CRM_APP_PATHS.settingsBilling,
         roles: ['administrator'],
         section: 'billing',
@@ -322,15 +306,6 @@ export default function SettingsLandingPage() {
         target: CRM_APP_PATHS.settingsTenantLinks,
         roles: ['administrator'],
         section: 'workspace',
-      },
-      {
-        key: 'integrations',
-        label: t('admin.settings.cards.integrations.label'),
-        description: t('admin.settings.cards.integrations.description'),
-        target: CRM_APP_PATHS.settingsIntegrations,
-        roles: ['administrator', 'supervisor'],
-        section: 'integrations',
-        requiresModules: ['leads'],
       },
       {
         key: 'ruleset',
@@ -364,6 +339,16 @@ export default function SettingsLandingPage() {
     () =>
       allCards.filter((c) => {
         if (c.superadminOnly && !isSuperAdmin) return false
+        if (c.requiresCompaniesView && !can('companies.view')) return false
+        if (c.integrationsHubEntry) {
+          const hubOk =
+            can('admin.metaLeads') ||
+            can('admin.users') ||
+            can('settings.view') ||
+            (can('notifications.view') &&
+              (canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email')))
+          if (!hubOk) return false
+        }
         if (!c.roles.includes(role)) return false
         if (c.requiresModules && modules) {
           for (const mk of c.requiresModules) {
@@ -376,7 +361,13 @@ export default function SettingsLandingPage() {
         }
         return true
       }),
-    [allCards, canUseCommunicationsFeature, isSuperAdmin, modules, role],
+    [allCards, can, canUseCommunicationsFeature, isSuperAdmin, modules, role],
+  )
+
+  const contourLinks = useMemo(
+    () =>
+      CRM_CONTOUR_NAV_ITEMS.filter((item) => !item.permission || can(item.permission)),
+    [can],
   )
 
   const grouped = useMemo(
@@ -419,7 +410,32 @@ export default function SettingsLandingPage() {
 
         {!activeArea ? (
           <div className="space-y-3">
-            <p className="text-sm text-slate-600">{t('admin.settings.areas_intro', { defaultValue: 'Choose an area — details stay grouped so the list never overwhelms.' })}</p>
+            <div className="rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50/80 to-white p-5">
+              <h3 className="text-sm font-semibold text-slate-900">{t('admin.settings.crm_contours.title')}</h3>
+              <p className="mt-1 text-sm text-slate-600">{t('admin.settings.crm_contours.intro')}</p>
+              <ul className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {contourLinks.map((item) => (
+                  <li key={item.key}>
+                    <Link
+                      to={item.path}
+                      className="block rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2.5 text-left shadow-sm transition hover:border-brand-200 hover:shadow"
+                    >
+                      <span className="text-sm font-medium text-slate-900">
+                        {item.labelKey === 'app.nav.items.clients' ? clientsNavLabel : t(item.labelKey)}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-snug text-slate-500">{t(item.descriptionKey)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 text-xs text-slate-500">
+                {t('admin.settings.crm_contours.checklist_prompt')}{' '}
+                <Link to={CRM_APP_PATHS.onboardingGettingStarted} className="font-medium text-brand-700 hover:underline">
+                  {t('admin.settings.crm_contours.checklist_link')}
+                </Link>
+              </p>
+            </div>
+            <p className="text-sm text-slate-600">{t('admin.settings.areas_intro')}</p>
             <ul className="grid gap-4 sm:grid-cols-2">
               {grouped.map((section) => (
                 <li key={section.key}>
@@ -447,6 +463,7 @@ export default function SettingsLandingPage() {
               <span aria-hidden>←</span>
               {t('admin.settings.actions.back_to_areas', { defaultValue: 'All settings areas' })}
             </Link>
+            <PageBreadcrumb className="max-w-4xl" />
             {(() => {
               const section = grouped.find((g) => g.key === activeArea)
               if (!section || section.items.length === 0) {

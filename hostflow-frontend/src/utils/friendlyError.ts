@@ -7,6 +7,16 @@ export type FriendlyErrorInfo = {
   /** When set, ErrorRecoveryBanner shows a secondary link (e.g. Settings → Billing). */
   secondaryTo?: string
   secondaryLabel?: string
+  /**
+   * Transport-layer hint used by toastFromError / Sentry forwarding:
+   *   - HTTP status code (0 if unknown — e.g. network error)
+   *   - machine-readable `detail.code` or error family from resolveApiErrorMeta
+   *   - retryAfterSec for 429 (parsed from `detail.retry_after` or `Retry-After`)
+   * Consumers that only render UI can ignore these fields.
+   */
+  status?: number
+  code?: string
+  retryAfterSec?: number
 }
 
 /** Merge `info.secondary*` with page defaults for ErrorRecoveryBanner (quota / billing CTA wins). */
@@ -93,6 +103,12 @@ function resolveApiErrorMeta(err: any): {
   detailCode: string
   /** `detail.code` only (403 handlers in API use this field). */
   raw403Code: string
+  /**
+   * Seconds until the client can retry. Filled for 429 responses from either
+   * `detail.retry_after` (our own `enforce_rate_limit`) or the `Retry-After`
+   * header (set by most reverse proxies / slowapi's default handler).
+   */
+  retryAfterSec: number | null
 } {
   const status = Number(err?.response?.status || 0)
   const requestCode = String(err?.code || '').trim().toUpperCase()
@@ -100,7 +116,7 @@ function resolveApiErrorMeta(err: any): {
   const detail = pickDetail(err)
   const fromPayload =
     typeof detailPayload === 'object' && detailPayload && !Array.isArray(detailPayload)
-      ? (detailPayload as { code?: string; error_code?: string })
+      ? (detailPayload as { code?: string; error_code?: string; retry_after?: unknown })
       : null
   const raw403Code = fromPayload ? String(fromPayload.code || '').trim().toUpperCase() : ''
   const detailCode = String(
@@ -108,7 +124,17 @@ function resolveApiErrorMeta(err: any): {
   )
     .trim()
     .toUpperCase()
-  return { status, requestCode, detail, detailPayload, detailCode, raw403Code }
+  let retryAfterSec: number | null = null
+  if (fromPayload && typeof fromPayload.retry_after === 'number' && fromPayload.retry_after > 0) {
+    retryAfterSec = Math.ceil(fromPayload.retry_after)
+  } else {
+    // Axios lowercases response headers; try both casings defensively.
+    const hdrs = err?.response?.headers || {}
+    const raw = hdrs['retry-after'] ?? hdrs['Retry-After']
+    const parsed = Number.parseInt(String(raw ?? ''), 10)
+    if (Number.isFinite(parsed) && parsed > 0) retryAfterSec = parsed
+  }
+  return { status, requestCode, detail, detailPayload, detailCode, raw403Code, retryAfterSec }
 }
 
 /** 403 codes that represent plan / seat / billing gates (show unified plan-limit modal + Billing CTA). */
@@ -120,6 +146,7 @@ const PLAN_LIMIT_OR_BILLING_GATE_403_CODES = new Set<string>([
   'SEAT_LIMIT_REACHED',
   'PLAN_META_FIELD_MAPPING_LIMIT',
   'PLAN_META_LEAD_CREDENTIALS_LIMIT',
+  'PLAN_META_LEADS_OAUTH',
   'PLAN_LEAD_CUSTOM_FIELDS_LIMIT',
 ])
 
@@ -135,7 +162,22 @@ export function getFriendlyErrorInfo(
   fallbackTitle: string,
   t?: FriendlyErrorTranslateFn,
 ): FriendlyErrorInfo {
-  const { status, requestCode, detail, detailPayload, detailCode, raw403Code } = resolveApiErrorMeta(err)
+  const meta = resolveApiErrorMeta(err)
+  const info = _getFriendlyErrorInfoInner(err, fallbackTitle, t, meta)
+  return Object.assign(info, {
+    status: meta.status,
+    code: meta.raw403Code || meta.detailCode || meta.requestCode || undefined,
+    retryAfterSec: meta.retryAfterSec ?? undefined,
+  })
+}
+
+function _getFriendlyErrorInfoInner(
+  _err: any,
+  fallbackTitle: string,
+  t: FriendlyErrorTranslateFn | undefined,
+  meta: ReturnType<typeof resolveApiErrorMeta>,
+): FriendlyErrorInfo {
+  const { status, requestCode, detail, detailPayload, detailCode, raw403Code, retryAfterSec } = meta
   const offline = typeof navigator !== 'undefined' && navigator?.onLine === false
 
   if (offline || requestCode === 'ERR_NETWORK') {
@@ -151,6 +193,18 @@ export function getFriendlyErrorInfo(
       title: tr('Request timed out', 'app.api_errors.timeout_title', t),
       detail,
       hint: tr('Retry in a few seconds.', 'app.api_errors.timeout_hint', t),
+    }
+  }
+
+  if (status === 400 && detailCode === 'CAPTCHA_FAILED') {
+    return {
+      title: tr('Bot check failed', 'app.api_errors.captcha_failed_title', t),
+      detail,
+      hint: tr(
+        'Complete the bot-protection challenge below and try again.',
+        'app.api_errors.captcha_failed_hint',
+        t,
+      ),
     }
   }
 
@@ -273,6 +327,24 @@ export function getFriendlyErrorInfo(
           hint: tr(
             'Upgrade in Settings → Billing to connect additional Meta lead sources.',
             'app.api_errors.plan_gate.meta_lead_credentials_hint',
+            t,
+          ),
+        },
+        t,
+      )
+    }
+    if (raw403Code === 'PLAN_META_LEADS_OAUTH') {
+      return withBillingCta(
+        {
+          title: tr(
+            'Meta quick connect needs a Team-tier plan',
+            'app.api_errors.plan_gate.meta_leads_oauth_title',
+            t,
+          ),
+          detail,
+          hint: tr(
+            'Upgrade in Settings → Billing to use Facebook Login for Meta Leads.',
+            'app.api_errors.plan_gate.meta_leads_oauth_hint',
             t,
           ),
         },
@@ -532,10 +604,18 @@ export function getFriendlyErrorInfo(
   }
 
   if (status === 429) {
+    const hintBase = tr('Wait a moment and try again.', 'app.api_errors.rate_limit_hint', t)
+    const hint =
+      retryAfterSec && retryAfterSec > 0
+        ? tr('Please retry in {{seconds}} seconds.', 'app.api_errors.rate_limit_retry_after_hint', t).replace(
+            '{{seconds}}',
+            String(retryAfterSec),
+          )
+        : hintBase
     return {
       title: tr('Too many requests', 'app.api_errors.rate_limit_title', t),
       detail,
-      hint: tr('Wait a moment and try again.', 'app.api_errors.rate_limit_hint', t),
+      hint,
     }
   }
 

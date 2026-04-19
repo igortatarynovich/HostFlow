@@ -68,6 +68,23 @@ export type CandidatesListInsights = {
   docs_incomplete?: number
   /** extra.candidate_ops.mode === in_work (best-effort match on JSON text). */
   ops_in_work?: number
+  /** Work hub: stage `new` + `no_answer`. */
+  bottleneck_no_contact?: number
+  /** Work hub: stage `docs_wait`. */
+  bottleneck_docs_wait?: number
+  /** Work hub: `contacted` + `questionnaire_submitted`. */
+  bottleneck_interview_pending?: number
+  snap_new?: number
+  snap_docs?: number
+  snap_interview?: number
+  snap_onboarding?: number
+  snap_hired?: number
+  created_today?: number
+  stale_no_contact_24h?: number
+  /** Days since oldest created_at in early funnel stages (optional). */
+  oldest_lead_days?: number
+  /** Active pipeline rows with no recruiter_id. */
+  unassigned_recruiter?: number
 }
 
 export type ListResp =

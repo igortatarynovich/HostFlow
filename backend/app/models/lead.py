@@ -202,3 +202,25 @@ class MetaLeadSettings(TimestampMixin, Base):
     )
     # §2.11: path secret for POST /api/v1/public/leads/inbound/{secret} (Team+); unique when set.
     generic_inbound_webhook_secret: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+
+class MetaOAuthPending(Base):
+    """Short-lived row: encrypted page tokens after Facebook Login (Meta Leads OAuth)."""
+
+    __tablename__ = "meta_oauth_pending"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid.uuid4()),
+    )
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    user_sub: Mapped[str] = mapped_column(String(255), nullable=False)
+    encrypted_payload: Mapped[str] = mapped_column(Text, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=now_utc,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )

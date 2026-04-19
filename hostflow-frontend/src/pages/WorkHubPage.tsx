@@ -1,39 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { IconArrowRight, IconFlame, IconLock } from '@tabler/icons-react'
+import { IconArrowRight } from '@tabler/icons-react'
 
 import { getOpsCounters, type OpsCounters } from '../api/analytics'
-import { getCommunicationsSettings, listCommunicationTimeOffRequests, type CommunicationTimeOffRequest } from '../api/communications'
-import { useTeamOverviewNav } from '../contexts/TeamOverviewNavContext'
-import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
-import { usePermissions } from '../hooks/usePermissions'
-import { useTeamTierFeatures } from '../hooks/useTeamTierFeatures'
-import { usePendingHandoffsCount } from '../hooks/usePendingHandoffsCount'
-import { useI18n } from '../i18n'
-import {
-  type BusinessTypeNav,
-  resolveNavPlanFromTeamOverview,
-  shouldShowFinanceNavSection,
-} from '../nav/financeNavVisibility'
+import { api } from '../api/client'
 import { CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
-import { api, getOnboardingStatus } from '../api/client'
-import { useAuth } from '../store/useAuth'
 import type { CandidatesListInsights } from '../modules/candidates/types'
+import { usePermissions } from '../hooks/usePermissions'
+import { useI18n } from '../i18n'
 
 function num(n: number | undefined | null): string {
   if (n == null || Number.isNaN(Number(n))) return '—'
   return String(Math.max(0, Math.floor(Number(n))))
 }
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function intersectsToday(row: CommunicationTimeOffRequest, dayIso: string): boolean {
-  const status = String(row.status || '').toLowerCase()
-  if (status !== 'approved') return false
-  return String(row.start_date || '') <= dayIso && String(row.end_date || '') >= dayIso
-}
+const HREF_CANDIDATES_ACTION = `${CRM_APP_PATHS.candidates}?filter=action_required`
+const HREF_CANDIDATES_NEW = `${CRM_APP_PATHS.candidates}?stages=new,no_answer`
+const HREF_CANDIDATES_DOCS = `${CRM_APP_PATHS.candidates}?stage=waiting_documents`
+const HREF_CANDIDATES_INTERVIEW = `${CRM_APP_PATHS.candidates}?stages=contacted,questionnaire_submitted`
+const HREF_CANDIDATES_UNASSIGNED = `${CRM_APP_PATHS.candidates}?recruiter_unassigned=true`
+const HREF_CANDIDATES_OPS = `${CRM_APP_PATHS.candidates}?ops_mode=in_work`
+const HREF_LEADS_STALE = `${CRM_APP_PATHS.leads}?filter=no_first_contact_24h`
+const HREF_TASKS_OVERDUE = `${CRM_APP_PATHS.tasks}?tab=tasks&filter=overdue`
 
 async function fetchCandidatesInsightsWorkHub(): Promise<CandidatesListInsights | null> {
   try {
@@ -51,56 +39,40 @@ async function fetchCandidatesInsightsWorkHub(): Promise<CandidatesListInsights 
       docs_ordered: Number(o.docs_ordered) || 0,
       docs_incomplete: Number(o.docs_incomplete) || 0,
       ops_in_work: Number(o.ops_in_work) || 0,
+      bottleneck_no_contact: Number(o.bottleneck_no_contact) || 0,
+      bottleneck_docs_wait: Number(o.bottleneck_docs_wait) || 0,
+      bottleneck_interview_pending: Number(o.bottleneck_interview_pending) || 0,
+      created_today: Number(o.created_today) || 0,
+      stale_no_contact_24h: Number(o.stale_no_contact_24h) || 0,
+      oldest_lead_days: o.oldest_lead_days != null ? Number(o.oldest_lead_days) : undefined,
+      unassigned_recruiter: Number(o.unassigned_recruiter) || 0,
     }
   } catch {
     return null
   }
 }
 
-const PATH_CANDIDATES_QV_DOCS = `${CRM_APP_PATHS.candidates}?qv=docs_incomplete`
-const PATH_CANDIDATES_OPS_IN_WORK = `${CRM_APP_PATHS.candidates}?ops_mode=in_work`
-const PATH_CANDIDATES_HANDOFF_RETURNED = `${CRM_APP_PATHS.candidates}?handoff_status=returned`
+type Tone = 'rose' | 'amber' | 'slate'
+
+type ActionRow = {
+  key: string
+  count: number
+  titleKey: string
+  titleDefault: string
+  hintKey?: string
+  hintDefault?: string
+  href: string
+  tone: Tone
+}
 
 export default function WorkHubPage() {
   const { t } = useI18n()
-  const { me } = useAuth()
-  const { can, isClientTenant } = usePermissions()
-  const { allowsTeamFeatures, planLoading: planTierLoading } = useTeamTierFeatures()
-  const { canUseCommunicationsFeature } = useCommunicationsAccess()
-  const { teamOverview, canLoadTeamOverview } = useTeamOverviewNav()
-  const pendingHandoffs = usePendingHandoffsCount()
-  const [businessType, setBusinessType] = useState<BusinessTypeNav>('agency')
+  const { can } = usePermissions()
   const [ops, setOps] = useState<OpsCounters | null>(null)
   const [opsLoading, setOpsLoading] = useState(true)
   const [listInsights, setListInsights] = useState<CandidatesListInsights | null>(null)
   const [insightsLoading, setInsightsLoading] = useState(true)
-  const [teamPulse, setTeamPulse] = useState<{
-    available: number
-    busy: number
-    onTimeOffToday: number
-    total: number
-  } | null>(null)
-  const [teamPulseLoading, setTeamPulseLoading] = useState(false)
-
-  useEffect(() => {
-    if (!me?.tenant_id) return
-    let cancelled = false
-    getOnboardingStatus()
-      .then((r) => {
-        if (!cancelled && r?.business_type) setBusinessType(r.business_type)
-      })
-      .catch(() => {})
-    return () => {
-      cancelled = true
-    }
-  }, [me?.tenant_id])
-
-  const resolvedNavPlan = resolveNavPlanFromTeamOverview(canLoadTeamOverview, teamOverview)
-  const showFinance = shouldShowFinanceNavSection({
-    isClientTenant,
-    businessType,
-    resolvedNavPlan,
-  })
+  const [loadError, setLoadError] = useState(false)
 
   const loadOps = useCallback(async () => {
     if (!can('candidates.view') && !can('leads.view')) {
@@ -112,8 +84,10 @@ export default function WorkHubPage() {
     try {
       const data = await getOpsCounters()
       setOps(data)
+      setLoadError(false)
     } catch {
       setOps(null)
+      setLoadError(true)
     } finally {
       setOpsLoading(false)
     }
@@ -129,12 +103,20 @@ export default function WorkHubPage() {
     try {
       const data = await fetchCandidatesInsightsWorkHub()
       setListInsights(data)
+      setLoadError(false)
     } catch {
       setListInsights(null)
+      setLoadError(true)
     } finally {
       setInsightsLoading(false)
     }
   }, [can])
+
+  const reload = useCallback(() => {
+    setLoadError(false)
+    void loadOps()
+    void loadInsights()
+  }, [loadOps, loadInsights])
 
   useEffect(() => {
     void loadOps()
@@ -144,346 +126,388 @@ export default function WorkHubPage() {
     void loadInsights()
   }, [loadInsights])
 
-  const showTeamNav =
-    can('notifications.view') &&
-    (canUseCommunicationsFeature('teamAvailability') ||
-      canUseCommunicationsFeature('myAvailability') ||
-      canUseCommunicationsFeature('timeOffRequests'))
-
-  useEffect(() => {
-    if (!showTeamNav || !me?.tenant_id) {
-      setTeamPulse(null)
-      return
-    }
-    let cancelled = false
-    setTeamPulseLoading(true)
-    ;(async () => {
-      try {
-        const [cfg, timeOffRes] = await Promise.all([
-          getCommunicationsSettings(),
-          listCommunicationTimeOffRequests({ limit: 200, status_filter: ['approved'] }).catch(() => ({
-            items: [] as CommunicationTimeOffRequest[],
-          })),
-        ])
-        if (cancelled) return
-        const items = cfg.managerQueue?.items || []
-        const approvedTimeOff = Array.isArray(timeOffRes.items) ? timeOffRes.items : []
-        const today = todayIso()
-        const activeTimeOffByUser = new Map<string, CommunicationTimeOffRequest[]>()
-        for (const row of approvedTimeOff) {
-          if (!intersectsToday(row, today)) continue
-          const key = String(row.requester_user_id || '')
-          if (!key) continue
-          if (!activeTimeOffByUser.has(key)) activeTimeOffByUser.set(key, [])
-          activeTimeOffByUser.get(key)!.push(row)
-        }
-        setTeamPulse({
-          total: items.length,
-          available: items.filter((x) => x?.enabled && x?.availability?.state === 'available').length,
-          busy: items.filter((x) => x?.enabled && ['busy', 'meeting', 'break'].includes(String(x?.availability?.state || '')))
-            .length,
-          onTimeOffToday: items.filter((x) => activeTimeOffByUser.has(String(x?.managerId || ''))).length,
-        })
-      } catch {
-        if (!cancelled) setTeamPulse(null)
-      } finally {
-        if (!cancelled) setTeamPulseLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [showTeamNav, me?.tenant_id])
-
   const showCandidates = can('candidates.view')
-  const showCompanies = can('companies.view')
   const showLeads = can('leads.view')
+  const showTasks = can('notifications.view')
+  const dataLoading = opsLoading || (showCandidates && insightsLoading)
 
-  const sectionTitle = (key: string, fallback: string) => (
-    <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t(key, { defaultValue: fallback })}</h2>
-  )
+  const bottleneckSum = useMemo(() => {
+    if (!listInsights) return 0
+    return (
+      (listInsights.bottleneck_no_contact ?? 0) +
+      (listInsights.bottleneck_docs_wait ?? 0) +
+      (listInsights.bottleneck_interview_pending ?? 0) +
+      (listInsights.ops_in_work ?? 0)
+    )
+  }, [listInsights])
 
-  const attentionLoading = opsLoading || (showCandidates && insightsLoading)
+  const heroNeedCount = useMemo(() => {
+    const nna = ops?.no_next_action_candidates ?? 0
+    return Math.max(nna, bottleneckSum)
+  }, [ops?.no_next_action_candidates, bottleneckSum])
 
-  const attentionRows = useMemo(() => {
-    const rows: Array<{ key: string; to: string; count: string; title: string; action: string; tone: 'rose' | 'amber' | 'sky' }> = []
-    if (showCandidates) {
+  const bottlenecks = useMemo((): ActionRow[] => {
+    if (!listInsights) return []
+    const rows: ActionRow[] = [
+      {
+        key: 'docs',
+        count: listInsights.bottleneck_docs_wait ?? 0,
+        titleKey: 'app.work.hub.bn_docs_wait',
+        titleDefault: 'Waiting for documents',
+        hintKey: 'app.work.hub.bn_docs_hint',
+        hintDefault: 'Open list filtered by document stage',
+        href: HREF_CANDIDATES_DOCS,
+        tone: 'amber',
+      },
+      {
+        key: 'contact',
+        count: listInsights.bottleneck_no_contact ?? 0,
+        titleKey: 'app.work.hub.bn_no_contact',
+        titleDefault: 'No first contact yet',
+        href: HREF_CANDIDATES_NEW,
+        tone: 'amber',
+      },
+      {
+        key: 'interview',
+        count: listInsights.bottleneck_interview_pending ?? 0,
+        titleKey: 'app.work.hub.bn_interview',
+        titleDefault: 'Interview not scheduled',
+        href: HREF_CANDIDATES_INTERVIEW,
+        tone: 'amber',
+      },
+      {
+        key: 'reply',
+        count: listInsights.ops_in_work ?? 0,
+        titleKey: 'app.work.hub.bn_waiting_reply',
+        titleDefault: 'Waiting for a reply',
+        href: HREF_CANDIDATES_OPS,
+        tone: 'slate',
+      },
+    ]
+    return rows.filter((r) => r.count > 0).sort((a, b) => b.count - a.count).slice(0, 5)
+  }, [listInsights])
+
+  const topBottleneck = bottlenecks[0]
+
+  const criticalRows = useMemo((): ActionRow[] => {
+    const rows: ActionRow[] = []
+    if (showLeads && (ops?.leads_new_untouched_24h ?? 0) > 0) {
       rows.push({
-        key: 'nna',
-        to: CRM_APP_DRILLDOWN_HREFS.candidatesQueueNoNextAction,
-        count: num(ops?.no_next_action_candidates),
-        title: t('app.work.hub.attention_candidates_no_next', {
-          defaultValue: 'Candidates without a next step',
-        }),
-        action: t('app.work.hub.action_start_processing', { defaultValue: 'Start processing' }),
+        key: 'leads_stale',
+        count: ops!.leads_new_untouched_24h!,
+        titleKey: 'app.work.hub.crit_leads_stale',
+        titleDefault: 'Leads with no first touch for over 24 hours',
+        href: HREF_LEADS_STALE,
         tone: 'rose',
       })
     }
-    if (can('notifications.view')) {
+    if (showTasks && (ops?.overdue_reminders ?? 0) > 0) {
       rows.push({
-        key: 'tasks',
-        to: CRM_APP_DRILLDOWN_HREFS.tasksOverdueReminders,
-        count: num(ops?.overdue_reminders),
-        title: t('app.work.hub.attention_overdue_tasks', { defaultValue: 'Overdue tasks' }),
-        action: t('app.work.hub.action_fix_tasks', { defaultValue: 'Fix now' }),
+        key: 'tasks_od',
+        count: ops!.overdue_reminders!,
+        titleKey: 'app.work.hub.crit_tasks_overdue',
+        titleDefault: 'Overdue tasks',
+        href: HREF_TASKS_OVERDUE,
+        tone: 'rose',
+      })
+    }
+    if (showCandidates && (ops?.no_next_action_candidates ?? 0) > 0) {
+      rows.push({
+        key: 'nna',
+        count: ops!.no_next_action_candidates!,
+        titleKey: 'app.work.hub.crit_no_next',
+        titleDefault: 'Candidates without a next step',
+        href: HREF_CANDIDATES_ACTION,
         tone: 'amber',
       })
     }
-    if (showLeads) {
+    if (showCandidates && (listInsights?.unassigned_recruiter ?? 0) > 0) {
       rows.push({
-        key: 'leads',
-        to: CRM_APP_DRILLDOWN_HREFS.leadsNeedsRouting,
-        count: num(ops?.leads_needs_routing),
-        title: t('app.work.hub.attention_leads_routing', { defaultValue: 'New leads to triage' }),
-        action: t('app.work.hub.action_triage_leads', { defaultValue: 'Triage' }),
-        tone: 'sky',
+        key: 'unass',
+        count: listInsights!.unassigned_recruiter!,
+        titleKey: 'app.work.hub.crit_unassigned',
+        titleDefault: 'Candidates without an assigned recruiter',
+        href: HREF_CANDIDATES_UNASSIGNED,
+        tone: 'amber',
       })
     }
-    return rows
-  }, [can, ops, showCandidates, showLeads, t])
+    if (showLeads && (ops?.leads_needs_routing ?? 0) > 0) {
+      rows.push({
+        key: 'route',
+        count: ops!.leads_needs_routing!,
+        titleKey: 'app.work.hub.crit_leads_route',
+        titleDefault: 'New leads awaiting triage',
+        href: CRM_APP_DRILLDOWN_HREFS.leadsNeedsRouting,
+        tone: 'slate',
+      })
+    }
+    return rows.slice(0, 5)
+  }, [showCandidates, showLeads, showTasks, ops, listInsights])
 
-  const toneBorder = {
-    rose: 'border-rose-200 hover:border-rose-300 focus-visible:ring-rose-400',
-    amber: 'border-amber-200 hover:border-amber-300 focus-visible:ring-amber-400',
-    sky: 'border-sky-200 hover:border-sky-300 focus-visible:ring-sky-400',
-  } as const
+  const hasProblems = useMemo(() => {
+    if (criticalRows.length > 0) return true
+    if (bottlenecks.length > 0) return true
+    if (heroNeedCount > 0) return true
+    return false
+  }, [criticalRows.length, bottlenecks.length, heroNeedCount])
 
-  const actionCardClass =
-    'group flex w-full items-center justify-between gap-4 rounded-2xl border-2 bg-white px-4 py-4 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
+  const calm = !dataLoading && !loadError && !hasProblems
+
+  const heroSubtitle = useMemo(() => {
+    if (!listInsights || dataLoading) return null
+    if (topBottleneck) {
+      return t('app.work.hub.hero_sub_most_stuck', {
+        defaultValue: 'Largest backlog: {stage}',
+        values: { stage: t(topBottleneck.titleKey, { defaultValue: topBottleneck.titleDefault }) },
+      })
+    }
+    const od = listInsights.oldest_lead_days
+    if (od != null && od >= 1) {
+      return t('app.work.hub.hero_sub_oldest', {
+        defaultValue: 'Longest wait in early pipeline: {days} days',
+        values: { days: od },
+      })
+    }
+    return null
+  }, [listInsights, dataLoading, topBottleneck, t])
+
+  const toneBar: Record<Tone, string> = {
+    rose: 'bg-rose-500',
+    amber: 'bg-amber-500',
+    slate: 'bg-slate-400',
+  }
+
+  const Skeleton = () => (
+    <div className="space-y-6" aria-busy="true">
+      <div className="h-10 w-48 animate-pulse rounded-lg bg-slate-200" />
+      <div className="h-40 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+      <div className="h-32 animate-pulse rounded-2xl border border-slate-200 bg-white" />
+    </div>
+  )
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-10 py-6 sm:py-8">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          {t('app.work.hub.operational_title', { defaultValue: 'Work' })}
-        </h1>
-      </header>
+    <div className="min-h-[calc(100vh-5rem)] bg-slate-50">
+      <div className="mx-auto max-w-[1200px] space-y-6 px-8 py-10">
+        <header className="space-y-1 pb-2">
+          <h1 className="text-[2.25rem] font-bold leading-tight tracking-tight text-slate-900">
+            {t('app.work.hub.operational_title', { defaultValue: 'Work' })}
+          </h1>
+          <p className="text-[15px] text-slate-500">
+            {t('app.work.hub.page_kicker', { defaultValue: 'Everything that needs attention right now' })}
+          </p>
+        </header>
 
-      {!planTierLoading && !allowsTeamFeatures && can('settings.view') && (showCandidates || showLeads) ? (
-        <div className="flex flex-wrap items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50/90 px-4 py-3 text-sm text-indigo-950 shadow-sm">
-          <IconLock size={20} className="mt-0.5 shrink-0 text-indigo-600" aria-hidden />
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="font-semibold">
-              {t('app.work.hub.plan_upgrade_strip_title', { defaultValue: 'Unlock team automation' })}
-            </p>
-            <p className="text-xs text-indigo-900/90">
-              {t('app.work.hub.plan_upgrade_strip_body', {
-                defaultValue:
-                  'Bulk Meta lead processing, funnel insight actions, and several automations require a Team-tier plan. Solo/Starter still works for day-to-day lists and manual steps.',
-              })}
-            </p>
-            <Link
-              to={CRM_APP_PATHS.settingsBilling}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-800 underline decoration-indigo-400 underline-offset-2 hover:text-indigo-950"
+        {loadError && !dataLoading ? (
+          <div className="rounded-2xl border border-rose-200 bg-white px-6 py-5 text-sm text-rose-950 shadow-sm">
+            <p className="font-medium">{t('app.work.hub.load_error', { defaultValue: 'Could not load the work panel' })}</p>
+            <button
+              type="button"
+              className="mt-3 inline-flex h-11 items-center rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+              onClick={() => reload()}
             >
-              {t('app.work.hub.plan_upgrade_strip_cta', { defaultValue: 'Open billing' })}
-              <IconArrowRight size={14} stroke={2} aria-hidden />
-            </Link>
+              {t('app.work.hub.reload', { defaultValue: 'Refresh' })}
+            </button>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {(showCandidates || showLeads || can('notifications.view')) && (
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <IconFlame size={18} className="text-rose-500" aria-hidden />
-            {sectionTitle('app.work.hub.block_attention', 'Needs attention')}
-          </div>
-          {attentionLoading ? (
-            <p className="text-sm text-slate-500">{t('common.loading')}</p>
-          ) : attentionRows.length === 0 ? null : (
-            <ul className="grid gap-3 sm:grid-cols-1">
-              {attentionRows.map((row) => (
-                <li key={row.key}>
+        {dataLoading ? (
+          <Skeleton />
+        ) : (
+          <>
+            {/* Hero */}
+            {showCandidates ? (
+              <section className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-8">
+                <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0 space-y-3 lg:max-w-[70%]">
+                    {calm ? (
+                      <>
+                        <p className="text-xl font-bold text-slate-900 sm:text-2xl">
+                          {t('app.work.hub.hero_all_ok', { defaultValue: 'Everything is under control' })}
+                        </p>
+                        <p className="text-[15px] text-slate-600">
+                          {t('app.work.hub.hero_calm_body', {
+                            defaultValue: 'No candidates are waiting on your action right now',
+                          })}
+                        </p>
+                        <p className="text-[15px] text-slate-500">
+                          {t('app.work.hub.hero_new_today', {
+                            defaultValue: 'New leads today: {count}',
+                            values: { count: num(listInsights?.created_today ?? 0) },
+                          })}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-[3.25rem] font-bold leading-none tracking-tight text-slate-900 tabular-nums">
+                          {num(heroNeedCount)}
+                        </p>
+                        <p className="text-xl font-bold text-slate-900 sm:text-2xl">
+                          {t('app.work.hub.hero_need_action_title', { defaultValue: 'Candidates need action' })}
+                        </p>
+                        {heroSubtitle ? <p className="text-[15px] text-slate-600">{heroSubtitle}</p> : null}
+                      </>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
+                    <Link
+                      to={HREF_CANDIDATES_ACTION}
+                      className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+                    >
+                      {t('app.work.hub.cta_open_candidates', { defaultValue: 'Open candidates' })}
+                    </Link>
+                    {calm ? (
+                      <Link
+                        to={CRM_APP_PATHS.candidateNew}
+                        className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                      >
+                        {t('app.work.hub.cta_create_candidate', { defaultValue: 'Create candidate' })}
+                      </Link>
+                    ) : (
+                      <>
+                        {showLeads && ((ops?.leads_needs_routing ?? 0) > 0 || (ops?.leads_new_untouched_24h ?? 0) > 0) ? (
+                          <Link
+                            to={
+                              (ops?.leads_needs_routing ?? 0) > 0
+                                ? CRM_APP_DRILLDOWN_HREFS.leadsNeedsRouting
+                                : HREF_LEADS_STALE
+                            }
+                            className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                          >
+                            {t('app.work.hub.cta_open_leads', { defaultValue: 'Open leads' })}
+                            <IconArrowRight size={18} className="ml-1 opacity-60" aria-hidden />
+                          </Link>
+                        ) : null}
+                        {showTasks && (ops?.overdue_reminders ?? 0) > 0 ? (
+                          <Link
+                            to={HREF_TASKS_OVERDUE}
+                            className="inline-flex h-12 min-w-[11rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                          >
+                            {t('app.work.hub.cta_open_tasks', { defaultValue: 'Open tasks' })}
+                            <IconArrowRight size={18} className="ml-1 opacity-60" aria-hidden />
+                          </Link>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </section>
+            ) : null}
+
+            {/* Critical */}
+            {!calm && criticalRows.length > 0 ? (
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-100 px-6 py-4">
+                  <h2 className="text-base font-bold text-slate-900">
+                    {t('app.work.hub.block_critical', { defaultValue: 'Needs attention' })}
+                  </h2>
+                </div>
+                <ul>
+                  {criticalRows.map((row) => (
+                    <li key={row.key} className="group border-b border-slate-100 last:border-b-0">
+                      <Link
+                        to={row.href}
+                        className="flex items-stretch gap-0 transition hover:bg-slate-50/90"
+                      >
+                        <div className={`w-1 shrink-0 ${toneBar[row.tone]}`} aria-hidden />
+                        <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-4">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900">
+                              <span className="tabular-nums">{num(row.count)}</span>{' '}
+                              {t(row.titleKey, { defaultValue: row.titleDefault })}
+                            </p>
+                            {row.hintKey ? (
+                              <p className="mt-0.5 text-xs text-slate-500">
+                                {t(row.hintKey, { defaultValue: row.hintDefault || '' })}
+                              </p>
+                            ) : null}
+                          </div>
+                          <span className="shrink-0 text-sm font-semibold text-brand-700 group-hover:text-brand-800">
+                            {t('app.work.hub.row_open', { defaultValue: 'Open' })}
+                            <IconArrowRight size={16} className="ml-1 inline align-text-bottom opacity-70" aria-hidden />
+                          </span>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {/* Bottlenecks */}
+            {!calm && bottlenecks.length > 0 ? (
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-100 px-6 py-4">
+                  <h2 className="text-base font-bold text-slate-900">
+                    {t('app.work.hub.block_bottlenecks', { defaultValue: 'Bottlenecks' })}
+                  </h2>
+                </div>
+                <ul>
+                  {bottlenecks.map((row) => (
+                    <li key={row.key} className="border-b border-slate-100 last:border-b-0">
+                      <Link
+                        to={row.href}
+                        className="group flex items-stretch gap-0 transition hover:bg-slate-50/90"
+                      >
+                        <div className={`w-1 shrink-0 ${toneBar[row.tone]}`} aria-hidden />
+                        <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-3.5">
+                          <span className="truncate text-sm font-medium text-slate-800">
+                            {t(row.titleKey, { defaultValue: row.titleDefault })}
+                          </span>
+                          <span className="tabular-nums text-sm font-bold text-slate-900">{num(row.count)}</span>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {/* Quick actions */}
+            {showCandidates ? (
+              <section className="space-y-3">
+                <h2 className="text-base font-bold text-slate-900">
+                  {t('app.work.hub.block_quick', { defaultValue: 'Quick actions' })}
+                </h2>
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-3">
                   <Link
-                    to={row.to}
-                    className={`${actionCardClass} ${toneBorder[row.tone]}`}
+                    to={HREF_CANDIDATES_NEW}
+                    className="inline-flex h-12 flex-1 min-w-[10rem] items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700 sm:flex-none"
                   >
-                    <div className="min-w-0">
-                      <p className="text-3xl font-bold tabular-nums text-slate-900">{row.count}</p>
-                      <p className="mt-1 text-sm font-medium text-slate-700">{row.title}</p>
-                    </div>
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white group-hover:bg-slate-800">
-                      {row.action}
-                      <IconArrowRight size={18} stroke={2} aria-hidden />
-                    </span>
+                    {t('app.work.hub.qa_process_new', { defaultValue: 'Process new leads' })}
                   </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
-
-      {showCandidates && (
-        <section className="space-y-3">
-          {sectionTitle('app.work.hub.block_queue', 'Work queue')}
-          <div className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <Link
-              to={CRM_APP_DRILLDOWN_HREFS.candidatesQueueNoNextAction}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 text-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
-            >
-              <span className="font-medium text-slate-800">
-                {t('app.work.hub.queue_no_next', { defaultValue: 'No next step' })}
-              </span>
-              <span className="tabular-nums font-semibold text-slate-900">{num(ops?.no_next_action_candidates)}</span>
-            </Link>
-            <Link
-              to={PATH_CANDIDATES_QV_DOCS}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 text-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
-            >
-              <span className="font-medium text-slate-800">
-                {t('app.work.hub.queue_docs_incomplete', { defaultValue: 'Awaiting documents' })}
-              </span>
-              <span className="tabular-nums font-semibold text-slate-900">
-                {insightsLoading ? '…' : num(listInsights?.docs_incomplete)}
-              </span>
-            </Link>
-            <Link
-              to={PATH_CANDIDATES_OPS_IN_WORK}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 text-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
-            >
-              <span className="font-medium text-slate-800">
-                {t('app.work.hub.queue_waiting_reply', { defaultValue: 'Waiting for a reply' })}
-              </span>
-              <span className="tabular-nums font-semibold text-slate-900">
-                {insightsLoading ? '…' : num(listInsights?.ops_in_work)}
-              </span>
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {showCompanies && (
-        <section className="space-y-3">
-          {sectionTitle('app.work.hub.block_processing', 'Client processing')}
-          <div className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <Link
-              to={`${CRM_APP_PATHS.procesowani}?tab=do-procesowania`}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 text-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
-            >
-              <span className="font-medium text-slate-800">
-                {t('app.work.hub.processing_needs_decision', { defaultValue: 'Needs your decision' })}
-              </span>
-              <span className="inline-flex min-w-[2rem] justify-center tabular-nums font-semibold text-slate-900">
-                {pendingHandoffs > 0 ? (
-                  <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs text-white">{pendingHandoffs > 99 ? '99+' : pendingHandoffs}</span>
-                ) : (
-                  '0'
-                )}
-              </span>
-            </Link>
-            <Link
-              to={`${CRM_APP_PATHS.procesowani}?tab=w-procesie`}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 text-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
-            >
-              <span className="font-medium text-slate-800">
-                {t('app.work.hub.processing_client_review', { defaultValue: 'Under client review' })}
-              </span>
-              <span className="text-slate-400" aria-hidden>
-                <IconArrowRight size={18} />
-              </span>
-            </Link>
-            <Link
-              to={PATH_CANDIDATES_HANDOFF_RETURNED}
-              className="flex items-center justify-between gap-3 px-4 py-3.5 text-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
-            >
-              <span className="font-medium text-slate-800">
-                {t('app.work.hub.processing_returned', { defaultValue: 'Returned from client' })}
-              </span>
-              <span className="text-slate-400" aria-hidden>
-                <IconArrowRight size={18} />
-              </span>
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {showTeamNav && (
-        <section className="space-y-3">
-          {sectionTitle('app.work.hub.block_team', 'Team')}
-          {teamPulseLoading ? (
-            <p className="text-sm text-slate-500">{t('common.loading')}</p>
-          ) : teamPulse && teamPulse.total > 0 ? (
-            <div className="space-y-3">
-              <div className="grid gap-2 sm:grid-cols-3">
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-                  {t('app.work.hub.team_busy', { defaultValue: 'Busy now: {count}', values: { count: teamPulse.busy } })}
+                  <Link
+                    to={HREF_CANDIDATES_DOCS}
+                    className="inline-flex h-12 flex-1 min-w-[10rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:flex-none"
+                  >
+                    {t('app.work.hub.qa_request_docs', { defaultValue: 'Request documents' })}
+                  </Link>
+                  <Link
+                    to={HREF_CANDIDATES_INTERVIEW}
+                    className="inline-flex h-12 flex-1 min-w-[10rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:flex-none"
+                  >
+                    {t('app.work.hub.qa_schedule_interviews', { defaultValue: 'Schedule interviews' })}
+                  </Link>
+                  <Link
+                    to={CRM_APP_PATHS.candidateNew}
+                    className="inline-flex h-12 flex-1 min-w-[10rem] items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 sm:flex-none"
+                  >
+                    {t('app.work.hub.cta_create_candidate', { defaultValue: 'Create candidate' })}
+                  </Link>
                 </div>
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
-                  {t('app.work.hub.team_timeoff', {
-                    defaultValue: 'Time-off today: {count}',
-                    values: { count: teamPulse.onTimeOffToday },
-                  })}
-                </div>
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-                  {t('app.work.hub.team_available', {
-                    defaultValue: 'Available: {count}',
-                    values: { count: teamPulse.available },
-                  })}
-                </div>
-              </div>
-              <Link
-                to={CRM_APP_PATHS.teamAvailability}
-                className={`${actionCardClass} border-slate-200 hover:border-brand-300 focus-visible:ring-brand-500`}
-              >
-                <span className="text-sm font-semibold text-slate-800">
-                  {t('app.work.hub.team_open', { defaultValue: 'Open team view' })}
-                </span>
-                <IconArrowRight size={20} className="text-slate-500" aria-hidden />
-              </Link>
-            </div>
-          ) : (
-            <Link
-              to={CRM_APP_PATHS.teamAvailability}
-              className={`${actionCardClass} border-slate-200 hover:border-brand-300 focus-visible:ring-brand-500`}
-            >
-              <span className="text-sm font-semibold text-slate-800">
-                {t('app.work.hub.team_open', { defaultValue: 'Open team view' })}
-              </span>
-              <IconArrowRight size={20} className="text-slate-500" aria-hidden />
-            </Link>
-          )}
-        </section>
-      )}
-
-      <section className="space-y-3">
-        {sectionTitle('app.work.hub.block_quick', 'Quick actions')}
-        <div className="flex flex-wrap gap-2">
-          {showCandidates ? (
-            <Link
-              className="rounded-xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
-              to={CRM_APP_PATHS.candidateNew}
-            >
-              {t('app.work.hub.action_new_candidate', { defaultValue: 'New candidate' })}
-            </Link>
-          ) : null}
-          {can('notifications.view') ? (
-            <Link
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
-              to={CRM_APP_PATHS.tasks}
-            >
-              {t('app.work.hub.action_create_task', { defaultValue: 'Add task' })}
-            </Link>
-          ) : null}
-          {canUseCommunicationsFeature('messages') || canUseCommunicationsFeature('email') ? (
-            <Link
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
-              to={CRM_APP_PATHS.inbox}
-            >
-              {t('app.work.hub.action_inbox', { defaultValue: 'Open inbox' })}
-            </Link>
-          ) : null}
-          {showFinance && can('services.view') ? (
-            <Link
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50"
-              to={CRM_APP_PATHS.orders}
-            >
-              {t('app.nav.items.orders')}
-            </Link>
-          ) : null}
-        </div>
-      </section>
+              </section>
+            ) : !showCandidates && showLeads ? (
+              <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <Link
+                  to={CRM_APP_PATHS.leads}
+                  className="inline-flex h-12 items-center justify-center rounded-xl bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700"
+                >
+                  {t('app.work.hub.cta_open_leads', { defaultValue: 'Open leads' })}
+                </Link>
+              </section>
+            ) : null}
+          </>
+        )}
+      </div>
     </div>
   )
 }

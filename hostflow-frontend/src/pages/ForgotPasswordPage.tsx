@@ -1,9 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import { requestPasswordReset } from '../api/users'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import TurnstileWidget from '../components/TurnstileWidget'
+import { usePublicAuthConfig } from '../hooks/usePublicAuthConfig'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import {
   friendlyErrorBannerSecondary,
@@ -20,13 +22,21 @@ export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
+  const publicAuthConfig = usePublicAuthConfig()
+  const captchaRequired = Boolean(
+    publicAuthConfig.turnstile_enabled && publicAuthConfig.turnstile_sitekey,
+  )
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const handleCaptchaToken = useCallback((token: string | null) => {
+    setCaptchaToken(token)
+  }, [])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading(true)
     try {
-      await requestPasswordReset(email)
+      await requestPasswordReset(email, captchaToken)
       setSent(true)
     } catch (err: unknown) {
       const fb = t('app.forgot_password.errors.generic', { defaultValue: 'Could not send reset link' })
@@ -76,7 +86,20 @@ export default function ForgotPasswordPage() {
                   compact
                 />
               )}
-              <button type="submit" className="btn-primary w-full py-3" disabled={loading}>
+              {captchaRequired && publicAuthConfig.turnstile_sitekey && (
+                <div className="pt-1">
+                  <TurnstileWidget
+                    sitekey={publicAuthConfig.turnstile_sitekey}
+                    action="password_reset"
+                    onToken={handleCaptchaToken}
+                  />
+                </div>
+              )}
+              <button
+                type="submit"
+                className="btn-primary w-full py-3"
+                disabled={loading || (captchaRequired && !captchaToken)}
+              >
                 {loading ? t('common.loading') : t('app.forgot_password.submit', { defaultValue: 'Wyślij link' })}
               </button>
             </form>

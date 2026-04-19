@@ -207,11 +207,11 @@ export function Sidebar({
         )}
         {can('admin.metaLeads') && (
           <Link
-            to="/settings/leads"
+            to={CRM_APP_PATHS.settingsIntegrations}
             className="block rounded px-3 py-2 text-sm transition hover:bg-white/10"
             onClick={onNavigate}
           >
-            {t('app.layout.nav.meta_leads')}
+            {t('app.nav.items.settings_integrations')}
           </Link>
         )}
         {can('admin.deletionQueue') && (

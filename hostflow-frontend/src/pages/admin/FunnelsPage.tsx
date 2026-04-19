@@ -37,6 +37,7 @@ import {
   type FunnelCreate,
 } from '../../api/funnels'
 import { Modal } from '../../components/Modal'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { refreshMetaStagesCache } from '../../store/useMeta'
 import { DEFAULT_STAGE_CODES } from '../../modules/dashboard/constants'
 
@@ -805,14 +806,13 @@ export default function FunnelsPage() {
             {t('admin.funnels.tab_leads')}
           </button>
         </div>
-        <header>
-          <h1 className="text-xl font-semibold text-slate-900">
-            {funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
-          </p>
-        </header>
+        <SettingsSubpageHeader
+          className="mb-2"
+          backLabel={t('admin.settings.subpage.back_all')}
+          kicker={t('admin.funnels.header_kicker')}
+          title={funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
+          subtitle={funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
+        />
         <div className="card p-8 text-center">
           <p className="text-slate-600 mb-4">
             {funnelTab === 'lead' ? t('admin.funnels.no_funnels_leads') : t('admin.funnels.no_funnels')}
@@ -864,14 +864,13 @@ export default function FunnelsPage() {
           {t('admin.funnels.tab_leads')}
         </button>
       </div>
-      <header>
-        <h1 className="text-xl font-semibold text-slate-900">
-          {funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
-        </p>
-      </header>
+      <SettingsSubpageHeader
+        className="mb-2"
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('admin.funnels.header_kicker')}
+        title={funnelTab === 'lead' ? t('admin.funnels.title_leads') : t('admin.funnels.title')}
+        subtitle={funnelTab === 'lead' ? t('admin.funnels.subtitle_leads') : t('admin.funnels.subtitle')}
+      />
 
       <div className="flex flex-wrap items-center gap-4">
         <div>

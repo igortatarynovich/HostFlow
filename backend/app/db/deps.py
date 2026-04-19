@@ -14,6 +14,22 @@ from backend.app.services.tenant_visibility import TenantVisibility
 
 # backend/app/db/deps.py
 
+# Legacy fallback when X-Tenant-Id is omitted (CRM / older embeds). Public intake must not rely on this alone.
+PUBLIC_LEGACY_DEFAULT_TENANT_UUID = UUID("11111111-1111-1111-1111-111111111111")
+
+
+async def bind_tenant_context_to_session(db: AsyncSession, tenant_id: UUID) -> None:
+    """Set db.info, Postgres RLS app.tenant_id, and tenant_visibility (same as get_db_with_tenant)."""
+    db.info["tenant_id"] = tenant_id
+    try:
+        await db.execute(
+            text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
+            {"tenant_id": str(tenant_id)},
+        )
+    except Exception:
+        pass
+    db.info["tenant_visibility"] = await compute_tenant_visibility_for_tenant(db, tenant_id)
+
 
 async def compute_tenant_visibility_for_tenant(db: AsyncSession, tenant_id: UUID) -> TenantVisibility:
     """
@@ -95,24 +111,11 @@ async def get_db_with_tenant(
     """
     raw = (tenant_id_header or "").strip()
     if not raw:
-        raw = "11111111-1111-1111-1111-111111111111"
+        raw = str(PUBLIC_LEGACY_DEFAULT_TENANT_UUID)
     try:
         tenant_id = UUID(raw)
     except Exception:
         raise HTTPException(status_code=400, detail="X-Tenant-Id must be a valid UUID")
-    # Persist tenant context on session for downstream services (CRUD helpers, etc.)
-    db.info["tenant_id"] = tenant_id
-
-    # Ensure Postgres sessions apply the RLS tenant context.
-    try:
-        await db.execute(
-            text("SELECT set_config('app.tenant_id', :tenant_id, false)"),
-            {"tenant_id": str(tenant_id)},
-        )
-    except Exception:
-        # SQLite and other dialects will fail here; ignore silently per spec compatibility.
-        pass
-
-    db.info["tenant_visibility"] = await compute_tenant_visibility_for_tenant(db, tenant_id)
+    await bind_tenant_context_to_session(db, tenant_id)
 
     yield db, tenant_id

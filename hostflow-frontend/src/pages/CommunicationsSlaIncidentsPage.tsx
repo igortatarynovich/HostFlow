@@ -16,6 +16,7 @@ import {
   type CommunicationOpsMode,
 } from '../utils/communicationsOpsMode'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
@@ -305,6 +306,8 @@ export default function CommunicationsSlaIncidentsPage() {
         </div>
       </div>
 
+      <PageBreadcrumb className="max-w-4xl" />
+
       <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold text-slate-900">
@@ -379,7 +382,7 @@ export default function CommunicationsSlaIncidentsPage() {
           <ErrorRecoveryBanner
             info={loadError}
             onRetry={() => void load()}
-            retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            retryLabel={t('common.actions.refresh')}
             {...friendlyErrorBannerSecondary(
               loadError,
               CRM_APP_PATHS.settingsCommunicationsSla,

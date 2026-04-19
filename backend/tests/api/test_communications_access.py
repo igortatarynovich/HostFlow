@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import copy
+from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
+
+from backend.app.db.session import async_session_maker
+from backend.app.models.tenant_lead_form import TenantLeadForm
 
 
 async def _get_comm_settings(client: AsyncClient, headers: dict[str, str]) -> dict:
@@ -778,6 +782,7 @@ async def test_email_dispatch_worker_marks_failed_after_retry_exhaustion(
 async def test_generic_ingest_updates_linked_candidate_on_existing_telegram_thread(
     client: AsyncClient,
     manager_headers: dict[str, str],
+    tenant_id: str,
 ) -> None:
     await _update_comm_settings(
         client,
@@ -785,23 +790,37 @@ async def test_generic_ingest_updates_linked_candidate_on_existing_telegram_thre
         lambda s: s["entitlements"]["modules"]["messages"].update({"enabled": True}),
     )
 
+    intake_slug = f"comm-tg-{uuid4().hex[:10]}"
+    async with async_session_maker() as session:
+        session.add(
+            TenantLeadForm(
+                id=str(uuid4()),
+                tenant_id=tenant_id,
+                title="Communications intake form",
+                public_slug=intake_slug,
+                is_active=True,
+            )
+        )
+        await session.commit()
+
     create_intake = await client.post(
         "/api/v1/public/intake",
         headers=manager_headers,
         json={
             "contacts": {
                 "phone_country_code": "+48",
-                "phone": "500111222",
-                "email": "tg-link@example.test",
+                "phone": f"500{uuid4().hex[:9]}",
+                "email": f"tg-link-{uuid4().hex[:8]}@example.com",
             },
             "source": "test",
+            "lead_form_slug": intake_slug,
         },
     )
     assert create_intake.status_code == 200, create_intake.text
     candidate_id = str(create_intake.json().get("candidate_id") or "")
     assert candidate_id
 
-    chat_ref = "tg-chat-regression-001"
+    chat_ref = f"tg-chat-regression-{uuid4().hex}"
     created_thread = await client.post(
         "/api/v1/communications/threads",
         headers=manager_headers,
@@ -828,7 +847,7 @@ async def test_generic_ingest_updates_linked_candidate_on_existing_telegram_thre
             "provider": "telegram_bot",
             "provider_thread_ref": chat_ref,
             "provider_chat_ref": chat_ref,
-            "external_message_ref": "telegram:test:link-regression-001",
+            "external_message_ref": f"telegram:test:link-regression-{uuid4().hex}",
             "sender_address": chat_ref,
             "recipient_address": chat_ref,
             "text": "hello from linked candidate",

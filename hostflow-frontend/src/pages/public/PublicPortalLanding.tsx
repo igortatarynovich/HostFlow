@@ -112,9 +112,19 @@ export default function PublicPortalLanding() {
                   {t('public.portal.hero.secondary')}
                 </Link>
               </div>
+              <p className="text-sm text-slate-600">
+                {t('public.portal.hero.client_inquiry_prefix')}{' '}
+                <Link
+                  to="/public/intake?application_kind=client"
+                  className="font-semibold text-brand-700 underline-offset-4 hover:text-brand-900 hover:underline"
+                >
+                  {t('public.portal.hero.client_inquiry_link_label')}
+                </Link>{' '}
+                {t('public.portal.hero.client_inquiry_suffix')}
+              </p>
               {magicRedeemError && (
                 <ErrorRecoveryBanner
-                  info={{ title: magicRedeemError, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+                  info={{ title: magicRedeemError, hint: t('app.common.retry_hint') }}
                   compact
                 />
               )}

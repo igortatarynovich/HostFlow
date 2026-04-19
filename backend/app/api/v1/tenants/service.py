@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import sqlalchemy as sa
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.tenant import (
@@ -556,7 +557,11 @@ async def create_tenant_with_license(
     license_values["tenant_id"] = tenant.id
     license_entry = TenantLicense(**license_values)
     db.add(license_entry)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ValueError("integrity_conflict") from exc
     await db.refresh(tenant)
     await db.refresh(license_entry)
     return tenant, license_entry
@@ -575,6 +580,7 @@ async def upsert_license(
     payload: Dict[str, object],
     *,
     actor_id: str | None = None,
+    audit_source: str | None = None,
 ) -> TenantLicense:
     license_entry = await get_tenant_license(db, tenant_id)
     created = False
@@ -590,6 +596,9 @@ async def upsert_license(
     license_entry.updated_at = _now_utc()
     await db.commit()
     await db.refresh(license_entry)
+    audit_payload: Dict[str, Any] = {"created": created, "changes": payload}
+    if audit_source:
+        audit_payload["source"] = audit_source
     await log_activity(
         db,
         tenant_id=tenant_id,
@@ -597,8 +606,9 @@ async def upsert_license(
         action="tenant.license_update",
         target_type="tenant",
         target_id=tenant_id,
-        payload={"created": created, "changes": payload},
+        payload=audit_payload,
     )
+    await db.commit()
     return license_entry
 
 

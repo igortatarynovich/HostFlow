@@ -7,10 +7,12 @@ import type {
   MetaCredentialCreatePayload,
   MetaCredentialRotateResponse,
   MetaCredentialUpdatePayload,
+  MetaGraphFieldDataPreviewResponse,
   MetaIncomingLeadsPreviewResponse,
   MetaLeadAdminResponse,
   MetaLeadCredential,
   MetaLeadReroutePayload,
+  MetaLeadSelfServeOnboarding,
   MetaLeadSettings,
   MetaLeadSettingsPatch,
 } from './types'
@@ -19,6 +21,46 @@ const BASE = '/settings/leads'
 
 export async function getMetaLeadSettings(): Promise<MetaLeadSettings> {
   const { data } = await api.get(`${BASE}/settings`)
+  return data
+}
+
+export async function getMetaLeadSelfServeOnboarding(): Promise<MetaLeadSelfServeOnboarding> {
+  const { data } = await api.get(`${BASE}/meta/self-serve-onboarding`)
+  return data
+}
+
+export type MetaOAuthPageOption = { id: string; name: string }
+
+export type MetaOAuthStartResponse = { authorize_url: string; state: string }
+
+export type MetaOAuthCompleteResponse = { pending_id: string; pages: MetaOAuthPageOption[] }
+
+export type MetaOAuthFinalizeResponse = {
+  credential: MetaLeadCredential
+  subscribed_leadgen: boolean
+  warning?: string | null
+}
+
+export async function startMetaOAuth(): Promise<MetaOAuthStartResponse> {
+  const { data } = await api.post<MetaOAuthStartResponse>(`${BASE}/meta/oauth/start`)
+  return data
+}
+
+export async function completeMetaOAuth(payload: {
+  code: string
+  state: string
+}): Promise<MetaOAuthCompleteResponse> {
+  const { data } = await api.post<MetaOAuthCompleteResponse>(`${BASE}/meta/oauth/complete`, payload)
+  return data
+}
+
+export async function finalizeMetaOAuth(payload: {
+  pending_id: string
+  page_id: string
+  label: string
+  subscribe_leadgen?: boolean
+}): Promise<MetaOAuthFinalizeResponse> {
+  const { data } = await api.post<MetaOAuthFinalizeResponse>(`${BASE}/meta/oauth/finalize`, payload)
   return data
 }
 
@@ -157,5 +199,14 @@ export async function getMetaIncomingPreview(opts?: {
   const { data } = await api.get<MetaIncomingLeadsPreviewResponse>(`${BASE}/meta/incoming-preview`, {
     params: Object.keys(params).length ? params : undefined,
   })
+  return data
+}
+
+export async function fetchMetaGraphFieldPreview(payload: {
+  leadgen_id?: string
+  page_id?: string
+  hostflow_lead_id?: string
+}): Promise<MetaGraphFieldDataPreviewResponse> {
+  const { data } = await api.post<MetaGraphFieldDataPreviewResponse>(`${BASE}/meta/graph-field-preview`, payload)
   return data
 }

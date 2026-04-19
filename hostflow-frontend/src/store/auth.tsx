@@ -150,6 +150,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setSecurity(meEnvelope.security)
       applyTheme(meEnvelope.preferences?.ui?.theme)
       clearLoginNotice()
+      try {
+        const { bindUserContext } = await import('../lib/observability')
+        bindUserContext({
+          userId: merged.sub ? String(merged.sub) : null,
+          tenantId: resolvedTenantId ? String(resolvedTenantId) : null,
+          email: merged.email ?? null,
+        })
+      } catch {
+        // observability must never break auth
+      }
     } catch (err) {
       const status = extractStatus(err)
       console.warn('[Auth] refresh failed', err)

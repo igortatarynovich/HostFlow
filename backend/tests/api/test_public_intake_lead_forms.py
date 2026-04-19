@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from backend.app.db.session import async_session_maker
 from backend.app.models.tenant import TenantLicense
@@ -121,3 +121,88 @@ async def test_public_intake_lead_form_invalid_slug_422(client: AsyncClient, ten
     )
     assert resp.status_code == 422, resp.text
     assert resp.json().get("detail", {}).get("code") == "lead_form_slug_invalid"
+
+
+@pytest.mark.asyncio
+async def test_public_intake_resolves_tenant_from_slug_without_x_tenant_header(
+    client: AsyncClient, tenant_id: str
+) -> None:
+    """Candidates must land in the form owner's tenant even if the browser sends another X-Tenant-Id (or none)."""
+    slug = f"no-header-{uuid4().hex[:10]}"
+    await _seed_form(tenant_id, slug=slug)
+    phone_suffix = uuid4().hex[:9]
+    create = await client.post(
+        "/api/v1/public/intake",
+        headers={"X-Tenant-Id": "22222222-2222-2222-2222-222222222222"},
+        json={
+            "contacts": {"phone_country_code": "+48", "phone": f"551{phone_suffix}"},
+            "lead_form_slug": slug,
+        },
+    )
+    assert create.status_code == 200, create.text
+    token = create.json()["token"]
+    st = await client.get(f"/api/v1/public/apply/{token}")
+    assert st.status_code == 200, st.text
+    assert st.json().get("candidate_id")
+    lf = await client.get(f"/api/v1/public/intake/lead-forms?public_slug={slug}")
+    assert lf.status_code == 200, lf.text
+    assert len(lf.json()) == 1
+    assert lf.json()[0].get("public_slug") == slug
+
+
+@pytest.mark.asyncio
+async def test_public_intake_without_slug_requires_non_default_tenant(client: AsyncClient) -> None:
+    resp = await client.post(
+        "/api/v1/public/intake",
+        headers={"X-Tenant-Id": "11111111-1111-1111-1111-111111111111"},
+        json={
+            "contacts": {"phone_country_code": "+48", "phone": f"550{uuid4().hex[:9]}"},
+        },
+    )
+    assert resp.status_code == 400, resp.text
+    assert resp.json().get("detail", {}).get("code") == "intake_default_tenant_forbidden"
+
+
+@pytest.mark.asyncio
+async def test_public_intake_without_slug_and_no_header_is_400(client: AsyncClient) -> None:
+    resp = await client.post(
+        "/api/v1/public/intake",
+        json={
+            "contacts": {"phone_country_code": "+48", "phone": f"549{uuid4().hex[:9]}"},
+        },
+    )
+    assert resp.status_code == 400, resp.text
+    assert resp.json().get("detail", {}).get("code") == "intake_tenant_required"
+
+
+@pytest.mark.asyncio
+async def test_public_magic_link_request_uses_intake_token_not_x_tenant_header(
+    client: AsyncClient, tenant_id: str
+) -> None:
+    """Resend-magic-link must find the candidate in the form owner's tenant even if the browser sends demo X-Tenant-Id."""
+    slug = f"ml-tok-{uuid4().hex[:8]}"
+    await _seed_form(tenant_id, slug=slug)
+    email = f"ml-{uuid4().hex[:8]}@example.com"
+    create = await client.post(
+        "/api/v1/public/intake",
+        headers={"X-Tenant-Id": "22222222-2222-2222-2222-222222222222"},
+        json={"contacts": {"email": email}, "lead_form_slug": slug},
+    )
+    assert create.status_code == 200, create.text
+    intake_token = create.json()["token"]
+
+    req = await client.post(
+        "/api/v1/public/magic-link/request",
+        headers={"X-Tenant-Id": "11111111-1111-1111-1111-111111111111"},
+        json={"email": email, "intake_token": intake_token},
+    )
+    assert req.status_code == 200, req.text
+
+    async with async_session_maker() as session:
+        r = await session.execute(
+            text("SELECT tenant_id FROM magic_links WHERE contact_value = :cv LIMIT 1"),
+            {"cv": email.lower()},
+        )
+        row = r.first()
+        assert row is not None
+        assert row[0] == tenant_id

@@ -2,6 +2,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom'
 
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 
 type PlaceholderSource = 'google' | 'webhook'
 
@@ -28,18 +29,20 @@ export default function IntegrationsSourcePlaceholderPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8 py-6 sm:py-8">
-      <header className="space-y-3">
-        <Link to={CRM_APP_PATHS.settingsIntegrations} className="text-sm font-medium text-brand-600 hover:underline">
-          {t('admin.integrations_hub.back_to_hub')}
-        </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{t(titleKey)}</h1>
-          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
-            {t('admin.integrations_placeholder.badge')}
+      <SettingsSubpageHeader
+        backHref={CRM_APP_PATHS.settingsIntegrations}
+        backLabel={t('admin.integrations_hub.back_to_hub')}
+        kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-3">
+            {t(titleKey)}
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">
+              {t('admin.integrations_placeholder.badge')}
+            </span>
           </span>
-        </div>
-        <p className="max-w-2xl text-sm leading-relaxed text-slate-600">{t(descKey)}</p>
-      </header>
+        }
+        subtitle={t(descKey)}
+      />
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm leading-relaxed text-slate-700 shadow-sm">
         <p>{t('admin.integrations_placeholder.body')}</p>

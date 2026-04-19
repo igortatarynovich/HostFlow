@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   createAutomationRule,
   deleteAutomationRule,
@@ -9,6 +8,8 @@ import {
 } from '../api/automationRules'
 import { listVacancies } from '../api/client'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { SettingsSubpageHeader } from '../components/settings/SettingsSubpageHeader'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { useI18n } from '../i18n'
@@ -233,15 +234,13 @@ export default function AutomationRulesPage() {
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       <header className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <Link to={CRM_APP_PATHS.automations} className="text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline">
-          {t('app.automations.hub.back')}
-        </Link>
-        <h1 className="mt-2 text-xl font-semibold text-slate-900">
-          {t('app.automation_rules.title')}
-        </h1>
-        <p className="text-xs text-slate-500">
-          {t('app.automation_rules.subtitle')}
-        </p>
+        <SettingsSubpageHeader
+          backHref={CRM_APP_PATHS.automations}
+          backLabel={t('app.automations.hub.back')}
+          kicker={t('app.automation_rules.header_kicker')}
+          title={t('app.automation_rules.title')}
+          subtitle={t('app.automation_rules.subtitle')}
+        />
         <p className="mt-2 text-xs text-amber-800/90">
           {t('app.automation_rules.risk_band_hint')}
         </p>
@@ -249,6 +248,8 @@ export default function AutomationRulesPage() {
           {t('app.automation_rules.lq.hint')}
         </p>
       </header>
+
+      <PageBreadcrumb className="max-w-4xl" />
 
       {bannerError ? (
         <ErrorRecoveryBanner

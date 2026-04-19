@@ -15,7 +15,9 @@ from sqlalchemy import func, select
 from backend.app.auth.jwt_tools import encode as encode_jwt
 from backend.app.constants.spa_paths import SETTINGS_BILLING
 from backend.app.core.config import settings
+from backend.app.core.rate_limit import enforce_rate_limit, rate_limits
 from backend.app.core.security import hash_password, verify_password
+from backend.app.core.turnstile import require_turnstile
 from backend.app.db.session import async_session_maker
 from backend.app.models.tenant import Tenant, TenantLicense, TenantStatus, TenantType, user_memberships
 from backend.app.models.user import Role as UserRole
@@ -65,6 +67,7 @@ class RegisterIn(BaseModel):
     plan_code: str | None = Field(default=None, max_length=32)
     accept_terms: bool = False
     accept_privacy: bool = False
+    turnstile_token: str | None = Field(default=None, max_length=2048)
 
 
 class RegisterOut(BaseModel):
@@ -169,7 +172,9 @@ def _signup_welcome_email_body(
 
 
 @router.post("/register", response_model=RegisterOut, tags=["auth"], summary="Self-service registration")
-async def auth_register(payload: RegisterIn) -> RegisterOut:
+async def auth_register(payload: RegisterIn, request: Request) -> RegisterOut:
+    await enforce_rate_limit(request, rate_limits().signup, scope="auth:signup")
+    await require_turnstile(request, token=payload.turnstile_token)
     email = payload.email.lower().strip()
     workspace_name = payload.workspace_name.strip()
     if len(workspace_name) < 2:
@@ -302,6 +307,7 @@ async def auth_login(payload: LoginIn, request: Request) -> TokenOut:
     """
     Проверяет email/пароль по базе и выдаёт подписанный access-токен.
     """
+    await enforce_rate_limit(request, rate_limits().login, scope="auth:login")
     email = payload.email.lower().strip()
     password = payload.password
 
@@ -313,17 +319,40 @@ async def auth_login(payload: LoginIn, request: Request) -> TokenOut:
         if user is None or not verify_password(password, user.password_hash):
             raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        membership_row = await session.execute(
-            select(
-                _user_memberships.c.tenant_id,
-                _user_memberships.c.role,
+        membership = None
+        if user.tenant_id:
+            membership_row = await session.execute(
+                select(
+                    _user_memberships.c.tenant_id,
+                    _user_memberships.c.role,
+                )
+                .where(_user_memberships.c.user_id == user.id)
+                .where(_user_memberships.c.tenant_id == user.tenant_id)
+                .limit(1)
             )
-            .where(_user_memberships.c.user_id == user.id)
-            .limit(1)
-        )
-        membership = membership_row.first()
+            membership = membership_row.first()
+        if not membership:
+            membership_row = await session.execute(
+                select(
+                    _user_memberships.c.tenant_id,
+                    _user_memberships.c.role,
+                )
+                .where(_user_memberships.c.user_id == user.id)
+                .order_by(
+                    sa.case(
+                        (_user_memberships.c.tenant_id == DEFAULT_TENANT_ID, 1),
+                        else_=0,
+                    )
+                )
+                .limit(1)
+            )
+            membership = membership_row.first()
 
-        tenant_id = user.tenant_id or (membership.tenant_id if membership else DEFAULT_TENANT_ID)
+        # JWT tenant must match the membership we use for role (not stale users.tenant_id).
+        if membership:
+            tenant_id = str(membership.tenant_id)
+        else:
+            tenant_id = user.tenant_id or DEFAULT_TENANT_ID
         membership_role = membership.role if membership else None
         role_value = _normalize_role(user.role, membership_role)
 
@@ -365,6 +394,7 @@ async def auth_login(payload: LoginIn, request: Request) -> TokenOut:
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+    turnstile_token: str | None = Field(default=None, max_length=2048)
 
 
 class PasswordResetConfirm(BaseModel):
@@ -373,8 +403,10 @@ class PasswordResetConfirm(BaseModel):
 
 
 @router.post("/password/request-reset", tags=["auth"])
-async def request_password_reset(payload: PasswordResetRequest):
+async def request_password_reset(payload: PasswordResetRequest, request: Request):
     """Request password reset link (self-service). Always returns 200 to prevent email enumeration."""
+    await enforce_rate_limit(request, rate_limits().password_reset, scope="auth:password_reset_request")
+    await require_turnstile(request, token=payload.turnstile_token)
     async with async_session_maker() as session:
         ok = await users_service.request_password_reset(
             db=session, email=payload.email
@@ -384,8 +416,9 @@ async def request_password_reset(payload: PasswordResetRequest):
 
 
 @router.post("/password/reset-with-token", tags=["auth"])
-async def reset_password_with_token(payload: PasswordResetConfirm):
+async def reset_password_with_token(payload: PasswordResetConfirm, request: Request):
     """Set new password using reset token from email link."""
+    await enforce_rate_limit(request, rate_limits().password_reset, scope="auth:password_reset_confirm")
     async with async_session_maker() as session:
         ok = await users_service.reset_password_with_token(
             db=session,
@@ -420,3 +453,30 @@ async def auth_invite_accept(payload: UserInviteAccept) -> UserDetailOut:
             await session.rollback()
             raise
     return UserDetailOut(**detail)
+
+
+class PublicAuthConfigOut(BaseModel):
+    """
+    Unauthenticated runtime configuration for login/signup/public intake pages.
+
+    Lets the frontend decide whether to render the Turnstile widget and which
+    sitekey to use — without bundling secrets or requiring a separate rebuild
+    per environment.
+    """
+    turnstile_enabled: bool = False
+    turnstile_sitekey: str | None = None
+
+
+@router.get(
+    "/public-config",
+    response_model=PublicAuthConfigOut,
+    tags=["auth"],
+    summary="Public runtime config (captcha, feature flags)",
+)
+async def auth_public_config() -> PublicAuthConfigOut:
+    from backend.app.core.turnstile import get_turnstile_sitekey, is_turnstile_enabled
+
+    return PublicAuthConfigOut(
+        turnstile_enabled=is_turnstile_enabled(),
+        turnstile_sitekey=get_turnstile_sitekey(),
+    )

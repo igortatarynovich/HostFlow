@@ -14,6 +14,7 @@ from backend.app.auth.deps import get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.funnel import Funnel, FunnelStage
 from backend.app.models.user import Role
+from backend.app.services import billing_restrictions
 from backend.app.services.plan_feature_gates import ensure_custom_funnel_create_allowed
 
 router = APIRouter(prefix="/funnels", tags=["funnels"])
@@ -296,6 +297,7 @@ async def create_funnel(
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
 
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
     await ensure_custom_funnel_create_allowed(db, tenant_str)
 
     if payload.is_default:
@@ -336,6 +338,7 @@ async def update_funnel(
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
 
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
     result = await db.execute(
         select(Funnel).where(
             Funnel.id == funnel_id,
@@ -381,6 +384,7 @@ async def add_funnel_stage(
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
 
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
     result = await db.execute(
         select(Funnel).where(
             Funnel.id == funnel_id,
@@ -439,6 +443,7 @@ async def update_funnel_stage(
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
 
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
     funnel_row = (
         await db.execute(
             select(Funnel).where(
@@ -501,6 +506,7 @@ async def delete_funnel_stage(
     db, tenant_id = db_tenant
     tenant_str = str(tenant_id)
 
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_str)
     funnel_result = await db.execute(
         select(Funnel).where(
             Funnel.id == funnel_id,

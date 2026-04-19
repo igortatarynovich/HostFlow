@@ -20,6 +20,7 @@ import {
   CommunicationsInboxHubPage,
   CommunicationsMessengerSettingsPage,
   CommunicationsMessagesPage,
+  MessengerIntegrationChannelPage,
   CommunicationsQueueSettingsPage,
   CommunicationsSettingsPage,
   CommunicationsSlaIncidentsPage,
@@ -82,6 +83,11 @@ function RedirectLegacyAnalyticsToInsights() {
 
 function RedirectLeadConversionFunnelToInsights() {
   return <Navigate to={{ pathname: CRM.overview, hash: 'lead-conversion' }} replace />
+}
+
+/** §2.17.14 SSOT: `settingsLeads` is an alias; canonical Meta / lead-source admin is `settingsIntegrationsMeta`. */
+function LegacySettingsLeadsToMetaRedirect() {
+  return <Navigate to={CRM.settingsIntegrationsMeta} replace />
 }
 
 export type NavGroup = 'overview' | 'people' | 'workflows' | 'leads' | 'admin' | 'account'
@@ -633,6 +639,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     Component: LeadFormsSettingsPage,
     permission: ['admin.users', 'leads.view'],
   },
+  {
+    key: 'settings-leads-alias',
+    path: seg(CRM.settingsLeads),
+    Component: LegacySettingsLeadsToMetaRedirect,
+    permission: ['admin.metaLeads', 'admin.users', 'settings.view'],
+  },
   { key: 'settings-email', path: seg(CRM.settingsEmail), Component: EmailSettingsPage, permission: 'admin.users' },
   { key: 'settings-communications', path: seg(CRM.settingsCommunications), Component: withCommFeature(CommunicationsSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
   { key: 'settings-communications-messengers', path: seg(CRM.settingsCommunicationsMessengers), Component: withCommFeature(CommunicationsMessengerSettingsPage, 'communicationsAdmin'), permission: 'admin.users' },
@@ -657,6 +669,12 @@ export const APP_ROUTES: AppRouteConfig[] = [
     path: seg(CRM.settingsIntegrationsWebhook),
     Component: IntegrationsWebhookPage,
     permission: 'admin.metaLeads',
+  },
+  {
+    key: 'settings-integrations-messenger-channel',
+    path: `${seg(CRM.settingsIntegrations)}/messenger/:messengerChannel`,
+    Component: withCommFeature(MessengerIntegrationChannelPage, 'communicationsAdmin'),
+    permission: 'admin.users',
   },
   { key: 'settings-ruleset', path: seg(CRM.settingsRuleset), Component: RulesetVersionsPage, permission: 'admin.ruleset' },
   { key: 'settings-audit', path: seg(CRM.settingsAudit), Component: AuditLogPage, permission: 'admin.deletionQueue' },

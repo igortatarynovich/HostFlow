@@ -19,6 +19,7 @@ from backend.app.api.v1.candidate_documents import apply_template_to_candidate_i
 from .schemas import VacancyIn, VacancyOut, VacancyPatch
 from .repo import VacancyRepo
 from .service import VacancyService
+from backend.app.services import billing_restrictions
 from backend.app.services.tenant_visibility import get_tenant_visibility
 from backend.app.api.v1.utils.own_company import (
     resolve_active_own_company_id,
@@ -137,6 +138,7 @@ async def create_vacancy(
 ):
     svc = _svc(db_tenant, own_company_id=own_company_id)
     _db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(_db, str(tenant_id))
     return await svc.create(
         str(tenant_id),
         payload,
@@ -154,6 +156,7 @@ async def attach_candidate(
     db_tenant: Tuple[AsyncSession, UUID] = Depends(get_db_with_tenant),
 ):
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
 
     vacancy_row = await db.execute(
         select(Vacancy).where(Vacancy.id == str(vacancy_id), Vacancy.tenant_id == str(tenant_id))

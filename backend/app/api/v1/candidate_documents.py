@@ -33,7 +33,7 @@ from backend.app.models.enums import (
     DocumentStatus,
 )
 from backend.app.services.extractors import auto_fill_from_file
-from backend.app.services import candidate_notifications
+from backend.app.services import billing_restrictions, candidate_notifications
 from backend.app.services import candidate_telegram_notifications as candidate_tg_notifications
 from backend.app.services import reminders as reminders_service
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
@@ -55,7 +55,10 @@ from backend.app.services.document_catalog import (
     prepare_template_documents,
 )
 from backend.app.modules.documents import crud as documents_crud
-from backend.app.services.document_files import resolve_document_file
+from backend.app.services.document_files import (
+    resolve_document_file,
+    resolve_document_file_ref,
+)
 from backend.app.services.tenant_quota import (
     ensure_tenant_document_quota,
     ensure_tenant_storage_bytes_fits,
@@ -719,6 +722,7 @@ async def create_candidate_document(
 ):
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id_str)
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
     ensure_candidate_own_company_scope(cand, own_company_id)
@@ -860,6 +864,7 @@ async def update_candidate_document(
 ):
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id_str)
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
     ensure_candidate_own_company_scope(cand, own_company_id)
@@ -1328,6 +1333,7 @@ async def apply_document_template(
 ):
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id_str)
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
 
     client_tenant = await is_client_tenant(db, tenant_id_str)
@@ -1363,6 +1369,7 @@ async def delete_candidate_document(
 ):
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id_str)
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
     ensure_candidate_own_company_scope(cand, own_company_id)
@@ -1428,6 +1435,7 @@ async def upload_candidate_document(
 
     db, tenant_id_hint = db_tenant
     tenant_id_str = str(tenant_id_hint)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id_str)
     await ensure_candidate_access(db, tenant_id_str, str(candidate_id), current_user)
     cand = await _get_candidate_or_404(db, candidate_id, tenant_id_hint)
     ensure_candidate_own_company_scope(cand, own_company_id)
@@ -1435,30 +1443,39 @@ async def upload_candidate_document(
     client_tenant = await is_client_tenant(db, tenant_id_str)
     await _check_document_edit_permission(db, tenant_id_str, str(candidate_id), client_tenant)
 
-    # 1) файл
-    _ensure_dir(_UPLOAD_ROOT)
-    rel_dir = os.path.join(str(cand.tenant_id), "candidates", str(candidate_id))
-    abs_dir = os.path.join(_UPLOAD_ROOT, rel_dir)
-    _ensure_dir(abs_dir)
+    # 1) файл — пишем через абстракцию object storage (FS или S3/MinIO).
+    # Ключ формируется по тому же шаблону, что и раньше, чтобы существующие
+    # Document.files[].storage_path не сломались при переезде между бэкендами.
+    from backend.app.core.object_storage import get_object_storage, normalize_key
 
+    rel_dir = f"{cand.tenant_id}/candidates/{candidate_id}"
     safe_name = f"{uuid.uuid4().hex}_{(file.filename or 'document').replace('/', '_')}"
-    abs_path = os.path.join(abs_dir, safe_name)
-    rel_path = os.path.join(rel_dir, safe_name)
+    rel_path = normalize_key(f"{rel_dir}/{safe_name}")
 
-    with open(abs_path, "wb") as out:
+    storage = get_object_storage()
+
+    async def _chunks():
         while True:
             chunk = await file.read(1024 * 1024)
             if not chunk:
                 break
-            out.write(chunk)
+            yield chunk
 
-    try:
-        upload_size = int(os.path.getsize(abs_path))
-    except OSError:
-        upload_size = 0
+    saved = await storage.save_stream(
+        rel_path,
+        _chunks(),
+        content_type=file.content_type,
+    )
+    upload_size = saved.size
 
-    # 2) автоизвлечение
-    guessed = auto_fill_from_file(abs_path, hinted_key=key)
+    # 2) автоизвлечение — требует локального пути. На FS-бэкенде используем
+    #    реальный файл; на S3 автоизвлечение временно отключено (TODO: скачивать
+    #    во временный файл до расширенного поддерживаемого пайплайна).
+    local_abs = storage.local_path(rel_path)
+    if local_abs is not None:
+        guessed = auto_fill_from_file(str(local_abs), hinted_key=key)
+    else:
+        guessed = {}
     g_key = (key or guessed.get("key") or "document").strip()
     g_number = guessed.get("number")
     g_issued = guessed.get("issued_at")
@@ -1629,12 +1646,18 @@ async def get_candidate_document_file(
     ensure_document_own_company_matches(m, cand, own_company_id)
 
     try:
-        file_path, media_type, filename = resolve_document_file(m)
+        ref = resolve_document_file_ref(m)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found") from None
 
+    if ref.download_url:
+        from fastapi.responses import RedirectResponse
+
+        return RedirectResponse(url=ref.download_url, status_code=302)
+
+    assert ref.local_path is not None  # guarded by resolve_document_file_ref
     return FileResponse(
-        str(file_path),
-        media_type=media_type or "application/octet-stream",
-        filename=filename,
+        str(ref.local_path),
+        media_type=ref.media_type or "application/octet-stream",
+        filename=ref.filename,
     )

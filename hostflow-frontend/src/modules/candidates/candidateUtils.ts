@@ -128,6 +128,26 @@ export function textMatches(source: string | null | undefined, query: string): b
   return source.toLowerCase().includes(query);
 }
 
+/**
+ * Phone search: pasted numbers (e.g. from WhatsApp) often contain spaces;
+ * stored values may be compact. Match with whitespace ignored and, for long
+ * queries, digit-only substring match.
+ */
+export function phoneTextMatches(source: string | null | undefined, rawQuery: string): boolean {
+  const q0 = rawQuery.trim().toLowerCase();
+  if (!q0) return true;
+  if (!source) return false;
+  const s0 = source.toLowerCase();
+  if (s0.includes(q0)) return true;
+  const qCompact = q0.replace(/\s/g, '');
+  const sCompact = s0.replace(/\s/g, '');
+  if (qCompact && sCompact.includes(qCompact)) return true;
+  const qDigits = qCompact.replace(/\D/g, '');
+  const sDigits = sCompact.replace(/\D/g, '');
+  if (qDigits.length >= 7 && sDigits.includes(qDigits)) return true;
+  return false;
+}
+
 export function boolRank(value: boolean | null | undefined): number {
   if (value === true) return 2;
   if (value === false) return 1;

@@ -84,7 +84,8 @@ export type DashboardWidgetId =
   | 'pivot'
   | 'pivotChart';
 
-export const DEFAULT_VISIBLE_WIDGETS: DashboardWidgetId[] = [
+/** Full list for the “Widgets” picker (defaults are a subset). */
+export const DASHBOARD_WIDGET_CATALOG: DashboardWidgetId[] = [
   'pivot',
   'pivotChart',
   'stageStack',
@@ -102,6 +103,9 @@ export const DEFAULT_VISIBLE_WIDGETS: DashboardWidgetId[] = [
   'docsRisk',
   'velocity',
 ];
+
+/** Default: only the raw pivot table; legacy widgets stay available via Configure. */
+export const DEFAULT_VISIBLE_WIDGETS: DashboardWidgetId[] = ['pivot'];
 
 export type DashboardFilterId =
   | 'period'

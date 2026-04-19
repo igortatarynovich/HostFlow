@@ -47,15 +47,23 @@ export type PlatformTenantFilters = {
 }
 
 export async function listPlatformTenants(params: PlatformTenantFilters = {}) {
-  const query: Record<string, any> = {}
-  if (params.status?.length) query.status = params.status
-  if (params.tenantType?.length) query.tenant_type = params.tenantType
-  if (params.plan?.length) query.plan = params.plan
-  if (params.search) query.search = params.search
-  if (typeof params.limit === 'number') query.limit = params.limit
-  if (typeof params.offset === 'number') query.offset = params.offset
-
-  const { data } = await http.get<PlatformTenantListResponse>('/platform/tenants', { params: query })
+  // FastAPI expects repeated keys (`status=a&status=b`), not `status[]=a` (axios default for arrays).
+  const sp = new URLSearchParams()
+  if (params.status?.length) {
+    for (const s of params.status) sp.append('status', s)
+  }
+  if (params.tenantType?.length) {
+    for (const t of params.tenantType) sp.append('tenant_type', t)
+  }
+  if (params.plan?.length) {
+    for (const p of params.plan) sp.append('plan', p)
+  }
+  if (params.search) sp.set('search', params.search)
+  if (typeof params.limit === 'number') sp.set('limit', String(params.limit))
+  if (typeof params.offset === 'number') sp.set('offset', String(params.offset))
+  const qs = sp.toString()
+  const path = qs ? `/platform/tenants?${qs}` : '/platform/tenants'
+  const { data } = await http.get<PlatformTenantListResponse>(path)
   return data
 }
 

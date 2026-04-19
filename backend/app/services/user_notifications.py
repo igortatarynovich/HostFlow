@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Iterable, List, Literal, Optional
+from threading import Lock
+from typing import Any, Dict, Iterable, List, Literal, Optional, Tuple
 from uuid import uuid4
 
 from sqlalchemy import and_, select, update
@@ -13,6 +15,46 @@ from backend.app.models.user_notification import UserNotification
 
 NotificationPriority = Literal["critical", "high", "normal"]
 _VALID_PRIORITIES = frozenset({"critical", "high", "normal"})
+
+# Root cause fix: GET /notifications is polled frequently; running full SLA cleanup on every
+# request loads unbounded rows from PostgreSQL and pegs CPU. Throttle per (tenant, user).
+_SLA_POLL_CLEANUP_LOCK = Lock()
+_SLA_POLL_CLEANUP_LAST: Dict[Tuple[str, str], float] = {}
+_SLA_POLL_CLEANUP_INTERVAL_SEC = 60.0
+_SLA_POLL_CLEANUP_MAX_TRACKED = 10_000
+# Cap rows processed per cleanup pass (remaining backlog is handled on subsequent passes).
+_SLA_CLEANUP_BATCH_LIMIT = 2000
+
+
+def _allow_sla_poll_cleanup(tenant_id: str, user_id: str) -> bool:
+    key = (str(tenant_id), str(user_id))
+    now = time.monotonic()
+    with _SLA_POLL_CLEANUP_LOCK:
+        last = _SLA_POLL_CLEANUP_LAST.get(key)
+        if last is not None and (now - last) < _SLA_POLL_CLEANUP_INTERVAL_SEC:
+            return False
+        _SLA_POLL_CLEANUP_LAST[key] = now
+        if len(_SLA_POLL_CLEANUP_LAST) > _SLA_POLL_CLEANUP_MAX_TRACKED:
+            cutoff = now - _SLA_POLL_CLEANUP_INTERVAL_SEC
+            stale_keys = [k for k, t in _SLA_POLL_CLEANUP_LAST.items() if t < cutoff]
+            for k in stale_keys[: _SLA_POLL_CLEANUP_MAX_TRACKED // 2]:
+                _SLA_POLL_CLEANUP_LAST.pop(k, None)
+        return True
+
+
+async def maybe_cleanup_stale_sla_notifications_for_poll(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    user_id: str,
+) -> int:
+    """
+    Run cleanup_stale_sla_notifications at most once per _SLA_POLL_CLEANUP_INTERVAL_SEC
+    per (tenant_id, user_id). Used from notification list/reconcile HTTP handlers.
+    """
+    if not _allow_sla_poll_cleanup(tenant_id, user_id):
+        return 0
+    return await cleanup_stale_sla_notifications(db, tenant_id=tenant_id, user_id=user_id)
 
 
 def _notification_uos_group(event_type: str, payload: dict[str, Any]) -> str:
@@ -268,24 +310,17 @@ async def list_notifications(
     return out
 
 
-async def cleanup_stale_sla_notifications(
+async def cleanup_stale_communications_sla_notifications(
     db: AsyncSession,
     *,
     tenant_id: str,
     user_id: str,
 ) -> int:
-    """
-    Mark stale unread SLA notifications as read when no action is required anymore.
-    Conditions for stale:
-    - thread no longer exists,
-    - thread marked "no reply needed",
-    - thread is no longer overdue by SLA policy,
-    - or an outbound reply already happened after SLA due.
-    Also closes active SLA reminders bound to the same thread for this assignee.
-    """
+    """Mark stale unread communications SLA notifications as read."""
     now = datetime.now(timezone.utc)
     notif_rows = await db.execute(
-        select(UserNotification).where(
+        select(UserNotification)
+        .where(
             UserNotification.tenant_id == tenant_id,
             UserNotification.user_id == user_id,
             UserNotification.event_type == "communications_sla_overdue",
@@ -293,6 +328,8 @@ async def cleanup_stale_sla_notifications(
             UserNotification.entity_id.is_not(None),
             UserNotification.is_read.is_(False),
         )
+        .order_by(UserNotification.created_at.asc())
+        .limit(_SLA_CLEANUP_BATCH_LIMIT)
     )
     notifications = list(notif_rows.scalars().all())
     if not notifications:
@@ -373,6 +410,101 @@ async def cleanup_stale_sla_notifications(
     return int(notif_update.rowcount or 0)
 
 
+async def cleanup_stale_lead_sla_notifications(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    user_id: str,
+) -> int:
+    """
+    Mark lead SLA notifications as read when there is no active lead SLA reminder anymore.
+    Reminder queue is the actionable source of truth; stale bell rows should not accumulate.
+    """
+    active_statuses = (ReminderStatus.new, ReminderStatus.pending, ReminderStatus.overdue)
+    event_to_reminder_type = {
+        "lead_no_next_action": "leads_no_next_action",
+        "lead_stuck_stage": "leads_stuck_stage",
+    }
+    events = tuple(event_to_reminder_type.keys())
+
+    notif_rows = await db.execute(
+        select(UserNotification)
+        .where(
+            UserNotification.tenant_id == tenant_id,
+            UserNotification.user_id == user_id,
+            UserNotification.event_type.in_(events),
+            UserNotification.entity_type == "lead",
+            UserNotification.entity_id.is_not(None),
+            UserNotification.is_read.is_(False),
+        )
+        .order_by(UserNotification.created_at.asc())
+        .limit(_SLA_CLEANUP_BATCH_LIMIT)
+    )
+    notifications = list(notif_rows.scalars().all())
+    if not notifications:
+        return 0
+
+    lead_ids = sorted({str(n.entity_id or "").strip() for n in notifications if str(n.entity_id or "").strip()})
+    if not lead_ids:
+        return 0
+
+    reminder_rows = await db.execute(
+        select(Reminder.entity_id, Reminder.type).where(
+            Reminder.tenant_id == tenant_id,
+            Reminder.assignee_id == user_id,
+            Reminder.entity_type == "lead",
+            Reminder.entity_id.in_(lead_ids),
+            Reminder.type.in_(tuple(event_to_reminder_type.values())),
+            Reminder.status.in_(active_statuses),
+        )
+    )
+    active_pairs = {(str(entity_id or "").strip(), str(rtype or "").strip()) for entity_id, rtype in reminder_rows.all()}
+
+    stale_ids: list[str] = []
+    for n in notifications:
+        lead_id = str(n.entity_id or "").strip()
+        reminder_type = event_to_reminder_type.get(str(n.event_type or "").strip().lower())
+        if not lead_id or not reminder_type:
+            continue
+        if (lead_id, reminder_type) not in active_pairs:
+            stale_ids.append(str(n.id))
+    if not stale_ids:
+        return 0
+
+    now = datetime.now(timezone.utc)
+    notif_update = await db.execute(
+        update(UserNotification)
+        .where(
+            UserNotification.tenant_id == tenant_id,
+            UserNotification.user_id == user_id,
+            UserNotification.id.in_(stale_ids),
+            UserNotification.is_read.is_(False),
+        )
+        .values(is_read=True, read_at=now, updated_at=now)
+    )
+    return int(notif_update.rowcount or 0)
+
+
+async def cleanup_stale_sla_notifications(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    user_id: str,
+) -> int:
+    """Mark stale SLA notifications as read (communications + lead SLA)."""
+    cleaned_comm = await cleanup_stale_communications_sla_notifications(
+        db,
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
+    cleaned_leads = await cleanup_stale_lead_sla_notifications(
+        db,
+        tenant_id=tenant_id,
+        user_id=user_id,
+    )
+    return int(cleaned_comm or 0) + int(cleaned_leads or 0)
+
+
 async def cleanup_stale_sla_notifications_for_tenant(
     db: AsyncSession,
     *,
@@ -384,9 +516,17 @@ async def cleanup_stale_sla_notifications_for_tenant(
         select(UserNotification.user_id)
         .where(
             UserNotification.tenant_id == tenant_id,
-            UserNotification.event_type == "communications_sla_overdue",
-            UserNotification.entity_type == "communication_thread",
             UserNotification.is_read.is_(False),
+            (
+                (
+                    (UserNotification.event_type == "communications_sla_overdue")
+                    & (UserNotification.entity_type == "communication_thread")
+                )
+                | (
+                    UserNotification.event_type.in_(("lead_no_next_action", "lead_stuck_stage"))
+                    & (UserNotification.entity_type == "lead")
+                )
+            ),
         )
         .distinct()
         .limit(max_users)

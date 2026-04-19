@@ -15,7 +15,7 @@ import { recordTtvStepCompleted } from '../api/analytics'
 import { CANDIDATES_QUICK_VIEW_NAV_PATHS } from '../modules/candidates/constants'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, friendlyFormHintError, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
-
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 type CompanyType = 'agency' | 'employer' | 'services'
 
 type IndustryKey =
@@ -371,7 +371,8 @@ export default function OnboardingCompanyPage() {
       { done: magicStep >= 3, text: t('app.onboarding.magic.line_dashboard') },
     ]
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center justify-center px-4 py-20">
+      <div className="mx-auto flex w-full max-w-md flex-col items-center justify-center space-y-4 px-4 py-12">
+        <PageBreadcrumb className="w-full max-w-full self-stretch" />
         <img src="/logo_hf.svg" alt="" className="h-10 w-auto opacity-90" />
         <h1 className="mt-8 text-lg font-semibold text-slate-900">{t('app.onboarding.magic.title')}</h1>
         <ul className="mt-6 w-full space-y-3 text-sm text-slate-700">
@@ -395,7 +396,8 @@ export default function OnboardingCompanyPage() {
     const need = demoSummary?.need_action ?? 3
     const stuck = demoSummary?.stuck ?? 2
     return (
-      <div className="mx-auto max-w-lg px-4 py-12">
+      <div className="mx-auto max-w-lg space-y-4 px-4 py-12">
+        <PageBreadcrumb className="max-w-full" />
         <img src="/logo_hf.svg" alt="" className="h-10 w-auto" />
         <h1 className="mt-6 text-2xl font-semibold text-slate-900">{t('app.onboarding.ready.page_title')}</h1>
         <p className="mt-2 text-sm text-slate-600">
@@ -472,7 +474,8 @@ export default function OnboardingCompanyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg">
+    <div className="mx-auto max-w-lg space-y-4">
+      <PageBreadcrumb className="max-w-full" />
       <div className="card rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="flex justify-center">
           <img src="/logo_hf.svg" alt="HostFlow" className="h-11 w-auto" />

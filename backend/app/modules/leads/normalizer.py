@@ -338,12 +338,46 @@ def _extract_vacancy_hint(values: Iterable[str]) -> Optional[str]:
     return None
 
 
+def parse_meta_export_ad_id(raw: Any) -> Optional[int]:
+    """
+    Meta Lead Center CSV / export rows use ``ag:120245658843840547``; webhooks may send ints.
+    Used for ``meta_ads_map`` routing (numeric Graph ad id).
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool):
+        return None
+    if isinstance(raw, int):
+        return raw
+    if isinstance(raw, float):
+        if raw != raw:  # NaN
+            return None
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    if ":" in s:
+        prefix, rest = s.split(":", 1)
+        if prefix.lower() == "ag" and rest.strip():
+            s = rest.strip()
+    try:
+        return int(s)
+    except (TypeError, ValueError):
+        return None
+
+
 def _clean_phone(phone: Optional[str]) -> Optional[str]:
     if not phone:
         return None
     text = str(phone).strip()
     if not text:
         return None
+    # Meta Lead Center CSV: ``p:+48501234567``
+    if len(text) >= 2 and text[0].lower() == "p" and text[1] == ":":
+        text = text[2:].strip()
     normalized = re.sub(r"[\s\-\(\)]", "", text)
     if normalized.startswith("00"):
         normalized = "+" + normalized[2:]
@@ -352,6 +386,9 @@ def _clean_phone(phone: Optional[str]) -> Optional[str]:
         normalized = "+" + digits if digits else ""
     else:
         digits = re.sub(r"\D", "", normalized)
+        # Polish mobile without country (common in exports): 9 digits starting 4–9 → +48
+        if len(digits) == 9 and digits[0] in "456789":
+            digits = "48" + digits
         normalized = "+" + digits if digits else ""
     if not normalized or not normalized.startswith("+"):
         return None
@@ -621,11 +658,18 @@ def normalize_meta_payload(
 
     graph_error = value.get("graph_error")
 
-    ad_id = value.get("ad_id") or value.get("adgroup_id") or value.get("adset_id")
-    try:
-        ad_id_int = int(ad_id) if ad_id is not None else None
-    except (TypeError, ValueError):  # pragma: no cover - defensive
-        ad_id_int = None
+    ad_id_int: Optional[int] = None
+    for raw_ad in (value.get("ad_id"), value.get("adgroup_id"), value.get("adset_id")):
+        if raw_ad is None:
+            continue
+        ad_id_int = parse_meta_export_ad_id(raw_ad)
+        if ad_id_int is not None:
+            break
+    # Flat CSV / coerced payloads put ``ad_id`` only in ``field_data``, not on ``value``.
+    if ad_id_int is None:
+        raw_from_fields = _first(mapping, "ad_id", "adset_id", "adgroup_id")
+        if raw_from_fields:
+            ad_id_int = parse_meta_export_ad_id(raw_from_fields)
 
     normalized: Dict[str, Any] = {
         "raw_lead_id": value.get("leadgen_id") or value.get("id"),

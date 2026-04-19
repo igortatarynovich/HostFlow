@@ -202,7 +202,7 @@ export default function ClientPortalPage() {
                 onClick={() => onAccept(h.id)}
               >
                 {busyHandoffId === h.id
-                  ? t('common.loading', { defaultValue: 'Loading…' })
+                  ? t('common.loading')
                   : t('app.client_portal.actions.accept', { defaultValue: 'Accept' })}
               </button>
               <button
@@ -370,7 +370,7 @@ export default function ClientPortalPage() {
                 onClick={() => submitModal()}
               >
                 {busyHandoffId === modal.handoffId
-                  ? t('common.loading', { defaultValue: 'Loading…' })
+                  ? t('common.loading')
                   : t('app.client_portal.modal.send', { defaultValue: 'Send' })}
               </button>
             </div>

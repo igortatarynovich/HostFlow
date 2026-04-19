@@ -741,6 +741,8 @@ export async function getCompanyReadiness(id: string) {
 export async function listLeads(opts?: {
   status?: string;
   stage?: string;
+  /** Only leads older than now minus N hours (server: created_before_hours). */
+  createdBeforeHours?: number;
   nextAction?: string;
   /** §2.12 root bucket filter (lead | qualified | active | final). */
   conversionRoot?: string;
@@ -761,6 +763,9 @@ export async function listLeads(opts?: {
   const params: Record<string, any> = {};
   if (opts?.status) params.status = opts.status;
   if (opts?.stage) params.stage = opts.stage;
+  if (opts?.createdBeforeHours != null && Number.isFinite(opts.createdBeforeHours)) {
+    params.created_before_hours = String(Math.max(1, Math.floor(Number(opts.createdBeforeHours))));
+  }
   if (opts?.nextAction) params.next_action = opts.nextAction;
   const cr = (opts?.conversionRoot || '').trim().toLowerCase();
   if (cr) params.conversion_root = cr;
@@ -848,6 +853,10 @@ export async function createLeadServiceOrder(leadId: string) {
 export async function processLead(leadId: string) {
   const { data } = await api.post(`/leads/${leadId}/process`);
   return data;
+}
+
+export async function deleteLead(leadId: string): Promise<void> {
+  await api.delete(`/leads/${leadId}`);
 }
 
 // Invoices ---------------------------------------------------------------
@@ -1125,6 +1134,7 @@ export async function listCandidatesNoNextAction(opts?: {
   managerId?: string
   assigneeId?: string
   scopeTenantId?: string
+  intakeApplicationKind?: 'client' | 'candidate'
 }) {
   const params: Record<string, any> = {}
   if (opts?.limit != null) params.limit = opts.limit
@@ -1133,6 +1143,9 @@ export async function listCandidatesNoNextAction(opts?: {
   if (opts?.managerId) params.manager_id = opts.managerId
   if (opts?.assigneeId) params.assignee_id = opts.assigneeId
   if (opts?.scopeTenantId) params.scope_tenant_id = opts.scopeTenantId
+  if (opts?.intakeApplicationKind === 'client' || opts?.intakeApplicationKind === 'candidate') {
+    params.intake_application_kind = opts.intakeApplicationKind
+  }
   const { data } = await api.get(`/candidates/no-next-action`, { params })
   return data
 }
@@ -1199,8 +1212,10 @@ export async function updateVacancy(id: string, payload: Record<string, any>) {
 }
 
 // Catalogs ----------------------------------------------------------------
-export async function listManagers() {
-  const { data } = await api.get(`/catalogs/managers`);
+export async function listManagers(opts?: { roles?: string }) {
+  const { data } = await api.get(`/catalogs/managers`, {
+    params: opts?.roles ? { roles: opts.roles } : undefined,
+  });
   return data as Array<{
     id: string;
     short_id?: string | null;

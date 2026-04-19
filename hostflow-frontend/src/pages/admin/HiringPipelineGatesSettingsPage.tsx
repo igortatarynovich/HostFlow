@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n'
 import { getHiringPipelineGates, patchHiringPipelineGates } from '../../api/tenants'
 import type { HiringPipelineGatesPublic } from '../../api/types'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useToast } from '../../components/Toast'
 import { useHiringPipelineGates } from '../../contexts/HiringPipelineGatesContext'
-import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 
 function linesToList(text: string): string[] {
   return text
@@ -100,25 +99,16 @@ export default function HiringPipelineGatesSettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {t('admin.hiring_gates.kicker', { defaultValue: 'CRM setup' })}
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {t('admin.hiring_gates.title', { defaultValue: 'Hiring pipeline gates' })}
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600">
-            {t('admin.hiring_gates.blurb', {
-              defaultValue:
-                'Configure which stages enforce document, vacancy, and contact-attempt rules. Stored in tenant settings (hiring_stage_gates_v1).',
-            })}
-          </p>
-        </div>
-        <Link to={CRM_APP_PATHS.settings} className="btn-secondary btn-sm">
-          {t('admin.hiring_gates.back', { defaultValue: '← Settings' })}
-        </Link>
-      </div>
+      <SettingsSubpageHeader
+        className="max-w-4xl"
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('admin.settings.subpage.kicker_workspace_setup')}
+        title={t('admin.hiring_gates.title', { defaultValue: 'Hiring pipeline gates' })}
+        subtitle={t('admin.hiring_gates.blurb', {
+          defaultValue:
+            'Configure which stages enforce document, vacancy, and contact-attempt rules. Stored in tenant settings (hiring_stage_gates_v1).',
+        })}
+      />
 
       {loading ? (
         <div className="text-sm text-slate-500">{t('common.loading')}</div>

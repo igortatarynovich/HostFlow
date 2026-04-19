@@ -8,6 +8,7 @@ import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
 import DeletionRequestsPage from './DeletionRequestsPage'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 
 type Tab = 'audit' | 'deletion'
 
@@ -25,6 +26,8 @@ export default function AuditLogPage() {
   const [offset, setOffset] = useState(0)
   const limit = 50
 
+  const emptyLabel = t('common.labels.not_available')
+
   const load = useCallback(async (overrides?: { offset?: number }) => {
     const off = overrides?.offset ?? offset
     setLoading(true)
@@ -40,7 +43,7 @@ export default function AuditLogPage() {
       setTotal(res.total)
     } catch (err) {
       console.error('[AuditLogPage] load error', err)
-      setError(t('admin.settings.audit.errors.load', { defaultValue: 'Не удалось загрузить аудит' }))
+      setError(t('admin.settings.audit.errors.load'))
       setItems([])
       setTotal(0)
     } finally {
@@ -59,29 +62,39 @@ export default function AuditLogPage() {
       error
         ? {
             title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+            hint: t('app.common.retry_hint'),
           }
         : null,
     [error, t],
   )
 
-  if (tab === 'deletion') {
+  // Cast through a const to defeat TS narrowing inside the branched returns below;
+  // both render trees expose tabs that switch between the two values.
+  const currentTab: Tab = tab
+
+  if (currentTab === 'deletion') {
     return (
       <div className="space-y-4">
+        <SettingsSubpageHeader
+          backLabel={t('admin.settings.subpage.back_all')}
+          kicker={t('admin.settings.audit.header_kicker')}
+          title={t('admin.settings.audit.page_title')}
+          subtitle={t('admin.settings.audit.page_subtitle')}
+        />
         <div className="flex gap-2">
           <button
             type="button"
-            className={tab === 'audit' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+            className={(currentTab as Tab) === 'audit' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
             onClick={() => setTab('audit')}
           >
-            {t('admin.settings.audit.tabs.audit', { defaultValue: 'Аудит-лог' })}
+            {t('admin.settings.audit.tabs.audit')}
           </button>
           <button
             type="button"
-            className={tab === 'deletion' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+            className={(currentTab as Tab) === 'deletion' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
             onClick={() => setTab('deletion')}
           >
-            {t('admin.settings.audit.tabs.deletion', { defaultValue: 'Очередь удаления' })}
+            {t('admin.settings.audit.tabs.deletion')}
           </button>
         </div>
         <DeletionRequestsPage />
@@ -91,21 +104,27 @@ export default function AuditLogPage() {
 
   return (
     <div className="space-y-4">
+      <SettingsSubpageHeader
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('admin.settings.audit.header_kicker')}
+        title={t('admin.settings.audit.page_title')}
+        subtitle={t('admin.settings.audit.page_subtitle')}
+      />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex gap-2">
           <button
             type="button"
-            className={tab === 'audit' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+            className={(currentTab as Tab) === 'audit' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
             onClick={() => setTab('audit')}
           >
-            {t('admin.settings.audit.tabs.audit', { defaultValue: 'Аудит-лог' })}
+            {t('admin.settings.audit.tabs.audit')}
           </button>
           <button
             type="button"
-            className={tab === 'deletion' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+            className={(currentTab as Tab) === 'deletion' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
             onClick={() => setTab('deletion')}
           >
-            {t('admin.settings.audit.tabs.deletion', { defaultValue: 'Очередь удаления' })}
+            {t('admin.settings.audit.tabs.deletion')}
           </button>
         </div>
         <button
@@ -114,38 +133,38 @@ export default function AuditLogPage() {
           onClick={handleRefresh}
           disabled={loading}
         >
-          {loading ? t('admin.settings.audit.refreshing', { defaultValue: 'Загрузка…' }) : t('admin.settings.audit.refresh', { defaultValue: 'Обновить' })}
+          {loading ? t('admin.settings.audit.refreshing') : t('admin.settings.audit.refresh')}
         </button>
       </div>
 
       <div className="card p-4 space-y-4">
         <div className="flex flex-wrap gap-3">
           <label className="flex flex-col text-sm gap-1">
-            {t('admin.settings.audit.filters.user_id', { defaultValue: 'Пользователь (ID)' })}
+            {t('admin.settings.audit.filters.user_id')}
             <input
               type="text"
               className="input w-40"
-              placeholder={t('admin.settings.audit.filters.user_id_placeholder', { defaultValue: 'UUID' })}
+              placeholder={t('admin.settings.audit.filters.user_id_placeholder')}
               value={userIdFilter}
               onChange={(e) => setUserIdFilter(e.target.value)}
             />
           </label>
           <label className="flex flex-col text-sm gap-1">
-            {t('admin.settings.audit.filters.action', { defaultValue: 'Действие' })}
+            {t('admin.settings.audit.filters.action')}
             <input
               type="text"
               className="input w-32"
-              placeholder={t('admin.settings.audit.filters.action_placeholder', { defaultValue: 'action' })}
+              placeholder={t('admin.settings.audit.filters.action_placeholder')}
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
             />
           </label>
           <label className="flex flex-col text-sm gap-1">
-            {t('admin.settings.audit.filters.from', { defaultValue: 'От' })}
+            {t('admin.settings.audit.filters.from')}
             <input type="date" className="input w-36" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
           </label>
           <label className="flex flex-col text-sm gap-1">
-            {t('admin.settings.audit.filters.to', { defaultValue: 'До' })}
+            {t('admin.settings.audit.filters.to')}
             <input type="date" className="input w-36" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
           </label>
           <div className="flex items-end">
@@ -158,7 +177,7 @@ export default function AuditLogPage() {
               }}
               disabled={loading}
             >
-              {t('admin.settings.audit.apply', { defaultValue: 'Применить' })}
+              {t('admin.settings.audit.apply')}
             </button>
           </div>
         </div>
@@ -167,11 +186,11 @@ export default function AuditLogPage() {
           <ErrorRecoveryBanner
             info={auditLogErrorBanner}
             onRetry={handleRefresh}
-            retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+            retryLabel={t('common.actions.refresh')}
             {...friendlyErrorBannerSecondary(
               auditLogErrorBanner,
               CRM_APP_PATHS.settingsAudit,
-              t('admin.settings.audit.tabs.audit', { defaultValue: 'Аудит-лог' }),
+              t('admin.settings.audit.tabs.audit'),
             )}
             compact
           />
@@ -181,24 +200,24 @@ export default function AuditLogPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase text-slate-500 border-b border-slate-200">
-                <th className="py-2 pr-4">{t('admin.settings.audit.table.when', { defaultValue: 'Когда' })}</th>
-                <th className="py-2 pr-4">{t('admin.settings.audit.table.actor', { defaultValue: 'Кто' })}</th>
-                <th className="py-2 pr-4">{t('admin.settings.audit.table.action', { defaultValue: 'Действие' })}</th>
-                <th className="py-2 pr-4">{t('admin.settings.audit.table.subject', { defaultValue: 'Объект' })}</th>
-                <th className="py-2">{t('admin.settings.audit.table.details', { defaultValue: 'Детали' })}</th>
+                <th className="py-2 pr-4">{t('admin.settings.audit.table.when')}</th>
+                <th className="py-2 pr-4">{t('admin.settings.audit.table.actor')}</th>
+                <th className="py-2 pr-4">{t('admin.settings.audit.table.action')}</th>
+                <th className="py-2 pr-4">{t('admin.settings.audit.table.subject')}</th>
+                <th className="py-2">{t('admin.settings.audit.table.details')}</th>
               </tr>
             </thead>
             <tbody>
               {loading && items.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-500">
-                    {t('admin.settings.audit.loading', { defaultValue: 'Загрузка…' })}
+                    {t('admin.settings.audit.loading')}
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-500">
-                    {t('admin.settings.audit.empty', { defaultValue: 'Нет записей аудита' })}
+                    {t('admin.settings.audit.empty')}
                   </td>
                 </tr>
               ) : (
@@ -207,21 +226,21 @@ export default function AuditLogPage() {
                     <td className="py-2 pr-4 whitespace-nowrap text-slate-600">
                       {formatDateTime(entry.created_at, locale)}
                     </td>
-                    <td className="py-2 pr-4">{entry.actor_label || '—'}</td>
+                    <td className="py-2 pr-4">{entry.actor_label || emptyLabel}</td>
                     <td className="py-2 pr-4 font-medium">{entry.action}</td>
-                    <td className="py-2 pr-4">{entry.user_label || entry.user_id || '—'}</td>
+                    <td className="py-2 pr-4">{entry.user_label || entry.user_id || emptyLabel}</td>
                     <td className="py-2">
                       {entry.payload && Object.keys(entry.payload).length > 0 ? (
                         <details className="text-xs">
                           <summary className="cursor-pointer text-slate-500 hover:text-slate-700">
-                            {t('admin.settings.audit.details', { defaultValue: 'Подробнее' })}
+                            {t('admin.settings.audit.details_toggle')}
                           </summary>
                           <pre className="mt-1 overflow-x-auto rounded bg-slate-50 p-2 text-slate-600 max-w-md">
                             {JSON.stringify(entry.payload, null, 2)}
                           </pre>
                         </details>
                       ) : (
-                        '—'
+                        emptyLabel
                       )}
                     </td>
                   </tr>
@@ -235,7 +254,6 @@ export default function AuditLogPage() {
           <div className="flex items-center justify-between text-sm text-slate-600">
             <span>
               {t('admin.settings.audit.pagination', {
-                defaultValue: 'Показано {from}–{to} из {total}',
                 values: {
                   from: offset + 1,
                   to: Math.min(offset + limit, total),
@@ -250,7 +268,7 @@ export default function AuditLogPage() {
                 disabled={offset === 0 || loading}
                 onClick={() => setOffset((o) => Math.max(0, o - limit))}
               >
-                {t('common.actions.prev', { defaultValue: 'Назад' })}
+                {t('common.actions.prev')}
               </button>
               <button
                 type="button"
@@ -258,7 +276,7 @@ export default function AuditLogPage() {
                 disabled={offset + limit >= total || loading}
                 onClick={() => setOffset((o) => o + limit)}
               >
-                {t('common.actions.next', { defaultValue: 'Далее' })}
+                {t('common.actions.next')}
               </button>
             </div>
           </div>

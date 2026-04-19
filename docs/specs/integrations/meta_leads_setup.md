@@ -149,8 +149,42 @@ Both paths reuse the webhook enrichment pipeline, so skeleton payloads are autom
 
 ---
 
-## 12. References
+## 12. Self-service onboarding (deployment env)
+
+Paid tenants can connect Meta without operator hand-holding when the UI **Meta Leads admin** shows the “Connect Meta (self-service)” block. That panel reads from `GET /api/v1/settings/leads/meta/self-serve-onboarding` and requires correct server configuration:
+
+| Variable | Purpose |
+| --- | --- |
+| `META_LEADS_APP_ID` | Facebook App ID shown to customers for Webhooks / token setup. |
+| `META_LEADS_APP_DISPLAY_NAME` | Optional display label in the API response. |
+| `META_LEADS_DOCS_URL` | Optional URL for the “Documentation” link in the panel. |
+| `META_GRAPH_API_VERSION` | Graph version string (e.g. `v24.0`) shown next to the permission list. |
+| `META_LEADS_SHARED_APP_SECRET` | Optional. If set, **workspace administrators** see this secret in the panel when the Meta app uses a shared app secret. |
+| `PUBLIC_API_BASE_URL` or `FRONTEND_URL` | Public origin used to build the webhook callback: `{base}/api/v1/leads/meta/webhook?verify_token=…`. The verify token must be saved in tenant Meta Leads settings before the full URL appears. |
+| `META_LEADS_OPERATIONAL_TENANT_ID` | Optional. By default the API uses the canonical **Focus Personnel** tenant id from code (`backend/app/constants/hostflow_canonical_tenants.py`). Set this env to **another UUID** to override, or to **`off`**, **`disable`**, **`none`**, **`false`**, or **`0`** to disable remapping (e.g. forks). Restart backend after change. |
+
+Supervisors see the same panel but **not** the shared app secret.
+
+### 12.1 Facebook Login (quick connect)
+
+On **Team-tier plans and above**, workspace **administrators** can use **Connect with Meta** in the Meta Leads admin UI:
+
+1. `POST /api/v1/settings/leads/meta/oauth/start` — returns a Facebook Login `authorize_url` and signed `state`.
+2. After redirect back to `{FRONTEND_URL}/app/settings/integrations/meta?code=…&state=…`, the UI calls `POST /api/v1/settings/leads/meta/oauth/complete` with `{ code, state }`. The server exchanges the code, fetches `/me/accounts`, and stores page tokens in **`meta_oauth_pending`** (encrypted, short TTL).
+3. `POST /api/v1/settings/leads/meta/oauth/finalize` with `{ pending_id, page_id, label, subscribe_leadgen }` creates a normal **`meta_lead_credentials`** row (shared app secret + page token) and, by default, calls Graph **`/{page-id}/subscribed_apps?subscribed_fields=leadgen`**.
+
+| Variable | Purpose |
+| --- | --- |
+| `META_LEADS_OAUTH_REDIRECT_URI` | Optional. Overrides the redirect URI (must match Meta app **Valid OAuth Redirect URIs** exactly). Default: `{FRONTEND_URL}/app/settings/integrations/meta`. |
+
+Starter / trial / solo tenants receive **403** with `code: plan_meta_leads_oauth`.
+
+---
+
+## 13. References
 
 - Module spec: `docs/specs/modules/leads.md`
 - REST endpoints: `backend/app/api/v1/leads/meta`, `backend/app/api/v1/admin/meta-leads/*`
 - Retry script: `scripts/retry_meta_leads.py`
+- Self-serve API: `GET /api/v1/settings/leads/meta/self-serve-onboarding`
+- Meta OAuth: `POST /api/v1/settings/leads/meta/oauth/start`, `.../complete`, `.../finalize`

@@ -14,7 +14,7 @@ import type { LeadStage } from '../api/types'
 import { useI18n } from '../i18n'
 import { useToast } from '../components/Toast'
 import { computeFunnelSuggestedInsights } from '../utils/funnelSuggestedInsights'
-
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 const STAGE_FILTERS: Array<'' | LeadStage> = ['', 'new', 'contacted', 'qualified', 'converted', 'lost']
 
 /** Preset drill-downs for common lost-reason follow-up (§2.12 management loop). */
@@ -141,6 +141,7 @@ export default function AnalyticsLeadConversionFunnelPage({ embedded = false }: 
               {t('app.analytics.lead_conversion.open_leads_workspace')}
             </Link>
           </p>
+          <PageBreadcrumb className="mt-4 max-w-4xl" />
         </>
       ) : (
         <p className="mb-4 max-w-3xl text-xs text-slate-600">

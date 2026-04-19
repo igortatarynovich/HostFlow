@@ -233,7 +233,13 @@ export function AppShell({ me, navItems, onLogout }: AppShellProps) {
                 {isCrmWorkspace && !isSettingsArea && !isOnboardingPage && (
                   <WorkContextTabs businessType={onboardingStatus?.business_type ?? 'agency'} />
                 )}
-                {isSettingsArea && <SettingsChrome pathname={location.pathname} compactMode={guidedTrialWorkspace} />}
+                {isSettingsArea && (
+                  <SettingsChrome
+                    pathname={location.pathname}
+                    search={location.search}
+                    compactMode={guidedTrialWorkspace}
+                  />
+                )}
                 <div
                   className={clsx(
                     'app-ui min-h-0',

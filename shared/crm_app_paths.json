@@ -63,6 +63,11 @@
     "settingsIntegrations": "/app/settings/integrations",
     "settingsIntegrationsMeta": "/app/settings/integrations/meta",
     "settingsIntegrationsGoogle": "/app/settings/integrations/google",
+    "settingsIntegrationsMessengerFacebook": "/app/settings/integrations/messenger/messenger",
+    "settingsIntegrationsMessengerInstagram": "/app/settings/integrations/messenger/instagram",
+    "settingsIntegrationsMessengerTelegram": "/app/settings/integrations/messenger/telegram",
+    "settingsIntegrationsMessengerViber": "/app/settings/integrations/messenger/viber",
+    "settingsIntegrationsMessengerWhatsapp": "/app/settings/integrations/messenger/whatsapp",
     "settingsIntegrationsWebhook": "/app/settings/integrations/webhook",
     "settingsAudit": "/app/settings/audit",
     "settingsCommunications": "/app/settings/communications",
@@ -88,7 +93,8 @@
   },
   "path_comments": {
     "inboxMessagesScoped": "Inbox with messages channel selected (legacy top-level /app/messages redirects here).",
-    "companiesLegacy": "Legacy URLs kept for redirects / bookmarks."
+    "companiesLegacy": "Legacy URLs kept for redirects / bookmarks.",
+    "settingsIntegrationsMessengerFacebook": "Facebook Messenger channel under Integration hub (URL segment repeats API channel key “messenger”)."
   },
   "drilldown_hrefs": {
     "vacanciesOpen": "/app/vacancies?status=open",
@@ -152,6 +158,18 @@
       {
         "name": "SETTINGS_BILLING_CHECKOUT_CANCEL",
         "path_key": "settingsBillingCheckoutCancel"
+      },
+      {
+        "name": "SETTINGS_INTEGRATIONS",
+        "path_key": "settingsIntegrations"
+      },
+      {
+        "name": "SETTINGS_EMAIL",
+        "path_key": "settingsEmail"
+      },
+      {
+        "name": "SETTINGS_INTEGRATIONS_META",
+        "path_key": "settingsIntegrationsMeta"
       },
       {
         "name": "OVERVIEW",

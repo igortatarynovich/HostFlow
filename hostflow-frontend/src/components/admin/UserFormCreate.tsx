@@ -21,11 +21,12 @@ interface UserFormCreateProps {
   onSubmit: (values: CreateUserFormValues) => Promise<void> | void
 }
 
-const ROLE_OPTIONS: UserRole[] = ['administrator', 'supervisor', 'recruiter', 'client_processor', 'viewer']
+const ROLE_OPTIONS: UserRole[] = ['administrator', 'supervisor', 'recruiter', 'client_manager', 'client_processor', 'viewer']
 const ROLE_LABELS: Record<UserRole, string> = {
   administrator: 'app.admin.users.roles.administrator',
   supervisor: 'app.admin.users.roles.supervisor',
   recruiter: 'app.admin.users.roles.recruiter',
+  client_manager: 'app.admin.users.roles.client_manager',
   client_processor: 'app.admin.users.roles.client_processor',
   viewer: 'app.admin.users.roles.viewer',
 }
@@ -208,7 +209,7 @@ export function UserFormCreate({ loading, managerOptions, companyOptions, onSubm
         <ErrorRecoveryBanner
           info={{
             title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+            hint: t('app.common.retry_hint'),
           }}
           onRetry={() => setError(null)}
           retryLabel={t('common.actions.close', { defaultValue: 'Close' })}

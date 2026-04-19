@@ -241,6 +241,11 @@ async def create_platform_tenant(
             raise HTTPException(status_code=422, detail="Invalid slug") from exc
         if key == "slug_exists":
             raise HTTPException(status_code=409, detail="Slug already in use") from exc
+        if key == "integrity_conflict":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Tenant conflicts with an existing record (name, slug, or other unique field).",
+            ) from exc
         raise
     usage = await tenant_service.get_usage_snapshot(db, tenant.id)
 
@@ -658,6 +663,7 @@ async def update_license(
             tenant_id=str(tenant_id),
             payload=changes,
             actor_id=ctx.sub,
+            audit_source="platform",
         )
         await sync_subscription_license_addon_v1(
             db,

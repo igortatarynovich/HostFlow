@@ -22,7 +22,13 @@ type UseCandidatesQuickViewsArgs = {
   t: (key: string, options?: any) => string
   navigate: NavigateFunction
   searchParams: URLSearchParams
-  setSearchParams: (next: URLSearchParams, opts?: { replace?: boolean }) => void
+  // Mirrors `react-router`'s `setSearchParams` overloads: accepts either a
+  // direct `URLSearchParams` value or an updater that receives the current
+  // params (used by quick-view callbacks that mutate one key at a time).
+  setSearchParams: (
+    next: URLSearchParams | ((prev: URLSearchParams) => URLSearchParams),
+    opts?: { replace?: boolean },
+  ) => void
   filtersHydrated: boolean
   handleResetFilters: () => void
   preferredManagerId: string

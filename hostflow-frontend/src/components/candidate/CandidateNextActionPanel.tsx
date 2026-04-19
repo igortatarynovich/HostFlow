@@ -64,6 +64,9 @@ export default function CandidateNextActionPanel(props: {
    * (create/snooze/complete) to open.
    */
   detailsOpenTrigger?: number
+  /** When true, the full reminder form/list opens in a parent modal instead of inline in the rail. */
+  reminderEditorInModal?: boolean
+  onReminderModalOpenChange?: (open: boolean) => void
   /** Canonical stage (e.g. `contacted`, `docs_wait`) for suggested next step when no reminder. */
   canonicalStageCode?: string | null
   /** Next stage in journey order — used to advance operational hints after gates are satisfied. */
@@ -139,8 +142,21 @@ export default function CandidateNextActionPanel(props: {
   }, [])
 
   useEffect(() => {
-    if ((props.detailsOpenTrigger ?? 0) > 0) setDetailsOpen(true)
-  }, [props.detailsOpenTrigger])
+    if ((props.detailsOpenTrigger ?? 0) <= 0) return
+    if (props.reminderEditorInModal && props.onReminderModalOpenChange) {
+      props.onReminderModalOpenChange(true)
+    } else {
+      setDetailsOpen(true)
+    }
+  }, [props.detailsOpenTrigger, props.reminderEditorInModal, props.onReminderModalOpenChange])
+
+  const openReminderEditor = useCallback(() => {
+    if (props.reminderEditorInModal && props.onReminderModalOpenChange) {
+      props.onReminderModalOpenChange(true)
+    } else {
+      setDetailsOpen(true)
+    }
+  }, [props.reminderEditorInModal, props.onReminderModalOpenChange])
 
   const next = useMemo(() => pickNextAction(props.reminders || [], nowTs), [props.reminders, nowTs])
   const dueLabel = useMemo(() => {
@@ -344,7 +360,7 @@ export default function CandidateNextActionPanel(props: {
               </button>
             </>
           ) : deferDocsDuplicate ? (
-            <button type="button" className="btn-secondary btn-sm" onClick={() => setDetailsOpen(true)}>
+            <button type="button" className="btn-secondary btn-sm" onClick={openReminderEditor}>
               {t('app.candidate_card.next_action.create', { defaultValue: 'Create' })}
             </button>
           ) : issuesPresent ? (
@@ -353,7 +369,7 @@ export default function CandidateNextActionPanel(props: {
               className="btn-secondary btn-sm"
               onClick={() => {
                 props.onDocsRequestCreate?.()
-                setDetailsOpen(true)
+                openReminderEditor()
               }}
             >
               {pipelineBlocking
@@ -363,7 +379,7 @@ export default function CandidateNextActionPanel(props: {
                   })}
             </button>
           ) : (
-            <button type="button" className="btn-secondary btn-sm" onClick={() => setDetailsOpen(true)}>
+            <button type="button" className="btn-secondary btn-sm" onClick={openReminderEditor}>
               {t('app.candidate_card.next_action.create', { defaultValue: 'Create' })}
             </button>
           )}
@@ -382,7 +398,7 @@ export default function CandidateNextActionPanel(props: {
         </div>
       ) : null}
 
-      {!props.hideRemindersList && detailsOpen ? (
+      {!props.hideRemindersList && detailsOpen && !props.reminderEditorInModal ? (
         <div className="mt-3">
           <CandidateRemindersSection
             candidateId={props.candidateId}

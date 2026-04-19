@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import clsx from 'clsx'
 import { useI18n } from '../../i18n'
 import { getEmailConfig, sendTestEmail, upsertEmailConfig, type EmailConfig, type EmailConfigUpdate } from '../../api/emailSettings'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useToast } from '../../components/Toast'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { recordTtvStepCompleted } from '../../api/analytics'
@@ -76,6 +78,35 @@ export default function EmailSettingsPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const emailHubStatus = useMemo(() => {
+    if (loading || config === undefined) return 'loading' as const
+    if (config === null) return 'no_config' as const
+    if (!config.is_active) return 'paused' as const
+    return 'live' as const
+  }, [config, loading])
+
+  const emailStatusHeadline = useMemo(() => {
+    switch (emailHubStatus) {
+      case 'loading':
+        return t('common.loading')
+      case 'no_config':
+        return t('admin.email.integration_wizard.status_no_config')
+      case 'paused':
+        return t('admin.email.integration_wizard.status_paused')
+      case 'live':
+        return t('admin.email.integration_wizard.status_live')
+      default:
+        return ''
+    }
+  }, [emailHubStatus, t])
+
+  const emailStepHighlight = useMemo(() => {
+    if (emailHubStatus === 'loading') return 1
+    if (emailHubStatus === 'live') return 3
+    if (emailHubStatus === 'paused') return 2
+    return 1
+  }, [emailHubStatus])
 
   const handleSave = async () => {
     if (!fromEmail.trim()) {
@@ -162,7 +193,7 @@ export default function EmailSettingsPage() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <p className="text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</p>
+        <p className="text-slate-500">{t('common.loading')}</p>
       </div>
     )
   }
@@ -173,28 +204,76 @@ export default function EmailSettingsPage() {
         <ErrorRecoveryBanner
           info={pageError}
           onRetry={() => void load()}
-          retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          retryLabel={t('common.actions.refresh')}
           {...friendlyErrorBannerSecondary(
             pageError,
-            CRM_APP_PATHS.settingsTeam,
-            t('common.navigation.settings', { defaultValue: 'Settings' }),
+            CRM_APP_PATHS.settingsIntegrations,
+            t('admin.integrations_hub.title', { defaultValue: 'Integration hub' }),
           )}
         />
       )}
 
       <section className="card p-6">
-        <header className="mb-4">
-          <h2 className="text-xl font-semibold text-slate-900">
-            {t('admin.email.title', { defaultValue: 'Poczta (SMTP)' })}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {t('admin.email.description', {
-              defaultValue: 'Skonfiguruj SMTP, aby wysyłać maile do kandydatów (RODO, powiadomienia). Dla Google Workspace użyj: smtp.gmail.com, port 587, App Password.',
-            })}
-          </p>
-        </header>
+        <SettingsSubpageHeader
+          className="mb-4"
+          backHref={CRM_APP_PATHS.settingsIntegrations}
+          backLabel={t('admin.integrations_hub.back_to_hub')}
+          kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
+          title={t('admin.email.title', { defaultValue: 'Email (SMTP)' })}
+          subtitle={t('admin.email.description_short', {
+            defaultValue: 'Outbound SMTP for CRM notifications. Google Workspace: smtp.gmail.com, port 587, App Password.',
+          })}
+        />
 
-        <div className="space-y-4 max-w-xl">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('admin.email.integration_wizard.connection_status')}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span
+              className={clsx(
+                'badge',
+                emailHubStatus === 'live' && 'border-emerald-200 bg-emerald-50 text-emerald-800',
+                emailHubStatus === 'paused' && 'border-amber-200 bg-amber-50 text-amber-900',
+                emailHubStatus === 'no_config' && 'border-slate-200 bg-slate-100 text-slate-600',
+                emailHubStatus === 'loading' && 'border-slate-200 bg-slate-100 text-slate-500',
+              )}
+            >
+              {emailHubStatus === 'live'
+                ? t('admin.communications_messengers.integration_wizard.tech_status.connected', { defaultValue: 'Connected' })
+                : emailHubStatus === 'paused'
+                  ? t('admin.communications_messengers.states.disabled', { defaultValue: 'disabled' })
+                  : emailHubStatus === 'loading'
+                    ? t('common.loading')
+                    : t('admin.communications_messengers.integration_wizard.tech_status.none', { defaultValue: 'Not configured' })}
+            </span>
+            <span className="text-sm text-slate-700">{emailStatusHeadline}</span>
+          </div>
+        </div>
+
+        <ol className="mt-6 grid gap-2 sm:grid-cols-3">
+          {[
+            { n: 1, label: t('admin.email.integration_wizard.step_smtp') },
+            { n: 2, label: t('admin.email.integration_wizard.step_test') },
+            { n: 3, label: t('admin.communications_messengers.integration_wizard.step_active') },
+          ].map(({ n, label }) => (
+            <li
+              key={n}
+              className={clsx(
+                'rounded-lg border px-3 py-2 text-center text-sm font-medium',
+                emailStepHighlight === n ? 'border-brand-500 bg-brand-50 text-brand-900' : 'border-slate-200 text-slate-500',
+              )}
+            >
+              <span className="mr-1 font-normal text-slate-400">{n}.</span>
+              {label}
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-6 space-y-4 max-w-xl">
+          <h2 className="text-sm font-semibold text-slate-900">
+            {t('admin.email.integration_wizard.step_smtp')}
+          </h2>
           <div>
             <label className="label">{t('admin.email.smtp_host', { defaultValue: 'Serwer SMTP' })}</label>
             <input
@@ -293,32 +372,35 @@ export default function EmailSettingsPage() {
             </button>
           </div>
         </div>
-      </section>
 
-      {config && (
-        <section className="card p-6">
-          <h3 className="text-lg font-medium text-slate-900 mb-4">
-            {t('admin.email.test_title', { defaultValue: 'Wyślij testową wiadomość' })}
-          </h3>
-          <div className="flex gap-2 max-w-md">
-            <input
-              type="email"
-              value={testTo}
-              onChange={(e) => setTestTo(e.target.value)}
-              placeholder={t('admin.email.placeholders.test_to', { defaultValue: 'test@example.com' })}
-              className="input flex-1"
-            />
-            <button
-              type="button"
-              onClick={handleTest}
-              disabled={testing}
-              className="btn-secondary"
-            >
-              {testing ? t('common.sending', { defaultValue: 'Wysyłanie...' }) : t('admin.email.send_test', { defaultValue: 'Wyślij test' })}
-            </button>
-          </div>
-        </section>
-      )}
+        <div className="mt-8 border-t border-slate-200 pt-6 max-w-xl">
+          <h2 className="text-sm font-semibold text-slate-900">{t('admin.email.integration_wizard.step_test')}</h2>
+          {config ? (
+            <>
+              <p className="mt-1 text-xs text-slate-500">{t('admin.email.test_title', { defaultValue: 'Send a test message' })}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <input
+                  type="email"
+                  value={testTo}
+                  onChange={(e) => setTestTo(e.target.value)}
+                  placeholder={t('admin.email.placeholders.test_to', { defaultValue: 'test@example.com' })}
+                  className="input min-w-[200px] flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={handleTest}
+                  disabled={testing}
+                  className="btn-secondary"
+                >
+                  {testing ? t('common.sending', { defaultValue: 'Sending...' }) : t('admin.email.send_test', { defaultValue: 'Send test' })}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-slate-500">{t('admin.email.integration_wizard.test_locked')}</p>
+          )}
+        </div>
+      </section>
     </div>
   )
 }

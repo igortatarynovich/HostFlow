@@ -52,6 +52,10 @@ class LeadOut(BaseModel):
     vacancy_title: Optional[str] = None
     source: str
     ad_id: Optional[int] = None
+    external_id: Optional[str] = Field(
+        default=None,
+        description="Source-native stable id (e.g. Meta leadgen_id, or public-intake:{candidate_id}); dedupe + admin Graph picker labels.",
+    )
     status: LeadStatus
     stage: Optional[str] = None
     funnel_id: Optional[UUID] = None
@@ -153,6 +157,24 @@ class BulkAutoProcessQueueRequest(BaseModel):
     """§2.3 Dashboard auto-fix: batch Meta lead processing (Team+ plan)."""
 
     max_items: int = Field(default=25, ge=1, le=50, description="Max Meta leads to process in one call.")
+    only_without_candidate: bool = Field(
+        default=False,
+        description="If true, only leads with no candidate_id (typical backlog cleanup).",
+    )
+    error_equals: Optional[str] = Field(
+        default=None,
+        description="If set, only leads whose stored error equals this (e.g. VACANCY_NOT_RESOLVED).",
+    )
+    concurrency: int = Field(
+        default=12,
+        ge=1,
+        le=32,
+        description="Parallel workers; each lead uses its own DB session (bounded pool).",
+    )
+    force_candidate_conversion: bool = Field(
+        default=False,
+        description="Bypass assisted/fit gates and create candidates when vacancy+contacts allow (operator bulk).",
+    )
 
 
 class BulkAutoProcessQueueItemOut(BaseModel):
@@ -508,6 +530,18 @@ class GenericInboundWebhookRotateResponse(BaseModel):
 
 class MetaLeadSettingsOut(BaseModel):
     tenant_id: UUID
+    meta_leads_context_redirected: bool = Field(
+        default=False,
+        description="True when JWT/header workspace was bootstrap but Meta data is stored on another tenant.",
+    )
+    meta_leads_data_tenant_id: Optional[UUID] = Field(
+        default=None,
+        description="Tenant that owns meta_lead_settings / credentials when context_redirected.",
+    )
+    meta_leads_data_tenant_name: Optional[str] = Field(
+        default=None,
+        description="Workspace name for meta_leads_data_tenant_id (UI banner).",
+    )
     default_company_id: Optional[UUID] = None
     fallback_recruiter_id: Optional[UUID] = None
     auto_create_enabled: bool
@@ -571,6 +605,118 @@ class MetaIncomingLeadPreviewItem(BaseModel):
 
 class MetaIncomingLeadsPreviewResponse(BaseModel):
     items: List[MetaIncomingLeadPreviewItem]
+
+
+class MetaLeadSelfServeOnboardingOut(BaseModel):
+    """Deployment + tenant hints so customers connect Meta without operator hand-holding."""
+
+    meta_app_id: Optional[str] = Field(default=None, description="Facebook App ID (META_LEADS_APP_ID).")
+    meta_app_display_name: str = "HostFlow Leads"
+    documentation_url: Optional[str] = None
+    graph_api_version: str = "v24.0"
+    graph_permission_names: List[str] = Field(
+        default_factory=list,
+        description="Permissions to enable in Graph API Explorer / token tool.",
+    )
+    public_api_base_url: Optional[str] = None
+    public_api_base_configured: bool = False
+    webhook_verify_token_configured: bool = False
+    webhook_callback_url: Optional[str] = Field(
+        default=None,
+        description="Paste into Meta Webhooks when verify token is saved for this tenant.",
+    )
+    shared_meta_app_secret: Optional[str] = Field(
+        default=None,
+        description="Populated for tenant administrators when META_LEADS_SHARED_APP_SECRET is set on the server.",
+    )
+    developers_console_app_url: Optional[str] = None
+    graph_api_explorer_url: str = "https://developers.facebook.com/tools/explorer/"
+    oauth_quick_connect_enabled: bool = Field(
+        default=False,
+        description="Team+ plan and server OAuth config (app id, secret, redirect URI).",
+    )
+    meta_oauth_plan_allowed: bool = Field(
+        default=False,
+        description="True when tenant plan allows Meta quick connect (Team tier or higher).",
+    )
+    meta_oauth_server_ready: bool = Field(
+        default=False,
+        description="True when deployment has META_LEADS_APP_ID, META_LEADS_SHARED_APP_SECRET, and redirect URI.",
+    )
+    oauth_redirect_uri: Optional[str] = Field(
+        default=None,
+        description="Register this exact URL in the Meta app Valid OAuth Redirect URIs.",
+    )
+    meta_leads_context_redirected: bool = Field(
+        default=False,
+        description="True when JWT/header workspace was bootstrap but Meta data is stored on another tenant.",
+    )
+    meta_leads_data_tenant_id: Optional[UUID] = Field(
+        default=None,
+        description="Tenant that owns meta_lead_settings / credentials when context_redirected.",
+    )
+    meta_leads_data_tenant_name: Optional[str] = Field(
+        default=None,
+        description="Workspace name for meta_leads_data_tenant_id (UI banner).",
+    )
+
+
+class MetaOAuthStartOut(BaseModel):
+    authorize_url: str
+    state: str
+
+
+class MetaOAuthCompleteIn(BaseModel):
+    code: str
+    state: str
+
+
+class MetaOAuthPageOptionOut(BaseModel):
+    id: str
+    name: str
+
+
+class MetaOAuthCompleteOut(BaseModel):
+    pending_id: str
+    pages: List[MetaOAuthPageOptionOut]
+
+
+class MetaOAuthFinalizeIn(BaseModel):
+    pending_id: str
+    page_id: str
+    label: str
+    subscribe_leadgen: bool = True
+
+
+class MetaOAuthFinalizeOut(BaseModel):
+    credential: MetaCredentialOut
+    subscribed_leadgen: bool = False
+    warning: Optional[str] = None
+
+
+class MetaGraphFieldDataPreviewRequest(BaseModel):
+    """Load real field_data from Meta Graph for field-mapping UI (§2.11)."""
+
+    leadgen_id: Optional[str] = Field(default=None, description="Meta lead id from Ads / webhook")
+    page_id: Optional[str] = Field(default=None, description="Facebook Page id (must match a stored credential)")
+    hostflow_lead_id: Optional[UUID] = Field(
+        default=None,
+        description="Optional HostFlow lead row: resolves leadgen_id + page_id from stored payload",
+    )
+
+
+class MetaGraphFieldDataPreviewField(BaseModel):
+    name: str
+    value_preview: Optional[str] = None
+
+
+class MetaGraphFieldDataPreviewResponse(BaseModel):
+    field_names: List[str]
+    fields: List[MetaGraphFieldDataPreviewField]
+    leadgen_id: str
+    page_id: str
+    ad_id: Optional[str] = None
+    form_id: Optional[str] = None
 
 
 class MetaAdsMapEntry(BaseModel):

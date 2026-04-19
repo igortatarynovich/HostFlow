@@ -84,6 +84,15 @@ export default function PublicIntakeNew() {
   // Флаг для отслеживания первой загрузки
   const [dataRestored, setDataRestored] = useState(false)
   const documentsOnlyMode = searchParams.get('mode') === 'documents'
+
+  const clientIntakeTopBanner = useMemo(() => {
+    if (String(apiFormData.application_kind || '').toLowerCase() !== 'client') return undefined
+    return (
+      <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-slate-800">
+        {t('public.intake.client_mode_banner')}
+      </div>
+    )
+  }, [apiFormData.application_kind, t])
   
   // Восстановление данных из API при первой загрузке
   useEffect(() => {
@@ -847,7 +856,7 @@ export default function PublicIntakeNew() {
   // Истёк срок ссылки или ошибка загрузки
   if (isTokenExpired) {
     return (
-      <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
         <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8 shadow-card text-center">
           <div className="text-4xl mb-4">⚠️</div>
           <h1 className="text-xl font-semibold text-slate-900 mb-2">
@@ -872,7 +881,7 @@ export default function PublicIntakeNew() {
   // Показываем загрузку при первой загрузке данных
   if (apiLoading && !dataRestored) {
     return (
-      <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
         <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600 mx-auto mb-4"></div>
           <p className="text-slate-600">{t('public.intake.new.loading')}</p>
@@ -884,7 +893,7 @@ export default function PublicIntakeNew() {
   // Рендер шага выбора языка
   if (currentStep === 'language') {
     return (
-      <PublicPageShell maxWidth="xl">
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl">
         <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card text-center">
           <PublicLogo showWordmark className="mx-auto mb-6" />
           <h1 className="text-2xl font-semibold text-slate-900 mb-4">
@@ -924,7 +933,7 @@ export default function PublicIntakeNew() {
   // Рендер шага контактов
   if (currentStep === 'contacts') {
     return (
-      <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
         <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
@@ -1038,7 +1047,7 @@ export default function PublicIntakeNew() {
     const canProceed = currentAnswer !== undefined && currentAnswer !== null && currentAnswer !== ''
 
     return (
-      <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
         <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
@@ -1285,7 +1294,7 @@ export default function PublicIntakeNew() {
   // Рендер шага опыта работы
   if (currentStep === 'employment') {
     return (
-      <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
         <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
@@ -1557,7 +1566,7 @@ export default function PublicIntakeNew() {
     // Вопрос о правах с 95 кодом
     if (hasLicenseWith95 === null) {
       return (
-        <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
+        <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
           <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
             <div className="mb-6">
               <h1 className="text-2xl font-semibold text-slate-900 mb-2">
@@ -1591,7 +1600,7 @@ export default function PublicIntakeNew() {
     // Вопрос об ADR (когда дошли до конца обязательных документов)
     if (currentDocumentIndex >= documentFlow.length && hasAdr === null) {
       return (
-        <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
+        <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
           <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
             <div className="mb-6">
               <h1 className="text-2xl font-semibold text-slate-900 mb-2">
@@ -1638,7 +1647,7 @@ export default function PublicIntakeNew() {
     const docStatus = currentDocEntry?.status
 
     return (
-      <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
         <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
@@ -1777,7 +1786,7 @@ export default function PublicIntakeNew() {
       const statusTokenSubmitted = apiState?.status_share_token || token
       const statusUrlSubmitted = statusTokenSubmitted ? `${typeof window !== 'undefined' ? window.location.origin : ''}/public/status/${statusTokenSubmitted}` : ''
       return (
-        <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
+        <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
           <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card text-center">
             <div className="text-6xl mb-4">✅</div>
             <h1 className="text-2xl font-semibold text-slate-900 mb-2">
@@ -1844,7 +1853,7 @@ export default function PublicIntakeNew() {
       )
     }
     return (
-      <PublicPageShell maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />} headerSub={intakeHeaderSub}>
         <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
           <div className="mb-6">
             <h1 className="text-2xl font-semibold text-slate-900 mb-2">
@@ -2110,7 +2119,7 @@ export default function PublicIntakeNew() {
       }).catch(() => {})
     }
     return (
-      <PublicPageShell maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="xl" headerExtra={<PublicLocaleSwitcher />}>
         <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card text-center">
           <div className="mb-6">
             <div className="text-6xl mb-4">✅</div>
@@ -2178,7 +2187,7 @@ export default function PublicIntakeNew() {
   // Обзор после отправки
   if (currentStep === 'overview') {
     return (
-      <PublicPageShell maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />}>
+      <PublicPageShell topBanner={clientIntakeTopBanner} maxWidth="5xl" headerExtra={<PublicLocaleSwitcher />}>
         <div className="rounded-3xl border border-brand-100 bg-white/95 p-8 shadow-card">
           <h1 className="text-2xl font-semibold text-slate-900 mb-6">
             {t('public.intake.new.overview.title')}

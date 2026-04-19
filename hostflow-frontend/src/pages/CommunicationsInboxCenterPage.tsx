@@ -24,6 +24,7 @@ import {
   type InboxListQuery,
 } from '../utils/inboxUrlQuery'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 
@@ -155,6 +156,9 @@ export default function CommunicationsInboxCenterPage() {
       >
         {t('app.communications_inbox_center.back_all_threads')}
       </Link>
+      <div className="shrink-0 border-b border-slate-200 bg-slate-50/90 px-4 py-2">
+        <PageBreadcrumb />
+      </div>
       <CommunicationsInboxWorkspaceGrid variant="inbox_center" className="min-h-0 flex-1">
         <aside
           className={clsx(

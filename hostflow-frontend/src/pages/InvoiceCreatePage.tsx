@@ -9,6 +9,7 @@ import { useI18n } from '../i18n'
 import { useAuth } from '../store/useAuth'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
@@ -182,7 +183,7 @@ function isManagedIssuerCompany(company: Company, userId: string) {
 function invoiceFormBanner(title: string, t: ReturnType<typeof useI18n>['t']): FriendlyErrorInfo {
   return {
     title,
-    hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+    hint: t('app.common.retry_hint'),
   }
 }
 
@@ -814,6 +815,8 @@ export default function InvoiceCreatePage() {
         </p>
       </div>
 
+      <PageBreadcrumb className="max-w-4xl" />
+
       {error && (
         <ErrorRecoveryBanner
           info={error}
@@ -829,7 +832,7 @@ export default function InvoiceCreatePage() {
 
       {(loadingCompanies || loadingInvoice) && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          {t('common.loading', { defaultValue: 'Loading...' })}
+          {t('common.loading')}
         </div>
       )}
 
@@ -1245,14 +1248,14 @@ export default function InvoiceCreatePage() {
           <div className="flex flex-col gap-2">
             <button type="submit" value="save_draft" className="btn-primary" disabled={saving || loadingCompanies}>
               {saving
-                ? t('common.loading', { defaultValue: 'Loading...' })
+                ? t('common.loading')
                 : isEditMode
                   ? t('app.invoices.save_draft', { defaultValue: 'Save Draft' })
                   : t('app.invoices.create', { defaultValue: 'Create Invoice' })}
             </button>
             <button type="submit" name="save_and_send" value="save_and_send" className="btn-secondary" disabled={saving || loadingCompanies}>
               {saving
-                ? t('common.loading', { defaultValue: 'Loading...' })
+                ? t('common.loading')
                 : t('app.invoices.save_and_send', { defaultValue: 'Save and send' })}
             </button>
             <button type="button" className="btn-secondary" onClick={() => navigate(CRM_APP_PATHS.invoices)}>

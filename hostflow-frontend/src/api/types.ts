@@ -3,9 +3,36 @@
 // All types are now exported from ./types/index.ts
 
 export * from './types';
+// `export *` on the line above does not always surface type-only re-exports
+// chained through `./types/index.ts`, leaving consumers that import these
+// symbols from the legacy module with TS2305. Restate them explicitly via
+// the directory path so TS resolves to `./types/index.ts` and not back to
+// this file (which would trigger a TS2303 circular alias).
+export type {
+  TenantModuleOverrideUser,
+  TenantUserModuleOverrides,
+  TenantUserModuleOverridesPatch,
+  HiringPipelineGatesPublic,
+  HiringPipelineGatesPatch,
+  RiskModelV1SettingsOut,
+  LeadStage,
+  LeadStageContractV1,
+  InvoiceActivity,
+} from './types/index';
+// Re-import the canonical UUID alias so the legacy interface declarations
+// below (`id: UUID`, etc.) resolve inside this module after `./types/common`
+// became the single source of truth for the alias. Without this import the
+// raw references would all fail TS2304 even though they re-export fine.
+// We also re-export it so consumers that imported `UUID` directly from this
+// legacy module keep compiling (the bare `export *` above does not always
+// surface type-only re-exports — see TS2459 cluster).
+import type { UUID as _UUID } from './types/common';
+export type UUID = _UUID;
 
 /** Текущий пользователь */
 export interface WhoAmI {
+  /** Stable user id (string UUID); some legacy consumers also read it via `sub`. */
+  id?: string;
   email: string;
   role: 'admin' | 'manager' | 'user' | string;
   tenant_id: string;
@@ -573,6 +600,9 @@ export interface CandidateExtra {
   phone_prefix?: string | null;      // префикс “+48” (опционально, для UI)
   preferred_contact?: string | null; // предпочтительный канал связи (viber/whatsapp/telegram/phone)
   first_contact_at?: string | null;  // ISO8601 дата/время первого контакта
+  /** Citizenship country code mirrored from the candidate model for forms that
+   *  edit `extra` (CandidatePersonalSection auto-fill from phone). */
+  country_code?: string | null;
 
   // водительское удостоверение / опыт
   license_number?: string | null;
@@ -669,6 +699,8 @@ export interface Candidate {
   contacts?: Record<string, any> | null;
   intake_status?: string | null;
   intake_submitted_at?: string | null;
+  /** From public intake `intake_state.application_kind` (CRM detail/list). */
+  intake_application_kind?: 'candidate' | 'client' | null;
   intake_contacts?: Record<string, any> | null;
   intake_personal?: Record<string, any> | null;
   intake_experience?: Record<string, any> | null;
@@ -678,6 +710,10 @@ export interface Candidate {
   contact_policy_enabled?: boolean | null;
   /** From GET candidate: logged contact attempts count. */
   contact_attempt_count?: number | null;
+  /** Client "database" view: PII masked, hide personal/contacts/documents sections. */
+  masked?: boolean;
+  /** Handoff-based: false when agency cannot edit (accepted handoff) or client cannot edit (no accepted). */
+  can_edit?: boolean;
 }
 
 export type LeadStatus = 'new' | 'processed' | 'duplicated' | 'failed' | 'needs_routing';
@@ -710,6 +746,14 @@ export interface Lead {
   custom_fields?: Record<string, unknown>;
   created_at: string;
   last_routed_at?: string | null;
+  /** Next-best-action playbook fields surfaced on the Leads list / detail. */
+  next_action_status?: 'pending' | 'in_progress' | 'completed' | 'snoozed' | string | null;
+  next_action_title?: string | null;
+  next_action_due_at?: string | null;
+  /** Lead stage contract (gating, nudges) attached to the lead summary. */
+  stage_contract?: import('./types/lead').LeadStageContractV1 | null;
+  /** Source-system identifier (Meta leadgen leadgen_id / form id / external CRM id). */
+  external_id?: string | null;
 }
 
 export interface LeadListResponse {
@@ -750,8 +794,35 @@ export interface GenericInboundWebhookRotateResponse {
   ingest_url: string;
 }
 
+/** GET /settings/leads/meta/self-serve-onboarding — tenant self-service Meta setup. */
+export interface MetaLeadSelfServeOnboarding {
+  meta_app_id?: string | null;
+  meta_app_display_name: string;
+  documentation_url?: string | null;
+  graph_api_version: string;
+  graph_permission_names: string[];
+  public_api_base_url?: string | null;
+  public_api_base_configured: boolean;
+  webhook_verify_token_configured: boolean;
+  webhook_callback_url?: string | null;
+  /** Administrators only; omitted for supervisors when server configures META_LEADS_SHARED_APP_SECRET. */
+  shared_meta_app_secret?: string | null;
+  developers_console_app_url?: string | null;
+  graph_api_explorer_url: string;
+  oauth_quick_connect_enabled?: boolean;
+  meta_oauth_plan_allowed?: boolean | null;
+  meta_oauth_server_ready?: boolean | null;
+  oauth_redirect_uri?: string | null;
+  meta_leads_context_redirected?: boolean;
+  meta_leads_data_tenant_id?: UUID | null;
+  meta_leads_data_tenant_name?: string | null;
+}
+
 export interface MetaLeadSettings {
   tenant_id: UUID;
+  meta_leads_context_redirected?: boolean;
+  meta_leads_data_tenant_id?: UUID | null;
+  meta_leads_data_tenant_name?: string | null;
   default_company_id?: UUID | null;
   fallback_recruiter_id?: UUID | null;
   auto_create_enabled: boolean;
@@ -876,6 +947,21 @@ export interface MetaIncomingLeadsPreviewResponse {
   items: MetaIncomingLeadPreviewItem[];
 }
 
+/** Real Meta Graph field_data sample for field-mapping UI. */
+export interface MetaGraphFieldDataPreviewField {
+  name: string;
+  value_preview?: string | null;
+}
+
+export interface MetaGraphFieldDataPreviewResponse {
+  field_names: string[];
+  fields: MetaGraphFieldDataPreviewField[];
+  leadgen_id: string;
+  page_id: string;
+  ad_id?: string | null;
+  form_id?: string | null;
+}
+
 export type ServiceUnit = 'piece' | 'person' | 'hour' | 'package';
 export type ServiceOrderStatus =
   | 'draft'
@@ -893,7 +979,7 @@ export type ServiceItemStatus =
   | 'cancelled';
 
 // Invoices ---------------------------------------------------------------
-export type InvoiceStatus = 'draft' | 'issued' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+export type InvoiceStatus = 'draft' | 'issued' | 'sent' | 'paid' | 'overdue' | 'cancelled' | 'refunded';
 export type PaymentMethod = 'bank_transfer' | 'card' | 'cash' | 'online' | 'other';
 export type PaymentStatus = 'pending' | 'confirmed' | 'failed';
 export type RefundStatus = 'initiated' | 'completed' | 'cancelled';
@@ -904,11 +990,15 @@ export interface InvoiceItem {
   line_no: number;
   description: string;
   qty: number;
+  /** Alias for `qty` exposed by some API responses / accepted by detail UI. */
+  quantity?: number;
   unit_price: number;
   vat_rate: number;
   net_total: number;
   vat_amount: number;
   gross_total: number;
+  /** Display alias for `gross_total`; some responses surface it directly. */
+  amount?: number;
   created_at: string;
 }
 
@@ -937,6 +1027,12 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   items: InvoiceItem[];
+  /** Latest e-mail / portal delivery attempt (denormalised for list views). */
+  latest_delivery_status?: 'pending' | 'sent' | 'delivered' | 'failed' | string | null;
+  latest_delivery_recipient?: string | null;
+  latest_delivery_subject?: string | null;
+  latest_delivery_reason?: string | null;
+  latest_delivery_at?: string | null;
 }
 
 export interface Payment {
@@ -1091,8 +1187,16 @@ export type DocumentProcessType =
   | 'work_permit'
   | 'visa'
   | 'residence_card'
+  | 'residence_permit'
   | 'tachograph_card'
   | 'driver_license_exchange'
+  | 'driver_license'
+  | 'eu_driver_license'
+  | 'adr'
+  | 'code95'
+  | 'qualification_code95'
+  | 'driver_certificate'
+  | 'decision'
   | 'swiadectwo_kierowcy'
   | 'other';
 
@@ -1187,10 +1291,12 @@ export interface Document {
   status: DocumentStatus;
   reminder_days_before: number;
   files: DocumentFile[];
-  workflow: DocumentWorkflow;
+  workflow?: DocumentWorkflow | null;
   source?: string | null;
   external_id?: string | null;
   verified_at?: string | null;
+  /** Free-form user comment (required for `additional_document`). */
+  user_comment?: string | null;
   issue_date?: string | null;
   expire_date?: string | null;
   issued_at?: string | null;
@@ -1208,6 +1314,11 @@ export interface Document {
   reminders: DocumentReminder[];
   version?: number | null;
   last_check?: DocumentCheck | null;
+  /** Internal staff comment (separate from `user_comment`); some synthetic placeholder
+   *  rows constructed in the UI initialise this field to null. */
+  comment?: string | null;
+  /** Free-form note attached to the document row (used by the placeholder synthesizer). */
+  note?: string | null;
 }
 
 export interface NotificationItem {
@@ -1221,6 +1332,8 @@ export interface NotificationItem {
   created_at: string;
   delivered_at?: string | null;
   read_at?: string | null;
+  /** Optional priority hint surfaced by SLA-aware notifiers (`critical`/`high`/`normal`). */
+  priority?: string | null;
 }
 
 export interface NotificationListResponse {

@@ -10,6 +10,13 @@ export function leadAssignmentLocked(lead: Lead | null): boolean {
   return typeof lock === 'object' && lock !== null && Boolean((lock as { locked?: boolean }).locked)
 }
 
+/** POST /leads/:id/process — backend allows meta + csv_import (same mapping pipeline). */
+const MANUAL_PROCESS_SOURCES = new Set(['meta', 'csv_import'])
+
+export function leadSupportsManualProcess(lead: Pick<Lead, 'source'> | null): boolean {
+  return MANUAL_PROCESS_SOURCES.has(String(lead?.source || '').toLowerCase())
+}
+
 /** Meta source + non-empty error + failed / needs_routing (list, inbox Fix, full-page Meta panel). */
 export function isMetaProblemLead(lead: Lead): boolean {
   const metaSource = String(lead.source || '').toLowerCase() === 'meta'

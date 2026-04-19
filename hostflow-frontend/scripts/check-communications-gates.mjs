@@ -33,6 +33,7 @@ const EXPECTED_COMM_GATES = {
   'communications-thread': { type: 'any', features: ['messages', 'email'] },
   'settings-communications': { type: 'feature', features: ['communicationsAdmin'] },
   'settings-communications-messengers': { type: 'feature', features: ['communicationsAdmin'] },
+  'settings-integrations-messenger-channel': { type: 'feature', features: ['communicationsAdmin'] },
   'settings-communications-queue': { type: 'feature', features: ['communicationsAdmin'] },
   'settings-communications-sla': { type: 'feature', features: ['communicationsAdmin'] },
 }

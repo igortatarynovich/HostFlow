@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import clsx from 'clsx'
 import { Link } from 'react-router-dom'
 import {
   createCommunicationAccount,
@@ -17,16 +18,16 @@ import {
   patchCommunicationsSettings,
 } from '../../api/communications'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../../utils/friendlyError'
 import { useAuth } from '../../store/auth'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
+import { MESSENGER_CHANNELS, type MessengerChannel } from './communicationsMessengerChannels'
 
-const CHANNELS = ['telegram', 'whatsapp', 'viber', 'messenger', 'instagram'] as const
-
-type MessengerChannel = typeof CHANNELS[number]
+const CHANNELS = MESSENGER_CHANNELS
 
 type ChannelMeta = {
   titleKey: string
@@ -134,7 +135,476 @@ function statusBadgeClass(status: string): string {
   return 'border-amber-200 bg-amber-50 text-amber-700'
 }
 
-export default function CommunicationsMessengerSettingsPage() {
+type HubIntegrationStatus = 'needs_account' | 'disabled' | 'pending' | 'error' | 'live'
+
+type MessengerHubWizardPanelProps = {
+  channel: MessengerChannel
+  t: (key: any, opts?: any) => string
+  hubIntegrationStatus: HubIntegrationStatus
+  wizardStepHighlight: number
+  hubStatusHeadline: string
+  hubCanSubmitCredentials: boolean
+  primaryAccount: CommunicationChannelAccount | null
+  selectedAccounts: CommunicationChannelAccount[]
+  telegramForm: { accountLabel: string; botToken: string; externalRef: string }
+  setTelegramForm: Dispatch<SetStateAction<{ accountLabel: string; botToken: string; externalRef: string }>>
+  whatsappForm: { accountLabel: string; phoneNumberId: string; accessToken: string; businessAccountId: string; externalRef: string }
+  setWhatsappForm: Dispatch<
+    SetStateAction<{ accountLabel: string; phoneNumberId: string; accessToken: string; businessAccountId: string; externalRef: string }>
+  >
+  viberForm: { accountLabel: string; botToken: string; externalRef: string }
+  setViberForm: Dispatch<SetStateAction<{ accountLabel: string; botToken: string; externalRef: string }>>
+  messengerForm: { accountLabel: string; pageId: string; accessToken: string; appSecret: string; externalRef: string }
+  setMessengerForm: Dispatch<
+    SetStateAction<{ accountLabel: string; pageId: string; accessToken: string; appSecret: string; externalRef: string }>
+  >
+  instagramForm: { accountLabel: string; accountId: string; accessToken: string; externalRef: string }
+  setInstagramForm: Dispatch<SetStateAction<{ accountLabel: string; accountId: string; accessToken: string; externalRef: string }>>
+  connectionBusyKey: string | null
+  runConnectionAction: (key: string, action: () => Promise<void>, successText: string) => void
+  handleHubConnect: () => Promise<void>
+  enableMessengerIntegration: () => Promise<void>
+  disableMessengerIntegration: () => Promise<void>
+  copyText: (value: string, successText: string) => Promise<void>
+  runAccountTest: (account: CommunicationChannelAccount) => Promise<void>
+  runTelegramWebhookSet: (account: CommunicationChannelAccount) => Promise<void>
+  runTelegramWebhookDelete: (account: CommunicationChannelAccount) => Promise<void>
+  showMetaChecklist: boolean
+}
+
+function MessengerHubWizardPanel({
+  channel,
+  t,
+  hubIntegrationStatus,
+  wizardStepHighlight,
+  hubStatusHeadline,
+  hubCanSubmitCredentials,
+  primaryAccount,
+  selectedAccounts,
+  telegramForm,
+  setTelegramForm,
+  whatsappForm,
+  setWhatsappForm,
+  viberForm,
+  setViberForm,
+  messengerForm,
+  setMessengerForm,
+  instagramForm,
+  setInstagramForm,
+  connectionBusyKey,
+  runConnectionAction,
+  handleHubConnect,
+  enableMessengerIntegration,
+  disableMessengerIntegration,
+  copyText,
+  runAccountTest,
+  runTelegramWebhookSet,
+  runTelegramWebhookDelete,
+  showMetaChecklist,
+}: MessengerHubWizardPanelProps) {
+  const meta = CHANNEL_META[channel]
+  const stepKeys = ['step_credentials', 'step_verify', 'step_active'] as const
+  const pa = primaryAccount
+  const providerResult = pa?.settings_json?.connection?.provider_result || {}
+  const webhookUrl = String(providerResult?.webhook_url || '').trim()
+  const verifyToken =
+    String(providerResult?.webhook_verify_token || '').trim() ||
+    String(pa?.settings_json?.whatsapp?.webhook_verify_token || '').trim() ||
+    String(pa?.settings_json?.messenger?.webhook_verify_token || '').trim() ||
+    String(pa?.settings_json?.instagram?.webhook_verify_token || '').trim()
+  const lastError = String(pa?.settings_json?.connection?.last_error || '').trim()
+  const techStatus = pa ? connectionStatusOf(pa) : 'none'
+  const testKey = pa ? `hub-test-${pa.id}` : ''
+
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="min-w-0">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {t('admin.communications_messengers.integration_wizard.connection_status')}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {pa ? (
+              <span className={clsx('badge', statusBadgeClass(techStatus))}>
+                {t(`admin.communications_messengers.integration_wizard.tech_status.${techStatus}` as any, { defaultValue: techStatus })}
+              </span>
+            ) : (
+              <span className="badge border-slate-200 bg-slate-100 text-slate-600">
+                {t('admin.communications_messengers.integration_wizard.tech_status.none')}
+              </span>
+            )}
+            <span className="text-sm text-slate-700">{hubStatusHeadline}</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {hubIntegrationStatus === 'disabled' && pa ? (
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={connectionBusyKey !== null}
+              onClick={() =>
+                void runConnectionAction(
+                  'hub-enable',
+                  enableMessengerIntegration,
+                  t('admin.communications_messengers.integration_wizard.notices.enabled', { defaultValue: 'Integration enabled' }),
+                )
+              }
+            >
+              {t('admin.communications_messengers.integration_wizard.connect')}
+            </button>
+          ) : null}
+          {hubIntegrationStatus === 'live' || hubIntegrationStatus === 'pending' || hubIntegrationStatus === 'error' ? (
+            <button
+              type="button"
+              className="btn-secondary border-rose-200 text-rose-800 hover:bg-rose-50"
+              disabled={connectionBusyKey !== null}
+              onClick={() =>
+                void runConnectionAction(
+                  'hub-disconnect',
+                  disableMessengerIntegration,
+                  t('admin.communications_messengers.integration_wizard.notices.disconnected', { defaultValue: 'Integration disconnected' }),
+                )
+              }
+            >
+              {t('admin.communications_messengers.integration_wizard.disconnect')}
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <ol className="mt-6 grid gap-2 sm:grid-cols-3">
+        {stepKeys.map((sk, idx) => {
+          const n = idx + 1
+          return (
+            <li
+              key={sk}
+              className={clsx(
+                'rounded-lg border px-3 py-2 text-center text-sm font-medium',
+                wizardStepHighlight === n ? 'border-brand-500 bg-brand-50 text-brand-900' : 'border-slate-200 text-slate-500',
+              )}
+            >
+              <span className="mr-1 font-normal text-slate-400">{n}.</span>
+              {t(`admin.communications_messengers.integration_wizard.${sk}`)}
+            </li>
+          )
+        })}
+      </ol>
+
+      <div className="mt-6 space-y-4 rounded-lg border border-slate-200 p-4">
+        <h2 className="text-sm font-semibold text-slate-900">
+          {t('admin.communications_messengers.integration_wizard.step_credentials_heading')}
+        </h2>
+        <p className="text-xs text-slate-600">
+          {t(meta.subtitleKey as any, { defaultValue: meta.subtitleDefault })}
+        </p>
+        {selectedAccounts.length === 0 ? (
+          <>
+            {channel === 'telegram' && (
+              <div className="grid max-w-3xl gap-3 sm:grid-cols-2">
+                <input
+                  value={telegramForm.accountLabel}
+                  onChange={(e) => setTelegramForm((p) => ({ ...p, accountLabel: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.account_label', { defaultValue: 'Account label' })}
+                />
+                <input
+                  type="password"
+                  value={telegramForm.botToken}
+                  onChange={(e) => setTelegramForm((p) => ({ ...p, botToken: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.bot_token', { defaultValue: 'Bot token' })}
+                />
+                <input
+                  value={telegramForm.externalRef}
+                  onChange={(e) => setTelegramForm((p) => ({ ...p, externalRef: e.target.value }))}
+                  className="input sm:col-span-2"
+                  placeholder={t('admin.communications_messengers.fields.external_ref', { defaultValue: 'External ref' })}
+                />
+              </div>
+            )}
+            {channel === 'whatsapp' && (
+              <div className="grid max-w-3xl gap-3 sm:grid-cols-2">
+                <input
+                  value={whatsappForm.accountLabel}
+                  onChange={(e) => setWhatsappForm((p) => ({ ...p, accountLabel: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.account_label', { defaultValue: 'Account label' })}
+                />
+                <input
+                  value={whatsappForm.phoneNumberId}
+                  onChange={(e) => setWhatsappForm((p) => ({ ...p, phoneNumberId: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.phone_number_id', { defaultValue: 'Phone number ID' })}
+                />
+                <input
+                  type="password"
+                  value={whatsappForm.accessToken}
+                  onChange={(e) => setWhatsappForm((p) => ({ ...p, accessToken: e.target.value }))}
+                  className="input sm:col-span-2"
+                  placeholder={t('admin.communications_messengers.fields.access_token', { defaultValue: 'Access token' })}
+                />
+                <input
+                  value={whatsappForm.businessAccountId}
+                  onChange={(e) => setWhatsappForm((p) => ({ ...p, businessAccountId: e.target.value }))}
+                  className="input sm:col-span-2"
+                  placeholder={t('admin.communications_messengers.fields.business_account_id', { defaultValue: 'Business account ID' })}
+                />
+                <input
+                  value={whatsappForm.externalRef}
+                  onChange={(e) => setWhatsappForm((p) => ({ ...p, externalRef: e.target.value }))}
+                  className="input sm:col-span-2"
+                  placeholder={t('admin.communications_messengers.fields.external_ref', { defaultValue: 'External ref' })}
+                />
+              </div>
+            )}
+            {channel === 'viber' && (
+              <div className="grid max-w-3xl gap-3 sm:grid-cols-2">
+                <input
+                  value={viberForm.accountLabel}
+                  onChange={(e) => setViberForm((p) => ({ ...p, accountLabel: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.account_label', { defaultValue: 'Account label' })}
+                />
+                <input
+                  type="password"
+                  value={viberForm.botToken}
+                  onChange={(e) => setViberForm((p) => ({ ...p, botToken: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.bot_token', { defaultValue: 'Bot token' })}
+                />
+                <input
+                  value={viberForm.externalRef}
+                  onChange={(e) => setViberForm((p) => ({ ...p, externalRef: e.target.value }))}
+                  className="input sm:col-span-2"
+                  placeholder={t('admin.communications_messengers.fields.external_ref', { defaultValue: 'External ref' })}
+                />
+              </div>
+            )}
+            {channel === 'messenger' && (
+              <div className="grid max-w-3xl gap-3 sm:grid-cols-2">
+                <input
+                  value={messengerForm.accountLabel}
+                  onChange={(e) => setMessengerForm((p) => ({ ...p, accountLabel: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.account_label', { defaultValue: 'Account label' })}
+                />
+                <input
+                  value={messengerForm.pageId}
+                  onChange={(e) => setMessengerForm((p) => ({ ...p, pageId: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.page_id', { defaultValue: 'Page ID' })}
+                />
+                <input
+                  type="password"
+                  value={messengerForm.accessToken}
+                  onChange={(e) => setMessengerForm((p) => ({ ...p, accessToken: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.page_access_token', { defaultValue: 'Page access token' })}
+                />
+                <input
+                  type="password"
+                  value={messengerForm.appSecret}
+                  onChange={(e) => setMessengerForm((p) => ({ ...p, appSecret: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.app_secret', { defaultValue: 'App secret' })}
+                />
+                <input
+                  value={messengerForm.externalRef}
+                  onChange={(e) => setMessengerForm((p) => ({ ...p, externalRef: e.target.value }))}
+                  className="input sm:col-span-2"
+                  placeholder={t('admin.communications_messengers.fields.external_ref', { defaultValue: 'External ref' })}
+                />
+              </div>
+            )}
+            {channel === 'instagram' && (
+              <div className="grid max-w-3xl gap-3 sm:grid-cols-2">
+                <input
+                  value={instagramForm.accountLabel}
+                  onChange={(e) => setInstagramForm((p) => ({ ...p, accountLabel: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.account_label', { defaultValue: 'Account label' })}
+                />
+                <input
+                  value={instagramForm.accountId}
+                  onChange={(e) => setInstagramForm((p) => ({ ...p, accountId: e.target.value }))}
+                  className="input"
+                  placeholder={t('admin.communications_messengers.fields.instagram_account_id', { defaultValue: 'Instagram account ID' })}
+                />
+                <input
+                  type="password"
+                  value={instagramForm.accessToken}
+                  onChange={(e) => setInstagramForm((p) => ({ ...p, accessToken: e.target.value }))}
+                  className="input sm:col-span-2"
+                  placeholder={t('admin.communications_messengers.fields.access_token', { defaultValue: 'Access token' })}
+                />
+                <input
+                  value={instagramForm.externalRef}
+                  onChange={(e) => setInstagramForm((p) => ({ ...p, externalRef: e.target.value }))}
+                  className="input sm:col-span-2"
+                  placeholder={t('admin.communications_messengers.fields.external_ref', { defaultValue: 'External ref' })}
+                />
+              </div>
+            )}
+            <div className="pt-2">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={connectionBusyKey !== null || !hubCanSubmitCredentials}
+                onClick={() =>
+                  void runConnectionAction(
+                    'hub-connect',
+                    handleHubConnect,
+                    t('admin.communications_messengers.integration_wizard.notices.connected', { defaultValue: 'Connected and enabled' }),
+                  )
+                }
+              >
+                {t('admin.communications_messengers.integration_wizard.connect')}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-slate-600">
+            {t('admin.communications_messengers.integration_wizard.credentials_saved', {
+              defaultValue: 'Credentials are stored for “{name}”. Use verify below or disconnect to stop using this channel.',
+              values: { name: pa?.account_label || '—' },
+            })}
+          </p>
+        )}
+      </div>
+
+      {pa ? (
+        <div className="mt-4 space-y-4 rounded-lg border border-slate-200 p-4">
+          <h2 className="text-sm font-semibold text-slate-900">
+            {t('admin.communications_messengers.integration_wizard.step_verify_heading')}
+          </h2>
+          {showMetaChecklist ? (
+            <p className="text-xs text-slate-600">
+              {t('admin.communications_messengers.integration_wizard.hint_meta_verify')}
+            </p>
+          ) : null}
+          {channel === 'telegram' ? (
+            <p className="text-xs text-slate-600">
+              {t('admin.communications_messengers.integration_wizard.hint_telegram_webhook')}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                void runConnectionAction(
+                  testKey,
+                  () => runAccountTest(pa),
+                  t('admin.communications_messengers.notices.connection_test_completed', { defaultValue: 'Connection test completed' }),
+                )
+              }
+              disabled={connectionBusyKey !== null}
+              className="btn-secondary btn-sm disabled:opacity-60"
+            >
+              {connectionBusyKey === testKey ? t('common.loading') : t('admin.communications_messengers.integration_wizard.verify_connection')}
+            </button>
+            {channel === 'telegram' ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void runConnectionAction(
+                      `hub-tg-set-${pa.id}`,
+                      () => runTelegramWebhookSet(pa),
+                      t('admin.communications_messengers.notices.telegram_webhook_set', { defaultValue: 'Telegram webhook set' }),
+                    )
+                  }
+                  disabled={connectionBusyKey !== null}
+                  className="btn-secondary btn-sm disabled:opacity-60"
+                >
+                  {connectionBusyKey === `hub-tg-set-${pa.id}`
+                    ? t('common.loading')
+                    : t('admin.communications_messengers.account.set_webhook', { defaultValue: 'Set webhook' })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void runConnectionAction(
+                      `hub-tg-del-${pa.id}`,
+                      () => runTelegramWebhookDelete(pa),
+                      t('admin.communications_messengers.notices.telegram_webhook_deleted', { defaultValue: 'Telegram webhook deleted' }),
+                    )
+                  }
+                  disabled={connectionBusyKey !== null}
+                  className="btn-secondary btn-sm disabled:opacity-60"
+                >
+                  {connectionBusyKey === `hub-tg-del-${pa.id}`
+                    ? t('common.loading')
+                    : t('admin.communications_messengers.account.delete_webhook', { defaultValue: 'Delete webhook' })}
+                </button>
+              </>
+            ) : null}
+          </div>
+          {webhookUrl ? (
+            <div className="break-all text-xs text-slate-600">
+              {t('admin.communications_messengers.account.webhook', { defaultValue: 'Webhook' })}: {webhookUrl}
+            </div>
+          ) : null}
+          {verifyToken ? (
+            <div className="break-all text-xs text-slate-600">
+              {t('admin.communications_messengers.account.verify_token', { defaultValue: 'Verify token' })}: {verifyToken}
+            </div>
+          ) : null}
+          {(webhookUrl || verifyToken) && (
+            <div className="flex flex-wrap gap-2">
+              {webhookUrl ? (
+                <button
+                  type="button"
+                  onClick={() => void copyText(webhookUrl, t('admin.communications_messengers.notices.webhook_copied', { defaultValue: 'Webhook URL copied' }))}
+                  className="btn-secondary btn-xs"
+                >
+                  {t('admin.communications_messengers.account.copy_webhook', { defaultValue: 'Copy webhook URL' })}
+                </button>
+              ) : null}
+              {verifyToken ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void copyText(verifyToken, t('admin.communications_messengers.notices.verify_token_copied', { defaultValue: 'Verify token copied' }))
+                  }
+                  className="btn-secondary btn-xs"
+                >
+                  {t('admin.communications_messengers.account.copy_verify_token', { defaultValue: 'Copy verify token' })}
+                </button>
+              ) : null}
+            </div>
+          )}
+          {lastError ? (
+            <div className="text-xs text-rose-700">
+              {t('admin.communications_messengers.account.last_error', { defaultValue: 'Last error' })}: {lastError}
+            </div>
+          ) : null}
+          {hubIntegrationStatus === 'live' ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              {t('admin.communications_messengers.integration_wizard.step_active_done')}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {selectedAccounts.length > 1 ? (
+        <p className="mt-4 text-xs text-slate-500">
+          {t('admin.communications_messengers.integration_wizard.multiple_accounts_hint_before')}{' '}
+          <Link className="font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsCommunicationsMessengers}>
+            {t('admin.communications_messengers.actions.all_messengers')}
+          </Link>
+          {t('admin.communications_messengers.integration_wizard.multiple_accounts_hint_after')}
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
+export type CommunicationsMessengerSettingsPageProps = {
+  /** When set, only this channel is shown (Integration hub entry); shared templates stay on the combined screen. */
+  lockedChannel?: MessengerChannel
+}
+
+export default function CommunicationsMessengerSettingsPage({ lockedChannel }: CommunicationsMessengerSettingsPageProps) {
   const { t } = useI18n()
   const { me } = useAuth()
   const planLimitModal = usePlanLimitModal()
@@ -147,7 +617,11 @@ export default function CommunicationsMessengerSettingsPage() {
 
   const [settings, setSettings] = useState<any | null>(null)
   const [accounts, setAccounts] = useState<CommunicationChannelAccount[]>([])
-  const [selectedChannel, setSelectedChannel] = useState<MessengerChannel>('whatsapp')
+  const [selectedChannel, setSelectedChannel] = useState<MessengerChannel>(lockedChannel ?? 'whatsapp')
+
+  useEffect(() => {
+    if (lockedChannel) setSelectedChannel(lockedChannel)
+  }, [lockedChannel])
 
   const [commandAudit, setCommandAudit] = useState<CommunicationCommandAudit[]>([])
   const [commandDraftLabel, setCommandDraftLabel] = useState('')
@@ -165,14 +639,18 @@ export default function CommunicationsMessengerSettingsPage() {
   const loadAll = useCallback(async () => {
     const [cfg, cmdAuditResp, accResp] = await Promise.all([
       getCommunicationsSettings(),
-      listCommunicationCommandAudit({ limit: 30 }).catch(() => ({ items: [] as CommunicationCommandAudit[] })),
-      listCommunicationAccounts().catch(() => ({ items: [] as CommunicationChannelAccount[] })),
+      lockedChannel
+        ? Promise.resolve({ items: [] as CommunicationCommandAudit[] })
+        : listCommunicationCommandAudit({ limit: 30 }).catch(() => ({ items: [] as CommunicationCommandAudit[] })),
+      listCommunicationAccounts(lockedChannel ? { channel: lockedChannel } : undefined).catch(() => ({
+        items: [] as CommunicationChannelAccount[],
+      })),
     ])
     setSettings(cfg)
     setCommandAudit(Array.isArray(cmdAuditResp?.items) ? cmdAuditResp.items : [])
     const rows = Array.isArray(accResp?.items) ? accResp.items : []
     setAccounts(rows.filter((x) => CHANNELS.includes(String(x.channel || '').toLowerCase() as MessengerChannel)))
-  }, [])
+  }, [lockedChannel])
 
   useEffect(() => {
     let mounted = true
@@ -256,6 +734,65 @@ export default function CommunicationsMessengerSettingsPage() {
   const selectedCfg = channelsConfig.get(selectedChannel)
   const selectedAccounts = accountsByChannel[selectedChannel] || []
   const showMetaChecklist = selectedChannel === 'whatsapp' || selectedChannel === 'messenger' || selectedChannel === 'instagram'
+
+  const primaryAccount = useMemo(() => {
+    if (!selectedAccounts.length) return null
+    return selectedAccounts.find((a) => a.is_active) || selectedAccounts[0]
+  }, [selectedAccounts])
+
+  const hubIntegrationStatus = useMemo(() => {
+    if (!primaryAccount) return 'needs_account' as const
+    const st = connectionStatusOf(primaryAccount)
+    const channelOn = Boolean(selectedCfg?.enabled)
+    const accountOn = Boolean(primaryAccount.is_active)
+    if (!channelOn || !accountOn) return 'disabled' as const
+    if (st === 'ok' || st === 'connected') return 'live' as const
+    if (st === 'error' || st === 'failed') return 'error' as const
+    return 'pending' as const
+  }, [primaryAccount, selectedCfg])
+
+  const wizardStepHighlight = useMemo(() => {
+    if (hubIntegrationStatus === 'needs_account') return 1
+    if (hubIntegrationStatus === 'disabled') return 1
+    if (hubIntegrationStatus === 'live') return 3
+    return 2
+  }, [hubIntegrationStatus])
+
+  const hubStatusHeadline = useMemo(() => {
+    if (!lockedChannel) return ''
+    switch (hubIntegrationStatus) {
+      case 'needs_account':
+        return t('admin.communications_messengers.integration_wizard.summary.needs_account')
+      case 'disabled':
+        return t('admin.communications_messengers.integration_wizard.summary.disabled')
+      case 'pending':
+        return t('admin.communications_messengers.integration_wizard.summary.pending')
+      case 'error':
+        return t('admin.communications_messengers.integration_wizard.summary.error')
+      case 'live':
+        return t('admin.communications_messengers.integration_wizard.summary.live')
+      default:
+        return ''
+    }
+  }, [hubIntegrationStatus, lockedChannel, t])
+
+  const hubCanSubmitCredentials = useMemo(() => {
+    if (!lockedChannel) return false
+    switch (selectedChannel) {
+      case 'telegram':
+        return telegramForm.botToken.trim().length > 0
+      case 'whatsapp':
+        return Boolean(whatsappForm.phoneNumberId.trim() && whatsappForm.accessToken.trim())
+      case 'viber':
+        return viberForm.botToken.trim().length > 0
+      case 'messenger':
+        return Boolean(messengerForm.pageId.trim() && messengerForm.accessToken.trim())
+      case 'instagram':
+        return Boolean(instagramForm.accountId.trim() && instagramForm.accessToken.trim())
+      default:
+        return false
+    }
+  }, [instagramForm, lockedChannel, messengerForm, selectedChannel, telegramForm, viberForm, whatsappForm])
 
   const runConnectionAction = useCallback(async (key: string, action: () => Promise<void>, successText: string) => {
     setConnectionBusyKey(key)
@@ -361,6 +898,42 @@ export default function CommunicationsMessengerSettingsPage() {
       setSaveBusy(false)
     }
   }, [planLimitModal, settings, t])
+
+  const applyChannelPatchFresh = useCallback(async (channelKey: MessengerChannel, patch: Record<string, any>) => {
+    const cfg = await getCommunicationsSettings()
+    const channels = Array.isArray(cfg?.channels?.channels) ? cfg.channels.channels : []
+    const nextChannels = channels.map((row: any) => {
+      const key = String(row?.key || '').toLowerCase()
+      if (key !== channelKey) return row
+      return { ...row, ...patch }
+    })
+    const patched = await patchCommunicationsSettings({
+      channels: {
+        ...(cfg?.channels || {}),
+        channels: nextChannels,
+      },
+    } as any)
+    setSettings(patched)
+    return patched
+  }, [])
+
+  const enableMessengerIntegration = useCallback(async () => {
+    await applyChannelPatchFresh(selectedChannel, { enabled: true, inboundEnabled: true, outboundEnabled: true })
+    const { items } = await listCommunicationAccounts(lockedChannel ? { channel: lockedChannel } : undefined)
+    const forCh = items.filter((x) => String(x.channel || '').toLowerCase() === selectedChannel)
+    for (const acc of forCh) {
+      await patchCommunicationAccount(acc.id, { is_active: true })
+    }
+  }, [applyChannelPatchFresh, lockedChannel, selectedChannel])
+
+  const disableMessengerIntegration = useCallback(async () => {
+    const { items } = await listCommunicationAccounts(lockedChannel ? { channel: lockedChannel } : undefined)
+    const forCh = items.filter((x) => String(x.channel || '').toLowerCase() === selectedChannel)
+    for (const acc of forCh) {
+      await patchCommunicationAccount(acc.id, { is_active: false })
+    }
+    await applyChannelPatchFresh(selectedChannel, { enabled: false, inboundEnabled: false, outboundEnabled: false })
+  }, [applyChannelPatchFresh, lockedChannel, selectedChannel])
 
   const createTelegramAccount = useCallback(async () => {
     await createCommunicationAccount({
@@ -649,28 +1222,51 @@ export default function CommunicationsMessengerSettingsPage() {
     return await createMessengerAccount()
   }, [createInstagramAccount, createMessengerAccount, createTelegramAccount, createViberAccount, createWhatsappAccount, selectedChannel])
 
+  const handleHubConnect = useCallback(async () => {
+    await createForSelectedChannel()
+    await applyChannelPatchFresh(selectedChannel, { enabled: true, inboundEnabled: true, outboundEnabled: true })
+    const { items } = await listCommunicationAccounts(lockedChannel ? { channel: lockedChannel } : undefined)
+    const forCh = items.filter((x) => String(x.channel || '').toLowerCase() === selectedChannel)
+    const newest =
+      forCh.length > 0
+        ? [...forCh].sort((a, b) => (String(a.created_at) < String(b.created_at) ? 1 : -1))[0]
+        : null
+    if (newest) await patchCommunicationAccount(newest.id, { is_active: true })
+  }, [applyChannelPatchFresh, createForSelectedChannel, lockedChannel, selectedChannel])
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {t('admin.communications_messengers.title', { defaultValue: 'Messenger settings' })}
-          </h1>
-          <p className="text-sm text-slate-500">
-            {t('admin.communications_messengers.subtitle', { defaultValue: 'Compact setup by channel name: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.' })}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to={CRM_APP_PATHS.settingsCommunications} className="btn-secondary">
-            {t('admin.communications_messengers.actions.all_settings', { defaultValue: 'All communication settings' })}
-          </Link>
-          <Link to={CRM_APP_PATHS.messages} className="btn-secondary">
-            {t('admin.communications_messengers.actions.open_messages', { defaultValue: 'Open messages' })}
-          </Link>
-        </div>
-      </div>
+      {lockedChannel ? (
+        <SettingsSubpageHeader
+          backHref={CRM_APP_PATHS.settingsIntegrations}
+          backLabel={t('admin.integrations_hub.back_to_hub')}
+          kicker={t('admin.integrations_hub.integration_kicker', { defaultValue: 'Integration' })}
+          title={t(CHANNEL_META[lockedChannel].titleKey as any, { defaultValue: CHANNEL_META[lockedChannel].titleDefault })}
+          subtitle={t(CHANNEL_META[lockedChannel].subtitleKey as any, { defaultValue: CHANNEL_META[lockedChannel].subtitleDefault })}
+          actions={
+            <Link to={CRM_APP_PATHS.settingsCommunicationsMessengers} className="btn-secondary">
+              {t('admin.communications_messengers.actions.all_messengers', { defaultValue: 'All messengers & shared templates' })}
+            </Link>
+          }
+        />
+      ) : (
+        <SettingsSubpageHeader
+          backHref={CRM_APP_PATHS.settingsCommunications}
+          backLabel={t('admin.communications_messengers.actions.all_settings', { defaultValue: 'All communication settings' })}
+          kicker={t('admin.settings.cards.communications_messengers.label', { defaultValue: 'Messengers' })}
+          title={t('admin.communications_messengers.title', { defaultValue: 'Messenger settings' })}
+          subtitle={t('admin.communications_messengers.subtitle', {
+            defaultValue: 'Compact setup by channel name: Telegram, WhatsApp, Viber, Facebook Messenger, Instagram.',
+          })}
+          actions={
+            <Link to={CRM_APP_PATHS.messages} className="btn-secondary">
+              {t('admin.communications_messengers.actions.open_messages', { defaultValue: 'Open messages' })}
+            </Link>
+          }
+        />
+      )}
 
-      {loading && <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
+      {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
       {error && (
         <ErrorRecoveryBanner
           info={error}
@@ -678,7 +1274,7 @@ export default function CommunicationsMessengerSettingsPage() {
             setError(null)
             void loadAll()
           }}
-          retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          retryLabel={t('common.actions.refresh')}
           {...friendlyErrorBannerSecondary(
             error,
             CRM_APP_PATHS.settingsCommunications,
@@ -689,51 +1285,91 @@ export default function CommunicationsMessengerSettingsPage() {
       )}
       {saveNotice && <div className="alert-success">{saveNotice}</div>}
 
+      {lockedChannel ? (
+        <MessengerHubWizardPanel
+          channel={lockedChannel}
+          t={t}
+          hubIntegrationStatus={hubIntegrationStatus}
+          wizardStepHighlight={wizardStepHighlight}
+          hubStatusHeadline={hubStatusHeadline}
+          hubCanSubmitCredentials={hubCanSubmitCredentials}
+          primaryAccount={primaryAccount}
+          selectedAccounts={selectedAccounts}
+          telegramForm={telegramForm}
+          setTelegramForm={setTelegramForm}
+          whatsappForm={whatsappForm}
+          setWhatsappForm={setWhatsappForm}
+          viberForm={viberForm}
+          setViberForm={setViberForm}
+          messengerForm={messengerForm}
+          setMessengerForm={setMessengerForm}
+          instagramForm={instagramForm}
+          setInstagramForm={setInstagramForm}
+          connectionBusyKey={connectionBusyKey}
+          runConnectionAction={runConnectionAction}
+          handleHubConnect={handleHubConnect}
+          enableMessengerIntegration={enableMessengerIntegration}
+          disableMessengerIntegration={disableMessengerIntegration}
+          copyText={copyText}
+          runAccountTest={runAccountTest}
+          runTelegramWebhookSet={runTelegramWebhookSet}
+          runTelegramWebhookDelete={runTelegramWebhookDelete}
+          showMetaChecklist={showMetaChecklist}
+        />
+      ) : (
       <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <div className="mb-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          {channelSummaries.map((item) => (
-            <button
-              key={item.channel}
-              type="button"
-              onClick={() => setSelectedChannel(item.channel)}
-              className={clsx(
-                'rounded-lg border px-3 py-2 text-left transition focus:ring-4 focus:ring-brand-100',
-                selectedChannel === item.channel ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50',
-              )}
-            >
-              <div className="text-sm font-semibold text-slate-900">
-                {t(CHANNEL_META[item.channel].titleKey as any, { defaultValue: CHANNEL_META[item.channel].titleDefault })}
-              </div>
-              <div className="mt-1 text-xs text-slate-500">
-                {t('admin.communications_messengers.channel_summary', {
-                  defaultValue: '{total} account(s) · {active} active · {connected} connected',
-                  values: { total: item.total, active: item.active, connected: item.connected },
-                })}
-              </div>
-              <div className="mt-1 text-[11px] text-slate-600">
-                {t('admin.communications_messengers.channel_state', {
-                  defaultValue: 'channel: {state}',
-                  values: {
-                    state: item.enabled
-                      ? t('admin.communications_messengers.states.enabled', { defaultValue: 'enabled' })
-                      : t('admin.communications_messengers.states.disabled', { defaultValue: 'disabled' }),
-                  },
-                })}
-              </div>
-            </button>
-          ))}
-        </div>
+        {!lockedChannel ? (
+          <div className="mb-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+            {channelSummaries.map((item) => (
+              <button
+                key={item.channel}
+                type="button"
+                onClick={() => setSelectedChannel(item.channel)}
+                className={clsx(
+                  'rounded-lg border px-3 py-2 text-left transition focus:ring-4 focus:ring-brand-100',
+                  selectedChannel === item.channel ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50',
+                )}
+              >
+                <div className="text-sm font-semibold text-slate-900">
+                  {t(CHANNEL_META[item.channel].titleKey as any, { defaultValue: CHANNEL_META[item.channel].titleDefault })}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">
+                  {t('admin.communications_messengers.channel_summary', {
+                    defaultValue: '{total} account(s) · {active} active · {connected} connected',
+                    values: { total: item.total, active: item.active, connected: item.connected },
+                  })}
+                </div>
+                <div className="mt-1 text-[11px] text-slate-600">
+                  {t('admin.communications_messengers.channel_state', {
+                    defaultValue: 'channel: {state}',
+                    values: {
+                      state: item.enabled
+                        ? t('admin.communications_messengers.states.enabled', { defaultValue: 'enabled' })
+                        : t('admin.communications_messengers.states.disabled', { defaultValue: 'disabled' }),
+                    },
+                  })}
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         <div className="rounded border border-slate-200 p-3">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h2 className="text-base font-semibold text-slate-900">
-                {t(CHANNEL_META[selectedChannel].titleKey as any, { defaultValue: CHANNEL_META[selectedChannel].titleDefault })}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {t(CHANNEL_META[selectedChannel].subtitleKey as any, { defaultValue: CHANNEL_META[selectedChannel].subtitleDefault })}
-              </p>
-            </div>
+            {!lockedChannel ? (
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">
+                  {t(CHANNEL_META[selectedChannel].titleKey as any, { defaultValue: CHANNEL_META[selectedChannel].titleDefault })}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {t(CHANNEL_META[selectedChannel].subtitleKey as any, { defaultValue: CHANNEL_META[selectedChannel].subtitleDefault })}
+                </p>
+              </div>
+            ) : (
+              <div className="text-xs font-medium text-slate-600">
+                {t('admin.integrations_hub.messenger_channel_controls_kicker', { defaultValue: 'Connection & channel switches' })}
+              </div>
+            )}
             <div className="grid gap-1 text-xs">
               <label className="flex items-center gap-2">
                 <input
@@ -858,7 +1494,7 @@ export default function CommunicationsMessengerSettingsPage() {
                         disabled={connectionBusyKey !== null}
                         className="btn-secondary btn-xs disabled:opacity-60"
                       >
-                        {connectionBusyKey === `test-${key}` ? t('common.loading', { defaultValue: 'Loading...' }) : t('admin.communications_messengers.account.test', { defaultValue: 'Test' })}
+                        {connectionBusyKey === `test-${key}` ? t('common.loading') : t('admin.communications_messengers.account.test', { defaultValue: 'Test' })}
                       </button>
                       {selectedChannel === 'telegram' && (
                         <>
@@ -868,7 +1504,7 @@ export default function CommunicationsMessengerSettingsPage() {
                             disabled={connectionBusyKey !== null}
                             className="btn-secondary btn-xs disabled:opacity-60"
                           >
-                            {connectionBusyKey === `tg-set-${key}` ? t('common.loading', { defaultValue: 'Loading...' }) : t('admin.communications_messengers.account.set_webhook', { defaultValue: 'Set webhook' })}
+                            {connectionBusyKey === `tg-set-${key}` ? t('common.loading') : t('admin.communications_messengers.account.set_webhook', { defaultValue: 'Set webhook' })}
                           </button>
                           <button
                             type="button"
@@ -876,7 +1512,7 @@ export default function CommunicationsMessengerSettingsPage() {
                             disabled={connectionBusyKey !== null}
                             className="btn-secondary btn-xs disabled:opacity-60"
                           >
-                            {connectionBusyKey === `tg-del-${key}` ? t('common.loading', { defaultValue: 'Loading...' }) : t('admin.communications_messengers.account.delete_webhook', { defaultValue: 'Delete webhook' })}
+                            {connectionBusyKey === `tg-del-${key}` ? t('common.loading') : t('admin.communications_messengers.account.delete_webhook', { defaultValue: 'Delete webhook' })}
                           </button>
                         </>
                       )}
@@ -939,11 +1575,26 @@ export default function CommunicationsMessengerSettingsPage() {
           )}
         </div>
       </section>
+      )}
 
-      <details className="alert-info p-4" open>
-        <summary className="cursor-pointer text-sm font-semibold">
-          {t('admin.communications_messengers.templates.how_used', { defaultValue: 'How templates are used' })}
-        </summary>
+      {lockedChannel ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700">
+          <p>
+            {t('admin.integrations_hub.messenger_templates_relocated', {
+              defaultValue:
+                'Message templates, command templates, and command audit are shared across all messenger channels. Open the combined messengers screen to manage them.',
+            })}
+          </p>
+          <Link to={CRM_APP_PATHS.settingsCommunicationsMessengers} className="mt-2 inline-flex font-medium text-brand-700 hover:underline">
+            {t('admin.communications_messengers.actions.all_messengers', { defaultValue: 'All messengers & shared templates' })}
+          </Link>
+        </div>
+      ) : (
+        <>
+          <details className="alert-info p-4" open>
+            <summary className="cursor-pointer text-sm font-semibold">
+              {t('admin.communications_messengers.templates.how_used', { defaultValue: 'How templates are used' })}
+            </summary>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">
           <li>
             {t('admin.communications_messengers.templates.how_used_1', {
@@ -1209,6 +1860,8 @@ export default function CommunicationsMessengerSettingsPage() {
           </div>
         </div>
       </details>
+        </>
+      )}
     </div>
   )
 }

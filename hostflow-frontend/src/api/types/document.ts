@@ -20,8 +20,16 @@ export type DocumentProcessType =
   | 'work_permit'
   | 'visa'
   | 'residence_card'
+  | 'residence_permit'
   | 'tachograph_card'
   | 'driver_license_exchange'
+  | 'driver_license'
+  | 'eu_driver_license'
+  | 'adr'
+  | 'code95'
+  | 'qualification_code95'
+  | 'driver_certificate'
+  | 'decision'
   | 'swiadectwo_kierowcy'
   | 'other';
 

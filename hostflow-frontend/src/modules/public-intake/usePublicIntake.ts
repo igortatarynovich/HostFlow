@@ -46,6 +46,7 @@ const EMPTY_DATA: IntakeData = {
 
 function cloneData(input?: IntakeData | null): IntakeData {
   if (!input) return { ...EMPTY_DATA, experience: { ...EMPTY_DATA.experience }, employments: [] }
+  const lf = input.lead_form
   return {
     contacts: { ...(input.contacts ?? {}) },
     personal: {
@@ -65,6 +66,8 @@ function cloneData(input?: IntakeData | null): IntakeData {
       terms_acceptance: Boolean(input.agreements?.terms_acceptance),
       cookies_accepted: Boolean(input.agreements?.cookies_accepted),
     },
+    application_kind: input.application_kind ?? null,
+    lead_form: lf && typeof lf === 'object' ? { ...(lf as Record<string, unknown>) } : lf ?? null,
   }
 }
 

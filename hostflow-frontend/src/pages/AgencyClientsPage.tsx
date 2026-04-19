@@ -17,7 +17,7 @@ import { useToast } from '../components/Toast'
 import EmptyStatePanel from '../components/EmptyStatePanel'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 export default function AgencyClientsPage() {
   const { t } = useI18n()
   const { entitySingular, entityPlural, openEntityLabel } = useBusinessTerminology()
@@ -56,7 +56,7 @@ export default function AgencyClientsPage() {
   if (!tenantId) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-6">
-        <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</p>
+        <p className="text-sm text-slate-500">{t('common.loading')}</p>
       </div>
     )
   }
@@ -88,6 +88,8 @@ export default function AgencyClientsPage() {
           })}
         </button>
       </div>
+
+      <PageBreadcrumb className="max-w-5xl" />
 
       {loading ? (
         <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Загрузка...' })}</p>
@@ -208,7 +210,10 @@ function ClientRow({
   onPortalError: (msg: string) => void
 }) {
   const { t } = useI18n()
-  const name = link.company_name ?? (link.features_json as Record<string, unknown>)?.client_display_name ?? link.id
+  const rawName = link.company_name ?? (link.features_json as Record<string, unknown>)?.client_display_name ?? link.id
+  // `features_json` is typed as `unknown` so the optional chain widens to `unknown`;
+  // coerce to string before rendering so JSX doesn't see `{}` (TS2322 ReactNode).
+  const name = typeof rawName === 'string' ? rawName : String(rawName ?? '')
   const portalUrl = link.portal_token
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/client-portal?token=${link.portal_token}`
     : ''

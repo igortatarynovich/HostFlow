@@ -4,7 +4,7 @@ import path from 'node:path'
 const root = process.cwd()
 const srcDir = path.join(root, 'src')
 
-const IGNORE_DIRS = new Set(['i18n', 'dist', 'dist.bak', 'node_modules'])
+const IGNORE_DIRS = new Set(['i18n', 'dist', 'node_modules'])
 const IGNORE_FILES = [/\.test\./, /\.spec\./, /\.d\.ts$/]
 
 function walk(dir, out = []) {

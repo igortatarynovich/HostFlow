@@ -6,6 +6,8 @@ export type UUID = string;
 
 /** Текущий пользователь */
 export interface WhoAmI {
+  /** Stable user id (string UUID); some legacy consumers also read it via `sub`. */
+  id?: string;
   email: string;
   role: 'admin' | 'manager' | 'user' | string;
   tenant_id: string;

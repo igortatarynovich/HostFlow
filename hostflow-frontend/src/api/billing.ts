@@ -1,5 +1,15 @@
 import http from './http'
 
+export type BillingGate = {
+  side_effects_blocked: boolean
+  block_reason: 'past_due' | 'trial_expired' | null
+  trial_active: boolean
+  trial_grace_active: boolean
+  trial_hours_remaining: number | null
+  trial_urgent: boolean
+  side_effect_grace_hours_remaining: number | null
+}
+
 export type BillingSubscription = {
   provider: 'mock' | 'stripe'
   status: string
@@ -19,6 +29,7 @@ export type BillingSubscription = {
   cancel_at_period_end: boolean
   canceled_at: string | null
   updated_at: string | null
+  gate?: BillingGate
 }
 
 export type BillingCheckoutSession = {

@@ -14,6 +14,7 @@ import { listCompanies } from '../api/client'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useBusinessTerminology } from '../hooks/useBusinessTerminology'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 
@@ -165,7 +166,7 @@ export default function ClientLinkDetailPage() {
       loadError ??
       ({
         title: notFoundTitle,
-        hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+        hint: t('app.common.retry_hint'),
       } satisfies FriendlyErrorInfo)
     return (
       <div className="space-y-4">
@@ -189,7 +190,9 @@ export default function ClientLinkDetailPage() {
     )
   }
 
-  const name = link.company_name ?? (link.features_json as Record<string, unknown>)?.client_display_name ?? link.id
+  const rawName = link.company_name ?? (link.features_json as Record<string, unknown>)?.client_display_name ?? link.id
+  // `features_json` is `unknown` so the optional chain widens; coerce to string for JSX.
+  const name = typeof rawName === 'string' ? rawName : String(rawName ?? '')
   const portalUrl = link.portal_token
     ? `${typeof window !== 'undefined' ? window.location.origin : ''}/client-portal?token=${link.portal_token}`
     : ''
@@ -201,6 +204,8 @@ export default function ClientLinkDetailPage() {
           ← {backToListLabel}
         </Link>
       </div>
+
+      <PageBreadcrumb className="max-w-4xl" />
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between">

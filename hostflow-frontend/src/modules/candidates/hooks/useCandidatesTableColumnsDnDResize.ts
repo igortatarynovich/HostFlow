@@ -25,6 +25,7 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   polandBasis: 220,
   trailerTypes: 160,
   reasons: 200,
+  intakeKind: 130,
   is_favorite: 80,
   docsStatus: 140,
   docsOrdered: 140,
@@ -90,15 +91,20 @@ export function useCandidatesTableColumnsDnDResize({
   const reorderColumns = useCallback((fromKey: string, toKey: string) => {
     if (!fromKey || !toKey || fromKey === toKey) return
     setColumnOrder((prev) => {
-      const fromIdx = prev.indexOf(fromKey)
-      const toIdx = prev.indexOf(toKey)
+      // Совпадает с orderedVisibleColumns: видимые ключи, которых ещё нет в сохранённом порядке
+      const missing = Object.keys(visibleCols).filter(
+        (key) => visibleCols[key] && !prev.includes(key),
+      )
+      const order = missing.length ? [...prev, ...missing] : [...prev]
+      const fromIdx = order.indexOf(fromKey)
+      const toIdx = order.indexOf(toKey)
       if (fromIdx < 0 || toIdx < 0) return prev
-      const next = [...prev]
+      const next = [...order]
       const [moved] = next.splice(fromIdx, 1)
       next.splice(toIdx, 0, moved)
       return next
     })
-  }, [])
+  }, [visibleCols])
 
   const [draggingColumn, setDraggingColumn] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null)
@@ -149,7 +155,52 @@ export function useCandidatesTableColumnsDnDResize({
     [columnWidths],
   )
 
+  const applyPersistedLayout = useCallback(
+    (payload: { order?: string[] | null; widths?: Record<string, number> | null }) => {
+      if (payload.order && Array.isArray(payload.order) && payload.order.length > 0) {
+        setColumnOrder([...payload.order])
+      }
+      if (payload.widths && typeof payload.widths === 'object' && !Array.isArray(payload.widths)) {
+        setColumnWidths({ ...DEFAULT_COLUMN_WIDTHS, ...payload.widths })
+      }
+    },
+    [],
+  )
+
+  const resetColumnLayout = useCallback(() => {
+    setColumnOrder([...DEFAULT_COLUMN_ORDER])
+    setColumnWidths({ ...DEFAULT_COLUMN_WIDTHS })
+    try {
+      localStorage.removeItem(columnOrderStorageKey)
+      localStorage.removeItem(columnWidthsStorageKey)
+    } catch {
+      /* ignore */
+    }
+  }, [columnOrderStorageKey, columnWidthsStorageKey])
+
+  const moveColumnRelative = useCallback(
+    (key: string, delta: number) => {
+      if (delta !== 1 && delta !== -1) return
+      setColumnOrder((prev) => {
+        const missing = Object.keys(visibleCols).filter(
+          (k) => visibleCols[k] && !prev.includes(k),
+        )
+        const order = missing.length ? [...prev, ...missing] : [...prev]
+        const idx = order.indexOf(key)
+        if (idx < 0) return prev
+        const ni = idx + delta
+        if (ni < 0 || ni >= order.length) return prev
+        const next = [...order]
+        const [m] = next.splice(idx, 1)
+        next.splice(ni, 0, m)
+        return next
+      })
+    },
+    [visibleCols],
+  )
+
   return {
+    columnOrder,
     columnWidths,
     orderedVisibleColumns,
     getColumnWidth,
@@ -159,6 +210,9 @@ export function useCandidatesTableColumnsDnDResize({
     setDragOverColumn,
     reorderColumns,
     handleResizeStart: handleResizeStartState,
+    applyPersistedLayout,
+    resetColumnLayout,
+    moveColumnRelative,
   }
 }
 

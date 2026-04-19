@@ -18,6 +18,8 @@ export interface RepresentativeForm {
   full_name: string;
   role?: string;
   id_number?: string;
+  email?: string;
+  phone?: string;
 }
 
 export interface ContactForm {
@@ -35,18 +37,28 @@ export interface BankAccountForm {
   swift?: string;
   currency?: string;
   is_default?: boolean;
+  // Extended billing-detail fields used by the Companies page UI.
+  iban?: string;
+  swift_bic?: string;
+  country?: string;
+  label?: string;
+  is_primary?: boolean;
 }
 
 export interface PortalUserForm {
   email: string;
   role?: string;
   permissions?: string;
+  full_name?: string;
 }
 
 export interface WebhookForm {
-  url: string;
+  url?: string;
   events?: string[];
   secret?: string;
+  // Legacy single-event/target shape still used by the integrations form.
+  event?: string;
+  target?: string;
 }
 
 export interface ContractForm {
@@ -56,6 +68,12 @@ export interface ContractForm {
   amount?: string;
   currency?: string;
   status?: string;
+  // Extended contract-form fields used by the Companies page UI.
+  title?: string;
+  code?: string;
+  starts_at?: string;
+  ends_at?: string;
+  reference?: string;
 }
 
 export interface OrderFormFieldSchema {

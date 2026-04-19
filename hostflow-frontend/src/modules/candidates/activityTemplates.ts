@@ -16,10 +16,3 @@ export const ACTIVITY_TEMPLATES: ActivityTemplate[] = [
   { key: 'follow_up', type: 'follow_up', defaultTitle: 'Follow up', defaultOffsetMinutes: 60 },
 ]
 
-export function getTemplateByKey(key: string): ActivityTemplate | undefined {
-  return ACTIVITY_TEMPLATES.find((t) => t.key === key)
-}
-
-export function getTemplateByType(type: string): ActivityTemplate | undefined {
-  return ACTIVITY_TEMPLATES.find((t) => t.type === type)
-}

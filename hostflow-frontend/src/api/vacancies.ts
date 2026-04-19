@@ -68,6 +68,8 @@ export interface ListVacanciesParams {
   offset?: number;
   order_by?: string;
   desc?: string | boolean;
+  /** Server-side filter: include archived vacancies (default false). */
+  is_archived?: boolean;
 }
 
 export async function listVacancies(params?: ListVacanciesParams): Promise<Vacancy[]> {

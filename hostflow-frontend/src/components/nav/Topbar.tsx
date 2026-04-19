@@ -1,23 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   IconAlertTriangle,
   IconBell,
   IconChecklist,
+  IconHome,
   IconLayoutSidebarLeftExpand,
   IconLogout,
   IconMail,
   IconMenu2,
   IconMessageCircle,
-  IconPlus,
   IconSettings,
   IconUserCircle,
-  IconX,
 } from '@tabler/icons-react'
 import type { TenantSummary, WhoAmI } from '../../api/types'
 import { listNotifications, markNotificationsRead, reconcileNotifications } from '../../api/client'
 import type { NotificationItem, NotificationListResponse } from '../../api/types'
 import { getNotificationAttentionTier, getNotificationUosGroup } from '../../utils/notificationUos'
+import {
+  notificationThreadChannel,
+  notificationThreadId,
+  resolveNotificationOpenPath,
+} from '../../utils/resolveNotificationOpenPath'
 import {
   listCommunicationThreads,
   markCommunicationThreadRead,
@@ -33,6 +37,7 @@ import { useAuth } from '../../store/useAuth'
 import { usePendingHandoffsCount } from '../../hooks/usePendingHandoffsCount'
 import { useBusinessTerminology } from '../../hooks/useBusinessTerminology'
 import { communicationsThreadPath, CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { Modal } from '../Modal'
 import { buildInboxThreadPath } from '../../utils/inboxDeepLinks'
 import { isEmailThread, threadRecencyMs, threadTitle } from '../communications/InboxUnifiedThreadList'
 import { formatDistanceToNow } from 'date-fns'
@@ -85,76 +90,6 @@ function isBellAttentionNotification(item: NotificationItem): boolean {
 }
 
 /** Bell count: urgent notifications + handoffs (max of API pending vs unread handoff notifs — no double count). */
-function notificationThreadId(item: NotificationItem): string {
-  const p = item.payload as Record<string, unknown> | undefined
-  const raw = p?.thread_id
-  if (typeof raw === 'string') return raw.trim()
-  if (raw != null) {
-    const s = String(raw).trim()
-    return s
-  }
-  return ''
-}
-
-function notificationThreadChannel(item: NotificationItem): 'messages' | 'email' | undefined {
-  const p = item.payload as Record<string, unknown> | undefined
-  const c = String(p?.channel || '').trim().toLowerCase()
-  if (c === 'email') return 'email'
-  if (c === 'messages' || c === 'message') return 'messages'
-  return undefined
-}
-
-/** Target route for a notification row; `null` means hide "Open" (nothing real to open). */
-function resolveNotificationOpenPath(
-  item: NotificationItem,
-  opts: { canInboxDeepLink: boolean },
-): string | null {
-  const { canInboxDeepLink } = opts
-  const eventType = String(item.event_type || '').toLowerCase()
-  const uos = getNotificationUosGroup(item)
-  const payload = (item.payload || {}) as Record<string, any>
-  const threadId = notificationThreadId(item)
-  const threadCh = notificationThreadChannel(item)
-
-  if (eventType === 'handoff_requested' || eventType === 'handoff_accepted') {
-    return CRM_APP_PATHS.procesowani
-  }
-
-  if (
-    uos === 'sla' ||
-    eventType === 'communications_sla_overdue' ||
-    eventType === 'communications_thread_escalated'
-  ) {
-    if (threadId) {
-      if (canInboxDeepLink) {
-        return buildInboxThreadPath(threadId, threadCh ? { channel: threadCh } : undefined)
-      }
-      return communicationsThreadPath(threadId)
-    }
-    return CRM_APP_PATHS.slaIncidents
-  }
-
-  if (uos === 'messages') {
-    if (threadId) {
-      if (canInboxDeepLink) {
-        return buildInboxThreadPath(threadId, threadCh ? { channel: threadCh } : undefined)
-      }
-      return communicationsThreadPath(threadId)
-    }
-    if (canInboxDeepLink) return CRM_APP_PATHS.inboxMessagesScoped
-    return CRM_APP_PATHS.inbox
-  }
-
-  if (uos === 'tasks') {
-    const reminderId = payload?.reminder_id ?? payload?.task_id
-    if (reminderId) return `${CRM_APP_PATHS.tasks}?focus=${encodeURIComponent(String(reminderId))}`
-    return CRM_APP_PATHS.tasks
-  }
-
-  const link = payload?.href ?? payload?.url ?? payload?.deep_link
-  if (typeof link === 'string' && link.startsWith('/')) return link
-  return null
-}
 
 function resolveThreadOpenPath(th: CommunicationThread, canInboxDeepLink: boolean): string | null {
   const id = String(th.id || '').trim()
@@ -210,7 +145,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const localeMap = { ru, en: enUS, pl }
 
   const [menuOpen, setMenuOpen] = useState(false)
-  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchLoading, setSearchLoading] = useState(false)
@@ -221,7 +155,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   const shownNotificationIdsRef = useRef<Set<string>>(new Set())
   const lastUnreadNotificationsRef = useRef<NotificationItem[]>([])
   const menuRef = useRef<HTMLDivElement | null>(null)
-  const quickCreateRef = useRef<HTMLDivElement | null>(null)
   const pendingHandoffsCount = usePendingHandoffsCount()
   const pendingHandoffsRef = useRef(pendingHandoffsCount)
   pendingHandoffsRef.current = pendingHandoffsCount
@@ -234,6 +167,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     [canUseCommunicationsFeature],
   )
   const [commPollKey, setCommPollKey] = useState(0)
+  const [reminderDuePopup, setReminderDuePopup] = useState<NotificationItem | null>(null)
 
   const notificationRank = (item: NotificationItem): number => {
     if (item.is_read) return 0
@@ -255,6 +189,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     else if (severity === 'low') score += 5
     if (group === 'tasks') score += 15
     if (group === 'messages') score += 10
+    if (eventType === 'intake_client_lead_skipped_no_company') score += 50
     return score
   }
 
@@ -299,6 +234,12 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     if (eventType === 'communications_thread_escalated') {
       return t('app.notifications.communications_thread_escalated_title')
     }
+    if (eventType === 'lead_public_intake_client') {
+      return t('app.notifications.lead_public_intake_client_title')
+    }
+    if (eventType === 'intake_client_lead_skipped_no_company') {
+      return t('app.notifications.intake_client_lead_skipped_no_company_title')
+    }
     if (typeof item.payload?.title === 'string' && item.payload.title.trim()) {
       return maybeTranslateKey(item.payload.title)
     }
@@ -311,6 +252,17 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
   const getNotificationDescription = (item: NotificationItem): string => {
     const payload = (item.payload || {}) as Record<string, any>
+    const eventType = String(item.event_type || '').trim().toLowerCase()
+    if (eventType === 'lead_public_intake_client') {
+      return t('app.notifications.lead_public_intake_client_desc', {
+        values: { name: String(payload.candidate_name || '').trim() || '—' },
+      })
+    }
+    if (eventType === 'intake_client_lead_skipped_no_company') {
+      return t('app.notifications.intake_client_lead_skipped_no_company_desc', {
+        values: { name: String(payload.candidate_name || '').trim() || '—' },
+      })
+    }
     const raw = String(payload.description || '').trim()
     if (!raw) return ''
     if (/^(app|common)\./.test(raw)) {
@@ -409,12 +361,19 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
             if (shownNotificationIdsRef.current.has(String(item.id))) return false
             return ['reminder_due', 'reminder_overdue', 'handoff_requested'].includes(String(item.event_type || '').toLowerCase())
           })
-          toastCandidates.slice(0, 1).forEach((evt) => {
-            shownNotificationIdsRef.current.add(String(evt.id))
-            const title = getNotificationTitle(evt)
-            const desc = getNotificationDescription(evt) || String(evt.payload?.entity_type || evt.event_type || '')
-            notify({ title, description: desc, variant: evt.event_type === 'reminder_overdue' ? 'error' : 'info' })
-          })
+          const reminderToast = toastCandidates.find((i) =>
+            ['reminder_due', 'reminder_overdue'].includes(String(i.event_type || '').toLowerCase()),
+          )
+          const handoffToast = toastCandidates.find((i) => String(i.event_type || '').toLowerCase() === 'handoff_requested')
+          if (reminderToast) {
+            shownNotificationIdsRef.current.add(String(reminderToast.id))
+            setReminderDuePopup((prev) => prev ?? reminderToast)
+          } else if (handoffToast) {
+            shownNotificationIdsRef.current.add(String(handoffToast.id))
+            const title = getNotificationTitle(handoffToast)
+            const desc = getNotificationDescription(handoffToast) || String(handoffToast.payload?.entity_type || handoffToast.event_type || '')
+            notify({ title, description: desc, variant: 'info' })
+          }
         }
       } catch (err) {
         if (!cancelled) console.warn('[Topbar] reminders count failed', err)
@@ -451,36 +410,15 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   }, [menuOpen])
 
   useEffect(() => {
-    const handler = (event: MouseEvent) => {
-      if (!quickCreateOpen) return
-      if (quickCreateRef.current && !quickCreateRef.current.contains(event.target as Node)) {
-        setQuickCreateOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [quickCreateOpen])
-
-  useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        setQuickCreateOpen(false)
         setSearchOpen(true)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
-
-  useEffect(() => {
-    if (!quickCreateOpen) return
-    const onEsc = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setQuickCreateOpen(false)
-    }
-    window.addEventListener('keydown', onEsc)
-    return () => window.removeEventListener('keydown', onEsc)
-  }, [quickCreateOpen])
 
   const quickTargets = useMemo(() => {
     type Target = { key: string; labelKey: string; path: string }
@@ -520,33 +458,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
     }
     return items
   }, [can, canUseCommunicationsFeature, isClientTenant])
-
-  const quickCreateItems = useMemo(() => {
-    type Item = { key: string; to: string; labelKey: string }
-    const items: Item[] = []
-    if (can('candidates.manage')) {
-      items.push({ key: 'candidate', to: CRM_APP_PATHS.candidateNew, labelKey: 'app.topbar.quick_create.candidate' })
-    }
-    if (can('companies.manage')) {
-      items.push({ key: 'client', to: CRM_APP_PATHS.clientNew, labelKey: 'app.topbar.quick_create.client' })
-    }
-    if (can('vacancies.view')) {
-      items.push({ key: 'vacancy', to: CRM_APP_PATHS.vacancyNew, labelKey: 'app.topbar.quick_create.vacancy' })
-    }
-    if (can('services.view') && can('services.orders.manage')) {
-      items.push({ key: 'order', to: CRM_APP_PATHS.orders, labelKey: 'app.topbar.quick_create.order' })
-    }
-    if (can('notifications.view')) {
-      items.push({ key: 'task', to: CRM_APP_PATHS.tasks, labelKey: 'app.topbar.quick_create.task' })
-    }
-    if (can('notifications.view') && canUseCommunicationsFeature('calendar')) {
-      items.push({ key: 'meeting', to: CRM_APP_PATHS.calendar, labelKey: 'app.topbar.quick_create.meeting' })
-    }
-    if (can('services.view')) {
-      items.push({ key: 'invoice', to: CRM_APP_PATHS.invoiceNew, labelKey: 'app.topbar.quick_create.invoice' })
-    }
-    return items
-  }, [can, canUseCommunicationsFeature])
 
   const loadNotificationPanel = useCallback(async () => {
     if (!can('notifications.view')) return
@@ -743,55 +654,11 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               'hidden items-center gap-2 rounded-md border border-slate-200 px-4 text-sm text-slate-600 transition hover:bg-slate-50 lg:inline-flex',
               compact ? 'py-1.5' : 'py-2',
             ].join(' ')}
-            onClick={() => {
-              setQuickCreateOpen(false)
-              setSearchOpen(true)
-            }}
+            onClick={() => setSearchOpen(true)}
           >
             <span className="text-slate-400">{SEARCH_SHORTCUT_HINT}</span>
             <span>{t('app.topbar.search.open')}</span>
           </button>
-
-          {quickCreateItems.length > 0 ? (
-            <div className="relative" ref={quickCreateRef}>
-              <button
-                type="button"
-                className={[
-                  'inline-flex items-center gap-1.5 rounded-md border border-brand-200 bg-brand-50 px-2.5 text-sm font-semibold text-brand-900 transition hover:bg-brand-100 sm:gap-2 sm:px-3',
-                  compact ? 'py-1.5' : 'py-2',
-                ].join(' ')}
-                aria-haspopup="menu"
-                aria-expanded={quickCreateOpen}
-                title={t('app.topbar.quick_create.button')}
-                onClick={() => setQuickCreateOpen((v) => !v)}
-              >
-                <IconPlus size={18} stroke={1.9} />
-                <span className="hidden sm:inline">{t('app.topbar.quick_create.button')}</span>
-              </button>
-              {quickCreateOpen ? (
-                <div
-                  className="absolute right-0 z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-2xl"
-                  role="menu"
-                  aria-label={t('app.topbar.quick_create.menu_label')}
-                >
-                  {quickCreateItems.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      role="menuitem"
-                      className="flex w-full px-4 py-2.5 text-left text-sm text-slate-800 transition hover:bg-slate-50"
-                      onClick={() => {
-                        setQuickCreateOpen(false)
-                        navigate(item.to)
-                      }}
-                    >
-                      {t(item.labelKey as any)}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
 
           {can('notifications.view') && (
             <div className="relative" ref={notifRef}>
@@ -983,8 +850,6 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
             </div>
           )}
 
-          <CandidatesMenuButton t={t} />
-
           <div className="relative" ref={menuRef}>
             <button
               type="button"
@@ -1000,7 +865,7 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
               <div className="absolute right-0 z-[100] mt-2 max-h-[min(80vh,28rem)] w-[min(96vw,320px)] overflow-y-auto rounded-xl border border-slate-200 bg-white py-2 text-sm shadow-2xl">
                 <div className="border-b border-slate-100 px-4 py-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    {t('app.shell.account.my_account')}
+                    {t('app.shell.sidebar.section_personal')}
                   </p>
                   <button
                     type="button"
@@ -1015,18 +880,40 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
                   </button>
                 </div>
 
-                {can('settings.view') && (
+                {can('companies.view') && (
                   <div className="border-b border-slate-100 px-4 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      {t('app.shell.sidebar.section_organization')}
+                    </p>
                     <button
                       type="button"
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
+                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        navigate(CRM_APP_PATHS.myCompany)
+                      }}
+                    >
+                      <IconHome size={16} stroke={1.8} />
+                      <span>{t('app.nav.items.my_company')}</span>
+                    </button>
+                  </div>
+                )}
+
+                {can('settings.view') && (
+                  <div className="border-b border-slate-100 px-4 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                      {t('app.shell.sidebar.section_settings')}
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-1 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-slate-700 transition hover:bg-slate-50"
                       onClick={() => {
                         setMenuOpen(false)
                         navigate(CRM_APP_PATHS.settings)
                       }}
                     >
                       <IconSettings size={16} stroke={1.8} />
-                      <span>{t('app.topbar.user_menu.system_settings', { defaultValue: 'System settings' })}</span>
+                      <span>{t('app.nav.items.settings')}</span>
                     </button>
                   </div>
                 )}
@@ -1050,6 +937,96 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
 
         </div>
       </header>
+
+      <Modal
+        open={Boolean(reminderDuePopup)}
+        onClose={() => setReminderDuePopup(null)}
+        title={reminderDuePopup ? getNotificationTitle(reminderDuePopup) : undefined}
+        size="md"
+        surfaceClassName={
+          String(reminderDuePopup?.event_type || '').toLowerCase() === 'reminder_overdue'
+            ? 'border-rose-200 ring-2 ring-rose-300/50'
+            : 'border-amber-100 ring-2 ring-amber-200/40'
+        }
+      >
+        {reminderDuePopup ? (
+          <div className="space-y-4">
+            {(() => {
+              const desc = getNotificationDescription(reminderDuePopup)
+              const dueRaw = (reminderDuePopup.payload as Record<string, unknown> | undefined)?.due_at
+              const dueStr = dueRaw != null && String(dueRaw).trim() ? String(dueRaw) : ''
+              let dueLabel = ''
+              if (dueStr) {
+                try {
+                  dueLabel = new Intl.DateTimeFormat(
+                    locale === 'ru' ? 'ru-RU' : locale === 'pl' ? 'pl-PL' : 'en-US',
+                    { dateStyle: 'medium', timeStyle: 'short' },
+                  ).format(new Date(dueStr))
+                } catch {
+                  dueLabel = dueStr
+                }
+              }
+              const payload = (reminderDuePopup.payload || {}) as Record<string, unknown>
+              const entityType = String(payload.entity_type || reminderDuePopup.entity_type || '').toLowerCase()
+              const entityId = String(payload.entity_id || reminderDuePopup.entity_id || '').trim()
+              const isCandidate = entityType === 'candidate' && Boolean(entityId)
+
+              const ackAndClear = async () => {
+                const id = String(reminderDuePopup.id || '')
+                setReminderDuePopup(null)
+                if (id) {
+                  try {
+                    await markNotificationsRead({ ids: [id] })
+                  } catch {
+                    /* ignore */
+                  }
+                }
+              }
+
+              return (
+                <>
+                  {desc ? <p className="text-sm text-slate-700">{desc}</p> : null}
+                  {dueLabel ? (
+                    <p className="text-sm text-slate-600">
+                      <span className="font-semibold text-slate-800">
+                        {t('app.notifications.reminder_popup.due_label', { defaultValue: 'Due' })}:
+                      </span>{' '}
+                      {dueLabel}
+                    </p>
+                  ) : null}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {isCandidate ? (
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => {
+                          void ackAndClear()
+                          navigate(`${CRM_APP_PATHS.candidates}/${encodeURIComponent(entityId)}`)
+                        }}
+                      >
+                        {t('app.notifications.reminder_popup.open_candidate', { defaultValue: 'Open candidate' })}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className={isCandidate ? 'btn-secondary' : 'btn-primary'}
+                      onClick={() => {
+                        void ackAndClear()
+                        navigate(CRM_APP_PATHS.remindersLegacy)
+                      }}
+                    >
+                      {t('app.notifications.reminder_popup.all_reminders', { defaultValue: 'All reminders' })}
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={() => setReminderDuePopup(null)}>
+                      {t('app.notifications.reminder_popup.later', { defaultValue: 'Later' })}
+                    </button>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        ) : null}
+      </Modal>
 
       {searchOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 p-4" role="dialog" aria-modal="true">
@@ -1140,67 +1117,3 @@ export function Topbar({ me, tenant, onLogout, onToggleSidebar, compact = false 
   )
 }
 
-// Кнопка меню кандидатов - использует события для связи со страницей кандидатов
-function CandidatesMenuButton({ t }: { t: (key: string) => string }) {
-  const location = useLocation()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  // Показываем кнопку только на главной странице кандидатов (не на /new или /:id)
-  const isCandidatesPage = location.pathname === CRM_APP_PATHS.candidates
-
-  useEffect(() => {
-    if (!isCandidatesPage) return
-
-    // Слушаем события от страницы кандидатов
-    const handleSidebarToggle = (e: CustomEvent<{ open: boolean }>) => {
-      setSidebarOpen(e.detail.open)
-    }
-
-    const handleSidebarState = (e: CustomEvent<{ open: boolean }>) => {
-      setSidebarOpen(e.detail.open)
-    }
-
-    window.addEventListener('candidates-sidebar-toggle', handleSidebarToggle as EventListener)
-    window.addEventListener('candidates-sidebar-state', handleSidebarState as EventListener)
-
-    // Запрашиваем текущее состояние только при монтировании
-    window.dispatchEvent(new CustomEvent('candidates-sidebar-request-state'))
-
-    return () => {
-      window.removeEventListener('candidates-sidebar-toggle', handleSidebarToggle as EventListener)
-      window.removeEventListener('candidates-sidebar-state', handleSidebarState as EventListener)
-    }
-  }, [isCandidatesPage])
-
-  const handleClick = () => {
-    if (!isCandidatesPage) return
-    const newState = !sidebarOpen
-    setSidebarOpen(newState)
-    // Отправляем событие на страницу кандидатов
-    window.dispatchEvent(new CustomEvent('candidates-sidebar-toggle', { detail: { open: newState } }))
-  }
-
-  // Показываем кнопку только на главной странице кандидатов
-  if (!isCandidatesPage) return null
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-50"
-      title={sidebarOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
-      aria-label={sidebarOpen ? t('app.candidates.menu.close') : t('app.candidates.menu.open')}
-    >
-      {sidebarOpen ? (
-        <>
-          <IconX size={18} stroke={2} />
-          <span className="hidden sm:inline">{t('app.candidates.menu.close')}</span>
-        </>
-      ) : (
-        <>
-          <IconLayoutSidebarLeftExpand size={18} stroke={2} />
-          <span className="hidden sm:inline">{t('app.candidates.menu.open')}</span>
-        </>
-      )}
-    </button>
-  )
-}

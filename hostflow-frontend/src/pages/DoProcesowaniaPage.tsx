@@ -21,7 +21,7 @@ import { toCSV, formatDateSafe } from '../modules/candidates/candidateUtils'
 import { canonicalStageKey, translateStageLabel } from '../utils/stageLabels'
 import { ColumnFilterMenu } from '../modules/candidates/components'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 type CompanyOption = { id: string; name: string }
 
 type TabKey = 'do-procesowania' | 'w-procesie' | 'historia-decyzji'
@@ -781,6 +781,10 @@ export default function DoProcesowaniaPage() {
     <div className="w-full max-w-none p-0" style={{ width: '100%', maxWidth: 'none' }}>
       <h1 className="text-2xl font-semibold text-slate-900">{t('app.handoff.do_procesowania')}</h1>
       <p className="mt-1 text-sm text-slate-500">{t('app.handoff.do_procesowania_subtitle')}</p>
+
+      <div className="mt-3 max-w-5xl">
+        <PageBreadcrumb />
+      </div>
 
       {isClientTenant && !selectedCompanyId ? (
         <div className="mt-4 space-y-3">

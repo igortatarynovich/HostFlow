@@ -143,6 +143,8 @@ export type { RulesetVersion, RulesetDiff, RulesetUsageResponse } from './rulese
 
 // Lead types
 export type {
+  LeadStage,
+  LeadStageContractV1,
   LeadStatus,
   Lead,
   LeadListResponse,

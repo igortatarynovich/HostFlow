@@ -6,6 +6,7 @@ import { createReminder } from '../api/client'
 import type { Document } from '../api/types'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -219,6 +220,10 @@ export default function DocumentsRegistryPage() {
           ))}
         </div>
       </section>
+
+      <div className="px-5 sm:px-6 lg:px-8">
+        <PageBreadcrumb />
+      </div>
 
       <section className="app-surface flex flex-col gap-6 border-x-0 border-t-0 border-b border-slate-200 px-5 py-6 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

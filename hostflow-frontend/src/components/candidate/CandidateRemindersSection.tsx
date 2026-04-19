@@ -211,7 +211,7 @@ function CandidateRemindersSection({
                 ? t('app.candidate_card.reminders.subtitle')
                 : reminders.length > 0
                   ? t('app.candidate_card.reminders.upcoming')
-                  : t('common.loading', { defaultValue: 'Loading...' })}
+                  : t('common.loading')}
             </p>
           )}
         </div>

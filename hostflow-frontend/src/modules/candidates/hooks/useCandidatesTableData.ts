@@ -6,6 +6,9 @@ import type { CandidatesListInsights, DateRangeFilter, ListResp, UICandidate, Ca
 
 function mapNoNextActionRowToUICandidate(row: Record<string, unknown>): UICandidate {
   const id = String(row.id ?? '')
+  const iak = row.intake_application_kind
+  const intake_application_kind: UICandidate['intake_application_kind'] =
+    iak === 'client' || iak === 'candidate' ? iak : null
   return {
     id,
     first_name: String(row.first_name ?? '').trim() || '—',
@@ -17,6 +20,7 @@ function mapNoNextActionRowToUICandidate(row: Record<string, unknown>): UICandid
     vacancy_id: row.vacancy_id != null ? (String(row.vacancy_id) as UICandidate['vacancy_id']) : null,
     created_at: row.created_at != null ? String(row.created_at) : null,
     updated_at: row.updated_at != null ? String(row.updated_at) : null,
+    intake_application_kind,
   }
 }
 import { getErrorInfo } from '../../../utils/errorHandling'
@@ -69,6 +73,10 @@ function normalizeListInsights(raw: unknown): CandidatesListInsights | null {
     docs_ordered: Number(o.docs_ordered) || 0,
     docs_incomplete: Number(o.docs_incomplete) || 0,
     ops_in_work: Number(o.ops_in_work) || 0,
+    bottleneck_no_contact: Number(o.bottleneck_no_contact) || 0,
+    bottleneck_docs_wait: Number(o.bottleneck_docs_wait) || 0,
+    bottleneck_interview_pending: Number(o.bottleneck_interview_pending) || 0,
+    unassigned_recruiter: Number(o.unassigned_recruiter) || 0,
   }
 }
 
@@ -97,6 +105,8 @@ type UseCandidatesTableDataArgs = {
   shadowBucketMinBand: string | null
   createdRange: DateRangeFilter
   isFavoriteFilter: boolean | null
+  /** GET /candidates intake_application_kind=client|candidate */
+  intakeApplicationKindFilter: '' | 'client' | 'candidate'
 
   // tenant scope
   currentTenantId: string | number | null | undefined
@@ -111,6 +121,8 @@ type UseCandidatesTableDataArgs = {
 
   /** §2.14: operational queue on main list (same shell as table/kanban entry). */
   operationalQueue?: 'no_next_action' | null
+  /** GET /candidates recruiter_unassigned=true */
+  recruiterUnassignedFilter?: boolean
 }
 
 export function useCandidatesTableData({
@@ -135,6 +147,7 @@ export function useCandidatesTableData({
   shadowBucketMinBand,
   createdRange,
   isFavoriteFilter,
+  intakeApplicationKindFilter,
 
   currentTenantId,
   meTenantId,
@@ -142,6 +155,7 @@ export function useCandidatesTableData({
   restoredScrollRef,
   disableAutoRetryAndPrevLoadingEffects,
   operationalQueue = null,
+  recruiterUnassignedFilter = false,
 }: UseCandidatesTableDataArgs) {
   const planLimitModal = usePlanLimitModal()
   const [items, setItems] = useState<UICandidate[]>([])
@@ -248,6 +262,10 @@ export function useCandidatesTableData({
               stages: stageFilter.length > 0 ? stageFilter : undefined,
               managerId: managerFilter.length === 1 ? managerFilter[0] : undefined,
               scopeTenantId: scopeTenantIdStr,
+              intakeApplicationKind:
+                intakeApplicationKindFilter === 'client' || intakeApplicationKindFilter === 'candidate'
+                  ? intakeApplicationKindFilter
+                  : undefined,
             })
             const dataAny = res as Record<string, unknown>
             const batchRaw = Array.isArray(dataAny?.items) ? (dataAny.items as Record<string, unknown>[]) : []
@@ -345,6 +363,12 @@ export function useCandidatesTableData({
             if (createdRange.from) params.created_from = createdRange.from
             if (createdRange.to) params.created_to = createdRange.to
             if (isFavoriteFilter != null) params.is_favorite = isFavoriteFilter
+            if (intakeApplicationKindFilter === 'client' || intakeApplicationKindFilter === 'candidate') {
+              params.intake_application_kind = intakeApplicationKindFilter
+            }
+            if (recruiterUnassignedFilter) {
+              params.recruiter_unassigned = true
+            }
 
             const scopeTid = currentTenantId ?? meTenantId
             if (scopeTid) params.scope_tenant_id = typeof scopeTid === 'string' ? scopeTid : String(scopeTid)
@@ -514,11 +538,13 @@ export function useCandidatesTableData({
       shadowBucketMinBand,
       createdRange,
       isFavoriteFilter,
+      intakeApplicationKindFilter,
       currentTenantId,
       meTenantId,
       planLimitModal,
       restoredScrollRef,
       operationalQueue,
+      recruiterUnassignedFilter,
     ],
   )
 

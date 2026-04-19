@@ -97,7 +97,7 @@ function CandidateHandoffSection({
           {t('app.candidate_card.handoff.title', { defaultValue: 'Przekazanie' })}
         </h3>
         <p className="mt-1 text-sm text-slate-500">
-          {loading ? t('common.loading', { defaultValue: 'Loading...' }) : '—'}
+          {loading ? t('common.loading') : '—'}
         </p>
       </section>
     )

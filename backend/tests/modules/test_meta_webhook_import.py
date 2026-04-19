@@ -8,7 +8,7 @@ import sqlalchemy as sa
 
 from backend.app.core.settings import settings
 from backend.app.db.session import async_session_maker
-from backend.app.modules.leads import webhook
+from backend.app.modules.leads import pipeline, webhook
 
 
 async def _ensure_settings_row() -> None:
@@ -76,19 +76,21 @@ async def test_webhook_with_field_data_creates_lead(monkeypatch, client):
         return []
 
     monkeypatch.setattr(webhook.admin_service, "get_active_secret_candidates", no_signatures)
-    lead_id = "lead-field-001"
+    suf = uuid.uuid4().hex[:12]
+    page_id = f"PAGE-FIELD-{suf}"
+    lead_id = f"lead-field-{suf}"
 
     payload = {
         "object": "page",
         "entry": [
             {
-                "id": "PAGE-ID",
+                "id": page_id,
                 "changes": [
                     {
                         "field": "leadgen",
                         "value": {
                             "leadgen_id": lead_id,
-                            "page_id": "PAGE-ID",
+                            "page_id": page_id,
                             "form_id": "FORM-ID",
                             "field_data": [
                                 {"name": "phone_number", "values": ["+48504004622"]},
@@ -138,18 +140,20 @@ async def test_webhook_skeleton_does_not_overwrite_field_data(monkeypatch, clien
         return []
 
     monkeypatch.setattr(webhook.admin_service, "get_active_secret_candidates", no_signatures)
-    lead_id = "lead-skeleton-001"
+    suf = uuid.uuid4().hex[:12]
+    page_a = f"SKE-PAGE-{suf}"
+    lead_id = f"lead-skeleton-{suf}"
     payload_full = {
         "object": "page",
         "entry": [
             {
-                "id": "PAGE-A",
+                "id": page_a,
                 "changes": [
                     {
                         "field": "leadgen",
                         "value": {
                             "leadgen_id": lead_id,
-                            "page_id": "PAGE-A",
+                            "page_id": page_a,
                             "form_id": "FORM-A",
                             "field_data": [
                                 {"name": "phone", "values": ["+14155550123"]},
@@ -173,13 +177,13 @@ async def test_webhook_skeleton_does_not_overwrite_field_data(monkeypatch, clien
         "object": "page",
         "entry": [
             {
-                "id": "PAGE-A",
+                "id": page_a,
                 "changes": [
                     {
                         "field": "leadgen",
                         "value": {
                             "leadgen_id": lead_id,
-                            "page_id": "PAGE-A",
+                            "page_id": page_a,
                             "form_id": "FORM-A",
                         },
                     }
@@ -221,13 +225,13 @@ async def test_webhook_skeleton_does_not_overwrite_field_data(monkeypatch, clien
         "object": "page",
         "entry": [
             {
-                "id": "PAGE-A",
+                "id": page_a,
                 "changes": [
                     {
                         "field": "leadgen",
                         "value": {
                             "leadgen_id": lead_id,
-                            "page_id": "PAGE-A",
+                            "page_id": page_a,
                             "form_id": "FORM-A",
                             "field_data": [
                                 {"name": "phone", "values": ["+14155550199"]},
@@ -278,18 +282,19 @@ async def test_webhook_resurrects_failed_lead(monkeypatch, client):
 
     monkeypatch.setattr(webhook.admin_service, "get_active_secret_candidates", no_signatures)
     lead_id = f"lead-resurrect-{uuid.uuid4().hex[:6]}"
+    page_r = f"PAGE-R-{uuid.uuid4().hex[:12]}"
 
     payload_skeleton = {
         "object": "page",
         "entry": [
             {
-                "id": "PAGE-R",
+                "id": page_r,
                 "changes": [
                     {
                         "field": "leadgen",
                         "value": {
                             "leadgen_id": lead_id,
-                            "page_id": "PAGE-R",
+                            "page_id": page_r,
                             "ad_id": "AD-R-1",
                         },
                     }
@@ -340,13 +345,13 @@ async def test_webhook_resurrects_failed_lead(monkeypatch, client):
         "object": "page",
         "entry": [
             {
-                "id": "PAGE-R",
+                "id": page_r,
                 "changes": [
                     {
                         "field": "leadgen",
                         "value": {
                             "leadgen_id": lead_id,
-                            "page_id": "PAGE-R",
+                            "page_id": page_r,
                             "ad_id": "AD-R-1",
                             "field_data": [
                                 {"name": "phone_number", "values": ["+48555111222"]},
@@ -400,18 +405,20 @@ async def test_webhook_resurrects_failed_lead(monkeypatch, client):
 @pytest.mark.anyio
 async def test_webhook_graph_fallback(monkeypatch, client):
     await _ensure_settings_row()
-    lead_id = "lead-graph-001"
+    suf = uuid.uuid4().hex[:12]
+    page_g = f"PAGE-G-{suf}"
+    lead_id = f"lead-graph-{suf}"
     payload = {
         "object": "page",
         "entry": [
             {
-                "id": "PAGE-G",
+                "id": page_g,
                 "changes": [
                     {
                         "field": "leadgen",
                         "value": {
                             "leadgen_id": lead_id,
-                            "page_id": "PAGE-G",
+                            "page_id": page_g,
                         },
                     }
                 ],
@@ -456,7 +463,7 @@ async def test_webhook_graph_fallback(monkeypatch, client):
 
     monkeypatch.setattr(webhook.admin_service, "get_page_access_token", fake_token)
     monkeypatch.setattr(webhook.admin_service, "get_active_secret_candidates", no_signatures)
-    monkeypatch.setattr(webhook.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(pipeline.httpx, "AsyncClient", FakeAsyncClient)
 
     resp = await client.post(
         "/api/v1/leads/meta/webhook",

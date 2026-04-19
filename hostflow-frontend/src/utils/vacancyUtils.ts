@@ -40,15 +40,6 @@ export function cacheVacancy(v: VacancyLike | VacancyLike[] | any) {
   }
 }
 
-export function mergeFromCache<T extends { id?: string }>(input: T | T[]): T | T[] {
-  if (Array.isArray(input)) {
-    return input.map((v: any) => (v?.id ? { ...(VACANCY_CACHE[v.id] || {}), ...v } : v)) as T[]
-  }
-  const v: any = input
-  if (!v || !v.id) return input
-  return { ...(VACANCY_CACHE[v.id] || {}), ...v }
-}
-
 // ===== formatting =====
 export function formatDate(value?: string | Date): string {
   if (!value) return ''
@@ -274,10 +265,3 @@ export function unwrapVacancyList(input: any): VacancyLike[] {
   return []
 }
 
-// Согласовано с использованием на странице: (list, base?) -> Promise<list>
-export async function enrichVacancyList(list: any, _base?: any): Promise<VacancyLike[]> {
-  const arr = unwrapVacancyList(list)
-  const normalized = arr.map(normalizeVacancy)
-  cacheVacancy(normalized)
-  return normalized
-}

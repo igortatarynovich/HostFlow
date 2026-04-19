@@ -20,6 +20,7 @@ import type {
   ReminderRecord,
 } from '../api/types'
 import { getNotificationAttentionTier } from '../utils/notificationUos'
+import { resolveNotificationOpenPath } from '../utils/resolveNotificationOpenPath'
 import { useAuth } from '../store/useAuth'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
@@ -28,6 +29,7 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { buildInboxThreadPath } from '../utils/inboxDeepLinks'
 
 const DATE_LOCALES = { en: enUS, ru: ruLocale, pl: plLocale }
@@ -148,7 +150,7 @@ function reminderEntityHref(item: ReminderRecord): string | null {
     case 'vacancy':
       return `${CRM_APP_PATHS.vacancies}/${entityId}`
     case 'lead':
-      return CRM_APP_PATHS.leads
+      return entityId ? `${CRM_APP_PATHS.leads}/${entityId}` : CRM_APP_PATHS.leads
     case 'company':
       return `${CRM_APP_PATHS.agencyClients}/${entityId}`
     case 'communication_thread':
@@ -159,24 +161,7 @@ function reminderEntityHref(item: ReminderRecord): string | null {
 }
 
 function notificationEntityHref(item: NotificationItem): string | null {
-  const entityId = String(item.entity_id || '')
-  const eventType = item.event_type || ''
-  if (eventType === 'handoff_requested') return CRM_APP_PATHS.procesowani
-  if (!entityId) return null
-  switch (item.entity_type) {
-    case 'candidate':
-      return `${CRM_APP_PATHS.candidates}/${entityId}`
-    case 'vacancy':
-      return `${CRM_APP_PATHS.vacancies}/${entityId}`
-    case 'lead':
-      return CRM_APP_PATHS.leads
-    case 'company':
-      return `${CRM_APP_PATHS.agencyClients}/${entityId}`
-    case 'communication_thread':
-      return buildInboxThreadPath(entityId)
-    default:
-      return null
-  }
+  return resolveNotificationOpenPath(item, { canInboxDeepLink: true })
 }
 
 function sameDay(a: Date, b: Date): boolean {
@@ -475,6 +460,7 @@ export default function RemindersPage() {
       const tQ = searchParams.get('t_q')
       const tEntity = searchParams.get('t_entity')
       const tDueBucket = searchParams.get('t_due_bucket')
+      const filterLegacy = (searchParams.get('filter') || '').trim().toLowerCase()
       const tPriority = searchParams.get('t_priority')
       const eScope = parseNotifScope(searchParams.get('e_scope'))
       const eRead = parseNotifRead(searchParams.get('e_read'))
@@ -483,15 +469,25 @@ export default function RemindersPage() {
       const tLayout = parseTaskListMode(searchParams.get('t_layout'))
 
       if (urlTab) setActiveTab(urlTab)
-      if (tStatus || tQ != null || tEntity != null || tPriority != null || tDueBucket === 'overdue') {
+      if (
+        tStatus ||
+        tQ != null ||
+        tEntity != null ||
+        tPriority != null ||
+        tDueBucket === 'overdue' ||
+        filterLegacy === 'overdue'
+      ) {
         setTaskFilters((prev) => ({
           ...prev,
           ...(tStatus ? { status: tStatus } : {}),
           ...(tQ != null ? { search: tQ } : {}),
           ...(tEntity != null ? { entityType: tEntity } : {}),
           ...(tPriority != null ? { priority: tPriority } : {}),
-          ...(tDueBucket === 'overdue' ? { dueBucket: 'overdue' as const } : {}),
+          ...(tDueBucket === 'overdue' || filterLegacy === 'overdue' ? { dueBucket: 'overdue' as const } : {}),
         }))
+      }
+      if (filterLegacy === 'overdue') {
+        setActiveTab('tasks')
       }
       if (eScope || eRead || eQ != null) {
         setEventsFilters((prev) => ({
@@ -758,7 +754,7 @@ export default function RemindersPage() {
   }, [activeTab, loadNotificationsFeed])
 
   const reminderStatusLabel = useCallback(
-    (status?: string) => {
+    (status?: string | null) => {
       const key = status ? `app.candidate_card.reminders.statuses.${String(status).toLowerCase()}` : 'app.candidate_card.reminders.statuses.pending'
       return t(key, { defaultValue: status || '—' })
     },
@@ -770,6 +766,13 @@ export default function RemindersPage() {
       if (item.event_type === 'handoff_requested') {
         return t('app.notifications.handoff_requested_title')
       }
+      const et = String(item.event_type || '').trim().toLowerCase()
+      if (et === 'lead_public_intake_client') {
+        return t('app.notifications.lead_public_intake_client_title')
+      }
+      if (et === 'intake_client_lead_skipped_no_company') {
+        return t('app.notifications.intake_client_lead_skipped_no_company_title')
+      }
       const key = `app.reminders.events.${item.event_type}`
       const translated = t(key, { defaultValue: '' })
       if (translated && translated !== key) return translated
@@ -778,6 +781,25 @@ export default function RemindersPage() {
         item.event_type ||
         t('app.reminders.events.unknown', { values: { event: String(item.event_type || 'event') } })
       )
+    },
+    [t]
+  )
+
+  const notificationDescription = useCallback(
+    (item: NotificationItem) => {
+      const payload = (item.payload || {}) as Record<string, any>
+      const et = String(item.event_type || '').trim().toLowerCase()
+      if (et === 'lead_public_intake_client') {
+        return t('app.notifications.lead_public_intake_client_desc', {
+          values: { name: String(payload.candidate_name || '').trim() || '—' },
+        })
+      }
+      if (et === 'intake_client_lead_skipped_no_company') {
+        return t('app.notifications.intake_client_lead_skipped_no_company_desc', {
+          values: { name: String(payload.candidate_name || '').trim() || '—' },
+        })
+      }
+      return String(payload.description || '').trim()
     },
     [t]
   )
@@ -1058,6 +1080,8 @@ export default function RemindersPage() {
           </div>
         </div>
       </header>
+
+      <PageBreadcrumb className="max-w-5xl" />
 
       {activeTab === 'tasks' && (
         <>
@@ -1486,7 +1510,7 @@ export default function RemindersPage() {
                 const createdAt = parseDate(item.created_at)
                 const href = notificationEntityHref(item)
                 const busy = notifBusyId === item.id
-                const desc = (item.payload?.description as string) || ''
+                const desc = notificationDescription(item)
                 return (
                   <div
                     key={item.id}

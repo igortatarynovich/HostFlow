@@ -109,7 +109,7 @@ function ProfilePreviewModal({ profile, onClose, onDuplicate, onExport }: Profil
                   Системный
                 </span>
               )}
-              {profile.usage_count !== undefined && profile.usage_count > 0 && (
+              {profile.usage_count != null && profile.usage_count > 0 && (
                 <span className="rounded-md bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
                   Используется в {profile.usage_count} вакансиях
                 </span>

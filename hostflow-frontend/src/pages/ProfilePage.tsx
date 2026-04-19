@@ -24,6 +24,7 @@ import { useI18n, type LocaleCode } from '../i18n'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { usePermissions } from '../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import {
   readStoredDefaultAppHome,
   writeStoredDefaultAppHome,
@@ -43,6 +44,9 @@ const NOTIFICATION_ITEMS = [
   { code: 'mentions.direct', key: 'mentions_direct' },
   { code: 'lead.new.telegram', key: 'lead_new_telegram' },
   { code: 'lead.status_changed.telegram', key: 'lead_status_changed_telegram' },
+  /** In-app CRM (same strings as `event_type` in `emit_event`). */
+  { code: 'lead_public_intake_client', key: 'lead_public_intake_client' },
+  { code: 'intake_client_lead_skipped_no_company', key: 'intake_client_lead_skipped_no_company' },
 ] as const
 
 type NotificationItemKey = (typeof NOTIFICATION_ITEMS)[number]['key']
@@ -150,6 +154,8 @@ export default function ProfilePage() {
       mentions_direct: { title: '', description: '' },
       lead_new_telegram: { title: '', description: '' },
       lead_status_changed_telegram: { title: '', description: '' },
+      lead_public_intake_client: { title: '', description: '' },
+      intake_client_lead_skipped_no_company: { title: '', description: '' },
     }
     const defaults: Record<NotificationItemKey, { title: string; description: string }> = {
       candidate_new_assignment: {
@@ -175,6 +181,14 @@ export default function ProfilePage() {
       lead_status_changed_telegram: {
         title: 'Telegram: lead status changed',
         description: 'Send Telegram alert when lead status changes.',
+      },
+      lead_public_intake_client: {
+        title: 'Public intake: new client lead',
+        description: 'In-app alert when a client inquiry from the public form creates a CRM lead.',
+      },
+      intake_client_lead_skipped_no_company: {
+        title: 'Public intake: client lead not created',
+        description: 'In-app alert when a client inquiry could not create a lead (no client company resolved).',
       },
     }
     NOTIFICATION_ITEMS.forEach((item) => {
@@ -591,6 +605,8 @@ export default function ProfilePage() {
         <h1 className="text-3xl font-semibold text-slate-900">{t('app.profile.title')}</h1>
         <p className="mt-1 text-sm text-slate-500">{t('app.profile.subtitle')}</p>
       </header>
+
+      <PageBreadcrumb className="max-w-4xl" />
 
       <div className="grid gap-6 md:grid-cols-2">
         <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">

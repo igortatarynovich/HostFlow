@@ -48,6 +48,9 @@ export interface CandidateExtra {
   // контакты / телефон
   phone_country?: string | null; // код страны (PL/UA/…)
   phone_prefix?: string | null; // префикс "+48" (опционально, для UI)
+  /** Citizenship country code mirrored from the candidate model for forms that
+   *  edit `extra` (CandidatePersonalSection auto-fill from phone). */
+  country_code?: string | null;
   preferred_contact?: string | null; // предпочтительный канал связи (viber/whatsapp/telegram/phone)
   first_contact_at?: string | null; // ISO8601 дата/время первого контакта
 
@@ -149,6 +152,8 @@ export interface Candidate {
   intake_contacts?: Record<string, any> | null;
   intake_experience?: Record<string, any> | null;
   intake_agreements?: Record<string, any> | null;
+  /** Public intake: hiring vs client (B2B) inquiry. */
+  intake_application_kind?: 'candidate' | 'client' | null;
 }
 
 export interface CandidatesListOut {

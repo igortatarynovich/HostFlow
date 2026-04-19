@@ -410,7 +410,8 @@ async def _run_leads_next_action_sla_for_tenant(db, *, tenant: Tenant, now: date
                     "threshold_hours": int(threshold_hours),
                     "dedupe_key": f"lead_no_next_action:{due_key}",
                 },
-                dedupe_window_minutes=60 * 24,
+                # Keep bell signal low-noise; reminders are the primary actionable queue.
+                dedupe_window_minutes=60 * 24 * 30,
             )
             stats["notifications"] += 1
 
@@ -539,7 +540,8 @@ async def _run_leads_stuck_stage_sla_for_tenant(db, *, tenant: Tenant, now: date
                     "stuck_days": int(stuck_days),
                     "dedupe_key": f"lead_stuck_stage:{due_key}",
                 },
-                dedupe_window_minutes=60 * 24,
+                # Keep bell signal low-noise; reminders are the primary actionable queue.
+                dedupe_window_minutes=60 * 24 * 30,
             )
             stats["notifications"] += 1
 

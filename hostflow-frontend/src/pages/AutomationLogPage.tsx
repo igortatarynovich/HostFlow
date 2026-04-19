@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { listAutomationLog, type AutomationLogEntry } from '../api/automationLog'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { SettingsSubpageHeader } from '../components/settings/SettingsSubpageHeader'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { formatDateTime } from '../utils/dateFormat'
@@ -76,25 +77,25 @@ export default function AutomationLogPage() {
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       <header className="rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Link to={CRM_APP_PATHS.automations} className="text-sm font-medium text-brand-600 hover:text-brand-800 hover:underline">
-              {t('app.automations.hub.back', { defaultValue: '← Automations' })}
-            </Link>
-            <h1 className="mt-1 text-xl font-semibold text-slate-900">
-              {t('app.automation_log.title', { defaultValue: 'Automation log' })}
-            </h1>
-            <p className="text-xs text-slate-500">
-              {t('app.automation_log.subtitle', {
-                defaultValue: 'Why did something happen? Shows automation-triggered actions (v1).',
-              })}
-            </p>
-          </div>
-          <button type="button" className="btn-secondary btn-sm" onClick={() => load()} disabled={loading}>
-            {loading ? t('common.loading', { defaultValue: 'Loading…' }) : t('common.actions.refresh', { defaultValue: 'Refresh' })}
-          </button>
-        </div>
+        <SettingsSubpageHeader
+          backHref={CRM_APP_PATHS.automations}
+          backLabel={t('app.automations.hub.back', { defaultValue: '← Automations' })}
+          kicker={t('app.automation_log.header_kicker')}
+          title={t('app.automation_log.title', { defaultValue: 'Automation log' })}
+          subtitle={t('app.automation_log.subtitle', {
+            defaultValue: 'Why did something happen? Shows automation-triggered actions (v1).',
+          })}
+          actions={
+            <button type="button" className="btn-secondary btn-sm" onClick={() => load()} disabled={loading}>
+              {loading ? t('common.loading') : t('common.actions.refresh')}
+            </button>
+          }
+        />
       </header>
+
+      <div className="border-b border-slate-200 bg-slate-50/90 px-3 py-2">
+        <PageBreadcrumb />
+      </div>
 
       <div className="card space-y-0 gap-0 rounded-none border-x-0 border-t-0 p-3">
         <div className="flex flex-wrap gap-3">
@@ -147,7 +148,7 @@ export default function AutomationLogPage() {
           <ErrorRecoveryBanner
             info={error}
             onRetry={() => load()}
-            retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+            retryLabel={t('common.actions.refresh')}
             {...friendlyErrorBannerSecondary(
               error,
               CRM_APP_PATHS.automations,

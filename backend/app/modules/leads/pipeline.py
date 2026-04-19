@@ -49,6 +49,11 @@ async def _fetch_field_data_from_graph(lead_id: str, access_token: str) -> Dict[
     raise GraphAPIError(code, message or "Graph API error")
 
 
+async def fetch_meta_lead_field_data_from_graph(lead_id: str, access_token: str) -> Dict[str, Any]:
+    """Fetch Meta lead object (field_data, ad_id, form_id) from Graph — same contract as webhook enrichment."""
+    return await _fetch_field_data_from_graph(lead_id, access_token)
+
+
 async def enrich_entries_with_graph(
     db: AsyncSession,
     tenant_id: str,

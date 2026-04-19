@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import CommunicationsThreadWorkArea from '../components/communications/CommunicationsThreadWorkArea'
 import { useCommunicationsThread } from '../hooks/useCommunicationsThread'
 import { useI18n } from '../i18n'
@@ -28,6 +29,7 @@ export default function CommunicationsThreadPage() {
     return (
       <div className="space-y-3">
         <WorkspaceTopNav active={null} />
+        <PageBreadcrumb className="max-w-4xl" />
         <div className="flex flex-wrap gap-2">
           <Link to={CRM_APP_PATHS.calendar} className="text-sm text-brand-700 hover:text-brand-900">
             {t('app.communications.actions.back_to_calendar')}
@@ -54,6 +56,7 @@ export default function CommunicationsThreadPage() {
   return (
     <div className="space-y-4">
       <WorkspaceTopNav active={null} />
+      <PageBreadcrumb className="max-w-4xl" />
       <CommunicationsThreadWorkArea thread={thread} model={model} layout="page" />
     </div>
   )

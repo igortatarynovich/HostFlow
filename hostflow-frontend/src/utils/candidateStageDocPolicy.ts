@@ -64,12 +64,6 @@ export const DEFAULT_HIRING_PIPELINE_GATES_RUNTIME: HiringPipelineGatesRuntime =
   stagesDocBlockSoftOnly: new Set(),
 }
 
-/** Stages where the document checklist must NOT block forward pipeline movement. */
-export const STAGES_WITHOUT_DOC_PIPELINE_BLOCK = DEFAULT_HIRING_PIPELINE_GATES_RUNTIME.stagesWithoutDocPipelineBlock
-
-/** Stages where a forward move requires `vacancy_id` (contact phase → assign vacancy). */
-export const STAGES_REQUIRE_VACANCY_FOR_FORWARD = DEFAULT_HIRING_PIPELINE_GATES_RUNTIME.stagesRequireVacancyForForward
-
 function _lowerSet(items: string[] | undefined | null): Set<string> {
   const out = new Set<string>()
   for (const x of items || []) {

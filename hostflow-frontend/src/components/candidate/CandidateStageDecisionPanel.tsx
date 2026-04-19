@@ -17,7 +17,13 @@ type DocsBlockers = {
 type Props = {
   locale: string
   stageSinceAt: string | null
+  /** Full funnel order for move buttons, current/next resolution, and operational hints (same for all agency users on this candidate). */
   stageJourneyStages: Stage[]
+  /**
+   * Optional narrowed list for the horizontal journey strip only (e.g. client-facing procesowani view).
+   * When omitted, the strip uses `stageJourneyStages`.
+   */
+  journeyPanelStages?: Stage[]
   stageOutcomeStages: Stage[]
   stageJourneyDisplayStage: string | null | undefined
   stageJourneyOutcomeStage: string | null | undefined
@@ -49,6 +55,7 @@ export default function CandidateStageDecisionPanel({
   locale,
   stageSinceAt,
   stageJourneyStages,
+  journeyPanelStages,
   stageOutcomeStages,
   stageJourneyDisplayStage,
   stageJourneyOutcomeStage,
@@ -66,6 +73,8 @@ export default function CandidateStageDecisionPanel({
   onOpenContactAttempts,
 }: Props) {
   const { t } = useI18n()
+
+  const stripStages = journeyPanelStages ?? stageJourneyStages
 
   const pipelineCompleted = useMemo(() => {
     const c =
@@ -387,7 +396,7 @@ export default function CandidateStageDecisionPanel({
           variant="horizontal"
           tone="default"
           compact
-          stages={stageJourneyStages}
+          stages={stripStages}
           outcomeStages={stageOutcomeStages}
           currentStage={stageJourneyDisplayStage}
           currentOutcomeStage={stageJourneyOutcomeStage}

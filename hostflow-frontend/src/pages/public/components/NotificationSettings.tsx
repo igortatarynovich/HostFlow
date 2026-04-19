@@ -25,8 +25,8 @@ import http from '../../../api/http'
 
 interface NotificationSettingsProps {
   token: string
-  initialEmail?: string
-  initialPhone?: string
+  initialEmail?: string | null
+  initialPhone?: string | null
   initialSubscribed?: boolean
 }
 
@@ -38,8 +38,8 @@ export function NotificationSettings({
 }: NotificationSettingsProps) {
   const { t } = useI18n()
   const { notify } = useToast()
-  const [email, setEmail] = useState(initialEmail)
-  const [phone, setPhone] = useState(initialPhone)
+  const [email, setEmail] = useState(initialEmail ?? '')
+  const [phone, setPhone] = useState(initialPhone ?? '')
   const [subscribed, setSubscribed] = useState(initialSubscribed)
   const [subscribeDocumentStatus, setSubscribeDocumentStatus] = useState(true)
   const [subscribeStageChanges, setSubscribeStageChanges] = useState(true)

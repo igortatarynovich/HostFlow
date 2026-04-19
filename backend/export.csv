@@ -1,7 +1,0 @@
-id,type_code,status,title,issued_at,expires_at
-e5ef233a-3503-4a8e-aafa-0c379834d266,driver_license,uploaded,DL via form,2024-01-01,2027-01-01
-e43d24d8-054e-4d9b-ae5f-d08357d8b1a3,driver_license,rejected,DL via JSON,2024-01-01,2027-01-01
-14110a3c-046c-452d-bed7-352ed1e43b31,driver_license,approved,DL via JSON,2024-01-01,2027-01-01
-b593d5a0-8dbc-42c9-b7aa-9af32484fbc6,driver_license,uploaded,DL via JSON,2024-01-01,2027-01-01
-3dd7c983-4c1f-4417-baa3-d4ce5d9c17de,driver_license,uploaded,DL via JSON,2024-01-01,2027-01-01
-cbe64fce-16c7-479b-b862-2ed3f5f99505,driver_license,uploaded,DL via JSON,2024-01-01,2027-01-01

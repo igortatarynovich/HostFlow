@@ -4,6 +4,7 @@ import { IconClipboardList, IconCopy } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useToast } from '../../components/Toast'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import {
@@ -23,6 +24,14 @@ type Draft = { title: string; public_slug: string; is_active: boolean }
 function publicIntakeUrlForSlug(slug: string): string {
   if (typeof window === 'undefined') return `/public/intake?lead_form_slug=${encodeURIComponent(slug)}`
   const q = new URLSearchParams({ lead_form_slug: slug })
+  return `${window.location.origin}/public/intake?${q.toString()}`
+}
+
+function publicIntakeClientUrlForSlug(slug: string): string {
+  if (typeof window === 'undefined') {
+    return `/public/intake?lead_form_slug=${encodeURIComponent(slug)}&application_kind=client`
+  }
+  const q = new URLSearchParams({ lead_form_slug: slug, application_kind: 'client' })
   return `${window.location.origin}/public/intake?${q.toString()}`
 }
 
@@ -182,30 +191,32 @@ export default function LeadFormsSettingsPage() {
   return (
     <div className="space-y-4">
       <section className="card p-6">
-        <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-2 text-xl font-semibold text-slate-900">
-              <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
-              <h1 className="text-xl font-semibold">{t('admin.lead_forms.title', { defaultValue: 'Lead forms' })}</h1>
-            </div>
-            <p className="mt-1 text-sm text-slate-500">
-              {t('admin.lead_forms.subtitle', {
-                defaultValue:
-                  'Intake entry points for the public portal. Set a public slug to address a form from /public/intake.',
-              })}
-            </p>
-          </div>
-          <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
-            {t('admin.lead_forms.link_billing', { defaultValue: 'Billing & limits' })}
-          </Link>
-        </header>
+        <div className="mb-4">
+          <SettingsSubpageHeader
+            backLabel={t('admin.settings.subpage.back_all')}
+            kicker={t('admin.lead_forms.header_kicker')}
+            title={
+              <span className="inline-flex items-center gap-2">
+                <IconClipboardList size={22} stroke={1.9} className="text-brand-600" />
+                {t('admin.lead_forms.title', { defaultValue: 'Lead forms' })}
+              </span>
+            }
+            subtitle={t('admin.lead_forms.subtitle', {
+              defaultValue:
+                'Intake entry points for the public portal. Set a public slug to address a form from /public/intake.',
+            })}
+            actions={
+              <Link className="text-sm font-medium text-brand-700 hover:underline" to={CRM_APP_PATHS.settingsBilling}>
+                {t('admin.lead_forms.link_billing', { defaultValue: 'Billing & limits' })}
+              </Link>
+            }
+          />
+        </div>
 
         {pageError && (
           <div className="mb-4">
             <ErrorRecoveryBanner
-              title={pageError.title}
-              detail={pageError.detail}
-              hint={pageError.hint}
+              info={pageError}
               {...friendlyErrorBannerSecondary(pageError, CRM_APP_PATHS.settingsBilling, t('admin.settings.cards.billing.label'))}
             />
           </div>
@@ -241,7 +252,7 @@ export default function LeadFormsSettingsPage() {
         )}
 
         {loading ? (
-          <p className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</p>
+          <p className="text-sm text-slate-500">{t('common.loading')}</p>
         ) : sortedForms.length === 0 ? (
           <p className="text-sm text-slate-500">
             {t('admin.lead_forms.empty', { defaultValue: 'No lead forms yet. Create one to start tracking intake sources.' })}
@@ -253,6 +264,7 @@ export default function LeadFormsSettingsPage() {
               if (!d) return null
               const slugOk = d.public_slug.trim().length >= 2
               const shareUrl = slugOk ? publicIntakeUrlForSlug(d.public_slug.trim()) : ''
+              const shareClientUrl = slugOk ? publicIntakeClientUrlForSlug(d.public_slug.trim()) : ''
               const dirty = isDirty(row)
               return (
                 <li key={row.id} className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm">
@@ -313,20 +325,44 @@ export default function LeadFormsSettingsPage() {
                     )}
                   </div>
                   {slugOk && (
-                    <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {t('admin.lead_forms.share_url', { defaultValue: 'Public intake URL (this host)' })}
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          {t('admin.lead_forms.share_url', { defaultValue: 'Public intake URL (this host)' })}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 break-all font-mono text-xs text-slate-800">
+                          <span className="flex-1">{shareUrl}</span>
+                          <button
+                            type="button"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            onClick={() => void copyText(shareUrl)}
+                          >
+                            <IconCopy size={14} />
+                            {t('admin.lead_forms.copy', { defaultValue: 'Copy' })}
+                          </button>
+                        </div>
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 break-all font-mono text-xs text-slate-800">
-                        <span className="flex-1">{shareUrl}</span>
-                        <button
-                          type="button"
-                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                          onClick={() => void copyText(shareUrl)}
-                        >
-                          <IconCopy size={14} />
-                          {t('admin.lead_forms.copy', { defaultValue: 'Copy' })}
-                        </button>
+                      <div className="rounded-xl border border-sky-100 bg-sky-50/50 p-3">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                          {t('admin.lead_forms.share_url_client', { defaultValue: 'Client inquiry (B2B) URL' })}
+                        </div>
+                        <p className="mt-1 text-xs text-slate-600">
+                          {t('admin.lead_forms.share_url_client_hint', {
+                            defaultValue:
+                              'Same form; after submit your workspace may create a CRM client lead when a company can be resolved.',
+                          })}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 break-all font-mono text-xs text-slate-800">
+                          <span className="flex-1">{shareClientUrl}</span>
+                          <button
+                            type="button"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-sky-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-sky-50"
+                            onClick={() => void copyText(shareClientUrl)}
+                          >
+                            <IconCopy size={14} />
+                            {t('admin.lead_forms.copy_client', { defaultValue: 'Copy client link' })}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}

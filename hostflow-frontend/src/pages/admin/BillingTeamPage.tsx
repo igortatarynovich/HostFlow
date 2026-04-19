@@ -19,6 +19,7 @@ import type {
   TenantModuleSettingsPatch,
 } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
@@ -245,13 +246,13 @@ export function TeamManagementPanel({
   if (error) {
     const loadErr: FriendlyErrorInfo = {
       title: error,
-      hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+      hint: t('app.common.retry_hint'),
     }
     return (
       <ErrorRecoveryBanner
         info={loadErr}
         onRetry={() => window.location.reload()}
-        retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+        retryLabel={t('common.actions.refresh')}
         {...friendlyErrorBannerSecondary(loadErr, CRM_APP_PATHS.settingsTeam, t('app.settings.team.title'))}
         compact
       />
@@ -266,13 +267,13 @@ export function TeamManagementPanel({
   const modulesErrBanner: FriendlyErrorInfo | null = modulesError
     ? {
         title: modulesError,
-        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+        hint: t('app.common.retry_hint'),
       }
     : null
   const seatErrBanner: FriendlyErrorInfo | null = seatError
     ? {
         title: seatError,
-        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+        hint: t('app.common.retry_hint'),
       }
     : null
 
@@ -337,7 +338,7 @@ export function TeamManagementPanel({
             <ErrorRecoveryBanner
               info={modulesErrBanner}
               onRetry={() => window.location.reload()}
-              retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+              retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 modulesErrBanner,
                 CRM_APP_PATHS.settingsTeam,
@@ -504,9 +505,17 @@ export function TeamManagementPanel({
 }
 
 export default function BillingTeamPage() {
+  const { t } = useI18n()
   return (
     <div className="space-y-4">
-      <TeamManagementPanel />
+      <SettingsSubpageHeader
+        backHref={CRM_APP_PATHS.settings}
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('admin.settings.subpage.kicker_workspace_setup')}
+        title={t('app.settings.team.title')}
+        subtitle={t('app.settings.team.subtitle')}
+      />
+      <TeamManagementPanel showHeader={false} />
     </div>
   )
 }

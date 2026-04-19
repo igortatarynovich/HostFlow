@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { getTtvReport, type TtvReport, type TtvStep } from '../../api/analytics'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 
 const ORDER: TtvStep[] = [
   'signup',
@@ -60,53 +61,58 @@ export default function TtvReportPage() {
     <div className="space-y-4">
       {error && (
         <ErrorRecoveryBanner
-          info={{ title: error, hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }) }}
+          info={{ title: error, hint: t('app.common.retry_hint') }}
           onRetry={() => setDays((d) => d)}
-          retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          retryLabel={t('common.actions.refresh')}
         />
       )}
       <section className="card p-6">
-        <header className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900">
-              {t('admin.ttv.title', { defaultValue: 'Time To Value (North Star path)' })}
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              {t('admin.ttv.subtitle', {
-                defaultValue: 'Median and p90 times between signup and key milestones (per tenant).',
-              })}
-            </p>
-            {report && (
-              <p className="mt-1 text-xs text-slate-500">
-                {t('admin.ttv.actors', {
-                  defaultValue: 'Actors in sample: {count}',
-                  values: { count: report.actors },
+        <SettingsSubpageHeader
+          className="mb-4"
+          backLabel={t('admin.settings.subpage.back_all')}
+          kicker={t('admin.ttv.header_kicker')}
+          title={t('admin.ttv.title', { defaultValue: 'Time To Value (North Star path)' })}
+          subtitle={
+            <div>
+              <p>
+                {t('admin.ttv.subtitle', {
+                  defaultValue: 'Median and p90 times between signup and key milestones (per tenant).',
                 })}
               </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-slate-600">
-              {t('admin.ttv.days_label', { defaultValue: 'Window (days)' })}
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={180}
-              value={days}
-              onChange={(e) => {
-                const next = Number.parseInt(e.target.value, 10)
-                if (!Number.isFinite(next)) return
-                setDays(Math.min(180, Math.max(1, next)))
-              }}
-              className="input h-8 w-20 px-2 py-1 text-xs"
-            />
-          </div>
-        </header>
+              {report ? (
+                <p className="mt-1 text-xs text-slate-500">
+                  {t('admin.ttv.actors', {
+                    defaultValue: 'Actors in sample: {count}',
+                    values: { count: report.actors },
+                  })}
+                </p>
+              ) : null}
+            </div>
+          }
+          actions={
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-slate-600">
+                {t('admin.ttv.days_label', { defaultValue: 'Window (days)' })}
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={180}
+                value={days}
+                onChange={(e) => {
+                  const next = Number.parseInt(e.target.value, 10)
+                  if (!Number.isFinite(next)) return
+                  setDays(Math.min(180, Math.max(1, next)))
+                }}
+                className="input h-8 w-20 px-2 py-1 text-xs"
+              />
+            </div>
+          }
+        />
 
         {loading && (
           <p className="text-sm text-slate-500">
-            {t('common.loading', { defaultValue: 'Loading...' })}
+            {t('common.loading')}
           </p>
         )}
 

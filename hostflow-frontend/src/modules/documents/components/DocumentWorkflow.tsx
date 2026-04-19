@@ -4,14 +4,14 @@
 
 import { memo, useEffect, useState } from "react";
 import clsx from "clsx";
-import type { Document, DocumentWorkflow, DocumentWorkflowStep, DocumentStatus } from "../../../api/types";
+import type { Document, DocumentWorkflow as DocumentWorkflowState, DocumentWorkflowStep, DocumentStatus } from "../../../api/types";
 import { DOCUMENT_STATUS_META } from "../constants";
 import { formatDateTime } from "../documentUtils";
 import { useI18n } from "../../../i18n";
 
 interface DocumentWorkflowProps {
   doc: Document;
-  workflow: DocumentWorkflow | undefined;
+  workflow: DocumentWorkflowState | undefined;
   translateStatus: (status: DocumentStatus | string) => string;
   translateProcess: (value: string | null | undefined) => string | null;
   canManageDocuments: boolean;

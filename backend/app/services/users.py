@@ -337,7 +337,8 @@ async def _load_user(
     if not user:
         raise UserServiceError("User not found", 404)
     if user.tenant_id and user.tenant_id != tenant_id:
-        raise UserServiceError("User belongs to another tenant", 403)
+        if not await _get_membership_role_for_tenant(db, tenant_id, user_id):
+            raise UserServiceError("User belongs to another tenant", 403)
     return user
 
 
@@ -509,7 +510,6 @@ async def list_users(
                 membership.c.tenant_id == tenant_id,
             ),
         )
-        .where(sa.or_(User.tenant_id == tenant_id, User.tenant_id.is_(None)))
         .order_by(User.created_at.asc())
     )
 
@@ -676,8 +676,7 @@ async def create_invite(
         )
 
     if user:
-        if user.tenant_id and user.tenant_id != tenant_id:
-            raise UserServiceError("User belongs to another tenant", 409)
+        cross_tenant = bool(user.tenant_id and user.tenant_id != tenant_id)
         membership_stmt = (
             select(user_memberships.c.role)
             .where(user_memberships.c.user_id == user.id)
@@ -687,11 +686,16 @@ async def create_invite(
         if membership_role and user.is_active:
             raise UserServiceError("User already active in tenant", 409)
         invited_user_id = user.id
-        if user.tenant_id is None:
-            user.tenant_id = tenant_id
-        user.supervisor_id = supervisor_ref.id if supervisor_ref else None
-        _apply_global_role(user, normalized_role)
-        user.is_active = False
+        if cross_tenant:
+            # Same email already in another workspace: invite adds membership only;
+            # do not clear password session by deactivating or overwriting home tenant.
+            user.supervisor_id = supervisor_ref.id if supervisor_ref else None
+        else:
+            if user.tenant_id is None:
+                user.tenant_id = tenant_id
+            user.supervisor_id = supervisor_ref.id if supervisor_ref else None
+            _apply_global_role(user, normalized_role)
+            user.is_active = False
         await _replace_company_access(
             db,
             tenant_id=tenant_id,
@@ -795,10 +799,9 @@ async def create_user(
             db, tenant_id=tenant_id, supervisor_id=supervisor_id
         )
 
+    cross_tenant = False
     if user:
-        if user.tenant_id and user.tenant_id != tenant_id:
-            raise UserServiceError("User belongs to another tenant", 409)
-
+        cross_tenant = bool(user.tenant_id and user.tenant_id != tenant_id)
         if password:
             user.password_hash = hash_password(password)
         elif not user.password_hash:
@@ -807,10 +810,11 @@ async def create_user(
 
         user.full_name = full_name or user.full_name
         user.short_id = short_id or user.short_id
-        user.tenant_id = tenant_id
         user.supervisor_id = supervisor_ref.id if supervisor_ref else None
         user.is_active = True
         user.revive()
+        if not cross_tenant:
+            user.tenant_id = tenant_id
     else:
         generated_password = password or _generate_password()
         hashed = hash_password(generated_password)
@@ -826,7 +830,8 @@ async def create_user(
         )
         db.add(user)
 
-    _apply_global_role(user, normalized_role)
+    if not cross_tenant:
+        _apply_global_role(user, normalized_role)
     await db.flush()
 
     await _replace_company_access(
@@ -1581,12 +1586,14 @@ async def accept_invite(
 
     user: User | None = None
     if invite.invited_user_id:
-        user = await _load_user(db, tenant_id=tenant_id, user_id=invite.invited_user_id)
+        user = (
+            await db.execute(select(User).where(User.id == invite.invited_user_id))
+        ).scalar_one_or_none()
+        if not user:
+            raise UserServiceError("User not found", 404)
     else:
         existing_stmt = select(User).where(func.lower(User.email) == invite.email.lower())
         user = (await db.execute(existing_stmt)).scalar_one_or_none()
-        if user and user.tenant_id and user.tenant_id != tenant_id:
-            raise UserServiceError("User belongs to another tenant", 409)
         if user is None:
             user = User(
                 email=invite.email,
@@ -1680,10 +1687,31 @@ async def accept_invite(
     return detail
 
 
-async def get_tenant_managers(db: AsyncSession, tenant_id: str) -> List[Dict]:
+# Роли membership в БД для «операционных» менеджеров (owner хранится отдельно от administrator).
+_MEMBERSHIP_ROLES_MANAGER_CATALOG = (
+    Role.supervisor.value,
+    Role.administrator.value,
+    Role.recruiter.value,
+    "owner",
+)
+
+
+async def get_tenant_managers(
+    db: AsyncSession,
+    tenant_id: str,
+    *,
+    membership_roles: Optional[Sequence[str]] = None,
+) -> List[Dict]:
     label_expr = user_label_expr()
     full_expr = user_full_name_expr()
     short_expr = user_short_expr()
+
+    if membership_roles is not None:
+        role_tuple = tuple(membership_roles)
+        if len(role_tuple) == 0:
+            return []
+    else:
+        role_tuple = _MEMBERSHIP_ROLES_MANAGER_CATALOG
 
     stmt = (
         select(
@@ -1696,11 +1724,9 @@ async def get_tenant_managers(db: AsyncSession, tenant_id: str) -> List[Dict]:
         .select_from(User)
         .join(user_memberships, user_memberships.c.user_id == User.id)
         .where(user_memberships.c.tenant_id == tenant_id)
-        .where(
-            user_memberships.c.role.in_(
-                [Role.supervisor.value, Role.administrator.value, Role.recruiter.value]
-            )
-        )
+        .where(user_memberships.c.role.in_(role_tuple))
+        .where(User.deleted_at.is_(None))
+        .where(User.is_active.is_(True))
         .order_by(full_expr.asc())
     )
 

@@ -27,6 +27,10 @@ function pickIntakeCreateErrorMessage(err: unknown, t: (key: string) => string):
       const msg = t('public.start.errors.lead_form_not_found')
       if (msg && msg !== 'public.start.errors.lead_form_not_found') return msg
     }
+    if (code === 'intake_vacancy_not_found') {
+      const msg = t('public.start.errors.intake_vacancy_not_found')
+      if (msg && msg !== 'public.start.errors.intake_vacancy_not_found') return msg
+    }
     const message = (d as { message?: string }).message
     if (typeof message === 'string' && message.trim()) return message.trim()
   }
@@ -49,19 +53,45 @@ export default function PublicIntakeStart() {
     return {}
   }, [searchParams])
 
+  /** Optional: link from vacancy page → attach Candidate.vacancy_id on intake create (backend validates tenant). */
+  const vacancyIdFromQuery = useMemo(() => {
+    const raw = searchParams.get('vacancy_id')?.trim() ?? ''
+    return UUID_RE.test(raw) ? raw : undefined
+  }, [searchParams])
+
+  /** B2B client inquiry → backend may create CRM Lead (`lead_type=client`) on successful submit. */
+  const applicationKindFromQuery = useMemo(() => {
+    const raw = (searchParams.get('application_kind') ?? '').trim().toLowerCase()
+    return raw === 'client' ? ('client' as const) : undefined
+  }, [searchParams])
+
   const canonicalPath = useMemo(() => {
     const slug = searchParams.get('lead_form_slug')?.trim()
     const id = searchParams.get('lead_form_id')?.trim()
-    if (slug) return `/public/intake?lead_form_slug=${encodeURIComponent(slug)}`
-    if (id && UUID_RE.test(id)) return `/public/intake?lead_form_id=${encodeURIComponent(id)}`
-    return '/public/intake'
-  }, [searchParams])
+    const vac = vacancyIdFromQuery
+    const appKind = applicationKindFromQuery
+    const parts: string[] = []
+    if (slug) parts.push(`lead_form_slug=${encodeURIComponent(slug)}`)
+    else if (id && UUID_RE.test(id)) parts.push(`lead_form_id=${encodeURIComponent(id)}`)
+    if (vac) parts.push(`vacancy_id=${encodeURIComponent(vac)}`)
+    if (appKind) parts.push(`application_kind=${encodeURIComponent(appKind)}`)
+    if (!parts.length) return '/public/intake'
+    return `/public/intake?${parts.join('&')}`
+  }, [searchParams, vacancyIdFromQuery, applicationKindFromQuery])
+
+  const isClientInquiry = applicationKindFromQuery === 'client'
 
   useSeoMeta({
-    title: t('app.seo.public_intake.title', { defaultValue: 'Candidate Intake Portal' }),
-    description: t('app.seo.public_intake.description', {
-      defaultValue: 'Start candidate intake, submit contact details, and continue your application securely.',
-    }),
+    title: isClientInquiry
+      ? t('app.seo.public_intake.client_title', { defaultValue: 'Client inquiry — HostFlow' })
+      : t('app.seo.public_intake.title', { defaultValue: 'Candidate Intake Portal' }),
+    description: isClientInquiry
+      ? t('app.seo.public_intake.client_description', {
+          defaultValue: 'Start a client inquiry. Your team may receive a CRM lead after you submit the form.',
+        })
+      : t('app.seo.public_intake.description', {
+          defaultValue: 'Start candidate intake, submit contact details, and continue your application securely.',
+        }),
     canonicalPath,
   })
 
@@ -90,7 +120,10 @@ export default function PublicIntakeStart() {
     }
     void (async () => {
       try {
-        const list = await listPublicIntakeLeadForms()
+        const list = await listPublicIntakeLeadForms({
+          publicSlug: slug || undefined,
+          leadFormId: id || undefined,
+        })
         if (cancelled) return
         const match = list.find((f) => (id && f.id === id) || (slug && f.public_slug === slug))
         if (match?.title?.trim()) {
@@ -142,6 +175,8 @@ export default function PublicIntakeStart() {
         },
         source: 'public-intake-ui',
         locale: locale || 'en',
+        ...(vacancyIdFromQuery ? { vacancy_id: vacancyIdFromQuery } : {}),
+        ...(applicationKindFromQuery ? { application_kind: applicationKindFromQuery } : {}),
         ...(leadFormForRequest.lead_form_id
           ? { lead_form_id: leadFormForRequest.lead_form_id }
           : leadFormForRequest.lead_form_slug
@@ -170,9 +205,22 @@ export default function PublicIntakeStart() {
           </Link>
         </div>
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">{t('public.start.header.title')}</h1>
-          <p className="mt-2 text-sm text-slate-600">{t('public.start.header.subtitle')}</p>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {isClientInquiry ? t('public.start.header.title_client') : t('public.start.header.title')}
+          </h1>
+          <p className="mt-2 text-sm text-slate-600">
+            {isClientInquiry ? t('public.start.header.subtitle_client') : t('public.start.header.subtitle')}
+          </p>
         </div>
+
+        {isClientInquiry && (
+          <div
+            className="mb-6 rounded-xl border border-sky-200 bg-sky-50/80 px-4 py-3 text-left text-sm text-slate-800"
+            role="status"
+          >
+            {t('public.start.client.banner')}
+          </div>
+        )}
 
         {leadFormDisplay && (leadFormDisplay.title || leadFormDisplay.slug) && (
           <div

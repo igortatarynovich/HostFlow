@@ -6,12 +6,15 @@ import { CRM_APP_PATHS } from './app/crmAppPaths'
 import { AuthProvider } from './store/auth'
 import { I18nProvider } from './i18n'
 import { ToastProvider } from './components/Toast'
+import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { PlanLimitModalProvider } from './contexts/PlanLimitModalContext'
 import { installStaleChunkReloadRecovery } from './utils/staleChunkReload'
+import { initSentry } from './lib/observability'
 
 import './styles/components.css'
 import './index.css'
 
+initSentry()
 installStaleChunkReloadRecovery()
 
 const hash = window.location.hash || ''
@@ -24,16 +27,18 @@ if (hash.startsWith('#/')) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <I18nProvider>
-        <PlanLimitModalProvider>
-          <AuthProvider>
-            <ToastProvider>
-              <App />
-            </ToastProvider>
-          </AuthProvider>
-        </PlanLimitModalProvider>
-      </I18nProvider>
-    </BrowserRouter>
+    <AppErrorBoundary>
+      <BrowserRouter>
+        <I18nProvider>
+          <PlanLimitModalProvider>
+            <AuthProvider>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </AuthProvider>
+          </PlanLimitModalProvider>
+        </I18nProvider>
+      </BrowserRouter>
+    </AppErrorBoundary>
   </StrictMode>
 )

@@ -51,7 +51,13 @@ import LeadLostReasonReadonly from '../components/leads/LeadLostReasonReadonly'
 import LostReasonForLostStageModal from '../components/leads/LostReasonForLostStageModal'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
 import { CRM_APP_DRILLDOWN_HREFS, CRM_APP_PATHS } from '../app/crmAppPaths'
-import { CRM_STAGE_VALUES, isMetaProblemLead, leadAssignmentLocked } from '../utils/leadCrm'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import {
+  CRM_STAGE_VALUES,
+  isMetaProblemLead,
+  leadAssignmentLocked,
+  leadSupportsManualProcess,
+} from '../utils/leadCrm'
 import { formatLeadPipelineError } from '../utils/leadPipelineErrors'
 
 const STATUS_FILTERS: Array<'' | LeadStatus> = ['', 'new', 'processed', 'duplicated', 'needs_routing', 'failed']
@@ -171,6 +177,19 @@ export default function LeadsPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<'' | LeadStatus>('')
   const [stage, setStage] = useState<'' | LeadStage>('')
+  /** GET /leads created_before_hours — stale new leads (Work hub deep link). */
+  const [createdBeforeHoursFilter, setCreatedBeforeHoursFilter] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const sp = new URLSearchParams(window.location.search)
+      const n = parseInt(sp.get('created_before_hours') || '', 10)
+      if (Number.isFinite(n) && n > 0) return n
+      if ((sp.get('filter') || '').trim().toLowerCase() === 'no_first_contact_24h') return 24
+    } catch {
+      /* noop */
+    }
+    return null
+  })
   const [nextAction, setNextAction] = useState<'' | 'no_next_action' | 'overdue' | 'scheduled' | 'stuck'>('')
   const [conversionRoot, setConversionRoot] = useState<LeadConversionRootFilter>(initialConversionRootFromLocation)
   const [lostReasonCode, setLostReasonCode] = useState(initialLostReasonCodeFromLocation)
@@ -302,6 +321,22 @@ export default function LeadsPage() {
     const nextStatus = (sp.get('status') || '').trim()
     const nextStage = (sp.get('stage') || '').trim()
     const nextNextAction = (sp.get('next_action') || '').trim()
+    const filterRaw = (sp.get('filter') || '').trim().toLowerCase()
+    const cbhRaw = sp.get('created_before_hours')
+    const parsedCbh = cbhRaw != null ? parseInt(String(cbhRaw), 10) : NaN
+    const nextCbh =
+      Number.isFinite(parsedCbh) && parsedCbh > 0 ? parsedCbh : filterRaw === 'no_first_contact_24h' ? 24 : null
+    if (nextCbh !== createdBeforeHoursFilter) {
+      setCreatedBeforeHoursFilter(nextCbh)
+      setPage(1)
+    }
+    if (filterRaw === 'no_first_contact_24h' && !nextStatus) {
+      setStatus('new')
+      setPage(1)
+    } else if (nextCbh != null && nextCbh > 0 && !nextStatus) {
+      setStatus('new')
+      setPage(1)
+    }
     const nextCfKey = (sp.get('custom_field_key') || '').trim()
     const hasCfValParam = sp.has('custom_field_value')
     const nextCfVal = hasCfValParam ? sp.get('custom_field_value') ?? '' : null
@@ -358,7 +393,7 @@ export default function LeadsPage() {
       setPage(1)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.search, conversionRoot, lostReasonCode, lostFromCrmStage, pipelineError])
+  }, [location.search, conversionRoot, lostReasonCode, lostFromCrmStage, pipelineError, createdBeforeHoursFilter])
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -386,7 +421,8 @@ export default function LeadsPage() {
       lostFromCrmStage ||
       pipelineError ||
       customFieldKey.trim() ||
-      leadSearch.trim().length >= 2,
+      leadSearch.trim().length >= 2 ||
+      createdBeforeHoursFilter != null,
   )
 
   const loadLeads = useCallback(
@@ -399,6 +435,7 @@ export default function LeadsPage() {
         const payload = await listLeads({
           status: status || undefined,
           stage: stage || undefined,
+          createdBeforeHours: createdBeforeHoursFilter ?? undefined,
           nextAction: nextAction || undefined,
           conversionRoot: conversionRoot || undefined,
           lostReasonCode: lostReasonCode || undefined,
@@ -469,6 +506,7 @@ export default function LeadsPage() {
       offset,
       stage,
       status,
+      createdBeforeHoursFilter,
       planLimitModal,
       t,
     ],
@@ -864,7 +902,7 @@ export default function LeadsPage() {
     }
   }, [locale])
 
-  const formatDateValue = (value?: string) => {
+  const formatDateValue = (value?: string | null) => {
     if (!value) return '—'
     try {
       return dateFormatter.format(new Date(value))
@@ -1128,7 +1166,7 @@ export default function LeadsPage() {
     [loadLeadTimeline, loadLeads, notify, offset, planLimitModal, selectedLeadId, t],
   )
 
-  const handleRerouteMetaLeadFromError = useCallback((leadId: string, _leadCompanyId?: string) => {
+  const handleRerouteMetaLeadFromError = useCallback((leadId: string, _leadCompanyId?: string | null) => {
     setSelectedLeadId(leadId)
   }, [])
 
@@ -1450,6 +1488,8 @@ export default function LeadsPage() {
         </details>
       </header>
 
+      <PageBreadcrumb className="max-w-5xl" />
+
       {filterBannerVisible && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1612,7 +1652,7 @@ export default function LeadsPage() {
                         retryLabel={t('common.retry')}
                         {...friendlyErrorBannerSecondary(
                           error,
-                          CRM_APP_PATHS.settingsLeads,
+                          CRM_APP_PATHS.settingsIntegrationsMeta,
                           t('app.leads.states.empty_cta_connect'),
                         )}
                       />
@@ -1628,7 +1668,7 @@ export default function LeadsPage() {
                         description={emptyDescription}
                         primaryAction={{
                           label: t('app.leads.states.empty_cta_connect'),
-                          to: CRM_APP_PATHS.settingsLeads,
+                          to: CRM_APP_PATHS.settingsIntegrationsMeta,
                         }}
                         secondaryAction={{
                           label: secondaryEmptyLabel,
@@ -1750,7 +1790,7 @@ export default function LeadsPage() {
                                     : t('admin.meta_leads.logs.actions.retry')}
                                 </button>
 
-                                {leadSuggestion?.tab === 'mapping' ? (
+                                {leadSuggestion?.tab === 'field_mapping' ? (
                                   <>
                                     <button
                                       type="button"
@@ -1772,7 +1812,7 @@ export default function LeadsPage() {
                                   </>
                                 ) : null}
 
-                                {leadSuggestion?.tab === 'credentials' ? (
+                                {leadSuggestion?.tab === 'advanced' ? (
                                   <Link
                                     to={openCredentialsHref}
                                     className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
@@ -1782,7 +1822,7 @@ export default function LeadsPage() {
                                   </Link>
                                 ) : null}
 
-                                {leadSuggestion?.tab === 'settings' ? (
+                                {leadSuggestion?.tab === 'processing' ? (
                                   <Link
                                     to={openSettingsHref}
                                     className="text-xs text-slate-500 hover:text-brand-700 hover:underline"
@@ -1854,7 +1894,7 @@ export default function LeadsPage() {
                           ) : (
                             <div className="flex items-center gap-2">
                               <span>—</span>
-                              {String(lead.source || '').toLowerCase() === 'meta' ? (
+                              {leadSupportsManualProcess(lead) ? (
                                 <button
                                   type="button"
                                   className="btn-secondary rounded-lg px-2 py-1 text-[11px]"
@@ -2036,7 +2076,7 @@ export default function LeadsPage() {
                       {t('app.leads.inbox.action_write', { defaultValue: 'Write' })}
                     </a>
                   ) : null}
-                  {String(selectedLead.source || '').toLowerCase() === 'meta' && !selectedLead.candidate_id ? (
+                  {leadSupportsManualProcess(selectedLead) && !selectedLead.candidate_id ? (
                     <button
                       type="button"
                       className="btn-primary inline-flex min-w-[10rem] flex-1 items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-semibold sm:flex-none"

@@ -624,8 +624,9 @@ export default function PublicApplyPage() {
       email: email || undefined,
       phone: phone || undefined,
       phone_country_code: phone_country_code || undefined,
+      ...(token ? { intake_token: token } : {}),
     }
-  }, [formData.contacts])
+  }, [formData.contacts, token])
 
   const handleResendMagicLink = useCallback(async () => {
     const payload = buildMagicLinkPayload()

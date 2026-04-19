@@ -50,12 +50,17 @@ export type IntakeAgreements = {
   contact?: boolean
 }
 
+export type IntakeApplicationKind = 'candidate' | 'client'
+
 export type IntakeData = {
   contacts: IntakeContacts
   personal: IntakePersonal
   experience: IntakeExperience
   employments: IntakeEmployment[]
   agreements: IntakeAgreements
+  lead_form?: Record<string, unknown> | null
+  /** Mirrors public intake state; **client** may create a CRM Lead on submit when company is routable. */
+  application_kind?: IntakeApplicationKind | null
 }
 
 export type PublicIntakeCreateRequest = {
@@ -66,6 +71,8 @@ export type PublicIntakeCreateRequest = {
   /** Send at most one of these (backend rejects both set). */
   lead_form_id?: string | null
   lead_form_slug?: string | null
+  /** **client** = B2B client inquiry (Lead on submit); omit or **candidate** = hiring-only. */
+  application_kind?: IntakeApplicationKind
 }
 
 export type PublicLeadFormListItem = {
@@ -183,6 +190,10 @@ export type MagicLinkRequestPayload = {
   email?: string
   phone_country_code?: string
   phone?: string
+  /** Prefer on /public/apply/:token so the correct workspace is used without X-Tenant-Id. */
+  intake_token?: string | null
+  lead_form_id?: string | null
+  lead_form_slug?: string | null
 }
 
 export type PublicDocumentsAccessPayload = {
@@ -219,8 +230,17 @@ export async function createPublicIntake(payload: PublicIntakeCreateRequest): Pr
   return data
 }
 
-export async function listPublicIntakeLeadForms(): Promise<PublicLeadFormListItem[]> {
-  const { data } = await http.get<PublicLeadFormListItem[]>('/public/intake/lead-forms')
+export async function listPublicIntakeLeadForms(opts?: {
+  publicSlug?: string
+  leadFormId?: string
+}): Promise<PublicLeadFormListItem[]> {
+  const params = new URLSearchParams()
+  const slug = (opts?.publicSlug || '').trim()
+  const fid = (opts?.leadFormId || '').trim()
+  if (slug) params.set('public_slug', slug)
+  if (fid) params.set('lead_form_id', fid)
+  const q = params.toString() ? `?${params.toString()}` : ''
+  const { data } = await http.get<PublicLeadFormListItem[]>(`/public/intake/lead-forms${q}`)
   return data
 }
 

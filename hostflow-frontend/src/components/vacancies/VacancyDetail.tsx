@@ -17,6 +17,7 @@ import { listCandidateProfiles, type CandidateProfile } from '../../api/candidat
 import { listVacancyRequirementsPresets, type VacancyRequirementsPreset } from '../../api/tenants'
 import { usePermissions } from '../../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { PageBreadcrumb } from '../nav/PageBreadcrumb'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { servicesWorkspacePath } from '../../modules/services/utils'
 
@@ -53,6 +54,8 @@ const vacancyFormSchema = z.object({
   criteria_blocked_geo_countries: z.string().optional().or(z.literal('')),
   /** §2.4: vacancy.extra.leads_auto_convert_on_fit_v1 = false */
   vacancy_disable_auto_convert_on_fit: z.boolean().optional().default(false),
+  /** Vacancy.extra.lead_fit_evaluation_enabled_v1 — apply lead_criteria_v1 vs incoming leads */
+  lead_fit_evaluation_enabled: z.boolean().optional().default(false),
   headcount_target: z.string().optional().or(z.literal('')),
 })
 
@@ -139,6 +142,15 @@ function toFormDefaults(source: any | null): VacancyFormValues {
     extra = rawExtra
   }
   const crit = (extra?.lead_criteria_v1 && typeof extra.lead_criteria_v1 === 'object' ? extra.lead_criteria_v1 : {}) as any
+  const explicitFit = extra?.lead_fit_evaluation_enabled_v1
+  let leadFitEvaluationEnabled = false
+  if (explicitFit === true) {
+    leadFitEvaluationEnabled = true
+  } else if (explicitFit === false) {
+    leadFitEvaluationEnabled = false
+  } else {
+    leadFitEvaluationEnabled = !!(crit && typeof crit === 'object' && !Array.isArray(crit) && Object.keys(crit).length > 0)
+  }
 
   return {
     title: source?.title ?? '',
@@ -169,6 +181,7 @@ function toFormDefaults(source: any | null): VacancyFormValues {
       ? crit.blocked_geo_countries.join(', ')
       : '',
     vacancy_disable_auto_convert_on_fit: extra?.leads_auto_convert_on_fit_v1 === false,
+    lead_fit_evaluation_enabled: leadFitEvaluationEnabled,
     headcount_target:
       source?.headcount_target != null && Number(source.headcount_target) > 0
         ? String(source.headcount_target)
@@ -496,6 +509,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         else delete criteria.blocked_geo_countries
         if (payload?.extra && typeof payload.extra === 'object') {
           ;(payload.extra as any).lead_criteria_v1 = criteria
+          ;(payload.extra as any).lead_fit_evaluation_enabled_v1 = Boolean((values as any).lead_fit_evaluation_enabled)
           if ((values as any).vacancy_disable_auto_convert_on_fit) {
             ;(payload.extra as any).leads_auto_convert_on_fit_v1 = false
           } else {
@@ -518,7 +532,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
         if (
           planLimitModal?.showPlanLimitIfNeeded(
             err,
-            t('app.vacancies.form.save_failed', { defaultValue: 'Could not save vacancy' }),
+            t('app.vacancies.form.save_failed'),
           )
         ) {
           return
@@ -645,7 +659,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               <Link to={CRM_APP_PATHS.vacancies} className="hover:underline">{'← '}{t('app.nav.items.vacancies')}</Link>
             </div>
             <h1 className="text-3xl font-semibold">
-              {watchTitle || model?.title || t('app.vacancies.detail.untitled', { defaultValue: 'Вакансия' })}
+              {watchTitle || model?.title || t('app.vacancies.detail.untitled')}
             </h1>
             {companyName && <div className="text-sm text-white/80">{companyName}</div>}
             <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -673,7 +687,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
               onClick={refresh}
             >
-              {t('common.actions.refresh', { defaultValue: 'Обновить' })}
+              {t('common.actions.refresh')}
             </button>
             <Link
               className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
@@ -683,7 +697,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                   : `${CRM_APP_PATHS.candidates}?view=kanban`
               }
             >
-              {t('app.candidates.pipeline.title', { defaultValue: 'Пайплайн' })}
+              {t('app.candidates.pipeline.title')}
             </Link>
             {can('services.view') && model?.id ? (
               <Link
@@ -701,7 +715,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               className="inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/15 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/25"
               onClick={onBack}
             >
-              {t('common.actions.cancel', { defaultValue: 'Отмена' })}
+              {t('common.actions.cancel')}
             </button>
             <button
               type="button"
@@ -719,7 +733,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             <span className="font-medium">
               {t('app.vacancies.detail.ops.candidates_linked', {
                 values: { count: model.candidate_count ?? 0 },
-                defaultValue: '{count} candidates on this vacancy',
               })}
             </span>
             {model.headcount_target != null && model.headcount_target > 0 ? (
@@ -729,7 +742,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                     current: model.candidate_count ?? 0,
                     target: model.headcount_target,
                   },
-                  defaultValue: 'Headcount: {current} / {target} candidates',
                 })}
               </span>
             ) : null}
@@ -737,7 +749,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               <span className="text-white/80">
                 {t('app.vacancies.detail.ops.last_candidate_activity', {
                   values: { when: lastCandidateActivityLabel },
-                  defaultValue: 'Last candidate activity {when}',
                 })}
               </span>
             ) : null}
@@ -745,7 +756,6 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               <span className="text-white/85">
                 {t('app.vacancies.detail.ops.bottleneck', {
                   values: { stage: pipelineBottleneck[0], count: pipelineBottleneck[1] },
-                  defaultValue: 'Largest pipeline stage: {stage} ({count})',
                 })}
               </span>
             ) : null}
@@ -755,12 +765,16 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 className="rounded-lg border border-white/30 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25"
                 onClick={() => setTab('candidates')}
               >
-                {t('app.vacancies.detail.ops.open_candidate_queue', { defaultValue: 'Candidate queue' })}
+                {t('app.vacancies.detail.ops.open_candidate_queue')}
               </button>
             </div>
           </div>
         ) : null}
       </section>
+
+      <div className="border-b border-slate-200 bg-slate-50/90 px-3 py-2">
+        <PageBreadcrumb />
+      </div>
 
       <div className="flex items-center gap-2 border-b border-slate-200">
         {(['info','candidates','notes'] as TabKey[]).map(key => (
@@ -774,23 +788,23 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             onClick={()=>setTab(key)}
           >
             {key === 'info'
-              ? t('app.vacancies.detail.tabs.info', { defaultValue: 'Инфо' })
+              ? t('app.vacancies.detail.tabs.info')
               : key === 'candidates'
-                ? `${t('app.vacancies.detail.tabs.candidates', { defaultValue: 'Кандидаты' })}${candItems.length ? ` (${candItems.length})` : ''}`
-                : t('app.vacancies.detail.tabs.notes', { defaultValue: 'Заметки' })}
+                ? `${t('app.vacancies.detail.tabs.candidates')}${candItems.length ? ` (${candItems.length})` : ''}`
+                : t('app.vacancies.detail.tabs.notes')}
           </button>
         ))}
       </div>
 
       {savedOk && (
         <div className="p-3 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
-          {t('common.messages.saved', { defaultValue: 'Сохранено' })}
+          {t('common.messages.saved')}
         </div>
       )}
 
       {tab === 'info' && (
         <div className="space-y-4">
-          <SectionCard title={t('app.vacancies.detail.sections.info', { defaultValue: 'Основные данные' })}>
+          <SectionCard title={t('app.vacancies.detail.sections.info')}>
             <form className="space-y-4" onSubmit={handleSubmit(submitVacancy)}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="block">
@@ -852,7 +866,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
               <input
                 className="input"
                 {...register('currency')}
-                placeholder={t('app.vacancies.detail.placeholders.currency_codes', { defaultValue: 'PLN / EUR / USD' })}
+                placeholder={t('app.vacancies.detail.placeholders.currency_codes')}
               />
             </label>
 
@@ -863,7 +877,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
             <label className="block">
               <div className="label">
-                {t('app.vacancies.detail.fields.headcount_target', { defaultValue: 'Target headcount (positions)' })}
+                {t('app.vacancies.detail.fields.headcount_target')}
               </div>
               <input
                 type="number"
@@ -875,9 +889,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 placeholder="—"
               />
               <p className="mt-1 text-xs text-slate-500">
-                {t('app.vacancies.detail.fields.headcount_hint', {
-                  defaultValue: 'Planned hires for this role. Leave empty if not used.',
-                })}
+                {t('app.vacancies.detail.fields.headcount_hint')}
               </p>
             </label>
 
@@ -916,7 +928,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
 
             <Input label="Создана" value={formatDate(model?.created_at)} readOnly />
             <Input label="Изменена" value={formatDate(model?.updated_at)} readOnly />
-            <Input label={t('app.vacancies.detail.fields.id', { defaultValue: 'ID' })} value={model?.id || '—'} mono readOnly />
+            <Input label={t('app.vacancies.detail.fields.id')} value={model?.id || '—'} mono readOnly />
 
             <div className="md:col-span-2">
               <label className="block">
@@ -936,8 +948,28 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             </div>
             <div className="md:col-span-2">
               <div className="mb-2 text-sm font-semibold text-slate-800">
-                {t('app.vacancies.detail.criteria.title', { defaultValue: 'Критерии для лидов (авто‑qualification)' })}
+                {t('app.vacancies.detail.criteria.title')}
               </div>
+              <Controller
+                control={control}
+                name="lead_fit_evaluation_enabled"
+                render={({ field }) => (
+                  <label className="mb-3 flex cursor-pointer items-start gap-2 text-sm text-slate-800">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={!!field.value}
+                      onChange={(e) => field.onChange(e.target.checked)}
+                    />
+                    <span>
+                      <span className="font-medium">{t('app.vacancies.detail.criteria.enable_fit_evaluation')}</span>
+                      <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                        {t('app.vacancies.detail.criteria.enable_fit_evaluation_hint')}
+                      </span>
+                    </span>
+                  </label>
+                )}
+              />
               {requirementsPresets.length > 0 && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <select
@@ -989,34 +1021,25 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                   <input
                     className="input"
                     {...register('criteria_requires_documents')}
-                    placeholder={t('app.vacancies.detail.criteria.documents_placeholder', { defaultValue: 'np. karta_pobytu, wp_a' })}
+                    placeholder={t('app.vacancies.detail.criteria.documents_placeholder')}
                   />
                 </label>
                 <label className="block md:col-span-2">
                   <div className="label">
-                    {t('app.vacancies.detail.criteria.candidate_docs_module', {
-                      defaultValue: 'Documents module — required doc types (candidate)',
-                    })}
+                    {t('app.vacancies.detail.criteria.candidate_docs_module')}
                   </div>
                   <input
                     className="input font-mono text-xs"
                     {...register('criteria_requires_candidate_documents_v1')}
-                    placeholder={t('app.vacancies.detail.criteria.candidate_docs_placeholder', {
-                      defaultValue: 'driver_license, passport',
-                    })}
+                    placeholder={t('app.vacancies.detail.criteria.candidate_docs_placeholder')}
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    {t('app.vacancies.detail.criteria.candidate_docs_hint', {
-                      defaultValue:
-                        'Uses rows in Documents for the linked candidate. If the lead has no candidate yet, fit shows needs_info. Codes follow the same catalog as Settings → Documents.',
-                    })}
+                    {t('app.vacancies.detail.criteria.candidate_docs_hint')}
                   </p>
                 </label>
                 <label className="block md:col-span-2">
                   <div className="label">
-                    {t('app.vacancies.detail.criteria.allow_statuses', {
-                      defaultValue: 'Allowed document statuses (optional override, comma-separated)',
-                    })}
+                    {t('app.vacancies.detail.criteria.allow_statuses')}
                   </div>
                   <input
                     className="input font-mono text-xs"
@@ -1044,9 +1067,9 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
                 </label>
               </div>
               <div className="mt-2 text-xs text-slate-500">
-                {t('app.vacancies.detail.criteria.lead_fields', { defaultValue: 'Сейчас проверяем по полям лида:' })}{' '}
-                <span className="font-mono">{leadFieldExperience}</span> {t('common.and', { defaultValue: 'и' })}{' '}
-                <span className="font-mono">{leadFieldDocuments}</span> ({t('common.words.if_available', { defaultValue: 'если есть' })}
+                {t('app.vacancies.detail.criteria.lead_fields')}{' '}
+                <span className="font-mono">{leadFieldExperience}</span> {t('common.and')}{' '}
+                <span className="font-mono">{leadFieldDocuments}</span> ({t('common.words.if_available')}
                 ); {t('app.vacancies.detail.criteria.lead_fields_geo')}{' '}
                 <span className="font-mono">{leadFieldGeo}</span>.
               </div>
@@ -1075,20 +1098,17 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
             </form>
           </SectionCard>
 
-          <SectionCard title={t('app.vacancies.detail.sections.documents', { defaultValue: 'Документы и требования' })}>
+          <SectionCard title={t('app.vacancies.detail.sections.documents')}>
             <div className="space-y-2 text-sm text-slate-700">
               <p className="text-slate-600">
-                {t('app.vacancies.detail.documents.hint', {
-                  defaultValue:
-                    'Требования к документам задаются в модуле Documents и/или через профиль кандидата. Вакансия не содержит отдельной “Document policies” модели, чтобы не дублировать правила.',
-                })}
+                {t('app.vacancies.detail.documents.hint')}
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Link to={CRM_APP_PATHS.documents} className="btn-secondary btn-xs">
-                  {t('app.nav.items.documents', { defaultValue: 'Documents' })}
+                  {t('app.nav.items.documents')}
                 </Link>
                 <Link to={CRM_APP_PATHS.settingsCandidateProfiles} className="btn-secondary btn-xs">
-                  {t('admin.settings.cards.candidate_profiles.label', { defaultValue: 'Candidate profiles' })}
+                  {t('admin.settings.cards.candidate_profiles.label')}
                 </Link>
               </div>
             </div>
@@ -1097,7 +1117,7 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       )}
 
       {tab === 'candidates' && (
-        <SectionCard title={t('app.vacancies.detail.tabs.candidates', { defaultValue: 'Кандидаты' })}>
+        <SectionCard title={t('app.vacancies.detail.tabs.candidates')}>
           {candLoading ? (
             <div className="text-slate-500">Загрузка кандидатов…</div>
           ) : candItems.length === 0 ? (
@@ -1105,9 +1125,9 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
           ) : (
             <MiniTable
               labels={{
-                candidate: t('app.vacancies.detail.table.candidate', { defaultValue: 'Кандидат' }),
-                email: t('app.vacancies.detail.table.email', { defaultValue: 'Email' }),
-                stage: t('app.vacancies.detail.table.stage', { defaultValue: 'Этап' }),
+                candidate: t('app.vacancies.detail.table.candidate'),
+                email: t('app.vacancies.detail.table.email'),
+                stage: t('app.vacancies.detail.table.stage'),
               }}
               rows={(
                 candItems.map((c:any) => (
@@ -1126,8 +1146,8 @@ export default function VacancyDetail({ item, companiesMap = {}, onBack, onRemov
       )}
 
       {tab === 'notes' && (
-        <SectionCard title={t('app.vacancies.detail.tabs.notes', { defaultValue: 'Заметки' })}>
-          <p className="text-sm text-slate-500">{t('app.vacancies.detail.notes_coming', { defaultValue: 'Скоро здесь будет блок заметок.' })}</p>
+        <SectionCard title={t('app.vacancies.detail.tabs.notes')}>
+          <p className="text-sm text-slate-500">{t('app.vacancies.detail.notes_coming')}</p>
         </SectionCard>
       )}
 

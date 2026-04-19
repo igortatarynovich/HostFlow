@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from backend.app.auth.deps import get_current_user, UserCtx
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.services import billing_restrictions
 from backend.app.api.v1.candidates.acl import ensure_candidate_access
 from backend.app.services.handoff import (
     create_handoff,
@@ -108,6 +109,7 @@ async def create_handoff_bulk(
 ):
     """Bulk handoff: create handoffs for multiple candidates to the same client."""
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     cid = str(payload.client_company_id)
     aid = str(payload.assigned_to_user_id) if payload.assigned_to_user_id else None
     created = 0
@@ -145,6 +147,7 @@ async def create_handoff_route(
 ):
     """Create handoff (Przekaż do klienta). Agency only."""
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     await ensure_candidate_access(db, str(tenant_id), str(candidate_id), current_user)
     cid = str(payload.client_company_id) if payload.client_company_id else None
     tid = str(payload.client_tenant_id) if payload.client_tenant_id else None
@@ -347,6 +350,7 @@ async def accept_handoff_route(
     from backend.app.models import CandidateHandoff
 
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     handoff = await db.get(CandidateHandoff, str(handoff_id))
     if not handoff:
         raise HTTPException(status_code=404, detail="Handoff not found")
@@ -374,6 +378,7 @@ async def reject_handoff_route(
     from backend.app.models import CandidateHandoff
 
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     handoff = await db.get(CandidateHandoff, str(handoff_id))
     if not handoff:
         raise HTTPException(status_code=404, detail="Handoff not found")
@@ -402,6 +407,7 @@ async def change_processor_route(
     from backend.app.models import CandidateHandoff
 
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     handoff = await db.get(CandidateHandoff, str(handoff_id))
     if not handoff:
         raise HTTPException(status_code=404, detail="Handoff not found")
@@ -430,6 +436,7 @@ async def return_handoff_route(
     from backend.app.models import CandidateHandoff
 
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     handoff = await db.get(CandidateHandoff, str(handoff_id))
     if not handoff:
         raise HTTPException(status_code=404, detail="Handoff not found")

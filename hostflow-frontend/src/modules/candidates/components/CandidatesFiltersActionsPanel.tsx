@@ -1,10 +1,11 @@
-import type { ReactNode, RefObject } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { Link } from 'react-router-dom'
 import type { UserSavedView } from '../../../api/types'
 import { toCSV } from '../candidateUtils'
 import type { AugmentedCandidate, CandidateOpsMode } from '../types'
 import { CRM_APP_PATHS } from '../../../app/crmAppPaths'
 import { CandidatesQuickViewsBar, type QuickViewKey } from './CandidatesQuickViewsBar'
+import { CandidatesTableViewRailSection } from './CandidatesTableViewRailSection'
 
 type QuickDocFilter = { key: string; label: string; statuses: string[]; active: boolean }
 
@@ -22,7 +23,7 @@ type CandidatesFiltersActionsPanelProps = {
   secondaryBtn: string
   onRefresh: () => void
   loading: boolean
-  actionsMenuRef: RefObject<HTMLDivElement | null>
+  actionsMenuRef: Ref<HTMLDivElement>
   actionsMenuOpen: boolean
   onActionsMenuOpenChange: (value: boolean | ((prev: boolean) => boolean)) => void
   displayedItems: any[]
@@ -52,6 +53,9 @@ type CandidatesFiltersActionsPanelProps = {
   /** Режим перестановки/ресайза колонок таблицы (R1.5 Phase C). */
   tableLayoutCustomize: boolean
   onTableLayoutCustomizeChange: (value: boolean) => void
+  orderedVisibleColumns: string[]
+  moveColumnRelative: (key: string, delta: -1 | 1) => void
+  onResetColumnLayout: () => void
 }
 
 export function CandidatesFiltersActionsPanel({
@@ -96,6 +100,9 @@ export function CandidatesFiltersActionsPanel({
   viewSaveEnabled,
   tableLayoutCustomize,
   onTableLayoutCustomizeChange,
+  orderedVisibleColumns,
+  moveColumnRelative,
+  onResetColumnLayout,
 }: CandidatesFiltersActionsPanelProps) {
   return (
     <section className="space-y-2">
@@ -108,22 +115,6 @@ export function CandidatesFiltersActionsPanel({
         {viewToggle}
         <button className={secondaryBtn} onClick={onRefresh} disabled={loading} title={t('app.candidates.actions.refresh_title')}>
           {loading ? t('app.candidates.actions.refreshing') : t('app.candidates.actions.refresh')}
-        </button>
-        <button
-          type="button"
-          className={
-            tableLayoutCustomize
-              ? 'inline-flex items-center gap-2 rounded-md border border-brand-500 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-100'
-              : secondaryBtn
-          }
-          title={t('app.candidates.table.customize_layout_title', {
-            defaultValue: 'Reorder columns (⋮⋮) and resize widths. Column visibility stays under ⋯.',
-          })}
-          onClick={() => onTableLayoutCustomizeChange(!tableLayoutCustomize)}
-        >
-          {tableLayoutCustomize
-            ? t('app.candidates.table.customize_layout_done', { defaultValue: 'Done customizing' })
-            : t('app.candidates.table.customize_layout', { defaultValue: 'Customize table' })}
         </button>
         <div className="relative" ref={actionsMenuRef}>
           <button type="button" className={secondaryBtn} title={t('app.candidates.actions.more')} onClick={() => onActionsMenuOpenChange((prev) => !prev)}>
@@ -208,27 +199,6 @@ export function CandidatesFiltersActionsPanel({
                   {t('app.candidates.views.save_action')}
                 </button>
               </div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mt-3 pt-2 border-t border-slate-100">
-                {t('app.candidates.table.columns.title')}
-              </div>
-              <div className="mt-1.5 max-h-48 space-y-0.5 overflow-auto">
-                {columnToggleKeys.map((key) => (
-                  <label key={key} className="flex items-center gap-1.5 text-xs py-0.5">
-                    <input
-                      type="checkbox"
-                      checked={!!visibleCols[key]}
-                      onChange={(e) => {
-                        const next = { ...visibleCols, [key]: e.currentTarget.checked }
-                        onVisibleColsChange(next)
-                        try {
-                          localStorage.setItem(visibleColsStorageKey, JSON.stringify(next))
-                        } catch {}
-                      }}
-                    />
-                    <span>{columnLabelMap[key]}</span>
-                  </label>
-                ))}
-              </div>
             </div>
           )}
         </div>
@@ -263,6 +233,20 @@ export function CandidatesFiltersActionsPanel({
           />
         </div>
       </div>
+
+      <CandidatesTableViewRailSection
+        t={t}
+        columnToggleKeys={columnToggleKeys}
+        visibleCols={visibleCols}
+        onVisibleColsChange={onVisibleColsChange}
+        visibleColsStorageKey={visibleColsStorageKey}
+        columnLabelMap={columnLabelMap}
+        tableLayoutCustomize={tableLayoutCustomize}
+        onTableLayoutCustomizeChange={onTableLayoutCustomizeChange}
+        orderedVisibleColumns={orderedVisibleColumns}
+        moveColumnRelative={moveColumnRelative}
+        onResetColumnLayout={onResetColumnLayout}
+      />
 
       <details className="rounded-lg border border-slate-200/90 bg-white/90 px-2.5 py-2 shadow-sm">
         <summary className="cursor-pointer select-none text-xs font-medium text-slate-600 hover:text-slate-900">

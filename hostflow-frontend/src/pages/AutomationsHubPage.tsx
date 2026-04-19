@@ -18,6 +18,8 @@ import { useI18n } from '../i18n'
 import { usePermissions } from '../hooks/usePermissions'
 import { useCommunicationsAccess } from '../hooks/useCommunicationsAccess'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
+import { SettingsSubpageHeader } from '../components/settings/SettingsSubpageHeader'
 
 type PolicyCard = {
   key: string
@@ -32,6 +34,7 @@ export default function AutomationsHubPage() {
   const { can } = usePermissions()
   const { canUseCommunicationsFeature } = useCommunicationsAccess()
   const showLeadsDistribution = can('leads.view')
+  const showMetaLeadPlaybook = can('admin.metaLeads')
 
   const policyCards = useMemo((): PolicyCard[] => {
     const out: PolicyCard[] = []
@@ -128,17 +131,53 @@ export default function AutomationsHubPage() {
 
   return (
     <div className="flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-4 sm:px-6">
-      <header className="border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          {t('app.automations.hub.title', { defaultValue: 'Automations' })}
-        </h1>
-        <p className="mt-1 max-w-3xl text-sm text-slate-600">
-          {t('app.automations.hub.subtitle', {
+      <div className="border-b border-slate-200 pb-4">
+        <SettingsSubpageHeader
+          backLabel={t('admin.settings.subpage.back_all')}
+          kicker={t('app.automations.hub.header_kicker')}
+          title={t('app.automations.hub.title', { defaultValue: 'Automations' })}
+          subtitle={t('app.automations.hub.subtitle', {
             defaultValue:
               'Rules, logs, and lead routing — one place to start; details open on their own screens.',
           })}
-        </p>
-      </header>
+        />
+      </div>
+
+      <PageBreadcrumb className="max-w-4xl" />
+
+      <section className="max-w-4xl rounded-xl border border-brand-200/80 bg-brand-50/40 p-4 text-sm text-slate-800 shadow-sm">
+        <h2 className="text-base font-semibold text-slate-900">
+          {t('app.automations.hub.meta_leads_fit_title')}
+        </h2>
+        <p className="mt-2 leading-relaxed text-slate-700">{t('app.automations.hub.meta_leads_fit_intro')}</p>
+        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-slate-700">
+          <li>{t('app.automations.hub.meta_leads_fit_step_vacancy')}</li>
+          <li>{t('app.automations.hub.meta_leads_fit_step_meta')}</li>
+          <li>{t('app.automations.hub.meta_leads_fit_step_rules')}</li>
+        </ol>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {showMetaLeadPlaybook ? (
+            <Link
+              to={`${CRM_APP_PATHS.settingsIntegrationsMeta}?tab=settings`}
+              className="btn-secondary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium"
+            >
+              {t('app.automations.hub.meta_leads_fit_link_meta')}
+            </Link>
+          ) : null}
+          <Link
+            to={CRM_APP_PATHS.automationRules}
+            className="btn-secondary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium"
+          >
+            {t('app.automations.hub.meta_leads_fit_link_rules')}
+          </Link>
+          <Link
+            to={CRM_APP_PATHS.vacancies}
+            className="btn-secondary inline-flex items-center rounded-lg px-3 py-1.5 text-xs font-medium"
+          >
+            {t('app.automations.hub.meta_leads_fit_link_vacancies')}
+          </Link>
+        </div>
+      </section>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Link

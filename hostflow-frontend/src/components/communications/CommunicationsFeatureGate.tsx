@@ -20,7 +20,7 @@ export default function CommunicationsFeatureGate({
   const { loading, canUseCommunicationsFeature } = useCommunicationsAccess()
 
   if (loading) {
-    return <div className="p-6 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
+    return <div className="p-6 text-sm text-slate-500">{t('common.loading')}</div>
   }
 
   const allowed = feature

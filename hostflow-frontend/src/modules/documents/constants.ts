@@ -58,6 +58,10 @@ export const PROCESS_LABEL_KEYS: Record<DocumentProcessType, string> = {
   qualification_code95: "admin.documents.process_types.qualification_code95",
   driver_certificate: "admin.documents.process_types.driver_certificate",
   decision: "admin.documents.process_types.decision",
+  residence_card: "admin.documents.process_types.residence_card",
+  tachograph_card: "admin.documents.process_types.tachograph_card",
+  driver_license_exchange: "admin.documents.process_types.driver_license_exchange",
+  swiadectwo_kierowcy: "admin.documents.process_types.swiadectwo_kierowcy",
 };
 
 export const READY_STATUSES = new Set<DocumentStatus>(["approved", "received"]);

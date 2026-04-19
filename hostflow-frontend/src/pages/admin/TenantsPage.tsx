@@ -63,6 +63,7 @@ import {
   type LicenseFormState,
 } from '../../modules/tenants/utils'
 import { SeatProgress } from '../../modules/tenants/components/SeatProgress'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 
 const DEFAULT_CREATE_FORM: CreateTenantForm = {
   name: '',
@@ -872,7 +873,7 @@ export default function TenantsPage() {
       error
         ? {
             title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+            hint: t('app.common.retry_hint'),
           }
         : null,
     [error, t],
@@ -888,11 +889,13 @@ export default function TenantsPage() {
 
   return (
     <div className="space-y-4">
+      <SettingsSubpageHeader
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('app.platform.tenants.header_kicker')}
+        title={t('app.platform.tenants.title')}
+        subtitle={t('app.platform.tenants.subtitle')}
+      />
       <div className="flex flex-col gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('app.platform.tenants.title')}</h1>
-          <p className="text-sm text-slate-500">{t('app.platform.tenants.subtitle')}</p>
-        </div>
         <div className="flex flex-wrap items-center gap-3">
           <input
             className="input w-full max-w-xs"
@@ -1115,7 +1118,7 @@ export default function TenantsPage() {
                           <ErrorRecoveryBanner
                             info={{
                               title: brandingError,
-                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                              hint: t('app.common.retry_hint'),
                             }}
                             compact
                           />
@@ -1166,7 +1169,7 @@ export default function TenantsPage() {
                         <ErrorRecoveryBanner
                           info={{
                             title: actionError,
-                            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                            hint: t('app.common.retry_hint'),
                           }}
                           compact
                         />
@@ -1316,7 +1319,7 @@ export default function TenantsPage() {
                           <ErrorRecoveryBanner
                             info={{
                               title: seatError,
-                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                              hint: t('app.common.retry_hint'),
                             }}
                             compact
                           />
@@ -1411,7 +1414,7 @@ export default function TenantsPage() {
                         <ErrorRecoveryBanner
                           info={{
                             title: vacancyAccessError,
-                            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                            hint: t('app.common.retry_hint'),
                           }}
                           compact
                         />
@@ -1475,7 +1478,7 @@ export default function TenantsPage() {
                           <ErrorRecoveryBanner
                             info={{
                               title: vacancyOptionsError,
-                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                              hint: t('app.common.retry_hint'),
                             }}
                             compact
                           />
@@ -1526,7 +1529,7 @@ export default function TenantsPage() {
                         <ErrorRecoveryBanner
                           info={{
                             title: modulesError,
-                            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                            hint: t('app.common.retry_hint'),
                           }}
                           compact
                         />
@@ -1564,7 +1567,7 @@ export default function TenantsPage() {
                           <ErrorRecoveryBanner
                             info={{
                               title: roleMatrixError,
-                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                              hint: t('app.common.retry_hint'),
                             }}
                             compact
                           />
@@ -1645,7 +1648,7 @@ export default function TenantsPage() {
                           <ErrorRecoveryBanner
                             info={{
                               title: userOverrideError,
-                              hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                              hint: t('app.common.retry_hint'),
                             }}
                             compact
                           />
@@ -1758,7 +1761,7 @@ export default function TenantsPage() {
                         <ErrorRecoveryBanner
                           info={{
                             title: adminErrorMsg,
-                            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                            hint: t('app.common.retry_hint'),
                           }}
                           compact
                         />
@@ -1816,7 +1819,7 @@ export default function TenantsPage() {
             <ErrorRecoveryBanner
               info={{
                 title: createError,
-                hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+                hint: t('app.common.retry_hint'),
               }}
               compact
             />

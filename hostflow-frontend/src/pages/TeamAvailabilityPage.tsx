@@ -5,6 +5,7 @@ import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { useI18n } from '../i18n'
 import WorkspaceTopNav from '../components/communications/WorkspaceTopNav'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
@@ -117,6 +118,7 @@ export default function TeamAvailabilityPage() {
           {t('app.communications.ia.team_availability_subtitle', { defaultValue: 'Supervisor/Admin view: manager schedules, occupancy, availability states, and queue readiness.' })}
         </p>
       </div>
+      <PageBreadcrumb className="max-w-4xl" />
       <div className="grid grid-cols-4 gap-3">
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{t('app.communications.team_availability.stats.available', { defaultValue: 'Available: {count}', values: { count: summary.available } })}</div>
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">{t('app.communications.team_availability.stats.busy', { defaultValue: 'Busy: {count}', values: { count: summary.busy } })}</div>
@@ -172,13 +174,13 @@ export default function TeamAvailabilityPage() {
         </div>
       </div>
       <div className="rounded-lg border border-slate-200 bg-white">
-        {loading && <div className="px-4 py-4 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
+        {loading && <div className="px-4 py-4 text-sm text-slate-500">{t('common.loading')}</div>}
         {error && (
           <div className="px-4 py-4">
             <ErrorRecoveryBanner
               info={error}
               onRetry={() => window.location.reload()}
-              retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+              retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 error,
                 CRM_APP_PATHS.calendar,

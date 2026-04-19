@@ -32,6 +32,7 @@ import { getPlatformTenant, listPlatformTenants } from '../../api/tenants'
 import { useAuth } from '../../store/useAuth'
 import { usePermissions } from '../../hooks/usePermissions'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary } from '../../utils/friendlyError'
@@ -226,13 +227,13 @@ function UserDetailCard({
   const detailLoadErrorBanner: FriendlyErrorInfo | null = error
     ? {
         title: error,
-        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+        hint: t('app.common.retry_hint'),
       }
     : null
   const auditTabErrorBanner: FriendlyErrorInfo | null = audit.error
     ? {
         title: audit.error,
-        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+        hint: t('app.common.retry_hint'),
       }
     : null
 
@@ -283,11 +284,11 @@ function UserDetailCard({
           <ErrorRecoveryBanner
             info={detailLoadErrorBanner}
             onRetry={onRefresh}
-            retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+            retryLabel={t('common.actions.refresh')}
             {...friendlyErrorBannerSecondary(
               detailLoadErrorBanner,
               CRM_APP_PATHS.settingsTeam,
-              t('common.navigation.settings', { defaultValue: 'Настройки' }),
+              t('common.navigation.settings'),
             )}
             compact
           />
@@ -341,9 +342,7 @@ function UserDetailCard({
               </label>
               {detail.role === 'recruiter' && !detail.supervisor_id && (
                 <div className="text-[11px] text-amber-600">
-                  {t('app.admin.users.errors.supervisor_required_for_recruiter', {
-                    defaultValue: 'Назначьте супервайзера для рекрутёра',
-                  })}
+                  {t('app.admin.users.errors.supervisor_required_for_recruiter')}
                 </div>
               )}
               <div className="flex flex-wrap gap-2 text-xs">
@@ -518,11 +517,11 @@ function UserDetailCard({
             <ErrorRecoveryBanner
               info={auditTabErrorBanner}
               onRetry={onRefreshAudit}
-              retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+              retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 auditTabErrorBanner,
                 CRM_APP_PATHS.settingsTeam,
-                t('app.admin.users.detail.audit.title', { defaultValue: 'Аудит' }),
+                t('app.admin.users.detail.tabs.audit'),
               )}
               compact
             />
@@ -602,8 +601,9 @@ export default function UsersPage() {
       administrator: 0,
       supervisor: 1,
       recruiter: 2,
-      client_processor: 3,
-      viewer: 4,
+      client_manager: 3,
+      client_processor: 4,
+      viewer: 5,
     }
     return [...users].sort((a, b) => {
       const aOrder = roleOrder[a.role] ?? 9
@@ -823,9 +823,7 @@ export default function UsersPage() {
         const msg =
           detail &&
           (String(detail).toLowerCase().includes('supervisor') || String(detail).toLowerCase().includes('assign'))
-            ? t('app.admin.users.errors.supervisor_required_for_recruiter', {
-                defaultValue: 'Назначьте супервайзера перед переводом в рекрутёры',
-              })
+            ? t('app.admin.users.errors.supervisor_required_for_recruiter')
             : formatError('app.admin.users.errors.change_role', detail)
         setError(msg)
       }
@@ -1021,7 +1019,7 @@ export default function UsersPage() {
   const usersListErrorBanner: FriendlyErrorInfo | null = error
     ? {
         title: error,
-        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+        hint: t('app.common.retry_hint'),
       }
     : null
 
@@ -1115,15 +1113,17 @@ export default function UsersPage() {
         </section>
       )}
 
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('app.admin.users.page.title')}</h1>
-          <p className="text-sm text-slate-500">{t('app.admin.users.page.subtitle')}</p>
-        </div>
-        <button className="btn-secondary" onClick={() => void loadUsers()} disabled={loading}>
-          {loading ? t('app.admin.users.page.refresh.loading') : t('app.admin.users.page.refresh.action')}
-        </button>
-      </header>
+      <SettingsSubpageHeader
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('app.admin.users.page.header_kicker')}
+        title={t('app.admin.users.page.title')}
+        subtitle={t('app.admin.users.page.subtitle')}
+        actions={
+          <button className="btn-secondary" onClick={() => void loadUsers()} disabled={loading}>
+            {loading ? t('app.admin.users.page.refresh.loading') : t('app.admin.users.page.refresh.action')}
+          </button>
+        }
+      />
 
       {usersListErrorBanner && (
         <ErrorRecoveryBanner
@@ -1133,7 +1133,7 @@ export default function UsersPage() {
           {...friendlyErrorBannerSecondary(
             usersListErrorBanner,
             CRM_APP_PATHS.settingsTeam,
-            t('common.navigation.settings', { defaultValue: 'Настройки' }),
+            t('common.navigation.settings'),
           )}
           compact
         />

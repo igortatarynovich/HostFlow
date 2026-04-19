@@ -13,6 +13,7 @@ import {
   updateDocumentPolicy,
   deleteDocumentPolicy,
   type DocumentPolicy,
+  type DocumentPolicyCreate,
   type DocumentPolicyScope,
 } from '../api/documents/policies'
 import { getDocumentTypes, type DocType } from '../api/documents/catalog'
@@ -25,6 +26,7 @@ import {
   CONTACT_ROLE_OPTIONS,
   WORK_MODE_OPTIONS,
   TRAILER_TYPE_KEYS,
+  type StatusTone,
 } from '../modules/companies/constants'
 import type {
   AnyRecord,
@@ -42,6 +44,7 @@ import type {
 } from '../modules/companies/types'
 import { ORDER_TYPE_OPTIONS } from '../modules/companies/types'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { servicesWorkspacePath } from '../modules/services/utils'
 import {
   asRecord,
@@ -568,7 +571,7 @@ export default function Companies(){
 
   const buildDetailForm = useCallback((): CompanyDetailForm | null => {
     if (!currentAny) return null
-    const base = {
+    const base: CompanyDetailForm['base'] = {
       name: (currentAny.name as string) ?? '',
       owner_user_id: (currentAny.owner_user_id as string) ?? '',
       manager_user_id: (currentAny.manager_user_id as string) ?? '',
@@ -1746,19 +1749,19 @@ export default function Companies(){
 
     const locationLine = [detailForm.base.country_code, detailForm.base.city].filter(Boolean).join(', ')
 
-    const isOperatingCompany = getCompanyRoleFromAny(currentAny) === 'operating'
+    const isOperatingCompany = getCompanyRoleFromAny(currentAny ?? {}) === 'operating'
     const showClientProfileEditor =
       isOperatingCompany ||
       (Boolean(id && id !== 'new') && !isOperatingCompany && clientWorkspaceTab === 'profile')
 
     const clientContactsCount = detailForm.contacts.filter((contact) =>
-      Boolean((contact.full_name || contact.email || contact.phone).trim()),
+      Boolean(((contact.full_name || contact.email || contact.phone) ?? '').trim()),
     ).length
     const clientOrdersCount = detailForm.orders.filter((order) =>
-      Boolean((order.title || order.client_reference || order.status).trim()),
+      Boolean(((order.title || order.client_reference || order.status) ?? '').trim()),
     ).length
     const clientContractsCount = detailForm.contracts.filter((contract) =>
-      Boolean((contract.title || contract.reference || contract.status).trim()),
+      Boolean(((contract.title || contract.reference || contract.status) ?? '').trim()),
     ).length
 
     const operatingCompanyType = normalizeOperatingCompanyType(
@@ -2144,6 +2147,10 @@ export default function Companies(){
             ))}
           </div>
         </section>
+
+        <div className="px-4 pt-3">
+          <PageBreadcrumb />
+        </div>
 
         {!isOperatingCompany && id && id !== 'new' && (
           <div className="space-y-4">
@@ -3492,7 +3499,11 @@ export default function Companies(){
                     if (!current?.id) return
                     try {
                       setPoliciesError(null)
-                      await updateDocumentPolicy(editingPolicy.id, payload)
+                      await updateDocumentPolicy(editingPolicy.id, {
+                        ...payload,
+                        scope: editingPolicy.scope,
+                        scope_id: editingPolicy.scope_id,
+                      })
                       await loadDocumentPolicies(current.id)
                       setEditingPolicy(null)
                     } catch (err: any) {
@@ -3747,6 +3758,10 @@ export default function Companies(){
   const listView = (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col space-y-0 gap-0">
       {companyHero}
+
+      <div className="px-3 pt-2">
+        <PageBreadcrumb />
+      </div>
 
       <section className="app-surface space-y-0 gap-0 border-x-0 border-t-0 p-3">
         <div className="grid gap-4 md:grid-cols-[minmax(220px,1fr)_minmax(180px,200px)_minmax(170px,200px)_auto]">
@@ -4051,10 +4066,11 @@ function SectionCard({
   )
 }
 
-function FieldGrid({ cols = 2, children }: { cols?: 1 | 2 | 3; children: React.ReactNode }) {
-  if (cols === 1) return <div className="space-y-3">{children}</div>
-  if (cols === 3) return <div className="grid grid-cols-1 gap-4 md:grid-cols-3">{children}</div>
-  return <div className="grid grid-cols-1 gap-4 md:grid-cols-2">{children}</div>
+function FieldGrid({ cols = 2, children, className }: { cols?: 1 | 2 | 3; children: React.ReactNode; className?: string }) {
+  const extra = className ? ` ${className}` : ''
+  if (cols === 1) return <div className={`space-y-3${extra}`}>{children}</div>
+  if (cols === 3) return <div className={`grid grid-cols-1 gap-4 md:grid-cols-3${extra}`}>{children}</div>
+  return <div className={`grid grid-cols-1 gap-4 md:grid-cols-2${extra}`}>{children}</div>
 }
 
 function InfoItem({ label, value, mono }: { label: string; value?: React.ReactNode; mono?: boolean }) {
@@ -4129,7 +4145,7 @@ function TextField({
   mono,
 }: {
   label: string;
-  value: string;
+  value: string | undefined;
   onChange: (value: string) => void;
   placeholder?: string;
   type?: string;
@@ -4141,7 +4157,7 @@ function TextField({
       <input
         className={['input', mono ? 'font-mono' : ''].filter(Boolean).join(' ')}
         type={type}
-        value={value}
+        value={value ?? ''}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -4182,12 +4198,12 @@ function CheckboxField({
   onChange,
 }: {
   label: string | React.ReactNode;
-  checked: boolean;
+  checked: boolean | undefined;
   onChange: (value: boolean) => void;
 }) {
   return (
     <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <input type="checkbox" checked={Boolean(checked)} onChange={(event) => onChange(event.target.checked)} />
       <span>{label}</span>
     </label>
   )
@@ -4202,7 +4218,7 @@ function SelectField({
   allowEmpty = true,
 }: {
   label: string;
-  value: string;
+  value: string | undefined;
   onChange: (value: string) => void;
   options: Array<string | SelectOption>;
   placeholder?: string;
@@ -4216,7 +4232,7 @@ function SelectField({
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
       <select
         className="input"
-        value={value}
+        value={value ?? ''}
         onChange={(event) => onChange(event.target.value)}
       >
         {allowEmpty && <option value="">{placeholder ?? '—'}</option>}

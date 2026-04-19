@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import UserCtx, get_current_user
@@ -44,13 +44,25 @@ def _ensure_tenant(ctx: UserCtx, tenant_id: str) -> None:
 
 
 @router.get("/managers")
-async def list_managers(request: Request, db: AsyncSession = Depends(get_db)):
+async def list_managers(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    roles: str | None = Query(
+        default=None,
+        description="Comma-separated membership roles (default: owner, administrator, supervisor, recruiter).",
+    ),
+):
     """
     Семантически правильный эндпоинт пользователей-менеджеров.
     Возвращает список словарей: {id, short_id, full_name, email, label}
     """
     tenant_id = _tenant_id_from_headers(request)
-    return await users_service.get_tenant_managers(db, tenant_id)
+    role_list = (
+        [p.strip() for p in roles.split(",") if p.strip()] if roles and roles.strip() else None
+    )
+    return await users_service.get_tenant_managers(
+        db, tenant_id, membership_roles=role_list
+    )
 
 
 @router.get("/me", response_model=UserMeOut)

@@ -57,6 +57,25 @@ def lead_meta_credentials_cap(plan: str) -> int | None:
     return None
 
 
+def plan_allows_meta_leads_oauth(plan: str) -> bool:
+    """Facebook Login «quick connect» for Meta Leads (same commercial tier as Team features / generic webhook)."""
+    return plan_allows_team_tier_features(plan)
+
+
+async def ensure_meta_leads_oauth_allowed(db: AsyncSession, tenant_id: str) -> None:
+    plan = await resolve_tenant_plan_code(db, tenant_id)
+    if not plan_allows_meta_leads_oauth(plan):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_meta_leads_oauth",
+                "feature": "meta_leads_oauth",
+                "plan": plan,
+                "message": "Meta quick connect (OAuth) requires a Team-tier plan or higher.",
+            },
+        )
+
+
 async def ensure_meta_lead_field_mapping_rows_allowed(
     db: AsyncSession, tenant_id: str, rule_count: int
 ) -> None:

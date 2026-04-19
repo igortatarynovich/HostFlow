@@ -21,14 +21,14 @@ export interface DocumentConfig {
 const DRIVER_CE_DEFAULT_CODE = 'driver_ce_default'
 
 /** Профиль по умолчанию с пустым конфигом полей = показывать все поля (как без профиля). */
-export function isDefaultProfileWithEmptyConfig(profile: CandidateProfile | null): boolean {
+export function isDefaultProfileWithEmptyConfig(profile: CandidateProfile | null | undefined): boolean {
   if (!profile || profile.code !== DRIVER_CE_DEFAULT_CODE) return false
   const fc = profile.config?.field_configs
   return !fc || !Array.isArray(fc) || fc.length === 0
 }
 
 /** Профиль по умолчанию с пустым конфигом документов = показывать все документы по ruleset (как без профиля). */
-export function isDefaultProfileWithEmptyDocumentConfig(profile: CandidateProfile | null): boolean {
+export function isDefaultProfileWithEmptyDocumentConfig(profile: CandidateProfile | null | undefined): boolean {
   if (!profile || profile.code !== DRIVER_CE_DEFAULT_CODE) return false
   const dc = profile.config?.document_configs
   return !dc || !Array.isArray(dc) || dc.length === 0
@@ -37,7 +37,7 @@ export function isDefaultProfileWithEmptyDocumentConfig(profile: CandidateProfil
 /**
  * Получить конфигурацию полей из профиля
  */
-export function getFieldConfigs(profile: CandidateProfile | null): FieldConfig[] {
+export function getFieldConfigs(profile: CandidateProfile | null | undefined): FieldConfig[] {
   if (!profile?.config?.field_configs) {
     return []
   }
@@ -47,7 +47,7 @@ export function getFieldConfigs(profile: CandidateProfile | null): FieldConfig[]
 /**
  * Получить конфигурацию документов из профиля. Для driver_ce_default с пустым конфигом = [] (чеклист из API/ruleset).
  */
-export function getDocumentConfigs(profile: CandidateProfile | null): DocumentConfig[] {
+export function getDocumentConfigs(profile: CandidateProfile | null | undefined): DocumentConfig[] {
   if (!profile?.config?.document_configs) {
     return []
   }
@@ -61,7 +61,7 @@ export function getDocumentConfigs(profile: CandidateProfile | null): DocumentCo
 /**
  * Проверить, должно ли поле быть видимым
  */
-export function isFieldVisible(profile: CandidateProfile | null, fieldKey: string): boolean {
+export function isFieldVisible(profile: CandidateProfile | null | undefined, fieldKey: string): boolean {
   if (!profile) {
     return true // Если профиля нет, показываем все поля
   }
@@ -77,7 +77,7 @@ export function isFieldVisible(profile: CandidateProfile | null, fieldKey: strin
 /**
  * Проверить, является ли поле обязательным
  */
-export function isFieldRequired(profile: CandidateProfile | null, fieldKey: string): boolean {
+export function isFieldRequired(profile: CandidateProfile | null | undefined, fieldKey: string): boolean {
   if (!profile) {
     return false
   }
@@ -92,7 +92,7 @@ export function isFieldRequired(profile: CandidateProfile | null, fieldKey: stri
 /**
  * Получить метку поля из профиля
  */
-export function getFieldLabel(profile: CandidateProfile | null, fieldKey: string, defaultLabel: string): string {
+export function getFieldLabel(profile: CandidateProfile | null | undefined, fieldKey: string, defaultLabel: string): string {
   if (!profile) {
     return defaultLabel
   }
@@ -115,23 +115,9 @@ export function getFieldLabel(profile: CandidateProfile | null, fieldKey: string
 }
 
 /**
- * Получить список видимых полей из профиля. [] = показывать все стандартные поля.
- */
-export function getVisibleFieldKeys(profile: CandidateProfile | null): string[] {
-  if (!profile) {
-    return [] // Если профиля нет, возвращаем пустой список (показываем все)
-  }
-  if (isDefaultProfileWithEmptyConfig(profile)) {
-    return []
-  }
-  const configs = getFieldConfigs(profile)
-  return configs.filter((c) => c.visible !== false).map((c) => c.field_key)
-}
-
-/**
  * Получить список требуемых документов из профиля
  */
-export function getRequiredDocumentTypeIds(profile: CandidateProfile | null): string[] {
+export function getRequiredDocumentTypeIds(profile: CandidateProfile | null | undefined): string[] {
   if (!profile) {
     return []
   }
@@ -142,7 +128,7 @@ export function getRequiredDocumentTypeIds(profile: CandidateProfile | null): st
 /**
  * Получить конфигурацию документа по типу
  */
-export function getDocumentConfig(profile: CandidateProfile | null, documentTypeId: string): DocumentConfig | null {
+export function getDocumentConfig(profile: CandidateProfile | null | undefined, documentTypeId: string): DocumentConfig | null {
   if (!profile) {
     return null
   }
@@ -155,7 +141,7 @@ export function getDocumentConfig(profile: CandidateProfile | null, documentType
  * Возвращает список полей, которые обязательны, но не заполнены
  */
 export function validateRequiredFields(
-  profile: CandidateProfile | null,
+  profile: CandidateProfile | null | undefined,
   model: { [key: string]: any } | null,
   extra: { [key: string]: any } | null
 ): Array<{ fieldKey: string; label: string }> {

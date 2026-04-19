@@ -5,6 +5,8 @@ import { grantCompanyAccess, listCompanyAccess, revokeCompanyAccess } from '../.
 import { listAdminUsers } from '../../api/users'
 import type { AdminUser, Company, CompanyAccessEntry } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
+import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
@@ -32,6 +34,7 @@ function toCompanyOptions(data: any): Company[] {
 }
 
 export default function CompanyAccessPage() {
+  const { t } = useI18n()
   const { can } = usePermissions()
   const canManage = can('admin.companyAcl')
 
@@ -187,25 +190,36 @@ export default function CompanyAccessPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Доступ к компаниям</h1>
-          {selectedCompany && (
-            <p className="text-sm text-slate-500">Компания: {selectedCompany.name}</p>
-          )}
-        </div>
-        <select
-          className="input w-full max-w-sm"
-          value={selectedCompanyId}
-          onChange={(event) => setSelectedCompanyId(event.target.value)}
-        >
-          {companies.map((company) => (
-            <option key={company.id} value={company.id}>
-              {company.name}
-            </option>
-          ))}
-        </select>
-      </header>
+      <SettingsSubpageHeader
+        backHref={CRM_APP_PATHS.settings}
+        backLabel={t('admin.settings.subpage.back_all', { defaultValue: '← All settings' })}
+        kicker={t('admin.settings.subpage.kicker_workspace_setup', { defaultValue: 'Team & access' })}
+        title={t('admin.company_access.title', { defaultValue: 'Доступ к компаниям' })}
+        subtitle={
+          selectedCompany
+            ? t('admin.company_access.subtitle_with_company', {
+                defaultValue: `Компания: ${selectedCompany.name}`,
+                values: { name: selectedCompany.name },
+              })
+            : t('admin.company_access.subtitle', {
+                defaultValue: 'Управляйте доступом сотрудников к карточкам клиентов и кандидатов внутри выбранной компании.',
+              })
+        }
+        actions={
+          <select
+            className="input w-full max-w-sm"
+            value={selectedCompanyId}
+            onChange={(event) => setSelectedCompanyId(event.target.value)}
+            aria-label={t('admin.company_access.company_select_label', { defaultValue: 'Выбор компании' })}
+          >
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+        }
+      />
 
       {accessPageErrorBanner && (
         <ErrorRecoveryBanner

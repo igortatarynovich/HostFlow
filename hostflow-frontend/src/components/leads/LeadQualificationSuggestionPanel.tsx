@@ -4,6 +4,7 @@ import type { Lead } from '../../api/types'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import { useI18n } from '../../i18n'
 import { formatLeadPipelineError } from '../../utils/leadPipelineErrors'
+import { leadSupportsManualProcess } from '../../utils/leadCrm'
 
 export type LeadQualificationPreviewV1 = {
   suggested_vacancy_id?: string | null
@@ -72,7 +73,10 @@ export default function LeadQualificationSuggestionPanel({
   const preview = readPreview(lead.normalized)
   const err = lead.error?.trim() || ''
   const isFitBlock = err === 'LEAD_FIT_NO_MATCH' || err === 'LEAD_FIT_NEEDS_INFO'
-  if (!preview && !isFitBlock) return null
+  const manualPipeline = leadSupportsManualProcess(lead)
+  const manualProcessStatuses =
+    lead.status === 'needs_routing' || lead.status === 'new' || lead.status === 'failed'
+  if (!preview && !isFitBlock && !(manualPipeline && manualProcessStatuses)) return null
 
   const blocked = Boolean(preview?.blocked_auto_convert) || isFitBlock
   const processCtaKey =
@@ -82,7 +86,7 @@ export default function LeadQualificationSuggestionPanel({
   const showProcess =
     !hideProcessButton &&
     typeof onProcess === 'function' &&
-    String(lead.source || '').toLowerCase() === 'meta' &&
+    manualPipeline &&
     !lead.candidate_id &&
     (lead.status === 'needs_routing' || lead.status === 'new' || lead.status === 'failed')
 
@@ -114,7 +118,7 @@ export default function LeadQualificationSuggestionPanel({
               </div>
             ) : null}
           </div>
-          {preview.fit_reasons.length > 0 ? (
+          {preview.fit_reasons && preview.fit_reasons.length > 0 ? (
             <div className="mt-2">
               <div className="text-xs font-medium text-slate-600">{t('app.leads.qualification.reasons_title')}</div>
               <ul className="mt-1 list-inside list-disc text-xs text-slate-700">

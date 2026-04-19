@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
+  completeMetaOAuth,
   createMetaAdsMap,
   createMetaLeadCredential,
   deleteMetaAdsMap,
   deleteMetaLeadCredential,
+  fetchMetaGraphFieldPreview,
+  finalizeMetaOAuth,
   getMetaIncomingPreview,
+  getMetaLeadSelfServeOnboarding,
   getMetaLeadSettings,
   getUnmappedLeads,
   listMetaAdsMap,
@@ -13,6 +17,7 @@ import {
   rerouteMetaLead,
   retryLeads,
   rotateMetaLeadCredential,
+  startMetaOAuth,
   updateMetaAdsMap,
   updateMetaLeadSettings,
 } from '../../api/metaLeads'
@@ -29,19 +34,56 @@ import type {
   MetaIncomingLeadPreviewItem,
   MetaLeadCredential,
   MetaLeadFieldMappingRule,
+  MetaLeadSelfServeOnboarding,
   MetaLeadSettings,
   MetaLeadSettingsPatch,
 } from '../../api/types'
-import { IconBrandMeta } from '@tabler/icons-react'
+import { IconBrandMeta, IconCircleCheck } from '@tabler/icons-react'
 import { useI18n } from '../../i18n'
-import { Link, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../../utils/friendlyError'
 import { usePlanLimitModal } from '../../contexts/PlanLimitModalContext'
 import { getLeadErrorSuggestion } from '../../utils/leadErrorSuggestion'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
+import { useAuth } from '../../store/auth'
+import {
+  listLeadImportJobs,
+  pollLeadImportJob,
+  postLeadCsvImport,
+  type LeadImportJobOut,
+} from '../../api/leadCsvImport'
 
-type TabKey = 'settings' | 'credentials' | 'mapping' | 'field_mapping' | 'incoming' | 'logs'
+/** Post-connect tabs: simple path for most users; technical pieces live under Advanced / Debug. */
+type MainTabKey = 'overview' | 'processing' | 'field_mapping' | 'advanced' | 'debug'
+
+type LegacyMetaAdminTab =
+  | 'settings'
+  | 'credentials'
+  | 'mapping'
+  | 'field_mapping'
+  | 'incoming'
+  | 'csv_import'
+  | 'logs'
+
+const LEGACY_META_TAB_TO_MAIN: Record<LegacyMetaAdminTab, MainTabKey> = {
+  settings: 'processing',
+  credentials: 'advanced',
+  mapping: 'advanced',
+  field_mapping: 'field_mapping',
+  incoming: 'debug',
+  csv_import: 'debug',
+  logs: 'debug',
+}
+
+function parseMainTabFromSearch(search: string): MainTabKey | null {
+  const raw = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get('tab')
+  if (!raw) return null
+  if (raw in LEGACY_META_TAB_TO_MAIN) return LEGACY_META_TAB_TO_MAIN[raw as LegacyMetaAdminTab]
+  if (['overview', 'processing', 'field_mapping', 'advanced', 'debug'].includes(raw)) return raw as MainTabKey
+  return null
+}
 
 interface FieldMappingRowState {
   id: string
@@ -142,51 +184,6 @@ function collectFieldNamesFromMetaPayloadPreview(json: string): string[] {
   return [...out].sort()
 }
 
-function collectTopLevelKeysFromJsonPreview(json: string): string[] {
-  const out = new Set<string>()
-  try {
-    const o = JSON.parse(json) as unknown
-    if (!o || typeof o !== 'object' || Array.isArray(o)) return []
-    for (const k of Object.keys(o as Record<string, unknown>)) {
-      const nk = k.trim().toLowerCase()
-      if (nk) out.add(nk)
-    }
-  } catch {
-    // ignore
-  }
-  return [...out].sort()
-}
-
-const MAX_NESTED_PATH_DEPTH = 5
-const MAX_NESTED_PATHS_TOTAL = 220
-
-function collectNestedDotPathsFromJson(json: string): string[] {
-  const out = new Set<string>()
-  const walk = (node: unknown, prefix: string, depthLeft: number) => {
-    if (out.size >= MAX_NESTED_PATHS_TOTAL || depthLeft <= 0) return
-    if (!node || typeof node !== 'object' || Array.isArray(node)) return
-    const o = node as Record<string, unknown>
-    for (const k of Object.keys(o)) {
-      const seg = k.trim().toLowerCase()
-      if (!seg) continue
-      const path = prefix ? `${prefix}.${seg}` : seg
-      out.add(path)
-      if (out.size >= MAX_NESTED_PATHS_TOTAL) return
-      const v = o[k]
-      if (v && typeof v === 'object' && !Array.isArray(v)) {
-        walk(v, path, depthLeft - 1)
-      }
-    }
-  }
-  try {
-    const o = JSON.parse(json) as unknown
-    walk(o, '', MAX_NESTED_PATH_DEPTH)
-  } catch {
-    // ignore
-  }
-  return [...out].sort()
-}
-
 function collectRawFieldNamesFromNormalizedPreview(json: string): string[] {
   const out = new Set<string>()
   try {
@@ -206,7 +203,34 @@ function collectRawFieldNamesFromNormalizedPreview(json: string): string[] {
   return [...out].sort()
 }
 
-/** Keys on Meta `value` besides field_data (ad_id, form_id, …) plus one level `parent.child`. */
+function extractPageIdsFromMetaPayloadPreview(json: string): string[] {
+  const s = new Set<string>()
+  try {
+    const root = JSON.parse(json) as Record<string, unknown>
+    const entries = Array.isArray(root.entry) ? root.entry : []
+    for (const ent of entries) {
+      if (!ent || typeof ent !== 'object') continue
+      const e = ent as Record<string, unknown>
+      const top = e.id ?? e.page_id
+      if (top != null && String(top).trim()) s.add(String(top).trim())
+      const changes = Array.isArray(e.changes) ? e.changes : []
+      for (const ch of changes) {
+        if (!ch || typeof ch !== 'object') continue
+        const val = (ch as Record<string, unknown>).value
+        if (val && typeof val === 'object' && !Array.isArray(val)) {
+          const v = val as Record<string, unknown>
+          const inner = v.page_id ?? v.page
+          if (inner != null && String(inner).trim()) s.add(String(inner).trim())
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return [...s].filter(Boolean)
+}
+
+/** Top-level keys on Meta `value` besides `field_data` (ad_id, form_id, …) — no nested `a.b` paths. */
 function collectShallowKeysFromMetaPayloadPreview(json: string): string[] {
   const out = new Set<string>()
   try {
@@ -218,21 +242,20 @@ function collectShallowKeysFromMetaPayloadPreview(json: string): string[] {
     for (const k of Object.keys(value)) {
       const seg = k.trim().toLowerCase()
       if (!seg || seg === 'field_data') continue
-      const v = value[k]
-      if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
-        out.add(seg)
-        for (const sk of Object.keys(v as Record<string, unknown>)) {
-          const ss = sk.trim().toLowerCase()
-          if (ss) out.add(`${seg}.${ss}`)
-        }
-      } else {
-        out.add(seg)
-      }
+      out.add(seg)
     }
   } catch {
     // ignore
   }
   return [...out].sort()
+}
+
+function leadPayloadJsonPreview(lead: Lead): string {
+  try {
+    return JSON.stringify(lead.payload ?? {})
+  } catch {
+    return ''
+  }
 }
 
 function mappingRowCoversSource(row: FieldMappingRowState, key: string): boolean {
@@ -319,9 +342,13 @@ const formatDateTime = (value?: string | null) => {
 export default function MetaLeadsAdminPage() {
   const { t } = useI18n()
   const planLimitModal = usePlanLimitModal()
+  const { me } = useAuth()
+  const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [tab, setTab] = useState<TabKey>('settings')
+  const [tab, setTab] = useState<MainTabKey>('overview')
+  const [disconnectedExpert, setDisconnectedExpert] = useState(false)
+  const [connectSuccessCue, setConnectSuccessCue] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -347,7 +374,29 @@ export default function MetaLeadsAdminPage() {
   const [incomingError, setIncomingError] = useState<FriendlyErrorInfo | null>(null)
   const [leadCustomFieldKeys, setLeadCustomFieldKeys] = useState<string[]>([])
   const [creatingLeadFieldKey, setCreatingLeadFieldKey] = useState<string | null>(null)
+  const [graphFieldNames, setGraphFieldNames] = useState<string[]>([])
+  const [graphLeadgenInput, setGraphLeadgenInput] = useState('')
+  const [graphPageInput, setGraphPageInput] = useState('')
+  const [graphHostflowLeadPick, setGraphHostflowLeadPick] = useState('')
+  const [graphFetchLoading, setGraphFetchLoading] = useState(false)
   const [fitVacancyPick, setFitVacancyPick] = useState('')
+  const [selfServe, setSelfServe] = useState<MetaLeadSelfServeOnboarding | null>(null)
+  const oauthHandledRef = useRef<string | null>(null)
+  const [oauthPick, setOauthPick] = useState<{ pending_id: string; pages: { id: string; name: string }[] } | null>(
+    null,
+  )
+  const [oauthLabel, setOauthLabel] = useState('')
+  const [oauthPageId, setOauthPageId] = useState('')
+  const [oauthSubscribe, setOauthSubscribe] = useState(true)
+  const [oauthBusy, setOauthBusy] = useState(false)
+  const [metaAdvancedOpen, setMetaAdvancedOpen] = useState(false)
+  const metaAdvancedBootstrapped = useRef(false)
+
+  const [csvJobs, setCsvJobs] = useState<LeadImportJobOut[]>([])
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [csvBusy, setCsvBusy] = useState(false)
+  const [csvPanelError, setCsvPanelError] = useState<FriendlyErrorInfo | null>(null)
+  const [csvLastJob, setCsvLastJob] = useState<LeadImportJobOut | null>(null)
 
   const leadFitOrderIds = useMemo(() => {
     const fromDraft = settingsDraft.lead_fit_ordered_vacancy_ids
@@ -378,6 +427,53 @@ export default function MetaLeadsAdminPage() {
     mappingRulesLimit != null && fieldMappingRows.length >= mappingRulesLimit
   const credentialsAtCap =
     credentialsPlanLimit != null && credentials.length >= credentialsPlanLimit
+
+  const metaOperatorBlocked = Boolean(selfServe && !selfServe.public_api_base_configured)
+  const metaVerifyDone = Boolean(selfServe?.webhook_verify_token_configured)
+  const metaCredDone = credentials.length > 0
+  const metaMapDone = mapping.length > 0
+  const metaConnected = metaCredDone
+  const metaGuidedNeeded = Boolean(
+    !loading && selfServe && (metaOperatorBlocked || !metaVerifyDone || !metaCredDone || !metaMapDone),
+  )
+
+  const lastLeadActivityLabel = useMemo(() => {
+    const a = leads[0]?.created_at
+    if (a) return formatDateTime(a)
+    const b = incomingRows[0]?.created_at
+    if (b) return formatDateTime(b)
+    return null
+  }, [leads, incomingRows])
+
+  const setTabWithUrl = useCallback(
+    (next: MainTabKey) => {
+      setTab(next)
+      const n = new URLSearchParams(searchParams)
+      n.set('tab', next)
+      setSearchParams(n, { replace: true })
+    },
+    [searchParams, setSearchParams],
+  )
+  /** OAuth UI: tariff vs deployment (META_LEADS_APP_ID, secret, redirect). */
+  const metaOauthBlockedReason = useMemo<'ready' | 'server' | 'plan'>(() => {
+    if (!selfServe || selfServe.oauth_quick_connect_enabled) return 'ready'
+    const pa = selfServe.meta_oauth_plan_allowed
+    const sr = selfServe.meta_oauth_server_ready
+    if (pa === true && sr === false) return 'server'
+    if (pa === false) return 'plan'
+    if (!(selfServe.meta_app_id || '').trim()) return 'server'
+    return 'plan'
+  }, [selfServe])
+  const metaContextRedirected = Boolean(
+    selfServe?.meta_leads_context_redirected || settings?.meta_leads_context_redirected,
+  )
+  const metaContextTenantLabel = String(
+    selfServe?.meta_leads_data_tenant_name ||
+      settings?.meta_leads_data_tenant_name ||
+      selfServe?.meta_leads_data_tenant_id ||
+      settings?.meta_leads_data_tenant_id ||
+      '',
+  )
 
   const mergeLeadsForLogs = (leadsNeedsRoutingResp: any, leadsFailedResp: any): Lead[] => {
     const needsItems: Lead[] = Array.isArray(leadsNeedsRoutingResp?.items) ? leadsNeedsRoutingResp.items : []
@@ -472,6 +568,14 @@ export default function MetaLeadsAdminPage() {
         })
       }
       setRecruiterOptions(recruiterOpts)
+
+      try {
+        const ss = await getMetaLeadSelfServeOnboarding()
+        setSelfServe(ss)
+      } catch (ssErr: any) {
+        console.warn('[MetaLeadsAdmin] self-serve onboarding load skipped', ssErr)
+        setSelfServe(null)
+      }
     } catch (err: any) {
       console.error('[MetaLeadsAdmin] refresh failed', err)
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.load'))) {
@@ -484,23 +588,78 @@ export default function MetaLeadsAdminPage() {
     }
   }, [planLimitModal, t])
 
-  useEffect(() => {
-    // Deep-linking: /app/settings/integrations/meta?tab=settings|credentials|mapping|field_mapping|incoming|logs
-    const sp = new URLSearchParams(location.search || '')
-    const next = sp.get('tab')
-    if (
-      next &&
-      ['settings', 'credentials', 'mapping', 'field_mapping', 'incoming', 'logs'].includes(next)
-    ) {
-      setTab(next as TabKey)
+  const loadCsvJobs = useCallback(async () => {
+    try {
+      const items = await listLeadImportJobs(15)
+      setCsvJobs(items)
+    } catch {
+      setCsvJobs([])
     }
+  }, [])
+
+  const handleCsvImport = useCallback(async () => {
+    if (!csvFile || me?.role !== 'administrator') return
+    setCsvBusy(true)
+    setCsvPanelError(null)
+    setCsvLastJob(null)
+    try {
+      const job = await postLeadCsvImport(csvFile, false)
+      setCsvLastJob(job)
+      const final = await pollLeadImportJob(job.id)
+      setCsvLastJob(final)
+      setCsvFile(null)
+      await loadCsvJobs()
+      setNotice(
+        t('admin.meta_leads.csv_import.toast_done', {
+          values: {
+            ok: String(final.success_rows),
+            dup: String(final.duplicate_rows),
+            fail: String(final.failed_rows),
+          },
+        }),
+      )
+      void refreshAll()
+    } catch (err: unknown) {
+      setCsvPanelError(
+        getFriendlyErrorInfo(
+          err,
+          t('admin.meta_leads.csv_import.error'),
+          t,
+        ),
+      )
+    } finally {
+      setCsvBusy(false)
+    }
+  }, [csvFile, me?.role, loadCsvJobs, refreshAll, t])
+
+  useEffect(() => {
+    const parsed = parseMainTabFromSearch(location.search || '')
+    if (parsed) setTab(parsed)
     void refreshAll()
   }, [refreshAll, location.search])
 
   useEffect(() => {
-    if (tab !== 'incoming' && tab !== 'field_mapping') return
+    if (tab !== 'debug') return
+    void loadCsvJobs()
+  }, [tab, loadCsvJobs])
+
+  useEffect(() => {
+    if (!selfServe || metaAdvancedBootstrapped.current) return
+    metaAdvancedBootstrapped.current = true
+    if (!selfServe.public_api_base_configured) setMetaAdvancedOpen(true)
+    else if (credentials.length === 0 && !selfServe.oauth_quick_connect_enabled) setMetaAdvancedOpen(true)
+  }, [selfServe, credentials.length])
+
+  useEffect(() => {
+    if (disconnectedExpert && !metaConnected) {
+      setTab('advanced')
+    }
+  }, [disconnectedExpert, metaConnected])
+
+  useEffect(() => {
+    if (tab !== 'debug' && tab !== 'field_mapping') return
     const previewSource: 'meta' | 'webhook' =
-      tab === 'incoming' && searchParams.get('incoming_source') === 'webhook' ? 'webhook' : 'meta'
+      tab === 'debug' && searchParams.get('incoming_source') === 'webhook' ? 'webhook' : 'meta'
     let cancelled = false
     setIncomingLoading(true)
     setIncomingError(null)
@@ -551,6 +710,120 @@ export default function MetaLeadsAdminPage() {
   const handleSettingsChange = useCallback(<K extends keyof MetaLeadSettingsPatch>(key: K, value: MetaLeadSettingsPatch[K]) => {
     setSettingsDraft((prev) => ({ ...prev, [key]: value }))
   }, [])
+
+  const copySelfServeValue = useCallback(async (text: string) => {
+    const trimmed = (text || '').trim()
+    if (!trimmed) return
+    try {
+      await navigator.clipboard.writeText(trimmed)
+      setNotice(t('admin.meta_leads.self_serve.copied'))
+    } catch {
+      setNotice(t('admin.meta_leads.self_serve.copy_failed'))
+    }
+  }, [t])
+
+  const handleGenerateVerifyToken = useCallback(async () => {
+    const token =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? `hf_${crypto.randomUUID().replace(/-/g, '')}`
+        : `hf_${Date.now()}`
+    setSubmitting(true)
+    try {
+      await updateMetaLeadSettings({ webhook_verify_token: token })
+      setNotice(t('admin.meta_leads.self_serve.verify_generated'))
+      await refreshAll()
+    } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.settings_update'))) {
+        setError(null)
+      } else {
+        setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.settings_update'), t))
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }, [planLimitModal, refreshAll, t])
+
+  const handleStartMetaOAuth = useCallback(async () => {
+    setOauthBusy(true)
+    setError(null)
+    try {
+      const { authorize_url } = await startMetaOAuth()
+      window.location.assign(authorize_url)
+    } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.self_serve.oauth_error_title'))) {
+        setError(null)
+      } else {
+        setError(getFriendlyErrorInfo(err, t('admin.meta_leads.self_serve.oauth_error_title'), t))
+      }
+    } finally {
+      setOauthBusy(false)
+    }
+  }, [planLimitModal, t])
+
+  const handleFinalizeMetaOAuth = useCallback(async () => {
+    if (!oauthPick || !oauthPageId.trim() || !oauthLabel.trim()) return
+    setOauthBusy(true)
+    setError(null)
+    try {
+      const res = await finalizeMetaOAuth({
+        pending_id: oauthPick.pending_id,
+        page_id: oauthPageId.trim(),
+        label: oauthLabel.trim(),
+        subscribe_leadgen: oauthSubscribe,
+      })
+      setOauthPick(null)
+      let msg = t('admin.meta_leads.self_serve.oauth_done')
+      if (res.warning) {
+        msg = `${msg} ${t('admin.meta_leads.self_serve.oauth_warning', { values: { message: res.warning } })}`
+      }
+      setNotice(msg)
+      setConnectSuccessCue(true)
+      setDisconnectedExpert(false)
+      setTabWithUrl('overview')
+      await refreshAll()
+    } catch (err: any) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.self_serve.oauth_error_title'))) {
+        setError(null)
+      } else {
+        setError(getFriendlyErrorInfo(err, t('admin.meta_leads.self_serve.oauth_error_title'), t))
+      }
+    } finally {
+      setOauthBusy(false)
+    }
+  }, [oauthLabel, oauthPageId, oauthPick, oauthSubscribe, planLimitModal, refreshAll, setTabWithUrl, t])
+
+  useEffect(() => {
+    const sp = new URLSearchParams(location.search || '')
+    const code = sp.get('code')?.trim()
+    const state = sp.get('state')?.trim()
+    if (!code || !state) return
+    if (!me || me.role !== 'administrator') return
+    const key = `${code}:${state}`
+    if (oauthHandledRef.current === key) return
+    oauthHandledRef.current = key
+    navigate(CRM_APP_PATHS.settingsIntegrationsMeta, { replace: true })
+    setOauthBusy(true)
+    setError(null)
+    void (async () => {
+      try {
+        const res = await completeMetaOAuth({ code, state })
+        setOauthPick({ pending_id: res.pending_id, pages: res.pages })
+        const first = res.pages[0]
+        setOauthPageId(first?.id ?? '')
+        setOauthLabel(first ? `Meta · ${first.name}` : 'Meta Page')
+        setOauthSubscribe(true)
+        setNotice(t('admin.meta_leads.self_serve.oauth_pages_ready'))
+      } catch (err: any) {
+        if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.self_serve.oauth_error_title'))) {
+          setError(null)
+        } else {
+          setError(getFriendlyErrorInfo(err, t('admin.meta_leads.self_serve.oauth_error_title'), t))
+        }
+      } finally {
+        setOauthBusy(false)
+      }
+    })()
+  }, [location.search, me, navigate, planLimitModal, t])
 
   const addLeadFitVacancy = useCallback(
     (vacancyId: string) => {
@@ -631,7 +904,7 @@ export default function MetaLeadsAdminPage() {
     if (!payload.label) {
       setError({
         title: t('admin.meta_leads.errors.credential_label'),
-        hint: t('admin.meta_leads.errors.credential_label', { defaultValue: 'Fill required fields and retry.' }),
+        hint: t('admin.meta_leads.hints.fill_fields_retry'),
       })
       return
     }
@@ -684,14 +957,14 @@ export default function MetaLeadsAdminPage() {
     if (!adIdRaw || !vacancyIdRaw) {
       setError({
         title: t('admin.meta_leads.errors.mapping_required'),
-        hint: t('admin.meta_leads.errors.mapping_required', { defaultValue: 'Fill required fields and retry.' }),
+        hint: t('admin.meta_leads.hints.fill_fields_retry'),
       })
       return
     }
     if (!/^\d+$/.test(adIdRaw)) {
       setError({
         title: t('admin.meta_leads.errors.mapping_ad_id'),
-        hint: t('admin.meta_leads.errors.mapping_ad_id', { defaultValue: 'Use numeric ad id and retry.' }),
+        hint: t('admin.meta_leads.hints.ad_id_numeric_retry'),
       })
       return
     }
@@ -744,7 +1017,7 @@ export default function MetaLeadsAdminPage() {
         })
       }
       setAttachModal(null)
-      setNotice(t('admin.meta_leads.notices.unmapped_attached', { defaultValue: 'Лиды привязаны к вакансии' }))
+      setNotice(t('admin.meta_leads.notices.unmapped_attached'))
       await refreshAll()
     } catch (err: any) {
       if (planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.errors.reroute'))) {
@@ -759,7 +1032,7 @@ export default function MetaLeadsAdminPage() {
   const handleReroute = useCallback(async (lead: Lead) => {
     const vacancyDefault = lead.vacancy_id ?? ''
     const vacancyId = window.prompt(
-      t('admin.meta_leads.prompts.reroute_vacancy', { defaultValue: 'Enter vacancy_id (or leave empty to create candidate with company only)' }),
+      t('admin.meta_leads.prompts.reroute_vacancy_id'),
       vacancyDefault || ''
     )
     if (vacancyId === null) return
@@ -788,11 +1061,11 @@ export default function MetaLeadsAdminPage() {
       const result = await retryLeads({ lead_ids: [String(lead.id)], refresh_graph: true })
       const item = result.items[0]
       if (item?.processed) {
-        setNotice(t('admin.meta_leads.notices.lead_retried', { defaultValue: 'Лид успешно обработан' }))
+        setNotice(t('admin.meta_leads.notices.lead_retried'))
       } else if (item?.message) {
         setError({
           title: item.message,
-          hint: t('admin.meta_leads.errors.retry', { defaultValue: 'Retry failed. Check mapping and try again.' }),
+          hint: t('admin.meta_leads.errors.retry_hint'),
         })
       }
       const [refreshedNeeds, refreshedFailed] = await Promise.all([
@@ -805,12 +1078,12 @@ export default function MetaLeadsAdminPage() {
       if (
         planLimitModal?.showPlanLimitIfNeeded(
           err,
-          t('admin.meta_leads.errors.retry', { defaultValue: 'Retry failed' }),
+          t('admin.meta_leads.errors.retry'),
         )
       ) {
         return
       }
-      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.retry', { defaultValue: 'Retry failed' }), t))
+      setError(getFriendlyErrorInfo(err, t('admin.meta_leads.errors.retry'), t))
     }
   }, [planLimitModal, t])
 
@@ -830,6 +1103,36 @@ export default function MetaLeadsAdminPage() {
     return mapping.filter((item) => item.ad_id.includes(needle) || (item.note ?? '').toLowerCase().includes(needle))
   }, [mapping, mappingSearch])
 
+  /** Recent Meta leads: incoming preview rows plus operational list (needs_routing / failed) for Graph pick + autofill. */
+  const graphLeadSelectOptions = useMemo(() => {
+    const rows: Array<{ id: string; label: string; payloadJson: string; externalId?: string }> = []
+    const seen = new Set<string>()
+    for (const r of incomingRows) {
+      if (!r.lead_id || seen.has(r.lead_id)) continue
+      seen.add(r.lead_id)
+      const ext = (r.external_id ?? '').trim()
+      rows.push({
+        id: r.lead_id,
+        label: ext ? `${ext} · ${r.status}` : `${r.lead_id.slice(0, 8)}… · ${r.status}`,
+        payloadJson: r.payload_json_preview ?? '',
+        externalId: ext || undefined,
+      })
+    }
+    for (const l of leads) {
+      if (!l?.id || l.source !== 'meta' || seen.has(l.id)) continue
+      seen.add(l.id)
+      const extId = (l.external_id ?? '').trim()
+      rows.push({
+        id: l.id,
+        label: extId ? `${extId} · ${l.status}` : `${l.id.slice(0, 8)}… · ${l.status}`,
+        payloadJson: leadPayloadJsonPreview(l),
+        externalId: extId || undefined,
+      })
+    }
+    rows.sort((a, b) => a.label.localeCompare(b.label))
+    return rows
+  }, [incomingRows, leads])
+
   const suggestedMetaFieldKeys = useMemo(() => {
     const s = new Set<string>()
     for (const row of incomingRows) {
@@ -841,18 +1144,16 @@ export default function MetaLeadsAdminPage() {
       for (const k of collectShallowKeysFromMetaPayloadPreview(payload)) {
         s.add(k)
       }
-      for (const k of collectTopLevelKeysFromJsonPreview(norm)) {
-        s.add(k)
-      }
-      for (const k of collectNestedDotPathsFromJson(norm)) {
-        s.add(k)
-      }
       for (const k of collectRawFieldNamesFromNormalizedPreview(norm)) {
         s.add(k)
       }
     }
+    for (const k of graphFieldNames) {
+      const nk = k.trim().toLowerCase()
+      if (nk) s.add(nk)
+    }
     return [...s].sort()
-  }, [incomingRows])
+  }, [incomingRows, graphFieldNames])
 
   const mappingTargetSuggestions = useMemo(() => {
     const s = new Set<string>([
@@ -937,6 +1238,54 @@ export default function MetaLeadsAdminPage() {
     [fieldMappingRows.length, mappingRowsAtCap, mappingRulesLimit, planLimitModal, t],
   )
 
+  const handleFetchGraphFields = useCallback(async () => {
+    const pick = graphHostflowLeadPick.trim()
+    const lg = graphLeadgenInput.trim()
+    const pg = graphPageInput.trim()
+    if (!pick && (!lg || !pg)) {
+      setError({
+        title: t('admin.meta_leads.field_mapping.graph_fetch_validation_title'),
+        hint: t('admin.meta_leads.field_mapping.graph_fetch_validation_hint'),
+      })
+      return
+    }
+    setGraphFetchLoading(true)
+    setError(null)
+    try {
+      const res = await fetchMetaGraphFieldPreview(
+        pick ? { hostflow_lead_id: pick, ...(pg ? { page_id: pg } : {}) } : { leadgen_id: lg, page_id: pg },
+      )
+      setGraphFieldNames(res.field_names)
+      setGraphLeadgenInput(res.leadgen_id)
+      setGraphPageInput(res.page_id)
+      setNotice(
+        t('admin.meta_leads.field_mapping.graph_fetch_notice', {
+          values: { count: res.field_names.length, form_id: res.form_id ?? '—' },
+        }),
+      )
+    } catch (err: any) {
+      console.error('[MetaLeadsAdmin] graph field preview failed', err)
+      if (
+        planLimitModal?.showPlanLimitIfNeeded(err, t('admin.meta_leads.field_mapping.graph_fetch_error_title'))
+      ) {
+        return
+      }
+      const detail = err?.response?.data?.detail
+      if (detail && typeof detail === 'object' && !Array.isArray(detail) && detail.message) {
+        setError({
+          title: t('admin.meta_leads.field_mapping.graph_fetch_error_title'),
+          hint: String(detail.message),
+        })
+      } else {
+        setError(
+          getFriendlyErrorInfo(err, t('admin.meta_leads.field_mapping.graph_fetch_error_title'), t),
+        )
+      }
+    } finally {
+      setGraphFetchLoading(false)
+    }
+  }, [graphHostflowLeadPick, graphLeadgenInput, graphPageInput, planLimitModal, t])
+
   const fieldMappingRuleCount = useMemo(() => {
     let n = 0
     for (const row of fieldMappingRows) {
@@ -946,24 +1295,173 @@ export default function MetaLeadsAdminPage() {
     return n
   }, [fieldMappingRows])
 
+  const metaSelfServeDocsPanel = selfServe ? (
+    <div className="border-t border-slate-100 px-4 pb-4 pt-3">
+      <p className="text-sm text-slate-600">{t('admin.meta_leads.self_serve.intro')}</p>
+      {!selfServe.public_api_base_configured && (
+        <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {t('admin.meta_leads.self_serve.warn_api_base')}
+        </p>
+      )}
+      {selfServe.public_api_base_configured && !selfServe.webhook_verify_token_configured && (
+        <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {t('admin.meta_leads.self_serve.warn_no_verify')}
+        </p>
+      )}
+      {!selfServe.oauth_quick_connect_enabled ? (
+        <p className="mt-2 text-sm text-slate-600">
+          {metaOauthBlockedReason === 'server'
+            ? t('admin.meta_leads.self_serve.oauth_server_env_hint')
+            : t('admin.meta_leads.self_serve.oauth_team_plan_hint')}
+        </p>
+      ) : null}
+      <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-700">
+        <li>{t('admin.meta_leads.self_serve.step_invite')}</li>
+        <li>{t('admin.meta_leads.self_serve.step_webhook')}</li>
+        <li>{t('admin.meta_leads.self_serve.step_token')}</li>
+      </ol>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {selfServe.developers_console_app_url && (
+          <a
+            href={selfServe.developers_console_app_url}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-secondary btn-sm"
+          >
+            {t('admin.meta_leads.self_serve.link_developers')}
+          </a>
+        )}
+        <a
+          href={selfServe.graph_api_explorer_url}
+          target="_blank"
+          rel="noreferrer"
+          className="btn-secondary btn-sm"
+        >
+          {t('admin.meta_leads.self_serve.link_explorer')}
+        </a>
+        {selfServe.documentation_url && (
+          <a href={selfServe.documentation_url} target="_blank" rel="noreferrer" className="btn-secondary btn-sm">
+            {t('admin.meta_leads.self_serve.link_docs')}
+          </a>
+        )}
+        <button
+          type="button"
+          className="btn-primary btn-sm"
+          disabled={submitting}
+          onClick={() => void handleGenerateVerifyToken()}
+        >
+          {submitting ? t('common.loading') : t('admin.meta_leads.self_serve.generate_verify')}
+        </button>
+      </div>
+      <dl className="mt-4 space-y-3 text-sm">
+        <div>
+          <dt className="font-medium text-slate-700">{t('admin.meta_leads.self_serve.label_app_id')}</dt>
+          <dd className="mt-1 flex flex-wrap items-center gap-2">
+            <code className="break-all rounded bg-slate-100 px-2 py-1 text-xs text-slate-900">
+              {selfServe.meta_app_id?.trim() || '—'}
+            </code>
+            {selfServe.meta_app_id?.trim() ? (
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => void copySelfServeValue(selfServe.meta_app_id!)}
+              >
+                {t('admin.meta_leads.self_serve.copy')}
+              </button>
+            ) : null}
+          </dd>
+        </div>
+        <div>
+          <dt className="font-medium text-slate-700">{t('admin.meta_leads.self_serve.label_callback')}</dt>
+          <dd className="mt-1 flex flex-wrap items-center gap-2">
+            <code className="max-w-full break-all rounded bg-slate-100 px-2 py-1 text-xs text-slate-900">
+              {selfServe.webhook_callback_url?.trim() || '—'}
+            </code>
+            {selfServe.webhook_callback_url?.trim() ? (
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => void copySelfServeValue(selfServe.webhook_callback_url!)}
+              >
+                {t('admin.meta_leads.self_serve.copy')}
+              </button>
+            ) : null}
+          </dd>
+        </div>
+        {selfServe.oauth_redirect_uri?.trim() ? (
+          <div>
+            <dt className="font-medium text-slate-700">{t('admin.meta_leads.self_serve.oauth_redirect_label')}</dt>
+            <dd className="mt-1 flex flex-wrap items-center gap-2">
+              <code className="max-w-full break-all rounded bg-slate-100 px-2 py-1 text-xs text-slate-900">
+                {selfServe.oauth_redirect_uri.trim()}
+              </code>
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                onClick={() => void copySelfServeValue(selfServe.oauth_redirect_uri!)}
+              >
+                {t('admin.meta_leads.self_serve.copy')}
+              </button>
+            </dd>
+          </div>
+        ) : null}
+        {selfServe.shared_meta_app_secret?.trim() ? (
+          <div>
+            <dt className="font-medium text-slate-700">{t('admin.meta_leads.self_serve.label_secret')}</dt>
+            <dd className="mt-1 space-y-1">
+              <p className="text-xs text-slate-500">{t('admin.meta_leads.self_serve.secret_hint')}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="break-all rounded bg-slate-100 px-2 py-1 text-xs text-slate-900">
+                  {selfServe.shared_meta_app_secret}
+                </code>
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => void copySelfServeValue(selfServe.shared_meta_app_secret!)}
+                >
+                  {t('admin.meta_leads.self_serve.copy')}
+                </button>
+              </div>
+            </dd>
+          </div>
+        ) : null}
+        <div>
+          <dt className="font-medium text-slate-700">
+            {t('admin.meta_leads.self_serve.label_permissions')} ({selfServe.graph_api_version})
+          </dt>
+          <dd className="mt-1">
+            <ul className="list-inside list-disc text-slate-700">
+              {selfServe.graph_permission_names.map((name) => (
+                <li key={name}>
+                  <code className="text-xs">{name}</code>
+                </li>
+              ))}
+            </ul>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  ) : null
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 py-1 sm:py-2">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <Link to={CRM_APP_PATHS.settingsIntegrations} className="text-sm font-medium text-brand-600 hover:underline">
-            {t('admin.integrations_hub.back_to_hub')}
-          </Link>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[#0081FB]" aria-hidden>
+      <SettingsSubpageHeader
+        backHref={CRM_APP_PATHS.settingsIntegrations}
+        backLabel={t('admin.integrations_hub.back_to_hub')}
+        kicker={t('admin.integrations_hub.integration_kicker')}
+        title={
+          <span className="inline-flex items-center gap-2">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-[#0081FB]"
+              aria-hidden
+            >
               <IconBrandMeta size={22} stroke={1.75} />
             </span>
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">{t('admin.meta_leads.title')}</h1>
-              <p className="text-sm text-slate-500">{t('admin.meta_leads.subtitle')}</p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
+            {t('admin.meta_leads.title')}
+          </span>
+        }
+        subtitle={t('admin.meta_leads.subtitle')}
+        actions={
           <button
             type="button"
             onClick={() => void refreshAll()}
@@ -972,37 +1470,422 @@ export default function MetaLeadsAdminPage() {
           >
             {loading ? t('common.loading') : t('common.actions.refresh')}
           </button>
-        </div>
-      </header>
+        }
+      />
 
-      {credentials.length === 0 && !loading && (
-        <div className="rounded border border-brand-200 bg-brand-50 p-4">
-          <h3 className="font-semibold text-brand-900">
-            {t('admin.meta_leads.quick_start.title', { defaultValue: 'Быстрый старт' })}
-          </h3>
-          <p className="mt-1 text-sm text-brand-800">
-            {t('admin.meta_leads.quick_start.subtitle', {
-              defaultValue: '1) Добавьте Credential (Webhook Secret, Access Token). 2) Настройте маппинг ad_id → вакансия. 3) Проверьте логи входящих лидов.',
-            })}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => setTab('credentials')}
-            >
-              {t('admin.meta_leads.tabs.credentials')} →
-            </button>
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => setTab('mapping')}
-            >
-              {t('admin.meta_leads.tabs.mapping')} →
-            </button>
-          </div>
+      {metaContextRedirected && metaContextTenantLabel ? (
+        <div
+          role="status"
+          className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"
+        >
+          {t('admin.meta_leads.context_redirect_banner', {
+            values: { name: metaContextTenantLabel },
+          })}
         </div>
-      )}
+      ) : null}
+
+      {oauthPick && !metaConnected ? (
+        <section
+          className="rounded-2xl border border-brand-200 bg-white p-6 shadow-sm sm:p-8"
+          aria-labelledby="meta-oauth-pick-title"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">
+            {t('admin.meta_leads.simple_wizard.step2_kicker')}
+          </p>
+          <h2 id="meta-oauth-pick-title" className="mt-2 text-xl font-semibold text-slate-900">
+            {t('admin.meta_leads.self_serve.oauth_pick_title')}
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            {t('admin.meta_leads.simple_wizard.select_page_hint')}
+          </p>
+          <div className="mt-6 max-w-md space-y-4 text-sm">
+            <label className="flex flex-col gap-1">
+              <span className="font-medium text-slate-700">{t('admin.meta_leads.self_serve.oauth_pick_page')}</span>
+              <select
+                className="input w-full"
+                value={oauthPageId}
+                onChange={(e) => setOauthPageId(e.target.value)}
+              >
+                {oauthPick.pages.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-medium text-slate-700">{t('admin.meta_leads.self_serve.oauth_pick_label')}</span>
+              <input className="input w-full" value={oauthLabel} onChange={(e) => setOauthLabel(e.target.value)} />
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-slate-700">
+              <input
+                type="checkbox"
+                checked={oauthSubscribe}
+                onChange={(e) => setOauthSubscribe(e.target.checked)}
+              />
+              {t('admin.meta_leads.self_serve.oauth_subscribe_leadgen')}
+            </label>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={oauthBusy || !oauthPageId.trim() || !oauthLabel.trim()}
+                onClick={() => void handleFinalizeMetaOAuth()}
+              >
+                {oauthBusy ? t('common.loading') : t('admin.meta_leads.self_serve.oauth_confirm')}
+              </button>
+              <button type="button" className="btn-secondary" disabled={oauthBusy} onClick={() => setOauthPick(null)}>
+                {t('common.actions.cancel')}
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {!metaConnected && !oauthPick && selfServe && !loading ? (
+        <>
+          {metaOperatorBlocked && !disconnectedExpert ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+                {t('admin.meta_leads.guided.operator_hint')}
+              </div>
+              <button
+                type="button"
+                className="text-sm font-medium text-brand-700 underline decoration-brand-400 underline-offset-2"
+                onClick={() => setDisconnectedExpert(true)}
+              >
+                {t('admin.meta_leads.simple_wizard.expert_link')}
+              </button>
+            </div>
+          ) : null}
+          {!metaOperatorBlocked && !disconnectedExpert ? (
+            <section
+              className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm sm:px-10"
+              aria-labelledby="meta-simple-connect-title"
+            >
+              <h2 id="meta-simple-connect-title" className="text-xl font-semibold text-slate-900">
+                {t('admin.meta_leads.simple_wizard.connect_title')}
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                {t('admin.meta_leads.simple_wizard.connect_body')}
+              </p>
+              <div className="mt-8 flex flex-col items-center gap-3">
+                {selfServe.oauth_quick_connect_enabled && me?.role === 'administrator' && !credentialsAtCap ? (
+                  <button
+                    type="button"
+                    className="btn-primary px-8 py-3 text-base"
+                    disabled={oauthBusy || submitting}
+                    onClick={() => void handleStartMetaOAuth()}
+                  >
+                    {oauthBusy
+                      ? t('common.loading')
+                      : t('admin.meta_leads.simple_wizard.connect_cta')}
+                  </button>
+                ) : null}
+                {selfServe.oauth_quick_connect_enabled && me?.role === 'administrator' && credentialsAtCap ? (
+                  <p className="text-sm text-amber-900">{t('admin.meta_leads.oauth_strip.at_credential_cap')}</p>
+                ) : null}
+                {selfServe.oauth_quick_connect_enabled && me?.role !== 'administrator' ? (
+                  <p className="text-sm text-slate-600">{t('admin.meta_leads.oauth_strip.admin_only')}</p>
+                ) : null}
+                {!selfServe.oauth_quick_connect_enabled && me?.role === 'administrator' ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-primary cursor-not-allowed px-8 py-3 text-base opacity-60"
+                      disabled
+                      aria-disabled
+                    >
+                      {t('admin.meta_leads.simple_wizard.connect_cta')}
+                    </button>
+                    {metaOauthBlockedReason === 'plan' ? (
+                      <Link
+                        to={CRM_APP_PATHS.settingsBilling}
+                        className="text-sm font-semibold text-brand-700 underline decoration-brand-400 underline-offset-2"
+                      >
+                        {t('admin.meta_leads.oauth_strip.upgrade_plan_cta')}
+                      </Link>
+                    ) : (
+                      <p className="text-sm text-slate-600">{t('admin.meta_leads.oauth_strip.server_env_hint')}</p>
+                    )}
+                  </>
+                ) : null}
+                {!selfServe.oauth_quick_connect_enabled && me?.role !== 'administrator' ? (
+                  <p className="text-sm text-slate-600">
+                    {metaOauthBlockedReason === 'server'
+                      ? t('admin.meta_leads.oauth_strip.ask_operator_oauth_env')
+                      : t('admin.meta_leads.oauth_strip.ask_admin_upgrade')}
+                  </p>
+                ) : null}
+              </div>
+              <p className="mt-6 text-xs text-slate-500">
+                {t('admin.meta_leads.simple_wizard.footnote')}
+              </p>
+              <button
+                type="button"
+                className="mt-6 text-sm font-medium text-brand-700 underline decoration-brand-400 underline-offset-2 hover:text-brand-800"
+                onClick={() => setDisconnectedExpert(true)}
+              >
+                {t('admin.meta_leads.simple_wizard.expert_link')}
+              </button>
+            </section>
+          ) : null}
+        </>
+      ) : null}
+
+      {disconnectedExpert && !metaConnected && !oauthPick && selfServe && !loading ? (
+        <div className="space-y-6">
+          <button
+            type="button"
+            className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
+            onClick={() => setDisconnectedExpert(false)}
+          >
+            {t('admin.meta_leads.simple_wizard.back_simple')}
+          </button>
+          {metaGuidedNeeded ? (
+        <section
+          className="rounded-xl border-2 border-brand-500 bg-gradient-to-b from-brand-50/90 to-white p-5 shadow-md"
+          aria-labelledby="meta-guided-title"
+        >
+          <h2 id="meta-guided-title" className="text-xl font-semibold text-slate-900">
+            {metaOperatorBlocked
+              ? t('admin.meta_leads.guided.title_blocked')
+              : t('admin.meta_leads.guided.title_setup')}
+          </h2>
+          {!metaOperatorBlocked ? (
+            <p className="mt-1 text-sm text-slate-600">{t('admin.meta_leads.guided.subtitle')}</p>
+          ) : null}
+
+          {metaOperatorBlocked ? (
+            <p className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              {t('admin.meta_leads.guided.operator_hint')}
+            </p>
+          ) : (
+            <ol className="mt-5 list-none space-y-3 p-0">
+              <li
+                className={`rounded-lg border p-4 ${
+                  !metaVerifyDone
+                    ? 'border-brand-400 bg-white shadow-sm ring-2 ring-brand-200'
+                    : 'border-slate-200 bg-slate-50/80'
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex min-w-0 gap-3">
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                        metaVerifyDone ? 'bg-emerald-100 text-emerald-800' : 'bg-brand-600 text-white'
+                      }`}
+                      aria-hidden
+                    >
+                      {metaVerifyDone ? <IconCircleCheck size={22} stroke={1.75} /> : '1'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900">{t('admin.meta_leads.guided.step_verify_title')}</p>
+                      <p className="mt-1 text-sm text-slate-600">{t('admin.meta_leads.guided.step_verify_hint')}</p>
+                    </div>
+                  </div>
+                  {!metaVerifyDone ? (
+                    <button
+                      type="button"
+                      className="btn-primary shrink-0"
+                      disabled={submitting}
+                      onClick={() => void handleGenerateVerifyToken()}
+                    >
+                      {submitting ? t('common.loading') : t('admin.meta_leads.guided.step_verify_cta')}
+                    </button>
+                  ) : (
+                    <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-emerald-700">
+                      <IconCircleCheck size={18} stroke={1.75} aria-hidden />
+                      {t('admin.meta_leads.guided.badge_done')}
+                    </span>
+                  )}
+                </div>
+              </li>
+
+              <li
+                className={`rounded-lg border p-4 ${
+                  metaVerifyDone && !metaCredDone
+                    ? 'border-brand-400 bg-white shadow-sm ring-2 ring-brand-200'
+                    : metaCredDone
+                      ? 'border-slate-200 bg-slate-50/80'
+                      : 'border-slate-200 bg-slate-50 opacity-80'
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex min-w-0 gap-3">
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                        metaCredDone ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                      }`}
+                      aria-hidden
+                    >
+                      {metaCredDone ? <IconCircleCheck size={22} stroke={1.75} /> : '2'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900">{t('admin.meta_leads.guided.step_cred_title')}</p>
+                      <p className="mt-1 text-sm text-slate-600">{t('admin.meta_leads.guided.step_cred_hint')}</p>
+                      {metaVerifyDone && me?.role === 'administrator' && selfServe.oauth_quick_connect_enabled ? (
+                        <button
+                          type="button"
+                          className="btn-primary btn-sm mt-3"
+                          disabled={oauthBusy || loading || submitting}
+                          onClick={() => void handleStartMetaOAuth()}
+                        >
+                          {oauthBusy ? t('common.loading') : t('admin.meta_leads.guided.step_cred_cta_oauth')}
+                        </button>
+                      ) : null}
+                      {metaVerifyDone && !metaCredDone && !selfServe.oauth_quick_connect_enabled ? (
+                        <div className="mt-3 space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                              {t('admin.meta_leads.oauth_strip.badge_recommended')}
+                            </span>
+                            <span className="text-xs font-semibold text-slate-800">
+                              {t('admin.meta_leads.oauth_strip.title')}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-600">
+                            {metaOauthBlockedReason === 'server'
+                              ? t('admin.meta_leads.oauth_strip.body_server_not_configured')
+                              : t('admin.meta_leads.oauth_strip.body_recommended_locked')}
+                          </p>
+                          {me?.role === 'administrator' ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                className="btn-primary btn-sm cursor-not-allowed opacity-60"
+                                disabled
+                                aria-disabled
+                              >
+                                {t('admin.meta_leads.guided.step_cred_cta_oauth')}
+                              </button>
+                              {metaOauthBlockedReason === 'plan' ? (
+                                <Link
+                                  to={CRM_APP_PATHS.settingsBilling}
+                                  className="text-sm font-semibold text-brand-700 underline decoration-brand-400 underline-offset-2"
+                                >
+                                  {t('admin.meta_leads.oauth_strip.upgrade_plan_cta')}
+                                </Link>
+                              ) : (
+                                <p className="text-sm text-slate-700">{t('admin.meta_leads.oauth_strip.server_env_hint')}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-600">
+                              {metaOauthBlockedReason === 'server'
+                                ? t('admin.meta_leads.oauth_strip.ask_operator_oauth_env')
+                                : t('admin.meta_leads.oauth_strip.ask_admin_upgrade')}
+                            </p>
+                          )}
+                          <button
+                            type="button"
+                            className="btn-primary btn-sm w-full sm:w-auto"
+                            onClick={() => setTabWithUrl('advanced')}
+                          >
+                            {t('admin.meta_leads.guided.step_cred_cta_credentials_tab')}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-stretch gap-2 sm:items-end">
+                    {!metaCredDone && metaVerifyDone && selfServe.oauth_quick_connect_enabled ? (
+                      <button type="button" className="btn-secondary btn-sm" onClick={() => setTabWithUrl('advanced')}>
+                        {t('admin.meta_leads.guided.step_cred_cta_manual')}
+                      </button>
+                    ) : null}
+                    {metaCredDone ? (
+                      <span className="flex items-center gap-1 text-sm font-medium text-emerald-700">
+                        <IconCircleCheck size={18} stroke={1.75} aria-hidden />
+                        {t('admin.meta_leads.guided.badge_done')}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+                {!metaVerifyDone ? (
+                  <p className="mt-3 text-xs text-slate-500">{t('admin.meta_leads.guided.step_cred_locked')}</p>
+                ) : null}
+              </li>
+
+              <li
+                className={`rounded-lg border p-4 ${
+                  metaCredDone && !metaMapDone
+                    ? 'border-brand-400 bg-white shadow-sm ring-2 ring-brand-200'
+                    : metaMapDone
+                      ? 'border-slate-200 bg-slate-50/80'
+                      : 'border-slate-200 bg-slate-50 opacity-80'
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex min-w-0 gap-3">
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                        metaMapDone ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                      }`}
+                      aria-hidden
+                    >
+                      {metaMapDone ? <IconCircleCheck size={22} stroke={1.75} /> : '3'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-slate-900">{t('admin.meta_leads.guided.step_map_title')}</p>
+                      <p className="mt-1 text-sm text-slate-600">{t('admin.meta_leads.guided.step_map_hint')}</p>
+                    </div>
+                  </div>
+                  {!metaMapDone && metaCredDone ? (
+                    <button type="button" className="btn-primary shrink-0" onClick={() => setTabWithUrl('advanced')}>
+                      {t('admin.meta_leads.guided.step_map_cta')}
+                    </button>
+                  ) : null}
+                  {metaMapDone ? (
+                    <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-emerald-700">
+                      <IconCircleCheck size={18} stroke={1.75} aria-hidden />
+                      {t('admin.meta_leads.guided.badge_done')}
+                    </span>
+                  ) : null}
+                </div>
+                {!metaCredDone ? (
+                  <p className="mt-3 text-xs text-slate-500">{t('admin.meta_leads.guided.step_map_locked')}</p>
+                ) : null}
+              </li>
+            </ol>
+          )}
+        </section>
+          ) : null}
+          <details
+            className="rounded-lg border border-slate-200 bg-white shadow-sm"
+            open={metaAdvancedOpen}
+            onToggle={(e) => setMetaAdvancedOpen((e.target as HTMLDetailsElement).open)}
+          >
+            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-slate-800 [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-2">
+                <span className="text-slate-400" aria-hidden>
+                  {metaAdvancedOpen ? '▼' : '▶'}
+                </span>
+                {t('admin.meta_leads.guided.advanced_summary')}
+              </span>
+            </summary>
+            {metaSelfServeDocsPanel}
+          </details>
+        </div>
+      ) : null}
+
+      {metaConnected && connectSuccessCue ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-950 shadow-sm">
+          <p className="font-semibold text-emerald-900">
+            {t('admin.meta_leads.simple_wizard.done_title')}
+          </p>
+          <button
+            type="button"
+            className="btn-primary mt-3"
+            onClick={() => {
+              setConnectSuccessCue(false)
+              setTabWithUrl('processing')
+            }}
+          >
+            {t('admin.meta_leads.simple_wizard.done_cta')}
+          </button>
+        </div>
+      ) : null}
 
       {(error || notice) && (
         <div className="space-y-2">
@@ -1010,8 +1893,8 @@ export default function MetaLeadsAdminPage() {
             <ErrorRecoveryBanner
               info={error}
               onRetry={() => void refreshAll()}
-              retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-              {...friendlyErrorBannerSecondary(error, CRM_APP_PATHS.settingsLeads, t('admin.meta_leads.title'))}
+              retryLabel={t('common.actions.refresh')}
+              {...friendlyErrorBannerSecondary(error, CRM_APP_PATHS.settingsIntegrationsMeta, t('admin.meta_leads.title'))}
               compact
             />
           )}
@@ -1021,61 +1904,68 @@ export default function MetaLeadsAdminPage() {
         </div>
       )}
 
-      <nav className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          className={`rounded px-3 py-2 text-sm ${tab === 'settings' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-          onClick={() => setTab('settings')}
-        >
-          {t('admin.meta_leads.tabs.settings')}
-        </button>
-        <button
-          type="button"
-          className={`rounded px-3 py-2 text-sm ${tab === 'credentials' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-          onClick={() => setTab('credentials')}
-        >
-          {t('admin.meta_leads.tabs.credentials')}
-        </button>
-        <button
-          type="button"
-          className={`rounded px-3 py-2 text-sm ${tab === 'mapping' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-          onClick={() => setTab('mapping')}
-        >
-          {t('admin.meta_leads.tabs.mapping')}
-        </button>
-        <button
-          type="button"
-          className={`rounded px-3 py-2 text-sm ${tab === 'field_mapping' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-          onClick={() => setTab('field_mapping')}
-        >
-          {t('admin.meta_leads.tabs.field_mapping')}
-        </button>
-        <button
-          type="button"
-          className={`rounded px-3 py-2 text-sm ${tab === 'incoming' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-          onClick={() => setTab('incoming')}
-        >
-          {t('admin.meta_leads.tabs.incoming')}
-        </button>
-        <button
-          type="button"
-          className={`rounded px-3 py-2 text-sm ${tab === 'logs' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
-          onClick={() => setTab('logs')}
-        >
-          {t('admin.meta_leads.tabs.logs')}
-        </button>
-        <span className="w-full text-xs text-slate-400 sm:ml-auto sm:w-auto">
-          {t('admin.meta_leads.other_platforms', { defaultValue: 'TikTok, YouTube, Google — скоро' })}
-        </span>
-      </nav>
+      {(metaConnected || disconnectedExpert) && (
+        <nav className="flex flex-wrap items-center gap-2 sm:gap-3" aria-label={t('admin.meta_leads.tabs.nav_aria')}>
+          {metaConnected ? (
+            <>
+              <button
+                type="button"
+                className={`rounded px-3 py-2 text-sm ${tab === 'overview' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                onClick={() => setTabWithUrl('overview')}
+              >
+                {t('admin.meta_leads.tabs.overview')}
+              </button>
+              <button
+                type="button"
+                className={`rounded px-3 py-2 text-sm ${tab === 'processing' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                onClick={() => setTabWithUrl('processing')}
+              >
+                {t('admin.meta_leads.tabs.processing')}
+              </button>
+              <button
+                type="button"
+                className={`rounded px-3 py-2 text-sm ${tab === 'field_mapping' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                onClick={() => setTabWithUrl('field_mapping')}
+              >
+                {t('admin.meta_leads.tabs.field_mapping')}
+              </button>
+              <button
+                type="button"
+                className={`rounded px-3 py-2 text-sm ${tab === 'debug' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                onClick={() => setTabWithUrl('debug')}
+              >
+                {t('admin.meta_leads.tabs.debug')}
+              </button>
+              <button
+                type="button"
+                className={`rounded px-3 py-2 text-sm ${tab === 'advanced' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                onClick={() => setTabWithUrl('advanced')}
+              >
+                {t('admin.meta_leads.tabs.advanced')}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="rounded px-3 py-2 text-sm bg-brand-600 text-white"
+              onClick={() => setTabWithUrl('advanced')}
+            >
+              {t('admin.meta_leads.tabs.advanced')}
+            </button>
+          )}
+          <span className="w-full text-xs text-slate-400 sm:ml-auto sm:w-auto">
+            {t('admin.meta_leads.other_platforms')}
+          </span>
+        </nav>
+      )}
 
-      {unmappedGroups.length > 0 && (
+      {tab === 'advanced' && unmappedGroups.length > 0 && (
         <section className="rounded border border-amber-200 bg-amber-50 p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-amber-900">
-            {t('admin.meta_leads.unmapped.title', { defaultValue: 'Непривязанные лиды' })}
+            {t('admin.meta_leads.unmapped.title')}
           </h2>
           <p className="mt-1 text-sm text-amber-800">
-            {t('admin.meta_leads.unmapped.subtitle', { defaultValue: 'Лиды с ad_id без маппинга на вакансию. Привяжите к вакансии и перезапустите маршрутизацию.' })}
+            {t('admin.meta_leads.unmapped.subtitle')}
           </p>
           <div className="mt-3 space-y-2">
             {unmappedGroups.map((group) => (
@@ -1085,7 +1975,7 @@ export default function MetaLeadsAdminPage() {
               >
                 <span>
                   ad_id: <strong>{group.ad_id}</strong> — {group.count}{' '}
-                  {t('admin.meta_leads.unmapped.leads', { defaultValue: 'лидов' })}
+                  {t('admin.meta_leads.unmapped.leads')}
                 </span>
                 <button
                   type="button"
@@ -1093,7 +1983,7 @@ export default function MetaLeadsAdminPage() {
                   onClick={() => setAttachModal({ group, vacancyId: '' })}
                   disabled={submitting}
                 >
-                  {t('admin.meta_leads.unmapped.attach_btn', { defaultValue: 'Привязать к вакансии' })}
+                  {t('admin.meta_leads.unmapped.attach_btn')}
                 </button>
               </div>
             ))}
@@ -1101,17 +1991,74 @@ export default function MetaLeadsAdminPage() {
         </section>
       )}
 
-      {tab === 'settings' && (
+      {tab === 'overview' && metaConnected && (
         <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.settings.title')}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t('admin.meta_leads.overview.title')}
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            {t('admin.meta_leads.overview.status_connected')}
+          </p>
+          <ul className="mt-4 list-inside list-disc space-y-1 text-sm text-slate-700">
+            <li>
+              {t('admin.meta_leads.overview.pages', {
+                values: { count: String(credentials.length) },
+              })}
+            </li>
+            <li>
+              {lastLeadActivityLabel
+                ? t('admin.meta_leads.overview.last_lead', {
+                    values: { time: lastLeadActivityLabel },
+                  })
+                : t('admin.meta_leads.overview.last_lead_none')}
+            </li>
+          </ul>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {selfServe?.oauth_quick_connect_enabled && me?.role === 'administrator' && !credentialsAtCap ? (
+              <button
+                type="button"
+                className="btn-secondary btn-sm"
+                disabled={oauthBusy}
+                onClick={() => void handleStartMetaOAuth()}
+              >
+                {oauthBusy ? t('common.loading') : t('admin.meta_leads.overview.reconnect')}
+              </button>
+            ) : null}
+            <Link className="btn-secondary btn-sm inline-flex items-center" to={CRM_APP_PATHS.leads}>
+              {t('admin.meta_leads.overview.open_leads')}
+            </Link>
+            <button type="button" className="btn-secondary btn-sm" onClick={() => setTabWithUrl('advanced')}>
+              {t('admin.meta_leads.overview.manage_advanced')}
+            </button>
+          </div>
+          <p className="mt-4 text-xs text-slate-500">
+            {t('admin.meta_leads.overview.disconnect_hint')}
+          </p>
+        </section>
+      )}
+
+      {tab === 'processing' && metaConnected && (
+        <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t('admin.meta_leads.processing.title')}
+          </h2>
           <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.settings.subtitle')}</p>
 
           <div className="mt-4 space-y-4">
-            <div className="rounded-lg border border-slate-200 bg-slate-50/90 p-3">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                {t('admin.meta_leads.settings.automation_stack_title')}
+            <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/60 p-4">
+              <div className="text-sm font-semibold text-slate-900">
+                {t('admin.meta_leads.settings.simple_path_title')}
               </div>
-              <p className="mt-1 text-xs text-slate-600">{t('admin.meta_leads.settings.automation_stack_body')}</p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                {t('admin.meta_leads.settings.simple_path_body')}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                {t('admin.meta_leads.settings.simple_path_automations_prefix')}{' '}
+                <Link className="font-medium text-brand-700 underline-offset-2 hover:underline" to={CRM_APP_PATHS.automations}>
+                  {t('admin.meta_leads.settings.simple_path_automations_link')}
+                </Link>
+                {t('admin.meta_leads.settings.simple_path_automations_suffix')}
+              </p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
             <label className="text-sm text-slate-700 md:col-span-2">
@@ -1131,72 +2078,6 @@ export default function MetaLeadsAdminPage() {
               </select>
               <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.processing_mode_hint')}</p>
             </label>
-            <div className="md:col-span-2 rounded-lg border border-slate-200 bg-white p-3">
-              <div className="text-sm font-medium text-slate-800">
-                {t('admin.meta_leads.settings.lead_fit_order_title')}
-              </div>
-              <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.lead_fit_order_hint')}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <select
-                  className="input max-w-md"
-                  value={fitVacancyPick}
-                  onChange={(e) => setFitVacancyPick(e.target.value)}
-                >
-                  <option value="">{t('admin.meta_leads.settings.lead_fit_order_pick')}</option>
-                  {vacancyOptions
-                    .filter((v) => !leadFitOrderIds.includes(v.id))
-                    .map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.title}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn-secondary btn-sm"
-                  onClick={() => {
-                    if (fitVacancyPick) {
-                      addLeadFitVacancy(fitVacancyPick)
-                      setFitVacancyPick('')
-                    }
-                  }}
-                >
-                  {t('common.actions.add')}
-                </button>
-              </div>
-              <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-800">
-                {leadFitOrderIds.map((id, idx) => (
-                  <li key={`${String(id)}-${idx}`} className="flex flex-wrap items-center gap-2">
-                    <span className="min-w-0 flex-1">
-                      {vacancyOptions.find((v) => v.id === id)?.title ?? String(id)}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn-secondary btn-xs"
-                      onClick={() => moveLeadFitVacancy(idx, -1)}
-                      disabled={idx === 0}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary btn-xs"
-                      onClick={() => moveLeadFitVacancy(idx, 1)}
-                      disabled={idx === leadFitOrderIds.length - 1}
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-secondary btn-xs text-red-700"
-                      onClick={() => removeLeadFitVacancy(idx)}
-                    >
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            </div>
             <label
               className={`flex flex-col gap-1 text-sm md:col-span-2 ${autoCreateAppliesToMode ? 'text-slate-700' : 'text-slate-500'}`}
             >
@@ -1217,38 +2098,6 @@ export default function MetaLeadsAdminPage() {
                 {t('admin.meta_leads.settings.auto_create_automatic_only')}
               </p>
             </label>
-            <label
-              className={`flex flex-col gap-1 text-sm md:col-span-2 ${autoCreateAppliesToMode ? 'text-slate-700' : 'text-slate-500'}`}
-            >
-              <span className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  disabled={!autoCreateAppliesToMode}
-                  checked={
-                    autoCreateAppliesToMode
-                      ? (settingsDraft.leads_auto_convert_on_fit_v1 ??
-                          settings?.leads_auto_convert_on_fit_v1 ??
-                          true)
-                      : false
-                  }
-                  onChange={(event) =>
-                    handleSettingsChange('leads_auto_convert_on_fit_v1', event.target.checked)
-                  }
-                />
-                {t('admin.meta_leads.settings.leads_auto_convert_on_fit')}
-              </span>
-              <p className={`text-xs pl-6 ${autoCreateAppliesToMode ? 'text-slate-500' : 'text-amber-800'}`}>
-                {t('admin.meta_leads.settings.leads_auto_convert_on_fit_hint')}
-              </p>
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={(settingsDraft.mask_pii_in_logs ?? settings?.mask_pii_in_logs ?? true)}
-                onChange={(event) => handleSettingsChange('mask_pii_in_logs', event.target.checked)}
-              />
-              {t('admin.meta_leads.settings.mask_pii')}
-            </label>
 
             <label className="text-sm text-slate-700">
               {t('admin.meta_leads.settings.default_company')}
@@ -1265,6 +2114,7 @@ export default function MetaLeadsAdminPage() {
               {selectedCompanyName && (
                 <div className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.current_company', { values: { name: selectedCompanyName } })}</div>
               )}
+              <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.default_company_public_client_intake_hint')}</p>
             </label>
 
             <label className="text-sm text-slate-700">
@@ -1283,61 +2133,7 @@ export default function MetaLeadsAdminPage() {
                 <div className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.current_recruiter', { values: { name: selectedRecruiterName } })}</div>
               )}
             </label>
-
-            <label className="text-sm text-slate-700">
-              {t('admin.meta_leads.settings.sla_label')}
-              <input
-                type="number"
-                min={0}
-                className="input mt-1 w-full"
-                value={settingsDraft.reroute_after_hours ?? settings?.reroute_after_hours ?? ''}
-                onChange={(event) => {
-                  const value = event.target.value
-                  handleSettingsChange('reroute_after_hours', value === '' ? null : Number(value))
-                }}
-              />
-            </label>
-
-            <label className="text-sm text-slate-700">
-              {t('admin.meta_leads.settings.webhook_url')}
-              <input
-                type="text"
-                className="input mt-1 w-full"
-                value={settingsDraft.webhook_url ?? settings?.webhook_url ?? ''}
-                onChange={(event) => handleSettingsChange('webhook_url', event.target.value)}
-              />
-            </label>
-            <label className="text-sm text-slate-700">
-              {t('admin.meta_leads.settings.webhook_token')}
-              <input
-                type="text"
-                className="input mt-1 w-full"
-                value={settingsDraft.webhook_verify_token ?? settings?.webhook_verify_token ?? ''}
-                onChange={(event) => handleSettingsChange('webhook_verify_token', event.target.value)}
-              />
-            </label>
-
-            <div className="text-sm text-slate-700 md:col-span-2">
-              <span className="block font-medium text-slate-800">
-                {t('admin.meta_leads.settings.field_mapping_card_title')}
-              </span>
-              <p className="mt-1 text-slate-600">
-                {t('admin.meta_leads.settings.field_mapping_card_body', { values: { count: fieldMappingRuleCount } })}
-              </p>
-              <button
-                type="button"
-                className="btn-secondary btn-sm mt-2"
-                onClick={() => setTab('field_mapping')}
-              >
-                {t('admin.meta_leads.settings.open_field_mapping')}
-              </button>
             </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center gap-3 text-sm text-slate-500">
-            <div>{t('admin.meta_leads.settings.last_signature_check', { values: { date: formatDateTime(settings?.last_webhook_check_at) } })}</div>
-            <div>{t('admin.meta_leads.settings.signature_status', { values: { status: settings?.last_signature_status ?? '—' } })}</div>
           </div>
 
           <button
@@ -1350,7 +2146,205 @@ export default function MetaLeadsAdminPage() {
         </section>
       )}
 
-      {tab === 'credentials' && (
+      {tab === 'advanced' && (metaConnected || disconnectedExpert) && (
+        <div className="space-y-6">
+          {metaConnected && selfServe ? (
+            <details
+              className="rounded-lg border border-slate-200 bg-white shadow-sm"
+              open={metaAdvancedOpen}
+              onToggle={(e) => setMetaAdvancedOpen((e.target as HTMLDetailsElement).open)}
+            >
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-slate-800 [&::-webkit-details-marker]:hidden">
+                <span className="inline-flex items-center gap-2">
+                  <span className="text-slate-400" aria-hidden>
+                    {metaAdvancedOpen ? '▼' : '▶'}
+                  </span>
+                  {t('admin.meta_leads.guided.advanced_summary')}
+                </span>
+              </summary>
+              {metaSelfServeDocsPanel}
+            </details>
+          ) : null}
+          {metaConnected ? (
+            <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {t('admin.meta_leads.advanced.ingest_title')}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {t('admin.meta_leads.advanced.ingest_subtitle')}
+              </p>
+              <div className="mt-4 space-y-4">
+                <details className="rounded-lg border border-slate-200 bg-slate-50/90 p-3 open:bg-white">
+                  <summary className="cursor-pointer list-none text-sm font-medium text-slate-800 [&::-webkit-details-marker]:hidden">
+                    <span className="inline-flex items-center gap-2">
+                      <span aria-hidden>▸</span>
+                      {t('admin.meta_leads.settings.advanced_ingest_title')}
+                    </span>
+                  </summary>
+                  <p className="mt-2 text-xs text-slate-600">{t('admin.meta_leads.settings.advanced_ingest_intro')}</p>
+                  <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3">
+                    <div className="text-sm font-medium text-slate-800">
+                      {t('admin.meta_leads.settings.lead_fit_order_title')}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{t('admin.meta_leads.settings.lead_fit_order_hint')}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <select
+                        className="input max-w-md"
+                        value={fitVacancyPick}
+                        onChange={(e) => setFitVacancyPick(e.target.value)}
+                      >
+                        <option value="">{t('admin.meta_leads.settings.lead_fit_order_pick')}</option>
+                        {vacancyOptions
+                          .filter((v) => !leadFitOrderIds.includes(v.id))
+                          .map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.title}
+                            </option>
+                          ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        onClick={() => {
+                          if (fitVacancyPick) {
+                            addLeadFitVacancy(fitVacancyPick)
+                            setFitVacancyPick('')
+                          }
+                        }}
+                      >
+                        {t('common.actions.add')}
+                      </button>
+                    </div>
+                    <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-800">
+                      {leadFitOrderIds.map((id, idx) => (
+                        <li key={`${String(id)}-${idx}`} className="flex flex-wrap items-center gap-2">
+                          <span className="min-w-0 flex-1">
+                            {vacancyOptions.find((v) => v.id === id)?.title ?? String(id)}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-xs"
+                            onClick={() => moveLeadFitVacancy(idx, -1)}
+                            disabled={idx === 0}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-xs"
+                            onClick={() => moveLeadFitVacancy(idx, 1)}
+                            disabled={idx === leadFitOrderIds.length - 1}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-secondary btn-xs text-red-700"
+                            onClick={() => removeLeadFitVacancy(idx)}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                  <label
+                    className={`mt-4 flex flex-col gap-1 text-sm ${autoCreateAppliesToMode ? 'text-slate-700' : 'text-slate-500'}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        disabled={!autoCreateAppliesToMode}
+                        checked={
+                          autoCreateAppliesToMode
+                            ? (settingsDraft.leads_auto_convert_on_fit_v1 ??
+                                settings?.leads_auto_convert_on_fit_v1 ??
+                                true)
+                            : false
+                        }
+                        onChange={(event) =>
+                          handleSettingsChange('leads_auto_convert_on_fit_v1', event.target.checked)
+                        }
+                      />
+                      {t('admin.meta_leads.settings.leads_auto_convert_on_fit')}
+                    </span>
+                    <p className={`text-xs pl-6 ${autoCreateAppliesToMode ? 'text-slate-500' : 'text-amber-800'}`}>
+                      {t('admin.meta_leads.settings.leads_auto_convert_on_fit_hint')}
+                    </p>
+                  </label>
+                </details>
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={(settingsDraft.mask_pii_in_logs ?? settings?.mask_pii_in_logs ?? true)}
+                    onChange={(event) => handleSettingsChange('mask_pii_in_logs', event.target.checked)}
+                  />
+                  {t('admin.meta_leads.settings.mask_pii')}
+                </label>
+                <label className="text-sm text-slate-700">
+                  {t('admin.meta_leads.settings.sla_label')}
+                  <input
+                    type="number"
+                    min={0}
+                    className="input mt-1 w-full"
+                    value={settingsDraft.reroute_after_hours ?? settings?.reroute_after_hours ?? ''}
+                    onChange={(event) => {
+                      const value = event.target.value
+                      handleSettingsChange('reroute_after_hours', value === '' ? null : Number(value))
+                    }}
+                  />
+                </label>
+                <label className="text-sm text-slate-700">
+                  {t('admin.meta_leads.settings.webhook_url')}
+                  <input
+                    type="text"
+                    className="input mt-1 w-full"
+                    value={settingsDraft.webhook_url ?? settings?.webhook_url ?? ''}
+                    onChange={(event) => handleSettingsChange('webhook_url', event.target.value)}
+                  />
+                </label>
+                <label className="text-sm text-slate-700">
+                  {t('admin.meta_leads.settings.webhook_token')}
+                  <input
+                    type="text"
+                    className="input mt-1 w-full"
+                    value={settingsDraft.webhook_verify_token ?? settings?.webhook_verify_token ?? ''}
+                    onChange={(event) => handleSettingsChange('webhook_verify_token', event.target.value)}
+                  />
+                </label>
+                <div className="text-sm text-slate-700">
+                  <span className="block font-medium text-slate-800">
+                    {t('admin.meta_leads.settings.field_mapping_card_title')}
+                  </span>
+                  <p className="mt-1 text-slate-600">
+                    {t('admin.meta_leads.settings.field_mapping_card_body', { values: { count: fieldMappingRuleCount } })}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-sm mt-2"
+                    onClick={() => setTabWithUrl('field_mapping')}
+                  >
+                    {t('admin.meta_leads.settings.open_field_mapping')}
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                  <div>
+                    {t('admin.meta_leads.settings.last_signature_check', {
+                      values: { date: formatDateTime(settings?.last_webhook_check_at) },
+                    })}
+                  </div>
+                  <div>
+                    {t('admin.meta_leads.settings.signature_status', {
+                      values: { status: settings?.last_signature_status ?? '—' },
+                    })}
+                  </div>
+                </div>
+                <button type="button" onClick={handleSettingsSubmit} className="btn-primary">
+                  {t('admin.meta_leads.advanced.save_technical')}
+                </button>
+              </div>
+            </section>
+          ) : null}
         <section className="space-y-4">
           <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.credentials.title')}</h2>
@@ -1378,9 +2372,9 @@ export default function MetaLeadsAdminPage() {
                   value={credentialForm.status}
                   onChange={(event) => setCredentialForm((prev) => ({ ...prev, status: event.target.value as CredentialFormState['status'] }))}
                 >
-                  <option value="active">{t('admin.meta_leads.credentials.statuses.active', { defaultValue: 'active' })}</option>
-                  <option value="disabled">{t('admin.meta_leads.credentials.statuses.disabled', { defaultValue: 'disabled' })}</option>
-                  <option value="rotation_pending">{t('admin.meta_leads.credentials.statuses.rotation_pending', { defaultValue: 'rotation_pending' })}</option>
+                  <option value="active">{t('admin.meta_leads.credentials.statuses.active')}</option>
+                  <option value="disabled">{t('admin.meta_leads.credentials.statuses.disabled')}</option>
+                  <option value="rotation_pending">{t('admin.meta_leads.credentials.statuses.rotation_pending')}</option>
                 </select>
               </label>
               <label className="text-sm text-slate-700">
@@ -1402,7 +2396,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                {t('admin.meta_leads.credentials.fields.ad_account_id', { defaultValue: 'ad_account_id' })}
+                {t('admin.meta_leads.credentials.fields.ad_account_id')}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1411,7 +2405,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                {t('admin.meta_leads.credentials.fields.page_id', { defaultValue: 'page_id' })}
+                {t('admin.meta_leads.credentials.fields.page_id')}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1436,8 +2430,8 @@ export default function MetaLeadsAdminPage() {
                 <tr>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.label')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.status')}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.ad_id', { defaultValue: 'ad_id' })}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.page_id', { defaultValue: 'page_id' })}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.ad_id')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.page_id')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.credentials.table.signature')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
                 </tr>
@@ -1484,15 +2478,13 @@ export default function MetaLeadsAdminPage() {
             </table>
           </div>
         </section>
-      )}
 
-      {tab === 'mapping' && (
         <section className="space-y-4">
           <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.mapping.title')}</h2>
             <div className="mt-3 grid gap-3 md:grid-cols-3">
               <label className="text-sm text-slate-700">
-                {t('admin.meta_leads.mapping.fields.ad_id', { defaultValue: 'ad_id' })}
+                {t('admin.meta_leads.mapping.fields.ad_id')}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1501,7 +2493,7 @@ export default function MetaLeadsAdminPage() {
                 />
               </label>
               <label className="text-sm text-slate-700">
-                {t('admin.meta_leads.mapping.fields.vacancy_id', { defaultValue: 'vacancy_id' })}
+                {t('admin.meta_leads.mapping.fields.vacancy_id')}
                 <input
                   type="text"
                   className="input mt-1 w-full"
@@ -1542,8 +2534,8 @@ export default function MetaLeadsAdminPage() {
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.table.ad_id', { defaultValue: 'ad_id' })}</th>
-                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.table.vacancy_id', { defaultValue: 'vacancy_id' })}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.table.ad_id')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.table.vacancy_id')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.note')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('admin.meta_leads.mapping.created')}</th>
                   <th className="px-4 py-2 text-left font-medium text-slate-600">{t('common.labels.actions')}</th>
@@ -1612,10 +2604,96 @@ export default function MetaLeadsAdminPage() {
             </table>
           </div>
         </section>
+        </div>
       )}
 
-      {tab === 'field_mapping' && (
+      {tab === 'field_mapping' && metaConnected && (
         <section className="space-y-4">
+          <div className="rounded border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900">
+              {t('admin.meta_leads.field_mapping.graph_fetch_title')}
+            </h3>
+            <p className="mt-1 text-xs text-slate-600">{t('admin.meta_leads.field_mapping.graph_fetch_body')}</p>
+            {incomingLoading && (
+              <p className="mt-2 text-xs text-slate-500">{t('common.loading')}</p>
+            )}
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="flex min-w-[220px] flex-col gap-1 text-xs font-medium text-slate-700">
+                {t('admin.meta_leads.field_mapping.graph_pick_lead')}
+                <select
+                  className="input text-xs"
+                  value={graphHostflowLeadPick}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setGraphHostflowLeadPick(v)
+                    if (!v) return
+                    const opt = graphLeadSelectOptions.find((o) => o.id === v)
+                    if (!opt) return
+                    const pj = opt.payloadJson ?? ''
+                    if (pj) {
+                      const pids = extractPageIdsFromMetaPayloadPreview(pj)
+                      if (pids.length === 1) setGraphPageInput(pids[0])
+                    }
+                    const ext = opt.externalId?.trim()
+                    if (ext) {
+                      setGraphLeadgenInput(ext)
+                      return
+                    }
+                    try {
+                      const root = JSON.parse(pj) as Record<string, unknown>
+                      const entry = (Array.isArray(root.entry) ? root.entry[0] : null) as Record<string, unknown> | null
+                      const changes = entry && Array.isArray(entry.changes) ? (entry.changes[0] as Record<string, unknown>) : null
+                      const value = (changes?.value ?? root) as Record<string, unknown>
+                      const lid = value?.leadgen_id ?? value?.id
+                      if (lid != null && String(lid).trim()) setGraphLeadgenInput(String(lid).trim())
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                >
+                  <option value="">{t('admin.meta_leads.field_mapping.graph_pick_lead_placeholder')}</option>
+                  {graphLeadSelectOptions.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex min-w-[160px] flex-col gap-1 text-xs font-medium text-slate-700">
+                {t('admin.meta_leads.field_mapping.graph_leadgen_id')}
+                <input
+                  type="text"
+                  className="input text-xs"
+                  value={graphLeadgenInput}
+                  onChange={(e) => setGraphLeadgenInput(e.target.value)}
+                  placeholder={t('admin.meta_leads.field_mapping.graph_leadgen_placeholder')}
+                />
+              </label>
+              <label className="flex min-w-[160px] flex-col gap-1 text-xs font-medium text-slate-700">
+                {t('admin.meta_leads.field_mapping.graph_page_id')}
+                <input
+                  type="text"
+                  className="input text-xs"
+                  value={graphPageInput}
+                  onChange={(e) => setGraphPageInput(e.target.value)}
+                  placeholder={t('admin.meta_leads.field_mapping.graph_page_placeholder')}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn-primary btn-sm disabled:opacity-50"
+                disabled={
+                  graphFetchLoading ||
+                  (!graphHostflowLeadPick.trim() &&
+                    (!graphLeadgenInput.trim() || !graphPageInput.trim()))
+                }
+                onClick={() => void handleFetchGraphFields()}
+              >
+                {graphFetchLoading ? t('common.loading') : t('admin.meta_leads.field_mapping.graph_fetch_cta')}
+              </button>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">{t('admin.meta_leads.field_mapping.graph_fetch_footer')}</p>
+          </div>
           <datalist id="meta-mapping-source-suggestions">
             {suggestedMetaFieldKeys.map((key) => (
               <option key={key} value={key} />
@@ -1825,7 +2903,8 @@ export default function MetaLeadsAdminPage() {
         </section>
       )}
 
-      {tab === 'incoming' && (
+      {tab === 'debug' && metaConnected && (
+        <div className="space-y-10">
         <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.incoming.title')}</h2>
           <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.incoming.subtitle')}</p>
@@ -1843,7 +2922,7 @@ export default function MetaLeadsAdminPage() {
                   }`}
                   onClick={() => {
                     const n = new URLSearchParams(searchParams)
-                    n.set('tab', 'incoming')
+                    n.set('tab', 'debug')
                     if (src === 'webhook') n.set('incoming_source', 'webhook')
                     else n.delete('incoming_source')
                     setSearchParams(n, { replace: true })
@@ -1887,8 +2966,8 @@ export default function MetaLeadsAdminPage() {
                     }
                   })()
                 }}
-                retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
-                {...friendlyErrorBannerSecondary(incomingError, CRM_APP_PATHS.settingsLeads, t('admin.meta_leads.title'))}
+                retryLabel={t('common.actions.refresh')}
+                {...friendlyErrorBannerSecondary(incomingError, CRM_APP_PATHS.settingsIntegrationsMeta, t('admin.meta_leads.title'))}
                 compact
               />
             </div>
@@ -1944,9 +3023,132 @@ export default function MetaLeadsAdminPage() {
             ))}
           </div>
         </section>
-      )}
 
-      {tab === 'logs' && (
+        <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">
+            {t('admin.meta_leads.csv_import.title')}
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            {t('admin.meta_leads.csv_import.subtitle')}
+          </p>
+          {csvPanelError && (
+            <div className="mt-3">
+              <ErrorRecoveryBanner
+                info={csvPanelError}
+                onRetry={() => {
+                  setCsvPanelError(null)
+                  void handleCsvImport()
+                }}
+                retryLabel={t('common.actions.retry')}
+                compact
+              />
+            </div>
+          )}
+          {me?.role !== 'administrator' ? (
+            <p className="mt-4 text-sm text-amber-800">
+              {t('admin.meta_leads.csv_import.admin_only')}
+            </p>
+          ) : (
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+              <label className="block text-sm text-slate-700">
+                <span className="font-medium text-slate-800">
+                  {t('admin.meta_leads.csv_import.file_label')}
+                </span>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="input mt-1 block w-full max-w-md"
+                  disabled={csvBusy}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    setCsvFile(f ?? null)
+                    setCsvPanelError(null)
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn-primary shrink-0 disabled:opacity-50"
+                disabled={csvBusy || !csvFile}
+                onClick={() => void handleCsvImport()}
+              >
+                {csvBusy
+                  ? t('admin.meta_leads.csv_import.uploading')
+                  : t('admin.meta_leads.csv_import.upload_btn')}
+              </button>
+            </div>
+          )}
+          {csvLastJob && (
+            <div className="mt-4 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800">
+              <div className="font-medium">
+                {t('admin.meta_leads.csv_import.last_job')}: {csvLastJob.filename}
+              </div>
+              <div className="mt-1">
+                {t('admin.meta_leads.csv_import.last_job_status')}: <code>{csvLastJob.status}</code> ·{' '}
+                {t('admin.meta_leads.csv_import.rows_ok')}: {csvLastJob.success_rows},{' '}
+                {t('admin.meta_leads.csv_import.rows_dup')}: {csvLastJob.duplicate_rows},{' '}
+                {t('admin.meta_leads.csv_import.rows_fail')}:{' '}
+                {csvLastJob.failed_rows}
+              </div>
+              {csvLastJob.error_report && csvLastJob.error_report.length > 0 ? (
+                <pre className="mt-2 max-h-40 overflow-auto rounded bg-slate-900 p-2 text-xs text-slate-100">
+                  {JSON.stringify(csvLastJob.error_report, null, 2)}
+                </pre>
+              ) : null}
+            </div>
+          )}
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-slate-800">
+              {t('admin.meta_leads.csv_import.recent')}
+            </h3>
+            <div className="mt-2 overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      {t('admin.meta_leads.logs.table.created')}
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      {t('admin.meta_leads.csv_import.col_file')}
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      {t('admin.meta_leads.logs.table.status')}
+                    </th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-600">
+                      {t('admin.meta_leads.csv_import.col_counts')}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {csvJobs.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-3 text-slate-500">
+                        {t('admin.meta_leads.csv_import.no_jobs')}
+                      </td>
+                    </tr>
+                  ) : (
+                    csvJobs.map((j) => (
+                      <tr key={j.id}>
+                        <td className="px-3 py-2 text-slate-600">{formatDateTime(j.created_at)}</td>
+                        <td className="px-3 py-2 text-slate-800">{j.filename}</td>
+                        <td className="px-3 py-2">{j.status}</td>
+                        <td className="px-3 py-2">
+                          {j.success_rows} / {j.duplicate_rows} / {j.failed_rows}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p className="mt-4 text-sm">
+            <Link className="text-brand-700 hover:underline" to={CRM_APP_PATHS.leads}>
+              {t('admin.meta_leads.csv_import.open_leads')}
+            </Link>
+          </p>
+        </section>
+
         <section className="rounded border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">{t('admin.meta_leads.logs.title')}</h2>
           <p className="mt-1 text-sm text-slate-500">{t('admin.meta_leads.logs.subtitle')}</p>
@@ -1997,7 +3199,7 @@ export default function MetaLeadsAdminPage() {
                             <button
                               type="button"
                               className="btn-secondary btn-xs"
-                              onClick={() => setTab(suggestion.tab)}
+                              onClick={() => setTabWithUrl(suggestion.tab)}
                             >
                               {suggestion.actionLabel}
                             </button>
@@ -2011,7 +3213,7 @@ export default function MetaLeadsAdminPage() {
                             className="btn-secondary btn-xs"
                             onClick={() => void handleRetry(lead)}
                           >
-                            {t('admin.meta_leads.logs.actions.retry', { defaultValue: 'Retry' })}
+                            {t('admin.meta_leads.logs.actions.retry')}
                           </button>
                           <button
                             type="button"
@@ -2029,6 +3231,7 @@ export default function MetaLeadsAdminPage() {
             </table>
           </div>
         </section>
+        </div>
       )}
 
       {attachModal && (
@@ -2042,12 +3245,11 @@ export default function MetaLeadsAdminPage() {
           >
             <h3 className="text-lg font-semibold text-slate-900">
               {t('admin.meta_leads.unmapped.attach_modal_title', {
-                defaultValue: 'Привязать ad_id {adId} к вакансии',
                 values: { adId: attachModal.group.ad_id },
               })}
             </h3>
             <label className="mt-3 block text-sm text-slate-700">
-              {t('admin.meta_leads.unmapped.select_vacancy', { defaultValue: 'Вакансия' })}
+              {t('admin.meta_leads.unmapped.select_vacancy')}
               <select
                 className="input mt-1 w-full"
                 value={attachModal.vacancyId}
@@ -2068,7 +3270,7 @@ export default function MetaLeadsAdminPage() {
                 onClick={() => setAttachModal(null)}
                 disabled={submitting}
               >
-                {t('common.cancel', { defaultValue: 'Anuluj' })}
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -2076,7 +3278,7 @@ export default function MetaLeadsAdminPage() {
                 onClick={() => void handleAttachUnmapped()}
                 disabled={submitting || !attachModal.vacancyId.trim()}
               >
-                {submitting ? t('common.loading') : t('admin.meta_leads.unmapped.attach_btn', { defaultValue: 'Привязать' })}
+                {submitting ? t('common.loading') : t('admin.meta_leads.unmapped.attach_submit')}
               </button>
             </div>
           </div>

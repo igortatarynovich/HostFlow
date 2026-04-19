@@ -22,7 +22,7 @@ import { getLeadDistribution, patchLeadDistribution, type LeadDistributionOut } 
 import { useI18n } from '../i18n'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 const CRITERIA_IDS = ['working_hours', 'workload', 'language', 'experience'] as const
 const ROUTE_LANGS = ['pl', 'en', 'de'] as const
 
@@ -185,6 +185,8 @@ export default function LeadsDistributionRulesPage() {
         ← {t('app.leads.distribution.rules.back')}
       </Link>
       <h1 className="text-2xl font-semibold text-slate-900">{t('app.leads.distribution.rules.title')}</h1>
+
+      <PageBreadcrumb className="max-w-4xl" />
 
       {!canEdit ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">

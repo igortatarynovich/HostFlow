@@ -107,12 +107,14 @@ async def ensure_auth_seed() -> None:
             cols_tenants = await _columns(db, "tenants")
             params = {
                 "id": DEFAULT_TENANT_ID,
-                "name": "Default Tenant",
-                "slug": "default",
+                "name": "Superadmin",
+                "slug": "superadmin",
                 "api_key": str(uuid.uuid4()).replace("-", ""),
                 "is_active": True,
                 "settings": "{}",
             }
+            if "workspace_label" in cols_tenants:
+                params["workspace_label"] = "Superadmin"
             columns = []
             values = []
             for key, value in params.items():
@@ -122,9 +124,12 @@ async def ensure_auth_seed() -> None:
             if columns:
                 insert_cols = ", ".join(columns)
                 placeholder = ", ".join(f":t{i}" for i in range(len(values)))
+                conflict_updates = ["name = excluded.name", "slug = excluded.slug"]
+                if "workspace_label" in columns:
+                    conflict_updates.append("workspace_label = excluded.workspace_label")
                 stmt = text(
                     f"INSERT INTO tenants ({insert_cols}) VALUES ({placeholder}) "
-                    "ON CONFLICT(id) DO UPDATE SET name = excluded.name"
+                    "ON CONFLICT(id) DO UPDATE SET " + ", ".join(conflict_updates)
                 )
                 await db.execute(
                     stmt, {f"t{i}": values[i] for i in range(len(values))}

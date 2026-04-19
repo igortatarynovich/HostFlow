@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.auth.deps import get_current_user, require_roles
 from backend.app.db.deps import get_db_with_tenant
+from backend.app.services import billing_restrictions
 from backend.app.models.candidate_profile import CandidateProfile
 from backend.app.models.candidate_profile_history import CandidateProfileHistory
 from backend.app.models.tenant import Tenant, TenantLink
@@ -507,6 +508,7 @@ async def create_candidate_profile(
 ) -> CandidateProfileOut:
     """Create a new candidate profile."""
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
 
     # Check uniqueness
     stmt = (
@@ -756,6 +758,7 @@ async def update_candidate_profile(
 ) -> CandidateProfileOut:
     """Update an existing candidate profile."""
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
 
     stmt = (
         select(CandidateProfile)
@@ -853,6 +856,7 @@ async def delete_candidate_profile(
 ) -> None:
     """Delete (deactivate) a candidate profile."""
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
 
     stmt = (
         select(CandidateProfile)

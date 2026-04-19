@@ -40,11 +40,11 @@ export function CandidatesTableRowNamePreview({
   }
 
   const label = isActive
-    ? t('app.candidates.actions.preview_close', { defaultValue: 'Close side panel' })
+    ? t('app.candidates.actions.preview_close', { defaultValue: 'Close preview' })
     : t('app.candidates.actions.preview', { defaultValue: 'Preview' })
   const title = isActive
-    ? t('app.candidates.actions.preview_close_hint', { defaultValue: 'Close the right work panel' })
-    : t('app.candidates.actions.preview_panel_hint', { defaultValue: 'Open side preview' })
+    ? t('app.candidates.actions.preview_close_hint', { defaultValue: 'Close the preview window' })
+    : t('app.candidates.actions.preview_panel_hint', { defaultValue: 'Open preview in a window' })
 
   return (
     <button

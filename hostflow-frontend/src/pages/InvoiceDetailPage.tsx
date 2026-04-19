@@ -17,6 +17,7 @@ import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { Modal } from '../components/Modal'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
@@ -408,7 +409,7 @@ export default function InvoiceDetailPage() {
   }, [hasSendErrorNotice, invoice, sendErrorComposerPrefilled])
 
   if (loading) {
-    return <div className="p-6 text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
+    return <div className="p-6 text-slate-500">{t('common.loading')}</div>
   }
 
   if (error || !invoice) {
@@ -416,7 +417,7 @@ export default function InvoiceDetailPage() {
       error ??
       ({
         title: t('app.invoices.not_found', { defaultValue: 'Invoice not found' }),
-        hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+        hint: t('app.common.retry_hint'),
       } satisfies FriendlyErrorInfo)
     return (
       <div className="p-6">
@@ -494,13 +495,13 @@ export default function InvoiceDetailPage() {
           )}
           {invoice.status === 'draft' && (
             <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'issue'} onClick={() => void handleIssue()}>
-              {busyAction === 'issue' ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.invoices.issue', { defaultValue: 'Issue' })}
+              {busyAction === 'issue' ? t('common.loading') : t('app.invoices.issue', { defaultValue: 'Issue' })}
             </button>
           )}
           {(invoice.status === 'issued' || invoice.status === 'sent') && (
             <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'send'} onClick={openSendComposer}>
               {busyAction === 'send'
-                ? t('common.loading', { defaultValue: 'Loading...' })
+                ? t('common.loading')
                 : t('app.invoices.compose_send', {
                     defaultValue: invoice.status === 'sent' ? 'Resend with note' : 'Compose & send',
                   })}
@@ -509,29 +510,31 @@ export default function InvoiceDetailPage() {
           {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
             <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'paid'} onClick={() => void handleMarkPaid()}>
               {busyAction === 'paid'
-                ? t('common.loading', { defaultValue: 'Loading...' })
+                ? t('common.loading')
                 : t('app.invoices.mark_paid', { defaultValue: 'Mark paid' })}
             </button>
           )}
           {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
             <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'remind'} onClick={() => void handleRemind()}>
               {busyAction === 'remind'
-                ? t('common.loading', { defaultValue: 'Loading...' })
+                ? t('common.loading')
                 : t('app.invoices.remind', { defaultValue: 'Remind' })}
             </button>
           )}
           {invoice.status !== 'paid' && invoice.status !== 'cancelled' && !isLockedForCompliance && (
             <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'cancel'} onClick={() => void handleCancel()}>
               {busyAction === 'cancel'
-                ? t('common.loading', { defaultValue: 'Loading...' })
+                ? t('common.loading')
                 : t('app.invoices.cancel', { defaultValue: 'Cancel' })}
             </button>
           )}
           <button type="button" className="btn-secondary btn-sm" disabled={busyAction === 'pdf'} onClick={() => void handlePdf()}>
-            {busyAction === 'pdf' ? t('common.loading', { defaultValue: 'Loading...' }) : t('app.invoices.pdf', { defaultValue: 'PDF' })}
+            {busyAction === 'pdf' ? t('common.loading') : t('app.invoices.pdf', { defaultValue: 'PDF' })}
           </button>
         </div>
       </div>
+
+      <PageBreadcrumb className="max-w-4xl" />
 
       {actionError && (
         <ErrorRecoveryBanner
@@ -599,7 +602,7 @@ export default function InvoiceDetailPage() {
             </button>
             <button type="button" className="btn-primary" disabled={busyAction === 'send'} onClick={() => void handleSend()}>
               {busyAction === 'send'
-                ? t('common.loading', { defaultValue: 'Loading...' })
+                ? t('common.loading')
                 : t(invoice.status === 'sent' ? 'app.invoices.resend' : 'app.invoices.send', {
                     defaultValue: invoice.status === 'sent' ? 'Resend' : 'Send',
                   })}
@@ -807,7 +810,7 @@ export default function InvoiceDetailPage() {
               </p>
             </div>
             {correctionChainLoading && (
-              <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
+              <div className="text-sm text-slate-500">{t('common.loading')}</div>
             )}
             {correctionChainError && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">

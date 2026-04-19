@@ -11,3 +11,12 @@ repos:
     hooks:
       - id: isort
         args: [--profile=black]
+
+  - repo: local
+    hooks:
+      - id: alembic-heads
+        name: alembic heads must be exactly 1
+        entry: python3 backend/scripts/check_alembic_heads.py --quiet
+        language: system
+        pass_filenames: false
+        files: ^backend/alembic/versions/.*\.py$

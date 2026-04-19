@@ -47,10 +47,3 @@ export const CONTACT_ROLE_ALIASES: Record<string, string> = {
 export const WORK_MODE_OPTIONS = ['UOP', 'B2B', 'LEASE'];
 export const TRAILER_TYPE_KEYS = ['mega', 'standard', 'frigo', 'container'];
 
-export const OPERATIONAL_PROFILE_OPTIONS = [
-  { value: 'transport', labelKey: 'app.companies.detail.sections.operations_profile.transport' },
-  { value: 'none', labelKey: 'app.companies.detail.sections.operations_profile.none' },
-  { value: 'office', labelKey: 'app.companies.detail.sections.operations_profile.office' },
-  { value: 'custom', labelKey: 'app.companies.detail.sections.operations_profile.custom' },
-] as const;
-

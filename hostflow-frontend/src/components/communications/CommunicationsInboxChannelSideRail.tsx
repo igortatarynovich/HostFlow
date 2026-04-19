@@ -53,7 +53,7 @@ export default function CommunicationsInboxChannelSideRail({
         </div>
       )}
       {threadId && loading && !thread && (
-        <div className="p-4 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</div>
+        <div className="p-4 text-sm text-slate-500">{t('common.loading')}</div>
       )}
       {threadId && !loading && !thread && threadError && (
         <div className="p-4 text-sm text-rose-700">{threadError.title}</div>

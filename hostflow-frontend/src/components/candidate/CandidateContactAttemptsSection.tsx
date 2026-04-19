@@ -183,7 +183,7 @@ function CandidateContactAttemptsSection({
           })}
         </h3>
         <p className="mt-1 text-sm text-slate-500">
-          {loading ? t('common.loading', { defaultValue: 'Loading...' }) : '—'}
+          {loading ? t('common.loading') : '—'}
         </p>
       </section>
     )

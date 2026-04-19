@@ -137,6 +137,14 @@ function CandidateHeader({
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold leading-tight">{candidateTitle}</h1>
               {candidate && <StageTag code={candidate.stage || 'new'} />}
+              {!isMasked && candidate?.intake_application_kind === 'client' && (
+                <span
+                  className="text-[11px] inline-flex items-center rounded-md border border-sky-200/80 bg-sky-500/20 px-2 py-0.5 font-semibold text-white"
+                  title={t('app.candidate_card.labels.client_intake_badge_hint')}
+                >
+                  {t('app.candidate_card.labels.client_intake_badge')}
+                </span>
+              )}
               {!isMasked && pipelineWaiverPendingCount > 0 ? (
                 <span
                   className="text-[11px] inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-400/90 px-2 py-0.5 font-semibold text-amber-950 shadow-sm"
@@ -331,7 +339,7 @@ function CandidateHeader({
         <ErrorRecoveryBanner
           info={{
             title: deleteRequestError,
-            hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+            hint: t('app.common.retry_hint'),
           }}
           onRetry={onDeleteRequest}
           retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}

@@ -87,7 +87,7 @@ export default function DeletionRequestsPage() {
   const deletionQueueErrorBanner: FriendlyErrorInfo | null = error
     ? {
         title: error,
-        hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+        hint: t('app.common.retry_hint'),
       }
     : null
 
@@ -119,11 +119,11 @@ export default function DeletionRequestsPage() {
         <ErrorRecoveryBanner
           info={deletionQueueErrorBanner}
           onRetry={() => void loadRequests()}
-          retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+          retryLabel={t('common.actions.refresh')}
           {...friendlyErrorBannerSecondary(
             deletionQueueErrorBanner,
             CRM_APP_PATHS.settingsAudit,
-            t('admin.settings.audit.tabs.deletion', { defaultValue: 'Очередь удаления' }),
+            t('admin.settings.audit.tabs.deletion'),
           )}
           compact
         />

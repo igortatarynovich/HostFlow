@@ -20,6 +20,7 @@ from backend.app.api.v1.utils.own_company_acl import (
 )
 from backend.app.modules.companies import crud as companies_crud
 from backend.app.services.audit import log_activity
+from backend.app.services import billing_restrictions
 from backend.app.services.onboarding_demo_seed import seed_onboarding_demo_if_needed
 
 
@@ -182,6 +183,7 @@ async def create_own_company(
 ):
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id)
 
     # Enforce license max_companies (0 = unlimited, but we treat <=0 as 1 for self-serve).
     license_row = await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id).limit(1))

@@ -22,7 +22,7 @@ export async function createAutomationRule(payload: {
   enabled?: boolean
   trigger: string
   priority?: number
-  title?: string
+  title?: string | null
   conditions?: Record<string, any> | null
   actions?: Record<string, any> | null
 }): Promise<AutomationRule> {

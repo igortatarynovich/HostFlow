@@ -41,7 +41,7 @@ interface CandidateBasicSectionProps {
   onModelChange: (updater: (prev: Candidate) => Candidate) => void
   onExtraChange: (patch: Partial<CandidateExtra>) => void
   onPhoneInputChange: (value: string) => void
-  onFirstContactToggle: (checked: boolean) => void
+  onFirstContactToggle?: (checked: boolean) => void
   onGenerateShortId: () => Promise<void>
   candidateProfile?: CandidateProfile | null
   stageLabelIntl?: (code: string) => string

@@ -141,9 +141,31 @@ export async function resetUserPassword(
   }
 }
 
-export async function requestPasswordReset(email: string): Promise<{ ok: boolean; message: string }> {
-  const { data } = await api.post('/auth/password/request-reset', { email })
+export async function requestPasswordReset(
+  email: string,
+  turnstileToken?: string | null,
+): Promise<{ ok: boolean; message: string }> {
+  const body: Record<string, unknown> = { email }
+  if (turnstileToken) body.turnstile_token = turnstileToken
+  const { data } = await api.post('/auth/password/request-reset', body)
   return data as { ok: boolean; message: string }
+}
+
+export type PublicAuthConfig = {
+  turnstile_enabled: boolean
+  turnstile_sitekey: string | null
+}
+
+export async function fetchPublicAuthConfig(): Promise<PublicAuthConfig> {
+  try {
+    const { data } = await api.get('/auth/public-config')
+    return {
+      turnstile_enabled: Boolean(data?.turnstile_enabled),
+      turnstile_sitekey: typeof data?.turnstile_sitekey === 'string' ? data.turnstile_sitekey : null,
+    }
+  } catch {
+    return { turnstile_enabled: false, turnstile_sitekey: null }
+  }
 }
 
 export async function registerSelfService(payload: {
@@ -154,6 +176,7 @@ export async function registerSelfService(payload: {
   plan_code?: string
   accept_terms: boolean
   accept_privacy: boolean
+  turnstile_token?: string | null
 }): Promise<{
   ok: boolean
   user: { id: string; email: string; role: string; tenant_id: string; full_name?: string | null }

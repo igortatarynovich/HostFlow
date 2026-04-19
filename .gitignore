@@ -31,9 +31,19 @@ opt.code-workspace
 backups/
 hostflow-frontend/i18n-hardcode-report.json
 
+# Phase 0 #7 — coverage artifacts. Baselines (*-baseline) ARE tracked.
+backend/coverage.xml
+backend/.coverage
+backend/.coverage.*
+backend/htmlcov/
+hostflow-frontend/coverage/
+
 # Local SQLite databases (dev/runtime; keep fixtures like backend/app/db/sqlite.db tracked if needed)
 /app.db
 /backend/app.db
 /dev.db
 /backend/dev.db
 /backend/dev.test.db
+
+# PII samples (real candidate documents — NEVER commit)
+/samples/

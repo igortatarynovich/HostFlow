@@ -28,6 +28,8 @@ export interface Lead {
   vacancy_title?: string | null;
   source: string;
   ad_id?: number | null;
+  /** Meta leadgen_id / webhook dedupe id — useful for Graph picker labels */
+  external_id?: string | null;
   status: LeadStatus;
   stage?: LeadStage | null;
   funnel_id?: UUID | null;
@@ -89,8 +91,36 @@ export interface GenericInboundWebhookRotateResponse {
   ingest_url: string;
 }
 
+export interface MetaLeadSelfServeOnboarding {
+  meta_app_id?: string | null;
+  meta_app_display_name: string;
+  documentation_url?: string | null;
+  graph_api_version: string;
+  graph_permission_names: string[];
+  public_api_base_url?: string | null;
+  public_api_base_configured: boolean;
+  webhook_verify_token_configured: boolean;
+  webhook_callback_url?: string | null;
+  shared_meta_app_secret?: string | null;
+  developers_console_app_url?: string | null;
+  graph_api_explorer_url: string;
+  oauth_quick_connect_enabled?: boolean;
+  /** Tariff allows Meta OAuth (Team+ / Business); independent of server env. */
+  meta_oauth_plan_allowed?: boolean | null;
+  /** Server has META_LEADS_APP_ID, secret, redirect configured. */
+  meta_oauth_server_ready?: boolean | null;
+  oauth_redirect_uri?: string | null;
+  /** Superadmin bootstrap → operational tenant (e.g. Focus); API stores Meta on that tenant. */
+  meta_leads_context_redirected?: boolean;
+  meta_leads_data_tenant_id?: UUID | null;
+  meta_leads_data_tenant_name?: string | null;
+}
+
 export interface MetaLeadSettings {
   tenant_id: UUID;
+  meta_leads_context_redirected?: boolean;
+  meta_leads_data_tenant_id?: UUID | null;
+  meta_leads_data_tenant_name?: string | null;
   default_company_id?: UUID | null;
   fallback_recruiter_id?: UUID | null;
   auto_create_enabled: boolean;

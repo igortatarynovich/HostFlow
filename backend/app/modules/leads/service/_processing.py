@@ -1,0 +1,941 @@
+"""Lead-processing pipeline core (``process_normalized_lead``).
+
+Extracted from ``backend/app/modules/leads/service/__init__.py`` (Phase 1 #3
+god-module split, step 6/N): the single public entry point that takes a
+normalized lead payload and runs the full §2.10 ingest pipeline (settings
+load, processing-mode resolution, vacancy routing, fit evaluation,
+candidate creation/update, plan-gate enforcement, automation-rules trigger,
+audit + event emission, license sync).
+
+Re-exported via ``service/__init__.py`` so external callers
+(``app/services/imports/leads.py``, router, scripts, tests) keep using the
+historical ``service.process_normalized_lead`` access pattern.
+"""
+
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from typing import Any, Awaitable, Callable, Dict, List, Optional
+
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.api.v1.candidates.service import create_candidate_full
+from backend.app.models import Candidate, Lead, OwnCompany, Tenant
+from backend.app.models.tenant import TenantLicense
+from backend.app.models.user import Role
+from backend.app.modules.leads import crud, lead_custom_fields
+from backend.app.modules.leads.lead_criteria_eval import lead_fit_evaluation_effective
+from backend.app.modules.leads.recruiter_validation import validate_tenant_recruiter_id
+from backend.app.services import billing_restrictions
+from backend.app.services.automation_rules import run_rules as run_automation_rules
+
+from ._helpers import (
+    LeadProcessingError,
+    MetaLeadResult,
+    _apply_leads_processing_mode_v1_to_normalized,
+    _audit_lead_qualification_rule_match,
+    _build_lead_outcome,
+    _emit_lead_event,
+    _load_settings,
+    _load_supervisor_id,
+    _load_tenant_business_type,
+    _pick_lead_assignee_id,
+    _rule_recruiter_id_from_normalized,
+    _stamp_lead_qualification_preview_v1,
+    _triage_bypass_from_vacancy_fallback,
+    _vacancy_allows_auto_convert_on_fit,
+    _validate_company_id,
+    _validate_recruiter_id,
+    resolve_vacancy_for_lead_processing,
+)
+
+
+async def process_normalized_lead(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    own_company_id: Optional[str] = None,
+    payload: Dict[str, Any],
+    normalized: Dict[str, Any],
+    source: str,
+    external_id: Optional[str] = None,
+    on_lead_created: Optional[Callable[[Lead], Awaitable[None]]] = None,
+    force_existing: bool = False,
+    force_candidate_conversion: bool = False,
+    target_lead_id: Optional[str] = None,
+) -> MetaLeadResult:
+    normalized = dict(normalized or {})
+    business_type: Optional[str] = None
+    settings_row = await _load_settings(db, tenant_id)
+    tenant_entity_for_settings = await db.get(Tenant, tenant_id)
+    tenant_settings_for_routing: Dict[str, Any] = {}
+    if tenant_entity_for_settings is not None:
+        ts = getattr(tenant_entity_for_settings, "settings", None)
+        if isinstance(ts, dict):
+            tenant_settings_for_routing = ts
+    fallback_company_hint = settings_row.default_company_id
+    fallback_recruiter_hint = settings_row.fallback_recruiter_id
+    auto_create_enabled = bool(settings_row.auto_create_enabled)
+    await _apply_leads_processing_mode_v1_to_normalized(
+        db,
+        tenant_id=tenant_id,
+        normalized=normalized,
+        settings_row=settings_row,
+    )
+    effective_processing_mode = str(normalized.get("leads_processing_mode_v1") or "assisted").strip().lower()
+    # §2.10: only Automatic + auto_create may create candidates without operator (§2.4 tightens below).
+    normalized_external_id: Optional[str] = None
+    if external_id is not None:
+        text = str(external_id).strip()
+        normalized_external_id = text or None
+
+    # Re-processing a known row (bulk/backfill/manual): must win over ``get_lead_by_external_id``,
+    # otherwise duplicate Meta ``id`` values attach the pipeline to a different ``Lead`` row.
+    lead: Optional[Lead] = None
+    if target_lead_id:
+        tl = str(target_lead_id).strip()
+        row = await db.get(Lead, tl)
+        if row is not None and str(row.tenant_id) == str(tenant_id):
+            lead = row
+    if lead is None and normalized_external_id:
+        lead = await crud.get_lead_by_external_id(
+            db,
+            tenant_id=tenant_id,
+            source=source,
+            external_id=normalized_external_id,
+        )
+    created_new = False
+    if lead:
+        lead.payload = payload
+        lead.normalized = normalized
+        lead.ad_id = normalized.get("ad_id")
+        # If lead was already processed successfully we normally skip the whole pipeline.
+        # However, when a lead is inconsistent (e.g. status=processed but candidate_id is missing)
+        # we need to force re-processing.
+        #
+        # IMPORTANT:
+        # - `status="new"` must NOT be treated as "already processed"; otherwise manual `POST /process`
+        #   will never attach `candidate_id` nor update lead status.
+        if not force_existing and lead.status in {"processed", "duplicated"}:
+            effective_own_company_id = own_company_id or getattr(lead, "own_company_id", None)
+            business_type = await _load_tenant_business_type(db, tenant_id, effective_own_company_id)
+            recruiter_id: Optional[str] = None
+            candidate_id = lead.candidate_id
+            if candidate_id:
+                candidate = await db.get(Candidate, candidate_id)
+                if candidate:
+                    recruiter_id = getattr(candidate, "recruiter_id", None)
+                    # Candidates list is filtered by own_company_id (active OwnCompany in Topbar).
+                    # Some lead->candidate flows can create candidates with own_company_id=None
+                    # (e.g. when no vacancy was resolved). Fix it here so the candidate is visible.
+                    lead_own_company_id = getattr(lead, "own_company_id", None)
+                    candidate_own_company_id = getattr(candidate, "own_company_id", None)
+                    if lead_own_company_id and not candidate_own_company_id:
+                        candidate.own_company_id = str(lead_own_company_id)
+                        await db.flush()
+                    if recruiter_id and not getattr(candidate, "manager", None):
+                        candidate.manager = recruiter_id
+                        await db.flush()
+                    # Обновляем extra поля из normalized данных, если они есть
+                    import json
+                    extra = candidate._get_extra()
+                    updated = False
+                    
+                    # Обновляем preferred_contact
+                    preferred_contact = normalized.get("preferred_contact")
+                    if isinstance(preferred_contact, str) and preferred_contact.strip():
+                        if extra.get("preferred_contact") != preferred_contact.strip():
+                            extra["preferred_contact"] = preferred_contact.strip()
+                            updated = True
+                    
+                    # Обновляем in_poland
+                    in_poland_value = normalized.get("in_poland")
+                    if isinstance(in_poland_value, bool):
+                        if extra.get("in_poland") != in_poland_value:
+                            extra["in_poland"] = in_poland_value
+                            updated = True
+                    elif isinstance(in_poland_value, str):
+                        lowered = in_poland_value.strip().lower()
+                        if lowered in {"true", "yes", "1"}:
+                            if extra.get("in_poland") is not True:
+                                extra["in_poland"] = True
+                                updated = True
+                        elif lowered in {"false", "no", "0"}:
+                            if extra.get("in_poland") is not False:
+                                extra["in_poland"] = False
+                                updated = True
+                    
+                    # Обновляем poland_stay_basis
+                    poland_basis = normalized.get("poland_stay_basis")
+                    if isinstance(poland_basis, str) and poland_basis.strip():
+                        if extra.get("poland_stay_basis") != poland_basis.strip():
+                            extra["poland_stay_basis"] = poland_basis.strip()
+                            updated = True
+                    
+                    # Обновляем driving_experience_in_europe
+                    driving_experience = normalized.get("driving_experience_in_europe")
+                    if isinstance(driving_experience, str) and driving_experience.strip():
+                        if extra.get("driving_experience_in_europe") != driving_experience.strip():
+                            extra["driving_experience_in_europe"] = driving_experience.strip()
+                            updated = True
+                    
+                    # Обновляем experience_eu_years (опыт по ЕС)
+                    experience_eu_years = normalized.get("experience_eu_years")
+                    if isinstance(experience_eu_years, int) and experience_eu_years >= 0:
+                        if extra.get("experience_eu_years") != experience_eu_years:
+                            extra["experience_eu_years"] = experience_eu_years
+                            updated = True
+                    
+                    if updated:
+                        candidate.extra = json.dumps(extra, ensure_ascii=False, separators=(",", ":"))
+                        await db.flush()
+            outcome_entity_type, outcome_entity_id, outcome_entity_name = _build_lead_outcome(
+                business_type=business_type,
+                company_id=lead.company_id,
+                company_name=None,
+                candidate_id=candidate_id,
+                candidate_name=None,
+            )
+
+            await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+                db,
+                tenant_id=tenant_id,
+                lead_id=str(lead.id),
+                normalized=normalized,
+            )
+            await db.flush()
+
+            return MetaLeadResult(
+                lead_id=lead.id,
+                status=lead.status,
+                vacancy_id=lead.vacancy_id,
+                candidate_id=candidate_id,
+                recruiter_id=recruiter_id,
+                business_type=business_type,
+                outcome_entity_type=outcome_entity_type,
+                outcome_entity_id=outcome_entity_id,
+                outcome_entity_name=outcome_entity_name,
+                error=lead.error,
+                is_new=False,
+            )
+
+    req_oc = str(own_company_id or "").strip() or None
+    lead_oc = (
+        str(getattr(lead, "own_company_id", None) or "").strip() or None
+        if lead is not None
+        else None
+    )
+    scope_for_vacancy_routing = req_oc or lead_oc
+    vacancy, routing_fit_status, routing_fit_reasons = await resolve_vacancy_for_lead_processing(
+        db,
+        tenant_id=tenant_id,
+        normalized=normalized,
+        tenant_settings=tenant_settings_for_routing,
+        source=source,
+        own_company_id=scope_for_vacancy_routing,
+    )
+    triage_gate_bypass = bool(
+        force_candidate_conversion or _triage_bypass_from_vacancy_fallback(normalized)
+    )
+
+    tenant_autoconv = bool(getattr(settings_row, "leads_auto_convert_on_fit_v1", True))
+    fit_evaluation_effective = lead_fit_evaluation_effective(getattr(vacancy, "extra", None) if vacancy else None)
+    normalized["lead_fit_evaluation_effective_v1"] = bool(fit_evaluation_effective)
+    # Mapping-only path: lead fit off (or legacy empty criteria) → do not gate on leads_auto_convert_on_fit_v1.
+    # Fit-on path: require tenant_autoconv (and vacancy opt-out) for automatic conversion.
+    may_auto_convert = (
+        bool(auto_create_enabled)
+        and effective_processing_mode == "automatic"
+        and _vacancy_allows_auto_convert_on_fit(vacancy)
+        and (not fit_evaluation_effective or tenant_autoconv)
+    )
+    normalized["leads_auto_convert_on_fit_effective_v1"] = bool(may_auto_convert)
+
+    resolved_company_id: Optional[str] = None
+    if vacancy:
+        resolved_company_id = vacancy.company_id
+        normalized["resolved_vacancy_id"] = vacancy.id
+    else:
+        normalized["resolved_vacancy_id"] = None
+
+    hinted_company_id = normalized.get("company_id")
+    if hinted_company_id and not resolved_company_id:
+        resolved_company_id = await _validate_company_id(db, tenant_id, hinted_company_id)
+
+    company_name_hint = normalized.get("company_name_hint")
+    company_hints: List[str] = []
+
+    def _add_company_hint(value: Any) -> None:
+        if not value:
+            return
+        text = str(value).strip()
+        if not text:
+            return
+        if text not in company_hints:
+            company_hints.append(text)
+
+    _add_company_hint(company_name_hint)
+    raw_company_hints = normalized.get("company_hints")
+    if isinstance(raw_company_hints, list):
+        for item in raw_company_hints:
+            _add_company_hint(item)
+
+    if not resolved_company_id and company_hints:
+        for hint in company_hints:
+            resolved = await crud.resolve_company_by_name(db, tenant_id, hint)
+            if resolved:
+                resolved_company_id = resolved
+                break
+
+    if not resolved_company_id:
+        resolved_company_id = await _validate_company_id(db, tenant_id, fallback_company_hint)
+
+    if not resolved_company_id:
+        resolved_company_id = await crud.get_default_company_id(db, tenant_id)
+
+    if not resolved_company_id:
+        raise LeadProcessingError("needs_routing", "COMPANY_NOT_RESOLVED")
+
+    normalized["resolved_company_id"] = resolved_company_id
+    resolved_company_name = next((hint for hint in company_hints if hint), None)
+
+    if lead is None:
+        tenant_row = await db.get(Tenant, tenant_id)
+        lic_row = (
+            await db.execute(select(TenantLicense).where(TenantLicense.tenant_id == tenant_id).limit(1))
+        ).scalar_one_or_none()
+        if tenant_row and billing_restrictions.tenant_billing_blocks_new_leads(tenant_row, lic_row):
+            reason = billing_restrictions.billing_write_block_reason(tenant_row, lic_row)
+            code = "BILLING_TRIAL_EXPIRED" if reason == "trial_expired" else "BILLING_PAST_DUE"
+            raise LeadProcessingError("billing_blocked", code)
+        # Always prefer the active OwnCompany (Topbar) so that:
+        # - lead.own_company_id matches current scope
+        # - candidates/clients remain visible in the UI after conversion
+        own_company_id_for_lead = own_company_id
+        if not own_company_id_for_lead:
+            own_company_id_for_lead = getattr(vacancy, "own_company_id", None) if vacancy else None
+        if not own_company_id_for_lead:
+            row = await db.execute(
+                select(OwnCompany.id)
+                .where(OwnCompany.tenant_id == tenant_id, OwnCompany.is_archived.is_(False))
+                .order_by(OwnCompany.created_at.asc())
+                .limit(1)
+            )
+            own_company_id_for_lead = row.scalar_one_or_none()
+        if not own_company_id_for_lead:
+            raise LeadProcessingError("needs_routing", "OWN_COMPANY_REQUIRED")
+        lead = await crud.create_lead(
+            db,
+            tenant_id=tenant_id,
+            own_company_id=str(own_company_id_for_lead),
+            company_id=resolved_company_id,
+            vacancy_id=vacancy.id if vacancy else None,
+            payload=payload,
+            normalized=normalized,
+            ad_id=normalized.get("ad_id"),
+            source=source,
+            external_id=normalized_external_id,
+        )
+        created_new = True
+        if on_lead_created is not None:
+            try:
+                await on_lead_created(lead)
+            except Exception:  # pragma: no cover - best effort
+                pass
+    else:
+        lead.company_id = resolved_company_id
+        lead.vacancy_id = vacancy.id if vacancy else None
+        if getattr(lead, "own_company_id", None) in (None, ""):
+            # Prefer active OwnCompany if provided; otherwise fall back to vacancy.
+            lead.own_company_id = own_company_id or (getattr(vacancy, "own_company_id", None) if vacancy else None)
+        lead.payload = payload
+        lead.normalized = normalized
+        lead.ad_id = normalized.get("ad_id")
+        await db.flush()
+
+    await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+        db,
+        tenant_id=tenant_id,
+        lead_id=str(lead.id),
+        normalized=normalized,
+    )
+    await db.flush()
+
+    # At this point `lead.own_company_id` is known (from vacancy or OwnCompany fallback),
+    # so we can determine the scenario using OwnCompany settings.
+    effective_own_company_id = own_company_id or getattr(lead, "own_company_id", None)
+    business_type = await _load_tenant_business_type(db, tenant_id, effective_own_company_id)
+
+    email = normalized.get("email")
+    phone = normalized.get("phone")
+    if not email and not phone:
+        fields = normalized.get("raw_field_names") or []
+        graph_error = normalized.get("graph_error")
+        diagnostic_base = graph_error or "NO_CONTACTS"
+        if fields:
+            suffix = f"(fields={'/'.join(fields)})"
+            diagnostic = f"{diagnostic_base} {suffix}"
+        else:
+            diagnostic = diagnostic_base
+        await crud.update_lead(
+            db,
+            lead,
+            status="failed",
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=diagnostic,
+        )
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.failed",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=diagnostic,
+        )
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=lead.id,
+            status="failed",
+            vacancy_id=lead.vacancy_id,
+            candidate_id=None,
+            recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=diagnostic,
+            is_new=created_new,
+        )
+
+    duplicate = await crud.find_duplicate_candidate(
+        db,
+        tenant_id=tenant_id,
+        company_id=resolved_company_id,
+        email=email,
+        phone=phone,
+    )
+    if duplicate:
+        await crud.update_lead(
+            db,
+            lead,
+            status="duplicated",
+            candidate_id=str(duplicate.id),
+            vacancy_id=lead.vacancy_id or duplicate.vacancy_id,
+            normalized=normalized,
+            error=None,
+        )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        await db.flush()
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=lead.id,
+            status="duplicated",
+            vacancy_id=lead.vacancy_id or duplicate.vacancy_id,
+            candidate_id=str(duplicate.id),
+            recruiter_id=getattr(duplicate, "recruiter_id", None),
+            business_type=business_type,
+            outcome_entity_type="company" if business_type == "services" else "candidate",
+            outcome_entity_id=resolved_company_id if business_type == "services" else str(duplicate.id),
+            outcome_entity_name=resolved_company_name if business_type == "services" else None,
+            error=None,
+            is_new=created_new,
+        )
+
+    if (
+        not triage_gate_bypass
+        and may_auto_convert
+        and business_type not in (None, "services")
+        and vacancy is not None
+        and routing_fit_status in ("no_fit", "needs_info")
+    ):
+        err_code = "LEAD_FIT_NO_MATCH" if routing_fit_status == "no_fit" else "LEAD_FIT_NEEDS_INFO"
+        _stamp_lead_qualification_preview_v1(
+            normalized,
+            vacancy=vacancy,
+            fit_status=routing_fit_status,
+            fit_reasons=list(routing_fit_reasons or []),
+            blocked_auto_convert=True,
+        )
+        now_marker = datetime.now(timezone.utc)
+        await crud.update_lead(
+            db,
+            lead,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=err_code,
+            last_routed_at=now_marker,
+        )
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.needs_routing",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+        )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        await db.flush()
+        await _audit_lead_qualification_rule_match(
+            db, tenant_id=tenant_id, lead_id=str(lead.id), normalized=normalized
+        )
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=lead.id,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            candidate_id=None,
+            recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=err_code,
+            is_new=created_new,
+        )
+
+    if not triage_gate_bypass and not may_auto_convert:
+        if business_type not in (None, "services"):
+            if effective_processing_mode == "assisted":
+                _stamp_lead_qualification_preview_v1(
+                    normalized,
+                    vacancy=vacancy,
+                    fit_status=routing_fit_status,
+                    fit_reasons=list(routing_fit_reasons or []),
+                    blocked_auto_convert=False,
+                )
+            elif effective_processing_mode == "automatic" and bool(auto_create_enabled):
+                _stamp_lead_qualification_preview_v1(
+                    normalized,
+                    vacancy=vacancy,
+                    fit_status=routing_fit_status,
+                    fit_reasons=list(routing_fit_reasons or []),
+                    blocked_auto_convert=True,
+                )
+        now_marker = datetime.now(timezone.utc)
+        await crud.update_lead(
+            db,
+            lead,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=None,
+            last_routed_at=now_marker,
+        )
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.needs_routing",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+        )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        await db.flush()
+        await _audit_lead_qualification_rule_match(
+            db, tenant_id=tenant_id, lead_id=str(lead.id), normalized=normalized
+        )
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=lead.id,
+            status="needs_routing",
+            vacancy_id=lead.vacancy_id,
+            candidate_id=None,
+            recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=None,
+            is_new=created_new,
+        )
+
+    # --- Services mode semantics: lead = potential client (no candidate creation) ---
+    # For services tenants, vacancy/candidate is not the default conversion path.
+    # We still accept vacancy_id in payload for compatibility, but the outcome is company-centric.
+    if business_type == "services":
+        # After commits SQLAlchemy may expire ORM instances, so avoid accessing `lead.*`
+        # after `await db.commit()` by capturing values upfront.
+        services_lead_id = str(lead.id)
+        services_lead_source = lead.source
+        services_lead_vacancy_id = lead.vacancy_id
+        await crud.update_lead(
+            db,
+            lead,
+            status="processed",
+            candidate_id=None,
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=None,
+        )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=str(lead.id),
+            normalized=normalized,
+        )
+        await db.flush()
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.processed",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+        )
+        if created_new:
+            await _emit_lead_event(
+                db,
+                tenant_id=tenant_id,
+                lead=lead,
+                event_type="lead.new.telegram",
+                roles=[Role.administrator, Role.supervisor],
+                business_type=business_type,
+                outcome_entity_type="company",
+                outcome_entity_id=resolved_company_id,
+                outcome_entity_name=resolved_company_name,
+            )
+        # Important: commit lead status update before running automation rules.
+        # Automation failures previously caused `db.rollback()` to undo the lead update,
+        # leaving the UI with stale status/error even though processing returned success.
+        await _audit_lead_qualification_rule_match(
+            db, tenant_id=tenant_id, lead_id=services_lead_id, normalized=normalized
+        )
+        await db.commit()
+        # Minimal rules builder (R2.2): trigger lead.processed automation rules
+        try:
+            assignee_id = await _pick_lead_assignee_id(
+                db,
+                tenant_id=tenant_id,
+                preferred_user_id=fallback_recruiter_hint,
+                normalized=normalized,
+                lead_id=str(services_lead_id),
+            )
+            rule_ctx_extras = await lead_custom_fields.automation_context_for_lead(
+                db,
+                tenant_id=tenant_id,
+                lead_id=services_lead_id,
+                normalized=normalized if isinstance(normalized, dict) else {},
+            )
+            await run_automation_rules(
+                db,
+                tenant_id=tenant_id,
+                trigger="lead.processed",
+                actor_id=assignee_id,
+                context={
+                    "entity_type": "lead",
+                    "entity_id": services_lead_id,
+                    "lead_id": services_lead_id,
+                    "source": services_lead_source,
+                    "status": "processed",
+                    "business_type": business_type,
+                    "company_id": resolved_company_id,
+                    "vacancy_id": services_lead_vacancy_id,
+                    "assignee_id": assignee_id,
+                    **rule_ctx_extras,
+                },
+            )
+            await db.commit()
+        except Exception:
+            await db.rollback()
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=services_lead_id,
+            status="processed",
+            vacancy_id=services_lead_vacancy_id,
+            candidate_id=None,
+            recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error=None,
+            is_new=created_new,
+        )
+
+    if not vacancy:
+        needs_routing_lead_id = str(lead.id)
+        await crud.update_lead(
+            db,
+            lead,
+            status="needs_routing",
+            vacancy_id=None,
+            normalized=normalized,
+            error="VACANCY_NOT_RESOLVED",
+            last_routed_at=datetime.now(timezone.utc),
+        )
+        await _emit_lead_event(
+            db,
+            tenant_id=tenant_id,
+            lead=lead,
+            event_type="lead.needs_routing",
+            roles=[Role.administrator, Role.supervisor],
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error="VACANCY_NOT_RESOLVED",
+        )
+        await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+            db,
+            tenant_id=tenant_id,
+            lead_id=needs_routing_lead_id,
+            normalized=normalized,
+        )
+        await db.flush()
+        await _audit_lead_qualification_rule_match(
+            db, tenant_id=tenant_id, lead_id=needs_routing_lead_id, normalized=normalized
+        )
+        await db.commit()
+        return MetaLeadResult(
+            lead_id=needs_routing_lead_id,
+            status="needs_routing",
+            vacancy_id=None,
+            candidate_id=None,
+            recruiter_id=None,
+            business_type=business_type,
+            outcome_entity_type="company",
+            outcome_entity_id=resolved_company_id,
+            outcome_entity_name=resolved_company_name,
+            error="VACANCY_NOT_RESOLVED",
+            is_new=created_new,
+        )
+
+    first_name = normalized.get("first_name") or "Meta"
+    last_name = normalized.get("last_name") or normalized.get("full_name") or "Lead"
+    if not last_name.strip():
+        last_name = "Lead"
+
+    extra_fields: Dict[str, Any] = {}
+    preferred_contact = normalized.get("preferred_contact")
+    if isinstance(preferred_contact, str) and preferred_contact.strip():
+        extra_fields["preferred_contact"] = preferred_contact.strip()
+    in_poland_value = normalized.get("in_poland")
+    if isinstance(in_poland_value, bool):
+        extra_fields["in_poland"] = in_poland_value
+    elif isinstance(in_poland_value, str):
+        lowered = in_poland_value.strip().lower()
+        if lowered in {"true", "yes", "1"}:
+            extra_fields["in_poland"] = True
+        elif lowered in {"false", "no", "0"}:
+            extra_fields["in_poland"] = False
+    poland_basis = normalized.get("poland_stay_basis")
+    if isinstance(poland_basis, str) and poland_basis.strip():
+        extra_fields["poland_stay_basis"] = poland_basis.strip()
+    # Handle driving experience - save both raw string and normalized number
+    driving_experience = normalized.get("driving_experience_in_europe")
+    if isinstance(driving_experience, str) and driving_experience.strip():
+        extra_fields["driving_experience_in_europe"] = driving_experience.strip()
+    # Also save normalized number of years if available (опыт по ЕС)
+    experience_eu_years = normalized.get("experience_eu_years")
+    if isinstance(experience_eu_years, int) and experience_eu_years >= 0:
+        extra_fields["experience_eu_years"] = experience_eu_years
+
+    candidate_payload: Dict[str, Any] = {
+        "first_name": first_name.strip() or "Meta",
+        "last_name": last_name.strip() or "Lead",
+        "email": email,
+        "phone": phone,
+        "phone_country_code": normalized.get("phone_country_code"),
+        "own_company_id": getattr(lead, "own_company_id", None),
+        "company_id": resolved_company_id,
+        "vacancy_id": vacancy.id,
+        "contacts": {
+            key: value
+            for key, value in {
+                "email": email,
+                "phone": phone,
+                "phone_country_code": normalized.get("phone_country_code"),
+            }.items()
+            if value
+        },
+        "source": source,
+        "origin": {source: normalized},
+    }
+    if extra_fields:
+        candidate_payload["extra"] = extra_fields
+
+    try:
+        candidate = await create_candidate_full(
+            db=db,
+            tenant_id=tenant_id,
+            payload=candidate_payload,
+            actor_id=None,
+            acl=None,
+        )
+    except HTTPException as exc:
+        await crud.update_lead(
+            db,
+            lead,
+            status="failed",
+            candidate_id=None,
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=str(exc.detail),
+        )
+        await db.commit()
+        raise
+    except Exception as exc:  # pragma: no cover - defensive
+        await crud.update_lead(
+            db,
+            lead,
+            status="failed",
+            candidate_id=None,
+            vacancy_id=lead.vacancy_id,
+            normalized=normalized,
+            error=str(exc),
+        )
+        await db.commit()
+        raise
+
+    stamp_rid = _rule_recruiter_id_from_normalized(normalized)
+    rule_rid = await validate_tenant_recruiter_id(db, tenant_id, stamp_rid) if stamp_rid else None
+    recruiter_id = getattr(candidate, "recruiter_id", None)
+    vacancy_recruiter_id = getattr(vacancy, "recruiter_id", None) if vacancy else None
+    if rule_rid:
+        candidate.recruiter_id = rule_rid
+        recruiter_id = rule_rid
+        await db.flush()
+    elif not recruiter_id and vacancy_recruiter_id:
+        candidate.recruiter_id = vacancy_recruiter_id
+        recruiter_id = vacancy_recruiter_id
+        await db.flush()
+    if not recruiter_id:
+        fallback_recruiter = await _validate_recruiter_id(db, tenant_id, fallback_recruiter_hint)
+        if fallback_recruiter:
+            candidate.recruiter_id = fallback_recruiter
+            recruiter_id = fallback_recruiter
+            await db.flush()
+
+    # Filtering/UX can use candidate.manager (separate from recruiter_id).
+    # For meta lead conversions we keep them aligned to avoid candidates disappearing
+    # when user has "Менеджер" filter applied.
+    if recruiter_id and not getattr(candidate, "manager", None):
+        candidate.manager = recruiter_id
+        await db.flush()
+    await crud.update_lead(
+        db,
+        lead,
+        status="processed",
+        candidate_id=str(candidate.id),
+        vacancy_id=candidate.vacancy_id,
+        normalized=normalized,
+        error=None,
+    )
+    await lead_custom_fields.sync_lead_custom_fields_from_normalized(
+        db,
+        tenant_id=tenant_id,
+        lead_id=str(lead.id),
+        normalized=normalized,
+    )
+    await db.flush()
+    # Commit lead status update before automation to avoid losing it on rollback.
+    agency_lead_id = str(lead.id)
+    await _audit_lead_qualification_rule_match(
+        db, tenant_id=tenant_id, lead_id=agency_lead_id, normalized=normalized
+    )
+    await db.commit()
+    supervisor_id = await _load_supervisor_id(db, recruiter_id)
+    recipient_ids: List[str] = []
+    if recruiter_id:
+        recipient_ids.append(recruiter_id)
+    if supervisor_id:
+        recipient_ids.append(supervisor_id)
+    assignee_id = await _pick_lead_assignee_id(
+        db,
+        tenant_id=tenant_id,
+        preferred_user_id=recruiter_id or supervisor_id,
+        normalized=normalized,
+        lead_id=agency_lead_id,
+    )
+    # Minimal rules builder (R2.2): trigger lead.processed automation rules (agency/employer path).
+    try:
+        rule_ctx_extras = await lead_custom_fields.automation_context_for_lead(
+            db,
+            tenant_id=tenant_id,
+            lead_id=agency_lead_id,
+            normalized=normalized if isinstance(normalized, dict) else {},
+        )
+        await run_automation_rules(
+            db,
+            tenant_id=tenant_id,
+            trigger="lead.processed",
+            actor_id=assignee_id,
+            context={
+                "entity_type": "lead",
+                "entity_id": agency_lead_id,
+                "lead_id": agency_lead_id,
+                "source": lead.source,
+                "status": "processed",
+                "business_type": business_type,
+                "company_id": resolved_company_id,
+                "vacancy_id": str(vacancy.id) if vacancy else None,
+                "candidate_id": str(candidate.id),
+                "recruiter_id": recruiter_id,
+                "assignee_id": assignee_id,
+                **rule_ctx_extras,
+            },
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+    await _emit_lead_event(
+        db,
+        tenant_id=tenant_id,
+        lead=lead,
+        event_type="lead.processed",
+        candidate_id=str(candidate.id),
+        recruiter_id=recruiter_id,
+        user_ids=recipient_ids,
+        business_type=business_type,
+        outcome_entity_type="company" if business_type == "services" else "candidate",
+        outcome_entity_id=resolved_company_id if business_type == "services" else str(candidate.id),
+        outcome_entity_name=resolved_company_name if business_type == "services" else None,
+    )
+    await db.commit()
+
+    return MetaLeadResult(
+        lead_id=lead.id,
+        status="processed",
+        vacancy_id=candidate.vacancy_id,
+        candidate_id=str(candidate.id),
+        recruiter_id=recruiter_id,
+        business_type=business_type,
+        outcome_entity_type="company" if business_type == "services" else "candidate",
+        outcome_entity_id=resolved_company_id if business_type == "services" else str(candidate.id),
+        outcome_entity_name=resolved_company_name if business_type == "services" else None,
+        error=None,
+        is_new=created_new,
+    )

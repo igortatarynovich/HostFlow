@@ -23,7 +23,7 @@ from backend.app.schemas.user import (
     UserUpdateRole,
     UserAuditOut,
 )
-from backend.app.services import users as users_service
+from backend.app.services import billing_restrictions, users as users_service
 from backend.app.services.users import UserServiceError
 
 router = APIRouter(
@@ -110,6 +110,7 @@ async def create_user(
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     _ensure_tenant(ctx, tenant_id)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id)
     try:
         entry, tmp_password = await users_service.create_user(
             db,
@@ -146,6 +147,7 @@ async def create_invite(
     db, tenant_uuid = db_tenant
     tenant_id = str(tenant_uuid)
     _ensure_tenant(ctx, tenant_id)
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, tenant_id)
     try:
         invite, token = await users_service.create_invite(
             db,

@@ -58,6 +58,7 @@ Lead = lead_module.Lead  # type: ignore[attr-defined]
 MetaAdsMap = lead_module.MetaAdsMap  # type: ignore[attr-defined]
 MetaLeadCredential = lead_module.MetaLeadCredential  # type: ignore[attr-defined]
 MetaLeadSettings = lead_module.MetaLeadSettings  # type: ignore[attr-defined]
+MetaOAuthPending = lead_module.MetaOAuthPending  # type: ignore[attr-defined]
 lead_import_module = _load_model_module("lead_import_job")
 LeadImportJob = lead_import_module.LeadImportJob  # type: ignore[attr-defined]
 LeadImportJobStatus = lead_import_module.LeadImportJobStatus  # type: ignore[attr-defined]
@@ -252,6 +253,7 @@ __all__ = [
     "MetaAdsMap",
     "MetaLeadCredential",
     "MetaLeadSettings",
+    "MetaOAuthPending",
     "LeadImportJob",
     "LeadImportJobStatus",
     "CandidateDeleteRequest",

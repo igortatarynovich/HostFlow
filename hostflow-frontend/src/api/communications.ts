@@ -1416,7 +1416,7 @@ export async function listCommunicationPlannerEvents(opts?: {
   kind?: string
 }): Promise<{ items: CommunicationPlannerEvent[]; total: number }> {
   const params: Record<string, any> = {}
-  if (opts?.limit != null) params.limit = opts.limit
+  if (opts?.limit != null) params.limit = Math.min(200, Math.max(1, opts.limit))
   if (opts?.offset != null) params.offset = opts.offset
   if (opts?.status_filter?.length) params.status_filter = opts.status_filter
   if (opts?.assignee_id) params.assignee_id = opts.assignee_id

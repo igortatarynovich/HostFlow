@@ -26,6 +26,7 @@ interface FilterBadgesProps {
   handoffStatusFilter?: string
   contactAttemptsFilter?: string
   processorFilter?: string
+  intakeApplicationKindFilter?: '' | 'client' | 'candidate'
   stageLabelMap: Record<string, string>
   vacancyLabelMap: Map<string, string>
   managerLabelMap: Map<string, string>
@@ -59,6 +60,7 @@ interface FilterBadgesProps {
   onHandoffStatusFilterChange?: (value: string) => void
   onContactAttemptsFilterChange?: (value: string) => void
   onProcessorFilterChange?: (value: string) => void
+  onIntakeApplicationKindFilterChange?: (value: '' | 'client' | 'candidate') => void
   /** When true: compact row inside filter toolbar card (no sticky, less padding). */
   embedded?: boolean
 }
@@ -84,6 +86,7 @@ export function FilterBadges({
   handoffStatusFilter = '',
   contactAttemptsFilter = '',
   processorFilter = '',
+  intakeApplicationKindFilter = '',
   stageLabelMap,
   vacancyLabelMap,
   managerLabelMap,
@@ -117,6 +120,7 @@ export function FilterBadges({
   onHandoffStatusFilterChange,
   onContactAttemptsFilterChange,
   onProcessorFilterChange,
+  onIntakeApplicationKindFilterChange,
   embedded = false,
 }: FilterBadgesProps) {
   const { t } = useI18n()
@@ -307,6 +311,19 @@ export function FilterBadges({
             },
           })}
           <button className="ml-2 text-xs" onClick={() => onContactAttemptsFilterChange('')}>{removeGlyph}</button>
+        </span>
+      )}
+      {intakeApplicationKindFilter && onIntakeApplicationKindFilterChange && (
+        <span className="badge">
+          {t('app.candidates.filters.intake_kind_badge', {
+            values: {
+              value:
+                intakeApplicationKindFilter === 'client'
+                  ? (t('app.candidates.filters.intake_kind_client') as string)
+                  : (t('app.candidates.filters.intake_kind_candidate') as string),
+            },
+          })}
+          <button className="ml-2 text-xs" onClick={() => onIntakeApplicationKindFilterChange('')}>{removeGlyph}</button>
         </span>
       )}
     </div>

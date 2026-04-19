@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import {
   completeActivity,
   createActivity,
+  deleteLead,
   getLead,
   getLeadTimeline,
   getOnboardingStatus,
@@ -23,8 +24,10 @@ import { useToast } from '../components/Toast'
 import { useI18n } from '../i18n'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
-import { CRM_STAGE_VALUES, leadAssignmentLocked } from '../utils/leadCrm'
+import { CRM_STAGE_VALUES, leadAssignmentLocked, leadSupportsManualProcess } from '../utils/leadCrm'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { useAuth } from '../store/auth'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { serviceOrderWorkspacePath } from '../modules/services/utils'
 import { formatLeadPipelineError } from '../utils/leadPipelineErrors'
 
@@ -139,6 +142,8 @@ function LeadIngestProcessingCallout({ normalized }: { normalized: Record<string
 
 export default function LeadDetailPage() {
   const { leadId } = useParams<{ leadId: string }>()
+  const navigate = useNavigate()
+  const { me } = useAuth()
   const { t, locale } = useI18n()
   const { notify } = useToast()
   const planLimitModal = usePlanLimitModal()
@@ -160,8 +165,10 @@ export default function LeadDetailPage() {
   const [reminderOffset, setReminderOffset] = useState(15)
   const [patching, setPatching] = useState(false)
   const [lostStagePrompt, setLostStagePrompt] = useState<{ previousStage: string | null } | null>(null)
+  const [deletingLead, setDeletingLead] = useState(false)
 
   const isServicesTenant = onboardingBusinessType === 'services'
+  const canDeleteLead = Boolean(me?.role && me.role !== 'viewer')
 
   useEffect(() => {
     let cancelled = false
@@ -377,7 +384,7 @@ export default function LeadDetailPage() {
   const contactPhone = (normalized as Record<string, unknown>).phone
   const contactLine = [contactName, contactEmail, contactPhone].filter(Boolean).join(' · ') || '—'
 
-  const metaSource = String(lead?.source || '').toLowerCase() === 'meta'
+  const canManualProcessLead = leadSupportsManualProcess(lead)
 
   const customFieldsEntries = useMemo(() => {
     const raw = lead?.custom_fields
@@ -513,6 +520,28 @@ export default function LeadDetailPage() {
     [lead?.id, loadTimeline, notify, planLimitModal, t],
   )
 
+  const handleDeleteLead = useCallback(async () => {
+    if (!leadId) return
+    if (!window.confirm(t('app.leads.detail.delete_confirm'))) return
+    setDeletingLead(true)
+    try {
+      await deleteLead(leadId)
+      notify({ title: t('app.leads.detail.delete_success'), variant: 'success' })
+      navigate(CRM_APP_PATHS.leads)
+    } catch (err: unknown) {
+      if (planLimitModal?.showPlanLimitIfNeeded(err, t('app.leads.detail.delete_failed'))) {
+        return
+      }
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+        (err as Error)?.message ??
+        t('app.leads.detail.delete_failed')
+      notify({ title: typeof detail === 'string' ? detail : String(detail), variant: 'error' })
+    } finally {
+      setDeletingLead(false)
+    }
+  }, [leadId, navigate, notify, planLimitModal, t])
+
   const handleDetailAssignmentLockToggle = useCallback(
     async (locked: boolean) => {
       if (!lead?.id) return
@@ -560,6 +589,8 @@ export default function LeadDetailPage() {
         </Link>
       </div>
 
+      <PageBreadcrumb className="mb-4 max-w-4xl" />
+
       {loading && <p className="text-slate-600">{t('common.loading')}</p>}
 
       {!loading && loadError && (
@@ -569,7 +600,7 @@ export default function LeadDetailPage() {
           retryLabel={t('common.retry')}
           {...friendlyErrorBannerSecondary(
             loadError,
-            CRM_APP_PATHS.settingsLeads,
+            CRM_APP_PATHS.settingsIntegrationsMeta,
             t('app.leads.states.empty_cta_connect'),
           )}
         />
@@ -590,7 +621,7 @@ export default function LeadDetailPage() {
               <p className="mt-1 font-mono text-xs text-slate-500">{lead.id}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {metaSource && !isServicesTenant && !lead.candidate_id ? (
+              {canManualProcessLead && !isServicesTenant && !lead.candidate_id ? (
                 <button type="button" className="btn-secondary rounded-lg px-3 py-1.5 text-sm" disabled={processing} onClick={() => void handleProcess()}>
                   {processing ? t('common.loading') : t('app.leads.actions.process')}
                 </button>
@@ -618,6 +649,16 @@ export default function LeadDetailPage() {
                 >
                   {t('app.leads.actions.open_service_order')}
                 </Link>
+              ) : null}
+              {canDeleteLead ? (
+                <button
+                  type="button"
+                  className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm text-red-800 hover:bg-red-50 disabled:opacity-60"
+                  disabled={deletingLead || patching || processing}
+                  onClick={() => void handleDeleteLead()}
+                >
+                  {deletingLead ? t('common.loading') : t('app.leads.detail.delete_lead')}
+                </button>
               ) : null}
             </div>
           </header>
@@ -707,6 +748,10 @@ export default function LeadDetailPage() {
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{t('app.leads.table.source')}</dt>
               <dd className="mt-0.5 text-sm text-slate-900">{lead.source}</dd>
+              {String(lead.source || '').toLowerCase() === 'public-intake' &&
+              String(lead.external_id || '').toLowerCase().startsWith('public-intake:') ? (
+                <p className="mt-1 text-xs text-slate-600">{t('app.leads.detail.public_intake_hint')}</p>
+              ) : null}
             </div>
             {lead.error ? (
               <div className="sm:col-span-2">

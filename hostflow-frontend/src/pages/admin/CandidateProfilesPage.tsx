@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../../i18n'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import {
   listCandidateProfiles,
   createCandidateProfile,
@@ -68,46 +69,6 @@ function TextareaField({ label, value, onChange, placeholder, rows = 3 }: {
   )
 }
 
-function SelectField({ label, value, onChange, options, allowEmpty = true }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: Array<{ value: string; label: string }>
-  allowEmpty?: boolean
-}) {
-  return (
-    <label className="block">
-      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</div>
-      <select className="input w-full" value={value} onChange={(e) => onChange(e.target.value)}>
-        {allowEmpty && <option value="">— не выбран —</option>}
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function CheckboxField({ label, checked, onChange }: {
-  label: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-}) {
-  return (
-    <label className="flex items-center gap-2">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="rounded border-slate-300"
-      />
-      <span className="text-sm text-slate-700">{label}</span>
-    </label>
-  )
-}
-
 export default function CandidateProfilesPage() {
   const { t } = useI18n()
   const [profiles, setProfiles] = useState<CandidateProfile[]>([])
@@ -130,52 +91,46 @@ export default function CandidateProfilesPage() {
     setLoading(true)
     setError(null)
     try {
-      // Загружаем все профили для фильтрации
       const profilesData = await listCandidateProfiles({ is_active: undefined })
       setProfiles(profilesData)
     } catch (err: any) {
-      setError(err?.message || 'Не удалось загрузить профили')
+      setError(err?.message || t('admin.candidate_profiles_page.errors.load'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void loadProfiles()
   }, [loadProfiles])
 
-  const validateProfile = (payload: CandidateProfileCreate, isUpdate: boolean = false): string | null => {
-    // Проверка обязательных полей
+  const validateProfile = useCallback((payload: CandidateProfileCreate, isUpdate: boolean = false): string | null => {
     if (!payload.code?.trim()) {
-      return 'Код профиля обязателен'
+      return t('admin.candidate_profiles_page.validation.code_required')
     }
     if (!payload.name?.trim()) {
-      return 'Название профиля обязательно'
+      return t('admin.candidate_profiles_page.validation.name_required')
     }
 
-    // Проверка уникальности кода (только при создании)
     if (!isUpdate && profiles.some((p) => p.code === payload.code.trim())) {
-      return `Профиль с кодом "${payload.code.trim()}" уже существует`
+      return t('admin.candidate_profiles_page.validation.code_exists', { values: { code: payload.code.trim() } })
     }
 
-    // Проверка формата кода (только латинские буквы, цифры и подчеркивание)
     if (!/^[a-z0-9_]+$/.test(payload.code.trim().toLowerCase())) {
-      return 'Код может содержать только латинские буквы, цифры и подчеркивание'
+      return t('admin.candidate_profiles_page.validation.code_format')
     }
 
-    // Предупреждения (не блокирующие, но важные)
     const warnings: string[] = []
     if (!payload.config?.field_configs || payload.config.field_configs.length === 0) {
-      warnings.push('В профиле нет настроенных полей')
+      warnings.push(t('admin.candidate_profiles_page.warnings.no_fields'))
     }
     if (!payload.funnel_id && (!payload.config?.stage_configs || payload.config.stage_configs.length === 0)) {
-      warnings.push('В профиле нет воронки и нет этапов (выберите воронку или добавьте этапы)')
+      warnings.push(t('admin.candidate_profiles_page.warnings.no_funnel_stages'))
     }
     if (!payload.config?.document_configs || payload.config.document_configs.length === 0) {
-      warnings.push('В профиле нет настроенных документов')
+      warnings.push(t('admin.candidate_profiles_page.warnings.no_documents'))
     }
 
-    // Сохраняем предупреждения в localStorage для отображения после сохранения
     if (warnings.length > 0) {
       localStorage.setItem('hf:profile-validation-warnings', JSON.stringify(warnings))
     } else {
@@ -183,41 +138,39 @@ export default function CandidateProfilesPage() {
     }
 
     return null
-  }
+  }, [t, profiles])
 
   const handleCreate = async (payload: CandidateProfileCreate) => {
     try {
       setError(null)
       
-      // Валидация перед созданием
       const validationError = validateProfile(payload, false)
       if (validationError) {
         setError(validationError)
-        throw new Error(validationError)
+        const e = new Error(validationError)
+        e.name = 'ValidationError'
+        throw e
       }
 
       await createCandidateProfile(payload)
       
-      // Проверяем предупреждения после успешного сохранения
       const warningsJson = localStorage.getItem('hf:profile-validation-warnings')
       if (warningsJson) {
         try {
           const warnings = JSON.parse(warningsJson) as string[]
           if (warnings.length > 0) {
-            // Показываем предупреждения, но не блокируем сохранение
-            console.warn('Предупреждения при создании профиля:', warnings.join(', '))
+            console.warn('[CandidateProfilesPage] post-create validation warnings', warnings)
           }
           localStorage.removeItem('hf:profile-validation-warnings')
         } catch {
-          // Игнорируем ошибки парсинга
         }
       }
       
       await loadProfiles()
       setNewProfileMode(false)
     } catch (err: any) {
-      if (!err?.message?.includes('Код профиля') && !err?.message?.includes('Название профиля')) {
-        setError(err?.message || 'Не удалось создать профиль')
+      if (err?.name !== 'ValidationError') {
+        setError(err?.message || t('admin.candidate_profiles_page.errors.create'))
       }
       throw err
     }
@@ -227,68 +180,64 @@ export default function CandidateProfilesPage() {
     try {
       setError(null)
       
-      // Валидация перед обновлением
       const validationError = validateProfile(payload, true)
       if (validationError) {
         setError(validationError)
-        throw new Error(validationError)
+        const e = new Error(validationError)
+        e.name = 'ValidationError'
+        throw e
       }
 
       await updateCandidateProfile(profileId, payload)
       
-      // Проверяем предупреждения после успешного сохранения
       const warningsJson = localStorage.getItem('hf:profile-validation-warnings')
       if (warningsJson) {
         try {
           const warnings = JSON.parse(warningsJson) as string[]
           if (warnings.length > 0) {
-            console.warn('Предупреждения при обновлении профиля:', warnings.join(', '))
+            console.warn('[CandidateProfilesPage] post-update validation warnings', warnings)
           }
           localStorage.removeItem('hf:profile-validation-warnings')
         } catch {
-          // Игнорируем ошибки парсинга
         }
       }
       
       await loadProfiles()
       setEditingProfile(null)
     } catch (err: any) {
-      if (!err?.message?.includes('Код профиля') && !err?.message?.includes('Название профиля')) {
-        setError(err?.message || 'Не удалось обновить профиль')
+      if (err?.name !== 'ValidationError') {
+        setError(err?.message || t('admin.candidate_profiles_page.errors.update'))
       }
       throw err
     }
   }
 
   const handleDelete = async (profileId: string) => {
-    if (!confirm('Удалить этот профиль?')) return
+    if (!confirm(t('admin.candidate_profiles_page.confirm_delete'))) return
     try {
       setError(null)
       await deleteCandidateProfile(profileId)
       await loadProfiles()
     } catch (err: any) {
-      setError(err?.message || 'Не удалось удалить профиль')
+      setError(err?.message || t('admin.candidate_profiles_page.errors.delete'))
     }
   }
 
   const handleDuplicate = async (profile: CandidateProfile) => {
     try {
       setError(null)
-      // Генерируем новый код для копии
       const baseCode = profile.code
       let newCode = `${baseCode}_copy`
       let counter = 1
       
-      // Проверяем, что код уникален
       while (profiles.some((p) => p.code === newCode)) {
         newCode = `${baseCode}_copy_${counter}`
         counter++
       }
 
-      // Создаем копию профиля
       const duplicatePayload: CandidateProfileCreate = {
         code: newCode,
-        name: `${profile.name} (копия)`,
+        name: `${profile.name}${t('admin.candidate_profiles_page.copy_suffix_name')}`,
         description: profile.description,
         client_id: profile.client_id,
         funnel_id: profile.funnel_id ?? undefined,
@@ -299,13 +248,12 @@ export default function CandidateProfilesPage() {
       await createCandidateProfile(duplicatePayload)
       await loadProfiles()
     } catch (err: any) {
-      setError(err?.message || 'Не удалось скопировать профиль')
+      setError(err?.message || t('admin.candidate_profiles_page.errors.copy'))
     }
   }
 
   const handleExport = (profile: CandidateProfile) => {
     try {
-      // Формируем объект для экспорта
       const exportData = {
         version: '1.0',
         exported_at: new Date().toISOString(),
@@ -318,10 +266,8 @@ export default function CandidateProfilesPage() {
         },
       }
 
-      // Создаем JSON строку
       const jsonString = JSON.stringify(exportData, null, 2)
 
-      // Создаем blob и скачиваем файл
       const blob = new Blob([jsonString], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
@@ -332,7 +278,7 @@ export default function CandidateProfilesPage() {
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
     } catch (err: any) {
-      setError(err?.message || 'Не удалось экспортировать профиль')
+      setError(err?.message || t('admin.candidate_profiles_page.errors.export'))
     }
   }
 
@@ -342,20 +288,17 @@ export default function CandidateProfilesPage() {
       const text = await file.text()
       const importData = JSON.parse(text)
 
-      // Валидация структуры
       if (!importData.profile) {
-        throw new Error('Неверный формат файла: отсутствует поле "profile"')
+        throw new Error(t('admin.candidate_profiles_page.errors.import_missing_profile'))
       }
 
       const importedProfile = importData.profile
 
       if (!importedProfile.code || !importedProfile.name) {
-        throw new Error('Неверный формат файла: отсутствуют обязательные поля "code" или "name"')
+        throw new Error(t('admin.candidate_profiles_page.errors.import_missing_code_name'))
       }
 
-      // Проверяем, что код уникален
       if (profiles.some((p) => p.code === importedProfile.code)) {
-        // Если профиль с таким кодом уже существует, предлагаем переименовать
         let newCode = `${importedProfile.code}_imported`
         let counter = 1
         while (profiles.some((p) => p.code === newCode)) {
@@ -363,10 +306,9 @@ export default function CandidateProfilesPage() {
           counter++
         }
         importedProfile.code = newCode
-        importedProfile.name = `${importedProfile.name} (импортирован)`
+        importedProfile.name = `${importedProfile.name}${t('admin.candidate_profiles_page.import_suffix_name')}`
       }
 
-      // Создаем профиль из импортированных данных
       const importPayload: CandidateProfileCreate = {
         code: importedProfile.code,
         name: importedProfile.name,
@@ -380,9 +322,9 @@ export default function CandidateProfilesPage() {
       await loadProfiles()
     } catch (err: any) {
       if (err instanceof SyntaxError) {
-        setError('Неверный формат JSON файла')
+        setError(t('admin.candidate_profiles_page.errors.import_json'))
       } else {
-        setError(err?.message || 'Не удалось импортировать профиль')
+        setError(err?.message || t('admin.candidate_profiles_page.errors.import'))
       }
       throw err
     }
@@ -393,7 +335,7 @@ export default function CandidateProfilesPage() {
       error
         ? {
             title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+            hint: t('app.common.retry_hint'),
           }
         : null,
     [error, t],
@@ -402,61 +344,60 @@ export default function CandidateProfilesPage() {
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <header className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">Профили кандидатов</h2>
-            <p className="text-sm text-slate-500">Управление профилями кандидатов для вакансий</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              className="btn-secondary btn-sm"
-              type="button"
-              onClick={async () => {
-                try {
-                  const { updated } = await fixOrphanedVacancies()
-                  if (updated > 0) await loadProfiles()
-                  alert(updated > 0 ? `Привязано вакансий: ${updated}` : 'Нет вакансий без профиля или с удалённым профилем.')
-                } catch (e: any) {
-                  alert(e?.response?.data?.detail ?? 'Ошибка')
-                }
-              }}
-            >
-              Привязать вакансии без профиля
-            </button>
-            <button
-              className="btn-secondary"
-              type="button"
-              onClick={() => setImportMode(true)}
-            >
-              Импорт
-            </button>
-            <button
-              className="btn-secondary"
-              type="button"
-              onClick={() => setBulkUpdateMode(true)}
-            >
-              Массовое изменение
-            </button>
-            <button
-              className="btn-primary"
-              type="button"
-              onClick={() => {
-                setNewProfileMode(true)
-                setEditingProfile(null)
-              }}
-            >
-              Создать профиль
-            </button>
-          </div>
-        </header>
+        <div className="mb-4">
+          <SettingsSubpageHeader
+            backLabel={t('admin.settings.subpage.back_all')}
+            kicker={t('admin.candidate_profiles_page.header_kicker')}
+            title={t('admin.candidate_profiles_page.title')}
+            subtitle={t('admin.candidate_profiles_page.subtitle')}
+            actions={
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  className="btn-secondary btn-sm"
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const { updated } = await fixOrphanedVacancies()
+                      if (updated > 0) await loadProfiles()
+                      alert(
+                        updated > 0
+                          ? t('admin.candidate_profiles_page.alerts.fix_orphan_ok', { values: { count: updated } })
+                          : t('admin.candidate_profiles_page.alerts.fix_orphan_none'),
+                      )
+                    } catch (e: any) {
+                      alert(e?.response?.data?.detail ?? t('admin.candidate_profiles_page.alerts.error_generic'))
+                    }
+                  }}
+                >
+                  {t('admin.candidate_profiles_page.fix_orphan_vacancies')}
+                </button>
+                <button className="btn-secondary" type="button" onClick={() => setImportMode(true)}>
+                  {t('admin.candidate_profiles_page.import')}
+                </button>
+                <button className="btn-secondary" type="button" onClick={() => setBulkUpdateMode(true)}>
+                  {t('admin.candidate_profiles_page.bulk_update')}
+                </button>
+                <button
+                  className="btn-primary"
+                  type="button"
+                  onClick={() => {
+                    setNewProfileMode(true)
+                    setEditingProfile(null)
+                  }}
+                >
+                  {t('admin.candidate_profiles_page.create_profile')}
+                </button>
+              </div>
+            }
+          />
+        </div>
 
-        {/* Поиск и фильтры */}
         {!newProfileMode && !editingProfile && profiles.length > 0 && (
           <div className="mb-4 space-y-2">
             <div className="flex gap-3">
               <input
                 type="text"
-                placeholder="Поиск по названию или коду..."
+                placeholder={t('admin.candidate_profiles_page.search_placeholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="input flex-1"
@@ -469,33 +410,32 @@ export default function CandidateProfilesPage() {
                 }}
                 className="input"
               >
-                <option value="all">Все</option>
-                <option value="active">Активные</option>
-                <option value="inactive">Неактивные</option>
+                <option value="all">{t('admin.candidate_profiles_page.filter_all')}</option>
+                <option value="active">{t('admin.candidate_profiles_page.filter_active')}</option>
+                <option value="inactive">{t('admin.candidate_profiles_page.filter_inactive')}</option>
               </select>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="input"
               >
-                <option value="name">Сортировка: Название</option>
-                <option value="code">Сортировка: Код</option>
-                <option value="created_at">Сортировка: Дата создания</option>
-                <option value="fields_count">Сортировка: Количество полей</option>
-                <option value="stages_count">Сортировка: Количество этапов</option>
-                <option value="usage_count">Сортировка: Использование</option>
+                <option value="name">{t('admin.candidate_profiles_page.sort_name')}</option>
+                <option value="code">{t('admin.candidate_profiles_page.sort_code')}</option>
+                <option value="created_at">{t('admin.candidate_profiles_page.sort_created')}</option>
+                <option value="fields_count">{t('admin.candidate_profiles_page.sort_fields')}</option>
+                <option value="stages_count">{t('admin.candidate_profiles_page.sort_stages')}</option>
+                <option value="usage_count">{t('admin.candidate_profiles_page.sort_usage')}</option>
               </select>
               <button
                 type="button"
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                 className="btn-secondary btn-sm"
-                title={sortOrder === 'asc' ? 'По возрастанию' : 'По убыванию'}
+                title={sortOrder === 'asc' ? t('admin.candidate_profiles_page.sort_asc') : t('admin.candidate_profiles_page.sort_desc')}
               >
                 {sortOrder === 'asc' ? '↑' : '↓'}
               </button>
             </div>
             {(() => {
-              // Фильтрация
               const filtered = profiles.filter((profile) => {
                 if (searchQuery) {
                   const query = searchQuery.toLowerCase()
@@ -511,7 +451,6 @@ export default function CandidateProfilesPage() {
                 return true
               })
 
-              // Сортировка
               const sorted = [...filtered].sort((a, b) => {
                 let comparison = 0
                 
@@ -550,7 +489,9 @@ export default function CandidateProfilesPage() {
               if (searchQuery || filterActive !== null) {
                 return (
                   <div className="text-sm text-slate-500">
-                    Найдено: {filteredCount} из {profiles.length} профилей
+                    {t('admin.candidate_profiles_page.found_count', {
+                      values: { filtered: filteredCount, total: profiles.length },
+                    })}
                   </div>
                 )
               }
@@ -564,11 +505,11 @@ export default function CandidateProfilesPage() {
             <ErrorRecoveryBanner
               info={profilesLoadErrorBanner}
               onRetry={() => void loadProfiles()}
-              retryLabel={t('common.actions.refresh', { defaultValue: 'Обновить' })}
+              retryLabel={t('common.actions.refresh')}
               {...friendlyErrorBannerSecondary(
                 profilesLoadErrorBanner,
                 CRM_APP_PATHS.settingsCandidateProfiles,
-                t('common.navigation.settings', { defaultValue: 'Настройки' }),
+                t('common.navigation.settings'),
               )}
               compact
             />
@@ -576,7 +517,7 @@ export default function CandidateProfilesPage() {
         )}
 
         {loading ? (
-          <div className="text-sm text-slate-500">Загрузка...</div>
+          <div className="text-sm text-slate-500">{t('admin.candidate_profiles_page.loading_list')}</div>
         ) : (
           <div className="space-y-4">
             {newProfileMode && (
@@ -598,7 +539,6 @@ export default function CandidateProfilesPage() {
             )}
             {!newProfileMode && !editingProfile && (() => {
               const filtered = profiles.filter((profile) => {
-                // Фильтр по поисковому запросу
                 if (searchQuery) {
                   const query = searchQuery.toLowerCase()
                   const matchesName = profile.name.toLowerCase().includes(query)
@@ -608,7 +548,6 @@ export default function CandidateProfilesPage() {
                     return false
                   }
                 }
-                // Фильтр по активности
                 if (filterActive !== null) {
                   if (filterActive && !profile.is_active) return false
                   if (!filterActive && profile.is_active) return false
@@ -618,21 +557,16 @@ export default function CandidateProfilesPage() {
 
               if (profiles.length === 0) {
                 return (
-                  <p className="text-sm text-slate-500">
-                    Профили не созданы. Нажмите "Создать профиль" для создания.
-                  </p>
+                  <p className="text-sm text-slate-500">{t('admin.candidate_profiles_page.empty_create_hint')}</p>
                 )
               }
 
               if (filtered.length === 0) {
                 return (
-                  <p className="text-sm text-slate-500">
-                    Профили не найдены. Измените параметры поиска или фильтры.
-                  </p>
+                  <p className="text-sm text-slate-500">{t('admin.candidate_profiles_page.empty_filtered')}</p>
                 )
               }
 
-              // Сортировка
               const sorted = [...filtered].sort((a, b) => {
                 let comparison = 0
                 
@@ -679,22 +613,24 @@ export default function CandidateProfilesPage() {
                             </span>
                             {!profile.is_active && (
                               <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                Неактивен
+                                {t('admin.candidate_profiles_page.badge_inactive')}
                               </span>
                             )}
                             {profile.is_system && (
                               <span className="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
-                                Системный
+                                {t('admin.candidate_profiles_page.badge_system')}
                               </span>
                             )}
                             {profile.code === 'driver_ce_default' && (
                               <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                                По умолчанию
+                                {t('admin.candidate_profiles_page.badge_default')}
                               </span>
                             )}
                             {(profile.usage_count ?? 0) > 0 && (
                               <span className="rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-                                Используется в {profile.usage_count} вакансиях
+                                {t('admin.candidate_profiles_page.usage_in_vacancies', {
+                                  values: { count: profile.usage_count ?? 0 },
+                                })}
                               </span>
                             )}
                           </div>
@@ -702,27 +638,47 @@ export default function CandidateProfilesPage() {
                             <p className="text-sm text-slate-600">{profile.description}</p>
                           )}
                           {profile.notes && <p className="text-xs text-slate-500">{profile.notes}</p>}
-                          {/* Краткая статистика профиля */}
                           {profile.config && (
                             <div className="flex gap-3 text-xs text-slate-500">
                               {profile.config.field_configs && Array.isArray(profile.config.field_configs) && (
                                 <span>
-                                  {profile.config.field_configs.filter((f: any) => f.visible !== false).length} полей
+                                  {t('admin.candidate_profiles_page.stats_fields', {
+                                    values: {
+                                      count: profile.config.field_configs.filter((f: any) => f.visible !== false).length,
+                                    },
+                                  })}
                                   {profile.config.field_configs.filter((f: any) => f.required === true).length > 0 && (
                                     <span className="ml-1 text-red-600">
-                                      ({profile.config.field_configs.filter((f: any) => f.required === true).length} обязательных)
+                                      {t('admin.candidate_profiles_page.stats_required', {
+                                        values: {
+                                          count: profile.config.field_configs.filter((f: any) => f.required === true)
+                                            .length,
+                                        },
+                                      })}
                                     </span>
                                   )}
                                 </span>
                               )}
                                               {(profile.funnel_id || (profile.config.stage_configs && Array.isArray(profile.config.stage_configs))) && (
                                 <span>
-                                  {profile.funnel_id ? 'Воронка' : profile.config.stage_configs.filter((s: any) => s.active !== false).length + ' этапов'}
+                                  {profile.funnel_id
+                                    ? t('admin.candidate_profiles_page.stats_funnel')
+                                    : t('admin.candidate_profiles_page.stats_stages', {
+                                        values: {
+                                          count: profile.config.stage_configs.filter((s: any) => s.active !== false)
+                                            .length,
+                                        },
+                                      })}
                                 </span>
                               )}
                               {profile.config.document_configs && Array.isArray(profile.config.document_configs) && (
                                 <span>
-                                  {profile.config.document_configs.filter((d: any) => d.enabled !== false).length} документов
+                                  {t('admin.candidate_profiles_page.stats_documents', {
+                                    values: {
+                                      count: profile.config.document_configs.filter((d: any) => d.enabled !== false)
+                                        .length,
+                                    },
+                                  })}
                                 </span>
                               )}
                             </div>
@@ -733,34 +689,34 @@ export default function CandidateProfilesPage() {
                             className="btn-secondary btn-sm"
                             type="button"
                             onClick={() => setPreviewProfile(profile)}
-                            title="Предпросмотр профиля"
+                            title={t('admin.candidate_profiles_page.action_preview_title')}
                           >
-                            Просмотр
+                            {t('admin.candidate_profiles_page.action_preview')}
                           </button>
                           <button
                             className="btn-secondary btn-sm"
                             type="button"
                             onClick={() => setUsageStatsProfile(profile)}
-                            title="Статистика использования профиля"
+                            title={t('admin.candidate_profiles_page.action_stats_title')}
                           >
-                            Статистика
+                            {t('admin.candidate_profiles_page.action_stats')}
                           </button>
                           <button
                             className="btn-secondary btn-sm"
                             type="button"
                             onClick={() => setHistoryProfile(profile)}
-                            title="История изменений профиля"
+                            title={t('admin.candidate_profiles_page.action_history_title')}
                           >
-                            История
+                            {t('admin.candidate_profiles_page.action_history')}
                           </button>
                           {profile.is_system ? (
                             <button
                               className="btn-secondary btn-sm"
                               type="button"
                               onClick={() => handleDuplicate(profile)}
-                              title="Создать копию профиля для редактирования"
+                              title={t('admin.candidate_profiles_page.action_duplicate_edit')}
                             >
-                              Копировать
+                              {t('admin.candidate_profiles_page.action_duplicate')}
                             </button>
                           ) : (
                             <>
@@ -768,43 +724,51 @@ export default function CandidateProfilesPage() {
                                 className="btn-secondary btn-sm"
                                 type="button"
                                 onClick={() => setApplyToVacanciesMode(profile)}
-                                title="Применить профиль к вакансиям"
+                                title={t('admin.candidate_profiles_page.action_apply_vacancies')}
                               >
-                                Применить к вакансиям
+                                {t('admin.candidate_profiles_page.action_apply_vacancies')}
                               </button>
                               <button
                                 className="btn-secondary btn-sm"
                                 type="button"
                                 onClick={() => handleExport(profile)}
-                                title={t('app.admin.candidate_profiles.actions.export_json', { defaultValue: 'Экспортировать профиль в JSON' })}
+                                title={t('admin.candidate_profiles_page.action_export')}
                               >
-                                Экспорт
+                                {t('admin.candidate_profiles_page.action_export')}
                               </button>
                               <button
                                 className="btn-secondary btn-sm"
                                 type="button"
                                 onClick={() => handleDuplicate(profile)}
-                                title="Скопировать профиль"
+                                title={t('admin.candidate_profiles_page.action_duplicate')}
                               >
-                                Копировать
+                                {t('admin.candidate_profiles_page.action_duplicate')}
                               </button>
                               <button
                                 className="btn-secondary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 type="button"
                                 onClick={() => setEditingProfile(profile)}
                                 disabled={(profile.usage_count ?? 0) > 0}
-                                title={(profile.usage_count ?? 0) > 0 ? 'Профиль используется в вакансиях. Создайте новый профиль для изменений.' : ''}
+                                title={
+                                  (profile.usage_count ?? 0) > 0
+                                    ? t('admin.candidate_profiles_page.edit_blocked_title')
+                                    : ''
+                                }
                               >
-                                Редактировать
+                                {t('admin.candidate_profiles_page.action_edit')}
                               </button>
                               <button
                                 className="btn-danger btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 type="button"
                                 onClick={() => handleDelete(profile.id)}
                                 disabled={(profile.usage_count ?? 0) > 0}
-                                title={(profile.usage_count ?? 0) > 0 ? 'Профиль используется в вакансиях. Нельзя удалить.' : ''}
+                                title={
+                                  (profile.usage_count ?? 0) > 0
+                                    ? t('admin.candidate_profiles_page.delete_blocked_title')
+                                    : ''
+                                }
                               >
-                                Удалить
+                                {t('admin.candidate_profiles_page.action_delete')}
                               </button>
                             </>
                           )}
@@ -819,7 +783,6 @@ export default function CandidateProfilesPage() {
         )}
       </section>
 
-      {/* Модальное окно предпросмотра профиля */}
       {previewProfile && (
         <ProfilePreviewModal
           profile={previewProfile}
@@ -834,7 +797,6 @@ export default function CandidateProfilesPage() {
         />
       )}
 
-      {/* Модальное окно импорта профиля */}
       {importMode && (
         <ImportProfileModal
           onClose={() => setImportMode(false)}
@@ -843,25 +805,21 @@ export default function CandidateProfilesPage() {
               await handleImport(file)
               setImportMode(false)
             } catch (err) {
-              // Ошибка уже обработана в handleImport
             }
           }}
         />
       )}
 
-      {/* Модальное окно применения профиля к вакансиям */}
       {applyToVacanciesMode && (
         <ApplyProfileToVacanciesModal
           profile={applyToVacanciesMode}
           onClose={() => setApplyToVacanciesMode(null)}
           onSuccess={() => {
-            // Обновляем список профилей, чтобы обновить usage_count
             loadProfiles()
           }}
         />
       )}
 
-      {/* Модальное окно массового изменения профилей */}
       {bulkUpdateMode && (
         <BulkUpdateProfilesModal
           onClose={() => setBulkUpdateMode(false)}
@@ -871,7 +829,6 @@ export default function CandidateProfilesPage() {
         />
       )}
 
-      {/* Модальное окно статистики использования профиля */}
       {usageStatsProfile && (
         <ProfileUsageStatsModal
           profile={usageStatsProfile}
@@ -879,7 +836,6 @@ export default function CandidateProfilesPage() {
         />
       )}
 
-      {/* Модальное окно истории изменений профиля */}
       {historyProfile && (
         <ProfileHistoryModal
           profile={historyProfile}
@@ -900,7 +856,7 @@ function ProfileForm({
   profile?: CandidateProfile | null
   onSave: (payload: CandidateProfileCreate) => Promise<void>
   onCancel: () => void
-  t: (key: string, opts?: { defaultValue?: string }) => string
+  t: (key: string, opts?: { defaultValue?: string; values?: Record<string, string | number> }) => string
   profiles?: CandidateProfile[]
 }) {
   const [code, setCode] = useState(profile?.code || '')
@@ -916,10 +872,38 @@ function ProfileForm({
     }
     // Default: always include required system fields
     return [
-      { field_key: 'first_name', field_type: 'text', required: true, order: 1, visible: true, label: 'Имя' },
-      { field_key: 'last_name', field_type: 'text', required: true, order: 2, visible: true, label: 'Фамилия' },
-      { field_key: 'email', field_type: 'text', required: false, order: 3, visible: true, label: 'Email' },
-      { field_key: 'phone', field_type: 'text', required: false, order: 4, visible: true, label: 'Телефон' },
+      {
+        field_key: 'first_name',
+        field_type: 'text',
+        required: true,
+        order: 1,
+        visible: true,
+        label: t('admin.candidate_profiles_page.defaults.first_name'),
+      },
+      {
+        field_key: 'last_name',
+        field_type: 'text',
+        required: true,
+        order: 2,
+        visible: true,
+        label: t('admin.candidate_profiles_page.defaults.last_name'),
+      },
+      {
+        field_key: 'email',
+        field_type: 'text',
+        required: false,
+        order: 3,
+        visible: true,
+        label: t('admin.candidate_profiles_page.defaults.email'),
+      },
+      {
+        field_key: 'phone',
+        field_type: 'text',
+        required: false,
+        order: 4,
+        visible: true,
+        label: t('admin.candidate_profiles_page.defaults.phone'),
+      },
     ]
   })
   const [documentConfigs, setDocumentConfigs] = useState<Array<{
@@ -947,29 +931,29 @@ function ProfileForm({
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  // Валидация кода в реальном времени
   const validateCode = (newCode: string) => {
     setCodeError(null)
     if (!newCode.trim()) {
-      setCodeError('Код обязателен')
+      setCodeError(t('admin.candidate_profiles_page.validation.code_inline_required'))
       return false
     }
     if (!/^[a-z0-9_]+$/.test(newCode.trim().toLowerCase())) {
-      setCodeError('Код может содержать только латинские буквы, цифры и подчеркивание')
+      setCodeError(t('admin.candidate_profiles_page.validation.code_inline_format'))
       return false
     }
     if (!profile && profiles && profiles.some((p) => p.code === newCode.trim())) {
-      setCodeError(`Профиль с кодом "${newCode.trim()}" уже существует`)
+      setCodeError(
+        t('admin.candidate_profiles_page.validation.code_inline_taken', { values: { code: newCode.trim() } }),
+      )
       return false
     }
     return true
   }
 
-  // Валидация названия
   const validateName = (newName: string) => {
     setNameError(null)
     if (!newName.trim()) {
-      setNameError('Название обязательно')
+      setNameError(t('admin.candidate_profiles_page.validation.name_inline_required'))
       return false
     }
     return true
@@ -998,7 +982,6 @@ function ProfileForm({
     setNameError(null)
     setFormError(null)
 
-    // Валидация перед сохранением
     const isCodeValid = validateCode(code)
     const isNameValid = validateName(name)
 
@@ -1006,22 +989,20 @@ function ProfileForm({
       return
     }
 
-    // Проверка предупреждений
     const warnings: string[] = []
     if (fieldConfigs.length === 0) {
-      warnings.push('В профиле нет настроенных полей')
+      warnings.push(t('admin.candidate_profiles_page.warnings.no_fields'))
     }
     if (!funnelId && !(profile?.config?.stage_configs as any[])?.length) {
-      warnings.push('В профиле не выбрана воронка (выберите воронку в блоке ниже)')
+      warnings.push(t('admin.candidate_profiles_page.warnings.no_funnel_selected'))
     }
     if (documentConfigs.length === 0) {
-      warnings.push('В профиле нет настроенных документов')
+      warnings.push(t('admin.candidate_profiles_page.warnings.no_documents'))
     }
 
-    // Показываем предупреждения, но не блокируем сохранение
     if (warnings.length > 0) {
       const confirmed = window.confirm(
-        `Предупреждение:\n\n${warnings.join('\n')}\n\nПродолжить сохранение?`
+        `${t('admin.candidate_profiles_page.warnings.save_prompt_title')}\n\n${warnings.join('\n')}\n\n${t('admin.candidate_profiles_page.warnings.save_prompt_footer')}`,
       )
       if (!confirmed) {
         return
@@ -1034,7 +1015,7 @@ function ProfileForm({
         code: code.trim(),
         name: name.trim(),
         description: description || null,
-        client_id: null, // Профиль привязан только к вакансии, не к клиенту
+        client_id: null,
         notes: notes || null,
         funnel_id: funnelId,
         config: {
@@ -1044,7 +1025,12 @@ function ProfileForm({
         },
       })
     } catch (err: any) {
-      setFormError(err?.message || 'Не удалось сохранить профиль')
+      setFormError(
+        err?.message ||
+          (profile
+            ? t('admin.candidate_profiles_page.errors.update')
+            : t('admin.candidate_profiles_page.errors.create')),
+      )
     } finally {
       setSaving(false)
     }
@@ -1053,54 +1039,54 @@ function ProfileForm({
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
       <h3 className="mb-3 text-base font-semibold text-blue-800">
-        {profile ? 'Редактировать профиль' : 'Создать профиль'}
+        {profile ? t('admin.candidate_profiles_page.form.title_edit') : t('admin.candidate_profiles_page.form.title_create')}
       </h3>
       <div className="space-y-3">
         <div>
           <TextField
-            label="Код (уникальный идентификатор)"
+            label={t('admin.candidate_profiles_page.form.code')}
             value={code}
             onChange={handleCodeChange}
             disabled={!!profile || saving}
-            placeholder={t('app.admin.candidate_profiles.form.code_placeholder', { defaultValue: 'driver_ce' })}
+            placeholder={t('admin.candidate_profiles_page.form.code_placeholder')}
             className={codeError ? 'border-rose-300' : ''}
           />
           {codeError && <div className="mt-1 text-xs text-rose-600">{codeError}</div>}
           {!codeError && !profile && (
-            <div className="mt-1 text-xs text-slate-500">
-              Только латинские буквы, цифры и подчеркивание (например: driver_ce)
-            </div>
+            <div className="mt-1 text-xs text-slate-500">{t('admin.candidate_profiles_page.form.code_hint')}</div>
           )}
         </div>
         <div>
           <TextField
-            label="Название"
+            label={t('admin.candidate_profiles_page.form.name')}
             value={name}
             onChange={handleNameChange}
             disabled={saving}
-            placeholder={t('app.admin.candidate_profiles.form.name_placeholder', { defaultValue: 'Водитель CE' })}
+            placeholder={t('admin.candidate_profiles_page.form.name_placeholder')}
             className={nameError ? 'border-rose-300' : ''}
           />
           {nameError && <div className="mt-1 text-xs text-rose-600">{nameError}</div>}
         </div>
         <TextareaField
-          label="Описание"
+          label={t('admin.candidate_profiles_page.form.description')}
           value={description}
           onChange={setDescription}
           rows={3}
-          placeholder="Описание профиля..."
+          placeholder={t('admin.candidate_profiles_page.form.description_placeholder')}
         />
         <TextareaField
-          label="Заметки"
+          label={t('admin.candidate_profiles_page.form.notes')}
           value={notes}
           onChange={setNotes}
           rows={2}
-          placeholder="Внутренние заметки..."
+          placeholder={t('admin.candidate_profiles_page.form.notes_placeholder')}
         />
         
         {/* Field Constructor */}
         <div className="mt-4">
-          <h3 className="mb-3 text-base font-semibold text-slate-900">Конструктор полей профиля</h3>
+          <h3 className="mb-3 text-base font-semibold text-slate-900">
+            {t('admin.candidate_profiles_page.form.section_fields')}
+          </h3>
           <ProfileFieldConstructor
             value={fieldConfigs}
             onChange={setFieldConfigs}
@@ -1110,7 +1096,9 @@ function ProfileForm({
         
         {/* Funnel selector */}
         <div className="mt-6">
-          <h3 className="mb-3 text-base font-semibold text-slate-900">Воронка (этапы) профиля</h3>
+          <h3 className="mb-3 text-base font-semibold text-slate-900">
+            {t('admin.candidate_profiles_page.form.section_funnel')}
+          </h3>
           <FunnelSelector
             value={funnelId}
             onChange={setFunnelId}
@@ -1120,7 +1108,9 @@ function ProfileForm({
         
         {/* Document Constructor */}
         <div className="mt-6">
-          <h3 className="mb-3 text-base font-semibold text-slate-900">Документы профиля</h3>
+          <h3 className="mb-3 text-base font-semibold text-slate-900">
+            {t('admin.candidate_profiles_page.form.section_documents')}
+          </h3>
           <ProfileDocumentConstructor
             value={documentConfigs}
             onChange={setDocumentConfigs}
@@ -1131,10 +1121,10 @@ function ProfileForm({
         {formError && <div className="text-sm text-rose-700">{formError}</div>}
         <div className="flex gap-2 justify-end">
           <button className="btn-secondary" type="button" onClick={onCancel} disabled={saving}>
-            Отмена
+            {t('admin.candidate_profiles_page.form.cancel')}
           </button>
           <button className="btn-primary" type="button" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Сохранение...' : 'Сохранить'}
+            {saving ? t('admin.candidate_profiles_page.form.saving') : t('admin.candidate_profiles_page.form.save')}
           </button>
         </div>
       </div>

@@ -80,6 +80,9 @@ export const CommunicationsSettingsPage = lazy(() =>
 export const CommunicationsMessengerSettingsPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsMessengerSettingsPage })),
 )
+export const MessengerIntegrationChannelPage = lazy(() =>
+  loadComms().then((m) => ({ default: m.MessengerIntegrationChannelPage })),
+)
 export const CommunicationsQueueSettingsPage = lazy(() =>
   loadComms().then((m) => ({ default: m.CommunicationsQueueSettingsPage })),
 )

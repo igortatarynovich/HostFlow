@@ -5,7 +5,7 @@ import { getLeadDistribution, patchLeadDistribution, type LeadDistributionOut } 
 import { useI18n } from '../i18n'
 import { ACTIVATION_PATHS } from '../app/activationRoutes'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
-
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 function statusDot(status: string) {
   if (status === 'available') return '🟢'
   if (status === 'busy') return '🟡'
@@ -88,6 +88,8 @@ export default function LeadsDistributionPage() {
           </p>
         </div>
       </div>
+
+      <PageBreadcrumb className="max-w-4xl" />
 
       {error ? <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">{String(error)}</div> : null}
 

@@ -10,6 +10,7 @@ import {
 } from '../../api/documents'
 import type { RulesetDiff, RulesetUsageResponse, RulesetVersion } from '../../api/types'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { useI18n } from '../../i18n'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
@@ -198,7 +199,7 @@ export default function RulesetVersionsPage() {
       error
         ? {
             title: error,
-            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+            hint: t('app.common.retry_hint'),
           }
         : null,
     [error, t],
@@ -208,7 +209,7 @@ export default function RulesetVersionsPage() {
       usageError
         ? {
             title: usageError,
-            hint: t('app.common.retry_hint', { defaultValue: 'Повторите действие или обновите страницу.' }),
+            hint: t('app.common.retry_hint'),
           }
         : null,
     [usageError, t],
@@ -216,32 +217,24 @@ export default function RulesetVersionsPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('app.admin.ruleset.header.title')}</h1>
-          <p className="text-sm text-slate-500">
-            {t('app.admin.ruleset.header.subtitle')}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={refreshVersions}
-            disabled={loading}
-          >
-            {loading ? t('app.admin.ruleset.header.refresh.loading') : t('app.admin.ruleset.header.refresh.action')}
-          </button>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={refreshUsage}
-            disabled={usageLoading}
-          >
-            {usageLoading ? t('app.admin.ruleset.header.usage_refresh.loading') : t('app.admin.ruleset.header.usage_refresh.action')}
-          </button>
-        </div>
-      </header>
+      <SettingsSubpageHeader
+        backLabel={t('admin.settings.subpage.back_all')}
+        kicker={t('app.admin.ruleset.header.kicker')}
+        title={t('app.admin.ruleset.header.title')}
+        subtitle={t('app.admin.ruleset.header.subtitle')}
+        actions={
+          <div className="flex gap-2">
+            <button type="button" className="btn-secondary" onClick={refreshVersions} disabled={loading}>
+              {loading ? t('app.admin.ruleset.header.refresh.loading') : t('app.admin.ruleset.header.refresh.action')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={refreshUsage} disabled={usageLoading}>
+              {usageLoading
+                ? t('app.admin.ruleset.header.usage_refresh.loading')
+                : t('app.admin.ruleset.header.usage_refresh.action')}
+            </button>
+          </div>
+        }
+      />
 
       {rulesetLoadErrorBanner && (
         <ErrorRecoveryBanner
@@ -440,14 +433,14 @@ export default function RulesetVersionsPage() {
               <ErrorRecoveryBanner
                 info={{
                   title: diffState.error,
-                  hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+                  hint: t('app.common.retry_hint'),
                 }}
                 onRetry={() => {
                   if (!diffState.versionId) return
                   const version = versions.find((item) => item.id === diffState.versionId)
                   if (version) void handleShowDiff(version)
                 }}
-                retryLabel={t('common.actions.retry', { defaultValue: 'Retry' })}
+                retryLabel={t('common.actions.retry')}
                 compact
               />
             </div>

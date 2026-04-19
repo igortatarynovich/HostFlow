@@ -100,7 +100,7 @@ function CandidateRodoSection({ candidateId, onSent, refreshTrigger = 0 }: Candi
           <ErrorRecoveryBanner
             info={{
               title: error,
-              hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+              hint: t('app.common.retry_hint'),
             }}
             onRetry={() => setError(null)}
             retryLabel={t('common.actions.close', { defaultValue: 'Close' })}

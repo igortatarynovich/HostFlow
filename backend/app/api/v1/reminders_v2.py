@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models.reminder import Reminder, ReminderStatus
-from backend.app.services import reminder_tasks
+from backend.app.services import billing_restrictions, reminder_tasks
 
 _SLA_REMINDER_TYPES = frozenset(
     {
@@ -186,6 +186,7 @@ async def create_reminder(
     current_user: UserCtx = Depends(get_current_user),
 ) -> ReminderOut:
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     reminder = await reminder_tasks.create_reminder(
         db,
         tenant_id=str(tenant_id),
@@ -204,6 +205,7 @@ async def bulk_create_reminders(
     current_user: UserCtx = Depends(get_current_user),
 ) -> BulkReminderCreateResponse:
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     tenant_id_str = str(tenant_id)
     actor_id = str(current_user.sub)
     results: List[BulkReminderCreateResult] = []
@@ -302,6 +304,7 @@ async def update_reminder(
     current_user: UserCtx = Depends(get_current_user),
 ) -> ReminderOut:
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     reminder = await reminder_tasks.update_reminder(
         db,
         tenant_id=str(tenant_id),
@@ -322,6 +325,7 @@ async def complete_reminder(
     current_user: UserCtx = Depends(get_current_user),
 ) -> ReminderOut:
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     reminder = await reminder_tasks.complete_reminder(
         db,
         tenant_id=str(tenant_id),
@@ -342,6 +346,7 @@ async def snooze_reminder(
     current_user: UserCtx = Depends(get_current_user),
 ) -> ReminderOut:
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     reminder = await reminder_tasks.snooze_reminder(
         db,
         tenant_id=str(tenant_id),
@@ -362,6 +367,7 @@ async def run_delivery(
     current_user: UserCtx = Depends(get_current_user),
 ) -> Dict[str, Any]:
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     delivered = await reminder_tasks.deliver_due_reminders(db, tenant_id=str(tenant_id))
     if delivered:
         await db.commit()
@@ -374,6 +380,7 @@ async def run_overdue(
     current_user: UserCtx = Depends(get_current_user),
 ) -> Dict[str, Any]:
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
     updated = await reminder_tasks.mark_overdue_reminders(db, tenant_id=str(tenant_id))
     if updated:
         await db.commit()

@@ -17,6 +17,13 @@ export type LocaleCode = keyof typeof RESOURCES
 export type TranslateOptions = {
   defaultValue?: string
   values?: Record<string, string | number>
+  /**
+   * Legacy ad-hoc interpolation keys passed at the top level (e.g. `{ count: 3 }`)
+   * by older callers. The runtime currently only formats `options.values`, so any
+   * top-level key is best-effort and only kept here to avoid breaking the type
+   * surface. Prefer `values: { count: 3 }` for new code.
+   */
+  [extra: string]: unknown
 }
 
 export type TranslateFn = (key: string, options?: TranslateOptions) => string

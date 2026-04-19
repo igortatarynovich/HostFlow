@@ -233,6 +233,16 @@ def _docs_progress_dict(obj: _Any) -> dict:
     return {}
 
 
+def _intake_application_kind_from_model(c: _Any) -> Optional[str]:
+    """`candidate` vs `client` from `intake_state.application_kind` (public intake)."""
+    raw = getattr(c, "intake_state", None)
+    if not isinstance(raw, dict):
+        return None
+    if "application_kind" not in raw:
+        return None
+    return "client" if str(raw.get("application_kind") or "").strip().lower() == "client" else "candidate"
+
+
 def _serialize_candidate_row(row: Tuple[_Any, ...]) -> Dict[str, Any]:
     if not row:
         raise ValueError("Empty candidate row")
@@ -310,6 +320,7 @@ def _serialize_candidate_row(row: Tuple[_Any, ...]) -> Dict[str, Any]:
         "docs_progress": _docs_progress_dict(c),
         "personal_data": personal_data or {},
         "contacts": contacts or {},
+        "intake_application_kind": _intake_application_kind_from_model(c),
     }
 
 
@@ -571,7 +582,8 @@ async def list_candidates(
     ),
     manager_id: UUID | None = None,
     vacancy_id: UUID | None = Query(default=None, alias="vacancy_id"),
-    vacancy: UUID | None = Query(default=None, alias="vacancy"),
+    # str (not UUID): frontend sends CSV for multi-select; handler splits below.
+    vacancy: str | None = Query(default=None, alias="vacancy"),
     documents_ordered: str | None = Query(
         default=None,
         description="Filter candidates by presence of ordered documents (`ordered` or `not_ordered`).",
@@ -588,6 +600,10 @@ async def list_candidates(
         default=None,
         description="Filter by processor (accepted handoff assigned_to_user_id).",
     ),
+    recruiter_unassigned: bool = Query(
+        default=False,
+        description="Candidates with no recruiter assigned (excludes terminal stages employed/rejected/declined/probation_ok).",
+    ),
     shadow_bucket_start: str | None = Query(
         default=None,
         description="Restrict to candidates in risk_intel_entity_shadow for this hourly bucket (ISO-8601, UTC).",
@@ -597,6 +613,10 @@ async def list_candidates(
         description="Band floor with shadow_bucket_start (default high): low|medium|high|critical.",
     ),
     q: str | None = Query(default=None, description="Поиск по имени/фамилии/email/телефону"),
+    intake_application_kind: str | None = Query(
+        default=None,
+        description="Фильтр по виду публичного intake: client (запрос клиента) или candidate (всё остальное).",
+    ),
     created_from: date | None = None,
     created_to: date | None = None,
     compact: bool = Query(
@@ -796,6 +816,9 @@ async def list_candidates(
     if processor_id:
         filters["processor_id"] = str(processor_id)
 
+    if recruiter_unassigned:
+        filters["recruiter_unassigned"] = True
+
     if shadow_bucket_start and str(shadow_bucket_start).strip():
         from backend.app.services.risk_intel_v1 import parse_shadow_bucket_iso
 
@@ -808,6 +831,11 @@ async def list_candidates(
         q = q.strip()
         if q:
             filters["q"] = q
+
+    if intake_application_kind:
+        ak = intake_application_kind.strip().lower()
+        if ak in ("client", "candidate"):
+            filters["intake_application_kind"] = ak
 
     if created_from:
         filters["dt_from"] = datetime.combine(created_from, datetime.min.time())
@@ -1129,6 +1157,7 @@ async def list_candidates(
             "docs_last_ordered_at": docs_last_ordered_at.isoformat() if getattr(docs_last_ordered_at, "isoformat", None) else docs_last_ordered_at,
             "docs_next_valid_from": docs_next_valid_from.isoformat() if getattr(docs_next_valid_from, "isoformat", None) else docs_next_valid_from,
             "docs_has_files": docs_has_files,
+            "intake_application_kind": _intake_application_kind_from_model(c),
         }
         if include_risk:
             base_payload["risk_score"] = getattr(risk, "risk_score", None) if risk else None
@@ -1311,6 +1340,10 @@ async def list_candidates_no_next_action(
     offset: int = 0,
     stages: Optional[List[str]] = Query(default=None, description="Optional list of stage codes to include."),
     manager_id: UUID | None = Query(default=None, description="Filter by candidate.manager user id."),
+    intake_application_kind: str | None = Query(
+        default=None,
+        description="Same as GET /candidates: client | candidate (public intake).",
+    ),
     assignee_id: UUID | None = Query(default=None, description="Assignee to check reminders for (defaults to current user)."),
     scope_tenant_id: UUID | None = Query(
         default=None,
@@ -1323,6 +1356,7 @@ async def list_candidates_no_next_action(
     Next action contract v1:
     - a candidate has a "next action" iff there exists an active reminder for (entity_type='candidate', entity_id=candidate.id)
       assigned to the selected assignee with status in {pending,new,overdue}.
+    - Pipeline-completed candidates (rejected, declined, employed, probation_ok) are never listed — no operational follow-up.
     """
     db, tenant_id = db_tenant
     scope_tenant = (
@@ -1348,24 +1382,31 @@ async def list_candidates_no_next_action(
         .correlate(Candidate)
     )
 
+    active_pipeline = or_(
+        Candidate.stage.is_(None),
+        Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
+    )
     where = [
         Candidate.tenant_id == scope_tenant,
         Candidate.deleted_at.is_(None),
+        active_pipeline,
         ~reminder_exists,
     ]
     if stages:
         clean = [str(s).strip() for s in stages if str(s).strip()]
         if clean:
             where.append(Candidate.stage.in_(clean))
-    else:
-        where.append(
-            or_(
-                Candidate.stage.is_(None),
-                Candidate.stage.notin_(tuple(PIPELINE_COMPLETED_STAGE_CODES)),
-            )
-        )
     if manager_id:
         where.append(Candidate.manager == str(manager_id))
+
+    if intake_application_kind:
+        ak = intake_application_kind.strip().lower()
+        if ak in ("client", "candidate"):
+            ak_expr = func.lower(func.coalesce(Candidate.intake_state["application_kind"].as_string(), ""))
+            if ak == "client":
+                where.append(ak_expr == "client")
+            else:
+                where.append(ak_expr != "client")
 
     count_row = await db.execute(select(func.count()).select_from(Candidate).where(*where))
     total = int(count_row.scalar() or 0)
@@ -1392,6 +1433,7 @@ async def list_candidates_no_next_action(
                 "vacancy_id": getattr(c, "vacancy_id", None),
                 "created_at": getattr(c, "created_at", None),
                 "updated_at": getattr(c, "updated_at", None),
+                "intake_application_kind": _intake_application_kind_from_model(c),
             }
         )
 
@@ -1598,6 +1640,7 @@ async def create_candidate(
     current_user: UserCtx = Depends(get_current_user),
 ):
     db, tenant_id = db_tenant
+    await billing_restrictions.ensure_billing_allows_side_effects_for_tenant_id(db, str(tenant_id))
 
     visibility = get_tenant_visibility(db, str(tenant_id))
 

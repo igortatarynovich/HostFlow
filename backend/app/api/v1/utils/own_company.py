@@ -39,14 +39,14 @@ async def ensure_default_own_company(
     return obj
 
 
-async def resolve_active_own_company_id(
-    request: Request,
-    db_tenant=Depends(get_db_with_tenant),
-    current_user: UserCtx = Depends(get_current_user),
-    x_own_company_id: Optional[str] = Header(default=None, alias="X-Own-Company-Id"),
+async def resolve_own_company_id_for_session(
+    db: AsyncSession,
+    tenant_id: str,
+    current_user: UserCtx,
+    x_own_company_id: Optional[str] = None,
 ) -> str:
     """
-    Resolve active own_company_id for scoping.
+    Resolve active own_company_id for a DB session already scoped to ``tenant_id``.
 
     Resolution order:
     1) X-Own-Company-Id header (must belong to tenant and pass optional ACL)
@@ -56,8 +56,6 @@ async def resolve_active_own_company_id(
     Users with ``preferences.allowed_own_company_ids`` (non-empty list) are limited to those
     ids unless their role bypasses ACL (administrator / superadmin).
     """
-    db, tenant_uuid = db_tenant
-    tenant_id = str(tenant_uuid)
 
     def _normalize(value: Optional[str]) -> Optional[str]:
         v = str(value or "").strip()
@@ -109,6 +107,18 @@ async def resolve_active_own_company_id(
     raise HTTPException(
         status_code=status.HTTP_412_PRECONDITION_FAILED,
         detail={"code": "OWN_COMPANY_REQUIRED", "message": "Own company must be created first"},
+    )
+
+
+async def resolve_active_own_company_id(
+    request: Request,
+    db_tenant=Depends(get_db_with_tenant),
+    current_user: UserCtx = Depends(get_current_user),
+    x_own_company_id: Optional[str] = Header(default=None, alias="X-Own-Company-Id"),
+) -> str:
+    db, tenant_uuid = db_tenant
+    return await resolve_own_company_id_for_session(
+        db, str(tenant_uuid), current_user, x_own_company_id
     )
 
 

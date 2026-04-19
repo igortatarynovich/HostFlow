@@ -227,37 +227,6 @@ export const defaultMetadataValue = (field: MetadataFieldConfig) => {
   }
 };
 
-export const normalizeMetadataValue = (field: MetadataFieldConfig, value: any) => {
-  if (field.input === "multiselect") {
-    return Array.isArray(value) ? value.map((item) => String(item)) : [];
-  }
-  if (field.input === "boolean") {
-    return Boolean(value);
-  }
-  if (field.input === "number") {
-    if (value === null || value === "" || value === undefined) return null;
-    const parsed = Number(value);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-  if (field.input === "date") {
-    if (!value) return null;
-    return String(value).slice(0, 10);
-  }
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed || null;
-  }
-  return value ?? null;
-};
-
-export const buildMetadataDefaults = (fields: MetadataFieldConfig[]): MetadataState => {
-  const base: MetadataState = {};
-  fields.forEach((field) => {
-    base[field.name] = defaultMetadataValue(field);
-  });
-  return base;
-};
-
 export const buildMetadataStateFromDoc = (doc: Document, fields: MetadataFieldConfig[]): MetadataState => {
   const base: MetadataState = {};
   const source = doc.meta_json ?? {};

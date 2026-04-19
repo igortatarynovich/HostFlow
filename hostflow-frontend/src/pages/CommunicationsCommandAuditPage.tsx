@@ -8,6 +8,7 @@ import {
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import type { FriendlyErrorInfo } from '../utils/friendlyError'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../utils/friendlyError'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
@@ -99,6 +100,8 @@ export default function CommunicationsCommandAuditPage() {
         </p>
       </header>
 
+      <PageBreadcrumb className="max-w-4xl" />
+
       <section className="rounded-lg border border-slate-200 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-5">
           <label className="space-y-1">
@@ -156,7 +159,7 @@ export default function CommunicationsCommandAuditPage() {
             </button>
           </div>
         </div>
-        {loading && <div className="px-4 py-4 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
+        {loading && <div className="px-4 py-4 text-sm text-slate-500">{t('common.loading')}</div>}
         {error && (
           <div className="p-4">
             <ErrorRecoveryBanner

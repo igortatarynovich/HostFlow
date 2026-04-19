@@ -1,10 +1,11 @@
-import type { ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  type Icon as TablerIcon,
   IconAdjustments,
   IconCreditCard,
   IconLayoutGrid,
   IconPlugConnected,
+  IconRobot,
   IconSettings,
   IconShield,
   IconUsers,
@@ -13,26 +14,27 @@ import {
 import { useI18n } from '../../i18n'
 import { usePermissions } from '../../hooks/usePermissions'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
-
+import {
+  isSettingsChromeTabActive,
+  settingsChromeTabHref,
+  type SettingsChromeTabKey,
+} from '../../nav/settingsChromeNav'
+import { PageBreadcrumb } from './PageBreadcrumb'
 type SettingsChromeProps = {
   pathname: string
+  search: string
   compactMode?: boolean
 }
 
 type NavItem = {
-  key: string
+  key: SettingsChromeTabKey
   label: string
   to: string
-  icon: ComponentType<{ size?: number; className?: string }>
+  icon: TablerIcon
   visible: boolean
 }
 
-const isActive = (pathname: string, target: string): boolean => {
-  if (target === CRM_APP_PATHS.settings) return pathname === CRM_APP_PATHS.settings
-  return pathname.startsWith(target)
-}
-
-export function SettingsChrome({ pathname, compactMode = false }: SettingsChromeProps) {
+export function SettingsChrome({ pathname, search, compactMode = false }: SettingsChromeProps) {
   const { t } = useI18n()
   const { can } = usePermissions()
 
@@ -40,56 +42,63 @@ export function SettingsChrome({ pathname, compactMode = false }: SettingsChrome
     {
       key: 'overview',
       label: t('app.settings.chrome.overview', { defaultValue: 'Overview' }),
-      to: CRM_APP_PATHS.settings,
+      to: settingsChromeTabHref('overview'),
       icon: IconLayoutGrid,
       visible: can('settings.view') || can('admin.users'),
     },
     {
       key: 'workspace',
       label: t('app.settings.chrome.workspace', { defaultValue: 'Workspace' }),
-      to: CRM_APP_PATHS.settingsCompanyAccess,
+      to: settingsChromeTabHref('workspace'),
       icon: IconSettings,
       visible: can('admin.companyAcl') || can('admin.users'),
     },
     {
-      key: 'crm',
+      key: 'crm_setup',
       label: t('app.settings.chrome.crm_setup', { defaultValue: 'CRM setup' }),
-      to: CRM_APP_PATHS.settingsFunnels,
+      to: settingsChromeTabHref('crm_setup'),
       icon: IconAdjustments,
       visible: can('admin.users') || can('users.manage'),
     },
     {
       key: 'team',
       label: t('app.settings.chrome.team', { defaultValue: 'Team' }),
-      to: CRM_APP_PATHS.settingsUsers,
+      to: settingsChromeTabHref('team'),
       icon: IconUsers,
       visible: can('admin.users') || can('users.manage') || can('users.view'),
     },
     {
-      key: 'billing',
-      label: t('app.settings.chrome.billing', { defaultValue: 'Billing' }),
-      to: CRM_APP_PATHS.settingsBilling,
-      icon: IconCreditCard,
-      visible: can('admin.users'),
+      key: 'automations',
+      label: t('app.settings.chrome.automations', { defaultValue: 'Automations' }),
+      to: settingsChromeTabHref('automations'),
+      icon: IconRobot,
+      visible: can('notifications.view') || can('admin.ruleset') || can('admin.users'),
     },
     {
       key: 'integrations',
       label: t('app.settings.chrome.integrations', { defaultValue: 'Integrations' }),
-      to: CRM_APP_PATHS.settingsIntegrations,
+      to: settingsChromeTabHref('integrations'),
       icon: IconPlugConnected,
       visible: can('admin.metaLeads') || can('admin.users'),
     },
     {
+      key: 'billing',
+      label: t('app.settings.chrome.billing', { defaultValue: 'Billing' }),
+      to: settingsChromeTabHref('billing'),
+      icon: IconCreditCard,
+      visible: can('admin.users'),
+    },
+    {
       key: 'security',
       label: t('app.settings.chrome.security', { defaultValue: 'Security' }),
-      to: CRM_APP_PATHS.settingsAudit,
+      to: settingsChromeTabHref('security'),
       icon: IconShield,
       visible: can('admin.deletionQueue') || can('admin.users'),
     },
     {
       key: 'personal',
       label: t('app.settings.chrome.personal', { defaultValue: 'Personal' }),
-      to: CRM_APP_PATHS.profile,
+      to: settingsChromeTabHref('personal'),
       icon: IconUserCircle,
       visible: true,
     },
@@ -101,6 +110,11 @@ export function SettingsChrome({ pathname, compactMode = false }: SettingsChrome
     return item.key === 'billing' || item.key === 'personal'
   })
 
+  const settingsRoot = CRM_APP_PATHS.settings.replace(/\/+$/, '') || '/'
+  const pathNorm = pathname.replace(/\/+$/, '') || '/'
+  /** Root `/app/settings` already has a full CRM contours grid on the landing; avoid duplicating the strip there. */
+  const showCrmWayfinding = pathNorm !== settingsRoot
+
   return (
     <section className="mb-0 rounded-none border-x-0 border-t-0 border-b border-slate-200 bg-white px-3 py-2.5 shadow-none">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -110,7 +124,7 @@ export function SettingsChrome({ pathname, compactMode = false }: SettingsChrome
           </h1>
           <p className="text-xs text-slate-500">
             {t('app.settings.chrome.subtitle', {
-              defaultValue: 'Responsibility-first setup: workspace, CRM, team, billing, integrations, personal.',
+              defaultValue: 'Responsibility-first setup: workspace, CRM, team, automations, integrations, billing, personal.',
             })}
           </p>
         </div>
@@ -118,7 +132,7 @@ export function SettingsChrome({ pathname, compactMode = false }: SettingsChrome
 
       <nav className="mt-3 flex flex-wrap gap-2">
         {visibleItems.map((item) => {
-          const active = isActive(pathname, item.to)
+          const active = isSettingsChromeTabActive(item.key, pathname, search)
           const Icon = item.icon
           return (
             <Link
@@ -137,6 +151,12 @@ export function SettingsChrome({ pathname, compactMode = false }: SettingsChrome
           )
         })}
       </nav>
+
+      {showCrmWayfinding ? (
+        <div className="mt-3">
+          <PageBreadcrumb />
+        </div>
+      ) : null}
     </section>
   )
 }

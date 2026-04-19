@@ -8,7 +8,7 @@ export type QuickViewKey =
   | 'ready_for_handoff'
   | 'new_this_week'
 
-type QuickDocFilter = { key: string; label: string; statuses: string[]; active: boolean }
+export type QuickDocFilter = { key: string; label: string; statuses: string[]; active: boolean }
 
 type CandidatesQuickViewsBarProps = {
   t: (key: string, options?: any) => string

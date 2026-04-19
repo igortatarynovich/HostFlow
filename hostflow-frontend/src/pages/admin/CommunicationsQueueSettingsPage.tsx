@@ -13,6 +13,7 @@ import {
 } from '../../api/communications'
 import ErrorRecoveryBanner from '../../components/ErrorRecoveryBanner'
 import { useI18n } from '../../i18n'
+import { SettingsSubpageHeader } from '../../components/settings/SettingsSubpageHeader'
 import { CRM_APP_PATHS } from '../../app/crmAppPaths'
 import type { FriendlyErrorInfo } from '../../utils/friendlyError'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo } from '../../utils/friendlyError'
@@ -173,33 +174,27 @@ export default function CommunicationsQueueSettingsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {t('admin.communications_queue.title', { defaultValue: 'Queue settings' })}
-          </h1>
-          <p className="text-sm text-slate-500">
-            {t('admin.communications_queue.subtitle', {
-              defaultValue: 'Manager allocation strategy, queue flags and diagnostics.',
-            })}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to={CRM_APP_PATHS.settingsCommunications} className="btn-secondary">
-            {t('admin.communications_queue.actions.all_settings', { defaultValue: 'All communication settings' })}
-          </Link>
+      <SettingsSubpageHeader
+        backHref={CRM_APP_PATHS.settingsCommunications}
+        backLabel={t('admin.communications_queue.actions.all_settings', { defaultValue: 'All communication settings' })}
+        kicker={t('admin.communications_queue.header_kicker')}
+        title={t('admin.communications_queue.title', { defaultValue: 'Queue settings' })}
+        subtitle={t('admin.communications_queue.subtitle', {
+          defaultValue: 'Manager allocation strategy, queue flags and diagnostics.',
+        })}
+        actions={
           <Link to={CRM_APP_PATHS.messages} className="btn-secondary">
             {t('admin.communications_queue.actions.open_messages', { defaultValue: 'Open messages' })}
           </Link>
-        </div>
-      </div>
+        }
+      />
 
-      {loading && <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>}
+      {loading && <div className="text-sm text-slate-500">{t('common.loading')}</div>}
       {error && (
         <ErrorRecoveryBanner
           info={error}
           onRetry={() => window.location.reload()}
-          retryLabel={t('common.actions.refresh', { defaultValue: 'Refresh' })}
+          retryLabel={t('common.actions.refresh')}
           {...friendlyErrorBannerSecondary(
             error,
             CRM_APP_PATHS.settingsCommunications,
@@ -259,7 +254,7 @@ export default function CommunicationsQueueSettingsPage() {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
+          <div className="text-sm text-slate-500">{t('common.loading')}</div>
         )}
       </div>
 
@@ -299,7 +294,7 @@ export default function CommunicationsQueueSettingsPage() {
             </div>
           </div>
         ) : (
-          <div className="text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
+          <div className="text-sm text-slate-500">{t('common.loading')}</div>
         )}
       </div>
 
@@ -315,7 +310,7 @@ export default function CommunicationsQueueSettingsPage() {
             className="btn-secondary btn-sm disabled:opacity-60"
           >
             {allocatorPreviewBusy
-              ? t('common.loading', { defaultValue: 'Loading...' })
+              ? t('common.loading')
               : t('admin.communications_queue.actions.run_preview', { defaultValue: 'Run preview' })}
           </button>
         </div>

@@ -50,10 +50,6 @@ export function emailThreadInFolder(th: CommunicationThread, folder: EmailFolder
   return false
 }
 
-export function emailThreadTitle(th: CommunicationThread): string {
-  return String(th.subject || '').trim() || String(th.last_message_preview || '').trim() || th.id
-}
-
 const SYSTEM_FOLDERS: EmailSystemFolder[] = [
   'inbox',
   'unread',

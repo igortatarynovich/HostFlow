@@ -56,6 +56,7 @@ export type OpsCounters = {
   leads_sla_stuck_stage_reminders?: number
   leads_needs_routing: number
   leads_failed: number
+  leads_new_untouched_24h?: number
   draft_intake_stale: number
   automation_rules_enabled: number
   automation_events_24h: number

@@ -13,6 +13,7 @@ from uuid import UUID
 from backend.app.auth.deps import UserCtx, get_current_user
 from backend.app.db.deps import get_db_with_tenant
 from backend.app.models import Candidate, Reminder, Tenant
+from backend.app.services.reminder_ops_counts import count_overdue_reminders_ops_scoped
 from backend.app.models.reminder import ReminderStatus
 from backend.app.constants.stages import PIPELINE_COMPLETED_STAGE_CODES
 
@@ -131,17 +132,9 @@ async def _compute_metrics(db: AsyncSession, tenant_id: str, assignee_id: str) -
         )
     ).scalar_one() or 0
 
-    overdue = (
-        await db.execute(
-            select(func.count())
-            .select_from(Reminder)
-            .where(
-                Reminder.tenant_id == tenant_id,
-                Reminder.assignee_id == assignee_id,
-                Reminder.status == ReminderStatus.overdue,
-            )
-        )
-    ).scalar_one() or 0
+    overdue = await count_overdue_reminders_ops_scoped(
+        db, tenant_id=tenant_id, assignee_id=assignee_id
+    )
 
     coverage = 0.0
     if int(active_pipeline_candidates) > 0:

@@ -1,8 +1,10 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useI18n } from '../i18n'
 import { PublicBrandingLogo } from '../components/public/PublicLogo'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
+import TurnstileWidget from '../components/TurnstileWidget'
+import { usePublicAuthConfig } from '../hooks/usePublicAuthConfig'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import {
   friendlyErrorBannerSecondary,
@@ -45,6 +47,14 @@ export default function SignupPage() {
   const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<FriendlyErrorInfo | null>(null)
+  const publicAuthConfig = usePublicAuthConfig()
+  const captchaRequired = Boolean(
+    publicAuthConfig.turnstile_enabled && publicAuthConfig.turnstile_sitekey,
+  )
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const handleCaptchaToken = useCallback((token: string | null) => {
+    setCaptchaToken(token)
+  }, [])
 
   const planLabel = useMemo(() => {
     if (!preselectedPlan) return null
@@ -76,6 +86,17 @@ export default function SignupPage() {
       )
       return
     }
+    if (captchaRequired && !captchaToken) {
+      setError(
+        friendlyFormHintError(
+          t('app.signup.errors.captcha_required', {
+            defaultValue: 'Please complete the challenge to verify you are human.',
+          }),
+          t,
+        ),
+      )
+      return
+    }
     setLoading(true)
     try {
       const registration = await registerSelfService({
@@ -86,6 +107,7 @@ export default function SignupPage() {
         plan_code: preselectedPlan || undefined,
         accept_terms: acceptTerms,
         accept_privacy: acceptPrivacy,
+        turnstile_token: captchaToken,
       })
       const signupContext = buildSignupSuccessContext(
         registration.meta?.welcome_email_sent !== false,
@@ -231,7 +253,20 @@ export default function SignupPage() {
                 .
               </span>
             </label>
-            <button type="submit" className="btn-primary w-full py-3" disabled={loading}>
+            {captchaRequired && publicAuthConfig.turnstile_sitekey && (
+              <div className="pt-1">
+                <TurnstileWidget
+                  sitekey={publicAuthConfig.turnstile_sitekey}
+                  action="signup"
+                  onToken={handleCaptchaToken}
+                />
+              </div>
+            )}
+            <button
+              type="submit"
+              className="btn-primary w-full py-3"
+              disabled={loading || (captchaRequired && !captchaToken)}
+            >
               {loading ? t('common.loading') : t('app.signup.submit', { defaultValue: 'Create account' })}
             </button>
             <p className="text-xs leading-relaxed text-slate-500">

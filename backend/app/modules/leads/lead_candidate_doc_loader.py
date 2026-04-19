@@ -48,8 +48,13 @@ async def batch_candidate_document_status_sets(
 def vacancy_extra_requires_candidate_documents_module(vacancy_extra: object) -> bool:
     """True if vacancy criteria include module-backed document requirements."""
     # Local import: keep loader importable without pulling full eval graph at module init.
-    from backend.app.modules.leads.lead_criteria_eval import criteria_from_vacancy_extra
+    from backend.app.modules.leads.lead_criteria_eval import (
+        criteria_from_vacancy_extra,
+        lead_fit_evaluation_effective,
+    )
 
+    if not lead_fit_evaluation_effective(vacancy_extra):
+        return False
     c = criteria_from_vacancy_extra(vacancy_extra)
     if not isinstance(c, dict):
         return False

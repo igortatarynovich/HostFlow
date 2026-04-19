@@ -5,6 +5,7 @@ import type { Invoice, InvoiceStatus } from '../api/types'
 import { useI18n } from '../i18n'
 import ErrorRecoveryBanner from '../components/ErrorRecoveryBanner'
 import { CRM_APP_PATHS } from '../app/crmAppPaths'
+import { PageBreadcrumb } from '../components/nav/PageBreadcrumb'
 import { usePlanLimitModal } from '../contexts/PlanLimitModalContext'
 import { friendlyErrorBannerSecondary, getFriendlyErrorInfo, type FriendlyErrorInfo } from '../utils/friendlyError'
 import { invoiceDaysPastDue, invoiceOutstandingAmount, serviceOrderWorkspacePath } from '../modules/services/utils'
@@ -61,6 +62,7 @@ function statusBadgeClass(status: InvoiceStatus): string {
     paid: 'bg-green-100 text-green-700',
     overdue: 'bg-red-100 text-red-700',
     cancelled: 'bg-slate-100 text-slate-700',
+    refunded: 'bg-amber-100 text-amber-700',
   }
   return classes[status] || 'bg-slate-100 text-slate-700'
 }
@@ -390,7 +392,7 @@ export default function InvoicesPage() {
     if (selectedInvoices.length === 0) {
       setActionError({
         title: t('app.invoices.bulk_none', { defaultValue: 'No matching invoices selected for this action.' }),
-        hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+        hint: t('app.common.retry_hint'),
       })
       return
     }
@@ -407,7 +409,7 @@ export default function InvoicesPage() {
           defaultValue: 'Some bulk actions failed ({{failed}} of {{total}}).',
           values: { failed, total: selectedInvoices.length },
         }),
-        hint: t('app.common.retry_hint', { defaultValue: 'Retry the action or refresh the page.' }),
+        hint: t('app.common.retry_hint'),
       })
     } else {
       setActionMessage(
@@ -429,6 +431,10 @@ export default function InvoicesPage() {
         >
           {t('app.invoices.create', { defaultValue: 'Create Invoice' })}
         </button>
+      </div>
+
+      <div className="px-3 pb-2">
+        <PageBreadcrumb className="max-w-4xl" />
       </div>
 
       <div className="app-surface space-y-0 gap-0 border-x-0 border-t-0 p-3">
@@ -633,7 +639,7 @@ export default function InvoicesPage() {
         )}
 
         {loading ? (
-          <div className="text-center py-8 text-slate-500">{t('common.loading', { defaultValue: 'Loading...' })}</div>
+          <div className="text-center py-8 text-slate-500">{t('common.loading')}</div>
         ) : visibleInvoices.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             {t('app.invoices.empty', { defaultValue: 'No invoices found' })}
@@ -809,7 +815,7 @@ export default function InvoicesPage() {
                             onClick={() => void handleIssue(invoice)}
                           >
                             {isActionBusy(invoice.id, 'issue')
-                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              ? t('common.loading')
                               : t('app.invoices.issue', { defaultValue: 'Issue' })}
                           </button>
                         )}
@@ -821,7 +827,7 @@ export default function InvoicesPage() {
                             onClick={() => void handleSend(invoice)}
                           >
                             {isActionBusy(invoice.id, 'send')
-                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              ? t('common.loading')
                               : t(
                                   invoice.status === 'sent' ? 'app.invoices.resend' : 'app.invoices.send',
                                   { defaultValue: invoice.status === 'sent' ? 'Resend' : 'Send' },
@@ -836,7 +842,7 @@ export default function InvoicesPage() {
                             onClick={() => void handleMarkPaid(invoice)}
                           >
                             {isActionBusy(invoice.id, 'mark-paid')
-                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              ? t('common.loading')
                               : t('app.invoices.mark_paid', { defaultValue: 'Mark paid' })}
                           </button>
                         )}
@@ -848,7 +854,7 @@ export default function InvoicesPage() {
                             onClick={() => void handleCancel(invoice)}
                           >
                             {isActionBusy(invoice.id, 'cancel')
-                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              ? t('common.loading')
                               : t('app.invoices.cancel', { defaultValue: 'Cancel' })}
                           </button>
                         )}
@@ -860,7 +866,7 @@ export default function InvoicesPage() {
                             onClick={() => void handleRemind(invoice)}
                           >
                             {isActionBusy(invoice.id, 'remind')
-                              ? t('common.loading', { defaultValue: 'Loading...' })
+                              ? t('common.loading')
                               : t('app.invoices.remind', { defaultValue: 'Remind' })}
                           </button>
                         )}
@@ -887,7 +893,7 @@ export default function InvoicesPage() {
                           onClick={() => void handleDownloadPdf(invoice)}
                         >
                           {isActionBusy(invoice.id, 'pdf')
-                            ? t('common.loading', { defaultValue: 'Loading...' })
+                            ? t('common.loading')
                             : t('app.invoices.pdf', { defaultValue: 'PDF' })}
                         </button>
                       </div>

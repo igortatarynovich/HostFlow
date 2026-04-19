@@ -6,7 +6,8 @@ import re
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.tenant import Tenant, TenantLicense
@@ -185,6 +186,54 @@ async def list_active_lead_forms_with_public_slug(db: AsyncSession, tenant_id: s
     return list(rows)
 
 
+async def _public_slug_taken_globally_pg(db: AsyncSession, slug: str, exclude_form_id: str) -> bool | None:
+    try:
+        ex = (exclude_form_id or "").strip()
+        r = await db.execute(
+            text("SELECT public.hf_lead_form_public_slug_taken(:s, :e) AS taken").bindparams(s=slug, e=ex)
+        )
+        row = r.first()
+        if row is None:
+            return None
+        return bool(row[0])
+    except ProgrammingError:
+        await db.rollback()
+        return None
+
+
+async def ensure_public_slug_unique_globally(
+    db: AsyncSession,
+    *,
+    slug: str | None,
+    exclude_form_id: str,
+) -> None:
+    """409 if any workspace already published this public_slug (public intake URLs are global)."""
+    if not slug:
+        return
+    bind = db.get_bind()
+    taken: bool | None = None
+    if bind.dialect.name == "postgresql":
+        taken = await _public_slug_taken_globally_pg(db, slug, exclude_form_id)
+    if taken is None:
+        other = (
+            await db.execute(
+                select(TenantLeadForm).where(
+                    TenantLeadForm.public_slug == slug,
+                    TenantLeadForm.id != exclude_form_id,
+                )
+            )
+        ).scalar_one_or_none()
+        taken = other is not None
+    if taken:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "lead_form_public_slug_taken",
+                "message": "Another workspace already uses this public slug. Choose a different slug.",
+            },
+        )
+
+
 async def ensure_public_slug_unique_for_tenant(
     db: AsyncSession,
     tenant_id: str,
@@ -192,25 +241,8 @@ async def ensure_public_slug_unique_for_tenant(
     slug: str | None,
     exclude_form_id: str,
 ) -> None:
-    if not slug:
-        return
-    other = (
-        await db.execute(
-            select(TenantLeadForm).where(
-                TenantLeadForm.tenant_id == tenant_id,
-                TenantLeadForm.public_slug == slug,
-                TenantLeadForm.id != exclude_form_id,
-            )
-        )
-    ).scalar_one_or_none()
-    if other is not None:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "lead_form_public_slug_taken",
-                "message": "Another form already uses this public slug.",
-            },
-        )
+    """Backward-compatible name; tenant_id is ignored (slug is globally unique)."""
+    await ensure_public_slug_unique_globally(db, slug=slug, exclude_form_id=exclude_form_id)
 
 
 def lead_form_meta_for_intake_state(row: TenantLeadForm) -> dict[str, Any]:

@@ -77,6 +77,8 @@ export type CreateCandidateDocumentPayload = {
   workflow?: Partial<DocumentWorkflow> | null;
   source?: string | null;
   external_id?: string | null;
+  /** Required for the `additional_document` doc-type (free-form note from user). */
+  user_comment?: string | null;
 };
 
 export type DocumentPatchPayload = {
