@@ -254,6 +254,7 @@ export function useDashboardDerivedAnalytics({
 
   const stageVelocityRows = useMemo<StageVelocityRow[]>(() => {
     if (!slices?.snapshot?.length) return []
+    // eslint-disable-next-line react-hooks/purity -- stage velocity is an analytics snapshot; `now` is captured at recompute time (when `slices` change), not on every render
     const now = Date.now()
     const store = new Map<string, { label: string; values: number[] }>()
     slices.snapshot.forEach((row) => {

@@ -1379,19 +1379,20 @@ export default function CandidateCard(){
           outcome = 'error'
         }
       } finally {
-        if (cancelled) return
-        setLoading(false)
-        if (typeof performance !== 'undefined') {
-          const elapsed = Math.max(0, performance.now() - t0)
-          void recordPerfMeasurement({
-            metricKey: 'candidate.card.open',
-            durationMs: Math.round(elapsed),
-            route:
-              typeof window !== 'undefined'
-                ? window.location.pathname
-                : CRM_APP_PATHS.candidates,
-            meta: { candidateId: String(id), isNew, outcome },
-          })
+        if (!cancelled) {
+          setLoading(false)
+          if (typeof performance !== 'undefined') {
+            const elapsed = Math.max(0, performance.now() - t0)
+            void recordPerfMeasurement({
+              metricKey: 'candidate.card.open',
+              durationMs: Math.round(elapsed),
+              route:
+                typeof window !== 'undefined'
+                  ? window.location.pathname
+                  : CRM_APP_PATHS.candidates,
+              meta: { candidateId: String(id), isNew, outcome },
+            })
+          }
         }
       }
     })()
