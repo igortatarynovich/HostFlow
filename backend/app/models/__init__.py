@@ -235,6 +235,9 @@ MergeDocumentGenerationLog = _load_model_module(
 
 # Fleet (transport operations)
 FleetOperatingLine = _load_model_module("fleet_operating_line").FleetOperatingLine  # type: ignore[attr-defined]
+FleetVehicle = _load_model_module("fleet_vehicle").FleetVehicle  # type: ignore[attr-defined]
+FleetTrailer = _load_model_module("fleet_trailer").FleetTrailer  # type: ignore[attr-defined]
+FleetDriver = _load_model_module("fleet_driver").FleetDriver  # type: ignore[attr-defined]
 
 __all__ = [
     "Base",
@@ -295,7 +298,10 @@ __all__ = [
     "MagicLink",
     "MergeDocumentGenerationLog",
     "MergeDocumentTemplate",
+    "FleetDriver",
     "FleetOperatingLine",
+    "FleetTrailer",
+    "FleetVehicle",
     "Funnel",
     "FunnelStage",
     "Invoice",

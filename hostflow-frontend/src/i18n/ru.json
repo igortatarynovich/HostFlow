@@ -4667,6 +4667,41 @@
       }
     },
     "fleet": {
+      "title": "Автопарк",
+      "subtitle": "Рабочее место транспортных операций.",
+      "api_ok": "Подключение к API в порядке.",
+      "nav": {
+        "operating_lines": "Операционные линии",
+        "vehicles": "Тягачи и ТС",
+        "trailers": "Прицепы",
+        "drivers": "Водители"
+      },
+      "inventory": {
+        "vehicle_hint": "Госномер, VIN или внутренний код (хотя бы одно поле).",
+        "vehicle_primary": "Основной идентификатор",
+        "trailer_hint": "Госномер или внутренний код (хотя бы одно).",
+        "trailer_primary": "Основной идентификатор",
+        "driver_hint": "Код водителя или имя/фамилия (хотя бы одно).",
+        "driver_primary": "Метка водителя",
+        "add": "Добавить",
+        "empty": "Пока пусто."
+      },
+      "park": {
+        "vehicles_title": "Транспортные средства",
+        "trailers_title": "Прицепы",
+        "drivers_title": "Водители",
+        "field_internal": "Внутр. №",
+        "field_plate": "Госномер",
+        "field_brand": "Марка",
+        "field_model": "Модель",
+        "field_trailer_type": "Тип",
+        "field_driver_code": "Код",
+        "field_last_name": "Фамилия",
+        "field_first_name": "Имя",
+        "add": "Добавить",
+        "empty": "Пока нет записей.",
+        "delete_confirm": "Удалить эту запись?"
+      },
       "operating_lines": {
         "title": "Операционные линии",
         "new_name": "Название линии",

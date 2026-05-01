@@ -4667,6 +4667,41 @@
       }
     },
     "fleet": {
+      "title": "Fleet",
+      "subtitle": "Transport operations workspace.",
+      "api_ok": "API connection OK.",
+      "nav": {
+        "operating_lines": "Operating lines",
+        "vehicles": "Vehicles",
+        "trailers": "Trailers",
+        "drivers": "Drivers"
+      },
+      "inventory": {
+        "vehicle_hint": "Registration plate, VIN, or internal code (at least one).",
+        "vehicle_primary": "Primary identifier",
+        "trailer_hint": "Registration plate or internal code (at least one).",
+        "trailer_primary": "Primary identifier",
+        "driver_hint": "Display code or first/last name (at least one).",
+        "driver_primary": "Driver label",
+        "add": "Add",
+        "empty": "Nothing here yet."
+      },
+      "park": {
+        "vehicles_title": "Vehicles",
+        "trailers_title": "Trailers",
+        "drivers_title": "Drivers",
+        "field_internal": "Internal #",
+        "field_plate": "Plate",
+        "field_brand": "Brand",
+        "field_model": "Model",
+        "field_trailer_type": "Type",
+        "field_driver_code": "Code",
+        "field_last_name": "Last name",
+        "field_first_name": "First name",
+        "add": "Add",
+        "empty": "No records yet.",
+        "delete_confirm": "Delete this record?"
+      },
       "operating_lines": {
         "title": "Operating lines",
         "new_name": "Line name",

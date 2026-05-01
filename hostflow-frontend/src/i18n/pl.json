@@ -4169,6 +4169,41 @@
       }
     },
     "fleet": {
+      "title": "Flota",
+      "subtitle": "Obszar operacji transportowych.",
+      "api_ok": "Połączenie z API działa.",
+      "nav": {
+        "operating_lines": "Linie operacyjne",
+        "vehicles": "Pojazdy",
+        "trailers": "Naczepy",
+        "drivers": "Kierowcy"
+      },
+      "inventory": {
+        "vehicle_hint": "Nr rejestracyjny, VIN lub kod wewnętrzny (wymagane jedno z pól).",
+        "vehicle_primary": "Główny identyfikator",
+        "trailer_hint": "Nr rejestracyjny lub kod wewnętrzny (wymagane jedno).",
+        "trailer_primary": "Główny identyfikator",
+        "driver_hint": "Kod kierowcy lub imię/nazwisko (wymagane jedno).",
+        "driver_primary": "Etykieta kierowcy",
+        "add": "Dodaj",
+        "empty": "Na razie pusto."
+      },
+      "park": {
+        "vehicles_title": "Pojazdy",
+        "trailers_title": "Naczepy",
+        "drivers_title": "Kierowcy",
+        "field_internal": "Nr wewn.",
+        "field_plate": "Rejestracja",
+        "field_brand": "Marka",
+        "field_model": "Model",
+        "field_trailer_type": "Typ",
+        "field_driver_code": "Kod",
+        "field_last_name": "Nazwisko",
+        "field_first_name": "Imię",
+        "add": "Dodaj",
+        "empty": "Brak wpisów.",
+        "delete_confirm": "Usunąć ten wpis?"
+      },
       "operating_lines": {
         "title": "Linie operacyjne",
         "new_name": "Nazwa linii",

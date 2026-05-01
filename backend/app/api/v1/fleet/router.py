@@ -221,3 +221,8 @@ async def delete_operating_line(
         raise HTTPException(status_code=404, detail="operating line not found")
     await db.execute(sql_delete(FleetOperatingLine).where(FleetOperatingLine.id == line_id, FleetOperatingLine.tenant_id == tenant_id))
     await db.commit()
+
+
+from backend.app.api.v1.fleet.park import router as fleet_park_router  # noqa: E402
+
+router.include_router(fleet_park_router)

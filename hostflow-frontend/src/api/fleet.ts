@@ -69,3 +69,103 @@ export async function patchFleetOperatingLine(
 export async function deleteFleetOperatingLine(lineId: string): Promise<void> {
   await api.delete(`/fleet/operating-lines/${encodeURIComponent(lineId)}`)
 }
+
+// --- Park: vehicles / trailers / drivers ------------------------------------
+
+export type FleetVehicle = {
+  id: string
+  internal_code?: string | null
+  registration_plate?: string | null
+  vin?: string | null
+  brand?: string | null
+  model?: string | null
+  year?: number | null
+  status?: string
+  operating_company_id?: string | null
+  notes?: string | null
+}
+
+export type FleetVehiclesResponse = { items: FleetVehicle[] }
+
+export async function listFleetVehicles(): Promise<FleetVehiclesResponse> {
+  const { data } = await api.get<FleetVehiclesResponse>('/fleet/vehicles')
+  return data
+}
+
+export async function createFleetVehicle(payload: Partial<FleetVehicle> & { status?: string }): Promise<FleetVehicle> {
+  const { data } = await api.post<FleetVehicle>('/fleet/vehicles', payload)
+  return data
+}
+
+export async function patchFleetVehicle(id: string, payload: Partial<FleetVehicle>): Promise<FleetVehicle> {
+  const { data } = await api.patch<FleetVehicle>(`/fleet/vehicles/${encodeURIComponent(id)}`, payload)
+  return data
+}
+
+export async function deleteFleetVehicle(id: string): Promise<void> {
+  await api.delete(`/fleet/vehicles/${encodeURIComponent(id)}`)
+}
+
+export type FleetTrailer = {
+  id: string
+  internal_code?: string | null
+  registration_plate?: string | null
+  trailer_type?: string | null
+  status?: string
+  operating_company_id?: string | null
+  notes?: string | null
+}
+
+export type FleetTrailersResponse = { items: FleetTrailer[] }
+
+export async function listFleetTrailers(): Promise<FleetTrailersResponse> {
+  const { data } = await api.get<FleetTrailersResponse>('/fleet/trailers')
+  return data
+}
+
+export async function createFleetTrailer(payload: Partial<FleetTrailer> & { status?: string }): Promise<FleetTrailer> {
+  const { data } = await api.post<FleetTrailer>('/fleet/trailers', payload)
+  return data
+}
+
+export async function patchFleetTrailer(id: string, payload: Partial<FleetTrailer>): Promise<FleetTrailer> {
+  const { data } = await api.patch<FleetTrailer>(`/fleet/trailers/${encodeURIComponent(id)}`, payload)
+  return data
+}
+
+export async function deleteFleetTrailer(id: string): Promise<void> {
+  await api.delete(`/fleet/trailers/${encodeURIComponent(id)}`)
+}
+
+export type FleetDriver = {
+  id: string
+  display_code?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  status?: string
+  operating_company_id?: string | null
+  workforce_employee_id?: string | null
+  phone?: string | null
+  notes?: string | null
+}
+
+export type FleetDriversResponse = { items: FleetDriver[] }
+
+export async function listFleetDrivers(): Promise<FleetDriversResponse> {
+  const { data } = await api.get<FleetDriversResponse>('/fleet/drivers')
+  return data
+}
+
+export async function createFleetDriver(payload: Partial<FleetDriver> & { status?: string }): Promise<FleetDriver> {
+  const { data } = await api.post<FleetDriver>('/fleet/drivers', payload)
+  return data
+}
+
+export async function patchFleetDriver(id: string, payload: Partial<FleetDriver>): Promise<FleetDriver> {
+  const { data } = await api.patch<FleetDriver>(`/fleet/drivers/${encodeURIComponent(id)}`, payload)
+  return data
+}
+
+export async function deleteFleetDriver(id: string): Promise<void> {
+  await api.delete(`/fleet/drivers/${encodeURIComponent(id)}`)
+}
